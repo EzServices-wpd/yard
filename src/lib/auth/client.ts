@@ -13,7 +13,14 @@ export const authClient = createAuthClient({
   },
 });
 
-export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
+/** Dev/sandbox: on. Production: off unless VITE_AUTH_ENABLED=true. */
+export const authEnabled =
+  import.meta.env.VITE_AUTH_ENABLED === "true"
+    ? true
+    : import.meta.env.VITE_AUTH_ENABLED === "false"
+      ? false
+      : Boolean(import.meta.env.DEV);
+
 export { GROK_PROVIDERS };
 
 const BEARER_KEY = "grok-auth.bearer-token";
@@ -52,11 +59,7 @@ export async function signIn(
   const popup = inLivePreview() ? openSignInPopup(providerId) : null;
   const hadBearer = Boolean(getBearerToken());
   if (hadBearer || !inLivePreview()) {
-    try {
-      await authClient.signOut();
-    } catch {
-      /* proceed */
-    }
+    try { await authClient.signOut(); } catch { /* proceed */ }
   }
   setBearerToken(null);
   if (inLivePreview()) {
@@ -64,11 +67,7 @@ export async function signIn(
     const token = await waitForPopupToken(popup);
     if (!token) throw new Error("Sign-in was cancelled or failed");
     setBearerToken(token);
-    try {
-      await authClient.getSession();
-    } catch {
-      /* recover */
-    }
+    try { await authClient.getSession(); } catch { /* recover */ }
     if (typeof window !== "undefined") {
       const dest = new URL(callbackURL, window.location.origin);
       const here = window.location;
@@ -121,10 +120,6 @@ function waitForPopupToken(popup: Window): Promise<string | null> {
 }
 
 export async function signOut(redirectTo = "/"): Promise<void> {
-  try {
-    await authClient.signOut();
-  } finally {
-    setBearerToken(null);
-  }
+  try { await authClient.signOut(); } finally { setBearerToken(null); }
   window.location.href = redirectTo;
 }
