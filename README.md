@@ -1,8 +1,10 @@
 # Yard
 
-Playground for makers. Utility for real-world builders.
+**Playground for makers. Utility for real-world builders.**
 
-Permanent repo: **this one**. Future work is commits here — not new repositories.
+Type a dream → see it on the bench → Help Me Build → cut list, shop links, step plates, export.
+
+## North star
 
 ```
 3 foot Eiffel Tower from popsicle sticks
@@ -18,44 +20,33 @@ npm install
 npm run dev
 ```
 
-Dev server: `0.0.0.0:8080`.
+Open the URL Vite prints (default port 8080). Landing → **Open the bench** → prompt the Eiffel.
 
-## Deploy (Vercel)
+## Deploy
 
-Wait until `src/lib/yard/` and `src/components/workspace/` are fully populated (see map below).
+This is the **permanent** source of truth. All future work is commits here — not new repos.
 
-1. Vercel → Import `EzServices-wpd/yard`
-2. Framework: Vite / Nitro (from `vite.config.ts` `nitro({ preset: "vercel" })`)
-3. Build: `npm run build`
-4. Optional env: `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG` (shop chips work without it)
+1. Import `EzServices-wpd/yard` on Vercel (Framework: Vite).
+2. Env (optional at first): `XAI_API_KEY` for Grok true-form + finished renders.
+3. Later: `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG` for monetized shop links. Auth/DB when you want accounts.
 
-Do **not** set a custom root directory. `package.json` is at repo root.
-
-## Folder map (keep this)
+## Folder map
 
 ```
-src/
-  routes/                 # landing, login, /workspace
-  components/workspace/   # bench UI (canvas, plan, measure, export)
-  components/brand/       # logo
-  lib/yard/               # product engines (do not dump new features at root)
-    types.ts              # project / BOM / window / fitted types
-    catalog.ts            # retail SKUs
-    prompt.ts             # prompt → project
-    structures/           # latticeTower / Eiffel
-    fitted.ts pocket.ts   # measured openings → cabinetry
-    windows.ts            # stock units + framing
-    report.ts steps.ts    # unique instructions + plan
-    pdf.ts                # printable export
-    store.ts              # zustand bench state
-  lib/ai/grok.ts          # optional language / true-form query
-  lib/auth/               # optional sign-in (preview + deploy)
-scripts/                  # migrate, PWA, smoke tests
-migrations/               # SQL (0001_auth, then 0002_…)
+src/lib/yard/          engines (catalog, form, graph, fitted, pocket, windows, plan)
+src/lib/ai/            Grok interpret / rewrite / render
+src/lib/auth/          Better Auth (Grok broker + PGLite)
+src/components/        landing chrome + workspace bench
+src/routes/            /  /workspace  /login  /api/auth
+scripts/               PWA, migrate, Playwright smokes
+server/middleware/     Nitro PWA (manifest + install page)
+migrations/            auth schema
 ```
 
-New feature → new file under the matching folder. Do not start another repo.
+## Stack
+
+TanStack Start · Vite · React 19 · React Three Fiber · Zod · Tailwind 4
 
 ## Guidance
 
-Yard is guidance only — not stamped engineering or a substitute for local code.
+Yard is guidance only — not stamped engineering or a substitute for local building codes.
