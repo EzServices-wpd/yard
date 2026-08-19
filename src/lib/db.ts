@@ -1,9 +1,14 @@
-export type DbSource = "neon" | "pglite";
+export type DbSource = "neon" | "pglite" | "none";
 
 const rawDatabaseUrl = typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
 const databaseUrl = rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
-export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
+function isServerless(): boolean {
+  if (typeof process === "undefined") return false;
+  return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+}
+
+export const dbSource: DbSource = databaseUrl ? "neon" : isServerless() ? "none" : "pglite";
 
 export interface Sql {
   <T = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]>;
@@ -54,9 +59,7 @@ function createNeonSql(): Promise<Sql> {
 async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
-    const pg = new PGlite({
-      parsers: { [OID_INT8]: Number, [OID_DATE]: identity, [OID_INTERVAL]: identity },
-    });
+    const pg = new PGlite({ parsers: { [OID_INT8]: Number, [OID_DATE]: identity, [OID_INTERVAL]: identity } });
     await pg.waitReady;
     await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
     return pg;
@@ -91,9 +94,11 @@ let sqlPromise: Promise<Sql> | null = null;
 
 async function createSql(): Promise<Sql> {
   if (typeof window !== "undefined") {
-    throw new Error("@/lib/db is server-only — call getSql() from a createServerFn handler or a server route loader.");
+    throw new Error("@/lib/db is server-only.");
   }
-  return dbSource === "neon" ? createNeonSql() : createPgliteSql();
+  if (dbSource === "neon") return createNeonSql();
+  if (dbSource === "pglite") return createPgliteSql();
+  throw new Error("@/lib/db: no DATABASE_URL on this host. Persist is off this pass.");
 }
 
 export function getSql(): Promise<Sql> {
@@ -105,7 +110,7 @@ export function getSql(): Promise<Sql> {
 }
 
 export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
-  if (dbSource !== "pglite") throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
+  if (dbSource !== "pglite") throw new Error("getPglite() is only available on the local PGLite fallback");
   await getSql();
   const pg = await globalRef.__pgliteInstance__;
   if (!pg) throw new Error("PGLite instance failed to initialize");
@@ -122,6 +127,5 @@ if (typeof window === "undefined" && dbSource === "pglite") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
-    throw err;
   });
 }
