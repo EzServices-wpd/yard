@@ -1,42 +1,40 @@
-# Yard — base-stage status
+# Yard — Stage 0 status
 
-Checked 2026-08-19 against production deploy `dpl_RjF3tEP6oHNiYnR3K1L2jwEEhFmC` (commit `b5704e02`).
+Checked 2026-08-19 against production `dpl_8R4tGkVvxapzXaU7G8oECMcgDDRk` (commit `2f28bb91`) plus follow-up crash/auth deploys on `main`.
 
-## Live
+Production: https://yard-peach.vercel.app
 
-| | |
+## Stage 0 — done
+
+| Check | Result |
 |---|---|
-| Production | https://yard-peach.vercel.app |
-| Aliases | yard-build-hq.vercel.app, yard-git-main-build-hq.vercel.app |
-| Team | BuildHQ (`team_nmw9TlWf4hgHRTAiH38dwAux`) |
-| Project | `yard` / `prj_1n4o4nZTHurytn25MkrZ8C6MU8iT` |
-| Framework | tanstack-start · Node 24 · Nitro `vercel` preset |
-| Build | SUCCESS · ~1 min |
-| Ready state | READY |
+| PGLite never boots on Vercel | `dbSource = none` without `DATABASE_URL`. Last PGLite ENOENT was 16:51 UTC on the *old* deploy `dpl_RjF3tEP6oHNiYnR3K1L2jwEEhFmC`. Zero new clusters after the fix. |
+| Auth degrades to signed-out | Memory adapter via `better-auth/adapters/memory`. Auth off unless `VITE_AUTH_ENABLED=true`. Skip still opens the bench. |
+| Landing / bench / login | `/` 200 · `/workspace` 200 · `/login` 200 |
+| Live pass | Eiffel 580 pcs · pocket vanity 26 pcs · alcove closet 26 pcs · Andersen 36×48 17 pcs — each opened Build plan and exported a PDF |
+| PWA icon | `/__grok/icon-180.png` 200 |
+| Share card | `/og.jpg` still 404 until `scripts/brand/og.jpg.b64` lands on the next deploy |
+| `XAI_API_KEY` | **You add this** on Vercel → Project → Settings → Environment Variables, Production + Preview. Grok / true-form / render stay soft-fail until then. |
 
-## What works now
+## Live pass (Playwright vs production)
 
-- Landing `/` — 200, hero, north-star chips, vanity / window / Eiffel links
-- Bench `/workspace` — 200, client-hydrated 3D (SSR off for the canvas, by design)
-- Login `/login` — 200, skip-to-bench works
-- Deterministic engines in the tree: Eiffel lattice, pocket vanity, fitted units, stock windows, catalog, cut list, BOM, unique steps, PDF export
-- Shop chips fall back to Home Depot search (no affiliate tag required)
-- Auth UI is present and labeled optional
+```
+OK landing {status:200}
+OK login-skip /workspace
+OK eiffel   {pieces:580, kind:eiffel,   pdf:eiffel-frame-plan.pdf}
+OK pocket   {pieces:26,  kind:closet,   pdf:bathroom-pocket-vanity-plan.pdf}
+OK alcove   {pieces:26,  kind:closet,   pdf:bathroom-pocket-vanity-plan.pdf}
+OK andersen {pieces:17,  kind:opening,  pdf:andersen-100-series-36-48-double-hung-plan.pdf}
+SUMMARY {passed:6, failed:0, errors:[]}
+```
 
-## Broken / blocking (fix before scaling)
+Deterministic generate → plan → PDF works without AI, auth, or a database.
 
-1. **PGLite crashes the serverless function.** `src/lib/db.ts` boots PGLite on import. Vercel has no `/var/task/_libs/pglite.data`. Result: unhandled rejection, process exit 128, 18 errors / 11 users on `/__server`.
-2. **Auth API is down.** `GET /api/auth/get-session` → 404 (function dies in the same crash). Google / X buttons will not complete.
-3. **No `XAI_API_KEY` on Vercel.** True-form query and finished-piece render return “not available in this environment.” Deterministic generate still works.
-4. **Share / PWA assets 404.** `/og.jpg`, `/__grok/icon-180.png`, `/favicon.ico`.
-5. **No `DATABASE_URL` / Better Auth secrets.** Expected for this pass — but must not crash the process when absent.
-6. **Affiliate is a stub.** `shopSearchUrl` is Home Depot only. `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG` unused.
+## Still optional / next
 
-## Not bugs — product gaps for later stages
+1. Add `XAI_API_KEY` (you) so true-form query and finished-piece render light up.
+2. Commit `og.jpg.b64` if `/og.jpg` is still 404 after this pass.
+3. Pin `package-lock.json` when convenient (Vercel already builds without it).
+4. Stage 1 later: any-query true-form wire, denser plates, Amazon affiliate tag, Neon.
 
-- Any-query true-form wire (wiki / Grok) mapped onto unlimited stock
-- Structural “frame will fail without support” as a first-class check
-- Denser LEGO / Wayfair plates in the PDF
-- AR / on-site overlay
-- Cloud-saved yards
-- Custom domain (`project.live` is still false)
+Do not start Stage 1 until you have set the API key and walked the four chips yourself.
