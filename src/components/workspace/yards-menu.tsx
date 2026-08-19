@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { deleteLocalYard, listLocalYards, loadLocalYard, type YardCard } from "@/lib/yard/persist";
-import { deleteRemoteYard, listRemoteYards, loadRemoteYard, saveRemoteYard } from "@/lib/yard/yards.server";
+import { deleteRemoteYard, listRemoteYards, loadRemoteYard, saveRemoteYard } from "@/lib/yard/yards-api";
 import { useYard } from "@/lib/yard/store";
 
 export function YardsMenu() {
