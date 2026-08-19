@@ -4,6 +4,7 @@ import { ArrowRight, Box, Ruler, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { DREAMS } from "@/lib/yard/prompt";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -28,19 +29,21 @@ function Home() {
             <Link to="/workspace" search={{}} className="hidden text-sm text-ink-muted hover:text-ink sm:inline">
               Bench
             </Link>
-            {isPending ? (
-              <div className="h-8 w-8 animate-pulse rounded-full bg-rule" />
-            ) : user ? (
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            ) : (
-              <SignedOut>
-                <Link to="/login" className="text-sm text-ink-muted hover:text-ink">
-                  Sign in
-                </Link>
-              </SignedOut>
-            )}
+            {authEnabled ? (
+              isPending ? (
+                <div className="h-8 w-8 animate-pulse rounded-full bg-rule" />
+              ) : user ? (
+                <SignedIn>
+                  <UserButton />
+                </SignedIn>
+              ) : (
+                <SignedOut>
+                  <Link to="/login" className="text-sm text-ink-muted hover:text-ink">
+                    Sign in
+                  </Link>
+                </SignedOut>
+              )
+            ) : null}
             <Link
               to="/workspace"
               search={{ q: DREAMS[0].prompt }}
@@ -110,33 +113,16 @@ function Home() {
 
         <section className="border-y border-rule bg-white/50 py-14">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-3">
-            <Step
-              icon={<Box className="size-5" />}
-              n="01"
-              title="Real parts"
-              body="Popsicle sticks, paper-towel cores, PVC, 2×4s. Nominal retail sizes — not fake geometry."
-            />
-            <Step
-              icon={<Ruler className="size-5" />}
-              n="02"
-              title="A bench you can trust"
-              body="Orbit, snap, measure an opening. Closet, lattice, arch — same engine."
-            />
-            <Step
-              icon={<ShoppingBag className="size-5" />}
-              n="03"
-              title="A plan you can shop"
-              body="Cut list, pack counts, store searches, plates you can print."
-            />
+            <Step icon={<Box className="size-5" />} n="01" title="Real parts" body="Popsicle sticks, paper-towel cores, PVC, 2×4s. Nominal retail sizes — not fake geometry." />
+            <Step icon={<Ruler className="size-5" />} n="02" title="A bench you can trust" body="Orbit, snap, measure an opening. Closet, lattice, arch — same engine." />
+            <Step icon={<ShoppingBag className="size-5" />} n="03" title="A plan you can shop" body="Cut list, pack counts, store searches, plates you can print." />
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="grid items-end gap-8 md:grid-cols-2">
             <div>
-              <h2 className="font-display text-3xl text-ink sm:text-4xl">
-                Geometry first. Language second.
-              </h2>
+              <h2 className="font-display text-3xl text-ink sm:text-4xl">Geometry first. Language second.</h2>
               <p className="mt-3 max-w-md text-ink-muted leading-relaxed">
                 Spans and stick counts are deterministic. Grok writes the assembly voice — it does not invent a 4.5″ stick that is 5″ long.
               </p>
@@ -155,17 +141,7 @@ function Home() {
   );
 }
 
-function Step({
-  icon,
-  n,
-  title,
-  body,
-}: {
-  icon: ReactNode;
-  n: string;
-  title: string;
-  body: string;
-}) {
+function Step({ icon, n, title, body }: { icon: ReactNode; n: string; title: string; body: string }) {
   return (
     <div>
       <div className="flex items-center gap-3 text-ink-muted">
