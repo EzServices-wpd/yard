@@ -1,16 +1,17 @@
 import { betterAuth } from "better-auth";
+import { memoryAdapter } from "better-auth/adapters/memory-adapter";
 import { bearer, genericOAuth } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
-import { ensureDbReady, getPglite } from "../db";
+import { dbSource, ensureDbReady, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GROK_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
 import { GROK_ISSUER_DEFAULT, PREVIEW_ALLOWED_HOSTS, PREVIEW_CLIENT_ID, PREVIEW_CLIENT_SECRET } from "./preview";
 
-void ensureDbReady();
+if (dbSource === "pglite") void ensureDbReady();
 
 const globalAuthRef = globalThis as typeof globalThis & { __grokAuthPreviewSecret__?: string };
 function previewAuthSecret(): string {
@@ -23,7 +24,9 @@ const env = (key: string): string | undefined => {
   return value ? value : undefined;
 };
 
-const authDisabled = env("VITE_AUTH_ENABLED") === "false";
+const onVercel = Boolean(env("VERCEL"));
+const authDisabled = env("VITE_AUTH_ENABLED") === "false" || (onVercel && env("VITE_AUTH_ENABLED") !== "true");
+
 const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
 const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
 const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
@@ -33,14 +36,21 @@ export const authConfigured = !authDisabled && Boolean(grokClientId && grokClien
 const explicitBaseURL = env("BETTER_AUTH_URL");
 const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
 const LOCAL_DEV_ORIGINS: string[] = ["http://localhost:8080", "http://127.0.0.1:8080", "http://[::1]:8080"];
+const vercelOrigins = [
+  env("VERCEL_URL") ? `https://${env("VERCEL_URL")}` : "",
+  env("VERCEL_PROJECT_PRODUCTION_URL") ? `https://${env("VERCEL_PROJECT_PRODUCTION_URL")}` : "",
+  "https://yard-peach.vercel.app",
+  "https://yard-build-hq.vercel.app",
+  "https://yard-git-main-build-hq.vercel.app",
+].filter(Boolean);
 const baseURL = explicitBaseURL ?? {
   allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
   protocol: "auto" as const,
   fallback: "http://localhost:8080",
 };
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
-  : [...previewAllowedHosts, ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]), ...LOCAL_DEV_ORIGINS];
+  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS, ...vercelOrigins]
+  : [...previewAllowedHosts, ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]), ...LOCAL_DEV_ORIGINS, ...vercelOrigins];
 
 const databaseUrl = env("DATABASE_URL");
 const issuerBase = grokIssuer.replace(/\/+$/, "");
@@ -48,9 +58,14 @@ const grokAuthorizationUrl = `${issuerBase}/api/auth/oauth2/authorize`;
 const grokTokenUrl = `${issuerBase}/api/auth/oauth2/token`;
 const grokUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
 
+const globalMem = globalThis as typeof globalThis & { __yardAuthMem__?: Record<string, unknown[]> };
+globalMem.__yardAuthMem__ ??= {};
+
 const database = databaseUrl
   ? new Pool({ connectionString: databaseUrl })
-  : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
+  : dbSource === "pglite"
+    ? { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const }
+    : memoryAdapter(globalMem.__yardAuthMem__);
 
 export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
 
@@ -90,11 +105,7 @@ export const auth = betterAuth({
       dont_remember: { name: "__Host-grok-auth.dont_remember" },
     },
   },
-  plugins: [
-    ...(grokOAuthPlugin ? [grokOAuthPlugin] : []),
-    bearer(),
-    tanstackStartCookies(),
-  ],
+  plugins: [...(grokOAuthPlugin ? [grokOAuthPlugin] : []), bearer(), tanstackStartCookies()],
 });
 
 export function readSessionToken(): string | null {
