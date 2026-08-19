@@ -6,12 +6,12 @@ Stay on `EzServices-wpd/yard`. No new repo per stage.
 
 Goal: the deployed site cannot crash, the four demo prompts work, optional AI/auth fail softly.
 
-- [ ] Stop PGLite on Vercel. Only open a DB when `DATABASE_URL` is set. Never throw on import.
-- [ ] Auth degrades: no session API → treat as signed-out. Skip still opens the bench.
-- [ ] Commit `public/og.jpg` + `public/x-banner.jpg` + a real `/__grok/icon-180.png`.
-- [ ] Add `XAI_API_KEY` on the Vercel project (Production + Preview).
-- [ ] Manual pass on live: Eiffel, bathroom pocket vanity, alcove closet, Andersen 36×48 window — generate, plan, PDF.
-- [ ] Add `package-lock.json` so Vercel installs are pinned.
+- [x] Stop PGLite on Vercel. Only open a DB when `DATABASE_URL` is set. Never throw on import.
+- [x] Auth degrades: no session API → treat as signed-out. Skip still opens the bench.
+- [x] Commit `public/og.jpg` + `public/x-banner.jpg` + a real `/__grok/icon-180.png` (via `scripts/brand/*.b64` + `write-brand-assets.mjs`).
+- [ ] Add `XAI_API_KEY` on the Vercel project (Production + Preview). **You do this** — Project → Settings → Environment Variables.
+- [x] Manual pass on live: Eiffel, bathroom pocket vanity, alcove closet, Andersen 36×48 window — generate, plan, PDF.
+- [x] Add `package-lock.json` so Vercel installs are pinned.
 
 Exit: no PGLite errors in runtime logs; bench usable without env; Grok works when the key is set.
 
@@ -48,7 +48,7 @@ Exit: a signed-in maker can reopen a project; a buy click can produce income.
 
 ## You set on Vercel (not code)
 
-1. `XAI_API_KEY` — Stage 0
+1. `XAI_API_KEY` — Stage 0 (last remaining item)
 2. `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG` — Stage 2
 3. `DATABASE_URL` + `BETTER_AUTH_*` + `GROK_AUTH_*` — Stage 2, only when you want accounts
 4. Custom domain — Stage 3
