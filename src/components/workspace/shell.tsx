@@ -141,6 +141,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, deleteSelected, selectedId]);
 
+  useEffect(() => {
+    if (workMode === "build") setWorkMode("look");
+  }, [workMode, setWorkMode]);
+
   const material = getCatalogItem(project.primaryMaterialId);
   const pieceCount = project.instances.length + project.panels.length;
   const historicOk = hasHistoricProfile(project.kind) || !!project.historic;
@@ -464,7 +468,6 @@ function ModeSwitch({ value, onChange }: { value: WorkMode; onChange: (v: WorkMo
   const modes: { id: WorkMode; label: string }[] = [
     { id: "look", label: "Look" },
     { id: "free", label: "Free" },
-    { id: "build", label: "Build" },
   ];
   return (
     <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
