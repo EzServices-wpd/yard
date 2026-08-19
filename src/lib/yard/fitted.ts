@@ -1,0 +1,206 @@
+import { createId } from "@/lib/utils";
+import type { FittedProgram, FittedSpec, FittedUnit, Panel, PocketWalls, YardProject } from "./types";
+import { buildPocket, looksLikePocket, parsePocket } from "./pocket";
+
+const PLY = "plywood-3-4-4x8";
+const P = 0.75;
+
+function pick(text: string, re: RegExp, fallback: number) {
+  const m = text.match(re);
+  if (!m?.[1]) return fallback;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
+const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
+const BUILDER =
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|shelves|shelf|drawer|storage|bench seat|window seat/;
+
+export function looksLikeFitted(prompt: string) {
+  const lower = prompt.toLowerCase();
+  if (looksLikePocket(prompt)) return true;
+  if (MAKER.test(lower) && CRAFT.test(lower)) return false;
+  if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
+  const nums = (lower.match(/\d+(?:\.\d+)?/g) ?? []).length;
+  return BUILDER.test(lower) && nums >= 2;
+}
+
+export function detectProgram(lower: string): FittedProgram {
+  if (/desk|workbench|work table/.test(lower)) return "desk";
+  if (/vanity|sink|bathroom/.test(lower)) return "vanity";
+  if (/bookcase|bookshelf|books/.test(lower)) return "bookcase";
+  if (/pantry/.test(lower)) return "pantry";
+  if (/wardrobe/.test(lower)) return "wardrobe";
+  if (/media|tv|console/.test(lower)) return "media";
+  if (/bench|mudroom|window seat/.test(lower)) return "bench";
+  if (/closet|linen|towel|cabinet|storage|built-?in|alcove|shelf/.test(lower)) return "closet";
+  return "storage";
+}
+
+function triple(text: string): { w?: number; h?: number; d?: number } {
+  const m = text.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i);
+  if (!m) return {};
+  return { w: parseFloat(m[1]), h: parseFloat(m[2]), d: m[3] ? parseFloat(m[3]) : undefined };
+}
+
+export function parseBrief(prompt: string): FittedSpec | null {
+  if (!looksLikeFitted(prompt)) return null;
+  const pocket = parsePocket(prompt);
+  if (pocket) {
+    return {
+      program: detectProgram(prompt.toLowerCase()),
+      name: "Bathroom pocket vanity",
+      opening: { width: pocket.walls.backWidth, height: pocket.walls.height, depth: Math.max(pocket.walls.leftDepth, pocket.walls.rightDepth), kind: "pocket" },
+      unit: {
+        width: pocket.unit.width, depth: pocket.unit.depth, height: pocket.unit.height,
+        counterH: pocket.unit.vanityH, kneeW: pocket.unit.kneeW, upperStart: pocket.unit.upperStart,
+        drawersPerBank: 3, doors: true, mirror: true, centered: true,
+      },
+      walls: pocket.walls, leftClear: pocket.leftClear, rightClear: pocket.rightClear,
+    };
+  }
+  const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
+  const lower = t.toLowerCase();
+  const program = detectProgram(lower);
+  const trip = triple(t);
+  let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, trip.w ?? 36);
+  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, trip.d ?? NaN);
+  if (!Number.isFinite(height)) {
+    if (program === "desk" || program === "bench") {
+      height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
+      if (trip.h && trip.h < 42 && trip.d && trip.d > 14) { depth = trip.h; height = trip.d; }
+      else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+    } else {
+      height = trip.h ?? (program === "media" ? 24 : 84);
+    }
+  }
+  if (!Number.isFinite(depth)) depth = program === "desk" ? 24 : program === "bookcase" ? 12 : 16;
+  const counterH = /counter|vanity|desk|workbench/.test(lower)
+    ? pick(t, /(?:counter|desk|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i, program === "desk" ? height : 34)
+    : program === "vanity" ? 34 : program === "desk" ? height : undefined;
+  const kneeW = /knee|sit|chair|open/.test(lower)
+    ? pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22))
+    : program === "vanity" || program === "desk" ? Math.min(24, Math.max(18, width * 0.4)) : undefined;
+  const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
+  const shelfCount = pick(t, /(\d+)\s*shel(?:f|ves)/i, program === "bookcase" ? 5 : program === "closet" || program === "pantry" || program === "wardrobe" ? 4 : 0);
+  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
+  const doors = /door/.test(lower) || program === "closet" || program === "pantry" || program === "wardrobe" || program === "vanity";
+  const mirror = /mirror/.test(lower) || program === "vanity";
+  const rod = /rod|hang|rail/.test(lower) || program === "wardrobe";
+  const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
+    ? { backWidth: width, leftDepth: depth, rightDepth: depth, height, leftAngleDeg: 0, rightAngleDeg: 0 } : undefined;
+  const unit: FittedUnit = { width, depth, height, counterH, kneeW, upperStart, shelfCount: shelfCount || undefined, drawersPerBank: drawers ? 3 : undefined, doors, mirror, rod, centered: true };
+  const names: Record<FittedProgram, string> = { vanity: "Vanity", closet: "Closet", pantry: "Pantry", wardrobe: "Wardrobe", desk: "Desk", bookcase: "Bookcase", media: "Media unit", bench: "Bench", storage: "Storage unit" };
+  return {
+    program,
+    name: `${names[program]} ${width}" × ${height}" × ${depth}"`,
+    opening: { width, height, depth, kind: walls ? "pocket" : /alcove|built-?in|closet|niche/.test(lower) ? "alcove" : "room" },
+    unit, walls, leftClear: walls ? 0 : undefined, rightClear: walls ? 0 : undefined,
+  };
+}
+
+function panel(type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number): Panel {
+  return { id: createId(type.slice(0, 2)), type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId: PLY };
+}
+
+export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
+  if (spec.walls && (spec.walls.leftAngleDeg > 0.2 || spec.walls.rightAngleDeg > 0.2)) {
+    const pocket = buildPocket({
+      walls: spec.walls,
+      unit: { width: spec.unit.width, depth: spec.unit.depth, height: spec.unit.height, vanityH: spec.unit.counterH ?? 34, kneeW: spec.unit.kneeW ?? 22, upperStart: spec.unit.upperStart ?? 54 },
+      leftClear: spec.leftClear ?? 0, rightClear: spec.rightClear ?? 0,
+    }, prompt);
+    return { ...pocket, fitted: spec, name: spec.name || pocket.name };
+  }
+  const u = spec.unit;
+  const W = u.width, H = u.height, D = u.depth, x0 = -W / 2;
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
+  panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
+  const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
+  const counterY = u.counterH ?? (spec.program === "desk" ? H : 34);
+  if (hasKnee) {
+    const knee = Math.min(u.kneeW ?? 22, W - 10);
+    const kneeL = -knee / 2, kneeR = knee / 2;
+    const leftW = kneeL - x0, rightW = x0 + W - kneeR;
+    const boxH = Math.min(counterY, H);
+    panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
+    panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
+    panels.push(panel("kick", "Left toekick", x0 + P, 0, D - 0.5, leftW - P, 3.5, 0.5));
+    panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - 0.5, rightW - P, 3.5, 0.5));
+    const n = u.drawersPerBank ?? 3;
+    const dh = (boxH - 3.5) / n;
+    for (let i = 0; i < n; i++) {
+      const y = 3.5 + i * dh;
+      panels.push(panel("drawer", `Left drawer ${i + 1}`, x0 + P, y, 0.15, leftW - P - 0.1, dh - 0.12, D - 0.3));
+      panels.push(panel("drawer", `Right drawer ${i + 1}`, kneeR + P, y, 0.15, rightW - P - 0.1, dh - 0.12, D - 0.3));
+    }
+    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
+    if (u.mirror && spec.program === "vanity") {
+      const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - boxH - 3);
+      panels.push(panel("mirror", "Mirror", kneeL, boxH + 2, 0.4, knee, mh, 0.2));
+    }
+  } else if (u.drawersPerBank) {
+    const n = u.drawersPerBank;
+    const dh = (H - 4) / n;
+    for (let i = 0; i < n; i++) panels.push(panel("drawer", `Drawer ${i + 1}`, x0 + P, 3.5 + i * dh, 0.15, W - P * 2, dh - 0.12, D - 0.3));
+  }
+  const shelfZone0 = hasKnee ? (u.upperStart ?? counterY + 2) : P;
+  const shelfZone1 = u.upperStart ? H : H - P;
+  if (u.upperStart && u.upperStart < H - 4) {
+    panels.push(panel("bottom", "Upper bottom", x0 + P, u.upperStart, 0, W - P * 2, P, D));
+    if (W >= 36) panels.push(panel("divider", "Upper divider", -P / 2, u.upperStart, 0, P, H - u.upperStart, D));
+  }
+  const shelves = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" || spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
+  if (shelves > 0) {
+    const y0 = u.upperStart ?? shelfZone0;
+    const y1 = shelfZone1;
+    for (let i = 1; i <= shelves; i++) {
+      const y = y0 + ((y1 - y0) * i) / (shelves + 1);
+      if (u.upperStart && W >= 36) {
+        const bay = (W - P * 3) / 2;
+        panels.push(panel("shelf", `Left shelf ${i}`, x0 + P, y, 0.1, bay, P, D - 0.2));
+        panels.push(panel("shelf", `Right shelf ${i}`, P / 2, y, 0.1, bay, P, D - 0.2));
+      } else {
+        panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, 0.1, W - P * 2, P, D - 0.2));
+      }
+    }
+  }
+  if (u.rod && spec.program === "wardrobe") {
+    panels.push(panel("rail", "Hanging rod", x0 + P, Math.min(H - 8, Math.max(60, H * 0.72)), D * 0.45, W - P * 2, 1.25, 1.25));
+  }
+  if (u.doors) {
+    const doorY = u.upperStart ?? 0;
+    const doorH = H - doorY;
+    if (W > 28) {
+      panels.push(panel("door", "Left door", x0 + 0.1, doorY, D - 0.35, W / 2 - 0.2, doorH, 0.35));
+      panels.push(panel("door", "Right door", 0.1, doorY, D - 0.35, W / 2 - 0.2, doorH, 0.35));
+    } else {
+      panels.push(panel("door", "Door", x0 + 0.1, doorY, D - 0.35, W - 0.2, doorH, 0.35));
+    }
+  }
+  const alcove = spec.opening.kind === "alcove" || spec.opening.kind === "pocket";
+  return {
+    id: createId("proj"), name: spec.name, prompt, kind: "closet",
+    overall: { width: W + 4, height: H + 2, depth: D + 2 },
+    instances: [], panels, primaryMaterialId: PLY,
+    notes: [
+      `${spec.name}. ${alcove ? "Fitted to the opening." : "Freestanding carcase."}`,
+      `Unit ${u.width}" W × ${u.depth}" D × ${u.height}" H. ¾" plywood.`,
+      hasKnee ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear.` : shelves ? `${shelves} shelf lines.` : "Solid carcase.",
+      alcove ? "Anchor uprights into studs. Do not rack the box." : "Level it. The back keeps it from racking.",
+      "Guidance only — confirm the real opening before you cut.",
+    ],
+    historic: false, opening: spec.opening, fitted: spec,
+    assumptions: { load: spec.program === "bookcase" || spec.program === "pantry" ? "heavy" : "medium", units: "inches", installMode: alcove ? "alcove" : "freestanding", wallType: "wood_stud" },
+  };
+}
+
+export function fittedFromPocketProject(project: YardProject): FittedSpec | undefined {
+  return project.fitted ?? undefined;
+}
