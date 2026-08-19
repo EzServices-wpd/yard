@@ -1,18 +1,40 @@
 export type DbSource = "neon" | "pglite" | "none";
 
-const rawDatabaseUrl = typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl = rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+const rawDatabaseUrl =
+  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
+const databaseUrl =
+  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
+/** Vercel / Lambda have no PGLite wasm file. Never boot it there. */
 function isServerless(): boolean {
   if (typeof process === "undefined") return false;
-  return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+  return Boolean(
+    process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.LAMBDA_TASK_ROOT,
+  );
 }
 
-export const dbSource: DbSource = databaseUrl ? "neon" : isServerless() ? "none" : "pglite";
+/**
+ * Neon when DATABASE_URL is set.
+ * PGLite only in local / sandbox preview (never on Vercel).
+ * `none` on serverless without a URL — callers must not crash the process.
+ */
+export const dbSource: DbSource = databaseUrl
+  ? "neon"
+  : isServerless()
+    ? "none"
+    : "pglite";
 
 export interface Sql {
-  <T = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]>;
-  query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]>;
+  <T = Record<string, unknown>>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<T[]>;
+  query<T = Record<string, unknown>>(
+    text: string,
+    params?: unknown[],
+  ): Promise<T[]>;
 }
 
 const globalRef = globalThis as typeof globalThis & {
@@ -29,12 +51,16 @@ const identity = (v: string) => v;
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
 
 function toSql(run: Run): Sql {
-  const sql = (async <T = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]> => {
+  const sql = (async <T = Record<string, unknown>>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<T[]> => {
     let text = strings[0];
     for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
     return run<T>(text, values);
   }) as unknown as Sql;
-  sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) => run<T>(text, params);
+  sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
+    run<T>(text, params);
   return sql;
 }
 
@@ -59,20 +85,35 @@ function createNeonSql(): Promise<Sql> {
 async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
-    const pg = new PGlite({ parsers: { [OID_INT8]: Number, [OID_DATE]: identity, [OID_INTERVAL]: identity } });
+    const pg = new PGlite({
+      parsers: {
+        [OID_INT8]: Number,
+        [OID_DATE]: identity,
+        [OID_INTERVAL]: identity,
+      },
+    });
     await pg.waitReady;
-    await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
+    await pg.exec(
+      "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
+    );
     return pg;
   })().catch((err) => {
     globalRef.__pgliteInstance__ = undefined;
     throw err;
   });
   const pg = await globalRef.__pgliteInstance__;
+
   const migrate = async (): Promise<void> => {
-    const migrations = import.meta.glob("/migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const migrations = import.meta.glob("/migrations/*.sql", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
     const doneRows = await pg.query<{ name: string }>("select name from _migrations");
     const done = new Set(doneRows.rows.map((r) => r.name));
-    for (const [path, text] of Object.entries(migrations).sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [path, text] of Object.entries(migrations).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
       const name = path.split("/").pop() as string;
       if (done.has(name)) continue;
       await pg.transaction(async (tx) => {
@@ -81,9 +122,12 @@ async function createPgliteSql(): Promise<Sql> {
       });
     }
   };
-  const pass = (globalRef.__pgliteMigrateChain__ ?? Promise.resolve()).catch(() => undefined).then(migrate);
+  const pass = (globalRef.__pgliteMigrateChain__ ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(migrate);
   globalRef.__pgliteMigrateChain__ = pass;
   await pass;
+
   return toSql(async <T>(text: string, params: unknown[]) => {
     const result = await pg.query<T>(text, params);
     return result.rows;
@@ -94,11 +138,16 @@ let sqlPromise: Promise<Sql> | null = null;
 
 async function createSql(): Promise<Sql> {
   if (typeof window !== "undefined") {
-    throw new Error("@/lib/db is server-only.");
+    throw new Error(
+      "@/lib/db is server-only — call getSql() from a createServerFn handler " +
+        "or a server route loader, never from client code.",
+    );
   }
   if (dbSource === "neon") return createNeonSql();
   if (dbSource === "pglite") return createPgliteSql();
-  throw new Error("@/lib/db: no DATABASE_URL on this host. Persist is off this pass.");
+  throw new Error(
+    "@/lib/db: no DATABASE_URL on this host (serverless). Persist is off this pass.",
+  );
 }
 
 export function getSql(): Promise<Sql> {
@@ -110,7 +159,9 @@ export function getSql(): Promise<Sql> {
 }
 
 export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
-  if (dbSource !== "pglite") throw new Error("getPglite() is only available on the local PGLite fallback");
+  if (dbSource !== "pglite") {
+    throw new Error("getPglite() is only available on the local PGLite fallback");
+  }
   await getSql();
   const pg = await globalRef.__pgliteInstance__;
   if (!pg) throw new Error("PGLite instance failed to initialize");
@@ -122,10 +173,13 @@ export function ensureDbReady(): Promise<void> {
   return getSql().then(() => undefined);
 }
 
-const globalBoot = globalThis as typeof globalThis & { __pgBootstrapPromise__?: Promise<void> };
+const globalBoot = globalThis as typeof globalThis & {
+  __pgBootstrapPromise__?: Promise<void>;
+};
 if (typeof window === "undefined" && dbSource === "pglite") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
+    // Never rethrow — a missing wasm file must not kill the process.
   });
 }

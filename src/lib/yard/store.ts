@@ -4,7 +4,7 @@ import type { BuildPlan, MeasureDraft, Vec3, WorkMode, YardProject } from "./typ
 import { emptyProject, generateFromPrompt } from "./prompt";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
-import { clearProject, loadProject, saveProject } from "./persist";
+import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
 import { defaultPlaceLength } from "./bom";
 import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
@@ -65,6 +65,7 @@ type YardState = {
 
 function persist(project: YardProject) {
   saveProject(project);
+  saveLocalYard(project);
 }
 
 const defaultMeasure: MeasureDraft = {

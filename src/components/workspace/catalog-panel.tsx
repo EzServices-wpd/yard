@@ -29,7 +29,9 @@ export function CatalogPanel() {
           if (!group.length) return null;
           return (
             <div key={cat.id} className="mb-3">
-              <p className="px-2 py-1 text-xs font-medium uppercase tracking-wider text-faint">{cat.label}</p>
+              <p className="px-2 py-1 text-xs font-medium uppercase tracking-wider text-faint">
+                {cat.label}
+              </p>
               <ul>
                 {group.map((item) => {
                   const active = project.primaryMaterialId === item.id;
@@ -43,7 +45,12 @@ export function CatalogPanel() {
                     <li key={item.id}>
                       <button
                         type="button"
-                        onClick={() => commit({ ...project, primaryMaterialId: item.id })}
+                        onClick={() =>
+                          commit({
+                            ...project,
+                            primaryMaterialId: item.id,
+                          })
+                        }
                         className={`flex w-full items-start justify-between gap-2 rounded-md px-2 py-2 text-left ${
                           active ? "bg-elevated" : "hover:bg-elevated/60"
                         }`}

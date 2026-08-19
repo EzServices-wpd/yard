@@ -104,13 +104,21 @@ export function buildClosetFromPrompt(prompt: string, size: { width: number; hei
   let D = size.depth;
 
   if (/linen|bathroom/.test(lower) && !/\d/.test(lower)) {
-    W = 31.5; H = 78; D = 16;
+    W = 31.5;
+    H = 78;
+    D = 16;
   } else if (/pantry/.test(lower) && !/\d/.test(lower)) {
-    W = 24; H = 84; D = 16;
+    W = 24;
+    H = 84;
+    D = 16;
   } else if (/wardrobe|wide/.test(lower) && !/\d/.test(lower)) {
-    W = 60; H = 84; D = 24;
+    W = 60;
+    H = 84;
+    D = 24;
   } else if (/media|tv|niche/.test(lower) && !/\d/.test(lower)) {
-    W = 48; H = 30; D = 18;
+    W = 48;
+    H = 30;
+    D = 18;
   }
 
   const project = buildClosetFromOpening(W, H, D, prompt);

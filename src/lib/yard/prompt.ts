@@ -10,6 +10,7 @@ import { projectFromMeasurement } from "./space";
 import { looksLikeWindow, pickWindow, buildWindowProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
+import { classifyAnatomy } from "./anatomy";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
@@ -104,14 +105,9 @@ export function parseSize(lower: string): { height: number; width: number; depth
 }
 
 export function detectStructure(lower: string): StructureKind {
-  if (looksLikeWindow(lower) || /rough opening|window ro|window opening/.test(lower)) return "opening";
-  if (
-    /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|pocket in|desk|bookcase|bookshelf|workbench|dresser|nightstand|mudroom/.test(
-      lower,
-    )
-  ) {
-    return "closet";
-  }
+  const hit = classifyAnatomy(lower);
+  if (hit.anatomy === "opening") return "opening";
+  if (hit.anatomy === "fitted") return "closet";
   return detectForm(lower, parseSize(lower)).kind;
 }
 

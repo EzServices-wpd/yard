@@ -22,6 +22,7 @@ export function promptWantsGhost(prompt: string) {
   );
 }
 
+/** Famous / requested → historic on. Hull only if they asked and it is not a famous site. */
 export function defaultGhostFlags(kind: StructureKind, prompt: string, historic = false) {
   const famous = isFamousKind(kind) || historic;
   const wants = promptWantsGhost(prompt);
@@ -36,14 +37,32 @@ export const EIFFEL_REAL = {
   baseM: 125,
   platformsM: [57, 115, 276] as const,
   archM: 40,
+  /** Outer face width (m) at published stations — legs come together, then one shaft. */
+  profile: [
+    { t: 0, faceM: 125 },
+    { t: 57 / 324, faceM: 72 },
+    { t: 115 / 324, faceM: 41 },
+    { t: 200 / 324, faceM: 17 },
+    { t: 276 / 324, faceM: 11 },
+    { t: 1, faceM: 4 },
+  ],
 };
 
 export function eiffelHalfAt(t: number, heightIn: number): number {
-  const base = heightIn * (EIFFEL_REAL.baseM / EIFFEL_REAL.heightM);
-  const tip = base * 0.07;
+  const scale = heightIn / EIFFEL_REAL.heightM;
   const u = Math.min(1, Math.max(0, t));
-  const ease = Math.pow(1 - u, 1.42);
-  return tip / 2 + (base / 2 - tip / 2) * ease;
+  const pts = EIFFEL_REAL.profile;
+  if (u <= pts[0].t) return (pts[0].faceM * scale) / 2;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (u <= b.t) {
+      const s = (u - a.t) / Math.max(b.t - a.t, 1e-6);
+      const ease = s * s * (3 - 2 * s);
+      return ((a.faceM + (b.faceM - a.faceM) * ease) * scale) / 2;
+    }
+  }
+  return (pts[pts.length - 1].faceM * scale) / 2;
 }
 
 export function eiffelCorner(t: number, heightIn: number, corner: number): Vec3 {
@@ -53,7 +72,11 @@ export function eiffelCorner(t: number, heightIn: number, corner: number): Vec3 
 }
 
 export function eiffelPlatformTs(): number[] {
-  return [0, ...EIFFEL_REAL.platformsM.map((m) => m / EIFFEL_REAL.heightM), 1];
+  return [
+    0,
+    ...EIFFEL_REAL.platformsM.map((m) => m / EIFFEL_REAL.heightM),
+    1,
+  ];
 }
 
 function v(x: number, y: number, z: number): [number, number, number] {
@@ -68,20 +91,29 @@ function rectAt(y: number, halfX: number, halfZ: number): GhostStroke[] {
   return [{ points: [a, b, c, d, a], weight: "fine" }];
 }
 
+/** A — envelope of *our* pieces, so the ghost always matches the bench. */
 export function hullStrokes(project: YardProject): GhostStroke[] {
   if (project.pocket) return pocketStrokes(project.pocket);
   if (project.panels.length && !project.instances.length) {
-    const o = project.opening ?? { width: project.overall.width, height: project.overall.height, depth: project.overall.depth };
+    const o = project.opening ?? {
+      width: project.overall.width,
+      height: project.overall.height,
+      depth: project.overall.depth,
+    };
     return boxEdges(o.width, o.height, o.depth);
   }
   const list = project.instances;
-  if (!list.length) return boxEdges(project.overall.width, project.overall.height, project.overall.depth);
+  if (!list.length) {
+    return boxEdges(project.overall.width, project.overall.height, project.overall.depth);
+  }
+
   const ys = list.map((i) => i.position.y);
   const yMin = Math.min(...ys);
   const yMax = Math.max(...ys);
   const span = Math.max(yMax - yMin, 1);
   const bands = Math.min(10, Math.max(4, Math.round(span / 6)));
   const corners: { y: number; hx: number; hz: number }[] = [];
+
   for (let b = 0; b <= bands; b++) {
     const t = b / bands;
     const y = yMin + t * span;
@@ -90,21 +122,24 @@ export function hullStrokes(project: YardProject): GhostStroke[] {
     const src = inBand.length ? inBand : list;
     const xs = src.map((i) => i.position.x);
     const zs = src.map((i) => i.position.z);
-    corners.push({
-      y,
-      hx: Math.max(0.4, (Math.max(...xs) - Math.min(...xs)) / 2),
-      hz: Math.max(0.4, (Math.max(...zs) - Math.min(...zs)) / 2),
-    });
+    const hx = Math.max(0.4, (Math.max(...xs) - Math.min(...xs)) / 2);
+    const hz = Math.max(0.4, (Math.max(...zs) - Math.min(...zs)) / 2);
+    corners.push({ y, hx, hz });
   }
+
   const strokes: GhostStroke[] = [];
-  for (const c of corners) strokes.push(...rectAt(c.y, c.hx, c.hz));
+  for (const c of corners) {
+    strokes.push(...rectAt(c.y, c.hx, c.hz));
+  }
+  const idx = [0, 1, 2, 3];
   const cornerOf = (c: { y: number; hx: number; hz: number }, i: number): [number, number, number] => {
     const sx = i === 0 || i === 3 ? -1 : 1;
     const sz = i === 0 || i === 1 ? -1 : 1;
     return v(sx * c.hx, c.y, sz * c.hz);
   };
-  for (const i of [0, 1, 2, 3]) {
-    strokes.push({ points: corners.map((c) => cornerOf(c, i)), weight: "main" });
+  for (const i of idx) {
+    const pts = corners.map((c) => cornerOf(c, i));
+    strokes.push({ points: pts, weight: "main" });
   }
   return strokes;
 }
@@ -113,16 +148,21 @@ function boxEdges(w: number, h: number, d: number): GhostStroke[] {
   const hx = w / 2;
   const hz = d / 2;
   const p = (x: number, y: number, z: number) => v(x, y, z);
-  return [
-    { points: [p(-hx, 0, -hz), p(hx, 0, -hz), p(hx, 0, hz), p(-hx, 0, hz), p(-hx, 0, -hz)], weight: "fine" },
-    { points: [p(-hx, h, -hz), p(hx, h, -hz), p(hx, h, hz), p(-hx, h, hz), p(-hx, h, -hz)], weight: "fine" },
+  const bot = [p(-hx, 0, -hz), p(hx, 0, -hz), p(hx, 0, hz), p(-hx, 0, hz), p(-hx, 0, -hz)];
+  const top = [p(-hx, h, -hz), p(hx, h, -hz), p(hx, h, hz), p(-hx, h, hz), p(-hx, h, -hz)];
+  const legs: GhostStroke[] = [
     { points: [p(-hx, 0, -hz), p(-hx, h, -hz)], weight: "main" },
     { points: [p(hx, 0, -hz), p(hx, h, -hz)], weight: "main" },
     { points: [p(hx, 0, hz), p(hx, h, hz)], weight: "main" },
     { points: [p(-hx, 0, hz), p(-hx, h, hz)], weight: "main" },
   ];
+  return [{ points: bot, weight: "fine" }, { points: top, weight: "fine" }, ...legs];
 }
 
+/**
+ * B — published monument proportions, scaled to this model's height.
+ * Encoded facts, not a downloaded mesh.
+ */
 export function historicStrokes(project: YardProject): GhostStroke[] {
   const H = Math.max(project.overall.height, 8);
   switch (project.kind) {
@@ -138,6 +178,7 @@ export function historicStrokes(project: YardProject): GhostStroke[] {
   }
 }
 
+/** Eiffel: 324 m to tip, 125 m square base, platforms 57 / 115 / 276 m, arch ~40 m. */
 function eiffelHistoric(H: number): GhostStroke[] {
   const samples = 18;
   const strokes: GhostStroke[] = [];
@@ -157,8 +198,9 @@ function eiffelHistoric(H: number): GhostStroke[] {
   const ground = eiffelHalfAt(0, H);
   for (const face of [0, 1, 2, 3]) {
     const pts: [number, number, number][] = [];
-    for (let i = 0; i <= 10; i++) {
-      const u = i / 10;
+    const segs = 10;
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
       const x0 = (u - 0.5) * 2 * ground;
       const y = Math.sin(Math.PI * u) * archY;
       if (face === 0) pts.push(v(x0, y, -ground));
@@ -172,6 +214,7 @@ function eiffelHistoric(H: number): GhostStroke[] {
   return strokes;
 }
 
+/** Taj: ~73 m to finial, ~95 m platform, minarets ~42 m. */
 function tajHistoric(H: number): GhostStroke[] {
   const REAL_H = 73;
   const plat = H * (95 / REAL_H) * 0.5;
@@ -187,8 +230,9 @@ function tajHistoric(H: number): GhostStroke[] {
     const x = Math.cos(a) * minaR;
     const z = Math.sin(a) * minaR;
     strokes.push({ points: [v(x, 0, z), v(x, minaH, z)], weight: "main" });
+    const cap = 1.2;
     strokes.push({
-      points: [v(x - 1.2, minaH, z), v(x, minaH + 2.4, z), v(x + 1.2, minaH, z)],
+      points: [v(x - cap, minaH, z), v(x, minaH + cap * 2, z), v(x + cap, minaH, z)],
       weight: "fine",
     });
   }
@@ -208,6 +252,7 @@ function tajHistoric(H: number): GhostStroke[] {
   return strokes;
 }
 
+/** Khufu: base 230.3 m, original height 146.6 m. */
 function pyramidHistoric(H: number): GhostStroke[] {
   const half = (H * (230.3 / 146.6)) / 2;
   const apex = v(0, H, 0);

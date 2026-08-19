@@ -1,5 +1,6 @@
 /**
  * Form-factor aware helpers for Yard materials.
+ * Used by freehand placement, prompt generation, and packing.
  */
 
 import type { CatalogItem, FormFactor } from "./types";
@@ -9,12 +10,15 @@ export interface PrimitiveDims {
   length: number;
   width: number;
   height: number;
+  /** For cylinders */
   radius?: number;
   innerRadius?: number;
 }
 
+/** Smallest on-screen thickness so craft stock still reads at bench scale. */
 export const MIN_VISUAL_THICKNESS = 0.28;
 
+/** Normalize any CatalogItem to a bounding box + optional cylinder params */
 export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
   const d = item.dims;
   const L = cutLength ?? d.length ?? 1;
@@ -60,6 +64,7 @@ export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDim
   }
 }
 
+/** Same as toPrimitive, but thin stock is thickened so the bench can see it. */
 export function visualPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
   const p = toPrimitive(item, cutLength);
   return {
@@ -70,6 +75,7 @@ export function visualPrimitive(item: CatalogItem, cutLength?: number): Primitiv
   };
 }
 
+/** How many whole units needed for a target length (with optional kerf/waste) */
 export function unitsForLength(
   item: CatalogItem,
   targetLengthIn: number,
@@ -91,6 +97,7 @@ export function unitsForLength(
   return { units, cuts };
 }
 
+/** Rough volume for density / weight estimates later */
 export function approxVolumeIn3(item: CatalogItem, qty = 1): number {
   const p = toPrimitive(item);
   if (p.radius != null) {

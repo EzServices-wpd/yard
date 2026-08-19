@@ -26,7 +26,7 @@ function Home() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Logo inverted />
           <nav className="flex items-center gap-3 sm:gap-5">
-            <Link to="/workspace" search={{}} className="hidden text-sm text-ink-muted hover:text-ink sm:inline">
+            <Link to="/workspace" search={{}} className="text-sm text-ink-muted hover:text-ink">
               Bench
             </Link>
             {authEnabled ? (
@@ -113,16 +113,33 @@ function Home() {
 
         <section className="border-y border-rule bg-white/50 py-14">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-3">
-            <Step icon={<Box className="size-5" />} n="01" title="Real parts" body="Popsicle sticks, paper-towel cores, PVC, 2×4s. Nominal retail sizes — not fake geometry." />
-            <Step icon={<Ruler className="size-5" />} n="02" title="A bench you can trust" body="Orbit, snap, measure an opening. Closet, lattice, arch — same engine." />
-            <Step icon={<ShoppingBag className="size-5" />} n="03" title="A plan you can shop" body="Cut list, pack counts, store searches, plates you can print." />
+            <Step
+              icon={<Box className="size-5" />}
+              n="01"
+              title="Real parts"
+              body="Popsicle sticks, paper-towel cores, PVC, 2×4s. Nominal retail sizes — not fake geometry."
+            />
+            <Step
+              icon={<Ruler className="size-5" />}
+              n="02"
+              title="A bench you can trust"
+              body="Orbit, snap, measure an opening. Closet, lattice, arch — same engine."
+            />
+            <Step
+              icon={<ShoppingBag className="size-5" />}
+              n="03"
+              title="A plan you can shop"
+              body="Cut list, pack counts, store searches, plates you can print."
+            />
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="grid items-end gap-8 md:grid-cols-2">
             <div>
-              <h2 className="font-display text-3xl text-ink sm:text-4xl">Geometry first. Language second.</h2>
+              <h2 className="font-display text-3xl text-ink sm:text-4xl">
+                Geometry first. Language second.
+              </h2>
               <p className="mt-3 max-w-md text-ink-muted leading-relaxed">
                 Spans and stick counts are deterministic. Grok writes the assembly voice — it does not invent a 4.5″ stick that is 5″ long.
               </p>
@@ -134,14 +151,25 @@ function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-rule py-8 text-center text-sm text-ink-muted">
-        Yard · every piece is something you can buy
+      <footer className="border-t border-rule px-4 py-8 text-center text-sm text-ink-muted">
+        <p>Yard · every piece is something you can buy</p>
+        <p className="mt-2 text-xs">Guidance only. Not stamped engineering.</p>
       </footer>
     </div>
   );
 }
 
-function Step({ icon, n, title, body }: { icon: ReactNode; n: string; title: string; body: string }) {
+function Step({
+  icon,
+  n,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  n: string;
+  title: string;
+  body: string;
+}) {
   return (
     <div>
       <div className="flex items-center gap-3 text-ink-muted">

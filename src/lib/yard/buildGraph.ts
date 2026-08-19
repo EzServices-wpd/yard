@@ -21,6 +21,8 @@ import {
   type StockDensity,
   type SupportOffer,
 } from "./connect";
+import { buildSquareLoft, hoopSchedule } from "./lattice";
+import { buildShell } from "./shell";
 
 export type StockPolicy = StockDensity;
 
@@ -80,27 +82,29 @@ export function buildFormGraph(
         return;
       }
       case "taper": {
-        const sides = op.sides ?? (policy.fat ? 4 : 6);
-        const stories = Math.max(2, Math.round((op.y1 - op.y0) / policy.bay));
-        const rows: string[][] = [];
-        for (let L = 0; L <= stories; L++) {
-          const t = L / stories;
-          const y = op.y0 + t * (op.y1 - op.y0);
-          const r = op.r0 + (op.r1 - op.r0) * t;
-          const row: string[] = [];
-          for (let s = 0; s < sides; s++) {
-            const a = (s / sides) * Math.PI * 2;
-            row.push(addNode({ x: Math.cos(a) * r, y, z: Math.sin(a) * r }, L === 0 ? "base" : "leg"));
-          }
-          rows.push(row);
-          for (let s = 0; s < sides; s++) addEdge(row[s], row[(s + 1) % sides], "ring", L === 0);
+        const H = Math.max(op.y1 - op.y0, 1);
+        const stories = Math.max(2, Math.round(H / policy.bay));
+        const ts = Array.from({ length: stories + 1 }, (_, i) => i / stories);
+        const loft = buildSquareLoft({
+          height: H,
+          halfAt: (t) => op.r0 + (op.r1 - op.r0) * t,
+          ts,
+          item,
+          hoopAt: hoopSchedule(ts, [], 3),
+          laceFace: () => true,
+          join,
+          braceJoin,
+          pierChords: 1,
+          maxFaceDivs: policy.fat ? 2 : 4,
+        });
+        const remap = new Map<string, string>();
+        for (const n of loft.nodes) {
+          remap.set(n.id, addNode({ x: n.position.x, y: n.position.y + op.y0, z: n.position.z }, n.role));
         }
-        for (let L = 0; L < stories; L++) {
-          for (let s = 0; s < sides; s++) {
-            addEdge(rows[L][s], rows[L + 1][s], "leg", true);
-            addEdge(rows[L][s], rows[L + 1][(s + 1) % sides], "brace", false, braceJoin);
-            if (!policy.fat) addEdge(rows[L][(s + 1) % sides], rows[L + 1][s], "brace", false, braceJoin);
-          }
+        for (const e of loft.edges) {
+          const from = remap.get(e.from);
+          const to = remap.get(e.to);
+          if (from && to) addEdge(from, to, e.role, !!e.critical, e.join);
         }
         return;
       }
@@ -153,33 +157,44 @@ export function buildFormGraph(
         return;
       }
       case "dome": {
-        const cx = op.x ?? 0;
-        const cz = op.z ?? 0;
-        const rings = policy.fat ? 3 : Math.max(5, Math.round((op.r * Math.PI * 0.5) / policy.bay));
-        const mer = policy.fat ? 6 : Math.max(8, Math.round((2 * Math.PI * op.r) / policy.faceStep));
-        const rows: string[][] = [];
-        for (let i = 0; i <= rings; i++) {
-          const t = i / rings;
-          const y = op.y0 + Math.sin(t * Math.PI * 0.5) * op.r;
-          const r = Math.cos(t * Math.PI * 0.5) * op.r;
-          const row: string[] = [];
-          const n = Math.max(3, Math.round(mer * Math.max(r / op.r, 0.25)));
-          for (let k = 0; k < n; k++) {
-            const a = (k / n) * Math.PI * 2;
-            row.push(addNode({ x: cx + Math.cos(a) * r, y, z: cz + Math.sin(a) * r }, "ring"));
-          }
-          rows.push(row);
-          if (r > 0.4) {
-            for (let k = 0; k < row.length; k++) addEdge(row[k], row[(k + 1) % row.length], "ring");
-          }
+        const shell = buildShell({
+          y0: op.y0,
+          y1: op.y0 + op.r,
+          r: op.r,
+          cx: op.x,
+          cz: op.z,
+          profile: "hemisphere",
+          item,
+          join,
+          braceJoin,
+        });
+        const remap = new Map<string, string>();
+        for (const n of shell.nodes) remap.set(n.id, addNode(n.position, n.role));
+        for (const e of shell.edges) {
+          const from = remap.get(e.from);
+          const to = remap.get(e.to);
+          if (from && to) addEdge(from, to, e.role, !!e.critical, e.join);
         }
-        for (let i = 0; i < rows.length - 1; i++) {
-          const a = rows[i];
-          const b = rows[i + 1];
-          const n = Math.min(a.length, b.length);
-          for (let k = 0; k < n; k++) {
-            addEdge(a[k], b[Math.floor((k * b.length) / a.length)], "brace", false, braceJoin);
-          }
+        return;
+      }
+      case "shell": {
+        const shell = buildShell({
+          y0: op.y0,
+          y1: op.y1,
+          r: op.r,
+          cx: op.x,
+          cz: op.z,
+          profile: op.profile ?? "hemisphere",
+          item,
+          join,
+          braceJoin,
+        });
+        const remap = new Map<string, string>();
+        for (const n of shell.nodes) remap.set(n.id, addNode(n.position, n.role));
+        for (const e of shell.edges) {
+          const from = remap.get(e.from);
+          const to = remap.get(e.to);
+          if (from && to) addEdge(from, to, e.role, !!e.critical, e.join);
         }
         return;
       }

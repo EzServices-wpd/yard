@@ -21,7 +21,20 @@ const state = await page.evaluate(() => {
   return {
     pieces: el?.getAttribute("data-yard-pieces"),
     kind: el?.getAttribute("data-yard-kind"),
-    canvas: canvas ? { w: canvas.width, h: canvas.height, cw: canvas.clientWidth, ch: canvas.clientHeight } : null,
+    yard: window.__yard ?? null,
+    canvas: canvas
+      ? {
+          w: canvas.width,
+          h: canvas.height,
+          cw: canvas.clientWidth,
+          ch: canvas.clientHeight,
+          style: canvas.getAttribute("style"),
+          display: getComputedStyle(canvas).display,
+          opacity: getComputedStyle(canvas).opacity,
+          vis: getComputedStyle(canvas).visibility,
+          z: getComputedStyle(canvas).zIndex,
+        }
+      : null,
   };
 });
 console.log("STATE", JSON.stringify(state, null, 2));

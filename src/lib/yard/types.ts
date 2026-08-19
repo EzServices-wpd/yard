@@ -62,6 +62,7 @@ export type CatalogItem = {
   metalness?: number;
   searchQuery?: string;
   exampleUrl?: string;
+  asin?: string;
   notes?: string;
 };
 
@@ -263,13 +264,30 @@ export type CutLine = {
   notes?: string;
 };
 
+export type ShopOffer = {
+  retailer: string;
+  label: string;
+  title: string;
+  href: string;
+  packQty: number;
+  packPrice: number;
+  unitPrice: number;
+  packsNeeded: number;
+  lineTotal: number;
+  best: boolean;
+  checkedAt: string;
+};
+
 export type BomLine = {
   name: string;
   quantity: number;
   unit: string;
   searchQuery?: string;
+  asin?: string;
+  catalogId?: string;
   estimatedCost?: number;
   notes?: string;
+  offers?: ShopOffer[];
 };
 
 export type AssemblyStep = {

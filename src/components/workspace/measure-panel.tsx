@@ -45,9 +45,30 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             : "The opening is on the bench — type into the arrows or these fields. An alcove becomes a closet. A shallow opening becomes a window package."}
       </p>
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <Field label="W" value={measure.width} onChange={(v) => { setMeasure({ width: v }); liveIfFitted(); }} />
-        <Field label="H" value={measure.height} onChange={(v) => { setMeasure({ height: v }); liveIfFitted(); }} />
-        <Field label="D" value={measure.depth} onChange={(v) => { setMeasure({ depth: v }); liveIfFitted(); }} />
+        <Field
+          label="W"
+          value={measure.width}
+          onChange={(v) => {
+            setMeasure({ width: v });
+            liveIfFitted();
+          }}
+        />
+        <Field
+          label="H"
+          value={measure.height}
+          onChange={(v) => {
+            setMeasure({ height: v });
+            liveIfFitted();
+          }}
+        />
+        <Field
+          label="D"
+          value={measure.depth}
+          onChange={(v) => {
+            setMeasure({ depth: v });
+            liveIfFitted();
+          }}
+        />
       </div>
       <label className="mt-3 block text-xs text-muted">
         This is a
@@ -92,14 +113,26 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           </select>
         </label>
       )}
-      <button type="button" onClick={apply} className="mt-4 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg">
+      <button
+        type="button"
+        onClick={apply}
+        className="mt-4 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
+      >
         Fit this opening
       </button>
     </div>
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <label className="text-xs text-muted">
       {label}″

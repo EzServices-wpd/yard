@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
@@ -13,10 +13,7 @@ import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yar
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
-const ROLE_TINT: Record<string, string> = {
-  leg: "#e6b45c", brace: "#c99648", ring: "#f0d08a", rail: "#dfc078",
-  tip: "#f4e2b0", splice: "#d4a85a", support: "#c4b49a", base: "#e0b86a",
-};
+const SLOT = "#f2ebe1";
 
 export function WorkspaceCanvas() {
   const project = useYard((s) => s.project);
@@ -35,15 +32,20 @@ export function WorkspaceCanvas() {
   const plan = useYard((s) => s.plan);
   const measureOpen = useYard((s) => s.measureOpen);
   const measure = useYard((s) => s.measure);
+
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
-  const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
+  const stepIds = useMemo(
+    () => (step ? stepInstanceIds(project, step) : []),
+    [step, project],
+  );
 
   return (
     <div className="absolute inset-0">
       <Canvas
         key={project.id}
         camera={{ position: [48, 32, 48], fov: 34, near: 0.1, far: 4000 }}
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: "default" }}
+        frameloop="always"
         dpr={[1, 1.5]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
@@ -58,56 +60,132 @@ export function WorkspaceCanvas() {
         <hemisphereLight args={["#fff3e0", "#3a3228", 1]} />
         <directionalLight position={[40, 70, 30]} intensity={1.2} />
         <BenchScene
-          project={project} explode={explode} selectedId={selectedId} onSelect={select} onPlace={placePiece}
-          showHull={showHull} showHistoric={showHistoric && (hasHistoricProfile(project.kind) || !!project.historic)}
-          workMode={workMode} stepIds={stepIds} placedIds={placedIds} lockedIds={lockedIds} dragPos={dragPos}
-          measureOpen={measureOpen} measure={measure}
+          project={project}
+          explode={explode}
+          selectedId={selectedId}
+          onSelect={select}
+          onPlace={placePiece}
+          showHull={showHull}
+          showHistoric={showHistoric && (hasHistoricProfile(project.kind) || !!project.historic)}
+          workMode={workMode}
+          stepIds={stepIds}
+          placedIds={placedIds}
+          lockedIds={lockedIds}
+          dragPos={dragPos}
+          measureOpen={measureOpen}
+          measure={measure}
         />
-        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
-        <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={6} maxDistance={480} target={[0, 14, 0]} />
-        <CameraRig project={project} preset={camera} />
+        <Grid
+          args={[80, 80]}
+          cellSize={8}
+          cellThickness={0.28}
+          cellColor="#1a1612"
+          sectionSize={24}
+          sectionThickness={0.5}
+          sectionColor="#2a241e"
+          fadeDistance={80}
+          fadeStrength={2.2}
+          infiniteGrid
+          position={[0, 0, 0]}
+        />
+        <OrbitControls
+          makeDefault
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={480}
+          target={[0, 14, 0]}
+        />
+        <CameraRig project={project} preset={camera} stepIds={stepIds} />
       </Canvas>
     </div>
   );
 }
 
-function focusOf(project: YardProject) {
+function focusOf(project: YardProject, stepIds?: string[]): { x: number; y: number; z: number } {
+  const hot = new Set(stepIds ?? []);
   if (project.instances.length) {
-    let x = 0, y = 0, z = 0;
-    for (const i of project.instances) { const p = homeOf(i); x += p.x; y += p.y; z += p.z; }
-    const n = project.instances.length;
+    const list = hot.size
+      ? project.instances.filter((i) => hot.has(i.id))
+      : project.instances;
+    const use = list.length ? list : project.instances;
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (const i of use) {
+      const p = homeOf(i);
+      x += p.x;
+      y += p.y;
+      z += p.z;
+    }
+    const n = use.length;
     return { x: x / n, y: y / n, z: z / n };
   }
   if (project.panels.length) {
-    let x = 0, y = 0, z = 0;
-    for (const p of project.panels) { x += p.position.x + p.size.width / 2; y += p.position.y + p.size.height / 2; z += p.position.z + p.size.depth / 2; }
-    const n = project.panels.length;
+    const list = hot.size ? project.panels.filter((p) => hot.has(p.id)) : project.panels;
+    const use = list.length ? list : project.panels;
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (const p of use) {
+      x += p.position.x + p.size.width / 2;
+      y += p.position.y + p.size.height / 2;
+      z += p.position.z + p.size.depth / 2;
+    }
+    const n = use.length;
     return { x: x / n, y: y / n, z: z / n };
   }
   return { x: 0, y: Math.max(project.overall.height, 12) * 0.4, z: 0 };
 }
 
-function CameraRig({ project, preset }: { project: YardProject; preset: "iso" | "front" | "side" | "top" }) {
+function CameraRig({
+  project,
+  preset,
+  stepIds,
+}: {
+  project: YardProject;
+  preset: "iso" | "front" | "side" | "top";
+  stepIds: string[];
+}) {
   const { camera, controls } = useThree();
+
   useEffect(() => {
     const h = Math.max(project.overall.height, 12);
     const span = Math.max(project.overall.width, project.overall.depth, 12);
     const fit = Math.max(h, span);
     const dist = fit * (project.pocket ? 1.85 : project.windowPkg ? 1.7 : 1.55);
-    const focus = focusOf(project);
-    const presets: Record<typeof preset, [number, number, number]> = {
-      iso: [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [focus.x, focus.y, focus.z + dist * 1.28],
-      side: [focus.x + dist * 1.28, focus.y, focus.z],
-      top: [focus.x, focus.y + fit * 1.35, focus.z + 0.01],
-    };
+    const focus = focusOf(project, stepIds);
+    const presets: Record<typeof preset, [number, number, number]> = project.pocket
+      ? {
+          iso: [focus.x + dist * 0.45, focus.y * 0.28 + 10, focus.z + dist * 1.05],
+          front: [focus.x, focus.y * 0.45, focus.z + dist * 1.35],
+          side: [focus.x + dist * 1.15, focus.y * 0.4, focus.z + dist * 0.2],
+          top: [focus.x, focus.y + fit * 1.2, focus.z + span * 0.15],
+        }
+      : project.windowPkg
+        ? {
+            iso: [focus.x + dist * 0.35, focus.y * 0.2 + 8, focus.z + dist * 1.15],
+            front: [focus.x, focus.y * 0.4, focus.z + dist * 1.25],
+            side: [focus.x + dist * 1.2, focus.y * 0.4, focus.z + 8],
+            top: [focus.x, focus.y + fit * 1.15, focus.z + 4],
+          }
+        : {
+          iso: [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+          front: [focus.x, focus.y, focus.z + dist * 1.28],
+          side: [focus.x + dist * 1.28, focus.y, focus.z],
+          top: [focus.x, focus.y + fit * 1.35, focus.z + 0.01],
+        };
     const [x, y, z] = presets[preset];
     camera.position.set(x, y, z);
     const tgt = new THREE.Vector3(focus.x, focus.y, focus.z);
     camera.lookAt(tgt);
     const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
-    if (orbit?.target) { orbit.target.copy(tgt); orbit.update?.(); }
-  }, [preset, project.id, project.overall, project.instances.length, project.panels.length, camera, controls]);
+    if (orbit?.target) {
+      orbit.target.copy(tgt);
+      orbit.update?.();
+    }
+  }, [preset, project.id, project.overall.height, project.overall.width, project.overall.depth, project.instances.length, project.panels.length, stepIds.join("|"), camera, controls]);
+
   return null;
 }
 
@@ -115,47 +193,132 @@ function GhostLines({ strokes, color }: { strokes: ReturnType<typeof hullStrokes
   return (
     <group>
       {strokes.map((s, i) => (
-        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.4 : 0.8} transparent opacity={s.weight === "main" ? 0.55 : 0.32} depthWrite={false} />
+        <Line
+          key={`${color}-${i}`}
+          points={s.points}
+          color={color}
+          lineWidth={s.weight === "main" ? 1.4 : 0.8}
+          transparent
+          opacity={s.weight === "main" ? 0.55 : 0.32}
+          depthWrite={false}
+        />
+      ))}
+    </group>
+  );
+}
+
+function MeasureGhost({
+  width,
+  height,
+  depth,
+}: {
+  width: number;
+  height: number;
+  depth: number;
+}) {
+  const hx = width / 2;
+  const hz = depth / 2;
+  const pts: [number, number, number][][] = [
+    [[-hx, 0, -hz], [hx, 0, -hz], [hx, 0, hz], [-hx, 0, hz], [-hx, 0, -hz]],
+    [[-hx, height, -hz], [hx, height, -hz], [hx, height, hz], [-hx, height, hz], [-hx, height, -hz]],
+    [[-hx, 0, -hz], [-hx, height, -hz]],
+    [[hx, 0, -hz], [hx, height, -hz]],
+    [[hx, 0, hz], [hx, height, hz]],
+    [[-hx, 0, hz], [-hx, height, hz]],
+    [[-hx, 0, 0], [hx, 0, 0]],
+    [[-hx, 0, -hz], [-hx, 0, hz]],
+    [[-hx, 0, -hz], [-hx, height, -hz]],
+  ];
+  return (
+    <group>
+      {pts.map((p, i) => (
+        <Line key={i} points={p} color="#c4b49a" lineWidth={1.2} transparent opacity={0.7} depthWrite={false} />
       ))}
     </group>
   );
 }
 
 function BenchScene({
-  project, explode, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure,
+  project,
+  explode,
+  selectedId,
+  onSelect,
+  onPlace,
+  showHull,
+  showHistoric,
+  workMode,
+  stepIds,
+  placedIds,
+  lockedIds,
+  dragPos,
+  measureOpen,
+  measure,
 }: {
-  project: YardProject; explode: boolean; selectedId: string | null; onSelect: (id: string | null) => void; onPlace: (catalogId: string, pos: Vec3) => void;
-  showHull: boolean; showHistoric: boolean; workMode: WorkMode; stepIds: string[]; placedIds: string[]; lockedIds: string[];
-  dragPos: { id: string; pos: Vec3 } | null; measureOpen: boolean; measure: { width: string; height: string; depth: string };
+  project: YardProject;
+  explode: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onPlace: (catalogId: string, pos: Vec3) => void;
+  showHull: boolean;
+  showHistoric: boolean;
+  workMode: WorkMode;
+  stepIds: string[];
+  placedIds: string[];
+  lockedIds: string[];
+  dragPos: { id: string; pos: Vec3 } | null;
+  measureOpen: boolean;
+  measure: { width: string; height: string; depth: string };
 }) {
   const explodeScale = explode ? 1.35 : 1;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
-  const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
+  const historic = useMemo(
+    () => (showHistoric ? historicStrokes(project) : []),
+    [showHistoric, project],
+  );
   const mw = parseFloat(measure.width) || 0;
   const mh = parseFloat(measure.height) || 0;
   const md = parseFloat(measure.depth) || 0;
+
   return (
     <group>
       {showHull && <GhostLines strokes={hull} color={HULL} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
-      {measureOpen && mw > 0 && mh > 0 && (
-        <group>
-          {([[-mw / 2, 0, -md / 2], [mw / 2, 0, -md / 2], [mw / 2, 0, md / 2], [-mw / 2, 0, md / 2], [-mw / 2, 0, -md / 2]] as [number, number, number][]).length && (
-            <Line points={[[-mw / 2, 0, -md / 2], [mw / 2, 0, -md / 2], [mw / 2, 0, md / 2], [-mw / 2, 0, md / 2], [-mw / 2, 0, -md / 2]]} color="#c4b49a" lineWidth={1.2} transparent opacity={0.7} depthWrite={false} />
-          )}
-          <Line points={[[-mw / 2, mh, -md / 2], [mw / 2, mh, -md / 2], [mw / 2, mh, md / 2], [-mw / 2, mh, md / 2], [-mw / 2, mh, -md / 2]]} color="#c4b49a" lineWidth={1.2} transparent opacity={0.7} depthWrite={false} />
-        </group>
-      )}
-      <StickCloud instances={project.instances} explode={explodeScale} selectedId={selectedId} workMode={workMode} stepIds={stepIds} placedIds={placedIds} lockedIds={lockedIds} dragPos={dragPos} overall={project.overall} onSelect={onSelect} />
+      {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
+      <StickCloud
+        instances={project.instances}
+        explode={explodeScale}
+        selectedId={selectedId}
+        workMode={workMode}
+        stepIds={stepIds}
+        placedIds={placedIds}
+        lockedIds={lockedIds}
+        dragPos={dragPos}
+        overall={project.overall}
+        onSelect={onSelect}
+      />
       {project.panels.map((panel) => (
-        <PanelMesh key={panel.id} panel={panel} explode={explodeScale} selected={panel.id === selectedId} inStep={stepIds.length ? stepIds.includes(panel.id) : false} hasStep={stepIds.length > 0} onSelect={() => onSelect(panel.id)} />
+        <PanelMesh
+          key={panel.id}
+          panel={panel}
+          explode={explodeScale}
+          selected={panel.id === selectedId}
+          inStep={stepIds.length ? stepIds.includes(panel.id) : false}
+          hasStep={stepIds.length > 0}
+          onSelect={() => onSelect(panel.id)}
+        />
       ))}
       {workMode === "free" && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onPointerDown={(e) => {
-          if (e.delta > 2) return;
-          e.stopPropagation();
-          onPlace(project.primaryMaterialId, { x: Math.round(e.point.x * 4) / 4, y: 0, z: Math.round(e.point.z * 4) / 4 });
-        }}>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.01, 0]}
+          onPointerDown={(e) => {
+            if (e.delta > 2) return;
+            e.stopPropagation();
+            const x = Math.round(e.point.x * 4) / 4;
+            const z = Math.round(e.point.z * 4) / 4;
+            onPlace(project.primaryMaterialId, { x, y: 0, z });
+          }}
+        >
           <planeGeometry args={[200, 200]} />
           <meshBasicMaterial visible={false} />
         </mesh>
@@ -164,70 +327,460 @@ function BenchScene({
   );
 }
 
-function displayPos(inst: YardInstance, index: number, count: number, overall: { width: number; depth: number }, workMode: WorkMode, placed: boolean, drag: Vec3 | null): Vec3 {
+const ROLE_TINT: Record<string, string> = {
+  leg: "#e6b45c",
+  brace: "#c99648",
+  ring: "#f0d08a",
+  rail: "#dfc078",
+  tip: "#f4e2b0",
+  splice: "#d4a85a",
+  support: "#c4b49a",
+  base: "#e0b86a",
+};
+
+function displayPos(
+  inst: YardInstance,
+  index: number,
+  count: number,
+  overall: { width: number; depth: number },
+  workMode: WorkMode,
+  placed: boolean,
+  drag: Vec3 | null,
+): Vec3 {
   if (drag) return drag;
   if (workMode === "build" && !placed) return pilePosition(index, count, overall);
   return inst.position;
 }
 
 function StickCloud({
-  instances, explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragPos, overall, onSelect,
+  instances,
+  explode,
+  selectedId,
+  workMode,
+  stepIds,
+  placedIds,
+  lockedIds,
+  dragPos,
+  overall,
+  onSelect,
 }: {
-  instances: YardInstance[]; explode: number; selectedId: string | null; workMode: WorkMode;
-  stepIds: string[]; placedIds: string[]; lockedIds: string[]; dragPos: { id: string; pos: Vec3 } | null;
-  overall: { width: number; height: number; depth: number }; onSelect: (id: string | null) => void;
+  instances: YardInstance[];
+  explode: number;
+  selectedId: string | null;
+  workMode: WorkMode;
+  stepIds: string[];
+  placedIds: string[];
+  lockedIds: string[];
+  dragPos: { id: string; pos: Vec3 } | null;
+  overall: { width: number; height: number; depth: number };
+  onSelect: (id: string | null) => void;
 }) {
-  const setDrag = useYard((s) => s.setDragPos);
-  const movePiece = useYard((s) => s.movePiece);
+  const boxes = useMemo(() => {
+    return instances
+      .map((inst, index) => {
+        const item = getCatalogItem(inst.catalogId);
+        if (!item || isCylindrical(item.formFactor)) return null;
+        const prim = visualPrimitive(item, inst.cutLength);
+        return { inst, index, item, prim, cyl: false as const };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [instances]);
+
+  const cyls = useMemo(() => {
+    return instances
+      .map((inst, index) => {
+        const item = getCatalogItem(inst.catalogId);
+        if (!item || !isCylindrical(item.formFactor)) return null;
+        const prim = visualPrimitive(item, inst.cutLength);
+        return { inst, index, item, prim, cyl: true as const };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [instances]);
+
+  const dragInst = dragPos ? instances.find((i) => i.id === dragPos.id) : null;
+  const dragIndex = dragInst ? instances.indexOf(dragInst) : -1;
+
   return (
     <group>
-      {instances.map((inst, index) => {
-        const item = getCatalogItem(inst.catalogId);
-        if (!item) return null;
-        const prim = visualPrimitive(item, inst.cutLength);
-        const placed = workMode !== "build" || placedIds.includes(inst.id);
-        const pos = displayPos(inst, index, instances.length, overall, workMode, placed, dragPos?.id === inst.id ? dragPos.pos : null);
-        const cyl = isCylindrical(item.formFactor);
-        const tint = ROLE_TINT[inst.role ?? ""] ?? item.color ?? "#d4b896";
-        const selected = inst.id === selectedId;
-        const dim = stepIds.length > 0 && !stepIds.includes(inst.id);
-        return (
-          <mesh
-            key={inst.id}
-            position={[pos.x * explode, pos.y * explode, pos.z * explode]}
-            rotation={[inst.rotation.x, inst.rotation.y, inst.rotation.z]}
-            onClick={(e) => { e.stopPropagation(); onSelect(inst.id); }}
-            onPointerDown={(e) => {
-              if (workMode === "look" || lockedIds.includes(inst.id)) return;
-              e.stopPropagation();
-              (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-            }}
-            onPointerMove={(e) => {
-              if (e.buttons !== 1 || workMode === "look" || lockedIds.includes(inst.id)) return;
-              setDrag({ id: inst.id, pos: { x: e.point.x, y: Math.max(0, e.point.y), z: e.point.z } });
-            }}
-            onPointerUp={() => {
-              if (dragPos?.id === inst.id) { movePiece(inst.id, dragPos.pos); setDrag(null); }
-            }}
-          >
-            {cyl ? <cylinderGeometry args={[(prim.radius ?? prim.width / 2), prim.radius ?? prim.width / 2, prim.length, 8]} /> : <boxGeometry args={[prim.width, prim.height, prim.length]} />}
-            <meshStandardMaterial color={selected ? "#fff4d6" : tint} roughness={item.roughness ?? 0.7} metalness={item.metalness ?? 0} transparent={dim} opacity={dim ? 0.28 : 1} />
-          </mesh>
-        );
-      })}
+      <CloudKind
+        rows={boxes}
+        explode={explode}
+        selectedId={selectedId}
+        workMode={workMode}
+        stepIds={stepIds}
+        placedIds={placedIds}
+        lockedIds={lockedIds}
+        dragId={dragPos?.id ?? null}
+        overall={overall}
+        count={instances.length}
+        onSelect={onSelect}
+        cylindrical={false}
+      />
+      <CloudKind
+        rows={cyls}
+        explode={explode}
+        selectedId={selectedId}
+        workMode={workMode}
+        stepIds={stepIds}
+        placedIds={placedIds}
+        lockedIds={lockedIds}
+        dragId={dragPos?.id ?? null}
+        overall={overall}
+        count={instances.length}
+        onSelect={onSelect}
+        cylindrical={true}
+      />
+      {dragInst && dragPos && (
+        <InstanceMesh
+          instance={dragInst}
+          index={Math.max(0, dragIndex)}
+          count={instances.length}
+          overall={overall}
+          explode={explode}
+          selected
+          workMode={workMode}
+          inStep={stepIds.includes(dragInst.id)}
+          hasStep={stepIds.length > 0}
+          placed={placedIds.includes(dragInst.id)}
+          locked={false}
+          dragPos={dragPos.pos}
+          onSelect={() => onSelect(dragInst.id)}
+        />
+      )}
     </group>
   );
 }
 
-function PanelMesh({ panel, explode, selected, inStep, hasStep, onSelect }: { panel: Panel; explode: number; selected: boolean; inStep: boolean; hasStep: boolean; onSelect: () => void }) {
-  const { x, y, z } = panel.position;
-  const { width: w, height: h, depth: d } = panel.size;
-  const dim = hasStep && !inStep;
-  const color = panel.type === "mirror" || panel.type === "glass_panel" ? "#9ec5d6" : selected ? "#fff4d6" : "#d4b896";
+function CloudKind({
+  rows,
+  explode,
+  selectedId,
+  workMode,
+  stepIds,
+  placedIds,
+  lockedIds,
+  dragId,
+  overall,
+  count,
+  onSelect,
+  cylindrical,
+}: {
+  rows: {
+    inst: YardInstance;
+    index: number;
+    item: NonNullable<ReturnType<typeof getCatalogItem>>;
+    prim: ReturnType<typeof visualPrimitive>;
+    cyl: boolean;
+  }[];
+  explode: number;
+  selectedId: string | null;
+  workMode: WorkMode;
+  stepIds: string[];
+  placedIds: string[];
+  lockedIds: string[];
+  dragId: string | null;
+  overall: { width: number; height: number; depth: number };
+  count: number;
+  onSelect: (id: string | null) => void;
+  cylindrical: boolean;
+}) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const { controls } = useThree();
+  const nudge = useYard((s) => s.nudgeInstance);
+  const finish = useYard((s) => s.finishMove);
+  const dragging = useRef<number | null>(null);
+  const start = useRef({ mouse: new THREE.Vector3(), pos: { x: 0, y: 0, z: 0 } });
+  const live = rows.filter((r) => r.inst.id !== dragId);
+  const hasStep = stepIds.length > 0;
+
+  useLayoutEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    for (let i = 0; i < live.length; i++) {
+      const { inst, index, prim } = live[i];
+      const placed = placedIds.includes(inst.id);
+      const pos = displayPos(inst, index, count, overall, workMode, placed, null);
+      const rot =
+        workMode === "build" && !placed
+          ? { x: 0, y: 0, z: 0 }
+          : inst.rotation;
+      dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
+      dummy.rotation.set(rot.x, rot.y, rot.z);
+      if (cylindrical) {
+        dummy.scale.set(Math.max(prim.radius ?? 0.2, 0.12) * 2, prim.length, Math.max(prim.radius ?? 0.2, 0.12) * 2);
+      } else {
+        dummy.scale.set(prim.length, prim.height, prim.width);
+      }
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+      const inStep = hasStep && stepIds.includes(inst.id);
+      const selected = inst.id === selectedId;
+      const hex = selected || inStep ? "#fff1d0" : ROLE_TINT[inst.role ?? ""] || live[i].item.color || "#e0b86a";
+      color.set(hasStep && !inStep ? "#5c5348" : hex);
+      m.setColorAt(i, color);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.count = live.length;
+  }, [live, explode, workMode, placedIds, stepIds, selectedId, hasStep, count, overall, cylindrical]);
+
+  const setOrbit = (on: boolean) => {
+    const orbit = controls as unknown as { enabled?: boolean } | null;
+    if (orbit && "enabled" in orbit) orbit.enabled = on;
+  };
+
+  const down = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    const idx = e.instanceId;
+    if (idx == null || !live[idx]) return;
+    const { inst, index } = live[idx];
+    onSelect(inst.id);
+    const locked = workMode === "look" || (workMode === "free" && lockedIds.includes(inst.id)) || (workMode === "build" && placedIds.includes(inst.id));
+    if (locked) return;
+    dragging.current = idx;
+    const placed = placedIds.includes(inst.id);
+    const pos = displayPos(inst, index, count, overall, workMode, placed, null);
+    start.current = { mouse: e.point.clone(), pos: { ...pos } };
+    setOrbit(false);
+  };
+  const move = (e: ThreeEvent<PointerEvent>) => {
+    if (dragging.current == null) return;
+    e.stopPropagation();
+    const row = live[dragging.current];
+    if (!row) return;
+    const delta = e.point.clone().sub(start.current.mouse);
+    const next = { ...start.current.pos };
+    if (e.nativeEvent.shiftKey) {
+      next.y = Math.max(0.1, Math.round((start.current.pos.y + delta.y) * 4) / 4);
+    } else {
+      next.x = Math.round((start.current.pos.x + delta.x) * 4) / 4;
+      next.z = Math.round((start.current.pos.z + delta.z) * 4) / 4;
+    }
+    nudge(row.inst.id, next);
+  };
+  const up = () => {
+    if (dragging.current == null) return;
+    const row = live[dragging.current];
+    dragging.current = null;
+    setOrbit(true);
+    if (!row) return;
+    const current = useYard.getState().dragPos;
+    finish(row.inst.id, current?.id === row.inst.id ? current.pos : start.current.pos);
+  };
+
+  if (!live.length) return null;
+
   return (
-    <mesh position={[(x + w / 2) * explode, (y + h / 2) * explode, (z + d / 2) * explode]} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      <boxGeometry args={[Math.max(w, 0.08), Math.max(h, 0.08), Math.max(d, 0.08)]} />
-      <meshStandardMaterial color={color} roughness={0.65} transparent={dim || panel.type === "mirror"} opacity={dim ? 0.22 : panel.type === "mirror" ? 0.45 : 1} />
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, Math.max(live.length, 1)]}
+      frustumCulled={false}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+    >
+      {cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 12]} /> : <boxGeometry args={[1, 1, 1]} />}
+      <meshBasicMaterial />
+    </instancedMesh>
+  );
+}
+
+function InstanceMesh({
+  instance,
+  index,
+  count,
+  overall,
+  explode,
+  selected,
+  workMode,
+  inStep,
+  hasStep,
+  placed,
+  locked,
+  dragPos,
+  onSelect,
+}: {
+  instance: YardInstance;
+  index: number;
+  count: number;
+  overall: { width: number; height: number; depth: number };
+  explode: number;
+  selected: boolean;
+  workMode: WorkMode;
+  inStep: boolean;
+  hasStep: boolean;
+  placed: boolean;
+  locked: boolean;
+  dragPos: Vec3 | null;
+  onSelect: () => void;
+}) {
+  const item = getCatalogItem(instance.catalogId);
+  const dragging = useRef(false);
+  const start = useRef({ mouse: new THREE.Vector3(), pos: { x: 0, y: 0, z: 0 } });
+  const { controls } = useThree();
+  const nudge = useYard((s) => s.nudgeInstance);
+  const finish = useYard((s) => s.finishMove);
+  const prim = useMemo(
+    () => (item ? visualPrimitive(item, instance.cutLength) : null),
+    [item, instance.cutLength],
+  );
+  if (!item || !prim) return null;
+
+  const home = homeOf(instance);
+  const inBuild = workMode === "build";
+  const basePos =
+    dragPos ??
+    (inBuild && !placed ? pilePosition(index, count, overall) : instance.position);
+  const canDrag = workMode !== "look" && !(workMode === "free" && locked) && !(inBuild && placed);
+
+  const role = instance.role ?? "";
+  const roleTint: Record<string, string> = {
+    leg: "#e6b45c",
+    brace: "#c99648",
+    ring: "#f0d08a",
+    rail: "#dfc078",
+    tip: "#f4e2b0",
+    splice: "#d4a85a",
+    support: "#c4b49a",
+    base: "#e0b86a",
+  };
+  let color = selected ? "#fff6e6" : roleTint[role] || item.color || "#e0b86a";
+  if (hasStep && inStep) color = "#fff1d0";
+  const opacity = hasStep && !inStep ? 0.22 : 1;
+
+  const cylindrical = isCylindrical(item.formFactor);
+  const pos: [number, number, number] = [basePos.x * explode, basePos.y, basePos.z * explode];
+  const rot: [number, number, number] = [
+    inBuild && !placed && !dragPos ? 0 : instance.rotation.x,
+    inBuild && !placed && !dragPos ? 0 : instance.rotation.y,
+    inBuild && !placed && !dragPos ? 0 : instance.rotation.z,
+  ];
+
+  const setOrbit = (on: boolean) => {
+    const orbit = controls as unknown as { enabled?: boolean } | null;
+    if (orbit && "enabled" in orbit) orbit.enabled = on;
+  };
+
+  const down = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    onSelect();
+    if (!canDrag) return;
+    dragging.current = true;
+    start.current = { mouse: e.point.clone(), pos: { ...basePos } };
+    setOrbit(false);
+    (e.target as unknown as { setPointerCapture?: (id: number) => void }).setPointerCapture?.(
+      e.pointerId,
+    );
+  };
+  const move = (e: ThreeEvent<PointerEvent>) => {
+    if (!dragging.current) return;
+    e.stopPropagation();
+    const delta = e.point.clone().sub(start.current.mouse);
+    const next = { ...start.current.pos };
+    if (e.nativeEvent.shiftKey) {
+      next.y = Math.max(0.1, Math.round((start.current.pos.y + delta.y) * 4) / 4);
+    } else {
+      next.x = Math.round((start.current.pos.x + delta.x) * 4) / 4;
+      next.z = Math.round((start.current.pos.z + delta.z) * 4) / 4;
+    }
+    nudge(instance.id, next);
+  };
+  const up = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    setOrbit(true);
+    const current = useYard.getState().dragPos;
+    finish(instance.id, current?.id === instance.id ? current.pos : basePos);
+  };
+
+  const meshGeom =
+    cylindrical && prim.radius != null ? (
+      <cylinderGeometry args={[prim.radius, prim.radius, prim.length, 16]} />
+    ) : (
+      <boxGeometry args={[prim.length, prim.height, prim.width]} />
+    );
+  const slotGeom =
+    cylindrical && prim.radius != null ? (
+      <cylinderGeometry args={[prim.radius, prim.radius, prim.length, 16]} />
+    ) : (
+      <boxGeometry args={[prim.length, prim.height, prim.width]} />
+    );
+
+  return (
+    <group>
+      {inBuild && !placed && inStep && (
+        <group position={[home.x * explode, home.y, home.z * explode]} rotation={[instance.rotation.x, instance.rotation.y, instance.rotation.z]}>
+          <mesh frustumCulled={false}>
+            {slotGeom}
+            <meshBasicMaterial color={SLOT} transparent opacity={0.18} depthWrite={false} />
+          </mesh>
+        </group>
+      )}
+      <group
+        position={pos}
+        rotation={rot}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+      >
+        <mesh frustumCulled={false}>
+          {meshGeom}
+          <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function PanelMesh({
+  panel,
+  explode,
+  selected,
+  inStep,
+  hasStep,
+  onSelect,
+}: {
+  panel: Panel;
+  explode: number;
+  selected: boolean;
+  inStep: boolean;
+  hasStep: boolean;
+  onSelect: () => void;
+}) {
+  const item = getCatalogItem(panel.materialId);
+  const cx = panel.position.x + panel.size.width / 2;
+  const cy = panel.position.y + panel.size.height / 2;
+  const cz = panel.position.z + panel.size.depth / 2;
+  const glass = panel.type === "glass_panel" || panel.type === "mirror";
+  const opacity = hasStep && !inStep ? 0.2 : glass ? 0.4 : panel.type === "door" ? 0.72 : 1;
+  const byType: Record<string, string> = {
+    counter: "#e6d3b0",
+    drawer: "#c9a56a",
+    kick: "#7a6a54",
+    mirror: "#b9d4e4",
+    door: "#b08948",
+    back: "#8e806c",
+    rail: "#d8c4a0",
+    divider: "#c4a06a",
+    upright: "#c4a06a",
+    shelf: "#d2b07a",
+  };
+  const color = selected || inStep ? "#fff6e6" : byType[panel.type] ?? item?.color ?? "#c4a06a";
+  return (
+    <mesh
+      position={[cx * explode, cy, cz * explode]}
+      frustumCulled={false}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+    >
+      <boxGeometry args={[panel.size.width, panel.size.height, panel.size.depth]} />
+      <meshBasicMaterial color={color} transparent={opacity < 1 || glass} opacity={opacity} />
     </mesh>
   );
 }

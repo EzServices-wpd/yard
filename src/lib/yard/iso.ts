@@ -10,13 +10,17 @@ function iso(x: number, y: number, z: number) {
   return { x: (x - z) * c, y: -y + (x + z) * s };
 }
 
-export function isoViewBox(project: YardProject) {
+export function isoViewBox(project: YardProject, highlightIds?: string[]) {
   const pts: { x: number; y: number }[] = [];
+  const hot = new Set(highlightIds ?? []);
+  const preferHot = hot.size > 0 && hot.size < (project.instances.length + project.panels.length) * 0.85;
   for (const inst of project.instances) {
+    if (preferHot && !hot.has(inst.id)) continue;
     const p = homeOf(inst);
     pts.push(iso(p.x, p.y, p.z));
   }
   for (const panel of project.panels) {
+    if (preferHot && !hot.has(panel.id)) continue;
     pts.push(iso(panel.position.x, panel.position.y, panel.position.z));
     pts.push(
       iso(
@@ -26,6 +30,15 @@ export function isoViewBox(project: YardProject) {
       ),
     );
   }
+  if (!pts.length) {
+    for (const inst of project.instances) {
+      const p = homeOf(inst);
+      pts.push(iso(p.x, p.y, p.z));
+    }
+    for (const panel of project.panels) {
+      pts.push(iso(panel.position.x, panel.position.y, panel.position.z));
+    }
+  }
   if (!pts.length) return { minX: -20, minY: -20, w: 40, h: 40 };
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
@@ -33,8 +46,8 @@ export function isoViewBox(project: YardProject) {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  const pad = Math.max(4, (maxX - minX) * 0.08);
-  return { minX: minX - pad, minY: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
+  const pad = Math.max(4, (maxX - minX) * 0.12);
+  return { minX: minX - pad, minY: minY - pad, w: Math.max(8, maxX - minX + pad * 2), h: Math.max(8, maxY - minY + pad * 2) };
 }
 
 export function isoMarks(project: YardProject, highlightIds: string[]) {
@@ -72,7 +85,7 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
 
 export function isoSvgString(project: YardProject, step?: AssemblyStep, w = 280, h = 200) {
   const ids = step ? stepInstanceIds(project, step) : [];
-  const box = isoViewBox(project);
+  const box = isoViewBox(project, ids);
   const marks = isoMarks(project, ids);
   const lines = marks
     .map((m) => {

@@ -15,7 +15,7 @@ export function IsoPlate({
   className?: string;
 }) {
   const ids = step ? stepInstanceIds(project, step) : [];
-  const box = useMemo(() => isoViewBox(project), [project]);
+  const box = useMemo(() => isoViewBox(project, ids), [project, ids.join("|")]);
   const marks = useMemo(() => isoMarks(project, ids), [project, ids.join("|")]);
 
   return (

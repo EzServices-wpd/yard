@@ -10,7 +10,9 @@ const browser = await chromium.launch({
 const errors = [];
 
 async function watch(page, label) {
-  page.on("console", (msg) => { if (msg.type() === "error") errors.push(`${label}: ${msg.text()}`); });
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(`${label}: ${msg.text()}`);
+  });
   page.on("pageerror", (err) => errors.push(`${label}: ${err.message}`));
 }
 
@@ -27,7 +29,10 @@ console.log("LANDING", land);
 await page.screenshot({ path: "/workspace/screenshots/yard-landing.png", fullPage: true });
 
 await page.evaluate(() => localStorage.clear());
-await page.goto(base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"), { waitUntil: "networkidle" });
+await page.goto(
+  base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"),
+  { waitUntil: "networkidle" },
+);
 await page.waitForTimeout(2500);
 const eiffel = await page.evaluate(() => {
   const el = document.querySelector("[data-yard-pieces]");
@@ -64,13 +69,19 @@ const plan = await page.evaluate(() => ({
 console.log("PLAN", plan);
 await page.screenshot({ path: "/workspace/screenshots/yard-eiffel-plan.png" });
 
+const showBtn = page.getByRole("button", { name: /Show on bench/i }).first();
+if (await showBtn.count()) await showBtn.click();
+await page.waitForTimeout(400);
+
 await page.getByRole("button", { name: /Export/i }).click();
 await page.waitForTimeout(300);
-const exp = await page.evaluate(() => /PDF|Markdown|Yard plan/i.test(document.body.innerText));
+const exp = await page.evaluate(() => /Isometric plates|Markdown|HTML plates/.test(document.body.innerText));
 console.log("EXPORT", exp);
 await page.screenshot({ path: "/workspace/screenshots/yard-export.png" });
+await page.getByRole("button", { name: /^cancel$/i }).click();
 
 await page.keyboard.press("Escape");
+// close plan via X
 const closePlan = page.getByRole("button", { name: /^close$/i }).first();
 if (await closePlan.count()) await closePlan.click();
 
@@ -96,11 +107,18 @@ await m.goto(base + "/", { waitUntil: "networkidle" });
 const overflow = await m.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
 console.log("MOBILE OVERFLOW", overflow);
 await m.screenshot({ path: "/workspace/screenshots/yard-landing-mobile.png", fullPage: true });
-await m.goto(base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"), { waitUntil: "networkidle" });
+await m.goto(
+  base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"),
+  { waitUntil: "networkidle" },
+);
 await m.waitForTimeout(2200);
 await m.screenshot({ path: "/workspace/screenshots/yard-eiffel-mobile.png" });
 
 console.log("ERRORS", errors);
 await browser.close();
-if (!land.hero || Number(eiffel.pieces) < 20 || !exp || !meas) process.exit(1);
-if (errors.some((e) => /failed to load|is not defined|cannot read/i.test(e))) process.exit(1);
+if (!land.hero || Number(eiffel.pieces) < 20 || eiffel.form !== "1" || !exp || !meas) {
+  process.exit(1);
+}
+if (errors.some((e) => /failed to load|is not defined|cannot read/i.test(e))) {
+  process.exit(1);
+}

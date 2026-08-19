@@ -2,6 +2,7 @@
 
 import { useYard } from "@/lib/yard/store";
 
+/** On-bench tape: same numbers as the measure panel, sitting on the opening. */
 export function MeasureOverlay() {
   const open = useYard((s) => s.measureOpen);
   const measure = useYard((s) => s.measure);
@@ -22,11 +23,26 @@ export function MeasureOverlay() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
       <div className="pointer-events-auto flex max-w-lg flex-wrap items-end gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg backdrop-blur">
-        <Dim label="W" value={measure.width} onChange={(v) => setMeasure({ width: v })} onBlur={commitLive} />
+        <Dim
+          label="W"
+          value={measure.width}
+          onChange={(v) => setMeasure({ width: v })}
+          onBlur={commitLive}
+        />
         <span className="mb-2 text-faint">×</span>
-        <Dim label="H" value={measure.height} onChange={(v) => setMeasure({ height: v })} onBlur={commitLive} />
+        <Dim
+          label="H"
+          value={measure.height}
+          onChange={(v) => setMeasure({ height: v })}
+          onBlur={commitLive}
+        />
         <span className="mb-2 text-faint">×</span>
-        <Dim label="D" value={measure.depth} onChange={(v) => setMeasure({ depth: v })} onBlur={commitLive} />
+        <Dim
+          label="D"
+          value={measure.depth}
+          onChange={(v) => setMeasure({ depth: v })}
+          onBlur={commitLive}
+        />
         <span className="mb-2.5 text-xs text-faint">in</span>
         {project.windowPkg && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
@@ -37,8 +53,8 @@ export function MeasureOverlay() {
         )}
         {project.pocket && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
-            Pocket back {project.pocket.walls.backWidth}" · L {project.pocket.walls.leftDepth}" @{ " " }
-            {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {project.pocket.walls.rightDepth}" @{ " " }
+            Pocket back {project.pocket.walls.backWidth}" · L {project.pocket.walls.leftDepth}" @{" "}
+            {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {project.pocket.walls.rightDepth}" @{" "}
             {project.pocket.walls.rightAngleDeg.toFixed(1)}° · clear {project.pocket.leftClear.toFixed(1)}" /{" "}
             {project.pocket.rightClear.toFixed(1)}"
           </span>

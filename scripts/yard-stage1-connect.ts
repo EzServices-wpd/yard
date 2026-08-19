@@ -6,6 +6,10 @@ const cases = [
   { name: "eiffel-12-toothpick", prompt: "1 foot Eiffel Tower from toothpicks" },
   { name: "eiffel-36-toothpick", prompt: "3 foot Eiffel Tower from toothpicks" },
   { name: "giraffe-popsicle", prompt: "3 foot giraffe from popsicle sticks" },
+  { name: "liberty-popsicle", prompt: "3 foot Statue of Liberty from popsicle sticks" },
+  { name: "taj-popsicle", prompt: "2 foot Taj Mahal from popsicle sticks" },
+  { name: "dragon-toothpick", prompt: "18 inch dragon from toothpicks" },
+  { name: "igloo-popsicle", prompt: "1 foot igloo from popsicle sticks" },
   { name: "closet", prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep" },
   { name: "window", prompt: "window rough opening 36 by 48, 6 inches deep" },
 ];

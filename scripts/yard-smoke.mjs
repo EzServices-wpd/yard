@@ -10,7 +10,9 @@ const browser = await chromium.launch({
 const errors = [];
 
 async function watch(page, label) {
-  page.on("console", (msg) => { if (msg.type() === "error") errors.push(`${label}: ${msg.text()}`); });
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(`${label}: ${msg.text()}`);
+  });
   page.on("pageerror", (err) => errors.push(`${label}: ${err.message}`));
 }
 
@@ -24,7 +26,10 @@ console.log("LANDING", landOk);
 await page.screenshot({ path: "/workspace/screenshots/yard-landing.png", fullPage: true });
 
 await page.evaluate(() => localStorage.clear());
-await page.goto(base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"), { waitUntil: "networkidle" });
+await page.goto(
+  base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"),
+  { waitUntil: "networkidle" },
+);
 await page.waitForTimeout(2200);
 const eiffel = await page.evaluate(() => {
   const el = document.querySelector("[data-yard-pieces]");
@@ -39,7 +44,10 @@ const planOk = await page.evaluate(() => /Cut list|Buy|Build plan/i.test(documen
 console.log("PLAN", planOk);
 await page.screenshot({ path: "/workspace/screenshots/yard-eiffel-plan.png" });
 
-await page.goto(base + "/workspace?q=" + encodeURIComponent("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep"), { waitUntil: "networkidle" });
+await page.goto(
+  base + "/workspace?q=" + encodeURIComponent("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep"),
+  { waitUntil: "networkidle" },
+);
 await page.waitForTimeout(1800);
 const closet = await page.evaluate(() => {
   const el = document.querySelector("[data-yard-pieces]");
@@ -48,7 +56,10 @@ const closet = await page.evaluate(() => {
 console.log("CLOSET", closet);
 await page.screenshot({ path: "/workspace/screenshots/yard-closet.png" });
 
-await page.goto(base + "/workspace?q=" + encodeURIComponent("window rough opening 36 by 48, 6 inches deep"), { waitUntil: "networkidle" });
+await page.goto(
+  base + "/workspace?q=" + encodeURIComponent("window rough opening 36 by 48, 6 inches deep"),
+  { waitUntil: "networkidle" },
+);
 await page.waitForTimeout(1200);
 await page.getByRole("button", { name: /build plan/i }).click();
 await page.waitForTimeout(400);
@@ -61,7 +72,10 @@ const m = await mobile.newPage();
 await watch(m, "mobile");
 await m.goto(base + "/", { waitUntil: "networkidle" });
 await m.screenshot({ path: "/workspace/screenshots/yard-landing-mobile.png", fullPage: true });
-await m.goto(base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"), { waitUntil: "networkidle" });
+await m.goto(
+  base + "/workspace?q=" + encodeURIComponent("3 foot Eiffel Tower from popsicle sticks"),
+  { waitUntil: "networkidle" },
+);
 await m.waitForTimeout(2200);
 await m.screenshot({ path: "/workspace/screenshots/yard-eiffel-mobile.png" });
 

@@ -12,6 +12,7 @@ export type ForgeBomLine = {
   unitCostUsd?: number;
   estCostUsd?: number;
   searchQuery?: string;
+  asin?: string;
   cutLengths: number[];
   notes?: string;
 };
@@ -69,6 +70,7 @@ export function buildForgeBom(
       unitCostUsd: unitCost,
       estCostUsd: estCost,
       searchQuery: item.searchQuery,
+      asin: item.asin,
       cutLengths: uniqueCuts,
       notes:
         (item.canCut ?? true) && uniqueCuts.length
@@ -102,6 +104,8 @@ export function bomLinesFromForge(result: ForgeBomResult): BomLine[] {
       quantity: l.packsNeeded,
       unit: l.unitsPerPack > 1 ? `pack of ${l.unitsPerPack}` : "ea",
       searchQuery: l.searchQuery,
+      asin: l.asin,
+      catalogId: l.catalogId,
       estimatedCost: l.estCostUsd,
       notes: `${l.quantityPieces} pieces${l.notes ? ` · ${l.notes}` : ""}`,
     }));

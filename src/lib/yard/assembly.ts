@@ -12,6 +12,9 @@ export function withHome(instances: YardInstance[]): YardInstance[] {
 
 export function stepInstanceIds(project: YardProject, step: AssemblyStep): string[] {
   const keys = (step.partsUsed ?? []).map((s) => s.toLowerCase());
+  if (keys.includes("*") || keys.includes("all")) {
+    return [...project.instances.map((i) => i.id), ...project.panels.map((p) => p.id)];
+  }
   if (!keys.length) return [];
   const ids: string[] = [];
   for (const inst of project.instances) {
@@ -35,7 +38,7 @@ export function firstBuildableStep(steps: AssemblyStep[], project: YardProject) 
 export function pilePosition(index: number, count: number, overall: { width: number; depth: number }): Vec3 {
   const cols = Math.min(14, Math.max(8, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.1)));
   const col = index % cols;
-  const row = Math.floor(index % cols === 0 && false ? 0 : Math.floor(index / cols));
+  const row = Math.floor(index / cols);
   return {
     x: overall.width * 0.52 + 5 + col * 1.15,
     y: 0.32,

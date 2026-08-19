@@ -450,6 +450,86 @@ export function analyzePieces(instances: YardInstance[], item: CatalogItem): Bui
   return { joints, components: roots.size, loose, pieces: n };
 }
 
+export function ensureDownwardPath(graph: StructureGraph): StructureGraph {
+  if (graph.nodes.length < 2) return graph;
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const lower: Map<string, boolean> = new Map();
+  for (const e of graph.edges) {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) continue;
+    if (a.position.y > b.position.y + 0.15) lower.set(a.id, true);
+    if (b.position.y > a.position.y + 0.15) lower.set(b.id, true);
+  }
+  const yMin = Math.min(...graph.nodes.map((n) => n.position.y));
+  const edges = [...graph.edges];
+  const grounded = graph.nodes.filter((n) => n.position.y <= yMin + 0.6);
+  for (const n of graph.nodes) {
+    if (n.position.y <= yMin + 0.6) continue;
+    if (lower.get(n.id)) continue;
+    let best: StructureNode | null = null;
+    let bestD = Infinity;
+    for (const g of graph.nodes) {
+      if (g.id === n.id) continue;
+      if (g.position.y >= n.position.y - 0.1) continue;
+      const d = dist(n.position, g.position);
+      if (d < bestD) {
+        bestD = d;
+        best = g;
+      }
+    }
+    const target = best ?? grounded[0];
+    if (!target) continue;
+    edges.push({
+      id: createId("down"),
+      from: n.id,
+      to: target.id,
+      join: "glue",
+      role: "leg",
+      critical: true,
+    });
+  }
+  return { ...graph, edges };
+}
+
+export function ribBands(graph: StructureGraph, band: number, skipGround = true): StructureGraph {
+  if (graph.nodes.length < 4) return graph;
+  const yMin = Math.min(...graph.nodes.map((n) => n.position.y));
+  const groups = new Map<number, StructureNode[]>();
+  for (const n of graph.nodes) {
+    if (skipGround && n.position.y < yMin + band * 0.45) continue;
+    const k = Math.round(n.position.y / Math.max(band, 0.4));
+    const arr = groups.get(k);
+    if (arr) arr.push(n);
+    else groups.set(k, [n]);
+  }
+  const edges = [...graph.edges];
+  const have = new Set(graph.edges.map((e) => [e.from, e.to].sort().join("|")));
+  for (const nodes of groups.values()) {
+    if (nodes.length < 2 || nodes.length > 14) continue;
+    const cx = nodes.reduce((s, n) => s + n.position.x, 0) / nodes.length;
+    const cz = nodes.reduce((s, n) => s + n.position.z, 0) / nodes.length;
+    const ordered = [...nodes].sort(
+      (a, b) => Math.atan2(a.position.z - cz, a.position.x - cx) - Math.atan2(b.position.z - cz, b.position.x - cx),
+    );
+    const n = ordered.length;
+    const link = (i: number, j: number) => {
+      const a = ordered[i].id;
+      const b = ordered[j].id;
+      const key = [a, b].sort().join("|");
+      if (have.has(key)) return;
+      have.add(key);
+      edges.push({ id: createId("rib"), from: a, to: b, join: "glue", role: "rail", critical: false });
+    };
+    if (n === 2) link(0, 1);
+    else {
+      for (let i = 0; i < n; i++) link(i, (i + 1) % n);
+      if (n === 4) link(0, 2);
+    }
+  }
+  return { ...graph, edges };
+}
+
 export function finishGraph(
   graph: StructureGraph,
   item: CatalogItem,
@@ -459,6 +539,9 @@ export function finishGraph(
   const d = stockDensity(item);
   let next = weldGraph(graph, Math.max(d.thick * 1.6, 0.22));
   next = stitchComponents(next);
+  next = ensureDownwardPath(next);
+  const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
+  if (fig) next = ribBands(next, Math.max(d.bay, 0.8), true);
   next = weldGraph(next, Math.max(d.thick * 1.6, 0.22));
   const offerBase = needsSpine(next, kind);
   const offer: SupportOffer = { ...offerBase, included: includeSpine && offerBase.needed };

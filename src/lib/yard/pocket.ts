@@ -1,3 +1,9 @@
+/**
+ * Trapezoidal pocket built-in — the original Yard prompt.
+ * A rectangular unit, front parallel to the back wall, centered on the
+ * back-wall centerline, inside an angled alcove. Vanity + drawers + uppers.
+ */
+
 import { createId } from "@/lib/utils";
 import type { Panel, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
 
@@ -16,6 +22,7 @@ function num(s: string | undefined, fallback: number) {
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : fallback;
 }
+
 function pick(text: string, re: RegExp, fallback: number) {
   const m = text.match(re);
   return num(m?.[1], fallback);
@@ -32,24 +39,40 @@ export function looksLikePocket(prompt: string) {
 export function parsePocket(prompt: string): PocketSpec | null {
   if (!looksLikePocket(prompt)) return null;
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
+
   const backWidth = pick(t, /back wall[:\s]+(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide/i, 38.5));
   const leftDepth = pick(t, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26);
   const rightDepth = pick(t, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5);
   const height = pick(t, /(?:all walls|walls)[:\s]+(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high/i, 102));
+
   const station = pick(t, /at (\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:perpendicular )?from the back/i, 20);
   const leftOfCL = pick(t, /left of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 25);
   const rightOfCL = pick(t, /right of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 21);
+
   let leftAngleDeg = pick(t, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   let rightAngleDeg = pick(t, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
-  if (!Number.isFinite(leftAngleDeg)) leftAngleDeg = (Math.atan((leftOfCL - backWidth / 2) / station) * 180) / Math.PI;
-  if (!Number.isFinite(rightAngleDeg)) rightAngleDeg = (Math.atan((rightOfCL - backWidth / 2) / station) * 180) / Math.PI;
+  if (!Number.isFinite(leftAngleDeg)) {
+    leftAngleDeg = (Math.atan((leftOfCL - backWidth / 2) / station) * 180) / Math.PI;
+  }
+  if (!Number.isFinite(rightAngleDeg)) {
+    rightAngleDeg = (Math.atan((rightOfCL - backWidth / 2) / station) * 180) / Math.PI;
+  }
+
   const unitW = pick(t, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
   const unitD = pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i, 17);
   const unitH = pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high(?! from)/i, height);
   const vanityH = pick(t, /counter(?:[^\d]{0,16})(\d+(?:\.\d+)?)/i, 34);
   const kneeW = pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22));
   const upperStart = pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, pick(t, /starting at (\d+(?:\.\d+)?)/i, 54));
-  const walls: PocketWalls = { backWidth, leftDepth, rightDepth, height, leftAngleDeg, rightAngleDeg };
+
+  const walls: PocketWalls = {
+    backWidth,
+    leftDepth,
+    rightDepth,
+    height,
+    leftAngleDeg,
+    rightAngleDeg,
+  };
   const unit: PocketUnit = {
     width: unitW,
     depth: Math.min(unitD, Math.min(leftDepth, rightDepth) - 1),
@@ -72,11 +95,34 @@ export function clearancesAt(walls: PocketWalls, unit: PocketUnit) {
   const z = unit.depth;
   const leftWall = wallX(walls, "left", z);
   const rightWall = wallX(walls, "right", z);
-  return { leftClear: -unit.width / 2 - leftWall, rightClear: rightWall - unit.width / 2, opening: rightWall - leftWall };
+  const leftUnit = -unit.width / 2;
+  const rightUnit = unit.width / 2;
+  return {
+    leftClear: leftUnit - leftWall,
+    rightClear: rightWall - rightUnit,
+    opening: rightWall - leftWall,
+  };
 }
 
-function panel(type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, materialId = PLY): Panel {
-  return { id: createId(type.slice(0, 2)), type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId };
+function panel(
+  type: Panel["type"],
+  name: string,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  materialId = PLY,
+): Panel {
+  return {
+    id: createId(type.slice(0, 2)),
+    type,
+    name,
+    position: { x, y, z },
+    size: { width: w, height: h, depth: d },
+    materialId,
+  };
 }
 
 export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
@@ -91,15 +137,22 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   const kneeR = unit.kneeW / 2;
   const leftBankW = kneeL - x0;
   const rightBankW = x1 - kneeR;
+
   const panels: Panel[] = [];
+
+  // Carcase
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x1 - P, 0, 0, P, H, D));
   panels.push(panel("back", "Back (stud-anchored)", x0 + P, 0, 0, W - P * 2, H, 0.25));
   panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, unit.vanityH, D));
   panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, unit.vanityH, D));
+
+  // Toekick on the drawer banks only — knee stays open
   const kickH = 3.5;
   panels.push(panel("kick", "Left toekick", x0 + P, 0, D - 0.5, leftBankW - P, kickH, 0.5));
   panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - 0.5, rightBankW - P, kickH, 0.5));
+
+  // Drawer stacks — three each side, 34" to kick
   const drawerSpan = unit.vanityH - kickH;
   const drawerHs = [drawerSpan * 0.28, drawerSpan * 0.32, drawerSpan * 0.4];
   let yL = kickH;
@@ -108,22 +161,33 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
     panels.push(panel("drawer", `Right drawer ${i + 1}`, kneeR + P, yL, 0.15, rightBankW - P - 0.1, dh - 0.12, D - 0.3));
     yL += dh;
   });
+
+  // Counter — full width, front-to-back. Knee is the void under the middle.
   panels.push(panel("counter", "Vanity counter", x0, unit.vanityH, 0, W, 1.5, D));
+
+  // Mirror above the knee, below the uppers
   const mirrorH = Math.max(8, unit.upperStart - unit.vanityH - 3.5);
-  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.4, unit.kneeW, mirrorH, 0.2));
+  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.4, unit.kneeW, mirrorH, 0.2, "plywood-3-4-4x8"));
+
+  // Upper carcase 54 → 102
   const u0 = unit.upperStart;
   const uH = H - u0;
   panels.push(panel("bottom", "Upper bottom", x0 + P, u0, 0, W - P * 2, P, D));
   panels.push(panel("top", "Upper top", x0 + P, H - P, 0, W - P * 2, P, D));
   panels.push(panel("divider", "Upper center divider", -P / 2, u0, 0, P, uH, D));
+
+  // Adjustable shelves — two bays, three shelves each
   const shelfYs = [u0 + uH * 0.28, u0 + uH * 0.52, u0 + uH * 0.76];
   const bayW = (W - P * 3) / 2;
   shelfYs.forEach((y, i) => {
     panels.push(panel("shelf", `Left linen shelf ${i + 1}`, x0 + P, y, 0.1, bayW, P, D - 0.2));
     panels.push(panel("shelf", `Right towel shelf ${i + 1}`, P / 2, y, 0.1, bayW, P, D - 0.2));
   });
+
+  // Two large upper doors
   panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - 0.35, W / 2 - 0.2, uH, 0.35));
   panels.push(panel("door", "Right upper door", 0.1, u0, D - 0.35, W / 2 - 0.2, uH, 0.35));
+
   const notes = [
     `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
     `Unit ${unit.width}" W × ${unit.depth}" D × ${unit.height}" H. Front parallel to the back wall. Centered on the back-wall centerline.`,
@@ -133,23 +197,39 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
     "Scribe the uprights if the back wall is out of plumb. The unit stays rectangular; the pocket is the thing that is wonky.",
     "Adjustable shelves on pins. Large doors. Mirror over the knee. Guidance only — confirm studs and plumbing before you cut.",
   ];
+
   if (clr.leftClear < 0.5 || clr.rightClear < 0.5) {
     notes.unshift("CRITICAL: the unit collides with a side wall at this depth. Pull the unit shallower or narrow it.");
   }
+
   return {
     id: createId("proj"),
     name: "Bathroom pocket vanity",
     prompt,
     kind: "closet",
-    overall: { width: Math.max(walls.backWidth, clr.opening) + 4, height: walls.height + 2, depth: Math.max(walls.leftDepth, walls.rightDepth) + 2 },
+    overall: {
+      width: Math.max(walls.backWidth, clr.opening) + 4,
+      height: walls.height + 2,
+      depth: Math.max(walls.leftDepth, walls.rightDepth) + 2,
+    },
     instances: [],
     panels,
     primaryMaterialId: PLY,
     notes,
     historic: false,
-    opening: { width: walls.backWidth, height: walls.height, depth: Math.max(walls.leftDepth, walls.rightDepth), kind: "pocket" },
+    opening: {
+      width: walls.backWidth,
+      height: walls.height,
+      depth: Math.max(walls.leftDepth, walls.rightDepth),
+      kind: "pocket",
+    },
     pocket: { walls, unit, leftClear: clr.leftClear, rightClear: clr.rightClear },
-    assumptions: { load: "medium", units: "inches", installMode: "alcove", wallType: "wood_stud" },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "alcove",
+      wallType: "wood_stud",
+    },
   };
 }
 

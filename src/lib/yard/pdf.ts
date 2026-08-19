@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import type { BuildPlan, YardProject } from "./types";
+import { isoMarks, isoViewBox } from "./iso";
+import { stepInstanceIds } from "./assembly";
+import type { AssemblyStep, BuildPlan, YardProject } from "./types";
 
 const INK: [number, number, number] = [26, 22, 18];
 const MUTED: [number, number, number] = [107, 99, 88];
@@ -9,6 +11,39 @@ const PAPER: [number, number, number] = [243, 238, 228];
 
 export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
+}
+
+function drawStepPlate(
+  doc: jsPDF,
+  project: YardProject,
+  step: AssemblyStep,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  doc.setFillColor(232, 226, 214);
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.5);
+  doc.rect(x, y, w, h, "FD");
+  const ids = stepInstanceIds(project, step);
+  const box = isoViewBox(project, ids);
+  const marks = isoMarks(project, ids);
+  if (!marks.length || box.w <= 0 || box.h <= 0) return;
+  const pad = 10;
+  const s = Math.min((w - pad * 2) / box.w, (h - pad * 2) / box.h);
+  const ox = x + (w - box.w * s) / 2;
+  const oy = y + (h - box.h * s) / 2;
+  for (const m of marks) {
+    doc.setDrawColor(...(m.hot || !ids.length ? INK : RULE));
+    doc.setLineWidth(m.hot || !ids.length ? 1.15 : 0.4);
+    doc.line(
+      ox + (m.x1 - box.minX) * s,
+      oy + (m.y1 - box.minY) * s,
+      ox + (m.x2 - box.minX) * s,
+      oy + (m.y2 - box.minY) * s,
+    );
+  }
 }
 
 export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
@@ -44,17 +79,20 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
 
   paintPage();
+
   doc.setFont("times", "italic");
   doc.setFontSize(10);
   doc.setTextColor(...MUTED);
   doc.text("YARD PLAN", left, y);
   y += 22;
+
   doc.setFont("times", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...INK);
   const title = wrap(project.name, 22);
   doc.text(title, left, y);
   y += title.length * 26 + 6;
+
   if (project.prompt) {
     doc.setFont("times", "italic");
     doc.setFontSize(11);
@@ -63,6 +101,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(p, left, y);
     y += p.length * 14 + 12;
   }
+
   doc.setDrawColor(...RULE);
   doc.setLineWidth(0.6);
   doc.line(left, y, right, y);
@@ -71,9 +110,11 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   heading("Check");
   body(plan.feasibility.summary);
   for (const issue of plan.feasibility.issues) {
-    body(`${issue.severity === "critical" ? "Stop — " : issue.severity === "warning" ? "Note — " : ""}${issue.message}`);
+    const line = `${issue.severity === "critical" ? "Stop — " : issue.severity === "warning" ? "Note — " : ""}${issue.message}`;
+    body(line);
     if (issue.suggestion) muted(issue.suggestion);
   }
+
   if (plan.cutList.length) {
     heading("Cut list");
     for (const c of plan.cutList) {
@@ -90,35 +131,44 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     }
     y += 6;
   }
+
   if (plan.bom.length) {
     heading("Buy");
-    muted(`${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated`);
+    muted(`${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`);
     for (const b of plan.bom) {
       ensure(16);
       doc.setFont("times", "normal");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
-      const lines = wrap(`${b.quantity} ${b.unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`, 11);
+      const label = `${b.quantity} ${b.unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
+      const lines = wrap(label, 11);
       doc.text(lines, left, y);
       y += lines.length * 14;
       if (b.notes) muted(b.notes);
+      const best = b.offers?.find((o) => o.best) ?? b.offers?.[0];
+      if (best) muted(`${best.label}: ${best.title} — ${best.href}`);
     }
     y += 6;
   }
+
   if (plan.instructions.length) {
     heading("Build");
     for (const s of plan.instructions) {
       const titleLines = wrap(`${String(s.step).padStart(2, "0")}  ${s.title}`, 13);
       const descLines = wrap(s.description, 11);
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
-      ensure(titleLines.length * 16 + descLines.length * 14 + tipLines.length * 13 + 18);
+      const plateH = 132;
+      ensure(titleLines.length * 16 + descLines.length * 14 + tipLines.length * 13 + plateH + 22);
       doc.setFont("times", "bold");
       doc.setFontSize(13);
       doc.setTextColor(...INK);
       doc.text(titleLines, left, y);
       y += titleLines.length * 16;
+      drawStepPlate(doc, project, s, left, y, width, plateH);
+      y += plateH + 8;
       doc.setFont("times", "normal");
       doc.setFontSize(11);
+      doc.setTextColor(...INK);
       doc.text(descLines, left, y);
       y += descLines.length * 14;
       if (tipLines.length) {
@@ -141,6 +191,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(label, left, y);
     y += 18;
   }
+
   function body(text: string) {
     const lines = wrap(text, 11);
     ensure(lines.length * 14 + 4);
@@ -150,6 +201,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(lines, left, y);
     y += lines.length * 14 + 4;
   }
+
   function muted(text: string) {
     const lines = wrap(text, 10);
     ensure(lines.length * 13 + 2);
@@ -159,6 +211,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(lines, left, y);
     y += lines.length * 13 + 2;
   }
+
   return doc;
 }
 

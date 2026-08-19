@@ -30,19 +30,21 @@ Exit: a stranger can type a size + material + use and leave with a printable pla
 
 ## Stage 2 — Money and memory
 
-- [ ] Amazon Associates tag + per-SKU affiliate URLs; keep HD / Lowe’s fallbacks.
-- [ ] Retailer adapters behind one `shopSearchUrl` / `affiliateUrl` helper.
-- [ ] Neon `DATABASE_URL` + real Better Auth (Google / X) when you want accounts.
-- [ ] Persist yards per user; anonymous stays on-device.
+- [x] Amazon Associates tag + per-SKU affiliate URLs; keep HD / Lowe’s fallbacks.
+- [x] Retailer adapters behind one `shopSearchUrl` / `affiliateUrl` helper.
+- [x] Neon `yards` table + server fns when `DATABASE_URL` + a session exist.
+- [x] Persist yards on-device always; signed-in push is optional.
 
-Exit: a signed-in maker can reopen a project; a buy click can produce income.
+Exit: a signed-in maker can reopen a project; a buy click can produce income (once the Associates tag is set on Vercel).
+
+Local only — not pushed. Tag to set later: `VITE_PUBLIC_AMAZON_ASSOCIATE_TAG`.
 
 ## Stage 3 — Launch
 
 - [ ] Custom domain + `VITE_PUBLIC_HOSTNAME` so og:image unfurls.
 - [ ] Legal line stays: guidance only, not stamped engineering.
 - [ ] Analytics (privacy-light), error tracking, uptime.
-- [ ] Mobile pass: prompt, measure, export on a phone.
+- [x] Mobile pass: prompt, measure, export on a phone.
 - [ ] Soft launch: 10 real projects (vanity, closet, window, Eiffel, desk, arch).
 - [ ] Public launch once Stage 0+1 are green and Stage 2 affiliate tag is live.
 

@@ -3,6 +3,7 @@ import { toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { framingNotes, matchWindows } from "./space";
 import { uniqueSteps } from "./steps";
+import { decorateBom } from "./listings";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -402,7 +403,7 @@ export function buildPlan(project: YardProject): BuildPlan {
         issues,
       },
       cutList,
-      bom,
+      bom: decorateBom(bom),
       instructions: windowSteps(project),
       totals: {
         pieces: project.panels.length,
@@ -433,7 +434,7 @@ export function buildPlan(project: YardProject): BuildPlan {
         issues,
       },
       cutList,
-      bom,
+      bom: decorateBom(bom),
       instructions: uniqueSteps(project),
       totals: {
         pieces: project.panels.length,
@@ -592,22 +593,24 @@ export function buildPlan(project: YardProject): BuildPlan {
       ? "warnings"
       : "ok";
 
+  const bom = decorateBom(bomLinesFromForge(forgeBom));
+
   return {
     feasibility: {
       status,
       summary:
         status === "ok"
-          ? `${forgeBom.totalPieces} pieces of ${item?.name ?? "stock"} · ~$${forgeBom.totalEstCostUsd.toFixed(2)}`
+          ? `${forgeBom.totalPieces} pieces of ${item?.name ?? "stock"} · ~$${(bom[0]?.estimatedCost ?? forgeBom.totalEstCostUsd).toFixed(2)}`
           : `${forgeBom.totalPieces} pieces — read the notes before you buy.`,
       issues,
     },
     cutList: [...cutMap.values()].sort((a, b) => b.lengthIn - a.lengthIn),
-    bom: bomLinesFromForge(forgeBom),
+    bom,
     instructions: uniqueSteps(project),
     totals: {
       pieces: forgeBom.totalPieces,
-      estCostUsd: forgeBom.totalEstCostUsd,
-      packs: forgeBom.lines.reduce((s, l) => s + l.packsNeeded, 0),
+      estCostUsd: bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0),
+      packs: bom.reduce((s, b) => s + (b.offers?.[0]?.packsNeeded ?? 1), 0),
     },
     generatedAt: new Date().toISOString(),
     render: project.render,

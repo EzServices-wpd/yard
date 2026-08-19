@@ -78,9 +78,11 @@ Rules:
 - strokes are the wire. 8–36 strokes. Each stroke 3–16 points. Coordinates in INCHES. Y is up. Origin on the ground under the thing.
 - Overall height of the highest point MUST be ${heightIn} inches.
 - The armature must be ONE connected wire. Every stroke shares at least one endpoint with another stroke. Crossing members are fine. No floating islands.
-- Use real anatomy / published architecture. A giraffe is not a box: four long legs, short deep body, S-curve neck ~1/3 of height, small head. A guitar is a figure-8 body + thin neck. Liberty is a robed figure with a raised arm and torch, not a cone.
+- Pick the anatomy: loft (towers, pylons), shell (domes, capitols, mosques), figure (animals, people, characters), span (bridges, arches), carcase (furniture, boxes). Closet/window stay closet/opening.
+- Use real anatomy / published architecture. A giraffe is not a box: four long legs, short deep body, S-curve neck ~1/3 of height, small head. A guitar is a figure-8 body + thin neck. Liberty is a robed figure on a pedestal with a raised arm and torch, not a cone. An unknown character still gets a biped or quadruped skeleton.
 - historic true only for a named real monument or site.
 - Prefer strokes over abstract boxes. Do not return an empty strokes array.
+- This is for ANY subject the maker names, not a fixed list. If you do not know the thing, still return a connected armature of the right anatomy.
 - Closet/wardrobe → structure closet and empty strokes. Window rough opening → opening.
 - materialId must be a catalog id or null.`,
         },

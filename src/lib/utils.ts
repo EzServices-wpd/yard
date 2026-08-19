@@ -18,7 +18,4 @@ export function usd(n: number): string {
   return n === 0 ? "—" : `~$${n.toFixed(2)}`;
 }
 
-export function shopSearchUrl(query: string): string {
-  const q = encodeURIComponent(query);
-  return `https://www.homedepot.com/s/${q}`;
-}
+export { shopSearchUrl, affiliateUrl, shopLinks, amazonAssociateTag } from "@/lib/yard/shop";

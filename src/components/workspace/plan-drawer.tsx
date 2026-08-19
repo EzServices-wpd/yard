@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
 import { planToMarkdown } from "@/lib/yard/report";
-import { shopSearchUrl, usd } from "@/lib/utils";
+import { usd } from "@/lib/utils";
+import { tagNote } from "@/lib/yard/listings";
 import { IsoPlate } from "@/components/workspace/iso-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import type { BuildPlan } from "@/lib/yard/types";
@@ -16,15 +17,38 @@ export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const setPlan = useYard((s) => s.setPlan);
   const grokBusy = useYard((s) => s.grokBusy);
   const grokError = useYard((s) => s.grokError);
+
   if (!open || !plan) return null;
-  return <PlanBody projectName={project.name} projectPrompt={project.prompt} plan={plan} setPlan={setPlan} grokBusy={grokBusy} grokError={grokError} onClose={onClose} />;
+
+  return (
+    <PlanBody
+      projectName={project.name}
+      projectPrompt={project.prompt}
+      plan={plan}
+      setPlan={setPlan}
+      grokBusy={grokBusy}
+      grokError={grokError}
+      onClose={onClose}
+    />
+  );
 }
 
 function PlanBody({
-  projectName, projectPrompt, plan, setPlan, grokBusy, grokError, onClose,
+  projectName,
+  projectPrompt,
+  plan,
+  setPlan,
+  grokBusy,
+  grokError,
+  onClose,
 }: {
-  projectName: string; projectPrompt: string; plan: BuildPlan; setPlan: (plan: BuildPlan | null) => void;
-  grokBusy: boolean; grokError: string | null; onClose: () => void;
+  projectName: string;
+  projectPrompt: string;
+  plan: BuildPlan;
+  setPlan: (plan: BuildPlan | null) => void;
+  grokBusy: boolean;
+  grokError: string | null;
+  onClose: () => void;
 }) {
   const project = useYard((s) => s.project);
   const activeStep = useYard((s) => s.activeStep);
@@ -39,30 +63,67 @@ function PlanBody({
   async function grokSteps() {
     useYard.setState({ grokBusy: true, grokError: null });
     try {
-      const res = await writeInstructions({ data: { prompt: projectPrompt || projectName, planText: planToMarkdown(project, plan) } });
-      if (!res.ok) { useYard.setState({ grokError: res.error }); return; }
-      setPlan({ ...plan, instructions: res.steps, grokNotes: "Steps rewritten by Grok from the deterministic plan." });
-    } catch { useYard.setState({ grokError: "Could not reach Grok." }); }
-    finally { useYard.setState({ grokBusy: false }); }
+      const res = await writeInstructions({
+        data: { prompt: projectPrompt || projectName, planText: planToMarkdown(project, plan) },
+      });
+      if (!res.ok) {
+        useYard.setState({ grokError: res.error });
+        return;
+      }
+      setPlan({
+        ...plan,
+        instructions: res.steps,
+        grokNotes: "Steps rewritten by Grok from the deterministic plan.",
+      });
+    } catch {
+      useYard.setState({ grokError: "Could not reach Grok." });
+    } finally {
+      useYard.setState({ grokBusy: false });
+    }
   }
 
   async function makeRender() {
-    setRenderBusy(true); setRenderErr(null);
+    setRenderBusy(true);
+    setRenderErr(null);
     try {
       const brief = [
         project.notes.slice(0, 4).join(" "),
-        project.pocket ? `Trapezoidal pocket vanity, ${project.pocket.unit.width} by ${project.pocket.unit.depth} by ${project.pocket.unit.height} inches.` : "",
-        project.fitted ? `${project.fitted.program} in plywood.` : "",
-        project.instances.length ? `${project.instances.length} pieces of ${project.primaryMaterialId}.` : "",
-      ].filter(Boolean).join(" ");
-      const res = await renderProject({ data: { name: project.name, prompt: project.prompt, brief, scene: scene.trim() || undefined } });
-      if (!res.ok) { setRenderErr(res.error); return; }
+        project.pocket
+          ? `Trapezoidal pocket vanity, ${project.pocket.unit.width} by ${project.pocket.unit.depth} by ${project.pocket.unit.height} inches, oak plywood, drawers, mirror, upper cabinets.`
+          : "",
+        project.fitted ? `${project.fitted.program} in ${project.fitted.unit.width} by ${project.fitted.unit.depth} by ${project.fitted.unit.height} inch plywood.` : "",
+        project.instances.length
+          ? `${project.instances.length} pieces of ${project.primaryMaterialId}, ${project.overall.height.toFixed(0)} inches tall.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const res = await renderProject({
+        data: {
+          name: project.name,
+          prompt: project.prompt,
+          brief,
+          scene: scene.trim() || undefined,
+        },
+      });
+      if (!res.ok) {
+        setRenderErr(res.error);
+        return;
+      }
       setRender({ url: res.url, prompt: res.prompt, scene: res.scene });
-    } catch { setRenderErr("Could not render."); }
-    finally { setRenderBusy(false); }
+    } catch {
+      setRenderErr("Could not render.");
+    } finally {
+      setRenderBusy(false);
+    }
   }
 
-  const tone = plan.feasibility.status === "critical" ? "text-danger" : plan.feasibility.status === "warnings" ? "text-warn" : "text-ok";
+  const tone =
+    plan.feasibility.status === "critical"
+      ? "text-danger"
+      : plan.feasibility.status === "warnings"
+        ? "text-warn"
+        : "text-ok";
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex justify-end print:static print:bg-paper print:text-ink">
@@ -72,8 +133,11 @@ function PlanBody({
             <p className="font-display text-xl text-fg">Build plan</p>
             <p className={`mt-0.5 text-xs ${tone}`}>{plan.feasibility.summary}</p>
           </div>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center text-muted hover:text-fg" aria-label="Close"><X className="size-4" /></button>
+          <button type="button" onClick={onClose} className="grid size-11 place-items-center text-muted hover:text-fg" aria-label="Close">
+            <X className="size-4" />
+          </button>
         </div>
+
         <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 text-sm">
           <section>
             <h3 className="font-display text-lg text-fg">Check</h3>
@@ -86,72 +150,156 @@ function PlanBody({
               ))}
             </ul>
           </section>
+
           <section>
             <h3 className="font-display text-lg text-fg">Render</h3>
-            {render?.url && <img src={render.url} alt={`Finished render of ${project.name}`} className="mt-3 w-full rounded-md border border-border object-cover" />}
+            <p className="mt-1 text-xs text-muted">
+              After the design is set, generate a photograph of the finished piece to sit with the instructions.
+            </p>
+            {render?.url && (
+              <img
+                src={render.url}
+                alt={`Finished render of ${project.name}`}
+                className="mt-3 w-full rounded-md border border-border object-cover"
+              />
+            )}
             <label className="mt-3 block">
               <span className="text-xs text-faint">Scene (optional)</span>
-              <input value={scene} onChange={(e) => setScene(e.target.value)} placeholder="white subway-tile bathroom, morning light" className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none" />
+              <input
+                value={scene}
+                onChange={(e) => setScene(e.target.value)}
+                placeholder="white subway-tile bathroom, morning light"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+              />
             </label>
-            <button type="button" onClick={() => void makeRender()} disabled={renderBusy} className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50">
+            <button
+              type="button"
+              onClick={() => void makeRender()}
+              disabled={renderBusy}
+              className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
+            >
               {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
             </button>
             {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
           </section>
+
           {plan.cutList.length > 0 && (
             <section>
               <h3 className="font-display text-lg text-fg">Cut list</h3>
               <table className="mt-3 w-full text-left text-xs">
-                <thead className="text-faint"><tr><th className="py-1 font-medium">Qty</th><th className="py-1 font-medium">Part</th><th className="py-1 font-medium">Size</th></tr></thead>
+                <thead className="text-faint">
+                  <tr>
+                    <th className="py-1 font-medium">Qty</th>
+                    <th className="py-1 font-medium">Part</th>
+                    <th className="py-1 font-medium">Size</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {plan.cutList.map((c) => (
                     <tr key={c.id} className="border-t border-border/70">
                       <td className="py-1.5 font-mono">{c.quantity}</td>
                       <td className="py-1.5">{c.name}</td>
-                      <td className="py-1.5 font-mono text-muted">{c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"</td>
+                      <td className="py-1.5 font-mono text-muted">
+                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </section>
           )}
+
           {plan.bom.length > 0 && (
             <section>
               <h3 className="font-display text-lg text-fg">Buy</h3>
-              <p className="mt-1 text-xs text-muted">{plan.totals.pieces} pieces · {usd(plan.totals.estCostUsd)} estimated</p>
-              <ul className="mt-3 space-y-2">
+              <p className="mt-1 text-xs text-muted">
+                {plan.totals.pieces} pieces · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
+              </p>
+              <p className="mt-1 text-[11px] text-faint">{tagNote()} Prices checked 19 Aug 2026.</p>
+              <ul className="mt-3 space-y-3">
                 {plan.bom.map((b, i) => (
-                  <li key={i} className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-fg">{b.quantity} {b.unit} · {b.name}</p>
-                      {b.notes && <p className="text-xs text-muted">{b.notes}</p>}
-                    </div>
-                    <div className="shrink-0 text-right">
+                  <li key={i} className="border-b border-rule/60 pb-3 last:border-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-fg">
+                          {b.quantity} {b.unit} · {b.name}
+                        </p>
+                        {b.notes && <p className="text-xs text-muted">{b.notes}</p>}
+                      </div>
                       {b.estimatedCost != null && <p className="font-mono text-xs text-muted">{usd(b.estimatedCost)}</p>}
-                      {b.searchQuery && <a href={shopSearchUrl(b.searchQuery)} target="_blank" rel="noreferrer" className="text-xs text-muted underline-offset-2 hover:text-fg hover:underline">Search</a>}
                     </div>
+                    {b.offers && b.offers.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {b.offers.map((o) => (
+                          <li key={o.href} className="flex items-baseline justify-between gap-2">
+                            <a
+                              href={o.href}
+                              target="_blank"
+                              rel="noreferrer sponsored"
+                              className={`text-xs underline-offset-2 hover:underline ${o.best ? "text-fg" : "text-muted hover:text-fg"}`}
+                              data-yard-shop={o.retailer}
+                              data-yard-affiliate={o.retailer === "amazon" ? "1" : "0"}
+                              data-yard-best={o.best ? "1" : "0"}
+                            >
+                              {o.best ? "Best · " : ""}
+                              {o.label} · {o.title}
+                            </a>
+                            <span className="shrink-0 font-mono text-[11px] text-muted">
+                              {o.packsNeeded} × {usd(o.packPrice)} · {usd(o.unitPrice)}/ea
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </li>
                 ))}
               </ul>
             </section>
           )}
+
           <section>
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-display text-lg text-fg">Build</h3>
-              <button type="button" onClick={() => void grokSteps()} disabled={grokBusy} className="text-xs text-muted hover:text-fg disabled:opacity-50 print:hidden">{grokBusy ? "Writing…" : "Rewrite for this project"}</button>
+              <button
+                type="button"
+                onClick={() => void grokSteps()}
+                disabled={grokBusy}
+                className="text-xs text-muted hover:text-fg disabled:opacity-50 print:hidden"
+              >
+                {grokBusy ? "Writing…" : "Rewrite for this project"}
+              </button>
             </div>
             {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
+            {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
                 const on = activeStep === s.step;
                 return (
                   <li key={s.step}>
-                    <button type="button" onClick={() => setActiveStep(on ? null : s.step)} className={`flex w-full gap-3 rounded-md border p-3 text-left ${on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"}`}>
-                      <IsoPlate project={project} step={s} className="hidden h-20 w-24 shrink-0 sm:block" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (on) {
+                          setActiveStep(null);
+                          return;
+                        }
+                        setActiveStep(s.step);
+                        onClose();
+                      }}
+                      className={`flex w-full gap-3 rounded-md border p-3 text-left transition ${
+                        on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"
+                      }`}
+                    >
+                      <IsoPlate project={project} step={s} className="h-24 w-28 shrink-0 border border-rule sm:h-28 sm:w-36" />
                       <span className="min-w-0">
-                        <span className="block font-medium text-fg"><span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}</span>
+                        <span className="block font-medium text-fg">
+                          <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
+                        </span>
                         <span className="mt-1 block text-muted">{s.description}</span>
                         {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                        <span className="mt-2 block text-xs text-faint print:hidden">
+                          {on ? "On the bench now — click again to leave" : "View this step on the bench"}
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -160,8 +308,15 @@ function PlanBody({
             </ol>
           </section>
         </div>
+
         <div className="flex gap-2 border-t border-border p-4 print:hidden">
-          <button type="button" onClick={() => setExportOpen(true)} className="h-10 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg">Export PDF…</button>
+          <button
+            type="button"
+            onClick={() => setExportOpen(true)}
+            className="h-10 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg"
+          >
+            Export PDF…
+          </button>
         </div>
       </div>
       {exportOpen && <ExportDialog project={project} plan={plan} onClose={() => setExportOpen(false)} />}

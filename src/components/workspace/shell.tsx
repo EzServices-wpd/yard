@@ -3,14 +3,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Box,
   ChevronLeft,
   ChevronRight,
-  Lock,
-  RotateCcw,
-  RotateCw,
+  MoreHorizontal,
   Ruler,
-  Trash2,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
@@ -20,7 +16,7 @@ import { MeasureOverlay } from "@/components/workspace/measure-overlay";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { hydrateYard, useYard } from "@/lib/yard/store";
-import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
@@ -33,6 +29,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
   const generate = useYard((s) => s.generate);
@@ -81,6 +78,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     if (!prompt) return;
     const seeded = useYard.getState().project;
     if (seeded.kind === "closet" || seeded.kind === "opening") return;
+    const offline =
+      typeof window !== "undefined" &&
+      /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
+    if (offline) return;
     void (async () => {
       useYard.setState({ grokBusy: true, grokError: null });
       const timeout = window.setTimeout(() => useYard.setState({ grokBusy: false }), 22000);
@@ -148,61 +149,24 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
 
   return (
-    <div className="flex h-dvh flex-col bg-bg text-fg">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-2 sm:gap-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-3">
+    <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-2 sm:h-14 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
           <span className="hidden truncate text-sm text-muted md:inline">{project.name}</span>
         </div>
-        <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
-          <IconBtn label="Undo" disabled={!history.length} onClick={undo}>
-            <RotateCcw className="size-4" />
-          </IconBtn>
-          <IconBtn label="Redo" disabled={!future.length} onClick={redo}>
-            <RotateCw className="size-4" />
-          </IconBtn>
-          <IconBtn label="Delete" disabled={!selectedId} onClick={deleteSelected}>
-            <Trash2 className="size-4" />
-          </IconBtn>
-          <IconBtn label={locked ? "Unlock piece" : "Lock piece"} disabled={!selectedId} onClick={toggleLockSelected}>
-            <Lock className={`size-4 ${locked ? "text-fg" : ""}`} />
-          </IconBtn>
-          <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
-          {(["iso", "front", "side", "top"] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCamera(c)}
-              className={`hidden h-8 rounded-sm px-2 text-xs sm:inline-flex sm:items-center ${
-                camera === c ? "bg-elevated text-fg" : "text-muted hover:text-fg"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-          <IconBtn label="Explode" onClick={() => setExplode(!explode)}>
-            <Box className={`size-4 ${explode ? "text-fg" : ""}`} />
-          </IconBtn>
-          <button
-            type="button"
-            onClick={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
-            className={`inline-flex h-8 items-center rounded-sm px-2 text-xs ${
-              side === "catalog" ? "bg-elevated text-fg" : "text-muted hover:text-fg"
-            }`}
-          >
-            Stock
-          </button>
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
-            className={`inline-flex h-8 items-center rounded-sm px-2 text-xs ${
+            className={`inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs sm:h-8 ${
               side === "measure" ? "bg-elevated text-fg" : "text-muted hover:text-fg"
             }`}
           >
-            <Ruler className="size-3.5" />
-            Measure
+            <Ruler className="size-4" />
+            <span className="hidden xs:inline sm:inline">Measure</span>
           </button>
           <button
             type="button"
@@ -210,24 +174,89 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               makePlan();
               setPlanOpen(true);
             }}
-            className="ml-1 inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg"
+            className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg sm:h-9"
           >
-            Build plan
+            Plan
           </button>
-          {authEnabled ? (
-            isPending ? (
-              <div className="ml-1 h-8 w-8 animate-pulse rounded-full bg-elevated" />
-            ) : user ? (
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            ) : (
-              <SignedOut>
-                <Link to="/login" className="hidden text-xs text-muted hover:text-fg sm:inline">
-                  Sign in
-                </Link>
-              </SignedOut>
-            )
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="More tools"
+              onClick={() => setMoreOpen((v) => !v)}
+              className="grid size-11 place-items-center rounded-md text-muted hover:bg-elevated hover:text-fg sm:size-8"
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+            {moreOpen && (
+              <div className="absolute right-0 z-40 mt-1 w-48 rounded-md border border-border bg-surface p-1 shadow-lg">
+                <MoreItem
+                  label="Undo"
+                  disabled={!history.length}
+                  onClick={() => {
+                    undo();
+                    setMoreOpen(false);
+                  }}
+                />
+                <MoreItem
+                  label="Redo"
+                  disabled={!future.length}
+                  onClick={() => {
+                    redo();
+                    setMoreOpen(false);
+                  }}
+                />
+                <MoreItem
+                  label="Delete piece"
+                  disabled={!selectedId}
+                  onClick={() => {
+                    deleteSelected();
+                    setMoreOpen(false);
+                  }}
+                />
+                <MoreItem
+                  label={locked ? "Unlock piece" : "Lock piece"}
+                  disabled={!selectedId}
+                  onClick={() => {
+                    toggleLockSelected();
+                    setMoreOpen(false);
+                  }}
+                />
+                <MoreItem
+                  label={explode ? "Collapse" : "Explode"}
+                  onClick={() => {
+                    setExplode(!explode);
+                    setMoreOpen(false);
+                  }}
+                />
+                <MoreItem
+                  label="Stock"
+                  onClick={() => {
+                    setSide((s) => (s === "catalog" ? null : "catalog"));
+                    setMoreOpen(false);
+                  }}
+                />
+                {(["iso", "front", "side", "top"] as const).map((c) => (
+                  <MoreItem
+                    key={c}
+                    label={`Camera ${c}`}
+                    onClick={() => {
+                      setCamera(c);
+                      setMoreOpen(false);
+                    }}
+                  />
+                ))}
+                {authEnabled && !user && !isPending && (
+                  <Link to="/login" className="block rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-elevated hover:text-fg" onClick={() => setMoreOpen(false)}>
+                    Sign in
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+          {authEnabled && user ? (
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
           ) : null}
         </div>
       </header>
@@ -257,7 +286,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               Querying the true form — then mapping your stock onto that wire
             </div>
           )}
-          {project.supportOffer?.needed && !project.supportOffer.included && (
+          {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && (
             <div
               className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg ${
                 grokBusy ? "top-14" : "top-4"
@@ -273,6 +302,32 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 }}
               >
                 Add spine
+              </button>
+            </div>
+          )}
+          {activeStep != null && steps.length > 0 && (
+            <div
+              className="absolute left-1/2 top-3 z-20 w-[min(32rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg sm:top-4 sm:px-4 sm:py-3"
+              data-yard-step-view={activeStep}
+            >
+              <p className="font-mono text-[11px] text-faint">
+                Viewing step {String(activeStep).padStart(2, "0")} of {String(steps.length).padStart(2, "0")}
+              </p>
+              <p className="mt-0.5 font-medium text-fg">
+                {steps.find((s) => s.step === activeStep)?.title}
+              </p>
+              <p className="mt-1 hidden text-xs leading-relaxed text-muted sm:block">
+                {steps.find((s) => s.step === activeStep)?.description}
+              </p>
+              <p className="mt-1 text-[11px] text-faint sm:mt-2">
+                Lit pieces are this step.
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
+                onClick={() => setActiveStep(null)}
+              >
+                Exit step view
               </button>
             </div>
           )}
@@ -311,7 +366,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               <div className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
                 <button
                   type="button"
-                  className="grid size-8 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                  className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30 sm:size-8"
                   disabled={!steps.length}
                   onClick={() => {
                     const i = stepIndex < 0 ? 0 : Math.max(0, stepIndex - 1);
@@ -384,6 +439,27 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   );
 }
 
+function MoreItem({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="block w-full rounded-sm px-3 py-2.5 text-left text-sm text-fg hover:bg-elevated disabled:opacity-30"
+    >
+      {label}
+    </button>
+  );
+}
+
 function ModeSwitch({ value, onChange }: { value: WorkMode; onChange: (v: WorkMode) => void }) {
   const modes: { id: WorkMode; label: string }[] = [
     { id: "look", label: "Look" },
@@ -397,7 +473,7 @@ function ModeSwitch({ value, onChange }: { value: WorkMode; onChange: (v: WorkMo
           key={m.id}
           type="button"
           onClick={() => onChange(m.id)}
-          className={`h-8 px-2.5 ${value === m.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
+          className={`h-11 min-w-11 px-3 sm:h-8 sm:px-2.5 ${value === m.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
         >
           {m.label}
         </button>
@@ -425,7 +501,7 @@ function GhostBtn({
       title={title}
       disabled={disabled}
       onClick={onClick}
-      className={`h-8 px-2.5 disabled:opacity-30 ${on ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
+      className={`h-11 px-3 disabled:opacity-30 sm:h-8 sm:px-2.5 ${on ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
     >
       {label}
     </button>
