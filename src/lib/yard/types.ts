@@ -100,7 +100,11 @@ export type YardInstance = {
   cutLength?: number;
   role?: string;
   join?: string;
+  /** Original generated seat — snap target. */
   home?: Vec3;
+  /** Exact member ends after stock mapping. */
+  from?: Vec3;
+  to?: Vec3;
 };
 
 export type PanelType =
@@ -209,6 +213,17 @@ export type YardProject = {
   primaryMaterialId: string;
   notes: string[];
   historic?: boolean;
+  supportOffer?: {
+    needed: boolean;
+    included: boolean;
+    reason: string;
+  };
+  buildStats?: {
+    joints: number;
+    components: number;
+    loose: number;
+    pieces: number;
+  };
   opening?: {
     width: number;
     height: number;

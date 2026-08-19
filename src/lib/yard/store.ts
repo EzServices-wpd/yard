@@ -37,7 +37,7 @@ type YardState = {
   grokError: string | null;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean }) => YardProject;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
@@ -97,15 +97,20 @@ export const useYard = create<YardState>((set, get) => ({
   grokError: null,
   commit: (next) => {
     const { project } = get();
-    set({ project: next, history: [...get().history, project].slice(-40), future: [], plan: null });
+    set({
+      project: next,
+      history: [...get().history, project].slice(-40),
+      future: [],
+      plan: null,
+    });
     persist(next);
   },
   setProject: (next) => {
     set({ project: next });
     persist(next);
   },
-  generate: (prompt, materialId, form) => {
-    const next = generateFromPrompt(prompt, materialId, form);
+  generate: (prompt, materialId, form, opts) => {
+    const next = generateFromPrompt(prompt, materialId, form, opts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     if (next.pocket) flags.showHull = true;
     if (next.fitted?.opening.kind === "alcove") flags.showHull = true;
@@ -119,12 +124,28 @@ export const useYard = create<YardState>((set, get) => ({
       dragPos: null,
       selectedId: null,
       measure: next.pocket
-        ? { width: String(next.pocket.unit.width), height: String(next.pocket.unit.height), depth: String(next.pocket.unit.depth), kind: "closet_niche" }
+        ? {
+            width: String(next.pocket.unit.width),
+            height: String(next.pocket.unit.height),
+            depth: String(next.pocket.unit.depth),
+            kind: "closet_niche",
+          }
         : next.windowPkg
-          ? { width: String(next.windowPkg.window.roW), height: String(next.windowPkg.window.roH), depth: String(next.windowPkg.window.jambDepth), kind: "window_rough_opening", windowId: next.windowPkg.window.id }
+          ? {
+              width: String(next.windowPkg.window.roW),
+              height: String(next.windowPkg.window.roH),
+              depth: String(next.windowPkg.window.jambDepth),
+              kind: "window_rough_opening",
+              windowId: next.windowPkg.window.id,
+            }
           : next.fitted
-            ? { width: String(next.fitted.unit.width), height: String(next.fitted.unit.height), depth: String(next.fitted.unit.depth), kind: next.fitted.opening.kind === "alcove" ? "closet_niche" : "general_volume" }
-            : get().measure,
+          ? {
+              width: String(next.fitted.unit.width),
+              height: String(next.fitted.unit.height),
+              depth: String(next.fitted.unit.depth),
+              kind: next.fitted.opening.kind === "alcove" ? "closet_niche" : "general_volume",
+            }
+          : get().measure,
     });
     return next;
   },
@@ -143,14 +164,24 @@ export const useYard = create<YardState>((set, get) => ({
     const { history, project, future } = get();
     if (!history.length) return;
     const prev = history[history.length - 1];
-    set({ project: prev, history: history.slice(0, -1), future: [project, ...future].slice(0, 40), plan: null });
+    set({
+      project: prev,
+      history: history.slice(0, -1),
+      future: [project, ...future].slice(0, 40),
+      plan: null,
+    });
     persist(prev);
   },
   redo: () => {
     const { future, project, history } = get();
     if (!future.length) return;
     const next = future[0];
-    set({ project: next, history: [...history, project].slice(-40), future: future.slice(1), plan: null });
+    set({
+      project: next,
+      history: [...history, project].slice(-40),
+      future: future.slice(1),
+      plan: null,
+    });
     persist(next);
   },
   select: (id) => set({ selectedId: id }),
@@ -172,10 +203,18 @@ export const useYard = create<YardState>((set, get) => ({
   toggleLockSelected: () => {
     const { selectedId, lockedIds } = get();
     if (!selectedId) return;
-    set({ lockedIds: lockedIds.includes(selectedId) ? lockedIds.filter((id) => id !== selectedId) : [...lockedIds, selectedId] });
+    set({
+      lockedIds: lockedIds.includes(selectedId)
+        ? lockedIds.filter((id) => id !== selectedId)
+        : [...lockedIds, selectedId],
+    });
   },
-  beginDrag: () => {},
-  nudgeInstance: (id, position) => set({ dragPos: { id, pos: position } }),
+  beginDrag: () => {
+    /* snapshot handled in finishMove via pre-nudge commit */
+  },
+  nudgeInstance: (id, position) => {
+    set({ dragPos: { id, pos: position } });
+  },
   finishMove: (id, position) => {
     const { project, commit, workMode, placedIds, lockedIds } = get();
     const inst = project.instances.find((i) => i.id === id);
@@ -186,18 +225,36 @@ export const useYard = create<YardState>((set, get) => ({
     const home = homeOf(inst);
     if (workMode === "build") {
       if (nearHome(position, home)) {
-        commit({ ...project, instances: project.instances.map((i) => (i.id === id ? { ...i, position: { ...home } } : i)) });
-        set({ placedIds: placedIds.includes(id) ? placedIds : [...placedIds, id], dragPos: null, selectedId: id });
+        const next = {
+          ...project,
+          instances: project.instances.map((i) =>
+            i.id === id ? { ...i, position: { ...home } } : i,
+          ),
+        };
+        commit(next);
+        set({
+          placedIds: placedIds.includes(id) ? placedIds : [...placedIds, id],
+          dragPos: null,
+          selectedId: id,
+        });
         return;
       }
       set({ dragPos: null });
       return;
     }
     const snapped = maybeSnap(position, home);
-    commit({ ...project, instances: project.instances.map((i) => (i.id === id ? { ...i, position: snapped } : i)) });
-    set({ dragPos: null, lockedIds });
+    commit({
+      ...project,
+      instances: project.instances.map((i) => (i.id === id ? { ...i, position: snapped } : i)),
+    });
+    set({
+      dragPos: null,
+      lockedIds: snapped === position || !nearHome(snapped, home) ? lockedIds : lockedIds,
+    });
   },
-  moveInstance: (id, position) => get().nudgeInstance(id, position),
+  moveInstance: (id, position) => {
+    get().nudgeInstance(id, position);
+  },
   deleteSelected: () => {
     const { selectedId, project, commit } = get();
     if (!selectedId) return;
@@ -223,7 +280,16 @@ export const useYard = create<YardState>((set, get) => ({
     commit({
       ...project,
       primaryMaterialId: catalogId,
-      instances: [...project.instances, { id, catalogId, position: pos, home: { ...pos }, rotation: { x: 0, y: 0, z: 0 } }],
+      instances: [
+        ...project.instances,
+        {
+          id,
+          catalogId,
+          position: pos,
+          home: { ...pos },
+          rotation: { x: 0, y: 0, z: 0 },
+        },
+      ],
     });
     set({ selectedId: id });
   },
@@ -237,23 +303,41 @@ export const useYard = create<YardState>((set, get) => ({
     if (!w || !h) return;
     if (project.fitted && !project.pocket) {
       const unit = { ...project.fitted.unit, width: w, height: h, depth: d || project.fitted.unit.depth };
-      commit({ ...buildFitted({ ...project.fitted, unit }, project.prompt), id: project.id });
+      const built = buildFitted({ ...project.fitted, unit }, project.prompt);
+      commit({ ...built, id: project.id });
       set({ showHull: true, showHistoric: false, workMode: "look", placedIds: [], activeStep: null });
       return;
     }
     if (project.pocket) {
       const unit = { ...project.pocket.unit, width: w, height: h, depth: d || project.pocket.unit.depth };
-      commit({ ...buildPocket({ ...project.pocket, unit, leftClear: 0, rightClear: 0 }, project.prompt), id: project.id });
+      const built = buildPocket({ ...project.pocket, unit, leftClear: 0, rightClear: 0 }, project.prompt);
+      commit({ ...built, id: project.id });
       set({ showHull: true, showHistoric: false, workMode: "look", placedIds: [], activeStep: null });
       return;
     }
     const built = projectFromMeasurement(
-      { widthIn: w, heightIn: h, depthIn: d || undefined, kindHint: measure.kind, windowId: measure.windowId },
+      {
+        widthIn: w,
+        heightIn: h,
+        depthIn: d || undefined,
+        kindHint: measure.kind,
+        windowId: measure.windowId,
+      },
       `${w} x ${h} x ${d || 0} ${measure.kind.replaceAll("_", " ")}`,
     );
     const keepId = get().project.kind === "closet" || get().project.kind === "opening";
-    commit({ ...built, id: keepId ? get().project.id : built.id, instances: withHome(built.instances) });
-    set({ showHull: true, showHistoric: false, workMode: "look", placedIds: [], activeStep: null });
+    commit({
+      ...built,
+      id: keepId ? get().project.id : built.id,
+      instances: withHome(built.instances),
+    });
+    set({
+      showHull: true,
+      showHistoric: false,
+      workMode: "look",
+      placedIds: [],
+      activeStep: null,
+    });
   },
   reset: () => {
     clearProject();
@@ -278,7 +362,10 @@ export function hydrateYard() {
   const loaded = loadProject();
   const flags = defaultGhostFlags(loaded.kind, loaded.prompt, loaded.historic);
   useYard.setState({
-    project: { ...loaded, instances: withHome(loaded.instances) },
+    project: {
+      ...loaded,
+      instances: withHome(loaded.instances),
+    },
     ...flags,
   });
 }

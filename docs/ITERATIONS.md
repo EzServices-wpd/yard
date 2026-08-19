@@ -14,8 +14,8 @@ Permanent repo: `EzServices-wpd/yard`. Do not open a new repo per pass.
 
 ## Next (keep in this tree)
 
-1. **Wireframe fidelity** — query real proportions for any named object, then map the chosen material onto that frame (no material cap).
-2. **Instruction plates** — denser LEGO / Wayfair-style graphics per step; embed in PDF.
+1. **Wireframe fidelity** — query real proportions for any named object, then map the chosen material onto that frame (no material cap). **Shipped Stage 1** — connected joints, stock-scaled density, optional spine.
+2. **Instruction plates** — denser LEGO / Wayfair-style graphics per step; embed in PDF. Joints now mark on the iso plate; keep thickening the drawings.
 3. **AR / photo render** — keep the prompt-a-scene render; add on-site overlay later.
 4. **Affiliate** — fill `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG`; optional retailer adapters.
 5. **Accounts** — persist yards per user once `DATABASE_URL` + auth env are set on Vercel.

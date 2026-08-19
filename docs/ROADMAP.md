@@ -9,7 +9,7 @@ Goal: the deployed site cannot crash, the four demo prompts work, optional AI/au
 - [x] Stop PGLite on Vercel. Only open a DB when `DATABASE_URL` is set. Never throw on import.
 - [x] Auth degrades: no session API → treat as signed-out. Skip still opens the bench.
 - [x] Commit `public/og.jpg` + `public/x-banner.jpg` + a real `/__grok/icon-180.png` (via `scripts/brand/*.b64` + `write-brand-assets.mjs`).
-- [ ] Add `XAI_API_KEY` on the Vercel project (Production + Preview). **You do this** — Project → Settings → Environment Variables.
+- [x] Add `XAI_API_KEY` on the Vercel project (Production + Preview). **You do this** — Project → Settings → Environment Variables.
 - [x] Manual pass on live: Eiffel, bathroom pocket vanity, alcove closet, Andersen 36×48 window — generate, plan, PDF.
 - [x] Add `package-lock.json` so Vercel installs are pinned.
 
@@ -19,12 +19,12 @@ Exit: no PGLite errors in runtime logs; bench usable without env; Grok works whe
 
 Goal: the original vanity logic works for anything someone types.
 
-- [ ] Query true form (wiki + Grok) for every named object, not just Eiffel.
-- [ ] Map chosen stock onto that wire. No quantity cap.
-- [ ] Auto support / frame / “will fail without bracing” for every model.
-- [ ] Unique steps + denser isometric plates in the drawer and the PDF.
-- [ ] Finished-piece render stays optional, always in the export when present.
-- [ ] Measure-a-space remains the contractor path (stock window → RO → kings/jacks/header).
+- [x] Query true form (wiki + Grok) for every named object, not just Eiffel.
+- [x] Map chosen stock onto that wire. No quantity cap.
+- [x] Auto support / frame / “will fail without bracing” for every model.
+- [x] Unique steps + denser isometric plates in the drawer and the PDF.
+- [x] Finished-piece render stays optional, always in the export when present.
+- [x] Measure-a-space remains the contractor path (stock window → RO → kings/jacks/header).
 
 Exit: a stranger can type a size + material + use and leave with a printable plan.
 
