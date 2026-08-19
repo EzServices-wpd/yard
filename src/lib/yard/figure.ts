@@ -1,8 +1,8 @@
 /**
  * Figure armature — one connected wire for any living / posed thing.
  * Named animals are proportion shortcuts. Unknown characters still
- * get a stance (biped / quadruped / longneck / winged) so Grok has
- * a real skeleton to refine, and offline still looks like a creature.
+ * get a stance so Grok has a skeleton to refine, and offline still
+ * reads as a creature with enough members to take stock.
  */
 
 import type { FigureStance } from "./anatomy";
@@ -20,6 +20,24 @@ function stroke(role: string, points: P[]): FigureStroke {
   return { role, points };
 }
 
+function hoop(role: string, x: number, y: number, rx: number, rz: number, n = 6): FigureStroke {
+  const pts: P[] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push(pt(x + Math.cos(a) * rx, y, Math.sin(a) * rz));
+  }
+  return stroke(role, pts);
+}
+
+function bentLeg(role: string, foot: P, hip: P, kneeIn = 0.12): FigureStroke {
+  const mid: P = {
+    x: (foot.x + hip.x) / 2,
+    y: (foot.y + hip.y) * 0.48,
+    z: (foot.z + hip.z) / 2 + kneeIn * (hip.y - foot.y),
+  };
+  return stroke(role, [foot, mid, hip]);
+}
+
 export function figureStrokes(opts: {
   height: number;
   stance: FigureStance;
@@ -33,6 +51,8 @@ export function figureStrokes(opts: {
       return longneckStrokes(H);
     case "winged":
       return wingedStrokes(H);
+    case "wyvern":
+      return wyvernStrokes(H);
     case "biped":
       return bipedStrokes(H, false);
     default:
@@ -53,31 +73,33 @@ function bipedStrokes(H: number, raised: boolean): FigureStroke[] {
   const shoulder = H * 0.72;
   const hz = H * 0.05;
   const hx = H * 0.07;
+  const knee = H * 0.24;
   const out: FigureStroke[] = [
-    stroke("leg", [pt(-hx, 0, -hz), pt(-hx, hip, -hz)]),
-    stroke("leg", [pt(hx, 0, hz), pt(hx, hip, hz)]),
+    bentLeg("leg", pt(-hx, 0, -hz), pt(-hx, hip, -hz), 0.08),
+    bentLeg("leg", pt(hx, 0, hz), pt(hx, hip, hz), -0.08),
     ...hipRect(hx, hip, hz),
-    stroke("support", [pt(0, hip, 0), pt(0, shoulder, 0), pt(0, H * 0.88, 0)]),
-    stroke("ring", [
-      pt(-hx * 1.1, shoulder, -hz),
-      pt(hx * 1.1, shoulder, -hz),
-      pt(hx * 1.1, shoulder, hz),
-      pt(-hx * 1.1, shoulder, hz),
-      pt(-hx * 1.1, shoulder, -hz),
-    ]),
+    hoop("ring", 0, hip + H * 0.08, hx * 1.15, hz * 1.2, 6),
+    hoop("ring", 0, H * 0.6, hx * 1.05, hz * 1.1, 6),
+    stroke("support", [pt(0, hip, 0), pt(0, H * 0.6, 0), pt(0, shoulder, 0), pt(0, H * 0.88, 0)]),
+    hoop("ring", 0, shoulder, hx * 1.25, hz * 1.15, 6),
+    hoop("tip", 0, H * 0.94, hx * 0.7, hz * 0.7, 6),
     stroke("tip", [pt(0, H * 0.88, 0), pt(0, H, 0)]),
   ];
   if (raised) {
     out.push(
-      stroke("brace", [pt(hx * 1.1, shoulder, 0), pt(H * 0.22, H * 0.92, 0), pt(H * 0.26, H, 0)]),
-      stroke("brace", [pt(-hx * 1.1, shoulder, 0), pt(-H * 0.16, H * 0.58, 0)]),
+      stroke("brace", [pt(hx * 1.1, shoulder, 0), pt(H * 0.18, H * 0.82, 0), pt(H * 0.22, H * 0.92, 0), pt(H * 0.26, H, 0)]),
+      stroke("brace", [pt(-hx * 1.1, shoulder, 0), pt(-H * 0.14, H * 0.62, 0), pt(-H * 0.16, H * 0.5, 0)]),
     );
   } else {
     out.push(
-      stroke("brace", [pt(hx * 1.1, shoulder, 0), pt(H * 0.16, H * 0.5, 0)]),
-      stroke("brace", [pt(-hx * 1.1, shoulder, 0), pt(-H * 0.16, H * 0.5, 0)]),
+      stroke("brace", [pt(hx * 1.1, shoulder, 0), pt(H * 0.14, H * 0.6, 0), pt(H * 0.16, H * 0.48, 0)]),
+      stroke("brace", [pt(-hx * 1.1, shoulder, 0), pt(-H * 0.14, H * 0.6, 0), pt(-H * 0.16, H * 0.48, 0)]),
     );
   }
+  out.push(
+    stroke("rail", [pt(-hx, knee, -hz), pt(hx, knee, hz)]),
+    stroke("support", [pt(-hx * 0.4, hip, 0), pt(hx * 0.4, hip, 0)]),
+  );
   return out;
 }
 
@@ -89,8 +111,17 @@ function libertyStrokes(H: number): FigureStroke[] {
   const hx = fig * 0.08;
   const hz = fig * 0.05;
   return [
-    stroke("leg", [pt(-hx, y0, -hz), pt(-hx, hip, -hz)]),
-    stroke("leg", [pt(hx, y0, hz), pt(hx, hip, hz)]),
+    stroke("leg", [pt(-hx * 1.6, 0, -hz * 1.4), pt(-hx * 1.6, y0, -hz * 1.4)]),
+    stroke("leg", [pt(hx * 1.6, 0, -hz * 1.4), pt(hx * 1.6, y0, -hz * 1.4)]),
+    stroke("leg", [pt(hx * 1.6, 0, hz * 1.4), pt(hx * 1.6, y0, hz * 1.4)]),
+    stroke("leg", [pt(-hx * 1.6, 0, hz * 1.4), pt(-hx * 1.6, y0, hz * 1.4)]),
+    stroke("rail", [
+      pt(-hx * 1.6, 0, -hz * 1.4),
+      pt(hx * 1.6, 0, -hz * 1.4),
+      pt(hx * 1.6, 0, hz * 1.4),
+      pt(-hx * 1.6, 0, hz * 1.4),
+      pt(-hx * 1.6, 0, -hz * 1.4),
+    ]),
     stroke("rail", [
       pt(-hx * 1.6, y0, -hz * 1.4),
       pt(hx * 1.6, y0, -hz * 1.4),
@@ -98,20 +129,19 @@ function libertyStrokes(H: number): FigureStroke[] {
       pt(-hx * 1.6, y0, hz * 1.4),
       pt(-hx * 1.6, y0, -hz * 1.4),
     ]),
+    hoop("ring", 0, y0 * 0.5, hx * 1.55, hz * 1.35, 8),
+    bentLeg("leg", pt(-hx, y0, -hz), pt(-hx, hip, -hz), 0.06),
+    bentLeg("leg", pt(hx, y0, hz), pt(hx, hip, hz), -0.06),
     stroke("support", [pt(-hx * 1.4, y0, 0), pt(-hx, hip, 0), pt(0, shoulder, 0)]),
     stroke("support", [pt(hx * 1.4, y0, 0), pt(hx, hip, 0), pt(0, shoulder, 0)]),
     ...hipRect(hx, hip, hz),
+    hoop("ring", 0, hip + fig * 0.08, hx * 1.3, hz * 1.2, 6),
+    hoop("ring", 0, shoulder, hx * 1.15, hz, 6),
     stroke("support", [pt(0, hip, 0), pt(0, shoulder, 0), pt(0, y0 + fig * 0.88, 0)]),
-    stroke("brace", [pt(hx, shoulder, 0), pt(fig * 0.28, y0 + fig * 0.92, 0), pt(fig * 0.32, H, 0)]),
-    stroke("tip", [pt(fig * 0.32, H, 0), pt(fig * 0.32, H + fig * 0.04, 0)]),
-    stroke("brace", [pt(-hx, shoulder, 0), pt(-fig * 0.14, y0 + fig * 0.52, 0)]),
-    stroke("ring", [
-      pt(-hx * 0.7, y0 + fig * 0.92, -hz),
-      pt(hx * 0.7, y0 + fig * 0.92, -hz),
-      pt(hx * 0.7, y0 + fig * 0.92, hz),
-      pt(-hx * 0.7, y0 + fig * 0.92, hz),
-      pt(-hx * 0.7, y0 + fig * 0.92, -hz),
-    ]),
+    stroke("brace", [pt(hx, shoulder, 0), pt(fig * 0.22, y0 + fig * 0.82, 0), pt(fig * 0.28, y0 + fig * 0.92, 0), pt(fig * 0.32, H, 0)]),
+    stroke("tip", [pt(fig * 0.32, H, 0), pt(fig * 0.32, H + fig * 0.04, 0), pt(fig * 0.28, H + fig * 0.05, 0)]),
+    stroke("brace", [pt(-hx, shoulder, 0), pt(-fig * 0.12, y0 + fig * 0.58, 0), pt(-fig * 0.14, y0 + fig * 0.5, 0)]),
+    hoop("tip", 0, y0 + fig * 0.94, hx * 0.65, hz * 0.65, 6),
     stroke("tip", [pt(0, y0 + fig * 0.88, 0), pt(0, H * 0.98, 0)]),
   ];
 }
@@ -123,11 +153,19 @@ function longneckStrokes(H: number): FigureStroke[] {
   const z = H * 0.055;
   const hipX = L * 0.78;
   const shX = L * 0.22;
+  const neck = [
+    pt(shX, shoulder, 0),
+    pt(shX - L * 0.04, H * 0.58, 0),
+    pt(shX - L * 0.06, H * 0.68, 0),
+    pt(shX - L * 0.02, H * 0.78, 0),
+    pt(shX + L * 0.02, H * 0.86, 0),
+    pt(shX + L * 0.08, H * 0.96, 0),
+  ];
   return [
-    stroke("leg", [pt(hipX - L * 0.04, 0, -z), pt(hipX, hip, -z)]),
-    stroke("leg", [pt(hipX + L * 0.06, 0, z), pt(hipX, hip, z)]),
-    stroke("leg", [pt(shX + L * 0.04, 0, -z), pt(shX, shoulder, -z)]),
-    stroke("leg", [pt(shX - L * 0.04, 0, z), pt(shX, shoulder, z)]),
+    bentLeg("leg", pt(hipX - L * 0.04, 0, -z), pt(hipX, hip, -z), 0.1),
+    bentLeg("leg", pt(hipX + L * 0.06, 0, z), pt(hipX, hip, z), -0.1),
+    bentLeg("leg", pt(shX + L * 0.04, 0, -z), pt(shX, shoulder, -z), 0.1),
+    bentLeg("leg", pt(shX - L * 0.04, 0, z), pt(shX, shoulder, z), -0.1),
     stroke("rail", [
       pt(hipX, hip, -z),
       pt(hipX, hip, z),
@@ -135,18 +173,15 @@ function longneckStrokes(H: number): FigureStroke[] {
       pt(shX, shoulder, -z),
       pt(hipX, hip, -z),
     ]),
-    stroke("support", [
-      pt(hipX, hip, 0),
-      pt((hipX + shX) / 2, hip + H * 0.05, 0),
-      pt(shX, shoulder, 0),
-    ]),
-    stroke("support", [
-      pt(shX, shoulder, 0),
-      pt(shX - L * 0.06, H * 0.68, 0),
-      pt(shX + L * 0.02, H * 0.86, 0),
-      pt(shX + L * 0.08, H * 0.96, 0),
-    ]),
-    stroke("tip", [pt(shX + L * 0.08, H * 0.96, 0), pt(shX + L * 0.2, H * 0.98, 0)]),
+    hoop("ring", hipX, hip, L * 0.06, z * 1.15, 6),
+    hoop("ring", (hipX + shX) / 2, hip + H * 0.04, L * 0.07, z * 1.2, 6),
+    hoop("ring", shX, shoulder, L * 0.055, z, 6),
+    stroke("support", [pt(hipX, hip, 0), pt((hipX + shX) / 2, hip + H * 0.05, 0), pt(shX, shoulder, 0)]),
+    stroke("support", neck),
+    stroke("tip", [pt(shX + L * 0.08, H * 0.96, 0), pt(shX + L * 0.16, H * 0.99, 0), pt(shX + L * 0.22, H * 0.97, 0)]),
+    stroke("tip", [pt(shX + L * 0.1, H * 0.99, -z * 0.4), pt(shX + L * 0.1, H * 1.04, -z * 0.4)]),
+    stroke("tip", [pt(shX + L * 0.1, H * 0.99, z * 0.4), pt(shX + L * 0.1, H * 1.04, z * 0.4)]),
+    stroke("brace", [pt(hipX, hip, 0), pt(hipX + L * 0.16, H * 0.36, 0), pt(hipX + L * 0.22, H * 0.28, 0)]),
   ];
 }
 
@@ -156,24 +191,85 @@ function quadrupedStrokes(H: number, L: number): FigureStroke[] {
   const hipX = L * 0.28;
   const shX = -L * 0.22;
   return [
-    stroke("leg", [pt(hipX, 0, -z), pt(hipX, hip, -z)]),
-    stroke("leg", [pt(hipX, 0, z), pt(hipX, hip, z)]),
-    stroke("leg", [pt(shX, 0, -z), pt(shX, hip, -z)]),
-    stroke("leg", [pt(shX, 0, z), pt(shX, hip, z)]),
+    bentLeg("leg", pt(hipX, 0, -z), pt(hipX, hip, -z), 0.12),
+    bentLeg("leg", pt(hipX, 0, z), pt(hipX, hip, z), -0.12),
+    bentLeg("leg", pt(shX, 0, -z), pt(shX, hip, -z), 0.12),
+    bentLeg("leg", pt(shX, 0, z), pt(shX, hip, z), -0.12),
     stroke("rail", [pt(hipX, hip, -z), pt(hipX, hip, z), pt(shX, hip, z), pt(shX, hip, -z), pt(hipX, hip, -z)]),
-    stroke("support", [pt(hipX, hip, 0), pt(0, hip + H * 0.04, 0), pt(shX, hip, 0)]),
-    stroke("support", [pt(shX, hip, 0), pt(shX - L * 0.08, H * 0.72, 0), pt(shX - L * 0.04, H * 0.9, 0)]),
-    stroke("tip", [pt(shX - L * 0.04, H * 0.9, 0), pt(shX + L * 0.08, H * 0.92, 0)]),
-    stroke("brace", [pt(hipX, hip, 0), pt(hipX + L * 0.22, H * 0.38, 0)]),
+    hoop("ring", hipX, hip, L * 0.06, z * 1.1, 6),
+    hoop("ring", 0, hip + H * 0.05, L * 0.08, z * 1.2, 6),
+    hoop("ring", shX, hip, L * 0.055, z, 6),
+    stroke("support", [pt(hipX, hip, 0), pt(0, hip + H * 0.06, 0), pt(shX, hip, 0)]),
+    stroke("support", [
+      pt(shX, hip, 0),
+      pt(shX - L * 0.05, H * 0.62, 0),
+      pt(shX - L * 0.08, H * 0.76, 0),
+      pt(shX - L * 0.04, H * 0.9, 0),
+    ]),
+    hoop("tip", shX - L * 0.02, H * 0.92, L * 0.04, z * 0.7, 5),
+    stroke("tip", [pt(shX - L * 0.04, H * 0.9, 0), pt(shX + L * 0.1, H * 0.93, 0)]),
+    stroke("tip", [pt(shX - L * 0.02, H * 0.96, -z * 0.5), pt(shX - L * 0.02, H, -z * 0.5)]),
+    stroke("tip", [pt(shX - L * 0.02, H * 0.96, z * 0.5), pt(shX - L * 0.02, H, z * 0.5)]),
+    stroke("brace", [pt(hipX, hip, 0), pt(hipX + L * 0.16, H * 0.42, 0), pt(hipX + L * 0.26, H * 0.34, 0)]),
   ];
 }
 
 function wingedStrokes(H: number): FigureStroke[] {
-  const body = quadrupedStrokes(H * 0.7, H);
-  const sy = H * 0.42;
+  const body = quadrupedStrokes(H * 0.72, H);
+  const sy = H * 0.4;
   body.push(
-    stroke("brace", [pt(0, sy, 0), pt(-H * 0.55, sy + H * 0.12, -H * 0.05), pt(-H * 0.7, sy - H * 0.05, 0)]),
-    stroke("brace", [pt(0, sy, 0), pt(H * 0.55, sy + H * 0.12, H * 0.05), pt(H * 0.7, sy - H * 0.05, 0)]),
+    stroke("brace", [pt(0, sy, 0), pt(-H * 0.28, sy + H * 0.1, -H * 0.04), pt(-H * 0.55, sy + H * 0.14, -H * 0.06), pt(-H * 0.72, sy - H * 0.04, 0)]),
+    stroke("brace", [pt(0, sy, 0), pt(H * 0.28, sy + H * 0.1, H * 0.04), pt(H * 0.55, sy + H * 0.14, H * 0.06), pt(H * 0.72, sy - H * 0.04, 0)]),
+    stroke("rail", [pt(-H * 0.28, sy + H * 0.1, -H * 0.04), pt(-H * 0.2, sy - H * 0.02, 0), pt(-H * 0.55, sy - H * 0.06, 0)]),
+    stroke("rail", [pt(H * 0.28, sy + H * 0.1, H * 0.04), pt(H * 0.2, sy - H * 0.02, 0), pt(H * 0.55, sy - H * 0.06, 0)]),
   );
   return body;
+}
+
+/** Biped + wings + tail + snout — Charizard, Godzilla, a dragon on two legs. */
+function wyvernStrokes(H: number): FigureStroke[] {
+  const hip = H * 0.38;
+  const shoulder = H * 0.62;
+  const hx = H * 0.08;
+  const hz = H * 0.06;
+  return [
+    bentLeg("leg", pt(-hx, 0, -hz), pt(-hx, hip, -hz), 0.14),
+    bentLeg("leg", pt(hx, 0, hz), pt(hx, hip, hz), -0.14),
+    ...hipRect(hx * 1.1, hip, hz),
+    hoop("ring", 0, hip + H * 0.06, hx * 1.3, hz * 1.3, 6),
+    hoop("ring", 0, H * 0.5, hx * 1.2, hz * 1.2, 6),
+    stroke("support", [pt(0, hip, 0), pt(0, H * 0.5, 0), pt(0, shoulder, 0), pt(0, H * 0.78, 0)]),
+    hoop("ring", 0, shoulder, hx * 1.15, hz, 6),
+    stroke("brace", [pt(hx * 1.1, shoulder, 0), pt(H * 0.14, H * 0.52, 0), pt(H * 0.16, H * 0.42, 0)]),
+    stroke("brace", [pt(-hx * 1.1, shoulder, 0), pt(-H * 0.14, H * 0.52, 0), pt(-H * 0.16, H * 0.42, 0)]),
+    stroke("brace", [
+      pt(0, shoulder, 0),
+      pt(-H * 0.22, shoulder + H * 0.08, -H * 0.04),
+      pt(-H * 0.42, shoulder + H * 0.12, -H * 0.06),
+      pt(-H * 0.58, shoulder - H * 0.02, 0),
+    ]),
+    stroke("brace", [
+      pt(0, shoulder, 0),
+      pt(H * 0.22, shoulder + H * 0.08, H * 0.04),
+      pt(H * 0.42, shoulder + H * 0.12, H * 0.06),
+      pt(H * 0.58, shoulder - H * 0.02, 0),
+    ]),
+    stroke("rail", [pt(-H * 0.22, shoulder + H * 0.08, -H * 0.04), pt(-H * 0.18, shoulder - H * 0.04, 0), pt(-H * 0.4, shoulder - H * 0.06, 0)]),
+    stroke("rail", [pt(H * 0.22, shoulder + H * 0.08, H * 0.04), pt(H * 0.18, shoulder - H * 0.04, 0), pt(H * 0.4, shoulder - H * 0.06, 0)]),
+    stroke("support", [
+      pt(0, hip, 0),
+      pt(H * 0.12, hip - H * 0.04, 0),
+      pt(H * 0.22, H * 0.22, 0),
+      pt(H * 0.28, H * 0.08, 0),
+    ]),
+    stroke("support", [
+      pt(0, H * 0.78, 0),
+      pt(H * 0.04, H * 0.86, 0),
+      pt(H * 0.1, H * 0.92, 0),
+    ]),
+    stroke("tip", [pt(H * 0.1, H * 0.92, 0), pt(H * 0.2, H * 0.9, 0)]),
+    stroke("tip", [pt(H * 0.08, H * 0.96, -hz * 0.6), pt(H * 0.08, H, -hz * 0.6)]),
+    stroke("tip", [pt(H * 0.08, H * 0.96, hz * 0.6), pt(H * 0.08, H, hz * 0.6)]),
+    hoop("tip", H * 0.06, H * 0.9, hx * 0.55, hz * 0.55, 5),
+  ];
 }

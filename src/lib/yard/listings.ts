@@ -442,7 +442,12 @@ export function offersFor(
         best: false,
       };
     })
-    .sort((a, b) => a.unitPrice - b.unitPrice || a.lineTotal - b.lineTotal);
+    .sort((a, b) => {
+      const aAm = a.retailer === "amazon" ? 0 : 1;
+      const bAm = b.retailer === "amazon" ? 0 : 1;
+      if (aAm !== bAm) return aAm - bAm;
+      return a.unitPrice - b.unitPrice || a.lineTotal - b.lineTotal;
+    });
   if (priced[0]) priced[0].best = true;
   return priced;
 }

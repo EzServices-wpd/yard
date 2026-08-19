@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
-import { Grid, Line, OrbitControls } from "@react-three/drei";
+import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { isCylindrical, visualPrimitive } from "@/lib/yard/geometry";
@@ -44,21 +44,28 @@ export function WorkspaceCanvas() {
       <Canvas
         key={project.id}
         camera={{ position: [48, 32, 48], fov: 34, near: 0.1, far: 4000 }}
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: "default" }}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: "default", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.12 }}
         frameloop="always"
         dpr={[1, 1.5]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
-          gl.setClearColor("#161310", 1);
-          scene.background = new THREE.Color("#161310");
+          gl.setClearColor("#1a1612", 1);
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+          scene.background = new THREE.Color("#1a1612");
           cam.lookAt(0, 14, 0);
         }}
         onPointerMissed={() => select(null)}
       >
-        <color attach="background" args={["#161310"]} />
-        <ambientLight intensity={1.6} />
-        <hemisphereLight args={["#fff3e0", "#3a3228", 1]} />
-        <directionalLight position={[40, 70, 30]} intensity={1.2} />
+        <color attach="background" args={["#1a1612"]} />
+        <ambientLight intensity={0.42} />
+        <hemisphereLight args={["#ffe8c8", "#2a241c", 0.7]} />
+        <directionalLight position={[36, 64, 28]} intensity={1.55} color="#fff4e4" />
+        <directionalLight position={[-28, 22, -18]} intensity={0.35} color="#9bb4d4" />
+        <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={90} blur={2.4} far={50} color="#0c0a08" />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+          <planeGeometry args={[240, 240]} />
+          <meshStandardMaterial color="#241e18" roughness={0.92} metalness={0} />
+        </mesh>
         <BenchScene
           project={project}
           explode={explode}
@@ -582,8 +589,8 @@ function CloudKind({
       onPointerUp={up}
       onPointerCancel={up}
     >
-      {cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 12]} /> : <boxGeometry args={[1, 1, 1]} />}
-      <meshBasicMaterial />
+      {cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 14]} /> : <boxGeometry args={[1, 1, 1]} />}
+      <meshStandardMaterial roughness={0.68} metalness={0.04} />
     </instancedMesh>
   );
 }
@@ -715,7 +722,7 @@ function InstanceMesh({
         <group position={[home.x * explode, home.y, home.z * explode]} rotation={[instance.rotation.x, instance.rotation.y, instance.rotation.z]}>
           <mesh frustumCulled={false}>
             {slotGeom}
-            <meshBasicMaterial color={SLOT} transparent opacity={0.18} depthWrite={false} />
+          <meshStandardMaterial color={SLOT} transparent opacity={0.18} depthWrite={false} roughness={1} />
           </mesh>
         </group>
       )}
@@ -729,7 +736,13 @@ function InstanceMesh({
       >
         <mesh frustumCulled={false}>
           {meshGeom}
-          <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
+          <meshStandardMaterial
+            color={color}
+            transparent={opacity < 1}
+            opacity={opacity}
+            roughness={0.68}
+            metalness={0.04}
+          />
         </mesh>
       </group>
     </group>
@@ -780,7 +793,13 @@ function PanelMesh({
       }}
     >
       <boxGeometry args={[panel.size.width, panel.size.height, panel.size.depth]} />
-      <meshBasicMaterial color={color} transparent={opacity < 1 || glass} opacity={opacity} />
+      <meshStandardMaterial
+        color={color}
+        transparent={opacity < 1 || glass}
+        opacity={opacity}
+        roughness={glass ? 0.12 : 0.7}
+        metalness={glass ? 0.15 : 0.03}
+      />
     </mesh>
   );
 }

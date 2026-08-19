@@ -20,9 +20,10 @@ import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { interpretPrompt } from "@/lib/ai/grok";
+import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
+import { recipeFromAnatomy } from "@/lib/yard/form";
 import type { WorkMode } from "@/lib/yard/types";
 
 export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
@@ -81,8 +82,18 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     const offline =
       typeof window !== "undefined" &&
       /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
-    if (offline) return;
     void (async () => {
+      try {
+        const hint = await hintSubject({ data: { prompt } });
+        if (hint.summary && hint.summary !== hint.subject) {
+          const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, seeded.overall);
+          generate(prompt, undefined, form);
+          makePlan();
+        }
+      } catch {
+        /* local classify already on the bench */
+      }
+      if (offline) return;
       useYard.setState({ grokBusy: true, grokError: null });
       const timeout = window.setTimeout(() => useYard.setState({ grokBusy: false }), 22000);
       try {

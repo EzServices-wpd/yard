@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { FORGE_CATALOG } from "@/lib/yard/catalog";
 import { isFormOp, isFormStroke, subjectFromPrompt, type FormOp, type FormRecipe, type FormStroke } from "@/lib/yard/form";
+import { parseModelJson } from "@/lib/yard/parseJson";
 import { lookupRealForm } from "@/lib/yard/wiki";
 import type { StructureKind } from "@/lib/yard/types";
 
@@ -75,14 +76,14 @@ Return JSON only:
 {"structure":"${KINDS.join("|")}","materialId":"catalog-id-or-null","heightIn":number,"widthIn":number,"notes":"one sentence citing the real measures","form":{"name":"...","historic":false,"source":"where the proportions came from","strokes":[{"role":"leg|support|brace|ring|rail|tip","points":[{"x":0,"y":0,"z":0}]}]}}
 
 Rules:
-- strokes are the wire. 8–36 strokes. Each stroke 3–16 points. Coordinates in INCHES. Y is up. Origin on the ground under the thing.
+- strokes are the wire. 10–20 strokes. Each stroke 3–10 points. Coordinates in INCHES. Y is up. Origin on the ground under the thing.
 - Overall height of the highest point MUST be ${heightIn} inches.
 - The armature must be ONE connected wire. Every stroke shares at least one endpoint with another stroke. Crossing members are fine. No floating islands.
 - Pick the anatomy: loft (towers, pylons), shell (domes, capitols, mosques), figure (animals, people, characters), span (bridges, arches), carcase (furniture, boxes). Closet/window stay closet/opening.
-- Use real anatomy / published architecture. A giraffe is not a box: four long legs, short deep body, S-curve neck ~1/3 of height, small head. A guitar is a figure-8 body + thin neck. Liberty is a robed figure on a pedestal with a raised arm and torch, not a cone. An unknown character still gets a biped or quadruped skeleton.
+- Use real anatomy / published architecture. A giraffe is not a box: four long legs, short deep body, S-curve neck ~1/3 of height, small head. A guitar is a figure-8 body + thin neck. Liberty is a robed figure on a pedestal with a raised arm and torch, not a cone. Charizard / a dragon on two legs is a wyvern: plantigrade legs, thick tail, small arms, broad wings, snout and horns — not a horse.
 - historic true only for a named real monument or site.
 - Prefer strokes over abstract boxes. Do not return an empty strokes array.
-- This is for ANY subject the maker names, not a fixed list. If you do not know the thing, still return a connected armature of the right anatomy.
+- Reply with one JSON object only. No markdown. No commentary. Keep it short enough to finish.
 - Closet/wardrobe → structure closet and empty strokes. Window rough opening → opening.
 - materialId must be a catalog id or null.`,
         },
@@ -91,7 +92,7 @@ Rules:
           content: `Catalog:\n${catalog}\n\nPrompt: ${data.prompt}\nSubject: ${subject}\n${realBlock}`,
         },
       ],
-      1400,
+      1600,
     );
     if (!result.ok) {
       return {
@@ -101,15 +102,17 @@ Rules:
       };
     }
     try {
-      const cleaned = result.text.trim().replace(/^```json\s*|```$/g, "");
-      const parsed = JSON.parse(cleaned) as {
+      const parsed = parseModelJson(result.text) as {
         structure?: string;
         materialId?: string | null;
         heightIn?: number;
         widthIn?: number;
         notes?: string;
         form?: { name?: string; historic?: boolean; source?: string; strokes?: unknown[]; ops?: unknown[] };
-      };
+      } | null;
+      if (!parsed) {
+        return { ok: false as const, error: "Could not parse interpretation", real: looked.summary || null, form: null };
+      }
       const structure = KINDS.includes(parsed.structure as StructureKind)
         ? (parsed.structure as StructureKind)
         : null;
@@ -147,6 +150,21 @@ Rules:
     } catch {
       return { ok: false as const, error: "Could not parse interpretation", real: looked.summary || null, form: null };
     }
+  });
+
+/** Wikipedia + Wikidata only — no Grok. Used to pick anatomy before the paid interpret. */
+export const hintSubject = createServerFn({ method: "POST" })
+  .validator((input: { prompt: string }) => input)
+  .handler(async ({ data }) => {
+    const { classifyFromSource } = await import("@/lib/yard/anatomy");
+    const subject = subjectFromPrompt(data.prompt);
+    const looked = await lookupRealForm(subject);
+    const hit = classifyFromSource(data.prompt, looked.summary);
+    return {
+      subject,
+      summary: looked.summary,
+      hit,
+    };
   });
 
 export const writeInstructions = createServerFn({ method: "POST" })

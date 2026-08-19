@@ -48,6 +48,17 @@ const HITS: Hit[] = [
   { re: /pyramid|giza|khufu/, kind: "pyramid", name: "Pyramid", historic: true, build: pyramidOps },
   { re: /colosseum|coliseum|amphitheatre|amphitheater/, kind: "custom", name: "Colosseum", historic: true, build: colosseumOps },
   { re: /statue of liberty|liberty statue|\bliberty\b/, kind: "figure", name: "Liberty", historic: true, build: libertyOps },
+  { re: /empire state/, kind: "tower", name: "Empire State", historic: true, build: empireStateOps },
+  { re: /chrysler building/, kind: "tower", name: "Chrysler", historic: true, build: empireStateOps },
+  { re: /space needle/, kind: "tower", name: "Space Needle", historic: true, build: spaceNeedleOps },
+  { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: spaceNeedleOps },
+  { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaOps },
+  { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: goldenGateOps },
+  { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: goldenGateOps },
+  { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps },
+  { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps },
+  { re: /stonehenge/, kind: "custom", name: "Stonehenge", historic: true, build: stonehengeOps },
+  { re: /sydney opera/, kind: "dome", name: "Sydney Opera", historic: true, build: sydneyOps },
   { re: /big ben|clock tower|westminster/, kind: "tower", name: "Clock tower", historic: true, build: clockOps },
   { re: /washington monument|obelisk/, kind: "tower", name: "Obelisk", historic: true, build: obeliskOps },
   { re: /lighthouse/, kind: "tower", name: "Lighthouse", build: lighthouseOps },
@@ -74,6 +85,7 @@ const HITS: Hit[] = [
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
   { re: /tree|cactus|plant/, kind: "plant", name: "Tree", build: treeOps },
   { re: /dinosaur|t-?rex|raptor|dino/, kind: "figure", name: "Dinosaur", build: dinoOps },
+  { re: /charizard|dragon|wyvern|godzilla|kaiju/, kind: "figure", name: "Wyvern", build: () => [] },
   { re: /robot|android/, kind: "figure", name: "Robot", build: robotOps },
   { re: /giraffe/, kind: "figure", name: "Giraffe", build: giraffeOps },
   { re: /horse|dog|cat|animal|creature/, kind: "figure", name: "Animal", build: animalOps },
@@ -272,6 +284,129 @@ function clockOps(s: Size3): FormOp[] {
 
 function obeliskOps(s: Size3): FormOp[] {
   return [taper(0, s.height * 0.92, s.height * 0.08, s.height * 0.035, 4, "leg"), { op: "column", x: 0, z: 0, y0: s.height * 0.9, y1: s.height, role: "tip" }];
+}
+
+function empireStateOps(s: Size3): FormOp[] {
+  const H = s.height;
+  return [
+    taper(0, H * 0.38, H * 0.22, H * 0.16, 4, "leg"),
+    taper(H * 0.36, H * 0.72, H * 0.16, H * 0.1, 4, "leg"),
+    taper(H * 0.7, H * 0.9, H * 0.1, H * 0.045, 4, "leg"),
+    { op: "column", x: 0, z: 0, y0: H * 0.88, y1: H, role: "tip" },
+    { op: "ring", y: H * 0.38, rx: H * 0.18, n: 8, role: "rail" },
+    { op: "ring", y: H * 0.72, rx: H * 0.12, n: 8, role: "rail" },
+  ];
+}
+
+function spaceNeedleOps(s: Size3): FormOp[] {
+  const H = s.height;
+  return [
+    taper(0, H * 0.72, H * 0.14, H * 0.035, 8, "leg"),
+    { op: "ring", y: H * 0.78, rx: H * 0.16, n: 12, role: "rail" },
+    { op: "shell", y0: H * 0.72, y1: H * 0.86, r: H * 0.14, profile: "drum", role: "ring" },
+    { op: "column", x: 0, z: 0, y0: H * 0.84, y1: H, role: "tip" },
+  ];
+}
+
+function pisaOps(s: Size3): FormOp[] {
+  const H = s.height;
+  const ops: FormOp[] = [taper(0, H * 0.92, H * 0.14, H * 0.12, 8, "leg")];
+  for (let i = 0; i < 7; i++) {
+    ops.push({ op: "ring", y: (i / 6) * H * 0.88, rx: H * 0.15, n: 10, role: i === 0 ? "base" : "ring" });
+  }
+  ops.push({ op: "column", x: 0, z: 0, y0: H * 0.9, y1: H, role: "tip" });
+  return ops;
+}
+
+function goldenGateOps(s: Size3): FormOp[] {
+  const span = Math.max(s.width, s.height * 1.6);
+  const h = s.height;
+  const t0 = span * 0.22;
+  const t1 = span * 0.78;
+  return [
+    { op: "column", x: t0, z: 0, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: t1, z: 0, y0: 0, y1: h, role: "leg" },
+    { op: "ring", y: h * 0.72, rx: h * 0.04, n: 4, role: "rail" },
+    { op: "grid", y: h * 0.42, w: span, d: Math.max(6, s.depth * 0.35), nx: 10, nz: 2, x: span / 2, role: "rail" },
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: 0, y: h * 0.42, z: 0 },
+        { x: t0 * 0.5, y: h * 0.7, z: 0 },
+        { x: t0, y: h, z: 0 },
+        { x: (t0 + t1) / 2, y: h * 0.62, z: 0 },
+        { x: t1, y: h, z: 0 },
+        { x: t1 + (span - t1) * 0.5, y: h * 0.7, z: 0 },
+        { x: span, y: h * 0.42, z: 0 },
+      ],
+    },
+  ];
+}
+
+function arcOps(s: Size3): FormOp[] {
+  const H = s.height;
+  const w = s.width;
+  return [
+    { op: "box", x: 0, y: H * 0.55, z: 0, w, h: H * 0.9, d: Math.max(s.depth, w * 0.35), role: "leg" },
+    { op: "arch", x0: -w * 0.28, z0: 0, x1: w * 0.28, z1: 0, y0: 0, crown: H * 0.42, role: "support" },
+    { op: "ring", y: H, rx: w * 0.48, rz: s.depth * 0.4, n: 8, role: "rail" },
+  ];
+}
+
+function parthenonOps(s: Size3): FormOp[] {
+  const H = s.height;
+  const w = s.width;
+  const d = s.depth;
+  const ops: FormOp[] = [{ op: "grid", y: H * 0.12, w, d, nx: 6, nz: 3, role: "base" }];
+  const cols = 6;
+  for (let i = 0; i < cols; i++) {
+    const x = -w / 2 + (i / (cols - 1)) * w;
+    ops.push({ op: "column", x, z: -d / 2, y0: H * 0.12, y1: H * 0.78, role: "leg" });
+    ops.push({ op: "column", x, z: d / 2, y0: H * 0.12, y1: H * 0.78, role: "leg" });
+  }
+  ops.push({ op: "grid", y: H * 0.8, w: w * 1.05, d: d * 1.05, nx: 5, nz: 3, role: "rail" });
+  ops.push({
+    op: "poly",
+    role: "tip",
+    points: [
+      { x: -w / 2, y: H * 0.82, z: 0 },
+      { x: 0, y: H, z: 0 },
+      { x: w / 2, y: H * 0.82, z: 0 },
+    ],
+  });
+  return ops;
+}
+
+function stonehengeOps(s: Size3): FormOp[] {
+  const H = s.height;
+  const r = Math.max(s.width, s.depth) / 2;
+  const ops: FormOp[] = [];
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    ops.push({
+      op: "column",
+      x: Math.cos(a) * r,
+      z: Math.sin(a) * r,
+      y0: 0,
+      y1: H * 0.78,
+      role: "leg",
+    });
+  }
+  ops.push({ op: "ring", y: H * 0.82, rx: r, n, role: "rail" });
+  return ops;
+}
+
+function sydneyOps(s: Size3): FormOp[] {
+  const H = s.height;
+  const r = Math.max(s.width, s.depth) / 2;
+  return [
+    { op: "grid", y: H * 0.08, w: r * 2.2, d: r * 1.4, nx: 5, nz: 3, role: "base" },
+    { op: "shell", x: -r * 0.35, z: 0, y0: H * 0.08, y1: H * 0.78, r: r * 0.55, profile: "hemisphere", role: "ring" },
+    { op: "shell", x: r * 0.25, z: 0, y0: H * 0.08, y1: H, r: r * 0.48, profile: "hemisphere", role: "ring" },
+    { op: "shell", x: r * 0.7, z: r * 0.15, y0: H * 0.08, y1: H * 0.62, r: r * 0.32, profile: "hemisphere", role: "ring" },
+  ];
 }
 
 function lighthouseOps(s: Size3): FormOp[] {

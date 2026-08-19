@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { DREAMS } from "@/lib/yard/prompt";
-import { interpretPrompt } from "@/lib/ai/grok";
+import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
+import { recipeFromAnatomy } from "@/lib/yard/form";
 import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
 
@@ -31,6 +32,21 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     const offline =
       typeof window !== "undefined" &&
       /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
+    try {
+      const hint = await hintSubject({ data: { prompt } });
+      if (hint.summary && hint.summary !== hint.subject) {
+        const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
+        generate(prompt, undefined, form);
+        makePlan();
+        const current = useYard.getState().project;
+        const note = `Looked up: ${hint.summary}`;
+        if (!current.notes.includes(note)) {
+          useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
+        }
+      }
+    } catch {
+      /* local classify already on the bench */
+    }
     if (offline) return;
     useYard.setState({ grokBusy: true, grokError: null });
     const timeout = window.setTimeout(() => useYard.setState({ grokBusy: false }), 22000);

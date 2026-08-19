@@ -8,7 +8,7 @@ import type { StructureKind } from "./types";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
-export type FigureStance = "biped" | "quadruped" | "longneck" | "winged" | "liberty";
+export type FigureStance = "biped" | "quadruped" | "longneck" | "winged" | "liberty" | "wyvern";
 
 export type AnatomyHit = {
   anatomy: Anatomy;
@@ -28,10 +28,13 @@ const SHELL =
 const SPAN = /bridge|span|viaduct|overpass|trestle/;
 const CARCASE = /chair|stool|table|desk|bed|bench|box|cube|frame|shelf|crate|cabinet/;
 const FIGURE =
-  /giraffe|horse|dog|cat|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|man|woman|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|cow|pig|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|ape|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|sonic|mario/;
+  /giraffe|horse|dog|cat|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|man|woman|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|cow|pig|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|ape|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
 const LONGNECK = /giraffe|camel|llama|brachiosaurus|sauropod|flamingo/;
-const WINGED = /bird|eagle|angel|dragon|pteranodon|plane|airplane|wing/;
-const BIPED = /person|human|man|woman|statue|liberty|robot|android|troll|ogre|mario|sonic|character|mascot/;
+const WINGED = /bird|eagle|angel|pteranodon|wing/;
+const WYVERN =
+  /charizard|dragon|wyvern|godzilla|kaiju|griffin|phoenix|pterodactyl|bat\b/;
+const BIPED =
+  /person|human|man|woman|statue|liberty|robot|android|troll|ogre|mario|sonic|character|mascot|pikachu|yoda|batman|spiderman|iron man|hulk/;
 
 export function classifyAnatomy(prompt: string): AnatomyHit {
   const lower = prompt.toLowerCase();
@@ -47,10 +50,20 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/statue of liberty|\bliberty\b/.test(hay))
     return { anatomy: "figure", kind: "figure", stance: "liberty", named: "Liberty" };
   if (/giraffe/.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck", named: "Giraffe" };
+  if (/empire state|chrysler building|skyscraper|willis tower|sears tower/.test(hay))
+    return { anatomy: "loft", kind: "tower", named: /empire/.test(hay) ? "Empire State" : undefined };
+  if (/space needle|cn tower/.test(hay)) return { anatomy: "loft", kind: "tower", named: "Space Needle" };
+  if (/golden gate|brooklyn bridge|suspension bridge/.test(hay))
+    return { anatomy: "span", kind: "bridge", named: /golden/.test(hay) ? "Golden Gate" : undefined };
+  if (/sydney opera/.test(hay)) return { anatomy: "shell", kind: "dome", named: "Sydney Opera" };
+  if (/colosseum|coliseum/.test(hay)) return { anatomy: "shell", kind: "custom", named: "Colosseum" };
+  if (/parthenon/.test(hay)) return { anatomy: "carcase", kind: "custom", named: "Parthenon" };
+  if (/stonehenge/.test(hay)) return { anatomy: "carcase", kind: "custom", named: "Stonehenge" };
 
   if (SPAN.test(hay)) return { anatomy: "span", kind: "bridge" };
   if (SHELL.test(hay)) return { anatomy: "shell", kind: /taj|mosque/.test(hay) ? "taj" : "dome" };
   if (LONGNECK.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck" };
+  if (WYVERN.test(hay)) return { anatomy: "figure", kind: "figure", stance: "wyvern" };
   if (WINGED.test(hay) && !/plane|airplane/.test(hay))
     return { anatomy: "figure", kind: "figure", stance: "winged" };
   if (BIPED.test(hay) || /statue/.test(hay))
@@ -70,4 +83,22 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   const sizeTall = /foot|ft|inch|in/.test(hay);
   if (sizeTall && /tall|high|tower/.test(hay)) return { anatomy: "loft", kind: "tower" };
   return { anatomy: "figure", kind: "custom", stance: "quadruped" };
+}
+
+/** Second pass: encyclopedia extract can flip a generic class to the right anatomy. */
+export function classifyFromSource(prompt: string, source: string): AnatomyHit {
+  const first = classifyAnatomy(prompt);
+  if (first.named) return first;
+  const hay = `${prompt} ${source}`.toLowerCase();
+  if (/pokémon|pokemon|fictional character|video game character/.test(hay)) {
+    if (WYVERN.test(hay) || /dragon|lizard|wing/.test(hay))
+      return { anatomy: "figure", kind: "figure", stance: "wyvern" };
+    return { anatomy: "figure", kind: "figure", stance: "biped" };
+  }
+  if (/humanoid|primates|person\b/.test(hay) && first.anatomy === "figure")
+    return { anatomy: "figure", kind: "figure", stance: "biped" };
+  if (/suspension bridge/.test(hay)) return { anatomy: "span", kind: "bridge" };
+  const extra = classifyAnatomy(hay);
+  if (extra.named || extra.anatomy !== first.anatomy || extra.stance !== first.stance) return extra;
+  return first;
 }
