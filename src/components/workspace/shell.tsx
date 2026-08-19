@@ -12,6 +12,7 @@ import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { interpretPrompt } from "@/lib/ai/grok";
@@ -126,7 +127,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           <button type="button" onClick={() => setSide((s) => (s === "catalog" ? null : "catalog"))} className={`inline-flex h-8 items-center rounded-sm px-2 text-xs ${side === "catalog" ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}>Stock</button>
           <button type="button" onClick={() => setSide((s) => (s === "measure" ? null : "measure"))} className={`inline-flex h-8 items-center rounded-sm px-2 text-xs ${side === "measure" ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}><Ruler className="size-3.5" /> Measure</button>
           <button type="button" onClick={() => { makePlan(); setPlanOpen(true); }} className="ml-1 inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg">Build plan</button>
-          {isPending ? <div className="ml-1 h-8 w-8 animate-pulse rounded-full bg-elevated" /> : user ? <SignedIn><UserButton /></SignedIn> : <SignedOut><Link to="/login" className="hidden text-xs text-muted hover:text-fg sm:inline">Sign in</Link></SignedOut>}
+          {authEnabled ? (isPending ? <div className="ml-1 h-8 w-8 animate-pulse rounded-full bg-elevated" /> : user ? <SignedIn><UserButton /></SignedIn> : <SignedOut><Link to="/login" className="hidden text-xs text-muted hover:text-fg sm:inline">Sign in</Link></SignedOut>) : null}
         </div>
       </header>
       <PromptBar onBuilt={() => setPlanOpen(false)} />
