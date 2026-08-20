@@ -146,7 +146,9 @@ export function graphToInstances(
     if (!a || !b) continue;
 
     const length = dist(a.position, b.position);
-    if (length < 0.12) continue;
+    // Shorter than ~2.5× thickness reads as a floating blob / circle, not a member
+    const minLen = Math.max(thick * 2.5, 0.4);
+    if (length < minLen) continue;
 
     const join = edge.join || defaultJoin;
     bumpJoin(join);
