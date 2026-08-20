@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { DREAMS } from "@/lib/yard/prompt";
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
-import { recipeFromAnatomy } from "@/lib/yard/form";
+import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
 
@@ -13,6 +13,7 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
   const generate = useYard((s) => s.generate);
   const makePlan = useYard((s) => s.makePlan);
   const grokBusy = useYard((s) => s.grokBusy);
+  const revealBench = useYard((s) => s.revealBench);
   const [value, setValue] = useState(project.prompt);
 
   useEffect(() => {
@@ -26,48 +27,45 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     const next = generate(prompt);
     makePlan();
     onBuilt();
-    if (next.kind === "closet" || next.kind === "opening") {
+    if (next.kind === "closet" || next.kind === "opening" || isLockedForm(next.kind)) {
+      revealBench();
       return;
     }
     const offline =
       typeof window !== "undefined" &&
       /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
+    if (offline) {
+      revealBench();
+      return;
+    }
+    useYard.setState({ grokBusy: true, grokError: null, building: true });
+    const timeout = window.setTimeout(() => {
+      useYard.setState({ grokBusy: false });
+      revealBench();
+    }, 22000);
     try {
       const hint = await hintSubject({ data: { prompt } });
       if (hint.summary && hint.summary !== hint.subject) {
-        const keep =
-          next.kind === "eiffel" ||
-          next.kind === "pyramid" ||
-          next.kind === "arch" ||
-          next.kind === "bridge";
-        if (!keep) {
-          const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
-          generate(prompt, undefined, form);
-          makePlan();
-        }
+        const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
+        generate(prompt, undefined, form);
+        makePlan();
         const current = useYard.getState().project;
         const note = `Looked up: ${hint.summary}`;
         if (!current.notes.includes(note)) {
           useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
         }
       }
-    } catch {
-      /* local classify already on the bench */
-    }
-    if (offline) return;
-    useYard.setState({ grokBusy: true, grokError: null });
-    const timeout = window.setTimeout(() => useYard.setState({ grokBusy: false }), 22000);
-    try {
       const interp = await interpretPrompt({
         data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
       });
-      if (interp.ok && interp.form && interp.form.strokes && interp.form.strokes.length >= 2 && next.kind !== "eiffel" && next.kind !== "pyramid" && next.kind !== "arch" && next.kind !== "bridge") {
+      const after = useYard.getState().project;
+      if (interp.ok && interp.form && interp.form.strokes && interp.form.strokes.length >= 2 && !isLockedForm(after.kind)) {
         generate(prompt, interp.materialId ?? undefined, interp.form);
         makePlan();
-      } else if (interp.ok && interp.form && next.kind !== "eiffel" && next.kind !== "pyramid" && next.kind !== "arch" && next.kind !== "bridge") {
+      } else if (interp.ok && interp.form && !isLockedForm(after.kind) && after.kind !== "closet" && after.kind !== "opening") {
         generate(prompt, interp.materialId ?? undefined, interp.form);
         makePlan();
-      } else if (interp.ok && interp.materialId && interp.materialId !== next.primaryMaterialId) {
+      } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId && !isLockedForm(after.kind)) {
         generate(prompt, interp.materialId);
         makePlan();
       }
@@ -84,6 +82,7 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     } finally {
       window.clearTimeout(timeout);
       useYard.setState({ grokBusy: false });
+      revealBench();
     }
   }
 

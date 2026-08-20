@@ -388,6 +388,9 @@ export function needsSpine(
   const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 0.5);
   const slender = height / span > 2.8;
   const figure = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
+  if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet") {
+    return { needed: false, reason: "" };
+  }
   if (figure) {
     return {
       needed: true,

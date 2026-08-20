@@ -112,6 +112,10 @@ const HITS: Hit[] = [
   { re: /frame|box|cube|platform/, kind: "frame", name: "Frame", build: frameOps },
 ];
 
+export function isLockedForm(kind: StructureKind): boolean {
+  return kind === "eiffel" || kind === "pyramid" || kind === "arch" || kind === "bridge";
+}
+
 export function detectForm(prompt: string, size: Size3): FormRecipe {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);

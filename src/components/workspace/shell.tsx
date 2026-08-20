@@ -15,6 +15,7 @@ import { MeasurePanel } from "@/components/workspace/measure-panel";
 import { MeasureOverlay } from "@/components/workspace/measure-overlay";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
+import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
@@ -23,7 +24,7 @@ import { getCatalogItem } from "@/lib/yard/catalog";
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
-import { recipeFromAnatomy } from "@/lib/yard/form";
+import { isLockedForm, recipeFromAnatomy } from "@/lib/yard/form";
 import type { WorkMode } from "@/lib/yard/types";
 
 export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
@@ -56,8 +57,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const lockedIds = useYard((s) => s.lockedIds);
   const plan = useYard((s) => s.plan);
   const grokBusy = useYard((s) => s.grokBusy);
+  const building = useYard((s) => s.building);
+  const revealBench = useYard((s) => s.revealBench);
   const activeStep = useYard((s) => s.activeStep);
   const setActiveStep = useYard((s) => s.setActiveStep);
+  const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
 
   useEffect(() => {
     const fromUrl =
@@ -78,41 +82,35 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     setReady(true);
     if (!prompt) return;
     const seeded = useYard.getState().project;
-    if (seeded.kind === "closet" || seeded.kind === "opening") return;
+    if (seeded.kind === "closet" || seeded.kind === "opening" || isLockedForm(seeded.kind)) {
+      revealBench();
+      return;
+    }
     const offline =
       typeof window !== "undefined" &&
       /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
+    if (offline) {
+      revealBench();
+      return;
+    }
     void (async () => {
-      const keepTrue =
-        seeded.kind === "eiffel" ||
-        seeded.kind === "pyramid" ||
-        seeded.kind === "arch" ||
-        seeded.kind === "bridge";
+      useYard.setState({ grokBusy: true, grokError: null, building: true });
+      const timeout = window.setTimeout(() => {
+        useYard.setState({ grokBusy: false });
+        revealBench();
+      }, 22000);
       try {
         const hint = await hintSubject({ data: { prompt } });
-        if (!keepTrue && hint.summary && hint.summary !== hint.subject) {
+        if (hint.summary && hint.summary !== hint.subject) {
           const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, seeded.overall);
           generate(prompt, undefined, form);
           makePlan();
         }
-      } catch {
-        /* local classify already on the bench */
-      }
-      if (offline) return;
-      useYard.setState({ grokBusy: true, grokError: null });
-      const timeout = window.setTimeout(() => useYard.setState({ grokBusy: false }), 22000);
-      try {
         const interp = await interpretPrompt({
           data: { prompt, heightIn: seeded.overall.height, widthIn: seeded.overall.width },
         });
         const after = useYard.getState().project;
-        const locked =
-          after.kind === "eiffel" ||
-          after.kind === "pyramid" ||
-          after.kind === "arch" ||
-          after.kind === "bridge" ||
-          after.kind === "closet" ||
-          after.kind === "opening";
+        const locked = isLockedForm(after.kind) || after.kind === "closet" || after.kind === "opening";
         if (interp.ok && interp.form && !locked) {
           generate(prompt, interp.materialId ?? undefined, interp.form);
           makePlan();
@@ -133,9 +131,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       } finally {
         window.clearTimeout(timeout);
         useYard.setState({ grokBusy: false });
+        revealBench();
       }
     })();
-  }, [initialPrompt, generate, makePlan]);
+  }, [initialPrompt, generate, makePlan, revealBench]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -302,12 +301,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
         <div className="relative min-w-0 flex-1">
           <WorkspaceCanvas />
           <MeasureOverlay />
-          {grokBusy && (
-            <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full border border-border bg-surface/95 px-3 py-1.5 text-xs text-muted">
-              Querying the true form — then mapping your stock onto that wire
-            </div>
-          )}
-          {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && (
+          {pending && <LavaLamp caption={grokBusy ? "Looking up the form" : "Building"} />}
+          {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && (
             <div
               className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg ${
                 grokBusy ? "top-14" : "top-4"
@@ -352,7 +347,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               </button>
             </div>
           )}
-          {ready && pieceCount === 0 && !side && (
+          {ready && pieceCount === 0 && !side && !pending && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
               <div className="max-w-sm text-center">
                 <p className="font-display text-2xl text-fg">Empty bench</p>
@@ -363,6 +358,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             </div>
           )}
 
+          {!pending && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} />
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
@@ -381,8 +377,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               />
             </div>
           </div>
+          )}
 
-          {steps.length > 0 && (
+          {steps.length > 0 && !pending && (
             <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-3 sm:bottom-20">
               <div className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
                 <button

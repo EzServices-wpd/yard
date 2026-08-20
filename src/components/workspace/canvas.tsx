@@ -10,6 +10,7 @@ import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
 import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
+import type { PrimitiveDims } from "@/lib/yard/geometry";
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
@@ -32,6 +33,9 @@ export function WorkspaceCanvas() {
   const plan = useYard((s) => s.plan);
   const measureOpen = useYard((s) => s.measureOpen);
   const measure = useYard((s) => s.measure);
+  const building = useYard((s) => s.building);
+  const grokBusy = useYard((s) => s.grokBusy);
+  const pending = building || grokBusy;
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(
@@ -72,8 +76,8 @@ export function WorkspaceCanvas() {
           selectedId={selectedId}
           onSelect={select}
           onPlace={placePiece}
-          showHull={showHull}
-          showHistoric={showHistoric && (hasHistoricProfile(project.kind) || !!project.historic)}
+          showHull={showHull && !pending}
+          showHistoric={showHistoric && !pending && (hasHistoricProfile(project.kind) || !!project.historic)}
           workMode={workMode}
           stepIds={stepIds}
           placedIds={placedIds}
@@ -81,6 +85,7 @@ export function WorkspaceCanvas() {
           dragPos={dragPos}
           measureOpen={measureOpen}
           measure={measure}
+          pending={pending}
         />
         <Grid
           args={[80, 80]}
@@ -260,6 +265,7 @@ function BenchScene({
   dragPos,
   measureOpen,
   measure,
+  pending,
 }: {
   project: YardProject;
   explode: boolean;
@@ -275,6 +281,7 @@ function BenchScene({
   dragPos: { id: string; pos: Vec3 } | null;
   measureOpen: boolean;
   measure: { width: string; height: string; depth: string };
+  pending: boolean;
 }) {
   const explodeScale = explode ? 1.35 : 1;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
@@ -291,19 +298,22 @@ function BenchScene({
       {showHull && <GhostLines strokes={hull} color={HULL} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
-      <StickCloud
-        instances={project.instances}
-        explode={explodeScale}
-        selectedId={selectedId}
-        workMode={workMode}
-        stepIds={stepIds}
-        placedIds={placedIds}
-        lockedIds={lockedIds}
-        dragPos={dragPos}
-        overall={project.overall}
-        onSelect={onSelect}
-      />
-      {project.panels.map((panel) => (
+      {!pending && (
+        <StickCloud
+          instances={project.instances}
+          explode={explodeScale}
+          selectedId={selectedId}
+          workMode={workMode}
+          stepIds={stepIds}
+          placedIds={placedIds}
+          lockedIds={lockedIds}
+          dragPos={dragPos}
+          overall={project.overall}
+          onSelect={onSelect}
+        />
+      )}
+      {!pending &&
+        project.panels.map((panel) => (
         <PanelMesh
           key={panel.id}
           panel={panel}
@@ -344,6 +354,46 @@ const ROLE_TINT: Record<string, string> = {
   support: "#c4b49a",
   base: "#e0b86a",
 };
+
+const _dir = new THREE.Vector3();
+const _axisY = new THREE.Vector3(0, 1, 0);
+const _axisX = new THREE.Vector3(1, 0, 0);
+const _flip = new THREE.Vector3(0, 0, 1);
+
+function applyMemberPose(
+  dummy: THREE.Object3D,
+  inst: YardInstance,
+  prim: PrimitiveDims,
+  cylindrical: boolean,
+  explode: number,
+  fallback: Vec3,
+  rot: Vec3,
+) {
+  const from = inst.from;
+  const to = inst.to;
+  const diameter = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
+  const pad = Math.min(diameter * 0.7, 2.2);
+
+  if (from && to) {
+    _dir.set(to.x - from.x, to.y - from.y, to.z - from.z);
+    const span = _dir.length() || 0.01;
+    _dir.multiplyScalar(1 / span);
+    dummy.position.set(((from.x + to.x) / 2) * explode, (from.y + to.y) / 2, ((from.z + to.z) / 2) * explode);
+    const axis = cylindrical ? _axisY : _axisX;
+    const dot = axis.dot(_dir);
+    if (dot < -0.999) dummy.quaternion.setFromAxisAngle(_flip, Math.PI);
+    else dummy.quaternion.setFromUnitVectors(axis, _dir);
+    const length = span + pad * 2;
+    if (cylindrical) dummy.scale.set(diameter, length, diameter);
+    else dummy.scale.set(length, prim.height, prim.width);
+    return;
+  }
+
+  dummy.position.set(fallback.x * explode, fallback.y, fallback.z * explode);
+  dummy.quaternion.setFromEuler(new THREE.Euler(rot.x, rot.y, rot.z));
+  if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+  else dummy.scale.set(prim.length, prim.height, prim.width);
+}
 
 function displayPos(
   inst: YardInstance,
@@ -437,6 +487,7 @@ function StickCloud({
         onSelect={onSelect}
         cylindrical={true}
       />
+      {workMode !== "build" && <JointCloud rows={cyls} explode={explode} />}
       {dragInst && dragPos && (
         <InstanceMesh
           instance={dragInst}
@@ -509,16 +560,15 @@ function CloudKind({
       const { inst, index, prim } = live[i];
       const placed = placedIds.includes(inst.id);
       const pos = displayPos(inst, index, count, overall, workMode, placed, null);
-      const rot =
-        workMode === "build" && !placed
-          ? { x: 0, y: 0, z: 0 }
-          : inst.rotation;
-      dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
-      dummy.rotation.set(rot.x, rot.y, rot.z);
-      if (cylindrical) {
-        dummy.scale.set(Math.max(prim.radius ?? 0.2, 0.12) * 2, prim.length, Math.max(prim.radius ?? 0.2, 0.12) * 2);
+      const piled = workMode === "build" && !placed;
+      if (piled) {
+        dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
+        dummy.quaternion.identity();
+        const diameter = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
+        if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+        else dummy.scale.set(prim.length, prim.height, prim.width);
       } else {
-        dummy.scale.set(prim.length, prim.height, prim.width);
+        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation);
       }
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
@@ -591,6 +641,62 @@ function CloudKind({
     >
       {cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 14]} /> : <boxGeometry args={[1, 1, 1]} />}
       <meshStandardMaterial roughness={0.68} metalness={0.04} />
+    </instancedMesh>
+  );
+}
+
+function JointCloud({
+  rows,
+  explode,
+}: {
+  rows: {
+    inst: YardInstance;
+    prim: ReturnType<typeof visualPrimitive>;
+    item: NonNullable<ReturnType<typeof getCatalogItem>>;
+  }[];
+  explode: number;
+}) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const nodes = useMemo(() => {
+    const map = new Map<string, { p: Vec3; r: number; color: string }>();
+    for (const row of rows) {
+      const r = Math.max(row.prim.radius ?? 0.2, 0.14);
+      if (r < 0.28) continue;
+      const color = ROLE_TINT[row.inst.role ?? ""] || row.item.color || "#e0b86a";
+      for (const p of [row.inst.from, row.inst.to]) {
+        if (!p) continue;
+        const k = `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+        const prev = map.get(k);
+        if (!prev || r > prev.r) map.set(k, { p, r: r * 1.08, color });
+      }
+    }
+    return [...map.values()];
+  }, [rows]);
+
+  useLayoutEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
+      dummy.scale.setScalar(n.r);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+      color.set(n.color);
+      m.setColorAt(i, color);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.count = nodes.length;
+  }, [nodes, explode]);
+
+  if (!nodes.length) return null;
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(nodes.length, 1)]} frustumCulled={false}>
+      <sphereGeometry args={[1, 14, 10]} />
+      <meshStandardMaterial roughness={0.55} metalness={0.06} />
     </instancedMesh>
   );
 }

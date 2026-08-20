@@ -35,6 +35,7 @@ type YardState = {
   building: boolean;
   grokBusy: boolean;
   grokError: string | null;
+  revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
   generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean }) => YardProject;
@@ -75,6 +76,8 @@ const defaultMeasure: MeasureDraft = {
   kind: "closet_niche",
 };
 
+let revealTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useYard = create<YardState>((set, get) => ({
   project: emptyProject(),
   plan: null,
@@ -96,6 +99,15 @@ export const useYard = create<YardState>((set, get) => ({
   building: false,
   grokBusy: false,
   grokError: null,
+  revealBench: () => {
+    if (revealTimer) clearTimeout(revealTimer);
+    const wait = get().grokBusy ? 220 : 720;
+    revealTimer = setTimeout(() => {
+      revealTimer = null;
+      if (get().grokBusy) return;
+      set({ building: false });
+    }, wait);
+  },
   commit: (next) => {
     const { project } = get();
     set({
@@ -111,6 +123,7 @@ export const useYard = create<YardState>((set, get) => ({
     persist(next);
   },
   generate: (prompt, materialId, form, opts) => {
+    set({ building: true, grokError: null });
     const next = generateFromPrompt(prompt, materialId, form, opts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     if (next.pocket) flags.showHull = true;
@@ -148,6 +161,7 @@ export const useYard = create<YardState>((set, get) => ({
             }
           : get().measure,
     });
+    get().revealBench();
     return next;
   },
   makePlan: () => {
