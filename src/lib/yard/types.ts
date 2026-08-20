@@ -92,6 +92,7 @@ export type StructureKind =
   | "custom";
 
 export type WorkMode = "look" | "free" | "build";
+export type DetailLevel = "frame" | "full";
 
 export type YardInstance = {
   id: string;
@@ -212,6 +213,8 @@ export type YardProject = {
   instances: YardInstance[];
   panels: Panel[];
   primaryMaterialId: string;
+  /** Overrides catalog preferredJoins[0] when the user picks a binder. */
+  joinMethod?: JoinMethod;
   notes: string[];
   historic?: boolean;
   supportOffer?: {

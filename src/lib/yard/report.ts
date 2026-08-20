@@ -4,6 +4,7 @@ import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { framingNotes, matchWindows } from "./space";
 import { uniqueSteps } from "./steps";
 import { decorateBom } from "./listings";
+import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -468,7 +469,7 @@ export function buildPlan(project: YardProject): BuildPlan {
   }
 
   const item = getCatalogItem(project.primaryMaterialId);
-  const join = (item?.preferredJoins && item.preferredJoins[0]) || "glue";
+  const join = item ? effectiveJoin(item, project.joinMethod) : "glue";
   if (project.instances.length > 400) {
     issues.push({
       severity: "warning",
@@ -563,6 +564,10 @@ export function buildPlan(project: YardProject): BuildPlan {
   }
 
   const forgeBom = buildForgeBom(project.instances, project.primaryMaterialId);
+  const binders =
+    item && project.instances.length
+      ? binderBom(item, project.instances, project.joinMethod)
+      : [];
   const cutMap = new Map<string, CutLine>();
   for (const inst of project.instances) {
     const cat = getCatalogItem(inst.catalogId);
@@ -593,7 +598,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       ? "warnings"
       : "ok";
 
-  const bom = decorateBom(bomLinesFromForge(forgeBom));
+  const bom = decorateBom([...bomLinesFromForge(forgeBom), ...binders]);
 
   return {
     feasibility: {

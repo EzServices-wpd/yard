@@ -118,7 +118,8 @@ export function rotationForDirection(
  */
 export function graphToInstances(
   graph: StructureGraph,
-  item: CatalogItem
+  item: CatalogItem,
+  joinOverride?: JoinMethod,
 ): { instances: GraphInstance[]; joinSummary: string[]; spliceCount: number } {
   const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]));
   const prim = toPrimitive(item);
@@ -130,7 +131,7 @@ export function graphToInstances(
     item.formFactor === "dowel";
   const canCut = item.canCut ?? true;
   const defaultJoin: JoinMethod =
-    (item.preferredJoins && item.preferredJoins[0]) || "glue";
+    joinOverride || (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const lap = Math.min(stock * 0.12, Math.max(thick * 3, 0.22));
 
   const instances: GraphInstance[] = [];

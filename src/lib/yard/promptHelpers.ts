@@ -129,7 +129,7 @@ export function toProject(
   instances: YardInstance[],
   notes: string[],
   historic = false,
-  extra: Pick<YardProject, "supportOffer" | "buildStats"> = {},
+  extra: Pick<YardProject, "supportOffer" | "buildStats" | "joinMethod"> = {},
 ): YardProject {
   let list = instances;
   if (list.length > 8000) {
@@ -164,6 +164,7 @@ export function toProject(
     instances: withHome(list),
     panels: [],
     primaryMaterialId: item.id,
+    joinMethod: extra.joinMethod,
     notes,
     historic,
     supportOffer: extra.supportOffer,

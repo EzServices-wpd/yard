@@ -5,10 +5,11 @@ import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { isCylindrical, readableDiameter, visualPrimitive } from "@/lib/yard/geometry";
+import { isCylindrical, isHollow, visualPrimitive } from "@/lib/yard/geometry";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
+import { binderKind, classifyJoint, isFrameRole, jointNodes } from "@/lib/yard/joints";
 import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 import type { PrimitiveDims } from "@/lib/yard/geometry";
 
@@ -35,6 +36,7 @@ export function WorkspaceCanvas() {
   const measure = useYard((s) => s.measure);
   const building = useYard((s) => s.building);
   const grokBusy = useYard((s) => s.grokBusy);
+  const detail = useYard((s) => s.detail);
   const pending = building || grokBusy;
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
@@ -86,6 +88,8 @@ export function WorkspaceCanvas() {
           measureOpen={measureOpen}
           measure={measure}
           pending={pending}
+          detail={detail}
+          joinMethod={project.joinMethod}
         />
         <Grid
           args={[80, 80]}
@@ -266,6 +270,8 @@ function BenchScene({
   measureOpen,
   measure,
   pending,
+  detail,
+  joinMethod,
 }: {
   project: YardProject;
   explode: boolean;
@@ -282,6 +288,8 @@ function BenchScene({
   measureOpen: boolean;
   measure: { width: string; height: string; depth: string };
   pending: boolean;
+  detail: "frame" | "full";
+  joinMethod?: YardProject["joinMethod"];
 }) {
   const explodeScale = explode ? 1.35 : 1;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
@@ -292,6 +300,8 @@ function BenchScene({
   const mw = parseFloat(measure.width) || 0;
   const mh = parseFloat(measure.height) || 0;
   const md = parseFloat(measure.depth) || 0;
+  const members =
+    detail === "frame" ? project.instances.filter((i) => isFrameRole(i.role)) : project.instances;
 
   return (
     <group>
@@ -300,7 +310,7 @@ function BenchScene({
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
         <StickCloud
-          instances={project.instances}
+          instances={members}
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
@@ -310,6 +320,7 @@ function BenchScene({
           dragPos={dragPos}
           overall={project.overall}
           onSelect={onSelect}
+          joinMethod={joinMethod}
         />
       )}
       {!pending &&
@@ -361,15 +372,16 @@ const _axisX = new THREE.Vector3(1, 0, 0);
 const _flip = new THREE.Vector3(0, 0, 1);
 
 const FIT_CREAM = "#fffaf0";
-const FIT_RIVET = "#c4a06a";
+const TAPE_KRAFT = "#c4a574";
+const SCREW_HEAD = "#3a342c";
 
 function spanOf(overall: { width: number; height: number; depth: number }) {
   return Math.max(overall.width, overall.height, overall.depth, 12);
 }
 
-function meshDiameter(prim: PrimitiveDims, cylindrical: boolean, overall: { width: number; height: number; depth: number }) {
-  const trueD = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
-  return readableDiameter(trueD, spanOf(overall), cylindrical);
+function meshDiameter(prim: PrimitiveDims, cylindrical: boolean) {
+  if (cylindrical) return Math.max((prim.radius ?? 0.1) * 2, 0.08);
+  return Math.max(prim.width, prim.height, 0.08);
 }
 
 function applyMemberPose(
@@ -384,7 +396,7 @@ function applyMemberPose(
 ) {
   const from = inst.from;
   const to = inst.to;
-  const diameter = meshDiameter(prim, cylindrical, overall);
+  const diameter = meshDiameter(prim, cylindrical);
   // Cylinders seat inside the fitting hub; boxes lap by about half their thickness.
   const pad = cylindrical ? Math.min(diameter * 0.28, 1.35) : Math.min(diameter * 0.55, 2.2);
 
@@ -434,6 +446,7 @@ function StickCloud({
   dragPos,
   overall,
   onSelect,
+  joinMethod,
 }: {
   instances: YardInstance[];
   explode: number;
@@ -445,28 +458,43 @@ function StickCloud({
   dragPos: { id: string; pos: Vec3 } | null;
   overall: { width: number; height: number; depth: number };
   onSelect: (id: string | null) => void;
+  joinMethod?: YardProject["joinMethod"];
 }) {
+  const span = spanOf(overall);
   const boxes = useMemo(() => {
     return instances
       .map((inst, index) => {
         const item = getCatalogItem(inst.catalogId);
         if (!item || isCylindrical(item.formFactor)) return null;
-        const prim = visualPrimitive(item, inst.cutLength);
+        const prim = visualPrimitive(item, inst.cutLength, span);
         return { inst, index, item, prim, cyl: false as const };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [instances]);
+  }, [instances, span]);
 
-  const cyls = useMemo(() => {
+  const solidCyls = useMemo(() => {
     return instances
       .map((inst, index) => {
         const item = getCatalogItem(inst.catalogId);
-        if (!item || !isCylindrical(item.formFactor)) return null;
-        const prim = visualPrimitive(item, inst.cutLength);
+        if (!item || !isCylindrical(item.formFactor) || isHollow(item.formFactor)) return null;
+        const prim = visualPrimitive(item, inst.cutLength, span);
         return { inst, index, item, prim, cyl: true as const };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [instances]);
+  }, [instances, span]);
+
+  const hollowCyls = useMemo(() => {
+    return instances
+      .map((inst, index) => {
+        const item = getCatalogItem(inst.catalogId);
+        if (!item || !isHollow(item.formFactor)) return null;
+        const prim = visualPrimitive(item, inst.cutLength, span);
+        return { inst, index, item, prim, cyl: true as const };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [instances, span]);
+
+  const cyls = useMemo(() => [...solidCyls, ...hollowCyls], [solidCyls, hollowCyls]);
 
   const dragInst = dragPos ? instances.find((i) => i.id === dragPos.id) : null;
   const dragIndex = dragInst ? instances.indexOf(dragInst) : -1;
@@ -486,9 +514,10 @@ function StickCloud({
         count={instances.length}
         onSelect={onSelect}
         cylindrical={false}
+        hollow={false}
       />
       <CloudKind
-        rows={cyls}
+        rows={solidCyls}
         explode={explode}
         selectedId={selectedId}
         workMode={workMode}
@@ -500,8 +529,26 @@ function StickCloud({
         count={instances.length}
         onSelect={onSelect}
         cylindrical={true}
+        hollow={false}
       />
-      {workMode !== "build" && <FittingCloud cyls={cyls} boxes={boxes} explode={explode} overall={overall} />}
+      <CloudKind
+        rows={hollowCyls}
+        explode={explode}
+        selectedId={selectedId}
+        workMode={workMode}
+        stepIds={stepIds}
+        placedIds={placedIds}
+        lockedIds={lockedIds}
+        dragId={dragPos?.id ?? null}
+        overall={overall}
+        count={instances.length}
+        onSelect={onSelect}
+        cylindrical={true}
+        hollow={true}
+      />
+      {workMode !== "build" && (
+        <BinderCloud cyls={cyls} boxes={boxes} explode={explode} joinMethod={joinMethod} />
+      )}
       {dragInst && dragPos && (
         <InstanceMesh
           instance={dragInst}
@@ -536,6 +583,7 @@ function CloudKind({
   count,
   onSelect,
   cylindrical,
+  hollow,
 }: {
   rows: {
     inst: YardInstance;
@@ -555,6 +603,7 @@ function CloudKind({
   count: number;
   onSelect: (id: string | null) => void;
   cylindrical: boolean;
+  hollow: boolean;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const { controls } = useThree();
@@ -578,7 +627,7 @@ function CloudKind({
       if (piled) {
         dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
         dummy.quaternion.identity();
-        const diameter = meshDiameter(prim, cylindrical, overall);
+        const diameter = meshDiameter(prim, cylindrical);
         if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
         else dummy.scale.set(prim.length, prim.height, prim.width);
       } else {
@@ -643,6 +692,9 @@ function CloudKind({
   };
 
   if (!live.length) return null;
+  const stock = live[0]?.item;
+  const rough = stock?.roughness ?? 0.68;
+  const metal = stock?.metalness ?? 0.04;
 
   return (
     <instancedMesh
@@ -654,17 +706,21 @@ function CloudKind({
       onPointerUp={up}
       onPointerCancel={up}
     >
-      {cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 14]} /> : <boxGeometry args={[1, 1, 1]} />}
-      <meshStandardMaterial roughness={0.68} metalness={0.04} />
+      {cylindrical ? (
+        <cylinderGeometry args={[0.5, 0.5, 1, hollow ? 16 : 12, 1, hollow]} />
+      ) : (
+        <boxGeometry args={[1, 1, 1]} />
+      )}
+      <meshStandardMaterial roughness={rough} metalness={metal} />
     </instancedMesh>
   );
 }
 
-function FittingCloud({
+function BinderCloud({
   cyls,
   boxes,
   explode,
-  overall,
+  joinMethod,
 }: {
   cyls: {
     inst: YardInstance;
@@ -677,142 +733,148 @@ function FittingCloud({
     item: NonNullable<ReturnType<typeof getCatalogItem>>;
   }[];
   explode: number;
-  overall: { width: number; height: number; depth: number };
+  joinMethod?: YardProject["joinMethod"];
 }) {
   const hubMesh = useRef<THREE.InstancedMesh>(null);
   const sockMesh = useRef<THREE.InstancedMesh>(null);
-  const rivetMesh = useRef<THREE.InstancedMesh>(null);
+  const bandMesh = useRef<THREE.InstancedMesh>(null);
+  const screwMesh = useRef<THREE.InstancedMesh>(null);
 
-  const { hubs, sockets, rivets } = useMemo(() => {
-    type Node = { p: Vec3; r: number; dirs: THREE.Vector3[] };
-    const pipeNodes = new Map<string, Node>();
-    const keyOf = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+  const { hubs, sockets, bands, screws } = useMemo(() => {
+    const hubs: { p: Vec3; r: number }[] = [];
+    const sockets: { p: Vec3; dir: Vec3; r: number; length: number }[] = [];
+    const bands: { p: Vec3; dir: Vec3; r: number; length: number }[] = [];
+    const screws: { p: Vec3; r: number }[] = [];
 
-    for (const row of cyls) {
-      const from = row.inst.from;
-      const to = row.inst.to;
-      if (!from || !to) continue;
-      const r = meshDiameter(row.prim, true, overall) / 2;
-      const ends: [Vec3, Vec3][] = [
-        [from, to],
-        [to, from],
-      ];
-      for (const [at, other] of ends) {
-        const k = keyOf(at);
-        let node = pipeNodes.get(k);
-        if (!node) {
-          node = { p: at, r, dirs: [] };
-          pipeNodes.set(k, node);
-        } else if (r > node.r) node.r = r;
-        const dir = new THREE.Vector3(other.x - at.x, other.y - at.y, other.z - at.z).normalize();
-        if (!node.dirs.some((d) => d.dot(dir) > 0.97)) node.dirs.push(dir);
+    const slipRows = cyls.filter((row) => binderKind(row.item, joinMethod) === "slip");
+    const tapeRows = [...cyls, ...boxes].filter((row) => binderKind(row.item, joinMethod) === "tape");
+    const fastRows = [...cyls, ...boxes].filter((row) => binderKind(row.item, joinMethod) === "fastener");
+
+    if (slipRows.length) {
+      const nodes = jointNodes(
+        slipRows.map((row) => ({
+          from: row.inst.from,
+          to: row.inst.to,
+          radius: meshDiameter(row.prim, true) / 2,
+        })),
+      );
+      for (const node of nodes) {
+        const kind = classifyJoint(node);
+        if (kind === "ground" || kind === "coupling") continue;
+        const r = node.r;
+        if (kind === "cap") {
+          hubs.push({ p: node.p, r: r * 1.12 });
+          continue;
+        }
+        hubs.push({ p: node.p, r: r * 1.42 });
+        const len = r * 1.9;
+        for (const d of node.dirs) {
+          sockets.push({
+            p: {
+              x: node.p.x + d.x * len * 0.34,
+              y: node.p.y + d.y * len * 0.34,
+              z: node.p.z + d.z * len * 0.34,
+            },
+            dir: d,
+            r: r * 1.2,
+            length: len,
+          });
+        }
       }
     }
 
-    const hubs: { p: Vec3; r: number }[] = [];
-    const sockets: { p: Vec3; dir: THREE.Vector3; r: number; length: number }[] = [];
-    for (const node of pipeNodes.values()) {
-      const dirs = node.dirs;
-      const valence = dirs.length;
-      const r = node.r;
-      const shallow =
-        valence === 2 && dirs[0].dot(dirs[1]) < -0.62;
-      const groundCap = valence === 1 && node.p.y < 0.45;
-      if (shallow || groundCap) continue;
-      if (valence === 1) {
-        hubs.push({ p: node.p, r: r * 1.18 });
-        continue;
-      }
-      hubs.push({ p: node.p, r: r * 1.52 });
-      const len = r * 2.05;
-      for (const d of dirs) {
-        sockets.push({
-          p: {
-            x: node.p.x + d.x * len * 0.36,
-            y: node.p.y + d.y * len * 0.36,
-            z: node.p.z + d.z * len * 0.36,
-          },
+    if (tapeRows.length) {
+      const nodes = jointNodes(
+        tapeRows.map((row) => ({
+          from: row.inst.from,
+          to: row.inst.to,
+          radius: meshDiameter(row.prim, isCylindrical(row.item.formFactor)) / 2,
+        })),
+      );
+      for (const node of nodes) {
+        if (classifyJoint(node) === "ground") continue;
+        if (node.dirs.length < 2) continue;
+        const d = node.dirs[0];
+        const r = node.r;
+        bands.push({
+          p: node.p,
           dir: d,
-          r: r * 1.24,
-          length: len,
+          r: r * 1.45,
+          length: Math.max(r * 1.3, 0.18),
         });
       }
     }
 
-    const rivetMap = new Map<string, { p: Vec3; r: number }>();
-    for (const row of boxes) {
-      const r = meshDiameter(row.prim, false, overall) * 0.62;
-      for (const p of [row.inst.from, row.inst.to]) {
-        if (!p) continue;
-        const k = keyOf(p);
-        const prev = rivetMap.get(k);
-        if (!prev || r > prev.r) rivetMap.set(k, { p, r: Math.max(r, 0.12) });
+    if (fastRows.length) {
+      const nodes = jointNodes(
+        fastRows.map((row) => ({
+          from: row.inst.from,
+          to: row.inst.to,
+          radius: meshDiameter(row.prim, isCylindrical(row.item.formFactor)) / 2,
+        })),
+      );
+      for (const node of nodes) {
+        if (classifyJoint(node) === "ground") continue;
+        if (node.dirs.length < 2) continue;
+        screws.push({ p: node.p, r: Math.max(node.r * 0.55, 0.08) });
       }
     }
 
-    return { hubs, sockets, rivets: [...rivetMap.values()] };
-  }, [cyls, boxes, overall]);
+    return { hubs, sockets, bands, screws };
+  }, [cyls, boxes, joinMethod]);
 
   useLayoutEffect(() => {
     const dummy = new THREE.Object3D();
     const color = new THREE.Color();
-    const hubsM = hubMesh.current;
-    if (hubsM) {
-      color.set(FIT_CREAM);
-      for (let i = 0; i < hubs.length; i++) {
-        const n = hubs[i];
-        dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
+    const writeSpheres = (mesh: THREE.InstancedMesh | null, items: { p: Vec3; r: number }[], hex: string) => {
+      if (!mesh) return;
+      color.set(hex);
+      for (let i = 0; i < items.length; i++) {
+        dummy.position.set(items[i].p.x * explode, items[i].p.y, items[i].p.z * explode);
         dummy.quaternion.identity();
-        dummy.scale.setScalar(n.r);
+        dummy.scale.setScalar(items[i].r);
         dummy.updateMatrix();
-        hubsM.setMatrixAt(i, dummy.matrix);
-        hubsM.setColorAt(i, color);
+        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setColorAt(i, color);
       }
-      hubsM.instanceMatrix.needsUpdate = true;
-      if (hubsM.instanceColor) hubsM.instanceColor.needsUpdate = true;
-      hubsM.count = hubs.length;
-    }
-    const socksM = sockMesh.current;
-    if (socksM) {
-      color.set(FIT_CREAM);
-      for (let i = 0; i < sockets.length; i++) {
-        const s = sockets[i];
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.count = items.length;
+    };
+    const writeCyls = (
+      mesh: THREE.InstancedMesh | null,
+      items: { p: Vec3; dir: Vec3; r: number; length: number }[],
+      hex: string,
+    ) => {
+      if (!mesh) return;
+      color.set(hex);
+      for (let i = 0; i < items.length; i++) {
+        const s = items[i];
         dummy.position.set(s.p.x * explode, s.p.y, s.p.z * explode);
-        const dot = _axisY.dot(s.dir);
+        const dir = new THREE.Vector3(s.dir.x, s.dir.y, s.dir.z);
+        const dot = _axisY.dot(dir);
         if (dot < -0.999) dummy.quaternion.setFromAxisAngle(_flip, Math.PI);
-        else dummy.quaternion.setFromUnitVectors(_axisY, s.dir);
+        else dummy.quaternion.setFromUnitVectors(_axisY, dir);
         dummy.scale.set(s.r * 2, s.length, s.r * 2);
         dummy.updateMatrix();
-        socksM.setMatrixAt(i, dummy.matrix);
-        socksM.setColorAt(i, color);
+        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setColorAt(i, color);
       }
-      socksM.instanceMatrix.needsUpdate = true;
-      if (socksM.instanceColor) socksM.instanceColor.needsUpdate = true;
-      socksM.count = sockets.length;
-    }
-    const rivM = rivetMesh.current;
-    if (rivM) {
-      color.set(FIT_RIVET);
-      for (let i = 0; i < rivets.length; i++) {
-        const n = rivets[i];
-        dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
-        dummy.quaternion.identity();
-        dummy.scale.setScalar(n.r);
-        dummy.updateMatrix();
-        rivM.setMatrixAt(i, dummy.matrix);
-        rivM.setColorAt(i, color);
-      }
-      rivM.instanceMatrix.needsUpdate = true;
-      if (rivM.instanceColor) rivM.instanceColor.needsUpdate = true;
-      rivM.count = rivets.length;
-    }
-  }, [hubs, sockets, rivets, explode]);
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.count = items.length;
+    };
+    writeSpheres(hubMesh.current, hubs, FIT_CREAM);
+    writeCyls(sockMesh.current, sockets, FIT_CREAM);
+    writeCyls(bandMesh.current, bands, TAPE_KRAFT);
+    writeSpheres(screwMesh.current, screws, SCREW_HEAD);
+  }, [hubs, sockets, bands, screws, explode]);
 
   return (
     <group>
       {hubs.length > 0 && (
         <instancedMesh ref={hubMesh} args={[undefined, undefined, Math.max(hubs.length, 1)]} frustumCulled={false}>
-          <sphereGeometry args={[1, 16, 12]} />
+          <sphereGeometry args={[1, 14, 10]} />
           <meshStandardMaterial color={FIT_CREAM} roughness={0.38} metalness={0.08} />
         </instancedMesh>
       )}
@@ -822,10 +884,16 @@ function FittingCloud({
           <meshStandardMaterial color={FIT_CREAM} roughness={0.38} metalness={0.08} />
         </instancedMesh>
       )}
-      {rivets.length > 0 && (
-        <instancedMesh ref={rivetMesh} args={[undefined, undefined, Math.max(rivets.length, 1)]} frustumCulled={false}>
-          <sphereGeometry args={[1, 10, 8]} />
-          <meshStandardMaterial color={FIT_RIVET} roughness={0.55} metalness={0.04} />
+      {bands.length > 0 && (
+        <instancedMesh ref={bandMesh} args={[undefined, undefined, Math.max(bands.length, 1)]} frustumCulled={false}>
+          <cylinderGeometry args={[0.5, 0.5, 1, 12]} />
+          <meshStandardMaterial color={TAPE_KRAFT} roughness={0.72} metalness={0.02} />
+        </instancedMesh>
+      )}
+      {screws.length > 0 && (
+        <instancedMesh ref={screwMesh} args={[undefined, undefined, Math.max(screws.length, 1)]} frustumCulled={false}>
+          <sphereGeometry args={[1, 8, 6]} />
+          <meshStandardMaterial color={SCREW_HEAD} roughness={0.4} metalness={0.35} />
         </instancedMesh>
       )}
     </group>
@@ -868,8 +936,8 @@ function InstanceMesh({
   const nudge = useYard((s) => s.nudgeInstance);
   const finish = useYard((s) => s.finishMove);
   const prim = useMemo(
-    () => (item ? visualPrimitive(item, instance.cutLength) : null),
-    [item, instance.cutLength],
+    () => (item ? visualPrimitive(item, instance.cutLength, spanOf(overall)) : null),
+    [item, instance.cutLength, overall],
   );
   if (!item || !prim) return null;
 
@@ -891,7 +959,7 @@ function InstanceMesh({
   if (piled) {
     dummy.position.set(basePos.x * explode, basePos.y, basePos.z * explode);
     dummy.quaternion.identity();
-    const diameter = meshDiameter(prim, cylindrical, overall);
+    const diameter = meshDiameter(prim, cylindrical);
     if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
     else dummy.scale.set(prim.length, prim.height, prim.width);
   } else {

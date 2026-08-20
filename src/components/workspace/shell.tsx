@@ -49,6 +49,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const future = useYard((s) => s.future);
   const workMode = useYard((s) => s.workMode);
   const setWorkMode = useYard((s) => s.setWorkMode);
+  const detail = useYard((s) => s.detail);
+  const setDetail = useYard((s) => s.setDetail);
   const showHull = useYard((s) => s.showHull);
   const showHistoric = useYard((s) => s.showHistoric);
   const setShowHull = useYard((s) => s.setShowHull);
@@ -362,6 +364,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} />
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
+              {(["frame", "full"] as const).map((d) => (
+                <GhostBtn
+                  key={d}
+                  on={detail === d}
+                  onClick={() => setDetail(d)}
+                  label={d === "frame" ? "Frame" : "Full"}
+                  title={d === "frame" ? "Primary members only" : "Every piece this stock can place"}
+                />
+              ))}
+            </div>
+            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
               <GhostBtn
                 on={showHull}
                 onClick={() => setShowHull(!showHull)}
@@ -433,6 +446,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               data-yard-loose={project.buildStats?.loose ?? 0}
               data-yard-components={project.buildStats?.components ?? 0}
               data-yard-form={showHistoric ? "1" : "0"}
+              data-yard-detail={detail}
+              data-yard-join={project.joinMethod ?? material?.preferredJoins?.[0] ?? ""}
               className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
             >
               <p>

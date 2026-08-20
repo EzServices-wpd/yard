@@ -12,7 +12,7 @@ import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
+import type { CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject } from "./promptHelpers";
 
 export function emptyProject(): YardProject {
@@ -39,7 +39,7 @@ export function generateFromPrompt(
   prompt: string,
   materialOverride?: string,
   formOverride?: FormRecipe,
-  opts: { includeSpine?: boolean } = {},
+  opts: { includeSpine?: boolean; joinMethod?: JoinMethod } = {},
 ): YardProject {
   const lower = prompt.toLowerCase().trim();
   const size = parseSize(lower);
@@ -91,11 +91,11 @@ export function generateFromPrompt(
     // Do not densify the Eiffel — that fills the gap between the four piers.
     const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
     const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
-    return projectFromGraph(prompt, item, kind, g, true, finished.offer);
+    return projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod);
   }
 
   const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind });
-  return projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer);
+  return projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod);
 }
 
 function projectFromGraph(
@@ -105,8 +105,10 @@ function projectFromGraph(
   graph: import("./structureGraph").StructureGraph,
   historic: boolean,
   offer?: YardProject["supportOffer"],
+  joinMethod?: JoinMethod,
 ): YardProject {
-  const mapped = graphToInstances(graph, item);
+  const mapped = graphToInstances(graph, item, joinMethod);
+  const joinUsed = joinMethod || item.preferredJoins?.[0] || "glue";
   const instances: YardInstance[] = mapped.instances.map((g) => ({
     id: g.id,
     catalogId: g.catalogId,
@@ -125,7 +127,7 @@ function projectFromGraph(
     mapped.spliceCount > 0
       ? `${mapped.spliceCount} lap splice(s) where members exceed stock — overlap the joint, then glue`
       : "No splices — each member fits in one stock piece",
-    `Joins: ${mapped.joinSummary.join(", ") || "glue"}`,
+    `Joins: ${mapped.joinSummary.join(", ") || joinUsed}`,
     stats.components <= 1 && stats.loose === 0
       ? `Connected structure · ${stats.joints} joints · every piece meets another`
       : `Mostly connected · ${stats.joints} joints · ${stats.loose} loose · ${stats.components} cluster${stats.components === 1 ? "" : "s"}`,
@@ -136,5 +138,6 @@ function projectFromGraph(
   return toProject(prompt, item, kind, instances, notes, historic, {
     supportOffer: offer,
     buildStats: stats,
+    joinMethod: joinMethod ?? item.preferredJoins?.[0],
   });
 }

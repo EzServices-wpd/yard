@@ -210,6 +210,66 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "tape-packing",
+    retailer: "homedepot",
+    title: "Scotch 1.88″ packing tape",
+    href: "https://www.homedepot.com/s/packing%20tape",
+    packQty: 1,
+    packPrice: 3.97,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "pvc-cement",
+    retailer: "homedepot",
+    title: "Oatey PVC regular cement, 8 oz",
+    href: "https://www.homedepot.com/s/PVC%20cement",
+    packQty: 1,
+    packPrice: 7.48,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "pvc-tee",
+    retailer: "homedepot",
+    title: "Charlotte 3/4″ Sch 40 PVC tee",
+    href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%20tee%20schedule%2040",
+    packQty: 1,
+    packPrice: 1.18,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "pvc-elbow-90",
+    retailer: "homedepot",
+    title: "Charlotte 3/4″ Sch 40 90° elbow",
+    href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2090%20elbow",
+    packQty: 1,
+    packPrice: 0.88,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "pvc-elbow-45",
+    retailer: "homedepot",
+    title: "Charlotte 3/4″ Sch 40 45° elbow",
+    href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2045%20elbow",
+    packQty: 1,
+    packPrice: 0.92,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "pvc-coupling",
+    retailer: "homedepot",
+    title: "Charlotte 3/4″ Sch 40 coupling",
+    href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%20coupling",
+    packQty: 1,
+    packPrice: 0.68,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "screws-8",
     retailer: "homedepot",
     title: "#8 × 1-1/4″ wood screws, 1 lb",
@@ -479,9 +539,15 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";
   if (/plywood/.test(hay)) return "plywood-3-4-4x8";
+  if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
+  if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
+  if (/45/.test(hay) && /elbow|pvc/.test(hay)) return "pvc-elbow-45";
+  if (/elbow/.test(hay) && /pvc/.test(hay)) return "pvc-elbow-90";
+  if (/coupling|coupler/.test(hay) && /pvc/.test(hay)) return "pvc-coupling";
   if (/pvc|schedule 40/.test(hay)) return "pvc-3-4-sch40";
   if (/dowel/.test(hay)) return "dowel-1-2-36";
   if (/titebond|wood glue|\bglue\b/.test(hay)) return "glue";
+  if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
   if (/#8|wood screw/.test(hay)) return "screws-8";
   if (/slide/.test(hay)) return "drawer-slides-16";
   if (/hinge/.test(hay)) return "cabinet-hinges";

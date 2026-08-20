@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
-import type { BuildPlan, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
+import type { BuildPlan, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
@@ -24,6 +24,7 @@ type YardState = {
   showHull: boolean;
   showHistoric: boolean;
   workMode: WorkMode;
+  detail: DetailLevel;
   activeStep: number | null;
   placedIds: string[];
   lockedIds: string[];
@@ -38,7 +39,9 @@ type YardState = {
   revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod }) => YardProject;
+  setJoinMethod: (join: JoinMethod) => void;
+  setDetail: (v: DetailLevel) => void;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
@@ -88,6 +91,7 @@ export const useYard = create<YardState>((set, get) => ({
   showHull: false,
   showHistoric: false,
   workMode: "look",
+  detail: "full",
   activeStep: null,
   placedIds: [],
   lockedIds: [],
@@ -164,6 +168,19 @@ export const useYard = create<YardState>((set, get) => ({
     get().revealBench();
     return next;
   },
+  setJoinMethod: (join) => {
+    const { project, generate, makePlan } = get();
+    if (project.prompt.trim()) {
+      generate(project.prompt, project.primaryMaterialId, undefined, {
+        includeSpine: project.supportOffer?.included,
+        joinMethod: join,
+      });
+      makePlan();
+    } else {
+      get().setProject({ ...project, joinMethod: join });
+    }
+  },
+  setDetail: (v) => set({ detail: v }),
   makePlan: () => {
     const plan = buildPlan(get().project);
     set({ plan });

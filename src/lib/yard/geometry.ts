@@ -15,23 +15,23 @@ export interface PrimitiveDims {
   innerRadius?: number;
 }
 
-/** Smallest on-screen thickness so craft stock still reads at bench scale. */
-export const MIN_VISUAL_THICKNESS = 0.28;
-
 /**
- * Pipe/tube thinner than this vanishes on a 6-ft bench. Cut list and BOM
- * stay true-to-stock; only the mesh is thickened so joints can be seen.
+ * Tiny floor so a toothpick does not vanish. Aspect ratio stays true —
+ * a popsicle stick stays flat, 3/4" PVC stays 1.05" OD.
  */
-export function readableDiameter(
-  trueDiameter: number,
-  overallSpan: number,
-  cylindrical: boolean,
-): number {
-  if (!cylindrical) return Math.max(trueDiameter, MIN_VISUAL_THICKNESS);
-  const minPipe = Math.min(Math.max(overallSpan * 0.028, 1.15), 3.4);
-  return Math.max(trueDiameter, minPipe);
+export function visualPrimitive(item: CatalogItem, cutLength?: number, overallSpan = 36): PrimitiveDims {
+  const p = toPrimitive(item, cutLength);
+  const min = Math.max(0.05, Math.min(overallSpan * 0.0016, 0.12));
+  if (p.radius != null) {
+    const r = Math.max(p.radius, min / 2);
+    return { ...p, radius: r, innerRadius: p.innerRadius, width: r * 2, height: r * 2 };
+  }
+  return {
+    ...p,
+    width: Math.max(p.width, min),
+    height: Math.max(p.height, min),
+  };
 }
-
 
 /** Normalize any CatalogItem to a bounding box + optional cylinder params */
 export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
@@ -79,17 +79,6 @@ export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDim
   }
 }
 
-/** Same as toPrimitive, but thin stock is thickened so the bench can see it. */
-export function visualPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
-  const p = toPrimitive(item, cutLength);
-  return {
-    ...p,
-    width: Math.max(p.width, MIN_VISUAL_THICKNESS),
-    height: Math.max(p.height, MIN_VISUAL_THICKNESS),
-    radius: p.radius != null ? Math.max(p.radius, MIN_VISUAL_THICKNESS / 2) : undefined,
-  };
-}
-
 /** How many whole units needed for a target length (with optional kerf/waste) */
 export function unitsForLength(
   item: CatalogItem,
@@ -125,6 +114,10 @@ export function approxVolumeIn3(item: CatalogItem, qty = 1): number {
 
 export function isCylindrical(ff: FormFactor): boolean {
   return ff === "tube" || ff === "pipe" || ff === "dowel";
+}
+
+export function isHollow(ff: FormFactor): boolean {
+  return ff === "tube" || ff === "pipe";
 }
 
 export function describeMaterial(id: string): string {
