@@ -23,6 +23,8 @@ import {
   pagodaOps,
   castleOps,
   bridgeOps,
+} from "./formBuildersCore";
+import {
   houseOps,
   wallOps,
   domeOps,
@@ -49,7 +51,7 @@ import {
   guitarOps,
   swingOps,
   guessOps,
-} from "./formBuilders";
+} from "./formBuildersExtra";
 
 
 type Hit = { re: RegExp; kind: StructureKind; name: string; historic?: boolean; build: (s: Size3) => FormOp[] };
