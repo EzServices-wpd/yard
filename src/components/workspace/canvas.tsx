@@ -9,8 +9,8 @@ import { isCylindrical, isHollow, visualPrimitive } from "@/lib/yard/geometry";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
-import { binderKind, classifyJoint, isFrameRole, jointNodes } from "@/lib/yard/joints";
-import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
+import { binderKind, classifyJoint, isFrameRole, isSkinRole, jointNodes } from "@/lib/yard/joints";
+import type { DetailLevel, Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 import type { PrimitiveDims } from "@/lib/yard/geometry";
 import { WalkRig } from "@/components/workspace/walk-rig";
 
@@ -318,7 +318,7 @@ function BenchScene({
   measureOpen: boolean;
   measure: { width: string; height: string; depth: string };
   pending: boolean;
-  detail: "frame" | "full";
+  detail: DetailLevel;
   joinMethod?: YardProject["joinMethod"];
 }) {
   const explodeScale = explode ? 1.35 : 1;
@@ -331,7 +331,11 @@ function BenchScene({
   const mh = parseFloat(measure.height) || 0;
   const md = parseFloat(measure.depth) || 0;
   const members =
-    detail === "frame" ? project.instances.filter((i) => isFrameRole(i.role)) : project.instances;
+    detail === "frame"
+      ? project.instances.filter((i) => isFrameRole(i.role))
+      : detail === "full"
+        ? project.instances.filter((i) => !isSkinRole(i.role))
+        : project.instances;
 
   return (
     <group>
@@ -355,7 +359,7 @@ function BenchScene({
       )}
       {!pending &&
         project.panels
-          .filter((panel) => detail === "full" || panel.type !== "deck")
+          .filter((panel) => detail !== "frame" || panel.type !== "deck")
           .map((panel) => (
         <PanelMesh
           key={panel.id}
@@ -392,6 +396,7 @@ const ROLE_TINT: Record<string, string> = {
   brace: "#c99648",
   ring: "#f0d08a",
   rail: "#dfc078",
+  skin: "#e8d5a3",
   tip: "#f4e2b0",
   splice: "#d4a85a",
   support: "#c4b49a",
@@ -414,6 +419,16 @@ function spanOf(overall: { width: number; height: number; depth: number }) {
 function meshDiameter(prim: PrimitiveDims, cylindrical: boolean) {
   if (cylindrical) return Math.max((prim.radius ?? 0.1) * 2, 0.08);
   return Math.max(prim.width, prim.height, 0.08);
+}
+
+function courseOnEdge(inst: YardInstance, prim: PrimitiveDims) {
+  if (prim.width < prim.height * 1.6) return false;
+  if (inst.role === "skin") return true;
+  if (inst.role !== "brace" && inst.role !== "ring" && inst.role !== "rail") return false;
+  if (!inst.from || !inst.to) return false;
+  const dy = Math.abs(inst.to.y - inst.from.y);
+  const len = Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z);
+  return dy < len * 0.2;
 }
 
 function applyMemberPose(
@@ -443,6 +458,7 @@ function applyMemberPose(
     else dummy.quaternion.setFromUnitVectors(axis, _dir);
     const length = span + pad * 2;
     if (cylindrical) dummy.scale.set(diameter, length, diameter);
+    else if (courseOnEdge(inst, prim)) dummy.scale.set(length, prim.width, prim.height);
     else dummy.scale.set(length, prim.height, prim.width);
     return;
   }

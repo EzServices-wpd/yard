@@ -371,13 +371,19 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              {(["frame", "full"] as const).map((d) => (
+              {(["frame", "full", "fill"] as const).map((d) => (
                 <GhostBtn
                   key={d}
                   on={detail === d}
                   onClick={() => setDetail(d)}
-                  label={d === "frame" ? "Frame" : "Full"}
-                  title={d === "frame" ? "Skeleton — no road" : "The thing in use"}
+                  label={d === "frame" ? "Frame" : d === "full" ? "Full" : "Fill"}
+                  title={
+                    d === "frame"
+                      ? "Skeleton"
+                      : d === "full"
+                        ? "Every structural course"
+                        : "Faces packed in this stock — the finished thing"
+                  }
                 />
               ))}
             </div>

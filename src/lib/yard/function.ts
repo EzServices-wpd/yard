@@ -239,7 +239,7 @@ function withBridgeDeck(project: YardProject): YardProject {
   const notes = [
     ...project.notes,
     `Road: ${sheet.name} · ${span.toFixed(0)}" × ${roadW.toFixed(1)}" · ${use} load.`,
-    "Walk the deck (Walk on the bench). Frame hides the road; Full is the thing in use.",
+    "Walk the deck (Walk on the bench). Frame hides the road; Full and Fill show the thing in use.",
   ];
 
   return {
@@ -318,7 +318,7 @@ function withPyramidTomb(project: YardProject): YardProject {
     traverse,
     notes: [
       ...project.notes,
-      `North door ${door.width.toFixed(1)}" × ${door.height.toFixed(1)}" — Walk in. Frame is the stepped skeleton; Full is the tomb in use.`,
+      `North door ${door.width.toFixed(1)}" × ${door.height.toFixed(1)}" — Walk in. Frame is the skeleton; Full is every structural course; Fill is the packed faces.`,
     ],
     assumptions: {
       ...project.assumptions,

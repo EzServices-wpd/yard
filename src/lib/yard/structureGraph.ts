@@ -13,7 +13,7 @@ export interface StructureNode {
   id: string;
   position: Vec3;
   /** Optional semantic role for instructions */
-  role?: "base" | "leg" | "brace" | "ring" | "platform" | "tip" | "splice" | "rail" | "support";
+  role?: "base" | "leg" | "brace" | "ring" | "platform" | "tip" | "splice" | "rail" | "support" | "skin";
 }
 
 export interface StructureEdge {
@@ -24,7 +24,7 @@ export interface StructureEdge {
   join: JoinMethod;
   /** Structural importance for sequencing / warnings */
   critical?: boolean;
-  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support";
+  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support" | "skin";
 }
 
 export interface StructureGraph {
@@ -115,6 +115,8 @@ export function rotationForDirection(
 /**
  * Convert graph edges into catalog instances.
  * Long edges are subdivided into stock-length pieces with lap splices.
+ * Pyramid hips are a chain of short collinear legs — emit them as one
+ * spliced member so the BOM is four long rafters, not 80 toothpicks.
  */
 export function graphToInstances(
   graph: StructureGraph,
@@ -141,52 +143,63 @@ export function graphToInstances(
   const bumpJoin = (j: JoinMethod) =>
     joinCounts.set(j, (joinCounts.get(j) ?? 0) + 1);
 
-  for (const edge of graph.edges) {
-    const a = nodeMap.get(edge.from);
-    const b = nodeMap.get(edge.to);
-    if (!a || !b) continue;
-
-    const length = dist(a.position, b.position);
-    // Shorter than ~2.5× thickness reads as a floating blob / circle, not a member
+  const emitRun = (
+    p0: Vec3,
+    p1: Vec3,
+    join: JoinMethod,
+    role: StructureEdge["role"],
+    id: string,
+  ) => {
+    const length = dist(p0, p1);
     const minLen = Math.max(thick * 2.5, 0.4);
-    if (length < minLen) continue;
-
-    const join = edge.join || defaultJoin;
+    if (length < minLen) return;
     bumpJoin(join);
-
     const usable = Math.max(stock - lap, stock * 0.82);
     const segments =
       canCut && length > stock * 1.02
         ? Math.max(2, Math.ceil((length - lap) / usable))
         : 1;
-
     for (let s = 0; s < segments; s++) {
       const raw0 = s / segments;
       const raw1 = (s + 1) / segments;
       const overlap = segments > 1 ? lap / length : 0;
       const t0 = s === 0 ? raw0 : Math.max(0, raw0 - overlap * 0.5);
       const t1 = s === segments - 1 ? raw1 : Math.min(1, raw1 + overlap * 0.5);
-      const p0 = lerp(a.position, b.position, t0);
-      const p1 = lerp(a.position, b.position, t1);
-      const m = mid(p0, p1);
-      const rot = rotationForDirection(p0, p1, cylindrical);
-      const segLen = dist(p0, p1);
+      const a = lerp(p0, p1, t0);
+      const b = lerp(p0, p1, t1);
+      const m = mid(a, b);
+      const rot = rotationForDirection(a, b, cylindrical);
+      const segLen = dist(a, b);
       const cut = canCut ? Math.min(segLen, stock) : undefined;
-
       if (s > 0) spliceCount += 1;
-
       instances.push({
-        id: `${edge.id}-s${s}`,
+        id: `${id}-s${s}`,
         catalogId: graph.materialId,
         position: [m.x, m.y, m.z],
         rotation: rot,
         cutLength: cut,
         join: s > 0 ? "glue" : join,
-        role: edge.role,
-        from: [p0.x, p0.y, p0.z],
-        to: [p1.x, p1.y, p1.z],
+        role,
+        from: [a.x, a.y, a.z],
+        to: [b.x, b.y, b.z],
       });
     }
+  };
+
+  const consumed = new Set<string>();
+  if (graph.structureClass === "pyramid") {
+    for (const path of collinearLegPaths(graph, nodeMap)) {
+      for (const id of path.edgeIds) consumed.add(id);
+      emitRun(path.a, path.b, path.join, "leg", path.id);
+    }
+  }
+
+  for (const edge of graph.edges) {
+    if (consumed.has(edge.id)) continue;
+    const a = nodeMap.get(edge.from);
+    const b = nodeMap.get(edge.to);
+    if (!a || !b) continue;
+    emitRun(a.position, b.position, edge.join || defaultJoin, edge.role, edge.id);
   }
 
   const joinSummary = [...joinCounts.entries()]
@@ -194,6 +207,67 @@ export function graphToInstances(
     .map(([j, n]) => `${n}× ${j}`);
 
   return { instances, joinSummary, spliceCount };
+}
+
+function collinearLegPaths(
+  graph: StructureGraph,
+  nodeMap: Map<string, StructureNode>,
+): { id: string; join: JoinMethod; a: Vec3; b: Vec3; edgeIds: string[] }[] {
+  const legs = graph.edges.filter((e) => e.role === "leg");
+  if (legs.length < 2) return [];
+  const adj = new Map<string, { to: string; edge: StructureEdge }[]>();
+  for (const e of legs) {
+    if (!adj.has(e.from)) adj.set(e.from, []);
+    if (!adj.has(e.to)) adj.set(e.to, []);
+    adj.get(e.from)!.push({ to: e.to, edge: e });
+    adj.get(e.to)!.push({ to: e.from, edge: e });
+  }
+  const used = new Set<string>();
+  const out: { id: string; join: JoinMethod; a: Vec3; b: Vec3; edgeIds: string[] }[] = [];
+
+  const unit = (p: Vec3, q: Vec3): Vec3 => {
+    const l = dist(p, q) || 1;
+    return { x: (q.x - p.x) / l, y: (q.y - p.y) / l, z: (q.z - p.z) / l };
+  };
+
+  const extend = (start: string, firstTo: string, firstEdge: StructureEdge) => {
+    const ids = [firstEdge.id];
+    let prev = start;
+    let cur = firstTo;
+    let dir = unit(nodeMap.get(start)!.position, nodeMap.get(firstTo)!.position);
+    while (true) {
+      const opts = (adj.get(cur) ?? []).filter((n) => n.to !== prev && !used.has(n.edge.id));
+      let next: { to: string; edge: StructureEdge } | null = null;
+      for (const n of opts) {
+        if (n.edge.role !== "leg") continue;
+        const d = unit(nodeMap.get(cur)!.position, nodeMap.get(n.to)!.position);
+        if (d.x * dir.x + d.y * dir.y + d.z * dir.z > 0.97) {
+          next = n;
+          break;
+        }
+      }
+      if (!next) break;
+      used.add(next.edge.id);
+      ids.push(next.edge.id);
+      dir = unit(nodeMap.get(cur)!.position, nodeMap.get(next.to)!.position);
+      prev = cur;
+      cur = next.to;
+    }
+    return { end: cur, ids };
+  };
+
+  for (const e of legs) {
+    if (used.has(e.id)) continue;
+    used.add(e.id);
+    const left = extend(e.to, e.from, e);
+    const right = extend(e.from, e.to, e);
+    const a = nodeMap.get(left.end);
+    const b = nodeMap.get(right.end);
+    if (!a || !b) continue;
+    const edgeIds = [...left.ids.slice(1).reverse(), e.id, ...right.ids.slice(1)];
+    out.push({ id: e.id, join: e.join, a: a.position, b: b.position, edgeIds });
+  }
+  return out;
 }
 
 export function createId(prefix: string): string {

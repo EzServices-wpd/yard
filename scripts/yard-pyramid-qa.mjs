@@ -31,6 +31,11 @@ const stats = async () =>
     load: el.getAttribute("data-yard-load"),
   }));
 
+await page.screenshot({ path: "/workspace/screenshots/pyr-fill.png" });
+const fill = await stats();
+
+await page.getByRole("button", { name: "Full", exact: true }).click();
+await page.waitForTimeout(400);
 await page.screenshot({ path: "/workspace/screenshots/pyr-full.png" });
 const full = await stats();
 
@@ -39,7 +44,7 @@ await page.waitForTimeout(400);
 await page.screenshot({ path: "/workspace/screenshots/pyr-frame.png" });
 const frame = await stats();
 
-await page.getByRole("button", { name: "Full", exact: true }).click();
+await page.getByRole("button", { name: "Fill", exact: true }).click();
 await page.waitForTimeout(200);
 if (await page.getByRole("button", { name: "Walk", exact: true }).count()) {
   await page.getByRole("button", { name: "Walk", exact: true }).click();
@@ -67,9 +72,9 @@ if (await page.getByRole("button", { name: "Walk", exact: true }).count()) {
     await page.screenshot({ path: "/workspace/screenshots/pyr-walk-in.png" });
     signs = { afterW, afterA, afterD };
   }
-  console.log(JSON.stringify({ full, frame, walk, signs, probeReady, consoleErrors, pageErrors }, null, 2));
+  console.log(JSON.stringify({ fill, full, frame, walk, signs, probeReady, consoleErrors, pageErrors }, null, 2));
 } else {
-  console.log(JSON.stringify({ full, frame, noWalk: true, consoleErrors, pageErrors }, null, 2));
+  console.log(JSON.stringify({ fill, full, frame, noWalk: true, consoleErrors, pageErrors }, null, 2));
 }
 
 await browser.close();

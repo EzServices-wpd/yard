@@ -269,8 +269,9 @@ export function pyramidDoorDims(
 /**
  * Khufu is stacked courses, not a laced loft. Square belts shrink to a
  * pyramidion, four hip rafters, a north-face door you can walk through.
- * Frame = hips + base + every third course + door. Full = every course.
- * Faces are belts, not a stud grid — filling them is the lattice-cage bug.
+ * Frame = hips + base + every third structural course + door.
+ * Full = every structural course (stock-length pitch).
+ * Fill = faces packed at stick width, on edge — the finished object.
  */
 export function buildSteppedPyramid(opts: {
   height: number;
@@ -288,10 +289,16 @@ export function buildSteppedPyramid(opts: {
   const H = Math.max(opts.height, 12);
   const h0 = Math.max(opts.half0, 6);
   const h1 = Math.max(opts.half1 ?? dens.thick * 2.4, dens.thick * 1.8);
-  const pitch = dens.fat
+  const stickW = Math.max(opts.item.dims.width ?? dens.thick, dens.thick, 0.28);
+  const structPitch = dens.fat
     ? Math.max(H / 5.5, dens.bay * 1.15)
     : Math.max(dens.stock * 0.95, dens.bay * 2.2, H / 10);
-  const n = Math.max(dens.fat ? 4 : 5, Math.min(dens.fat ? 6 : 9, Math.round(H / pitch)));
+  const nStruct = Math.max(dens.fat ? 4 : 5, Math.min(dens.fat ? 6 : 9, Math.round(H / structPitch)));
+  const nFill = dens.fat
+    ? nStruct
+    : Math.max(nStruct, Math.min(96, Math.round(H / stickW)));
+  const stride = Math.max(1, Math.round(nFill / nStruct));
+  const frameStride = stride * 3;
 
   const halfAt = (t: number) => h0 + (h1 - h0) * t;
   const personish =
@@ -301,8 +308,9 @@ export function buildSteppedPyramid(opts: {
   const NORTH = 2;
 
   const stations: number[] = [];
-  for (let i = 0; i <= n; i++) stations.push((i / n) * H);
-  const near = stations.findIndex((y) => Math.abs(y - door.height) < pitch * 0.3);
+  for (let i = 0; i <= nFill; i++) stations.push((i / nFill) * H);
+  const pitch = H / nFill;
+  const near = stations.findIndex((y) => Math.abs(y - door.height) < pitch * 0.45);
   let doorY = door.height;
   if (near >= 0) {
     doorY = stations[near]!;
@@ -336,12 +344,19 @@ export function buildSteppedPyramid(opts: {
   const jambR: string[] = [];
   const last = stations.length - 1;
 
+  const beltRoleAt = (i: number): StructureEdge["role"] => {
+    if (i === 0) return "ring";
+    if (i === last || i === doorIdx) return "rail";
+    if (i % frameStride === 0) return "rail";
+    if (i % stride === 0) return "brace";
+    return "skin";
+  };
+
   for (let i = 0; i < stations.length; i++) {
     const y = stations[i]!;
     const t = y / H;
     const half = halfAt(t);
-    const beltRole: StructureEdge["role"] =
-      i === 0 ? "ring" : i === last || i === doorIdx || i % 3 === 0 ? "rail" : "brace";
+    const beltRole = beltRoleAt(i);
     const nodeRole: StructureNode["role"] = i === 0 ? "base" : i === last ? "tip" : "leg";
     const row: string[] = [];
     for (let c = 0; c < 4; c++) row.push(addNode(squareCorner(half, y, c), nodeRole));
@@ -372,7 +387,9 @@ export function buildSteppedPyramid(opts: {
   }
 
   for (let c = 0; c < 4; c++) {
-    addEdge(corners[0]![c]!, corners[last]![c]!, "leg", true);
+    for (let i = 0; i < last; i++) {
+      addEdge(corners[i]![c]!, corners[i + 1]![c]!, "leg", true);
+    }
   }
 
   for (let i = 0; i < jambL.length - 1; i++) {

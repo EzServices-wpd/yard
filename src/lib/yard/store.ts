@@ -93,7 +93,7 @@ export const useYard = create<YardState>((set, get) => ({
   showHull: false,
   showHistoric: false,
   workMode: "look",
-  detail: "full",
+  detail: "fill",
   activeStep: null,
   placedIds: [],
   lockedIds: [],

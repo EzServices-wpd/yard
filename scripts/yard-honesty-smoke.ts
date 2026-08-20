@@ -75,8 +75,8 @@ if (!pyramid || pyramid.kind !== "pyramid" || pyramid.traverse !== "portal") {
   console.error("FAIL pyramid needs a north door you can walk through", pyramid);
   process.exit(1);
 }
-if (pyramid.pieces < 80 || pyramid.pieces > 500) {
-  console.error("FAIL pyramid should be stepped courses, not a lattice cage", pyramid.pieces);
+if (pyramid.pieces < 80 || pyramid.pieces > 4000) {
+  console.error("FAIL pyramid piece count drifted", pyramid.pieces);
   process.exit(1);
 }
 const pyrRoles: Record<string, number> = {};
@@ -84,8 +84,18 @@ for (const inst of pyramid.project.instances) {
   const r = inst.role || "member";
   pyrRoles[r] = (pyrRoles[r] ?? 0) + 1;
 }
+const pyrSkin = pyrRoles.skin ?? 0;
+const pyrCore = pyramid.pieces - pyrSkin;
+if (pyrCore < 80 || pyrCore > 500) {
+  console.error("FAIL pyramid structure should stay stepped courses", pyrCore, pyrRoles);
+  process.exit(1);
+}
+if (pyrSkin < pyramid.pieces * 0.45) {
+  console.error("FAIL pyramid Fill skin is missing", pyrRoles, pyramid.pieces);
+  process.exit(1);
+}
 const pyrBrace = pyrRoles.brace ?? 0;
-if (pyrBrace > pyramid.pieces * 0.55) {
+if (pyrBrace > pyrCore * 0.55) {
   console.error("FAIL pyramid faces got laced shut", pyrRoles, pyramid.pieces);
   process.exit(1);
 }

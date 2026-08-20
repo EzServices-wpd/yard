@@ -694,7 +694,11 @@ export function finishGraph(
   grain = 1,
 ): { graph: StructureGraph; offer: SupportOffer } {
   const d = stockDensity(item, grain);
-  let next = weldGraph(graph, Math.max(d.thick * 1.6, 0.22));
+  const weldTol =
+    kind === "pyramid"
+      ? Math.max(Math.min(d.thick, item.dims.thickness ?? d.thick) * 1.8, 0.1)
+      : Math.max(d.thick * 1.6, 0.22);
+  let next = weldGraph(graph, weldTol);
   next = stitchComponents(next, kind);
   const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
   // Span forms already placed their piers. Dropping a leg from every deck/cable
@@ -702,7 +706,7 @@ export function finishGraph(
   if (!spanKind) next = ensureDownwardPath(next);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   if (fig) next = ribBands(next, Math.max(d.bay, 0.8), true);
-  next = weldGraph(next, Math.max(d.thick * 1.6, 0.22));
+  next = weldGraph(next, weldTol);
   const offerBase = needsSpine(next, kind);
   const offer: SupportOffer = { ...offerBase, included: includeSpine && offerBase.needed };
   if (offer.included) next = addSpine(next);

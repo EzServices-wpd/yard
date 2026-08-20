@@ -92,7 +92,7 @@ export type StructureKind =
   | "custom";
 
 export type WorkMode = "look" | "free" | "build" | "walk";
-export type DetailLevel = "frame" | "full";
+export type DetailLevel = "frame" | "full" | "fill";
 
 export type YardInstance = {
   id: string;

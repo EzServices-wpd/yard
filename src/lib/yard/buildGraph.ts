@@ -415,7 +415,7 @@ function buildPyramidForm(
     edges: built.edges,
     assumptions: [
       `Form: ${recipe.name}. Stepped square courses — Khufu's ratio, not a laced loft.`,
-      `${item.name} tiles each belt. Frame is hips + base + every third course + the door. Full is every course — not a stud grid.`,
+      `${item.name} tiles each belt. Frame is hips + every third course. Full is every structural course. Fill packs the faces at stick width — the finished tomb.`,
       `North doorway ${built.door.width.toFixed(1)}" × ${built.door.height.toFixed(1)}" — Walk in on the bench.`,
       `Resolution · course pitch from ${item.name} (~${policy.bay.toFixed(1)}" bay).`,
     ],

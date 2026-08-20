@@ -343,9 +343,18 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       step: n++,
       title: "Leave the north doorway open",
       description:
-        "The gap on the north face is the entrance. Do not lace it shut. Dry-fit the jambs plumb, then glue the lintel. Walk in on the bench — Frame is hips and every third course; Full is every course. No studs on the faces.",
+        "The gap on the north face is the entrance. Do not lace it shut. Dry-fit the jambs plumb, then glue the lintel. Pack remaining courses on edge at stick width — Fill on the bench is the finished tomb.",
       tips: "Khufu's door is on the north. If you close it, you built a cage.",
     });
+    const skinN = project.instances.filter((i) => i.role === "skin").length;
+    if (skinN > 0) {
+      steps.push({
+        step: n++,
+        title: "Pack the faces",
+        description: `${skinN} face sticks, laid on edge at stock width. Glue each square course to the four hips. Frame is the skeleton, Full is every structural belt, Fill is this packed skin.`,
+        tips: "Work from the base up. Keep the north door clear as you pack.",
+      });
+    }
   }
 
   const decks = project.panels.filter((p) => p.type === "deck");

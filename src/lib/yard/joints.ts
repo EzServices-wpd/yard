@@ -16,10 +16,15 @@ export type JointNode = {
 };
 
 export const FRAME_ROLES = new Set(["leg", "rail", "ring", "support", "base", "tip"]);
+export const SKIN_ROLES = new Set(["skin"]);
 
 export function isFrameRole(role?: string): boolean {
   if (!role || role === "member") return true;
   return FRAME_ROLES.has(role);
+}
+
+export function isSkinRole(role?: string): boolean {
+  return !!role && SKIN_ROLES.has(role);
 }
 
 export const JOIN_LABELS: Record<JoinMethod, string> = {
