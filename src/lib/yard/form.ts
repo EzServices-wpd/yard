@@ -15,6 +15,7 @@ import {
   pisaOps,
   goldenGateOps,
   fitSuspension,
+  fitPyramid,
   arcOps,
   parthenonOps,
   stonehengeOps,
@@ -67,7 +68,7 @@ type Hit = {
 const HITS: Hit[] = [
   { re: /eiffel/, kind: "eiffel", name: "Eiffel", historic: true, build: () => [] },
   { re: /taj|mahal/, kind: "taj", name: "Taj Mahal", historic: true, build: tajOps },
-  { re: /pyramid|giza|khufu/, kind: "pyramid", name: "Pyramid", historic: true, build: pyramidOps },
+  { re: /pyramid|giza|khufu/, kind: "pyramid", name: "Pyramid", historic: true, build: pyramidOps, fit: fitPyramid },
   { re: /colosseum|coliseum|amphitheatre|amphitheater/, kind: "custom", name: "Colosseum", historic: true, build: colosseumOps },
   { re: /statue of liberty|liberty statue|\bliberty\b/, kind: "figure", name: "Liberty", historic: true, build: libertyOps },
   { re: /empire state/, kind: "tower", name: "Empire State", historic: true, build: empireStateOps },

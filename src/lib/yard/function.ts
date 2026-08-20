@@ -6,6 +6,7 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { withHome } from "./assembly";
+import { pyramidDoorDims } from "./lattice";
 import type {
   CatalogItem,
   FeasibilityIssue,
@@ -87,8 +88,14 @@ export function loadIssues(project: YardProject): FeasibilityIssue[] {
   if (t.width < 2.4) {
     issues.push({
       severity: "warning",
-      message: `Road is only ${t.width.toFixed(1)}" wide.`,
-      suggestion: "Widen the prompt or pick thicker stock if you want a lane you can actually use.",
+      message:
+        t.kind === "portal"
+          ? `Opening is only ${t.width.toFixed(1)}" wide.`
+          : `Road is only ${t.width.toFixed(1)}" wide.`,
+      suggestion:
+        t.kind === "portal"
+          ? "Widen the prompt or pick thicker stock if you want a doorway you can actually use."
+          : "Widen the prompt or pick thicker stock if you want a lane you can actually use.",
     });
   }
 
@@ -121,6 +128,7 @@ function hangerSpacing(project: YardProject): number {
 export function attachFunction(project: YardProject): YardProject {
   if (project.kind === "bridge") return withBridgeDeck(project);
   if (project.kind === "arch") return withArchPortal(project);
+  if (project.kind === "pyramid") return withPyramidTomb(project);
   return project;
 }
 
@@ -251,12 +259,13 @@ function withArchPortal(project: YardProject): YardProject {
   const spanX = box.maxX - box.minX;
   const spanZ = box.maxZ - box.minZ;
   const alongZ = spanX >= spanZ;
+  const stand = Math.max(2.8, (alongZ ? spanZ : spanX) * 0.12, (box.maxY - box.minY) * 0.08);
   const traverse: TraversePath = alongZ
     ? {
         kind: "portal",
-        origin: { x: (box.minX + box.maxX) / 2, y: 0.45, z: box.minZ - 1 },
+        origin: { x: (box.minX + box.maxX) / 2, y: 0.45, z: box.minZ - stand },
         axis: { x: 0, y: 0, z: 1 },
-        length: spanZ + 2,
+        length: spanZ + stand * 2,
         width: spanX * 0.55,
         y: 0.45,
         eyeH: Math.max(1.2, Math.min(5, (box.maxY - box.minY) * 0.18)),
@@ -264,9 +273,9 @@ function withArchPortal(project: YardProject): YardProject {
       }
     : {
         kind: "portal",
-        origin: { x: box.minX - 1, y: 0.45, z: (box.minZ + box.maxZ) / 2 },
+        origin: { x: box.minX - stand, y: 0.45, z: (box.minZ + box.maxZ) / 2 },
         axis: { x: 1, y: 0, z: 0 },
-        length: spanX + 2,
+        length: spanX + stand * 2,
         width: spanZ * 0.55,
         y: 0.45,
         eyeH: Math.max(1.2, Math.min(5, (box.maxY - box.minY) * 0.18)),
@@ -277,6 +286,45 @@ function withArchPortal(project: YardProject): YardProject {
     traverse,
     notes: [...project.notes, "Portal is clear — Walk through it on the bench."],
     assumptions: { ...project.assumptions, use: inferLoadUse({ ...project, traverse }) },
+  };
+}
+
+function withPyramidTomb(project: YardProject): YardProject {
+  if (project.traverse) return project;
+  if (!project.instances.length) return project;
+  const box = bbox(project.instances);
+  const span = box.maxX - box.minX;
+  const H = box.maxY - box.minY;
+  const half = span / 2;
+  const item = getCatalogItem(project.primaryMaterialId);
+  const personish =
+    !!item && (item.category === "lumber" || item.category === "sheet_goods") && H >= 72;
+  const door = pyramidDoorDims(H, half, personish);
+  const cx = (box.minX + box.maxX) / 2;
+  const stand = Math.max(4.2, door.height * 0.9, span * 0.1);
+  const traverse: TraversePath = {
+    kind: "portal",
+    origin: { x: cx, y: 0.4, z: box.minZ - stand },
+    axis: { x: 0, y: 0, z: 1 },
+    length: stand + Math.max(door.height * 1.4, span * 0.38),
+    width: door.width,
+    y: 0.4,
+    eyeH: Math.max(0.75, Math.min(1.45, door.height * 0.22)),
+    clearH: door.height,
+  };
+  const use = inferLoadUse({ ...project, traverse });
+  return {
+    ...project,
+    traverse,
+    notes: [
+      ...project.notes,
+      `North door ${door.width.toFixed(1)}" × ${door.height.toFixed(1)}" — Walk in. Frame is the stepped skeleton; Full is the tomb in use.`,
+    ],
+    assumptions: {
+      ...project.assumptions,
+      use,
+      load: use === "person" ? "heavy" : use === "toy" ? "medium" : "light",
+    },
   };
 }
 

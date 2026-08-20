@@ -22,7 +22,7 @@ import {
   type SupportOffer,
 } from "./connect";
 import { densifyTriangles, pruneTopology } from "./topo";
-import { buildSquareLoft, hoopSchedule } from "./lattice";
+import { buildSquareLoft, buildSteppedPyramid, hoopSchedule } from "./lattice";
 import { buildShell } from "./shell";
 
 export type StockPolicy = StockDensity;
@@ -40,6 +40,11 @@ export function buildFormGraph(
   const policy = stockDensity(item);
   const join: JoinMethod = (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
+  const kind = opts.kind ?? recipe.kind;
+
+  if (kind === "pyramid") {
+    return buildPyramidForm(recipe, item, materialId, opts);
+  }
 
   const nodes: StructureNode[] = [];
   const edges: StructureEdge[] = [];
@@ -262,7 +267,6 @@ export function buildFormGraph(
 
   // Auto X-brace only on the SAME face (shared X or shared Z).
   // Never span a walk-through opening (arch, portal, bridge deck gap).
-  const kind = opts.kind ?? recipe.kind;
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
   if (!openKind && verticals.length >= 2) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -333,25 +337,94 @@ export function buildFormGraph(
     structureClass: recipe.kind === "eiffel" ? "eiffel" : recipe.kind === "pyramid" ? "pyramid" : "generic",
   };
 
-  const finished = finishGraph(raw, item, opts.kind ?? recipe.kind, !!opts.includeSpine);
-  const sk = opts.kind ?? recipe.kind;
-  const fig = sk === "figure" || sk === "plant" || sk === "vehicle" || sk === "vessel";
+  const finished = finishGraph(raw, item, kind, !!opts.includeSpine);
+  const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   let g = finished.graph;
-  const keepWire = sk === "arch" || sk === "bridge" || sk === "eiffel";
+  const keepWire =
+    kind === "arch" ||
+    kind === "bridge" ||
+    kind === "eiffel" ||
+    kind === "taj" ||
+    kind === "castle" ||
+    kind === "house" ||
+    kind === "dome" ||
+    kind === "wall" ||
+    kind === "tower" ||
+    kind === "custom";
   if (!keepWire) {
     g = densifyTriangles(
       g,
-      sk,
+      kind,
       Math.max(policy.bay * 1.8, policy.faceStep * 2.5),
       fig ? 12 : 28,
     );
   }
-  if (sk !== "arch") {
-    const topo = pruneTopology(g, sk, { aggressiveness: fig ? 0.1 : sk === "bridge" ? 0.15 : 0.32 });
+  if (kind !== "arch") {
+    const topo = pruneTopology(g, kind, {
+      aggressiveness: fig ? 0.1 : keepWire ? 0.15 : 0.32,
+    });
     g = {
       ...topo.graph,
       notes: [...topo.graph.notes.filter((n: string) => !n.startsWith("Topology")), topo.note],
     };
   }
   return { graph: g, offer: finished.offer };
+}
+
+function pyramidEnvelope(ops: FormOp[]) {
+  let height = 12;
+  let half0 = 0;
+  for (const op of ops) {
+    if (op.op === "poly") {
+      for (const p of op.points) {
+        height = Math.max(height, p.y);
+        if (p.y < 0.8) half0 = Math.max(half0, Math.abs(p.x), Math.abs(p.z));
+      }
+    } else if (op.op === "taper") {
+      height = Math.max(height, op.y1);
+      half0 = Math.max(half0, op.r0);
+    }
+  }
+  if (half0 < 4) half0 = (height * 230.3) / 146.6 / 2;
+  return { height, half0 };
+}
+
+function buildPyramidForm(
+  recipe: FormRecipe,
+  item: CatalogItem,
+  materialId: string,
+  opts: { includeSpine?: boolean; kind?: StructureKind },
+): { graph: StructureGraph; offer: SupportOffer } {
+  const policy = stockDensity(item);
+  const join: JoinMethod = (item.preferredJoins && item.preferredJoins[0]) || "glue";
+  const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
+  const { height, half0 } = pyramidEnvelope(recipe.ops);
+  const built = buildSteppedPyramid({
+    height,
+    half0,
+    item,
+    join,
+    braceJoin,
+  });
+  const raw: StructureGraph = {
+    id: createId("graph"),
+    name: recipe.name,
+    envelope: { width: half0 * 2, height, depth: half0 * 2 },
+    materialId,
+    nodes: built.nodes,
+    edges: built.edges,
+    assumptions: [
+      `Form: ${recipe.name}. Stepped square courses — Khufu's ratio, not a laced loft.`,
+      `${item.name} tiles each belt. Frame is hips + base + every third course + the door. Full is every course — not a stud grid.`,
+      `North doorway ${built.door.width.toFixed(1)}" × ${built.door.height.toFixed(1)}" — Walk in on the bench.`,
+      `Resolution · course pitch from ${item.name} (~${policy.bay.toFixed(1)}" bay).`,
+    ],
+    notes: [
+      ...recipe.notes,
+      "Stepped courses, four hips, a north door. Do not lace the opening shut.",
+    ],
+    structureClass: "pyramid",
+  };
+  const finished = finishGraph(raw, item, "pyramid", !!opts.includeSpine);
+  return { graph: finished.graph, offer: finished.offer };
 }

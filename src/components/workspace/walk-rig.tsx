@@ -43,17 +43,17 @@ declare global {
 export function WalkRig({ traverse }: { traverse: TraversePath }) {
   const { camera, gl } = useThree();
   const yaw = useRef(Math.atan2(-traverse.axis.x, -traverse.axis.z));
-  const pitch = useRef(0.28);
+  const pitch = useRef(traverse.kind === "portal" ? -0.2 : 0.12);
   const pos = useRef(new THREE.Vector3(traverse.origin.x, traverse.y, traverse.origin.z));
   const speed = useRef(0);
   const euler = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
 
   useEffect(() => {
     yaw.current = Math.atan2(-traverse.axis.x, -traverse.axis.z);
-    pitch.current = 0.28;
+    pitch.current = traverse.kind === "portal" ? -0.2 : 0.12;
     pos.current.set(traverse.origin.x, traverse.y, traverse.origin.z);
     speed.current = 0;
-  }, [traverse.origin.x, traverse.origin.z, traverse.axis.x, traverse.axis.z, traverse.y]);
+  }, [traverse.origin.x, traverse.origin.z, traverse.axis.x, traverse.axis.z, traverse.y, traverse.kind]);
 
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;

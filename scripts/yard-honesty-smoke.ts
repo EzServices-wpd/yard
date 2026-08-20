@@ -70,6 +70,29 @@ if (pocket && (pocket.overall.height < 90 || pocket.panels < 10)) {
   console.error("FAIL pocket vanity lost the trapezoid", pocket);
   process.exit(1);
 }
+const pyramid = results.find((r) => r.label === "pyramid");
+if (!pyramid || pyramid.kind !== "pyramid" || pyramid.traverse !== "portal") {
+  console.error("FAIL pyramid needs a north door you can walk through", pyramid);
+  process.exit(1);
+}
+if (pyramid.pieces < 80 || pyramid.pieces > 500) {
+  console.error("FAIL pyramid should be stepped courses, not a lattice cage", pyramid.pieces);
+  process.exit(1);
+}
+const pyrRoles: Record<string, number> = {};
+for (const inst of pyramid.project.instances) {
+  const r = inst.role || "member";
+  pyrRoles[r] = (pyrRoles[r] ?? 0) + 1;
+}
+const pyrBrace = pyrRoles.brace ?? 0;
+if (pyrBrace > pyramid.pieces * 0.55) {
+  console.error("FAIL pyramid faces got laced shut", pyrRoles, pyramid.pieces);
+  process.exit(1);
+}
+if (pyramid.use !== "display") {
+  console.error("FAIL popsicle pyramid is display load, not", pyramid.use);
+  process.exit(1);
+}
 const eiffel = results.find((r) => r.label === "eiffel");
 if (eiffel && (eiffel.deck > 0 || eiffel.traverse)) {
   console.error("FAIL eiffel picked up a road", eiffel);
@@ -122,4 +145,6 @@ console.log("OK", {
   ggDeck: gg.deck,
   ggUse: gg.use,
   strawDeck: straw.deck,
+  pyramidPieces: pyramid.pieces,
+  pyramidTraverse: pyramid.traverse,
 });

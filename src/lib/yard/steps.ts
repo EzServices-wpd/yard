@@ -338,6 +338,16 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     });
   }
 
+  if (project.kind === "pyramid") {
+    steps.push({
+      step: n++,
+      title: "Leave the north doorway open",
+      description:
+        "The gap on the north face is the entrance. Do not lace it shut. Dry-fit the jambs plumb, then glue the lintel. Walk in on the bench — Frame is hips and every third course; Full is every course. No studs on the faces.",
+      tips: "Khufu's door is on the north. If you close it, you built a cage.",
+    });
+  }
+
   const decks = project.panels.filter((p) => p.type === "deck");
   if (decks.length) {
     const d = decks[0];

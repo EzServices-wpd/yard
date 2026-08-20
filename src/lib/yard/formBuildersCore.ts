@@ -33,9 +33,63 @@ export function tajOps(s: Size3): FormOp[] {
 }
 
 export function pyramidOps(s: Size3): FormOp[] {
-  const H = s.height;
-  const half = (s.width > H * 0.7 ? s.width : H * (230.3 / 146.6)) / 2;
-  return [taper(0, H, half, Math.max(half * 0.04, 0.4), 4, "leg")];
+  const sized = fitPyramid(s, "");
+  const H = sized.height;
+  const half = sized.width / 2;
+  const tip = Math.max(half * 0.04, 0.4);
+  const n = 8;
+  const ops: FormOp[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const y = t * H;
+    const h = half + (tip - half) * t;
+    ops.push({
+      op: "poly",
+      role: i === 0 ? "base" : i === n ? "tip" : "rail",
+      points: [
+        { x: h, y, z: h },
+        { x: -h, y, z: h },
+        { x: -h, y, z: -h },
+        { x: h, y, z: -h },
+        { x: h, y, z: h },
+      ],
+    });
+  }
+  const corners = [
+    [half, half],
+    [-half, half],
+    [-half, -half],
+    [half, -half],
+  ] as const;
+  for (const [x, z] of corners) {
+    ops.push({
+      op: "poly",
+      role: "leg",
+      points: [
+        { x, y: 0, z },
+        { x: (x / half) * tip, y: H, z: (z / half) * tip },
+      ],
+    });
+  }
+  return ops;
+}
+
+/** Khufu: base / height ≈ 230.3 / 146.6. A single number is height unless they said "wide". */
+export function fitPyramid(s: Size3, prompt: string): Size3 {
+  const lower = prompt.toLowerCase();
+  const saidWide = /wide|width|base/.test(lower);
+  const ft = lower.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
+  const inch = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
+  const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
+  const ratio = 230.3 / 146.6;
+  if (saidWide) {
+    const w = Math.max(n || s.width, 18);
+    const h = Math.max(w / ratio, 12);
+    return { width: w, height: h, depth: w };
+  }
+  const h = Math.max(n || s.height, 12);
+  const w = h * ratio;
+  return { width: w, height: h, depth: w };
 }
 
 export function colosseumOps(s: Size3): FormOp[] {

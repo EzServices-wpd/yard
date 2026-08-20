@@ -101,7 +101,7 @@ export function pruneTopology(
 ): TopoResult {
   // Figures keep detail — only light prune
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
-  const spanKind = kind === "bridge" || kind === "arch" || kind === "opening";
+  const spanKind = kind === "bridge" || kind === "arch" || kind === "opening" || kind === "pyramid";
   const base = fig ? 0.1 : spanKind ? 0.18 : 0.32;
   const agg = Math.min(0.85, Math.max(0.05, opts.aggressiveness ?? base));
 

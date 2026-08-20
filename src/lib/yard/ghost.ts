@@ -1,5 +1,6 @@
 import type { StructureKind, Vec3, YardProject } from "./types";
 import { pocketStrokes } from "./pocket";
+import { pyramidDoorDims } from "./lattice";
 
 export type GhostStroke = {
   points: [number, number, number][];
@@ -260,12 +261,19 @@ function pyramidHistoric(H: number): GhostStroke[] {
   const b = v(half, 0, -half);
   const c = v(half, 0, half);
   const d = v(-half, 0, half);
+  const door = pyramidDoorDims(H, half, false);
+  const doorW = door.width / 2;
+  const doorH = door.height;
   return [
     { points: [a, b, c, d, a], weight: "main" },
     { points: [a, apex], weight: "main" },
     { points: [b, apex], weight: "main" },
     { points: [c, apex], weight: "main" },
     { points: [d, apex], weight: "main" },
+    {
+      points: [v(-doorW, 0, -half), v(-doorW, doorH, -half), v(doorW, doorH, -half), v(doorW, 0, -half)],
+      weight: "fine",
+    },
   ];
 }
 

@@ -176,15 +176,18 @@ function CameraRig({
     const span = Math.max(project.overall.width, project.overall.depth, 12);
     const long = project.overall.width / Math.max(project.overall.height, 1);
     const fit = Math.max(h, span);
+    const pyramid = project.kind === "pyramid";
     const dist =
       fit *
       (project.pocket
         ? 1.85
         : project.windowPkg
           ? 1.7
-          : long > 2.1
-            ? 0.95
-            : 1.55);
+          : pyramid
+            ? 1.45
+            : long > 2.1
+              ? 0.95
+              : 1.55);
     const focus = focusOf(project, stepIds);
     const spanIso: [number, number, number] = [
       focus.x + project.overall.width * 0.18,
@@ -205,7 +208,14 @@ function CameraRig({
             side: [focus.x + dist * 1.2, focus.y * 0.4, focus.z + 8],
             top: [focus.x, focus.y + fit * 1.15, focus.z + 4],
           }
-        : {
+        : pyramid
+          ? {
+              iso: [focus.x + dist * 0.62, Math.max(h * 0.48, 10), focus.z - dist * 0.95],
+              front: [focus.x, focus.y * 0.42, focus.z - dist * 1.22],
+              side: [focus.x + dist * 1.2, focus.y * 0.4, focus.z],
+              top: [focus.x, focus.y + fit * 1.25, focus.z + 0.01],
+            }
+          : {
           iso: long > 2.1 ? spanIso : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
           front: [focus.x, focus.y, focus.z + dist * 1.28],
           side: [focus.x + dist * 1.28, focus.y, focus.z],

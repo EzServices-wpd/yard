@@ -182,7 +182,7 @@ export function graphToInstances(
         rotation: rot,
         cutLength: cut,
         join: s > 0 ? "glue" : join,
-        role: s > 0 ? "splice" : edge.role,
+        role: edge.role,
         from: [p0.x, p0.y, p0.z],
         to: [p1.x, p1.y, p1.z],
       });

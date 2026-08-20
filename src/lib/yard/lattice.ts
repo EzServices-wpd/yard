@@ -244,3 +244,151 @@ export function hoopSchedule(ts: number[], forced: number[], every: number) {
     return every > 1 && index % every === 0;
   };
 }
+
+/**
+ * Khufu-style door on a square pyramid. Craft scale: a mouth a stranger
+ * can name. Person scale: a real doorway.
+ */
+export function pyramidDoorDims(
+  height: number,
+  half: number,
+  personish: boolean,
+): { width: number; height: number } {
+  if (personish) {
+    return {
+      width: Math.max(24, Math.min(half * 0.32, 36)),
+      height: Math.max(36, Math.min(height * 0.22, 48)),
+    };
+  }
+  return {
+    width: Math.max(3.8, Math.min(half * 0.34, height * 0.24)),
+    height: Math.max(4.4, Math.min(height * 0.24, half * 0.4)),
+  };
+}
+
+/**
+ * Khufu is stacked courses, not a laced loft. Square belts shrink to a
+ * pyramidion, four hip rafters, a north-face door you can walk through.
+ * Frame = hips + base + every third course + door. Full = every course.
+ * Faces are belts, not a stud grid — filling them is the lattice-cage bug.
+ */
+export function buildSteppedPyramid(opts: {
+  height: number;
+  half0: number;
+  half1?: number;
+  item: CatalogItem;
+  join: JoinMethod;
+  braceJoin: JoinMethod;
+}): {
+  nodes: StructureNode[];
+  edges: StructureEdge[];
+  door: { width: number; height: number; z0: number };
+} {
+  const dens = stockDensity(opts.item);
+  const H = Math.max(opts.height, 12);
+  const h0 = Math.max(opts.half0, 6);
+  const h1 = Math.max(opts.half1 ?? dens.thick * 2.4, dens.thick * 1.8);
+  const pitch = dens.fat
+    ? Math.max(H / 5.5, dens.bay * 1.15)
+    : Math.max(dens.stock * 0.95, dens.bay * 2.2, H / 10);
+  const n = Math.max(dens.fat ? 4 : 5, Math.min(dens.fat ? 6 : 9, Math.round(H / pitch)));
+
+  const halfAt = (t: number) => h0 + (h1 - h0) * t;
+  const personish =
+    (opts.item.category === "lumber" || opts.item.category === "sheet_goods") && H >= 72;
+  const door = pyramidDoorDims(H, h0, personish);
+  const doorW = door.width;
+  const NORTH = 2;
+
+  const stations: number[] = [];
+  for (let i = 0; i <= n; i++) stations.push((i / n) * H);
+  const near = stations.findIndex((y) => Math.abs(y - door.height) < pitch * 0.3);
+  let doorY = door.height;
+  if (near >= 0) {
+    doorY = stations[near]!;
+  } else {
+    stations.push(door.height);
+    stations.sort((a, b) => a - b);
+    doorY = door.height;
+  }
+  const doorIdx = stations.findIndex((y) => Math.abs(y - doorY) < 0.05);
+
+  const nodes: StructureNode[] = [];
+  const edges: StructureEdge[] = [];
+  const addNode = (p: Vec3, role: StructureNode["role"]) => {
+    const id = createId("n");
+    nodes.push({ id, position: p, role });
+    return id;
+  };
+  const addEdge = (
+    from: string,
+    to: string,
+    role: StructureEdge["role"],
+    critical = false,
+    join = opts.join,
+  ) => {
+    if (from === to) return;
+    edges.push({ id: createId("e"), from, to, join, role, critical });
+  };
+
+  const corners: string[][] = [];
+  const jambL: string[] = [];
+  const jambR: string[] = [];
+  const last = stations.length - 1;
+
+  for (let i = 0; i < stations.length; i++) {
+    const y = stations[i]!;
+    const t = y / H;
+    const half = halfAt(t);
+    const beltRole: StructureEdge["role"] =
+      i === 0 ? "ring" : i === last || i === doorIdx || i % 3 === 0 ? "rail" : "brace";
+    const nodeRole: StructureNode["role"] = i === 0 ? "base" : i === last ? "tip" : "leg";
+    const row: string[] = [];
+    for (let c = 0; c < 4; c++) row.push(addNode(squareCorner(half, y, c), nodeRole));
+    corners.push(row);
+
+    const belowDoor = y < doorY - 0.08;
+    const atDoor = Math.abs(y - doorY) < 0.08;
+    if (y <= doorY + 0.08) {
+      const zN = -half;
+      jambL.push(addNode({ x: -doorW / 2, y, z: zN }, y < 0.4 ? "base" : "leg"));
+      jambR.push(addNode({ x: doorW / 2, y, z: zN }, y < 0.4 ? "base" : "leg"));
+    }
+
+    for (let f = 0; f < 4; f++) {
+      const a = row[f]!;
+      const b = row[(f + 1) % 4]!;
+      const north = f === NORTH;
+      if (north && (belowDoor || atDoor) && jambL.length && jambR.length) {
+        const jl = jambL[jambL.length - 1]!;
+        const jr = jambR[jambR.length - 1]!;
+        addEdge(a, jl, beltRole, i === 0 || atDoor);
+        if (atDoor) addEdge(jl, jr, "rail", true);
+        addEdge(jr, b, beltRole, i === 0 || atDoor);
+      } else {
+        addEdge(a, b, beltRole, i === 0 || i === last);
+      }
+    }
+  }
+
+  for (let c = 0; c < 4; c++) {
+    addEdge(corners[0]![c]!, corners[last]![c]!, "leg", true);
+  }
+
+  for (let i = 0; i < jambL.length - 1; i++) {
+    addEdge(jambL[i]!, jambL[i + 1]!, "leg", true);
+    addEdge(jambR[i]!, jambR[i + 1]!, "leg", true);
+  }
+
+  const cap = halfAt(1);
+  if (cap > dens.thick * 3) {
+    addEdge(corners[last]![0]!, corners[last]![2]!, "rail", false, opts.braceJoin);
+  }
+
+  return {
+    nodes,
+    edges,
+    door: { width: doorW, height: doorY, z0: -h0 },
+  };
+}
+

@@ -149,7 +149,7 @@ export function segmentCrossesOpening(
   env: Envelope3,
   kind: StructureKind,
 ): boolean {
-  if (kind !== "arch" && kind !== "bridge" && kind !== "opening") return false;
+  if (kind !== "arch" && kind !== "bridge" && kind !== "opening" && kind !== "pyramid") return false;
   const w = env.maxX - env.minX || 1;
   const d = env.maxZ - env.minZ || 1;
   const h = env.maxY - env.minY || 1;
@@ -163,6 +163,14 @@ export function segmentCrossesOpening(
     if (kind === "arch" && inX && inZ && inY) return true;
     if (kind === "bridge" && inY && Math.abs(p.y - (env.minY + h * 0.35)) < h * 0.2 && inZ) {
       // deck gap under is OK
+    }
+    if (kind === "pyramid") {
+      const doorW = w * 0.17;
+      const doorH = h * 0.26;
+      const onNorth = p.z < env.minZ + d * 0.18;
+      const inDoorX = Math.abs(p.x - cx) < doorW * 0.55;
+      const inDoorY = p.y > env.minY - 0.2 && p.y < env.minY + doorH;
+      if (onNorth && inDoorX && inDoorY) return true;
     }
   }
   return false;
@@ -388,7 +396,7 @@ export function needsSpine(
   const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 0.5);
   const slender = height / span > 2.8;
   const figure = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
-  if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet") {
+  if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet" || kind === "pyramid") {
     return { needed: false, reason: "" };
   }
   if (figure) {
@@ -688,7 +696,7 @@ export function finishGraph(
   const d = stockDensity(item, grain);
   let next = weldGraph(graph, Math.max(d.thick * 1.6, 0.22));
   next = stitchComponents(next, kind);
-  const spanKind = kind === "arch" || kind === "bridge" || kind === "opening";
+  const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
   // Span forms already placed their piers. Dropping a leg from every deck/cable
   // node turns a suspension into a lattice cage.
   if (!spanKind) next = ensureDownwardPath(next);
