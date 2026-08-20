@@ -83,9 +83,14 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       typeof window !== "undefined" &&
       /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
     void (async () => {
+      const keepTrue =
+        seeded.kind === "eiffel" ||
+        seeded.kind === "pyramid" ||
+        seeded.kind === "arch" ||
+        seeded.kind === "bridge";
       try {
         const hint = await hintSubject({ data: { prompt } });
-        if (hint.summary && hint.summary !== hint.subject) {
+        if (!keepTrue && hint.summary && hint.summary !== hint.subject) {
           const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, seeded.overall);
           generate(prompt, undefined, form);
           makePlan();
@@ -101,16 +106,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           data: { prompt, heightIn: seeded.overall.height, widthIn: seeded.overall.width },
         });
         const after = useYard.getState().project;
-        if (
-          interp.ok &&
-          interp.form &&
-          after.kind !== "eiffel" &&
-          after.kind !== "closet" &&
-          after.kind !== "opening"
-        ) {
+        const locked =
+          after.kind === "eiffel" ||
+          after.kind === "pyramid" ||
+          after.kind === "arch" ||
+          after.kind === "bridge" ||
+          after.kind === "closet" ||
+          after.kind === "opening";
+        if (interp.ok && interp.form && !locked) {
           generate(prompt, interp.materialId ?? undefined, interp.form);
           makePlan();
-        } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId) {
+        } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId && !locked) {
           generate(prompt, interp.materialId);
           makePlan();
         }

@@ -76,8 +76,8 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
   if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay))
     return { anatomy: "carcase", kind: /castle|fort/.test(hay) ? "castle" : "house" };
+  if (/arch|gateway|portal|arbor|arbour|pergola/.test(hay)) return { anatomy: "span", kind: "arch" };
   if (/wall|fence|palisade/.test(hay)) return { anatomy: "span", kind: "wall" };
-  if (/arch|gateway|portal/.test(hay)) return { anatomy: "span", kind: "arch" };
   if (/tree|cactus|plant/.test(hay)) return { anatomy: "figure", kind: "plant", stance: "biped" };
 
   const sizeTall = /foot|ft|inch|in/.test(hay);
