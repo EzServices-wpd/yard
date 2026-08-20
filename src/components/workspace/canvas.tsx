@@ -168,9 +168,23 @@ function CameraRig({
   useEffect(() => {
     const h = Math.max(project.overall.height, 12);
     const span = Math.max(project.overall.width, project.overall.depth, 12);
+    const long = project.overall.width / Math.max(project.overall.height, 1);
     const fit = Math.max(h, span);
-    const dist = fit * (project.pocket ? 1.85 : project.windowPkg ? 1.7 : 1.55);
+    const dist =
+      fit *
+      (project.pocket
+        ? 1.85
+        : project.windowPkg
+          ? 1.7
+          : long > 2.1
+            ? 0.95
+            : 1.55);
     const focus = focusOf(project, stepIds);
+    const spanIso: [number, number, number] = [
+      focus.x + project.overall.width * 0.18,
+      Math.max(h * 1.05, focus.y + h * 0.7),
+      focus.z + Math.max(project.overall.depth * 2.4, project.overall.width * 0.58),
+    ];
     const presets: Record<typeof preset, [number, number, number]> = project.pocket
       ? {
           iso: [focus.x + dist * 0.45, focus.y * 0.28 + 10, focus.z + dist * 1.05],
@@ -186,7 +200,7 @@ function CameraRig({
             top: [focus.x, focus.y + fit * 1.15, focus.z + 4],
           }
         : {
-          iso: [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+          iso: long > 2.1 ? spanIso : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
           front: [focus.x, focus.y, focus.z + dist * 1.28],
           side: [focus.x + dist * 1.28, focus.y, focus.z],
           top: [focus.x, focus.y + fit * 1.35, focus.z + 0.01],

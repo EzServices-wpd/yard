@@ -23,8 +23,8 @@ export function promptWantsGhost(prompt: string) {
 }
 
 /** Famous / requested → historic on. Hull only if they asked and it is not a famous site. */
-export function defaultGhostFlags(kind: StructureKind, prompt: string, historic = false) {
-  const famous = isFamousKind(kind) || historic;
+export function defaultGhostFlags(kind: StructureKind, prompt: string, _historic = false) {
+  const famous = isFamousKind(kind);
   const wants = promptWantsGhost(prompt);
   return {
     showHistoric: famous || (wants && hasHistoricProfile(kind)),

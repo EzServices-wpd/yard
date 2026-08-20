@@ -68,7 +68,8 @@ export function generateFromPrompt(
       depth: Math.min(Math.max(box.depth, 10), Math.max(12, H * 0.22)),
     };
   }
-  if (/bridge|span|overpass|viaduct/.test(lowerP) && !formOverride) {
+  const namedSpan = /golden gate|brooklyn|suspension/.test(lowerP);
+  if (/bridge|span|overpass|viaduct/.test(lowerP) && !formOverride && !namedSpan) {
     const span = Math.max(box.width, 24);
     box = {
       height: Math.min(Math.max(box.height, 10), Math.max(10, span * 0.32)),
@@ -95,7 +96,7 @@ export function generateFromPrompt(
   }
 
   const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind });
-  return projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod);
+  return projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name);
 }
 
 function projectFromGraph(
@@ -106,6 +107,7 @@ function projectFromGraph(
   historic: boolean,
   offer?: YardProject["supportOffer"],
   joinMethod?: JoinMethod,
+  displayName?: string,
 ): YardProject {
   const mapped = graphToInstances(graph, item, joinMethod);
   const joinUsed = joinMethod || item.preferredJoins?.[0] || "glue";
@@ -139,5 +141,6 @@ function projectFromGraph(
     supportOffer: offer,
     buildStats: stats,
     joinMethod: joinMethod ?? item.preferredJoins?.[0],
+    name: displayName,
   });
 }

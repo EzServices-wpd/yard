@@ -14,6 +14,7 @@ import {
   spaceNeedleOps,
   pisaOps,
   goldenGateOps,
+  fitSuspension,
   arcOps,
   parthenonOps,
   stonehengeOps,
@@ -54,7 +55,14 @@ import {
 } from "./formBuildersExtra";
 
 
-type Hit = { re: RegExp; kind: StructureKind; name: string; historic?: boolean; build: (s: Size3) => FormOp[] };
+type Hit = {
+  re: RegExp;
+  kind: StructureKind;
+  name: string;
+  historic?: boolean;
+  build: (s: Size3) => FormOp[];
+  fit?: (s: Size3, prompt: string) => Size3;
+};
 
 const HITS: Hit[] = [
   { re: /eiffel/, kind: "eiffel", name: "Eiffel", historic: true, build: () => [] },
@@ -67,8 +75,8 @@ const HITS: Hit[] = [
   { re: /space needle/, kind: "tower", name: "Space Needle", historic: true, build: spaceNeedleOps },
   { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: spaceNeedleOps },
   { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaOps },
-  { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: goldenGateOps },
-  { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: goldenGateOps },
+  { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: goldenGateOps, fit: fitSuspension },
+  { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: goldenGateOps, fit: fitSuspension },
   { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps },
   { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps },
   { re: /stonehenge/, kind: "custom", name: "Stonehenge", historic: true, build: stonehengeOps },
@@ -122,7 +130,8 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   const hay = looks ? `${looks[1]} ${lower}` : lower;
   for (const hit of HITS) {
     if (hit.re.test(hay)) {
-      const ops = hit.build(size);
+      const sized = hit.fit ? hit.fit(size, prompt) : size;
+      const ops = hit.build(sized);
       const stance =
         hit.kind === "figure"
           ? classifyAnatomy(hay).stance

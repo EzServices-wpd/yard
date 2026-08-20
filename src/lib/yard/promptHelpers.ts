@@ -11,7 +11,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
   let width = 24;
   let depth = 24;
 
-  const isBridge = /bridge|span|viaduct|overpass|trestle/.test(lower);
+  const isBridge = /bridge|span|viaduct|overpass|trestle|golden gate|brooklyn/.test(lower);
   const isArch = /arch|arbor|arbour|pergola|gateway|portal/.test(lower);
 
   const ftTall = lower.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\s*(?:tall|high|height|tower)\b/);
@@ -62,7 +62,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  if (isBridge && width < height) {
+  if (isBridge && width < height && !/golden gate|brooklyn|suspension|tall|high|height/.test(lower)) {
     const span = Math.max(width, height);
     height = Math.min(height, Math.max(10, span * 0.3));
     width = span;
@@ -129,7 +129,7 @@ export function toProject(
   instances: YardInstance[],
   notes: string[],
   historic = false,
-  extra: Pick<YardProject, "supportOffer" | "buildStats" | "joinMethod"> = {},
+  extra: Pick<YardProject, "supportOffer" | "buildStats" | "joinMethod"> & { name?: string } = {},
 ): YardProject {
   let list = instances;
   if (list.length > 8000) {
@@ -153,7 +153,7 @@ export function toProject(
   };
   return {
     id: createId("proj"),
-    name: names[kind] ?? `${item.name} ${kind}`,
+    name: extra.name ?? names[kind] ?? `${item.name} ${kind}`,
     prompt,
     kind,
     overall: {

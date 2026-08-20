@@ -688,7 +688,10 @@ export function finishGraph(
   const d = stockDensity(item, grain);
   let next = weldGraph(graph, Math.max(d.thick * 1.6, 0.22));
   next = stitchComponents(next, kind);
-  next = ensureDownwardPath(next);
+  const spanKind = kind === "arch" || kind === "bridge" || kind === "opening";
+  // Span forms already placed their piers. Dropping a leg from every deck/cable
+  // node turns a suspension into a lattice cage.
+  if (!spanKind) next = ensureDownwardPath(next);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   if (fig) next = ribBands(next, Math.max(d.bay, 0.8), true);
   next = weldGraph(next, Math.max(d.thick * 1.6, 0.22));
