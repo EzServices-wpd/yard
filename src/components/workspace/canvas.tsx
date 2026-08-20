@@ -12,6 +12,7 @@ import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
 import { binderKind, classifyJoint, isFrameRole, jointNodes } from "@/lib/yard/joints";
 import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 import type { PrimitiveDims } from "@/lib/yard/geometry";
+import { WalkRig } from "@/components/workspace/walk-rig";
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
@@ -106,13 +107,15 @@ export function WorkspaceCanvas() {
         />
         <OrbitControls
           makeDefault
+          enabled={workMode !== "walk"}
           enableDamping
           dampingFactor={0.08}
           minDistance={6}
           maxDistance={480}
           target={[0, 14, 0]}
         />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} />
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
+        {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
       </Canvas>
     </div>
   );
@@ -158,14 +161,17 @@ function CameraRig({
   project,
   preset,
   stepIds,
+  locked,
 }: {
   project: YardProject;
   preset: "iso" | "front" | "side" | "top";
   stepIds: string[];
+  locked: boolean;
 }) {
   const { camera, controls } = useThree();
 
   useEffect(() => {
+    if (locked) return;
     const h = Math.max(project.overall.height, 12);
     const span = Math.max(project.overall.width, project.overall.depth, 12);
     const long = project.overall.width / Math.max(project.overall.height, 1);
@@ -214,7 +220,7 @@ function CameraRig({
       orbit.target.copy(tgt);
       orbit.update?.();
     }
-  }, [preset, project.id, project.overall.height, project.overall.width, project.overall.depth, project.instances.length, project.panels.length, stepIds.join("|"), camera, controls]);
+  }, [preset, project.id, project.overall.height, project.overall.width, project.overall.depth, project.instances.length, project.panels.length, stepIds.join("|"), camera, controls, locked]);
 
   return null;
 }
@@ -338,7 +344,9 @@ function BenchScene({
         />
       )}
       {!pending &&
-        project.panels.map((panel) => (
+        project.panels
+          .filter((panel) => detail === "full" || panel.type !== "deck")
+          .map((panel) => (
         <PanelMesh
           key={panel.id}
           panel={panel}
@@ -672,7 +680,7 @@ function CloudKind({
     if (idx == null || !live[idx]) return;
     const { inst, index } = live[idx];
     onSelect(inst.id);
-    const locked = workMode === "look" || (workMode === "free" && lockedIds.includes(inst.id)) || (workMode === "build" && placedIds.includes(inst.id));
+    const locked = workMode === "look" || workMode === "walk" || (workMode === "free" && lockedIds.includes(inst.id)) || (workMode === "build" && placedIds.includes(inst.id));
     if (locked) return;
     dragging.current = idx;
     const placed = placedIds.includes(inst.id);
@@ -960,7 +968,7 @@ function InstanceMesh({
   const basePos =
     dragPos ??
     (inBuild && !placed ? pilePosition(index, count, overall) : instance.position);
-  const canDrag = workMode !== "look" && !(workMode === "free" && locked) && !(inBuild && placed);
+  const canDrag = workMode !== "look" && workMode !== "walk" && !(workMode === "free" && locked) && !(inBuild && placed);
 
   const role = instance.role ?? "";
   let color = selected ? "#fff6e6" : item.color || ROLE_TINT[role] || "#e0b86a";
@@ -1089,25 +1097,34 @@ function PanelMesh({
     divider: "#c4a06a",
     upright: "#c4a06a",
     shelf: "#d2b07a",
+    deck: item?.color ?? "#8a7a64",
   };
   const color = selected || inStep ? "#fff6e6" : byType[panel.type] ?? item?.color ?? "#c4a06a";
+  const deck = panel.type === "deck";
   return (
-    <mesh
-      position={[cx * explode, cy, cz * explode]}
-      frustumCulled={false}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-    >
-      <boxGeometry args={[panel.size.width, panel.size.height, panel.size.depth]} />
-      <meshStandardMaterial
-        color={color}
-        transparent={opacity < 1 || glass}
-        opacity={opacity}
-        roughness={glass ? 0.12 : 0.7}
-        metalness={glass ? 0.15 : 0.03}
-      />
-    </mesh>
+    <group position={[cx * explode, cy, cz * explode]}>
+      <mesh
+        frustumCulled={false}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+      >
+        <boxGeometry args={[panel.size.width, panel.size.height, panel.size.depth]} />
+        <meshStandardMaterial
+          color={color}
+          transparent={opacity < 1 || glass}
+          opacity={opacity}
+          roughness={glass ? 0.12 : deck ? 0.92 : 0.7}
+          metalness={glass ? 0.15 : 0.03}
+        />
+      </mesh>
+      {deck && (
+        <mesh position={[0, panel.size.height / 2 + 0.02, 0]} frustumCulled={false}>
+          <boxGeometry args={[panel.size.width * 0.96, 0.03, Math.max(0.1, panel.size.depth * 0.035)]} />
+          <meshStandardMaterial color="#3a342c" roughness={1} metalness={0} />
+        </mesh>
+      )}
+    </group>
   );
 }

@@ -14,6 +14,7 @@ import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
 import type { CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject } from "./promptHelpers";
+import { attachFunction } from "./function";
 
 export function emptyProject(): YardProject {
   return {
@@ -92,11 +93,13 @@ export function generateFromPrompt(
     // Do not densify the Eiffel — that fills the gap between the four piers.
     const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
     const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
-    return projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod);
+    return attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod));
   }
 
   const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind });
-  return projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name);
+  return attachFunction(
+    projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name),
+  );
 }
 
 function projectFromGraph(

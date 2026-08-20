@@ -124,7 +124,7 @@ export function fitSuspension(s: Size3, prompt: string): Size3 {
   const inch = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
   const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
   const ratio = 3.45;
-  if (!n) return { width: 56, height: 16.2, depth: 8 };
+  if (!n) return { width: 56, height: 16.2, depth: 10 };
   if (saidTall) {
     const h = Math.max(n, 12);
     return { width: h * ratio, height: h, depth: Math.max(7, Math.min(h * 0.5, 14)) };
@@ -159,7 +159,7 @@ function parabolaPts(
 export function goldenGateOps(s: Size3): FormOp[] {
   const h = Math.max(s.height, 12);
   const span = Math.max(s.width, h * 3.2);
-  const depth = Math.max(s.depth, Math.min(h * 0.5, span * 0.16), 7);
+  const depth = Math.max(s.depth, Math.min(h * 0.55, span * 0.18), 8);
   const x0 = -span / 2;
   const x1 = span / 2;
   const z0 = -depth / 2;
@@ -167,51 +167,75 @@ export function goldenGateOps(s: Size3): FormOp[] {
   const deckY = h * 0.32;
   const t0 = x0 + span * 0.22;
   const t1 = x0 + span * 0.78;
+  const tw = Math.max(1.5, depth * 0.18);
+  const portalH = Math.max(3.2, (h - deckY) * 0.3);
   const sag = deckY + Math.max(3.4, (h - deckY) * 0.22);
   const sideMid = deckY + (h - deckY) * 0.25;
   const ops: FormOp[] = [];
 
   for (const tx of [t0, t1]) {
-    for (const z of [z0, z1]) {
-      ops.push({ op: "column", x: tx, z, y0: 0, y1: deckY, role: "leg" });
-      ops.push({ op: "column", x: tx, z, y0: deckY, y1: h, role: "leg" });
+    for (const dx of [-tw, tw]) {
+      for (const z of [z0, z1]) {
+        ops.push({ op: "column", x: tx + dx, z, y0: 0, y1: deckY, role: "leg" });
+        ops.push({ op: "column", x: tx + dx, z, y0: deckY, y1: h, role: "leg" });
+      }
     }
+    const lintel = deckY + portalH;
     ops.push({
       op: "poly",
       role: "rail",
       points: [
-        { x: tx, y: deckY, z: z0 },
-        { x: tx, y: deckY, z: z1 },
+        { x: tx - tw, y: lintel, z: z0 },
+        { x: tx - tw, y: lintel, z: z1 },
+      ],
+    });
+    ops.push({
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: tx + tw, y: lintel, z: z0 },
+        { x: tx + tw, y: lintel, z: z1 },
       ],
     });
     const bays = 3;
-    for (let i = 0; i < bays; i++) {
-      const yA = deckY + ((h - deckY) * i) / bays;
-      const yB = deckY + ((h - deckY) * (i + 1)) / bays;
-      ops.push({
-        op: "poly",
-        role: "brace",
-        points: [
-          { x: tx, y: yA, z: z0 },
-          { x: tx, y: yB, z: z1 },
-        ],
-      });
-      ops.push({
-        op: "poly",
-        role: "brace",
-        points: [
-          { x: tx, y: yA, z: z1 },
-          { x: tx, y: yB, z: z0 },
-        ],
-      });
+    for (const z of [z0, z1]) {
       ops.push({
         op: "poly",
         role: "rail",
         points: [
-          { x: tx, y: yB, z: z0 },
-          { x: tx, y: yB, z: z1 },
+          { x: tx - tw, y: h, z },
+          { x: tx, y: h, z },
+          { x: tx + tw, y: h, z },
         ],
       });
+      for (let i = 0; i < bays; i++) {
+        const yA = lintel + ((h - lintel) * i) / bays;
+        const yB = lintel + ((h - lintel) * (i + 1)) / bays;
+        ops.push({
+          op: "poly",
+          role: "brace",
+          points: [
+            { x: tx - tw, y: yA, z },
+            { x: tx + tw, y: yB, z },
+          ],
+        });
+        ops.push({
+          op: "poly",
+          role: "brace",
+          points: [
+            { x: tx + tw, y: yA, z },
+            { x: tx - tw, y: yB, z },
+          ],
+        });
+        ops.push({
+          op: "poly",
+          role: "rail",
+          points: [
+            { x: tx - tw, y: yB, z },
+            { x: tx + tw, y: yB, z },
+          ],
+        });
+      }
     }
   }
 
@@ -230,9 +254,10 @@ export function goldenGateOps(s: Size3): FormOp[] {
       ],
     });
   }
-  const crossN = 8;
+  const crossN = 10;
   for (let i = 0; i <= crossN; i++) {
     const x = x0 + (span * i) / crossN;
+    if (Math.abs(x - t0) < tw * 0.8 || Math.abs(x - t1) < tw * 0.8) continue;
     ops.push({
       op: "poly",
       role: "rail",
@@ -244,9 +269,9 @@ export function goldenGateOps(s: Size3): FormOp[] {
   }
 
   for (const z of [z0, z1]) {
-    const west = parabolaPts(x0, deckY, t0, h, sideMid, 6, z);
-    const main = parabolaPts(t0, h, t1, h, sag, 8, z);
-    const east = parabolaPts(t1, h, x1, deckY, sideMid, 6, z);
+    const west = parabolaPts(x0, deckY, t0, h, sideMid, 8, z);
+    const main = parabolaPts(t0, h, t1, h, sag, 12, z);
+    const east = parabolaPts(t1, h, x1, deckY, sideMid, 8, z);
     const cable = [...west, ...main.slice(1), ...east.slice(1)];
     ops.push({ op: "poly", role: "support", points: cable });
     for (const p of cable) {

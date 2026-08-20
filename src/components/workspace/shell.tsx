@@ -25,6 +25,8 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { isLockedForm, recipeFromAnatomy } from "@/lib/yard/form";
+import { loadIssues } from "@/lib/yard/function";
+import { holdWalkKey } from "@/components/workspace/walk-rig";
 import type { WorkMode } from "@/lib/yard/types";
 
 export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
@@ -51,6 +53,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const setWorkMode = useYard((s) => s.setWorkMode);
   const detail = useYard((s) => s.detail);
   const setDetail = useYard((s) => s.setDetail);
+  const showLoad = useYard((s) => s.showLoad);
+  const setShowLoad = useYard((s) => s.setShowLoad);
   const showHull = useYard((s) => s.showHull);
   const showHistoric = useYard((s) => s.showHistoric);
   const setShowHull = useYard((s) => s.setShowHull);
@@ -161,7 +165,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
   useEffect(() => {
     if (workMode === "build") setWorkMode("look");
-  }, [workMode, setWorkMode]);
+    if (workMode === "walk" && !project.traverse) setWorkMode("look");
+  }, [workMode, setWorkMode, project.traverse]);
 
   const material = getCatalogItem(project.primaryMaterialId);
   const pieceCount = project.instances.length + project.panels.length;
@@ -169,6 +174,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const locked = selectedId ? lockedIds.includes(selectedId) : false;
   const steps = plan?.instructions ?? [];
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
+  const canWalk = Boolean(project.traverse);
+  const loadNote = canWalk ? loadIssues(project) : [];
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -362,7 +369,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
           {!pending && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
-            <ModeSwitch value={workMode} onChange={setWorkMode} />
+            <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
               {(["frame", "full"] as const).map((d) => (
                 <GhostBtn
@@ -370,7 +377,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   on={detail === d}
                   onClick={() => setDetail(d)}
                   label={d === "frame" ? "Frame" : "Full"}
-                  title={d === "frame" ? "Primary members only" : "Every piece this stock can place"}
+                  title={d === "frame" ? "Skeleton — no road" : "The thing in use"}
                 />
               ))}
             </div>
@@ -388,8 +395,64 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 title={historicOk ? "Published monument proportions" : "No historic profile for this build"}
                 disabled={!historicOk}
               />
+              {canWalk && (
+                <GhostBtn
+                  on={showLoad}
+                  onClick={() => setShowLoad(!showLoad)}
+                  label="Load"
+                  title="What this stock can honestly carry"
+                />
+              )}
             </div>
           </div>
+          )}
+
+          {showLoad && canWalk && !pending && (
+            <div
+              data-yard-load-panel="1"
+              className="absolute left-3 top-36 z-20 w-[min(18rem,calc(100%-1.5rem))] rounded-md border border-border bg-surface/95 px-3 py-2 text-xs shadow-lg sm:left-4"
+            >
+              <p className="font-medium text-fg">
+                {project.assumptions.use === "person"
+                  ? "Person load"
+                  : project.assumptions.use === "toy"
+                    ? "Toy load"
+                    : "Display load"}
+              </p>
+              <ul className="mt-1 space-y-1 text-muted">
+                {loadNote.map((issue, i) => (
+                  <li key={i}>
+                    {issue.message}
+                    {issue.suggestion ? ` ${issue.suggestion}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {workMode === "walk" && !pending && (
+            <>
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                <div className="relative size-4">
+                  <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-fg/70" />
+                  <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-fg/70" />
+                </div>
+              </div>
+              <p
+                data-yard-walk-hint="1"
+                className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-md border border-border bg-surface/90 px-3 py-1.5 text-xs text-muted backdrop-blur"
+              >
+                Click the bench · WASD · look up
+              </p>
+              <div className="pointer-events-auto absolute bottom-20 right-3 z-20 grid grid-cols-3 gap-1 sm:bottom-24 sm:right-4">
+                <span />
+                <WalkKey code="KeyW" label="W" />
+                <span />
+                <WalkKey code="KeyA" label="A" />
+                <WalkKey code="KeyS" label="S" />
+                <WalkKey code="KeyD" label="D" />
+              </div>
+            </>
           )}
 
           {steps.length > 0 && !pending && (
@@ -448,6 +511,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               data-yard-form={showHistoric ? "1" : "0"}
               data-yard-detail={detail}
               data-yard-join={project.joinMethod ?? material?.preferredJoins?.[0] ?? ""}
+              data-yard-traverse={project.traverse?.kind ?? ""}
+              data-yard-load={project.assumptions.use ?? ""}
+              data-yard-deck={project.panels.some((p) => p.type === "deck") ? "1" : "0"}
               className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
             >
               <p>
@@ -457,7 +523,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               <p className="mt-0.5 text-faint">
                 {inches(project.overall.width)} × {inches(project.overall.height)} × {inches(project.overall.depth)}
                 {" · "}
-                {workMode === "look" ? "Orbit" : workMode === "build" ? "Snap to the glow" : "Drag · snap home"}
+                {workMode === "look" ? "Orbit" : workMode === "walk" ? "On the road" : workMode === "build" ? "Snap to the glow" : "Drag · snap home"}
               </p>
             </div>
             <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
@@ -493,9 +559,18 @@ function MoreItem({
   );
 }
 
-function ModeSwitch({ value, onChange }: { value: WorkMode; onChange: (v: WorkMode) => void }) {
+function ModeSwitch({
+  value,
+  onChange,
+  canWalk,
+}: {
+  value: WorkMode;
+  onChange: (v: WorkMode) => void;
+  canWalk: boolean;
+}) {
   const modes: { id: WorkMode; label: string }[] = [
     { id: "look", label: "Look" },
+    ...(canWalk ? [{ id: "walk" as const, label: "Walk" }] : []),
     { id: "free", label: "Free" },
   ];
   return (
@@ -511,6 +586,25 @@ function ModeSwitch({ value, onChange }: { value: WorkMode; onChange: (v: WorkMo
         </button>
       ))}
     </div>
+  );
+}
+
+function WalkKey({ code, label }: { code: string; label: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="grid size-11 place-items-center rounded-md border border-border bg-surface/90 text-xs font-medium text-fg backdrop-blur sm:size-11"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        holdWalkKey(code, true);
+      }}
+      onPointerUp={() => holdWalkKey(code, false)}
+      onPointerCancel={() => holdWalkKey(code, false)}
+      onPointerLeave={() => holdWalkKey(code, false)}
+    >
+      {label}
+    </button>
   );
 }
 

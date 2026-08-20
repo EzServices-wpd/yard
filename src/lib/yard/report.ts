@@ -6,6 +6,7 @@ import { uniqueSteps } from "./steps";
 import { decorateBom } from "./listings";
 import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
+import { loadIssues, panelBomLines } from "./function";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function roleOf(role?: string) {
@@ -416,7 +417,7 @@ export function buildPlan(project: YardProject): BuildPlan {
     };
   }
 
-  if (project.panels.length > 0) {
+  if ((project.pocket || project.fitted || project.kind === "closet") && project.panels.length > 0 && !project.instances.length) {
     issues.push(...closetFeasibility(project));
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
@@ -562,6 +563,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       suggestion: "Leave the spine in until the first platform (or the body) is laced.",
     });
   }
+  issues.push(...loadIssues(project));
 
   const forgeBom = buildForgeBom(project.instances, project.primaryMaterialId);
   const binders =
@@ -591,6 +593,25 @@ export function buildPlan(project: YardProject): BuildPlan {
       });
     }
   }
+  for (const p of project.panels) {
+    const cat = getCatalogItem(p.materialId);
+    const key = `panel|${p.materialId}|${p.size.width.toFixed(1)}x${p.size.depth.toFixed(1)}`;
+    const existing = cutMap.get(key);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      cutMap.set(key, {
+        id: key,
+        name: p.name,
+        quantity: 1,
+        lengthIn: Math.max(p.size.width, p.size.depth),
+        widthIn: Math.min(p.size.width, p.size.depth),
+        thicknessIn: p.size.height,
+        material: cat?.name ?? p.materialId,
+        notes: "Sheet for the working surface",
+      });
+    }
+  }
 
   const status = issues.some((i) => i.severity === "critical")
     ? "critical"
@@ -598,7 +619,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       ? "warnings"
       : "ok";
 
-  const bom = decorateBom([...bomLinesFromForge(forgeBom), ...binders]);
+  const bom = decorateBom([...bomLinesFromForge(forgeBom), ...panelBomLines(project), ...binders]);
 
   return {
     feasibility: {
@@ -613,7 +634,7 @@ export function buildPlan(project: YardProject): BuildPlan {
     bom,
     instructions: uniqueSteps(project),
     totals: {
-      pieces: forgeBom.totalPieces,
+      pieces: forgeBom.totalPieces + project.panels.length,
       estCostUsd: bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0),
       packs: bom.reduce((s, b) => s + (b.offers?.[0]?.packsNeeded ?? 1), 0),
     },

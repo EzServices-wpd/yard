@@ -17,7 +17,7 @@ function list(panels: Panel[]) {
 }
 
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
-  if (project.panels.length) return uniquePanelSteps(project);
+  if (project.panels.length && !project.instances.length) return uniquePanelSteps(project);
   if (project.instances.length) return uniqueForgeSteps(project);
   return [
     {
@@ -335,6 +335,19 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       title: "Decide on a spine",
       description: project.supportOffer.reason,
       tips: "The armature is already built. A spine is extra. Generate again with a spine if you want it.",
+    });
+  }
+
+  const decks = project.panels.filter((p) => p.type === "deck");
+  if (decks.length) {
+    const d = decks[0];
+    const sheet = getCatalogItem(d.materialId);
+    steps.push({
+      step: n++,
+      title: "Lay the road deck",
+      description: `${d.name}: ${d.size.width.toFixed(0)}" × ${d.size.depth.toFixed(1)}" of ${sheet?.name ?? "sheet"}. Cut it to the span and rest it on the deck rails. This is the surface you walk — Frame hides it; Full is the thing in use.`,
+      partsUsed: [d.name],
+      tips: "Sticks alone are a ladder. The sheet is the road. Don't skip it.",
     });
   }
 

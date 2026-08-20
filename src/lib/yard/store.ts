@@ -9,7 +9,7 @@ import { defaultPlaceLength } from "./bom";
 import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { defaultGhostFlags } from "./ghost";
-import { firstBuildableStep, homeOf, maybeSnap, nearHome, withHome } from "./assembly";
+import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { projectFromMeasurement } from "./space";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
@@ -36,6 +36,7 @@ type YardState = {
   building: boolean;
   grokBusy: boolean;
   grokError: string | null;
+  showLoad: boolean;
   revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
@@ -53,6 +54,7 @@ type YardState = {
   setShowHull: (v: boolean) => void;
   setShowHistoric: (v: boolean) => void;
   setWorkMode: (v: WorkMode) => void;
+  setShowLoad: (v: boolean) => void;
   setActiveStep: (n: number | null) => void;
   toggleLockSelected: () => void;
   beginDrag: (id: string) => void;
@@ -103,6 +105,7 @@ export const useYard = create<YardState>((set, get) => ({
   building: false,
   grokBusy: false,
   grokError: null,
+  showLoad: false,
   revealBench: () => {
     if (revealTimer) clearTimeout(revealTimer);
     const wait = get().grokBusy ? 220 : 720;
@@ -136,6 +139,7 @@ export const useYard = create<YardState>((set, get) => ({
     set({
       ...flags,
       workMode: "look",
+      showLoad: false,
       activeStep: null,
       placedIds: [],
       lockedIds: [],
@@ -222,15 +226,14 @@ export const useYard = create<YardState>((set, get) => ({
   setShowHull: (v) => set({ showHull: v }),
   setShowHistoric: (v) => set({ showHistoric: v }),
   setWorkMode: (v) => {
-    const { plan, project } = get();
-    const first = plan ? firstBuildableStep(plan.instructions, project) : null;
+    const { project } = get();
+    const mode: WorkMode = v === "walk" && !project.traverse ? "look" : v === "build" ? "look" : v;
     set({
-      workMode: v,
-      placedIds: v === "build" ? [] : get().placedIds,
+      workMode: mode,
       dragPos: null,
-      activeStep: v === "build" ? (first?.step ?? get().activeStep) : get().activeStep,
     });
   },
+  setShowLoad: (v) => set({ showLoad: v }),
   setActiveStep: (n) => set({ activeStep: n }),
   toggleLockSelected: () => {
     const { selectedId, lockedIds } = get();
@@ -386,6 +389,7 @@ export const useYard = create<YardState>((set, get) => ({
       showHull: false,
       showHistoric: false,
       workMode: "look",
+      showLoad: false,
     });
   },
 }));

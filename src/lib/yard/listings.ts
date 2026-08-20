@@ -538,6 +538,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*8/.test(hay)) return "lumber-2x8-8";
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";
+  if (/foam board|foamcore|foam-board/.test(hay)) return "foam-board-20x30";
+  if (/cardboard/.test(hay)) return "cardboard-corrugated-sheet";
   if (/plywood/.test(hay)) return "plywood-3-4-4x8";
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";

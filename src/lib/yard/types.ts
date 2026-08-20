@@ -91,7 +91,7 @@ export type StructureKind =
   | "plant"
   | "custom";
 
-export type WorkMode = "look" | "free" | "build";
+export type WorkMode = "look" | "free" | "build" | "walk";
 export type DetailLevel = "frame" | "full";
 
 export type YardInstance = {
@@ -122,7 +122,8 @@ export type PanelType =
   | "drawer"
   | "kick"
   | "mirror"
-  | "rail";
+  | "rail"
+  | "deck";
 
 export type Panel = {
   id: string;
@@ -204,6 +205,19 @@ export type FittedSpec = {
   rightClear?: number;
 };
 
+export type LoadUse = "display" | "toy" | "person";
+
+export type TraversePath = {
+  kind: "deck" | "portal";
+  origin: Vec3;
+  axis: Vec3;
+  length: number;
+  width: number;
+  y: number;
+  eyeH: number;
+  clearH: number;
+};
+
 export type YardProject = {
   id: string;
   name: string;
@@ -237,6 +251,7 @@ export type YardProject = {
   pocket?: PocketSpec;
   fitted?: FittedSpec;
   windowPkg?: WindowPackage;
+  traverse?: TraversePath;
   render?: {
     url: string;
     prompt: string;
@@ -244,6 +259,7 @@ export type YardProject = {
   };
   assumptions: {
     load: "light" | "medium" | "heavy";
+    use?: LoadUse;
     units: "inches";
     installMode: "wall" | "freestanding" | "alcove";
     wallType: "wood_stud" | "drywall_only" | "masonry" | "concrete";
