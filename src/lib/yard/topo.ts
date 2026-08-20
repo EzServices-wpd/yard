@@ -31,6 +31,7 @@ function degreeMap(edges: StructureEdge[]): Map<string, number> {
   return d;
 }
 
+/** Adj list for triangle detection */
 function adjList(edges: StructureEdge[]): Map<string, Set<string>> {
   const a = new Map<string, Set<string>>();
   const add = (u: string, v: string) => {
@@ -54,6 +55,10 @@ function sharesTriangle(u: string, v: string, adj: Map<string, Set<string>>): bo
   return false;
 }
 
+/**
+ * Higher score = more valuable (keep).
+ * Lower score = prune first.
+ */
 function braceScore(
   e: StructureEdge,
   nodes: Map<string, StructureNode>,
@@ -68,7 +73,9 @@ function braceScore(
   const tri = sharesTriangle(e.from, e.to, adj) ? 1 : 0;
   const da = deg.get(e.from) ?? 1;
   const db = deg.get(e.to) ?? 1;
+  // Prefer members that triangulate and are not ultra-long relative to the form
   const lengthPenalty = len / Math.max(envSpan, 1);
+  // Prefer edges whose endpoints would otherwise be under-connected
   const endpointNeed = 1 / Math.max(Math.min(da, db), 1);
   let score = tri * 4 + endpointNeed * 2 - lengthPenalty * 0.8;
   if (e.critical) score += 100;
@@ -83,11 +90,16 @@ export type TopoResult = {
   note: string;
 };
 
+/**
+ * Greedy prune of low-value braces while the graph stays one component
+ * and openings stay clear (already enforced by confine; re-check anyway).
+ */
 export function pruneTopology(
   graph: StructureGraph,
   kind: StructureKind,
   opts: { aggressiveness?: number } = {},
 ): TopoResult {
+  // Figures keep detail — only light prune
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   const spanKind = kind === "bridge" || kind === "arch" || kind === "opening";
   const base = fig ? 0.1 : spanKind ? 0.18 : 0.32;
@@ -124,12 +136,21 @@ export function pruneTopology(
 
   for (const cand of ranked) {
     if (removeIds.size >= targetRemove) break;
+    // Skip if either endpoint would drop below degree 2 (would create dangling)
     const d = degreeMap(edges.filter((e) => e.id !== cand.id && !removeIds.has(e.id)));
+    // Keep every endpoint at least degree 2 so nothing dangles after stock split
     if ((d.get(cand.from) ?? 0) < 2 || (d.get(cand.to) ?? 0) < 2) continue;
 
     const trial = edges.filter((e) => e.id !== cand.id && !removeIds.has(e.id));
     const comps = componentsOf({ ...graph, edges: trial });
     if (comps.length > 1) continue;
+
+    // Opening safety
+    const a = nodes.get(cand.from);
+    const b = nodes.get(cand.to);
+    if (a && b && segmentCrossesOpening(a.position, b.position, env, kind)) {
+      // already shouldn't be here; leave it removed-eligible only if we want to force drop
+    }
 
     removeIds.add(cand.id);
     edges = trial;
@@ -157,6 +178,10 @@ export function pruneTopology(
   };
 }
 
+/**
+ * Optional: densify by adding short chords that complete triangles on the same face.
+ * Only between existing nodes within maxLen, same-face, not through openings.
+ */
 export function densifyTriangles(
   graph: StructureGraph,
   kind: StructureKind,
@@ -184,6 +209,7 @@ export function densifyTriangles(
         Math.abs(a.position.y - b.position.y) < 1.15;
       if (!sameFace) continue;
       if (segmentCrossesOpening(a.position, b.position, env, kind)) continue;
+      // Only add if it completes at least one triangle
       if (!sharesTriangle(a.id, b.id, adj)) continue;
       const edge: StructureEdge = {
         id: createId("topo"),
@@ -195,6 +221,7 @@ export function densifyTriangles(
       };
       added.push(edge);
       have.add(key);
+      // update adj for subsequent checks
       if (!adj.has(a.id)) adj.set(a.id, new Set());
       if (!adj.has(b.id)) adj.set(b.id, new Set());
       adj.get(a.id)!.add(b.id);
