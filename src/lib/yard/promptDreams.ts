@@ -1,3 +1,5 @@
+import { POCKET_DREAM } from "./pocket";
+
 export const DREAMS = [
   {
     id: "eiffel",
@@ -14,7 +16,7 @@ export const DREAMS = [
   {
     id: "closet",
     label: "Bathroom pocket vanity",
-    prompt: "Build a vanity for a 36 by 22 inch bathroom alcove",
+    prompt: POCKET_DREAM,
     blurb: "The original — a wonky trapezoid, a straight unit, a plan you can cut.",
   },
   {

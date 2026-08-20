@@ -61,14 +61,13 @@ export function buildFormGraph(
   const apply = (op: FormOp) => {
     switch (op.op) {
       case "column": {
-        const n = Math.max(1, Math.round((op.y1 - op.y0) / policy.bay));
-        const ids: string[] = [];
-        for (let i = 0; i <= n; i++) {
-          const y = op.y0 + ((op.y1 - op.y0) * i) / n;
-          ids.push(addNode({ x: op.x, y, z: op.z }, i === 0 ? "base" : "leg"));
-        }
+        // One member from y0 to y1. Splices happen in graphToInstances if stock is shorter.
+        const ids = [
+          addNode({ x: op.x, y: op.y0, z: op.z }, "base"),
+          addNode({ x: op.x, y: op.y1, z: op.z }, "leg"),
+        ];
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
-        if (ids.length >= 2) verticals.push({ a: ids[0], b: ids[ids.length - 1] });
+        verticals.push({ a: ids[0], b: ids[1] });
         return;
       }
       case "ring": {
@@ -138,7 +137,8 @@ export function buildFormGraph(
         return;
       }
       case "arch": {
-        const segs = policy.fat ? 5 : Math.max(8, Math.round(Math.hypot(op.x1 - op.x0, op.z1 - op.z0) / policy.faceStep));
+        const portal = recipe.kind === "arch";
+        const segs = policy.fat || portal ? 4 : Math.max(8, Math.round(Math.hypot(op.x1 - op.x0, op.z1 - op.z0) / policy.faceStep));
         const y0 = op.y0 ?? 0;
         const ids: string[] = [];
         for (let i = 0; i <= segs; i++) {
@@ -231,7 +231,8 @@ export function buildFormGraph(
       }
       case "poly": {
         if (op.points.length < 2) return;
-        const pts = resampleStroke(op.points, policy.bay);
+        const portal = recipe.kind === "arch";
+        const pts = policy.fat || portal ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
         return;
@@ -336,7 +337,8 @@ export function buildFormGraph(
   const sk = opts.kind ?? recipe.kind;
   const fig = sk === "figure" || sk === "plant" || sk === "vehicle" || sk === "vessel";
   let g = finished.graph;
-  if (sk !== "bridge" && sk !== "arch") {
+  const keepWire = sk === "arch" || sk === "bridge" || sk === "eiffel";
+  if (!keepWire) {
     g = densifyTriangles(
       g,
       sk,
@@ -344,10 +346,12 @@ export function buildFormGraph(
       fig ? 12 : 28,
     );
   }
-  const topo = pruneTopology(g, sk, { aggressiveness: fig ? 0.1 : sk === "bridge" || sk === "arch" ? 0.15 : 0.32 });
-  g = {
-    ...topo.graph,
-    notes: [...topo.graph.notes.filter((n: string) => !n.startsWith("Topology")), topo.note],
-  };
+  if (sk !== "arch") {
+    const topo = pruneTopology(g, sk, { aggressiveness: fig ? 0.1 : sk === "bridge" ? 0.15 : 0.32 });
+    g = {
+      ...topo.graph,
+      notes: [...topo.graph.notes.filter((n: string) => !n.startsWith("Topology")), topo.note],
+    };
+  }
   return { graph: g, offer: finished.offer };
 }

@@ -11,7 +11,7 @@ import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
-import { densifyTriangles, pruneTopology } from "./topo";
+import { pruneTopology } from "./topo";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject } from "./promptHelpers";
 
@@ -59,24 +59,21 @@ export function generateFromPrompt(
 
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
   let box = size;
-  // Pre-size portal / span kinds so anatomy gets real proportions
   const lowerP = prompt.toLowerCase();
   if (/arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
     const H = box.height;
     box = {
       height: H,
-      width: Math.max(box.width, H * 0.55, 24),
-      depth: Math.max(box.depth, Math.min(H * 0.35, 36), 12),
+      width: Math.max(box.width, Math.min(H * 0.7, 60), 24),
+      depth: Math.min(Math.max(box.depth, 10), Math.max(12, H * 0.22)),
     };
   }
-  // Bridges: span is primary (long in X), height secondary, shallow depth
   if (/bridge|span|overpass|viaduct/.test(lowerP) && !formOverride) {
-    const H = box.height;
-    const span = Math.max(box.width, H * 2.2, 36);
+    const span = Math.max(box.width, 24);
     box = {
-      height: Math.min(H, span * 0.35),
+      height: Math.min(Math.max(box.height, 10), Math.max(10, span * 0.32)),
       width: span,
-      depth: Math.max(Math.min(span * 0.12, H * 0.5), 8),
+      depth: Math.max(6, Math.min(span * 0.14, 14)),
     };
   }
   const recipe = formOverride ?? detectForm(prompt, box);
@@ -91,9 +88,9 @@ export function generateFromPrompt(
       platforms: true,
     });
     const finished = finishGraph(raw, item, kind, !!opts.includeSpine);
-    let g = densifyTriangles(finished.graph, kind, 8, 20);
-    const topo = pruneTopology(g, kind, { aggressiveness: 0.28 });
-    g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
+    // Do not densify the Eiffel — that fills the gap between the four piers.
+    const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
+    const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
     return projectFromGraph(prompt, item, kind, g, true, finished.offer);
   }
 

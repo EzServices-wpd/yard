@@ -106,6 +106,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
         depth = trip.h;
         height = trip.d;
       } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+    } else if (trip.h && trip.h < 40 && !trip.d) {
+      depth = trip.h;
+      height = program === "media" ? 24 : program === "vanity" ? 36 : 84;
     } else {
       height = trip.h ?? (program === "media" ? 24 : 84);
     }
@@ -129,7 +132,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
   const shelfCount = pick(t, /(\d+)\s*shel(?:f|ves)/i, program === "bookcase" ? 5 : program === "closet" || program === "pantry" || program === "wardrobe" ? 4 : 0);
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
-  const doors = /door/.test(lower) || program === "closet" || program === "pantry" || program === "wardrobe" || program === "vanity";
+  const doors =
+    /door/.test(lower) ||
+    program === "closet" ||
+    program === "pantry" ||
+    program === "wardrobe" ||
+    (program === "vanity" && height >= 54);
   const mirror = /mirror/.test(lower) || program === "vanity";
   const rod = /rod|hang|rail/.test(lower) || program === "wardrobe";
 

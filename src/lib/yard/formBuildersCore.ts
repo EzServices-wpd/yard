@@ -271,7 +271,7 @@ export function bridgeOps(s: Size3): FormOp[] {
   const depth = Math.max(s.depth, Math.min(span * 0.12, pierH * 0.55), 6);
   const z0 = -depth / 2;
   const z1 = depth / 2;
-  const panels = Math.max(4, Math.min(14, Math.round(span / Math.max(pierH * 0.85, 8))));
+  const panels = Math.max(3, Math.min(8, Math.round(span / Math.max(pierH * 0.9, 10))));
   const dx = span / panels;
   const yBot = Math.max(pierH * 0.12, 1.2);
   const yTop = yBot + pierH * 0.78;

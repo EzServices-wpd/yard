@@ -62,7 +62,7 @@ export function stockDensity(item: CatalogItem, grain = 1): StockDensity {
   const prim = toPrimitive(item);
   const stock = Math.max(0.5, prim.length);
   const thick = Math.max(prim.width, (prim.radius ?? 0) * 2, 0.06);
-  const fat = thick >= 1.35;
+  const fat = thick >= 1.35 || item.formFactor === "pipe" || (item.formFactor === "board" && thick >= 1.4);
   const g = Math.min(3.2, Math.max(0.32, grain));
   const lengthBit = Math.min(stock * 0.28, Math.max(thick * 8, 1.15));
   const tile = Math.max(thick * 2.8, lengthBit) * g;

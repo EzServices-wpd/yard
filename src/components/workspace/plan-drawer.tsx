@@ -139,76 +139,6 @@ function PlanBody({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 text-sm">
-          <section>
-            <h3 className="font-display text-lg text-fg">Check</h3>
-            <ul className="mt-3 space-y-2">
-              {plan.feasibility.issues.map((issue, i) => (
-                <li key={i} className="border-b border-border/60 pb-2">
-                  <p className="text-fg">{issue.message}</p>
-                  {issue.suggestion && <p className="mt-0.5 text-muted">{issue.suggestion}</p>}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="font-display text-lg text-fg">Render</h3>
-            <p className="mt-1 text-xs text-muted">
-              After the design is set, generate a photograph of the finished piece to sit with the instructions.
-            </p>
-            {render?.url && (
-              <img
-                src={render.url}
-                alt={`Finished render of ${project.name}`}
-                className="mt-3 w-full rounded-md border border-border object-cover"
-              />
-            )}
-            <label className="mt-3 block">
-              <span className="text-xs text-faint">Scene (optional)</span>
-              <input
-                value={scene}
-                onChange={(e) => setScene(e.target.value)}
-                placeholder="white subway-tile bathroom, morning light"
-                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void makeRender()}
-              disabled={renderBusy}
-              className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
-            >
-              {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
-            </button>
-            {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
-          </section>
-
-          {plan.cutList.length > 0 && (
-            <section>
-              <h3 className="font-display text-lg text-fg">Cut list</h3>
-              <table className="mt-3 w-full text-left text-xs">
-                <thead className="text-faint">
-                  <tr>
-                    <th className="py-1 font-medium">Qty</th>
-                    <th className="py-1 font-medium">Part</th>
-                    <th className="py-1 font-medium">Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.cutList.map((c) => (
-                    <tr key={c.id} className="border-t border-border/70">
-                      <td className="py-1.5 font-mono">{c.quantity}</td>
-                      <td className="py-1.5">{c.name}</td>
-                      <td className="py-1.5 font-mono text-muted">
-                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
-
           {plan.bom.length > 0 && (
             <section>
               <h3 className="font-display text-lg text-fg">Buy</h3>
@@ -256,6 +186,50 @@ function PlanBody({
               </ul>
             </section>
           )}
+
+          {plan.cutList.length > 0 && (
+            <section>
+              <h3 className="font-display text-lg text-fg">Cut list</h3>
+              <table className="mt-3 w-full text-left text-xs">
+                <thead className="text-faint">
+                  <tr>
+                    <th className="py-1 font-medium">Qty</th>
+                    <th className="py-1 font-medium">Part</th>
+                    <th className="py-1 font-medium">Size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.cutList.map((c) => (
+                    <tr key={c.id} className="border-t border-border/70">
+                      <td className="py-1.5 font-mono">{c.quantity}</td>
+                      <td className="py-1.5">{c.name}</td>
+                      <td className="py-1.5 font-mono text-muted">
+                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+
+          <section>
+            <h3 className="font-display text-lg text-fg">Check</h3>
+            <p className={`mt-1 text-xs ${tone}`}>{plan.feasibility.summary}</p>
+            {plan.feasibility.issues.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {plan.feasibility.issues.slice(0, 4).map((issue, i) => (
+                  <li key={i} className="border-b border-border/60 pb-2">
+                    <p className="text-fg">{issue.message}</p>
+                    {issue.suggestion && <p className="mt-0.5 text-muted">{issue.suggestion}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {plan.feasibility.issues.length > 4 && (
+              <p className="mt-2 text-xs text-faint">{plan.feasibility.issues.length - 4} more on the printed plan.</p>
+            )}
+          </section>
 
           <section>
             <div className="flex items-center justify-between gap-3">
@@ -306,6 +280,38 @@ function PlanBody({
                 );
               })}
             </ol>
+          </section>
+
+          <section>
+            <h3 className="font-display text-lg text-fg">Render</h3>
+            <p className="mt-1 text-xs text-muted">
+              After the design is set, generate a photograph of the finished piece to sit with the instructions.
+            </p>
+            {render?.url && (
+              <img
+                src={render.url}
+                alt={`Finished render of ${project.name}`}
+                className="mt-3 w-full rounded-md border border-border object-cover"
+              />
+            )}
+            <label className="mt-3 block">
+              <span className="text-xs text-faint">Scene (optional)</span>
+              <input
+                value={scene}
+                onChange={(e) => setScene(e.target.value)}
+                placeholder="white subway-tile bathroom, morning light"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void makeRender()}
+              disabled={renderBusy}
+              className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
+            >
+              {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
+            </button>
+            {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
           </section>
         </div>
 

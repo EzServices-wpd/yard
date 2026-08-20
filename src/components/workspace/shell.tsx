@@ -191,7 +191,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             }}
             className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg sm:h-9"
           >
-            Plan
+            Build plan
           </button>
           <div className="relative">
             <button

@@ -30,10 +30,14 @@ function pick(text: string, re: RegExp, fallback: number) {
 
 export function looksLikePocket(prompt: string) {
   const lower = prompt.toLowerCase();
-  const space = /pocket|trapezoid|alcove|back wall|centerline|angled/.test(lower);
-  const use = /vanity|linen|towel|built-?in|cabinet/.test(lower);
+  // Wonky geometry only — "alcove" alone is a rectangular fitted unit.
+  const wonky =
+    /pocket|trapezoid|centerline|angled/.test(lower) ||
+    (/back wall/.test(lower) && /left/.test(lower) && /right/.test(lower));
+  if (!wonky) return false;
+  const use = /vanity|linen|towel|built-?in|cabinet|closet|storage/.test(lower);
   const measures = (lower.match(/\d+(?:\.\d+)?/g) ?? []).length >= 6;
-  return (space && measures) || (use && space) || (use && measures && /bathroom|pocket/.test(lower));
+  return use || measures;
 }
 
 export function parsePocket(prompt: string): PocketSpec | null {

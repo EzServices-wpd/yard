@@ -58,20 +58,19 @@ export function domeOps(s: Size3): FormOp[] {
 
 /**
  * Garden / gateway arch: a walk-through portal.
- * Four posts (front + back), two crowns, side rails only —
- * never an X across the opening.
+ * Four posts, two crowns, side rails only — never an X across the opening.
+ * Shop-length pipe: each member is one piece, not a lattice.
  */
 export function archOps(s: Size3): FormOp[] {
   const H = Math.max(s.height, 12);
-  const W = Math.max(s.width, H * 0.55, 18);
-  const D = Math.max(s.depth, Math.min(W * 0.5, H * 0.35), 10);
+  const W = Math.max(s.width, H * 0.5, 18);
+  const D = Math.min(Math.max(s.depth, 10), Math.max(12, H * 0.22));
   const x0 = -W / 2;
   const x1 = W / 2;
   const z0 = -D / 2;
   const z1 = D / 2;
-  const spring = H * 0.58;
+  const spring = H * 0.62;
   const crown = H - spring;
-  const mid = spring * 0.5;
   return [
     { op: "column", x: x0, z: z0, y0: 0, y1: spring, role: "leg" },
     { op: "column", x: x1, z: z0, y0: 0, y1: spring, role: "leg" },
@@ -81,18 +80,8 @@ export function archOps(s: Size3): FormOp[] {
     { op: "arch", x0: x0, z0: z1, x1: x1, z1: z1, y0: spring, crown, role: "support" },
     { op: "poly", role: "rail", points: [{ x: x0, y: spring, z: z0 }, { x: x0, y: spring, z: z1 }] },
     { op: "poly", role: "rail", points: [{ x: x1, y: spring, z: z0 }, { x: x1, y: spring, z: z1 }] },
-    { op: "poly", role: "rail", points: [{ x: x0, y: mid, z: z0 }, { x: x0, y: mid, z: z1 }] },
-    { op: "poly", role: "rail", points: [{ x: x1, y: mid, z: z0 }, { x: x1, y: mid, z: z1 }] },
-    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: spring, z: z1 }] },
-    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: z1 }, { x: x1, y: spring, z: z0 }] },
-    {
-      op: "poly",
-      role: "rail",
-      points: [
-        { x: 0, y: H, z: z0 },
-        { x: 0, y: H, z: z1 },
-      ],
-    },
+    { op: "poly", role: "rail", points: [{ x: x0, y: spring * 0.45, z: z0 }, { x: x0, y: spring * 0.45, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: spring * 0.45, z: z0 }, { x: x1, y: spring * 0.45, z: z1 }] },
   ];
 }
 
