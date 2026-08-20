@@ -53,19 +53,153 @@ export function mid(a: Vec3, b: Vec3): Vec3 {
   return lerp(a, b, 0.5);
 }
 
-export function stockDensity(item: CatalogItem): StockDensity {
+/**
+ * Stock is the mosaic tile size.
+ * Thinner / shorter retail stock → denser lattice (toothpick vs 2x4).
+ * grain > 1 coarsens; grain < 1 densifies (detail toggle later).
+ */
+export function stockDensity(item: CatalogItem, grain = 1): StockDensity {
   const prim = toPrimitive(item);
-  const stock = Math.max(0.75, prim.length);
-  const thick = Math.max(prim.width, (prim.radius ?? 0) * 2, 0.08);
+  const stock = Math.max(0.5, prim.length);
+  const thick = Math.max(prim.width, (prim.radius ?? 0) * 2, 0.06);
   const fat = thick >= 1.35;
+  const g = Math.min(3.2, Math.max(0.32, grain));
+  const lengthBit = Math.min(stock * 0.28, Math.max(thick * 8, 1.15));
+  const tile = Math.max(thick * 2.8, lengthBit) * g;
   return {
     fat,
-    chords: fat ? 1 : thick < 0.15 ? 4 : thick < 0.45 ? 3 : 2,
-    bay: Math.max(stock * 0.62, thick * 5, 0.7),
-    faceStep: Math.max(stock * 0.48, thick * 5),
+    chords: fat ? 1 : thick < 0.12 ? 4 : thick < 0.35 ? 3 : 2,
+    bay: Math.max(tile * 1.15, thick * 4, 0.5),
+    faceStep: Math.max(tile, thick * 3.5, 0.4),
     stock,
     thick,
   };
+}
+
+export type Envelope3 = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+};
+
+export function graphEnvelope(graph: StructureGraph): Envelope3 {
+  const xs = graph.nodes.map((n) => n.position.x);
+  const ys = graph.nodes.map((n) => n.position.y);
+  const zs = graph.nodes.map((n) => n.position.z);
+  return {
+    minX: Math.min(...xs, 0),
+    maxX: Math.max(...xs, 0),
+    minY: Math.min(...ys, 0),
+    maxY: Math.max(...ys, 0),
+    minZ: Math.min(...zs, 0),
+    maxZ: Math.max(...zs, 0),
+  };
+}
+
+function pointInEnv(p: Vec3, env: Envelope3, pad: number): boolean {
+  return (
+    p.x >= env.minX - pad &&
+    p.x <= env.maxX + pad &&
+    p.y >= env.minY - pad &&
+    p.y <= env.maxY + pad &&
+    p.z >= env.minZ - pad &&
+    p.z <= env.maxZ + pad
+  );
+}
+
+/** Sample a segment — braces must stay inside the form AABB. */
+export function segmentInEnvelope(a: Vec3, b: Vec3, env: Envelope3, pad: number): boolean {
+  for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+    if (!pointInEnv(lerp(a, b, t), env, pad)) return false;
+  }
+  return true;
+}
+
+/**
+ * True if the midpoint sits on the existing structure (surface),
+ * not floating through a void or outside the skin.
+ */
+export function segmentOnStructure(
+  a: Vec3,
+  b: Vec3,
+  graph: StructureGraph,
+  tol: number,
+): boolean {
+  const m = mid(a, b);
+  for (const n of graph.nodes) {
+    if (dist(m, n.position) <= tol) return true;
+  }
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  for (const e of graph.edges) {
+    const pa = byId.get(e.from);
+    const pb = byId.get(e.to);
+    if (!pa || !pb) continue;
+    if (pointSegDist(m, pa.position, pb.position) <= tol) return true;
+  }
+  return false;
+}
+
+/** Portal void: walk-through zone must stay clear of braces. */
+export function segmentCrossesOpening(
+  a: Vec3,
+  b: Vec3,
+  env: Envelope3,
+  kind: StructureKind,
+): boolean {
+  if (kind !== "arch" && kind !== "bridge" && kind !== "opening") return false;
+  const w = env.maxX - env.minX || 1;
+  const d = env.maxZ - env.minZ || 1;
+  const h = env.maxY - env.minY || 1;
+  const cx = (env.minX + env.maxX) / 2;
+  const cz = (env.minZ + env.maxZ) / 2;
+  for (const t of [0.35, 0.5, 0.65]) {
+    const p = lerp(a, b, t);
+    const inX = Math.abs(p.x - cx) < w * 0.28;
+    const inZ = Math.abs(p.z - cz) < d * 0.28;
+    const inY = p.y > env.minY + h * 0.08 && p.y < env.minY + h * 0.55;
+    if (kind === "arch" && inX && inZ && inY) return true;
+    if (kind === "bridge" && inY && Math.abs(p.y - (env.minY + h * 0.35)) < h * 0.2 && inZ) {
+      // deck gap under is OK
+    }
+  }
+  return false;
+}
+
+/**
+ * Drop brace/support edges that leave the form or cut through openings.
+ * Frame legs and critical members stay.
+ */
+export function confineSupports(
+  graph: StructureGraph,
+  kind: StructureKind,
+  thick: number,
+): StructureGraph {
+  if (graph.nodes.length < 2) return graph;
+  const env = graphEnvelope(graph);
+  const pad = Math.max(thick * 2.5, 0.55);
+  const tol = Math.max(thick * 3.5, 0.75);
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const edges = graph.edges.filter((e) => {
+    const role = e.role || "";
+    if (role !== "brace" && role !== "support") return true;
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) return false;
+    if (!segmentInEnvelope(a.position, b.position, env, pad)) return false;
+    if (segmentCrossesOpening(a.position, b.position, env, kind)) return false;
+    if (role === "brace" && !segmentOnStructure(a.position, b.position, graph, tol * 1.8)) {
+      const sameFace =
+        Math.abs(a.position.x - b.position.x) < tol ||
+        Math.abs(a.position.z - b.position.z) < tol ||
+        Math.abs(a.position.y - b.position.y) < tol;
+      if (!sameFace) return false;
+    }
+    return true;
+  });
+  return { ...graph, edges };
 }
 
 export function joinTol(item: CatalogItem): number {
@@ -169,7 +303,7 @@ export function weldGraph(graph: StructureGraph, tol = 0.28): StructureGraph {
   return { ...graph, nodes: [...kept.values()], edges };
 }
 
-function componentsOf(graph: StructureGraph): string[][] {
+export function componentsOf(graph: StructureGraph): string[][] {
   const parent = new Map<string, string>();
   const find = (id: string): string => {
     let p = parent.get(id) ?? id;
@@ -196,9 +330,11 @@ function componentsOf(graph: StructureGraph): string[][] {
 }
 
 /** Tie leftover islands into the main body. Mid-span crossings are allowed. */
-export function stitchComponents(graph: StructureGraph): StructureGraph {
+export function stitchComponents(graph: StructureGraph, kind: StructureKind = "custom"): StructureGraph {
   const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
   let edges = [...graph.edges];
+  const env0 = graphEnvelope(graph);
+  const pad = 0.85;
   for (let pass = 0; pass < 24; pass++) {
     const groups = componentsOf({ ...graph, edges });
     if (groups.length <= 1) break;
@@ -213,8 +349,16 @@ export function stitchComponents(graph: StructureGraph): StructureGraph {
         const pb = nodes.get(b);
         if (!pb) continue;
         const d = dist(pa.position, pb.position);
-        if (d < best && d > 0.12) {
-          best = d;
+        if (d <= 0.12 || d > 36) continue;
+        if (!segmentInEnvelope(pa.position, pb.position, env0, pad)) continue;
+        if (segmentCrossesOpening(pa.position, pb.position, env0, kind)) continue;
+        const sameFace =
+          Math.abs(pa.position.x - pb.position.x) < 1.2 ||
+          Math.abs(pa.position.z - pb.position.z) < 1.2 ||
+          Math.abs(pa.position.y - pb.position.y) < 1.2;
+        const score = d * (sameFace ? 1 : 3.5);
+        if (score < best) {
+          best = score;
           pair = [a, b];
         }
       }
@@ -472,7 +616,8 @@ export function ensureDownwardPath(graph: StructureGraph): StructureGraph {
     for (const g of graph.nodes) {
       if (g.id === n.id) continue;
       if (g.position.y >= n.position.y - 0.1) continue;
-      const d = dist(n.position, g.position);
+      const lateral = Math.hypot(n.position.x - g.position.x, n.position.z - g.position.z);
+      const d = dist(n.position, g.position) + lateral * 2.2;
       if (d < bestD) {
         bestD = d;
         best = g;
@@ -535,10 +680,11 @@ export function finishGraph(
   item: CatalogItem,
   kind: StructureKind,
   includeSpine = false,
+  grain = 1,
 ): { graph: StructureGraph; offer: SupportOffer } {
-  const d = stockDensity(item);
+  const d = stockDensity(item, grain);
   let next = weldGraph(graph, Math.max(d.thick * 1.6, 0.22));
-  next = stitchComponents(next);
+  next = stitchComponents(next, kind);
   next = ensureDownwardPath(next);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   if (fig) next = ribBands(next, Math.max(d.bay, 0.8), true);
@@ -546,11 +692,14 @@ export function finishGraph(
   const offerBase = needsSpine(next, kind);
   const offer: SupportOffer = { ...offerBase, included: includeSpine && offerBase.needed };
   if (offer.included) next = addSpine(next);
+  next = confineSupports(next, kind, d.thick);
   next = {
     ...next,
     notes: [
       ...next.notes,
       `${next.nodes.length} joints · ${next.edges.length} members after weld`,
+      `Resolution · ${item.name} tiles the form at ~${d.faceStep.toFixed(1)}" pitch (stock is the mosaic cell).`,
+      "Braces stay on the form — nothing through openings or outside the silhouette.",
     ],
   };
   return { graph: next, offer };
