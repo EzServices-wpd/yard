@@ -18,6 +18,21 @@ export interface PrimitiveDims {
 /** Smallest on-screen thickness so craft stock still reads at bench scale. */
 export const MIN_VISUAL_THICKNESS = 0.28;
 
+/**
+ * Pipe/tube thinner than this vanishes on a 6-ft bench. Cut list and BOM
+ * stay true-to-stock; only the mesh is thickened so joints can be seen.
+ */
+export function readableDiameter(
+  trueDiameter: number,
+  overallSpan: number,
+  cylindrical: boolean,
+): number {
+  if (!cylindrical) return Math.max(trueDiameter, MIN_VISUAL_THICKNESS);
+  const minPipe = Math.min(Math.max(overallSpan * 0.028, 1.15), 3.4);
+  return Math.max(trueDiameter, minPipe);
+}
+
+
 /** Normalize any CatalogItem to a bounding box + optional cylinder params */
 export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
   const d = item.dims;

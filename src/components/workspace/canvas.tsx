@@ -5,7 +5,7 @@ import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { isCylindrical, visualPrimitive } from "@/lib/yard/geometry";
+import { isCylindrical, readableDiameter, visualPrimitive } from "@/lib/yard/geometry";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
@@ -360,6 +360,18 @@ const _axisY = new THREE.Vector3(0, 1, 0);
 const _axisX = new THREE.Vector3(1, 0, 0);
 const _flip = new THREE.Vector3(0, 0, 1);
 
+const FIT_CREAM = "#fffaf0";
+const FIT_RIVET = "#c4a06a";
+
+function spanOf(overall: { width: number; height: number; depth: number }) {
+  return Math.max(overall.width, overall.height, overall.depth, 12);
+}
+
+function meshDiameter(prim: PrimitiveDims, cylindrical: boolean, overall: { width: number; height: number; depth: number }) {
+  const trueD = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
+  return readableDiameter(trueD, spanOf(overall), cylindrical);
+}
+
 function applyMemberPose(
   dummy: THREE.Object3D,
   inst: YardInstance,
@@ -368,11 +380,13 @@ function applyMemberPose(
   explode: number,
   fallback: Vec3,
   rot: Vec3,
+  overall: { width: number; height: number; depth: number },
 ) {
   const from = inst.from;
   const to = inst.to;
-  const diameter = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
-  const pad = Math.min(diameter * 0.7, 2.2);
+  const diameter = meshDiameter(prim, cylindrical, overall);
+  // Cylinders seat inside the fitting hub; boxes lap by about half their thickness.
+  const pad = cylindrical ? Math.min(diameter * 0.28, 1.35) : Math.min(diameter * 0.55, 2.2);
 
   if (from && to) {
     _dir.set(to.x - from.x, to.y - from.y, to.z - from.z);
@@ -487,7 +501,7 @@ function StickCloud({
         onSelect={onSelect}
         cylindrical={true}
       />
-      {workMode !== "build" && <JointCloud rows={cyls} explode={explode} />}
+      {workMode !== "build" && <FittingCloud cyls={cyls} boxes={boxes} explode={explode} overall={overall} />}
       {dragInst && dragPos && (
         <InstanceMesh
           instance={dragInst}
@@ -564,17 +578,18 @@ function CloudKind({
       if (piled) {
         dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
         dummy.quaternion.identity();
-        const diameter = cylindrical ? Math.max(prim.radius ?? 0.2, 0.12) * 2 : Math.max(prim.width, prim.height, 0.2);
+        const diameter = meshDiameter(prim, cylindrical, overall);
         if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
         else dummy.scale.set(prim.length, prim.height, prim.width);
       } else {
-        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation);
+        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation, overall);
       }
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
       const inStep = hasStep && stepIds.includes(inst.id);
       const selected = inst.id === selectedId;
-      const hex = selected || inStep ? "#fff1d0" : ROLE_TINT[inst.role ?? ""] || live[i].item.color || "#e0b86a";
+      const stock = live[i].item.color || ROLE_TINT[inst.role ?? ""] || "#e0b86a";
+      const hex = selected || inStep ? "#fff1d0" : stock;
       color.set(hasStep && !inStep ? "#5c5348" : hex);
       m.setColorAt(i, color);
     }
@@ -645,59 +660,175 @@ function CloudKind({
   );
 }
 
-function JointCloud({
-  rows,
+function FittingCloud({
+  cyls,
+  boxes,
   explode,
+  overall,
 }: {
-  rows: {
+  cyls: {
+    inst: YardInstance;
+    prim: ReturnType<typeof visualPrimitive>;
+    item: NonNullable<ReturnType<typeof getCatalogItem>>;
+  }[];
+  boxes: {
     inst: YardInstance;
     prim: ReturnType<typeof visualPrimitive>;
     item: NonNullable<ReturnType<typeof getCatalogItem>>;
   }[];
   explode: number;
+  overall: { width: number; height: number; depth: number };
 }) {
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  const nodes = useMemo(() => {
-    const map = new Map<string, { p: Vec3; r: number; color: string }>();
-    for (const row of rows) {
-      const r = Math.max(row.prim.radius ?? 0.2, 0.14);
-      if (r < 0.28) continue;
-      const color = ROLE_TINT[row.inst.role ?? ""] || row.item.color || "#e0b86a";
-      for (const p of [row.inst.from, row.inst.to]) {
-        if (!p) continue;
-        const k = `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
-        const prev = map.get(k);
-        if (!prev || r > prev.r) map.set(k, { p, r: r * 1.08, color });
+  const hubMesh = useRef<THREE.InstancedMesh>(null);
+  const sockMesh = useRef<THREE.InstancedMesh>(null);
+  const rivetMesh = useRef<THREE.InstancedMesh>(null);
+
+  const { hubs, sockets, rivets } = useMemo(() => {
+    type Node = { p: Vec3; r: number; dirs: THREE.Vector3[] };
+    const pipeNodes = new Map<string, Node>();
+    const keyOf = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+
+    for (const row of cyls) {
+      const from = row.inst.from;
+      const to = row.inst.to;
+      if (!from || !to) continue;
+      const r = meshDiameter(row.prim, true, overall) / 2;
+      const ends: [Vec3, Vec3][] = [
+        [from, to],
+        [to, from],
+      ];
+      for (const [at, other] of ends) {
+        const k = keyOf(at);
+        let node = pipeNodes.get(k);
+        if (!node) {
+          node = { p: at, r, dirs: [] };
+          pipeNodes.set(k, node);
+        } else if (r > node.r) node.r = r;
+        const dir = new THREE.Vector3(other.x - at.x, other.y - at.y, other.z - at.z).normalize();
+        if (!node.dirs.some((d) => d.dot(dir) > 0.97)) node.dirs.push(dir);
       }
     }
-    return [...map.values()];
-  }, [rows]);
+
+    const hubs: { p: Vec3; r: number }[] = [];
+    const sockets: { p: Vec3; dir: THREE.Vector3; r: number; length: number }[] = [];
+    for (const node of pipeNodes.values()) {
+      const dirs = node.dirs;
+      const valence = dirs.length;
+      const r = node.r;
+      const shallow =
+        valence === 2 && dirs[0].dot(dirs[1]) < -0.62;
+      const groundCap = valence === 1 && node.p.y < 0.45;
+      if (shallow || groundCap) continue;
+      if (valence === 1) {
+        hubs.push({ p: node.p, r: r * 1.18 });
+        continue;
+      }
+      hubs.push({ p: node.p, r: r * 1.52 });
+      const len = r * 2.05;
+      for (const d of dirs) {
+        sockets.push({
+          p: {
+            x: node.p.x + d.x * len * 0.36,
+            y: node.p.y + d.y * len * 0.36,
+            z: node.p.z + d.z * len * 0.36,
+          },
+          dir: d,
+          r: r * 1.24,
+          length: len,
+        });
+      }
+    }
+
+    const rivetMap = new Map<string, { p: Vec3; r: number }>();
+    for (const row of boxes) {
+      const r = meshDiameter(row.prim, false, overall) * 0.62;
+      for (const p of [row.inst.from, row.inst.to]) {
+        if (!p) continue;
+        const k = keyOf(p);
+        const prev = rivetMap.get(k);
+        if (!prev || r > prev.r) rivetMap.set(k, { p, r: Math.max(r, 0.12) });
+      }
+    }
+
+    return { hubs, sockets, rivets: [...rivetMap.values()] };
+  }, [cyls, boxes, overall]);
 
   useLayoutEffect(() => {
-    const m = mesh.current;
-    if (!m) return;
     const dummy = new THREE.Object3D();
     const color = new THREE.Color();
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i];
-      dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
-      dummy.scale.setScalar(n.r);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      color.set(n.color);
-      m.setColorAt(i, color);
+    const hubsM = hubMesh.current;
+    if (hubsM) {
+      color.set(FIT_CREAM);
+      for (let i = 0; i < hubs.length; i++) {
+        const n = hubs[i];
+        dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
+        dummy.quaternion.identity();
+        dummy.scale.setScalar(n.r);
+        dummy.updateMatrix();
+        hubsM.setMatrixAt(i, dummy.matrix);
+        hubsM.setColorAt(i, color);
+      }
+      hubsM.instanceMatrix.needsUpdate = true;
+      if (hubsM.instanceColor) hubsM.instanceColor.needsUpdate = true;
+      hubsM.count = hubs.length;
     }
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    m.count = nodes.length;
-  }, [nodes, explode]);
+    const socksM = sockMesh.current;
+    if (socksM) {
+      color.set(FIT_CREAM);
+      for (let i = 0; i < sockets.length; i++) {
+        const s = sockets[i];
+        dummy.position.set(s.p.x * explode, s.p.y, s.p.z * explode);
+        const dot = _axisY.dot(s.dir);
+        if (dot < -0.999) dummy.quaternion.setFromAxisAngle(_flip, Math.PI);
+        else dummy.quaternion.setFromUnitVectors(_axisY, s.dir);
+        dummy.scale.set(s.r * 2, s.length, s.r * 2);
+        dummy.updateMatrix();
+        socksM.setMatrixAt(i, dummy.matrix);
+        socksM.setColorAt(i, color);
+      }
+      socksM.instanceMatrix.needsUpdate = true;
+      if (socksM.instanceColor) socksM.instanceColor.needsUpdate = true;
+      socksM.count = sockets.length;
+    }
+    const rivM = rivetMesh.current;
+    if (rivM) {
+      color.set(FIT_RIVET);
+      for (let i = 0; i < rivets.length; i++) {
+        const n = rivets[i];
+        dummy.position.set(n.p.x * explode, n.p.y, n.p.z * explode);
+        dummy.quaternion.identity();
+        dummy.scale.setScalar(n.r);
+        dummy.updateMatrix();
+        rivM.setMatrixAt(i, dummy.matrix);
+        rivM.setColorAt(i, color);
+      }
+      rivM.instanceMatrix.needsUpdate = true;
+      if (rivM.instanceColor) rivM.instanceColor.needsUpdate = true;
+      rivM.count = rivets.length;
+    }
+  }, [hubs, sockets, rivets, explode]);
 
-  if (!nodes.length) return null;
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(nodes.length, 1)]} frustumCulled={false}>
-      <sphereGeometry args={[1, 14, 10]} />
-      <meshStandardMaterial roughness={0.55} metalness={0.06} />
-    </instancedMesh>
+    <group>
+      {hubs.length > 0 && (
+        <instancedMesh ref={hubMesh} args={[undefined, undefined, Math.max(hubs.length, 1)]} frustumCulled={false}>
+          <sphereGeometry args={[1, 16, 12]} />
+          <meshStandardMaterial color={FIT_CREAM} roughness={0.38} metalness={0.08} />
+        </instancedMesh>
+      )}
+      {sockets.length > 0 && (
+        <instancedMesh ref={sockMesh} args={[undefined, undefined, Math.max(sockets.length, 1)]} frustumCulled={false}>
+          <cylinderGeometry args={[0.5, 0.5, 1, 14]} />
+          <meshStandardMaterial color={FIT_CREAM} roughness={0.38} metalness={0.08} />
+        </instancedMesh>
+      )}
+      {rivets.length > 0 && (
+        <instancedMesh ref={rivetMesh} args={[undefined, undefined, Math.max(rivets.length, 1)]} frustumCulled={false}>
+          <sphereGeometry args={[1, 10, 8]} />
+          <meshStandardMaterial color={FIT_RIVET} roughness={0.55} metalness={0.04} />
+        </instancedMesh>
+      )}
+    </group>
   );
 }
 
@@ -750,27 +881,22 @@ function InstanceMesh({
   const canDrag = workMode !== "look" && !(workMode === "free" && locked) && !(inBuild && placed);
 
   const role = instance.role ?? "";
-  const roleTint: Record<string, string> = {
-    leg: "#e6b45c",
-    brace: "#c99648",
-    ring: "#f0d08a",
-    rail: "#dfc078",
-    tip: "#f4e2b0",
-    splice: "#d4a85a",
-    support: "#c4b49a",
-    base: "#e0b86a",
-  };
-  let color = selected ? "#fff6e6" : roleTint[role] || item.color || "#e0b86a";
+  let color = selected ? "#fff6e6" : item.color || ROLE_TINT[role] || "#e0b86a";
   if (hasStep && inStep) color = "#fff1d0";
   const opacity = hasStep && !inStep ? 0.22 : 1;
 
   const cylindrical = isCylindrical(item.formFactor);
-  const pos: [number, number, number] = [basePos.x * explode, basePos.y, basePos.z * explode];
-  const rot: [number, number, number] = [
-    inBuild && !placed && !dragPos ? 0 : instance.rotation.x,
-    inBuild && !placed && !dragPos ? 0 : instance.rotation.y,
-    inBuild && !placed && !dragPos ? 0 : instance.rotation.z,
-  ];
+  const dummy = new THREE.Object3D();
+  const piled = inBuild && !placed && !dragPos;
+  if (piled) {
+    dummy.position.set(basePos.x * explode, basePos.y, basePos.z * explode);
+    dummy.quaternion.identity();
+    const diameter = meshDiameter(prim, cylindrical, overall);
+    if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+    else dummy.scale.set(prim.length, prim.height, prim.width);
+  } else {
+    applyMemberPose(dummy, instance, prim, cylindrical, explode, basePos, instance.rotation, overall);
+  }
 
   const setOrbit = (on: boolean) => {
     const orbit = controls as unknown as { enabled?: boolean } | null;
@@ -809,23 +935,16 @@ function InstanceMesh({
     finish(instance.id, current?.id === instance.id ? current.pos : basePos);
   };
 
-  const meshGeom =
-    cylindrical && prim.radius != null ? (
-      <cylinderGeometry args={[prim.radius, prim.radius, prim.length, 16]} />
-    ) : (
-      <boxGeometry args={[prim.length, prim.height, prim.width]} />
-    );
-  const slotGeom =
-    cylindrical && prim.radius != null ? (
-      <cylinderGeometry args={[prim.radius, prim.radius, prim.length, 16]} />
-    ) : (
-      <boxGeometry args={[prim.length, prim.height, prim.width]} />
-    );
+  const meshGeom = cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 16]} /> : <boxGeometry args={[1, 1, 1]} />;
+  const slotGeom = cylindrical ? <cylinderGeometry args={[0.5, 0.5, 1, 16]} /> : <boxGeometry args={[1, 1, 1]} />;
+
+  const slotDummy = new THREE.Object3D();
+  applyMemberPose(slotDummy, instance, prim, cylindrical, explode, home, instance.rotation, overall);
 
   return (
     <group>
       {inBuild && !placed && inStep && (
-        <group position={[home.x * explode, home.y, home.z * explode]} rotation={[instance.rotation.x, instance.rotation.y, instance.rotation.z]}>
+        <group position={slotDummy.position} quaternion={slotDummy.quaternion} scale={slotDummy.scale}>
           <mesh frustumCulled={false}>
             {slotGeom}
           <meshStandardMaterial color={SLOT} transparent opacity={0.18} depthWrite={false} roughness={1} />
@@ -833,8 +952,9 @@ function InstanceMesh({
         </group>
       )}
       <group
-        position={pos}
-        rotation={rot}
+        position={dummy.position}
+        quaternion={dummy.quaternion}
+        scale={dummy.scale}
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
