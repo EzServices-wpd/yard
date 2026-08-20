@@ -21,6 +21,7 @@ import {
   type StockDensity,
   type SupportOffer,
 } from "./connect";
+import { densifyTriangles, pruneTopology } from "./topo";
 import { buildSquareLoft, hoopSchedule } from "./lattice";
 import { buildShell } from "./shell";
 
@@ -258,11 +259,51 @@ export function buildFormGraph(
   }
   for (const op of recipe.ops) apply(op);
 
-  if (!edges.some((e) => e.role === "brace") && verticals.length >= 2) {
-    const a = verticals[0];
-    const b = verticals[1];
-    addEdge(a.a, b.b, "brace", false, braceJoin);
-    addEdge(a.b, b.a, "brace", false, braceJoin);
+  // Auto X-brace only on the SAME face (shared X or shared Z).
+  // Never span a walk-through opening (arch, portal, bridge deck gap).
+  const kind = opts.kind ?? recipe.kind;
+  const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
+  if (!openKind && verticals.length >= 2) {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const xs = nodes.map((n) => n.position.x);
+    const ys = nodes.map((n) => n.position.y);
+    const zs = nodes.map((n) => n.position.z);
+    const env = {
+      minX: Math.min(...xs),
+      maxX: Math.max(...xs),
+      minY: Math.min(...ys),
+      maxY: Math.max(...ys),
+      minZ: Math.min(...zs),
+      maxZ: Math.max(...zs),
+    };
+    const pad = Math.max(policy.thick * 2.5, 0.55);
+    const inEnv = (p: { x: number; y: number; z: number }) =>
+      p.x >= env.minX - pad &&
+      p.x <= env.maxX + pad &&
+      p.y >= env.minY - pad &&
+      p.y <= env.maxY + pad &&
+      p.z >= env.minZ - pad &&
+      p.z <= env.maxZ + pad;
+    for (let i = 0; i < verticals.length; i++) {
+      for (let j = i + 1; j < verticals.length; j++) {
+        const a = verticals[i];
+        const b = verticals[j];
+        const a0 = byId.get(a.a);
+        const a1 = byId.get(a.b);
+        const b0 = byId.get(b.a);
+        const b1 = byId.get(b.b);
+        if (!a0 || !a1 || !b0 || !b1) continue;
+        const sameX = Math.abs(a0.position.x - b0.position.x) < 0.6;
+        const sameZ = Math.abs(a0.position.z - b0.position.z) < 0.6;
+        if (!(sameX || sameZ)) continue;
+        const gap = Math.hypot(a0.position.x - b0.position.x, a0.position.z - b0.position.z);
+        if (gap < 0.5 || gap > 48) continue;
+        // X-brace endpoints must stay inside the form
+        if (!inEnv(a0.position) || !inEnv(b1.position) || !inEnv(a1.position) || !inEnv(b0.position)) continue;
+        addEdge(a.a, b.b, "brace", false, braceJoin);
+        addEdge(a.b, b.a, "brace", false, braceJoin);
+      }
+    }
   }
 
   const ys = nodes.map((n) => n.position.y);
@@ -284,13 +325,29 @@ export function buildFormGraph(
       policy.fat
         ? `${item.name} is column stock — each long member is one piece.`
         : `${item.name} is thin — long members are laced into a truss.`,
-      `Bay ≈ ${policy.bay.toFixed(1)}" (driven by ${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}" stock).`,
-      "Frame first. Braces next. A bare frame will rack and fail.",
+      `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
+      "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
     ],
     notes: [...recipe.notes],
     structureClass: recipe.kind === "eiffel" ? "eiffel" : recipe.kind === "pyramid" ? "pyramid" : "generic",
   };
 
   const finished = finishGraph(raw, item, opts.kind ?? recipe.kind, !!opts.includeSpine);
-  return finished;
+  const sk = opts.kind ?? recipe.kind;
+  const fig = sk === "figure" || sk === "plant" || sk === "vehicle" || sk === "vessel";
+  let g = finished.graph;
+  if (sk !== "bridge" && sk !== "arch") {
+    g = densifyTriangles(
+      g,
+      sk,
+      Math.max(policy.bay * 1.8, policy.faceStep * 2.5),
+      fig ? 12 : 28,
+    );
+  }
+  const topo = pruneTopology(g, sk, { aggressiveness: fig ? 0.1 : sk === "bridge" || sk === "arch" ? 0.15 : 0.32 });
+  g = {
+    ...topo.graph,
+    notes: [...topo.graph.notes.filter((n: string) => !n.startsWith("Topology")), topo.note],
+  };
+  return { graph: g, offer: finished.offer };
 }
