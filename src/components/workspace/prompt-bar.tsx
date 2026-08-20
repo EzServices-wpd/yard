@@ -35,9 +35,16 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     try {
       const hint = await hintSubject({ data: { prompt } });
       if (hint.summary && hint.summary !== hint.subject) {
-        const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
-        generate(prompt, undefined, form);
-        makePlan();
+        const keep =
+          next.kind === "eiffel" ||
+          next.kind === "pyramid" ||
+          next.kind === "arch" ||
+          next.kind === "bridge";
+        if (!keep) {
+          const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
+          generate(prompt, undefined, form);
+          makePlan();
+        }
         const current = useYard.getState().project;
         const note = `Looked up: ${hint.summary}`;
         if (!current.notes.includes(note)) {
@@ -54,10 +61,10 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
       const interp = await interpretPrompt({
         data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
       });
-      if (interp.ok && interp.form && interp.form.strokes && interp.form.strokes.length >= 2 && next.kind !== "eiffel") {
+      if (interp.ok && interp.form && interp.form.strokes && interp.form.strokes.length >= 2 && next.kind !== "eiffel" && next.kind !== "pyramid" && next.kind !== "arch" && next.kind !== "bridge") {
         generate(prompt, interp.materialId ?? undefined, interp.form);
         makePlan();
-      } else if (interp.ok && interp.form && next.kind !== "eiffel") {
+      } else if (interp.ok && interp.form && next.kind !== "eiffel" && next.kind !== "pyramid" && next.kind !== "arch" && next.kind !== "bridge") {
         generate(prompt, interp.materialId ?? undefined, interp.form);
         makePlan();
       } else if (interp.ok && interp.materialId && interp.materialId !== next.primaryMaterialId) {
