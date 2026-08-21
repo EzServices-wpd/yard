@@ -159,7 +159,9 @@ export function graphToInstances(
     const segLen = dist(a, b);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
     // Drop micro-edges that read as floating blobs — but never discard a critical frame member.
-    const minLen = Math.max(face * 2.5, item.formFactor === "sheet" ? 1.2 : 0.4);
+    // Craft-thin stock (toothpick / short stick) keeps intentional lace at face×2.1.
+    const craftThin = face < 0.22 || (item.formFactor === "stick" && (item.dims.length ?? 8) <= 6);
+    const minLen = Math.max(face * (craftThin ? 2.1 : 2.5), item.formFactor === "sheet" ? 1.2 : 0.4);
     if (segLen < minLen && !critical) return;
     const m = mid(a, b);
     const rot = rotationForDirection(a, b, cylindrical);
@@ -186,7 +188,8 @@ export function graphToInstances(
   ) => {
     const length = dist(p0, p1);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
-    const minLen = Math.max(face * 2.5, item.formFactor === "sheet" ? 1.2 : 0.4);
+    const craftThin = face < 0.22 || (item.formFactor === "stick" && (item.dims.length ?? 8) <= 6);
+    const minLen = Math.max(face * (craftThin ? 2.1 : 2.5), item.formFactor === "sheet" ? 1.2 : 0.4);
     if (length < minLen && !critical) return;
     bumpJoin(join);
 
