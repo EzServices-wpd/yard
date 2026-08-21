@@ -118,7 +118,7 @@ export function rotationForDirection(
  * Pyramid hips are a chain of short collinear legs — emit them as one
  * spliced member so the BOM is four long rafters, not 80 toothpicks.
  * Craft stock (popsicle, straw, toothpick) is laid as WHOLE sticks —
- * never snipped to a unique length.
+ * never snipped to a unique length — but ends meet at nodes (no piercing).
  */
 export function graphToInstances(
   graph: StructureGraph,
@@ -138,7 +138,8 @@ export function graphToInstances(
   const whole = opts.whole ?? isWholeStock(item);
   const defaultJoin: JoinMethod =
     joinOverride || (item.preferredJoins && item.preferredJoins[0]) || "glue";
-  const lap = Math.min(stock * 0.12, Math.max(thick * 3, 0.22));
+  // Splice lap is a small surface for glue — not a through-penetration.
+  const lap = Math.min(stock * 0.08, Math.max(thick * 2.2, 0.18));
 
   const instances: GraphInstance[] = [];
   let spliceCount = 0;
@@ -202,16 +203,24 @@ export function graphToInstances(
         y: origin.y + uy * t,
         z: origin.z + uz * t,
       });
-      if (length <= stock * 1.08) {
-        const extra = (stock - length) / 2;
-        pushPiece(along(p0, -extra), along(p0, stock - extra), join, role, `${id}-s0`, undefined, critical);
+
+      // Short edge: ends meet at the nodes. Never center a full stick past both
+      // joints — that is what made one popsicle pierce through another.
+      // Canvas pad still seats the tip into the joint hub for a readable seam.
+      if (length <= stock * 1.02) {
+        pushPiece(p0, p1, join, role, `${id}-s0`, undefined, critical);
         return;
       }
-      const n = Math.max(2, Math.ceil(length / stock));
-      const step = (length - stock) / (n - 1);
+
+      // Long run: lay whole sticks end-to-end with a small splice lap only.
+      // Step so consecutive sticks share ~lap of surface, not a full through-cross.
+      const usable = Math.max(stock - lap, stock * 0.88);
+      const n = Math.max(2, Math.ceil((length - lap) / usable));
+      const step = (length - stock) / Math.max(n - 1, 1);
       for (let s = 0; s < n; s++) {
-        const a = along(p0, s * step);
-        const b = along(a, stock);
+        const start = Math.min(s * step, Math.max(0, length - stock));
+        const a = along(p0, start);
+        const b = along(p0, start + stock);
         if (s > 0) spliceCount += 1;
         pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, undefined, critical);
       }
