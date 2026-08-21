@@ -6,7 +6,7 @@ export const DREAMS = [
     id: "eiffel",
     label: "3-ft popsicle Eiffel",
     prompt: "3 foot Eiffel Tower from popsicle sticks",
-    blurb: "North star — true-scale lattice, pack count, end-to-end joints, ordered steps.",
+    blurb: "North star — true-scale lattice, dominant base arches, pier thickening, ordered steps.",
   },
   {
     id: "arch",
@@ -18,7 +18,7 @@ export const DREAMS = [
     id: "bridge",
     label: "Straw Warren bridge",
     prompt: "4 foot bridge from plastic drinking straws",
-    blurb: "Continuous chords, two Warren truss planes, deck beams, end abutments.",
+    blurb: "Single stock + joiner only. Continuous chords, Warren truss, densified deck, abutments.",
   },
   {
     id: "closet",
