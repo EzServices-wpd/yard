@@ -41,6 +41,7 @@ export function buildFormGraph(
   const join: JoinMethod = (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
   const kind = opts.kind ?? recipe.kind;
+  const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";
 
   if (kind === "pyramid") {
     return buildPyramidForm(recipe, item, materialId, opts);
@@ -138,7 +139,10 @@ export function buildFormGraph(
         ring(0);
         ring(4);
         for (let i = 0; i < 4; i++) addEdge(ids[i], ids[i + 4], "leg", true);
-        for (let i = 0; i < 4; i++) addEdge(ids[i], ids[4 + ((i + 1) % 4)], "brace", false, braceJoin);
+        // Furniture already named stretchers. Face-diagonals turn a bed into a crate.
+        if (!memberBuilt) {
+          for (let i = 0; i < 4; i++) addEdge(ids[i], ids[4 + ((i + 1) % 4)], "brace", false, braceJoin);
+        }
         return;
       }
       case "arch": {
@@ -237,7 +241,7 @@ export function buildFormGraph(
       case "poly": {
         if (op.points.length < 2) return;
         const portal = recipe.kind === "arch";
-        const pts = policy.fat || portal ? op.points : resampleStroke(op.points, policy.bay);
+        const pts = policy.fat || portal || memberBuilt ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
         return;
@@ -267,8 +271,10 @@ export function buildFormGraph(
 
   // Auto X-brace only on the SAME face (shared X or shared Z).
   // Never span a walk-through opening (arch, portal, bridge deck gap).
+  // Furniture / ladder / figure already named their members — an X on every
+  // pair of legs turns a chair into a tower.
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
-  if (!openKind && verticals.length >= 2) {
+  if (!openKind && !memberBuilt && verticals.length >= 2) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const xs = nodes.map((n) => n.position.x);
     const ys = nodes.map((n) => n.position.y);
@@ -353,7 +359,8 @@ export function buildFormGraph(
     kind === "custom" ||
     kind === "furniture" ||
     kind === "ladder" ||
-    kind === "frame";
+    kind === "frame" ||
+    kind === "figure";
   if (!keepWire) {
     g = densifyTriangles(
       g,
@@ -362,7 +369,7 @@ export function buildFormGraph(
       fig ? 12 : 28,
     );
   }
-  if (kind !== "arch") {
+  if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && kind !== "frame") {
     const topo = pruneTopology(g, kind, {
       aggressiveness: fig ? 0.1 : keepWire ? 0.15 : 0.32,
     });

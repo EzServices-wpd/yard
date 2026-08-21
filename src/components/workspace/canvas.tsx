@@ -212,6 +212,13 @@ function CameraRig({
     const long = project.overall.width / Math.max(project.overall.height, 1);
     const fit = Math.max(h, span);
     const pyramid = project.kind === "pyramid";
+    const furniture =
+      project.kind === "furniture" ||
+      project.kind === "ladder" ||
+      project.kind === "figure" ||
+      (project.kind === "closet" && !project.pocket);
+    const ladder = project.kind === "ladder";
+    const wide = project.overall.width > project.overall.height * 1.3;
     const dist =
       fit *
       (project.pocket
@@ -220,9 +227,13 @@ function CameraRig({
           ? 1.7
           : pyramid
             ? 1.45
-            : long > 2.1
-              ? 0.95
-              : 1.55);
+            : furniture
+              ? ladder
+                ? 1.05
+                : 1.12
+              : long > 2.1
+                ? 0.95
+                : 1.55);
     const focus = focusOf(project, stepIds);
     const spanIso: [number, number, number] = [
       focus.x + project.overall.width * 0.18,
@@ -250,6 +261,17 @@ function CameraRig({
               side: [focus.x + dist * 1.2, focus.y * 0.4, focus.z],
               top: [focus.x, focus.y + fit * 1.25, focus.z + 0.01],
             }
+          : furniture
+            ? {
+                iso: ladder
+                  ? [focus.x + dist * 0.4, Math.max(focus.y, h * 0.42), focus.z + dist * 1.08]
+                  : wide
+                    ? [focus.x + dist * 0.7, Math.max(h * 1.45, 26), focus.z + dist * 1.05]
+                    : [focus.x + dist * 0.78, Math.max(h * 0.52, 8), focus.z + dist * 0.92],
+                front: [focus.x, Math.max(focus.y, h * 0.4), focus.z + dist * (ladder ? 1.1 : 1.2)],
+                side: [focus.x + dist * 1.18, Math.max(focus.y, h * 0.4), focus.z],
+                top: [focus.x, focus.y + fit * 1.15, focus.z + 0.01],
+              }
           : {
           iso: long > 2.1 ? spanIso : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
           front: [focus.x, focus.y, focus.z + dist * 1.28],

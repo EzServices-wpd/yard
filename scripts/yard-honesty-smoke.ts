@@ -9,6 +9,8 @@ const extra = [
   "Build a vanity for a 36 by 22 inch bathroom alcove",
   "3 foot Eiffel Tower from popsicle sticks",
   "golden gate bridge from popsicle sticks",
+  "kitchen chair from 1x4",
+  "8 foot ladder from 1x4",
 ];
 
 function report(label: string, prompt: string) {
@@ -163,6 +165,68 @@ if (ggPlan.totals.pieces < gg.pieces) {
   console.error("FAIL plan piece count dropped the deck", ggPlan.totals.pieces, gg.pieces);
   process.exit(1);
 }
+const chair = results.find((r) => /kitchen chair/i.test(r.label));
+if (!chair || chair.kind !== "furniture") {
+  console.error("FAIL chair is not furniture", chair);
+  process.exit(1);
+}
+if (chair.material !== "lumber-1x4-8") {
+  console.error("FAIL chair stock", chair.material);
+  process.exit(1);
+}
+const chairRoles: Record<string, number> = {};
+for (const inst of chair.project.instances) {
+  const r = inst.role || "member";
+  chairRoles[r] = (chairRoles[r] ?? 0) + 1;
+}
+if ((chairRoles.leg ?? 0) !== 4) {
+  console.error("FAIL chair should have 4 legs", chairRoles, chair.pieces);
+  process.exit(1);
+}
+if ((chairRoles.rail ?? 0) < 6) {
+  console.error("FAIL chair lost seat rails / slats", chairRoles);
+  process.exit(1);
+}
+if (chair.pieces < 12 || chair.pieces > 28) {
+  console.error("FAIL chair piece count is a jungle gym or a stick", chair.pieces, chairRoles);
+  process.exit(1);
+}
+const chairPlan = buildPlan(chair.project);
+if (chairPlan.instructions.some((s) => /mark studs|lace every open bay/i.test(s.title))) {
+  console.error("FAIL chair plan talks like a closet or a tower", chairPlan.instructions.map((s) => s.title));
+  process.exit(1);
+}
+if (!chairPlan.instructions.some((s) => /sit on it/i.test(s.title))) {
+  console.error("FAIL chair plan never sits", chairPlan.instructions.map((s) => s.title));
+  process.exit(1);
+}
+const ladder = results.find((r) => /8 foot ladder/i.test(r.label));
+if (!ladder || ladder.kind !== "ladder") {
+  console.error("FAIL ladder kind", ladder);
+  process.exit(1);
+}
+const ladderRoles: Record<string, number> = {};
+for (const inst of ladder.project.instances) {
+  const r = inst.role || "member";
+  ladderRoles[r] = (ladderRoles[r] ?? 0) + 1;
+}
+if ((ladderRoles.leg ?? 0) !== 2) {
+  console.error("FAIL ladder should have two rails", ladderRoles, ladder.pieces);
+  process.exit(1);
+}
+if ((ladderRoles.brace ?? 0) > 0) {
+  console.error("FAIL ladder picked up leftover braces", ladderRoles);
+  process.exit(1);
+}
+if ((ladderRoles.rail ?? 0) < 5 || ladder.pieces > 16) {
+  console.error("FAIL ladder rungs drifted", ladderRoles, ladder.pieces);
+  process.exit(1);
+}
+const ladderPlan = buildPlan(ladder.project);
+if (!ladderPlan.instructions.some((s) => /rung/i.test(s.title))) {
+  console.error("FAIL ladder plan never screws rungs", ladderPlan.instructions.map((s) => s.title));
+  process.exit(1);
+}
 console.log("OK", {
   archPieces: arch.pieces,
   archTraverse: arch.traverse,
@@ -177,4 +241,8 @@ console.log("OK", {
   strawDeck: straw.deck,
   pyramidPieces: pyramid.pieces,
   pyramidTraverse: pyramid.traverse,
+  chairPieces: chair.pieces,
+  chairRoles,
+  ladderPieces: ladder.pieces,
+  ladderRoles,
 });

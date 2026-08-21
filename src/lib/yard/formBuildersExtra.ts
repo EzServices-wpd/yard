@@ -122,7 +122,8 @@ export function chairOps(s: Size3): FormOp[] {
   const seat = h * 0.5;
   const hx = w / 2;
   const hz = d / 2;
-  return [
+  const stretch = Math.max(5, seat * 0.3);
+  const ops: FormOp[] = [
     { op: "column", x: -hx, z: -hz, y0: 0, y1: h, role: "leg" },
     { op: "column", x: hx, z: -hz, y0: 0, y1: h, role: "leg" },
     { op: "column", x: -hx, z: hz, y0: 0, y1: seat, role: "leg" },
@@ -131,9 +132,32 @@ export function chairOps(s: Size3): FormOp[] {
     { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: hz }, { x: hx, y: seat, z: hz }] },
     { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: -hz }, { x: -hx, y: seat, z: hz }] },
     { op: "poly", role: "rail", points: [{ x: hx, y: seat, z: -hz }, { x: hx, y: seat, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: stretch, z: hz }, { x: hx, y: stretch, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: stretch, z: -hz }, { x: -hx, y: stretch, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: hx, y: stretch, z: -hz }, { x: hx, y: stretch, z: hz }] },
     { op: "poly", role: "brace", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
     { op: "poly", role: "brace", points: [{ x: -hx, y: seat + (h - seat) * 0.55, z: -hz }, { x: hx, y: seat + (h - seat) * 0.55, z: -hz }] },
   ];
+  for (let i = 1; i <= 3; i++) {
+    const x = -hx + (2 * hx * i) / 4;
+    ops.push({
+      op: "poly",
+      role: "rail",
+      points: [
+        { x, y: seat, z: -hz },
+        { x, y: seat, z: hz },
+      ],
+    });
+    ops.push({
+      op: "poly",
+      role: "brace",
+      points: [
+        { x, y: seat, z: -hz },
+        { x, y: h, z: -hz },
+      ],
+    });
+  }
+  return ops;
 }
 
 export function tableOps(s: Size3): FormOp[] {

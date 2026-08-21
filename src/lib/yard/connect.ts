@@ -396,7 +396,7 @@ export function needsSpine(
   const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 0.5);
   const slender = height / span > 2.8;
   const figure = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
-  if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet" || kind === "pyramid") {
+  if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet" || kind === "pyramid" || kind === "furniture" || kind === "ladder" || kind === "frame") {
     return { needed: false, reason: "" };
   }
   if (figure) {
@@ -694,16 +694,26 @@ export function finishGraph(
   grain = 1,
 ): { graph: StructureGraph; offer: SupportOffer } {
   const d = stockDensity(item, grain);
+  const memberKeep = kind === "furniture" || kind === "ladder" || kind === "frame";
+  const thin = Math.min(d.thick, item.dims.thickness ?? item.dims.height ?? d.thick);
+  // Furniture members sit closer than the FACE of a 1×4. Weld on thickness
+  // so seat slats stay slats, not one fused rail. Towers still weld on face.
   const weldTol =
     kind === "pyramid"
-      ? Math.max(Math.min(d.thick, item.dims.thickness ?? d.thick) * 1.8, 0.1)
-      : Math.max(d.thick * 1.6, 0.22);
+      ? Math.max(thin * 1.8, 0.1)
+      : memberKeep
+        ? Math.max(thin * 1.8, 0.22)
+        : Math.max(d.thick * 1.6, 0.22);
   let next = weldGraph(graph, weldTol);
-  next = stitchComponents(next, kind);
+  // Chair / ladder / frame already named every member. Stitch would drop
+  // leftover braces between islands and turn a ladder into a jungle gym.
+  if (!memberKeep) next = stitchComponents(next, kind);
   const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
+  const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";
   // Span forms already placed their piers. Dropping a leg from every deck/cable
-  // node turns a suspension into a lattice cage.
-  if (!spanKind) next = ensureDownwardPath(next);
+  // node turns a suspension into a lattice cage. Furniture already named its
+  // legs — the same pass turns a chair into a jungle gym.
+  if (!spanKind && !memberBuilt) next = ensureDownwardPath(next);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   if (fig) next = ribBands(next, Math.max(d.bay, 0.8), true);
   next = weldGraph(next, weldTol);

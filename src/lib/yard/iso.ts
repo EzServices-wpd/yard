@@ -72,13 +72,42 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
     marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: hot.has(inst.id) });
   }
   for (const panel of project.panels) {
-    const a = iso(panel.position.x, panel.position.y, panel.position.z);
-    const b = iso(
-      panel.position.x + panel.size.width,
-      panel.position.y + panel.size.height * 0.15,
-      panel.position.z + panel.size.depth,
-    );
-    marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: hot.has(panel.id) });
+    const x = panel.position.x;
+    const y = panel.position.y;
+    const z = panel.position.z;
+    const w = panel.size.width;
+    const h = panel.size.height;
+    const d = panel.size.depth;
+    const c: [number, number, number][] = [
+      [x, y, z],
+      [x + w, y, z],
+      [x + w, y, z + d],
+      [x, y, z + d],
+      [x, y + h, z],
+      [x + w, y + h, z],
+      [x + w, y + h, z + d],
+      [x, y + h, z + d],
+    ];
+    const segs: [number, number][] = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+      [7, 4],
+      [0, 4],
+      [1, 5],
+      [2, 6],
+      [3, 7],
+    ];
+    const on = hot.has(panel.id);
+    for (const [i, j] of segs) {
+      const a = iso(c[i][0], c[i][1], c[i][2]);
+      const b = iso(c[j][0], c[j][1], c[j][2]);
+      marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on });
+    }
   }
   return marks;
 }

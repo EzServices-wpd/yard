@@ -188,6 +188,10 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/lego/, "legos-2x4"],
     [/copper/, "copper-pipe-half"],
     [/pool noodle|noodle/, "pool-noodle"],
+    // Unnamed furniture is Saturday-DIY lumber, not the popsicle fallback.
+    [/chair|stool|throne/, "lumber-1x4-8"],
+    [/\bladder\b|stepladder/, "lumber-1x4-8"],
+    [/\bpicnic\b|\bworkbench\b|\btable\b/, "lumber-2x4-8"],
   ];
   for (const [re, id] of phrases) {
     if (re.test(lower)) {
