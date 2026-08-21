@@ -132,6 +132,11 @@ function PlanBody({
           <div>
             <p className="font-display text-xl text-fg">Build plan</p>
             <p className={`mt-0.5 text-xs ${tone}`}>{plan.feasibility.summary}</p>
+            {plan.effort && (
+              <p className="mt-1 text-[11px] text-faint">
+                About {plan.effort} · {usd(plan.totals.estCostUsd)} all-in
+              </p>
+            )}
           </div>
           <button type="button" onClick={onClose} className="grid size-11 place-items-center text-muted hover:text-fg" aria-label="Close">
             <X className="size-4" />

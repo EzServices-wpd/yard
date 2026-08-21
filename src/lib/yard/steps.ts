@@ -33,7 +33,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     project.panels.filter((p) => (Array.isArray(t) ? t.includes(p.type) : p.type === t));
   const steps: AssemblyStep[] = [];
   let n = 1;
-  const sheet = "¾\" plywood";
+  const sheet = getCatalogItem(project.primaryMaterialId);
+  const sheetName = sheet?.name ?? "¾\" plywood";
 
   if (project.pocket) {
     const p = project.pocket;
@@ -77,7 +78,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (uprights.length || backs.length || tops.length) {
     steps.push({
       step: n++,
-      title: `Rip the ${sheet}`,
+      title: `Rip the ${sheetName}`,
       description: `Break the sheet down before you crosscut. ${
         uprights.length ? `Uprights first — they set every other length: ${list(uprights)}.` : ""
       } ${backs.length ? `Back: ${list(backs)}.` : ""} ${tops.length ? `Top/bottom: ${list(tops)}.` : ""} Label each piece on the waste face.`,

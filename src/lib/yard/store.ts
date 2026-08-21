@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
-import type { BuildPlan, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
+import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
@@ -25,6 +25,7 @@ type YardState = {
   showHistoric: boolean;
   workMode: WorkMode;
   detail: DetailLevel;
+  buildScale: BuildScale;
   activeStep: number | null;
   placedIds: string[];
   lockedIds: string[];
@@ -40,9 +41,10 @@ type YardState = {
   revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale }) => YardProject;
   setJoinMethod: (join: JoinMethod) => void;
   setDetail: (v: DetailLevel) => void;
+  setBuildScale: (v: BuildScale) => void;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
@@ -94,6 +96,7 @@ export const useYard = create<YardState>((set, get) => ({
   showHistoric: false,
   workMode: "look",
   detail: "fill",
+  buildScale: "full" as BuildScale,
   activeStep: null,
   placedIds: [],
   lockedIds: [],
@@ -131,7 +134,8 @@ export const useYard = create<YardState>((set, get) => ({
   },
   generate: (prompt, materialId, form, opts) => {
     set({ building: true, grokError: null });
-    const next = generateFromPrompt(prompt, materialId, form, opts);
+    const scale = opts?.scale ?? get().buildScale;
+    const next = generateFromPrompt(prompt, materialId, form, { ...opts, scale });
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     if (next.pocket) flags.showHull = true;
     if (next.fitted?.opening.kind === "alcove") flags.showHull = true;
@@ -185,6 +189,18 @@ export const useYard = create<YardState>((set, get) => ({
     }
   },
   setDetail: (v) => set({ detail: v }),
+  setBuildScale: (v) => {
+    set({ buildScale: v });
+    const { project, generate, makePlan } = get();
+    if (project.prompt.trim()) {
+      generate(project.prompt, project.primaryMaterialId, undefined, {
+        includeSpine: project.supportOffer?.included,
+        joinMethod: project.joinMethod,
+        scale: v,
+      });
+      makePlan();
+    }
+  },
   makePlan: () => {
     const plan = buildPlan(get().project);
     set({ plan });

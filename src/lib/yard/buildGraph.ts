@@ -35,9 +35,9 @@ export function buildFormGraph(
   recipe: FormRecipe,
   item: CatalogItem,
   materialId: string,
-  opts: { includeSpine?: boolean; kind?: StructureKind } = {},
+  opts: { includeSpine?: boolean; kind?: StructureKind; grain?: number } = {},
 ): { graph: StructureGraph; offer: SupportOffer } {
-  const policy = stockDensity(item);
+  const policy = stockDensity(item, opts.grain ?? 1);
   const join: JoinMethod = (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
   const kind = opts.kind ?? recipe.kind;
@@ -337,7 +337,7 @@ export function buildFormGraph(
     structureClass: recipe.kind === "eiffel" ? "eiffel" : recipe.kind === "pyramid" ? "pyramid" : "generic",
   };
 
-  const finished = finishGraph(raw, item, kind, !!opts.includeSpine);
+  const finished = finishGraph(raw, item, kind, !!opts.includeSpine, opts.grain ?? 1);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   let g = finished.graph;
   const keepWire =
@@ -350,7 +350,10 @@ export function buildFormGraph(
     kind === "dome" ||
     kind === "wall" ||
     kind === "tower" ||
-    kind === "custom";
+    kind === "custom" ||
+    kind === "furniture" ||
+    kind === "ladder" ||
+    kind === "frame";
   if (!keepWire) {
     g = densifyTriangles(
       g,
@@ -393,9 +396,9 @@ function buildPyramidForm(
   recipe: FormRecipe,
   item: CatalogItem,
   materialId: string,
-  opts: { includeSpine?: boolean; kind?: StructureKind },
+  opts: { includeSpine?: boolean; kind?: StructureKind; grain?: number },
 ): { graph: StructureGraph; offer: SupportOffer } {
-  const policy = stockDensity(item);
+  const policy = stockDensity(item, opts.grain ?? 1);
   const join: JoinMethod = (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
   const { height, half0 } = pyramidEnvelope(recipe.ops);
@@ -405,6 +408,7 @@ function buildPyramidForm(
     item,
     join,
     braceJoin,
+    grain: opts.grain ?? 1,
   });
   const raw: StructureGraph = {
     id: createId("graph"),
@@ -425,6 +429,6 @@ function buildPyramidForm(
     ],
     structureClass: "pyramid",
   };
-  const finished = finishGraph(raw, item, "pyramid", !!opts.includeSpine);
+  const finished = finishGraph(raw, item, "pyramid", !!opts.includeSpine, opts.grain ?? 1);
   return { graph: finished.graph, offer: finished.offer };
 }

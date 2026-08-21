@@ -42,15 +42,24 @@ export function inferLoadUse(project: YardProject): LoadUse {
     item.formFactor === "stick" ||
     (item.formFactor === "tube" && (item.dims.diameter ?? 1) < 0.4);
   if (craft) return "display";
+  const pipe = item.formFactor === "pipe" || item.category === "pvc_plumbing";
+  if (t?.kind === "portal") {
+    if (clear >= 60 && deckW >= 28 && (pipe || item.category === "lumber" || item.category === "sheet_goods")) {
+      return "person";
+    }
+    if (clear >= 24 && deckW >= 16) return "toy";
+    return "display";
+  }
   if (deckW >= 24 && clear >= 36 && (item.category === "lumber" || item.category === "sheet_goods")) {
     return "person";
   }
+  if (pipe && clear >= 60) return "person";
   return "toy";
 }
 
 export function loadIssues(project: YardProject): FeasibilityIssue[] {
   const t = project.traverse;
-  if (!t) return [];
+  if (!t || t.kind === "around") return [];
   const issues: FeasibilityIssue[] = [];
   const use = project.assumptions.use ?? inferLoadUse(project);
   const item = getCatalogItem(project.primaryMaterialId);
@@ -66,10 +75,15 @@ export function loadIssues(project: YardProject): FeasibilityIssue[] {
   } else if (use === "toy") {
     issues.push({
       severity: "info",
-      message: "Toy load — a car or figure can cross. Not a person.",
+      message:
+        t.kind === "portal"
+          ? "Toy load — a kid or a figure can pass. Not a stamped doorway."
+          : "Toy load — a car or figure can cross. Not a person.",
       suggestion: deckItem
         ? `Road is ${deckItem.name}. Keep the live load under a couple of pounds.`
-        : "The deck sheet is the road. Don't skip it.",
+        : t.kind === "portal"
+          ? "Widen the prompt if you want a person-scale opening."
+          : "The deck sheet is the road. Don't skip it.",
     });
   } else if (item && (item.formFactor === "stick" || item.category === "craft_wood" || item.category === "plastic")) {
     issues.push({
@@ -129,7 +143,7 @@ export function attachFunction(project: YardProject): YardProject {
   if (project.kind === "bridge") return withBridgeDeck(project);
   if (project.kind === "arch") return withArchPortal(project);
   if (project.kind === "pyramid") return withPyramidTomb(project);
-  return project;
+  return withGroundWalk(project);
 }
 
 function bbox(instances: YardInstance[]) {
@@ -266,26 +280,66 @@ function withArchPortal(project: YardProject): YardProject {
         origin: { x: (box.minX + box.maxX) / 2, y: 0.45, z: box.minZ - stand },
         axis: { x: 0, y: 0, z: 1 },
         length: spanZ + stand * 2,
-        width: spanX * 0.55,
+        width: Math.max(spanX * 0.78, 18),
         y: 0.45,
         eyeH: Math.max(1.2, Math.min(5, (box.maxY - box.minY) * 0.18)),
-        clearH: (box.maxY - box.minY) * 0.7,
+        clearH: (box.maxY - box.minY) * 0.85,
       }
     : {
         kind: "portal",
         origin: { x: box.minX - stand, y: 0.45, z: (box.minZ + box.maxZ) / 2 },
         axis: { x: 1, y: 0, z: 0 },
         length: spanX + stand * 2,
-        width: spanZ * 0.55,
+        width: Math.max(spanZ * 0.78, 18),
         y: 0.45,
         eyeH: Math.max(1.2, Math.min(5, (box.maxY - box.minY) * 0.18)),
-        clearH: (box.maxY - box.minY) * 0.7,
+        clearH: (box.maxY - box.minY) * 0.85,
       };
   return {
     ...project,
     traverse,
     notes: [...project.notes, "Portal is clear — Walk through it on the bench."],
     assumptions: { ...project.assumptions, use: inferLoadUse({ ...project, traverse }) },
+  };
+}
+
+function withGroundWalk(project: YardProject): YardProject {
+  if (project.traverse) return project;
+  if (!project.instances.length && !project.panels.length) return project;
+  const box = project.instances.length
+    ? bbox(project.instances)
+    : {
+        minX: -project.overall.width / 2,
+        maxX: project.overall.width / 2,
+        minY: 0,
+        maxY: project.overall.height,
+        minZ: -project.overall.depth / 2,
+        maxZ: project.overall.depth / 2,
+      };
+  const spanX = Math.max(box.maxX - box.minX, 8);
+  const spanZ = Math.max(box.maxZ - box.minZ, 8);
+  const H = Math.max(box.maxY - box.minY, 8);
+  const stand = Math.max(8, spanX * 0.45, spanZ * 0.45, H * 0.22);
+  const item = getCatalogItem(project.primaryMaterialId);
+  const craft =
+    !item ||
+    item.category === "craft_wood" ||
+    item.category === "plastic" ||
+    item.formFactor === "stick";
+  const traverse: TraversePath = {
+    kind: "around",
+    origin: { x: (box.minX + box.maxX) / 2, y: 0.4, z: box.minZ - stand },
+    axis: { x: 0, y: 0, z: 1 },
+    length: spanZ + stand * 2,
+    width: spanX + stand * 2,
+    y: 0.4,
+    eyeH: craft ? Math.max(1.2, Math.min(8, H * 0.28)) : Math.max(4, Math.min(16, H * 0.4)),
+    clearH: H,
+  };
+  return {
+    ...project,
+    traverse,
+    notes: [...project.notes, "Walk around it on the bench (WASD + mouse look)."],
   };
 }
 

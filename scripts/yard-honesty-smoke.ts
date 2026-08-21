@@ -104,7 +104,7 @@ if (pyramid.use !== "display") {
   process.exit(1);
 }
 const eiffel = results.find((r) => r.label === "eiffel");
-if (eiffel && (eiffel.deck > 0 || eiffel.traverse)) {
+if (eiffel && (eiffel.deck > 0 || eiffel.traverse === "deck")) {
   console.error("FAIL eiffel picked up a road", eiffel);
   process.exit(1);
 }

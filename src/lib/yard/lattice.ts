@@ -280,23 +280,25 @@ export function buildSteppedPyramid(opts: {
   item: CatalogItem;
   join: JoinMethod;
   braceJoin: JoinMethod;
+  grain?: number;
 }): {
   nodes: StructureNode[];
   edges: StructureEdge[];
   door: { width: number; height: number; z0: number };
 } {
-  const dens = stockDensity(opts.item);
+  const dens = stockDensity(opts.item, opts.grain ?? 1);
   const H = Math.max(opts.height, 12);
   const h0 = Math.max(opts.half0, 6);
   const h1 = Math.max(opts.half1 ?? dens.thick * 2.4, dens.thick * 1.8);
   const stickW = Math.max(opts.item.dims.width ?? dens.thick, dens.thick, 0.28);
+  const g = Math.max(opts.grain ?? 1, 1);
   const structPitch = dens.fat
     ? Math.max(H / 5.5, dens.bay * 1.15)
     : Math.max(dens.stock * 0.95, dens.bay * 2.2, H / 10);
   const nStruct = Math.max(dens.fat ? 4 : 5, Math.min(dens.fat ? 6 : 9, Math.round(H / structPitch)));
   const nFill = dens.fat
     ? nStruct
-    : Math.max(nStruct, Math.min(96, Math.round(H / stickW)));
+    : Math.max(nStruct, Math.min(96, Math.round(H / (stickW * g))));
   const stride = Math.max(1, Math.round(nFill / nStruct));
   const frameStride = stride * 3;
 

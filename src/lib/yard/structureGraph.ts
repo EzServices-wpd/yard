@@ -151,7 +151,8 @@ export function graphToInstances(
     id: string,
   ) => {
     const length = dist(p0, p1);
-    const minLen = Math.max(thick * 2.5, 0.4);
+    const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
+    const minLen = Math.max(face * 2.2, item.formFactor === "sheet" ? 1.2 : 0.4);
     if (length < minLen) return;
     bumpJoin(join);
     const usable = Math.max(stock - lap, stock * 0.82);

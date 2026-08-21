@@ -93,6 +93,7 @@ export type StructureKind =
 
 export type WorkMode = "look" | "free" | "build" | "walk";
 export type DetailLevel = "frame" | "full" | "fill";
+export type BuildScale = "tabletop" | "weekend" | "full";
 
 export type YardInstance = {
   id: string;
@@ -208,7 +209,7 @@ export type FittedSpec = {
 export type LoadUse = "display" | "toy" | "person";
 
 export type TraversePath = {
-  kind: "deck" | "portal";
+  kind: "deck" | "portal" | "around";
   origin: Vec3;
   axis: Vec3;
   length: number;
@@ -331,6 +332,7 @@ export type BuildPlan = {
     estCostUsd: number;
     packs: number;
   };
+  effort?: string;
   generatedAt: string;
   grokNotes?: string;
   render?: {

@@ -86,12 +86,25 @@ export function archOps(s: Size3): FormOp[] {
 }
 
 export function ladderOps(s: Size3): FormOp[] {
-  const z = Math.max(4, s.depth * 0.2);
-  return [
-    { op: "column", x: 0, z: -z / 2, y0: 0, y1: s.height, role: "leg" },
-    { op: "column", x: 0, z: z / 2, y0: 0, y1: s.height, role: "leg" },
-    { op: "grid", y: s.height * 0.5, w: 0.4, d: z, nx: 1, nz: Math.max(3, Math.round(s.height / 5)), x: 0, z: 0, role: "rail" },
+  const H = Math.max(s.height, 36);
+  const w = Math.max(14, Math.min(s.width, 22));
+  const rungs = Math.max(5, Math.round(H / 12));
+  const ops: FormOp[] = [
+    { op: "column", x: -w / 2, z: 0, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: w / 2, z: 0, y0: 0, y1: H, role: "leg" },
   ];
+  for (let i = 1; i <= rungs; i++) {
+    const y = (i / (rungs + 1)) * H;
+    ops.push({
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: -w / 2, y, z: 0 },
+        { x: w / 2, y, z: 0 },
+      ],
+    });
+  }
+  return ops;
 }
 
 export function frameOps(s: Size3): FormOp[] {
@@ -103,19 +116,41 @@ export function towerOps(s: Size3): FormOp[] {
 }
 
 export function chairOps(s: Size3): FormOp[] {
-  const h = s.height;
-  const w = Math.min(s.width, h * 0.7);
+  const h = Math.max(s.height, 32);
+  const w = Math.max(14, Math.min(s.width, 22));
+  const d = Math.max(14, Math.min(s.depth, 20));
+  const seat = h * 0.5;
+  const hx = w / 2;
+  const hz = d / 2;
   return [
-    { op: "legs", count: 4, radius: w * 0.38, y0: 0, y1: h * 0.45, role: "leg" },
-    { op: "grid", y: h * 0.45, w, d: w * 0.85, nx: 3, nz: 3, role: "rail" },
-    { op: "box", x: 0, y: h * 0.72, z: -w * 0.4, w, h: h * 0.5, d: w * 0.08, role: "brace" },
+    { op: "column", x: -hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: -hx, z: hz, y0: 0, y1: seat, role: "leg" },
+    { op: "column", x: hx, z: hz, y0: 0, y1: seat, role: "leg" },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: -hz }, { x: hx, y: seat, z: -hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: hz }, { x: hx, y: seat, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: -hz }, { x: -hx, y: seat, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: hx, y: seat, z: -hz }, { x: hx, y: seat, z: hz }] },
+    { op: "poly", role: "brace", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
+    { op: "poly", role: "brace", points: [{ x: -hx, y: seat + (h - seat) * 0.55, z: -hz }, { x: hx, y: seat + (h - seat) * 0.55, z: -hz }] },
   ];
 }
 
 export function tableOps(s: Size3): FormOp[] {
+  const h = Math.max(s.height, 28);
+  const w = Math.max(s.width, 36);
+  const d = Math.max(s.depth, 18);
+  const hx = w / 2;
+  const hz = d / 2;
   return [
-    { op: "legs", count: 4, radius: Math.min(s.width, s.depth) * 0.42, y0: 0, y1: s.height, role: "leg" },
-    { op: "grid", y: s.height, w: s.width, d: s.depth, nx: 4, nz: 3, role: "rail" },
+    { op: "column", x: -hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: -hx, z: hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: hx, z: hz, y0: 0, y1: h, role: "leg" },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: hz }, { x: hx, y: h, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: -hz }, { x: -hx, y: h, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: hx, y: h, z: -hz }, { x: hx, y: h, z: hz }] },
   ];
 }
 
@@ -127,9 +162,20 @@ export function bedOps(s: Size3): FormOp[] {
 }
 
 export function benchOps(s: Size3): FormOp[] {
+  const h = Math.max(s.height, 16);
+  const w = Math.max(s.width, 24);
+  const d = Math.max(6, s.depth);
+  const hx = w / 2;
+  const hz = d / 2;
   return [
-    { op: "legs", count: 4, radius: s.width * 0.4, y0: 0, y1: s.height, role: "leg" },
-    { op: "grid", y: s.height, w: s.width, d: Math.max(6, s.depth), nx: 5, nz: 2, role: "rail" },
+    { op: "column", x: -hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: hx, z: -hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: -hx, z: hz, y0: 0, y1: h, role: "leg" },
+    { op: "column", x: hx, z: hz, y0: 0, y1: h, role: "leg" },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: hz }, { x: hx, y: h, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: -hx, y: h, z: -hz }, { x: -hx, y: h, z: hz }] },
+    { op: "poly", role: "rail", points: [{ x: hx, y: h, z: -hz }, { x: hx, y: h, z: hz }] },
   ];
 }
 

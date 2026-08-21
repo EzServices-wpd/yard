@@ -53,6 +53,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const setWorkMode = useYard((s) => s.setWorkMode);
   const detail = useYard((s) => s.detail);
   const setDetail = useYard((s) => s.setDetail);
+  const buildScale = useYard((s) => s.buildScale);
+  const setBuildScale = useYard((s) => s.setBuildScale);
   const showLoad = useYard((s) => s.showLoad);
   const setShowLoad = useYard((s) => s.setShowLoad);
   const showHull = useYard((s) => s.showHull);
@@ -175,7 +177,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const steps = plan?.instructions ?? [];
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
   const canWalk = Boolean(project.traverse);
-  const loadNote = canWalk ? loadIssues(project) : [];
+  const stickModel = project.instances.some((i) => i.role === "skin") || project.instances.length > 40;
+  const makerJob = project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
+  const showLoadBtn = Boolean(project.traverse && project.traverse.kind !== "around");
+  const loadNote = showLoadBtn ? loadIssues(project) : [];
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -370,6 +375,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           {!pending && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
+            {stickModel && (
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
               {(["frame", "full", "fill"] as const).map((d) => (
                 <GhostBtn
@@ -387,21 +393,37 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 />
               ))}
             </div>
+            )}
+            {makerJob && (
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              <GhostBtn
-                on={showHull}
-                onClick={() => setShowHull(!showHull)}
-                label="Hull"
-                title="Parametric envelope of this build"
-              />
+              {(["tabletop", "weekend", "full"] as const).map((s) => (
+                <GhostBtn
+                  key={s}
+                  on={buildScale === s}
+                  onClick={() => setBuildScale(s)}
+                  label={s === "tabletop" ? "Tabletop" : s === "weekend" ? "Weekend" : "Full"}
+                  title={
+                    s === "tabletop"
+                      ? "About a foot high — a Saturday model"
+                      : s === "weekend"
+                        ? "Same size, coarser stock mapping"
+                        : "Honest density for the size you named"
+                  }
+                />
+              ))}
+            </div>
+            )}
+            {(historicOk || showLoadBtn) && (
+            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
+              {historicOk && (
               <GhostBtn
                 on={showHistoric}
-                onClick={() => historicOk && setShowHistoric(!showHistoric)}
+                onClick={() => setShowHistoric(!showHistoric)}
                 label="Form"
-                title={historicOk ? "Published monument proportions" : "No historic profile for this build"}
-                disabled={!historicOk}
+                title="Published monument proportions"
               />
-              {canWalk && (
+              )}
+              {showLoadBtn && (
                 <GhostBtn
                   on={showLoad}
                   onClick={() => setShowLoad(!showLoad)}
@@ -410,10 +432,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 />
               )}
             </div>
+            )}
           </div>
           )}
 
-          {showLoad && canWalk && !pending && (
+          {showLoad && showLoadBtn && !pending && (
             <div
               data-yard-load-panel="1"
               className="absolute left-3 top-36 z-20 w-[min(18rem,calc(100%-1.5rem))] rounded-md border border-border bg-surface/95 px-3 py-2 text-xs shadow-lg sm:left-4"
@@ -516,6 +539,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               data-yard-components={project.buildStats?.components ?? 0}
               data-yard-form={showHistoric ? "1" : "0"}
               data-yard-detail={detail}
+              data-yard-scale={buildScale}
               data-yard-join={project.joinMethod ?? material?.preferredJoins?.[0] ?? ""}
               data-yard-traverse={project.traverse?.kind ?? ""}
               data-yard-load={project.assumptions.use ?? ""}

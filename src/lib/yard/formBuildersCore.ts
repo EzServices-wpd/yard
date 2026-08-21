@@ -78,16 +78,13 @@ export function pyramidOps(s: Size3): FormOp[] {
 export function fitPyramid(s: Size3, prompt: string): Size3 {
   const lower = prompt.toLowerCase();
   const saidWide = /wide|width|base/.test(lower);
-  const ft = lower.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
-  const inch = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
-  const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
   const ratio = 230.3 / 146.6;
   if (saidWide) {
-    const w = Math.max(n || s.width, 18);
+    const w = Math.max(s.width, 12);
     const h = Math.max(w / ratio, 12);
     return { width: w, height: h, depth: w };
   }
-  const h = Math.max(n || s.height, 12);
+  const h = Math.max(s.height, 12);
   const w = h * ratio;
   return { width: w, height: h, depth: w };
 }

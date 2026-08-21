@@ -12,9 +12,10 @@ import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import type { CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
-import { detectStructure, detectMaterial, parseSize, toProject } from "./promptHelpers";
+import type { BuildScale, CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
+import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor } from "./promptHelpers";
 import { attachFunction } from "./function";
+import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 
 export function emptyProject(): YardProject {
   return {
@@ -40,11 +41,13 @@ export function generateFromPrompt(
   prompt: string,
   materialOverride?: string,
   formOverride?: FormRecipe,
-  opts: { includeSpine?: boolean; joinMethod?: JoinMethod } = {},
+  opts: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale } = {},
 ): YardProject {
   const lower = prompt.toLowerCase().trim();
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
+  const scale = opts.scale ?? "full";
+  const grain = scale === "weekend" ? 1.85 : 1;
 
   if (kindHint === "opening") {
     const unit = pickWindow(prompt, size.width, size.height);
@@ -59,14 +62,15 @@ export function generateFromPrompt(
   }
 
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
-  let box = size;
+  const recipe0 = formOverride ?? detectForm(prompt, size);
+  let box = defaultSizeFor(recipe0.kind, size, prompt);
   const lowerP = prompt.toLowerCase();
   if (/arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
     const H = box.height;
     box = {
       height: H,
-      width: Math.max(box.width, Math.min(H * 0.7, 60), 24),
-      depth: Math.min(Math.max(box.depth, 10), Math.max(12, H * 0.22)),
+      width: Math.max(box.width, Math.min(H * 0.72, 72), 28),
+      depth: Math.min(Math.max(box.depth, 12), Math.max(14, H * 0.24)),
     };
   }
   const namedSpan = /golden gate|brooklyn|suspension/.test(lowerP);
@@ -78,8 +82,20 @@ export function generateFromPrompt(
       depth: Math.max(6, Math.min(span * 0.14, 14)),
     };
   }
+  if (scale === "tabletop") {
+    const cap = 12;
+    const m = Math.max(box.height, box.width, box.depth, 1);
+    if (m > cap) {
+      const k = cap / m;
+      box = { height: box.height * k, width: box.width * k, depth: Math.max(4, box.depth * k) };
+    }
+  }
   const recipe = formOverride ?? detectForm(prompt, box);
   const kind = recipe.kind;
+
+  if (wantsSheetBox(prompt, item, kind)) {
+    return attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name));
+  }
 
   if ((kind === "eiffel" || kind === "lattice") && !(formOverride?.strokes && formOverride.strokes.length >= 4)) {
     const raw = buildLatticeTowerGraph({
@@ -88,18 +104,96 @@ export function generateFromPrompt(
       item,
       eiffel: kind === "eiffel" || /eiffel/.test(lower),
       platforms: true,
+      grain,
     });
-    const finished = finishGraph(raw, item, kind, !!opts.includeSpine);
-    // Do not densify the Eiffel — that fills the gap between the four piers.
+    const finished = finishGraph(raw, item, kind, !!opts.includeSpine, grain);
     const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
     const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
-    return attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod));
+    return finalize(
+      attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod)),
+      item,
+      box,
+      scale,
+    );
   }
 
-  const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind });
-  return attachFunction(
-    projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name),
+  const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind, grain });
+  return finalize(
+    attachFunction(
+      projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name),
+    ),
+    item,
+    box,
+    scale,
   );
+}
+
+function finalize(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }, scale: BuildScale): YardProject {
+  const notes = [...project.notes];
+  if (scale === "tabletop") {
+    notes.unshift(`Tabletop scale — about ${box.height.toFixed(0)}" high. Weekend / Full on the bench grow it.`);
+  } else if (scale === "weekend") {
+    notes.unshift("Weekend density — coarser than Full, still the same form.");
+  }
+  let next = notes === project.notes ? project : { ...project, notes };
+  if (next.instances.length === 0 && next.panels.length === 0) {
+    next = neverEmpty(next, item, box);
+  }
+  if (
+    /table|desk|workbench|picnic/.test(next.prompt.toLowerCase()) &&
+    !/chair|stool|planter/.test(next.prompt.toLowerCase()) &&
+    next.instances.length &&
+    !next.panels.length &&
+    (item.category === "lumber" || item.formFactor === "board")
+  ) {
+    next = withTableTop(next, item, box);
+  }
+  return next;
+}
+
+function neverEmpty(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }): YardProject {
+  const assumed = `I don't have a dedicated ${project.name} recipe in ${item.name} yet. This is a close frame. Assumed ${box.width.toFixed(0)}" × ${box.depth.toFixed(0)}" × ${box.height.toFixed(0)}".`;
+  if (item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods") {
+    const shell = buildSheetBox(project.prompt, item, project.kind === "castle" ? "castle" : "house", box, project.name);
+    return { ...shell, notes: [assumed, ...shell.notes] };
+  }
+  const recipe = detectForm(project.prompt, { ...box, height: Math.max(box.height, 16), width: Math.max(box.width, 16) });
+  const built = buildFormGraph(
+    { ...recipe, ops: recipe.ops.length ? recipe.ops : [{ op: "box", x: 0, y: box.height / 2, z: 0, w: box.width, h: box.height, d: box.depth, role: "leg" }] },
+    item,
+    item.id,
+    { kind: project.kind },
+  );
+  const retry = projectFromGraph(project.prompt, item, project.kind, built.graph, false, built.offer, project.joinMethod, project.name);
+  if (retry.instances.length) {
+    return { ...retry, notes: [assumed, ...retry.notes] };
+  }
+  return {
+    ...project,
+    notes: [assumed, "Nothing I could place stayed above the stock's minimum length. Name a size or a thinner stock."],
+  };
+}
+
+function withTableTop(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }): YardProject {
+  const sheet = getCatalogItem("plywood-3-4-4x8") ?? item;
+  const thick = sheet.dims.thickness ?? 0.75;
+  const ys = project.instances.map((i) => (i.to && i.from ? Math.max(i.from.y, i.to.y) : i.position.y));
+  const y = Math.max(...ys, box.height);
+  return {
+    ...project,
+    panels: [
+      ...project.panels,
+      {
+        id: createId("top"),
+        type: "top",
+        name: "Top",
+        position: { x: -box.width / 2, y, z: -box.depth / 2 },
+        size: { width: box.width, height: thick, depth: box.depth },
+        materialId: sheet.id,
+      },
+    ],
+    notes: [...project.notes, `Top: ${sheet.name} over the ${item.name} frame.`],
+  };
 }
 
 function projectFromGraph(

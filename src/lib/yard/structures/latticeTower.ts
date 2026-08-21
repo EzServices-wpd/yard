@@ -26,6 +26,7 @@ export interface LatticeTowerOptions {
   item: CatalogItem;
   name?: string;
   eiffel?: boolean;
+  grain?: number;
 }
 
 function uniqueTs(values: number[]): number[] {
@@ -50,7 +51,7 @@ function storyTs(H: number, bay: number, force: number[]): number[] {
 export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGraph {
   const H = Math.max(6, opts.targetHeightIn);
   const eiffel = opts.eiffel !== false;
-  const dens = stockDensity(opts.item);
+  const dens = stockDensity(opts.item, opts.grain ?? 1);
   const stock = dens.stock;
   const thick = dens.thick;
   const fat = dens.fat;

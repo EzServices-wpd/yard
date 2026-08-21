@@ -19,7 +19,7 @@ export type AnatomyHit = {
 
 const OPENING = /window|rough opening|\bro\b|andersen/;
 const FITTED =
-  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|workbench/;
+  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom/;
 
 const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
@@ -42,6 +42,9 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   const hay = looks ? `${looks[1]} ${lower}` : lower;
 
   if (OPENING.test(hay) && !/stained/.test(hay)) return { anatomy: "opening", kind: "opening" };
+  if (/ladder|stairs|staircase/.test(hay)) return { anatomy: "carcase", kind: "ladder" };
+  if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };
+  if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };
   if (FITTED.test(hay)) return { anatomy: "fitted", kind: "closet" };
 
   if (/eiffel/.test(hay)) return { anatomy: "loft", kind: "eiffel", named: "Eiffel" };
@@ -72,7 +75,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (CARCASE.test(hay)) return { anatomy: "carcase", kind: "furniture" };
   if (LOFT.test(hay)) return { anatomy: "loft", kind: "tower" };
 
-  if (/plane|airplane|jet|car|truck|wagon|bike|boat|ship/.test(hay))
+  if (/plane|airplane|jet|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
   if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay))
     return { anatomy: "carcase", kind: /castle|fort/.test(hay) ? "castle" : "house" };

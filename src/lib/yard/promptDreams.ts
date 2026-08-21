@@ -8,10 +8,10 @@ export const DREAMS = [
     blurb: "The north star — true-scale lattice, pack count, ordered steps.",
   },
   {
-    id: "taj",
-    label: "Paper-towel Taj",
-    prompt: "2 foot tower from paper towels that looks like the Taj Mahal",
-    blurb: "Recycled cores, stacked body, onion top.",
+    id: "pyramid-small",
+    label: "12-in popsicle pyramid",
+    prompt: "12 inch popsicle stick pyramid",
+    blurb: "Tabletop Giza — same door, a weekend of sticks.",
   },
   {
     id: "closet",

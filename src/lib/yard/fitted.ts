@@ -35,7 +35,13 @@ export function looksLikeFitted(prompt: string) {
   if (looksLikePocket(prompt)) return true;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
-  const nums = (lower.match(/\d+(?:\.\d+)?/g) ?? []).length;
+  const dimText = lower
+    .replace(/\b(?:from\s+)?(?:[1-8]\s*[x×]\s*(?:2|3|4|6|8|10|12)|two by four|two by six|one by four|four by four)\b/gi, " ");
+  const nums = (dimText.match(/\d+(?:\.\d+)?/g) ?? []).length;
+  if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower)) {
+    return false;
+  }
+  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
   return BUILDER.test(lower) && nums >= 2;
 }
 
@@ -117,15 +123,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
     depth = program === "desk" ? 24 : program === "bookcase" ? 12 : program === "media" ? 16 : 16;
   }
 
-  const counterH = /counter|vanity|desk|workbench/.test(lower)
-    ? pick(t, /(?:counter|desk|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i, program === "desk" ? height : 34)
+  const counterH = /(?:counter|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i.test(t)
+    ? pick(t, /(?:counter|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i, program === "desk" ? height : 34)
     : program === "vanity"
       ? 34
       : program === "desk"
         ? height
         : undefined;
   const kneeW = /knee|sit|chair|open/.test(lower)
-    ? pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22))
+    ? pick(
+        t,
+        /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
+        pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
+      )
     : program === "vanity" || program === "desk"
       ? Math.min(24, Math.max(18, width * 0.4))
       : undefined;

@@ -13,24 +13,57 @@ function roleOf(role?: string) {
   return role ?? "member";
 }
 
+function effortLabel(project: YardProject, pieces: number): string {
+  if (project.kind === "opening") return "½-day";
+  if (project.pocket) return project.panels.length > 18 ? "weekend" : "1-day";
+  if (project.fitted || project.kind === "closet") {
+    if (project.panels.length <= 10) return "½-day";
+    if (project.panels.length <= 20) return "1-day";
+    return "weekend";
+  }
+  if (pieces <= 30) return "an hour";
+  if (pieces <= 120) return "½-day";
+  if (pieces <= 400) return "1-day";
+  if (pieces <= 900) return "weekend";
+  if (pieces <= 2000) return "a week";
+  return "a month";
+}
+
 function closetFeasibility(project: YardProject): FeasibilityIssue[] {
   const issues: FeasibilityIssue[] = [];
   const load = project.assumptions.load;
-  const max: Record<typeof load, number> = { light: 36, medium: 30, heavy: 24 };
+  const program = project.fitted?.program;
+  const workTop = program === "desk" || program === "vanity";
   for (const p of project.panels) {
     if (p.type !== "shelf" && p.type !== "glass_panel" && p.type !== "top" && p.type !== "bottom") continue;
     const span = p.size.width;
-    if (span > max[load] + 2) {
-      issues.push({
-        severity: "critical",
-        message: `${p.name} spans ${span.toFixed(1)}" — past the conservative limit for ${load} load.`,
-        suggestion: `Add a divider or drop the span below ${max[load]}".`,
-      });
-    } else if (span > max[load]) {
+    if (workTop && (p.type === "top" || p.type === "bottom")) {
+      if (span > 60) {
+        issues.push({
+          severity: "warning",
+          message: `${p.name} spans ${span.toFixed(1)}" — a stretcher under the middle keeps it honest.`,
+          suggestion: "A 1× or 2× apron front-to-back, or a center divider, is Saturday-DIY for a 5-ft top.",
+        });
+      } else if (span > 48) {
+        issues.push({
+          severity: "info",
+          message: `${p.name} spans ${span.toFixed(1)}". Fine for a desk if you add an apron.`,
+          suggestion: "Glue a front stretcher. Bookshelves of books are a different load.",
+        });
+      }
+      continue;
+    }
+    if (span > 42) {
       issues.push({
         severity: "warning",
-        message: `${p.name} spans ${span.toFixed(1)}" — near the limit.`,
-        suggestion: "A center support will keep the shelf honest over time.",
+        message: `${p.name} spans ${span.toFixed(1)}" — add a divider if this will hold books.`,
+        suggestion: "A center upright drops the span in half.",
+      });
+    } else if (span > 36 && p.type === "shelf") {
+      issues.push({
+        severity: "info",
+        message: `${p.name} spans ${span.toFixed(1)}" — OK for light loads.`,
+        suggestion: `Heavy books want a divider under ${load === "heavy" ? "24" : "30"}".`,
       });
     }
   }
@@ -114,35 +147,49 @@ function closetCuts(project: YardProject): CutLine[] {
 }
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
-  const sheet = getCatalogItem("plywood-3-4-4x8");
+  const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   const area = cuts.reduce((s, c) => s + c.lengthIn * c.widthIn * c.quantity, 0);
-  const sheets = Math.max(1, Math.ceil(area / (48 * 96) / 0.7));
+  const stockA = Math.max(1, (sheet?.dims.length ?? 96) * (sheet?.dims.width ?? 48));
+  const sheets = Math.max(1, Math.ceil(area / stockA / 0.7));
+  const cardboard = sheet?.category === "cardboard" || sheet?.formFactor === "sheet" && sheet?.unitCostUsd === 0.5;
   const screws = Math.max(16, project.panels.length * 6);
-  const bom = [
+  const bom: BuildPlan["bom"] = [
     {
       name: sheet?.name ?? '3/4" plywood 4×8',
       quantity: sheets,
-      unit: "sheet",
+      unit: cardboard ? "sheet" : "sheet",
+      catalogId: sheet?.id,
       searchQuery: sheet?.searchQuery,
       estimatedCost: (sheet?.unitCostUsd ?? 55) * sheets,
-      notes: "Kerf-aware nest assumed at ~70% yield.",
+      notes: cardboard ? "Corrugated — save boxes if you have them." : "Kerf-aware nest assumed at ~70% yield.",
     },
-    {
+  ];
+  if (cardboard || sheet?.preferredJoins?.[0] === "tape") {
+    bom.push({
+      name: "Packing tape",
+      quantity: 1,
+      unit: "roll",
+      searchQuery: "packing tape",
+      estimatedCost: 4,
+      notes: "Tape every seam. Inside and out if it has to stand.",
+    });
+  } else {
+    bom.push({
       name: '#8 × 1-1/4" wood screws',
       quantity: Math.ceil(screws / 50),
       unit: "box",
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,
       notes: `${screws} screws estimated at joints.`,
-    },
-    {
+    });
+    bom.push({
       name: "Wood glue",
       quantity: 1,
       unit: "bottle",
       searchQuery: "titebond wood glue",
       estimatedCost: 8,
-    },
-  ];
+    });
+  }
   if (project.assumptions.installMode !== "freestanding") {
     bom.push({
       name: project.assumptions.wallType === "masonry" ? "Tapcon masonry screws" : "Structural wood screws / lag",
@@ -395,30 +442,40 @@ export function buildPlan(project: YardProject): BuildPlan {
       }
     }
     const cutList = windowCuts(project);
-    const bom = windowBom(project);
+    const bom = decorateBom(windowBom(project));
+    const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     return {
       feasibility: {
         status: issues.some((i) => i.severity === "critical") ? "critical" : issues.some((i) => i.severity === "warning") ? "warnings" : "ok",
         summary: project.windowPkg
-          ? `${project.windowPkg.window.brand} ${project.windowPkg.window.callW}×${project.windowPkg.window.callH} + framing package`
+          ? `${project.windowPkg.window.brand} ${project.windowPkg.window.callW}×${project.windowPkg.window.callH} + framing · ½-day · ~$${cost.toFixed(0)}`
           : "Framing package for this rough opening. Guidance only — check local code.",
         issues,
       },
       cutList,
-      bom: decorateBom(bom),
+      bom,
       instructions: windowSteps(project),
       totals: {
         pieces: project.panels.length,
-        estCostUsd: bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0),
+        estCostUsd: cost,
         packs: bom.reduce((s, b) => s + b.quantity, 0),
       },
+      effort: "½-day",
       generatedAt: new Date().toISOString(),
       render: project.render,
     };
   }
 
-  if ((project.pocket || project.fitted || project.kind === "closet") && project.panels.length > 0 && !project.instances.length) {
-    issues.push(...closetFeasibility(project));
+  if (project.panels.length > 0 && !project.instances.length) {
+    if (project.pocket || project.fitted || project.kind === "closet") {
+      issues.push(...closetFeasibility(project));
+    } else {
+      issues.push({
+        severity: "info",
+        message: `${project.name} — ${project.panels.length} panels in ${getCatalogItem(project.primaryMaterialId)?.name ?? "sheet stock"}.`,
+        suggestion: project.notes[0],
+      });
+    }
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
     const status = issues.some((i) => i.severity === "critical")
@@ -426,23 +483,26 @@ export function buildPlan(project: YardProject): BuildPlan {
       : issues.some((i) => i.severity === "warning")
         ? "warnings"
         : "ok";
+    const decorated = decorateBom(bom);
+    const cost = decorated.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     return {
       feasibility: {
         status,
         summary:
           status === "ok"
-            ? `Closet package ready — ${cutList.length} unique parts, conservative spans.`
-            : "Review the span notes before you cut.",
+            ? `${cutList.length} unique parts · ${effortLabel(project, project.panels.length)} · ~$${cost.toFixed(0)}`
+            : "Review the notes before you cut.",
         issues,
       },
       cutList,
-      bom: decorateBom(bom),
+      bom: decorated,
       instructions: uniqueSteps(project),
       totals: {
         pieces: project.panels.length,
-        estCostUsd: bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0),
-        packs: bom.reduce((s, b) => s + b.quantity, 0),
+        estCostUsd: cost,
+        packs: decorated.reduce((s, b) => s + b.quantity, 0),
       },
+      effort: effortLabel(project, project.panels.length),
       generatedAt: new Date().toISOString(),
       render: project.render,
     };
@@ -575,7 +635,9 @@ export function buildPlan(project: YardProject): BuildPlan {
     const cat = getCatalogItem(inst.catalogId);
     if (!cat) continue;
     const prim = toPrimitive(cat, inst.cutLength);
-    const len = inst.cutLength ?? prim.length;
+    const raw = inst.cutLength ?? prim.length;
+    const stock = prim.length;
+    const len = Math.abs(raw - stock) / Math.max(stock, 0.5) < 0.06 ? stock : Math.round(raw * 4) / 4;
     const key = `${inst.catalogId}|${len.toFixed(2)}|${roleOf(inst.role)}`;
     const existing = cutMap.get(key);
     if (existing) {
@@ -620,24 +682,28 @@ export function buildPlan(project: YardProject): BuildPlan {
       : "ok";
 
   const bom = decorateBom([...bomLinesFromForge(forgeBom), ...panelBomLines(project), ...binders]);
+  const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
+  const pieces = forgeBom.totalPieces + project.panels.length;
+  const effort = effortLabel(project, pieces);
 
   return {
     feasibility: {
       status,
       summary:
         status === "ok"
-          ? `${forgeBom.totalPieces} pieces of ${item?.name ?? "stock"} · ~$${(bom[0]?.estimatedCost ?? forgeBom.totalEstCostUsd).toFixed(2)}`
-          : `${forgeBom.totalPieces} pieces — read the notes before you buy.`,
+          ? `${pieces} pieces of ${item?.name ?? "stock"} · ${effort} · ~$${cost.toFixed(2)}`
+          : `${pieces} pieces — ${effort}. Read the notes before you buy.`,
       issues,
     },
     cutList: [...cutMap.values()].sort((a, b) => b.lengthIn - a.lengthIn),
     bom,
     instructions: uniqueSteps(project),
     totals: {
-      pieces: forgeBom.totalPieces + project.panels.length,
-      estCostUsd: bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0),
-      packs: bom.reduce((s, b) => s + (b.offers?.[0]?.packsNeeded ?? 1), 0),
+      pieces,
+      estCostUsd: cost,
+      packs: bom.reduce((s, b) => s + (b.offers?.[0]?.packsNeeded ?? b.quantity), 0),
     },
+    effort,
     generatedAt: new Date().toISOString(),
     render: project.render,
   };

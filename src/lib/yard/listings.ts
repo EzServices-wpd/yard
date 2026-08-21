@@ -468,7 +468,12 @@ export function offersFor(
     const item = getCatalogItem(catalogId);
     const q = item?.searchQuery || item?.name || catalogId;
     const pack = item?.unitsPerPack ?? 1;
-    const price = (item?.unitCostUsd ?? 0) * pack || 9.99;
+    const recycled =
+      item?.unitCostUsd === 0 ||
+      item?.category === "recycled" ||
+      item?.category === "paper_tube" ||
+      (item?.tags ?? []).includes("recycled");
+    const price = recycled ? 0 : (item?.unitCostUsd ?? 0) * pack || 9.99;
     rows = shopLinks(q, item?.asin).map((l) => ({
       catalogId,
       retailer: l.retailer,
