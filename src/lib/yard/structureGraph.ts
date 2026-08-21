@@ -154,11 +154,13 @@ export function graphToInstances(
     role: StructureEdge["role"],
     id: string,
     cut?: number,
+    critical = false,
   ) => {
     const segLen = dist(a, b);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
-    const minLen = Math.max(face * 2.2, item.formFactor === "sheet" ? 1.2 : 0.4);
-    if (segLen < minLen) return;
+    // Drop micro-edges that read as floating blobs — but never discard a critical frame member.
+    const minLen = Math.max(face * 2.5, item.formFactor === "sheet" ? 1.2 : 0.4);
+    if (segLen < minLen && !critical) return;
     const m = mid(a, b);
     const rot = rotationForDirection(a, b, cylindrical);
     instances.push({
@@ -180,11 +182,12 @@ export function graphToInstances(
     join: JoinMethod,
     role: StructureEdge["role"],
     id: string,
+    critical = false,
   ) => {
     const length = dist(p0, p1);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
-    const minLen = Math.max(face * 2.2, item.formFactor === "sheet" ? 1.2 : 0.4);
-    if (length < minLen) return;
+    const minLen = Math.max(face * 2.5, item.formFactor === "sheet" ? 1.2 : 0.4);
+    if (length < minLen && !critical) return;
     bumpJoin(join);
 
     if (whole) {
@@ -198,7 +201,7 @@ export function graphToInstances(
       });
       if (length <= stock * 1.08) {
         const extra = (stock - length) / 2;
-        pushPiece(along(p0, -extra), along(p0, stock - extra), join, role, `${id}-s0`);
+        pushPiece(along(p0, -extra), along(p0, stock - extra), join, role, `${id}-s0`, undefined, critical);
         return;
       }
       const n = Math.max(2, Math.ceil(length / stock));
@@ -207,7 +210,7 @@ export function graphToInstances(
         const a = along(p0, s * step);
         const b = along(a, stock);
         if (s > 0) spliceCount += 1;
-        pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`);
+        pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, undefined, critical);
       }
       return;
     }
@@ -228,7 +231,7 @@ export function graphToInstances(
       const segLen = dist(a, b);
       const cut = canCut ? Math.min(segLen, stock) : undefined;
       if (s > 0) spliceCount += 1;
-      pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, cut);
+      pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, cut, critical);
     }
   };
 
@@ -236,7 +239,7 @@ export function graphToInstances(
   if (graph.structureClass === "pyramid") {
     for (const path of collinearLegPaths(graph, nodeMap)) {
       for (const id of path.edgeIds) consumed.add(id);
-      emitRun(path.a, path.b, path.join, "leg", path.id);
+      emitRun(path.a, path.b, path.join, "leg", path.id, true);
     }
   }
 
@@ -245,7 +248,7 @@ export function graphToInstances(
     const a = nodeMap.get(edge.from);
     const b = nodeMap.get(edge.to);
     if (!a || !b) continue;
-    emitRun(a.position, b.position, edge.join || defaultJoin, edge.role, edge.id);
+    emitRun(a.position, b.position, edge.join || defaultJoin, edge.role, edge.id, !!edge.critical);
   }
 
   const joinSummary = [...joinCounts.entries()]
