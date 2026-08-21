@@ -505,9 +505,12 @@ function applyMemberPose(
   const from = inst.from;
   const to = inst.to;
   const diameter = meshDiameter(prim, cylindrical);
-  // Cylinders seat inside the fitting hub with open ends visible; boxes lap by about half their thickness.
-  // Slightly tighter cylinder pad reduces overshoot so seams read as true joints, not floating stubs.
-  const pad = cylindrical ? Math.min(diameter * 0.18, 0.95) : Math.min(diameter * 0.55, 2.2);
+  // Seat into the joint hub without overshooting through neighboring members.
+  // Craft stock is dense — pad stays under ~1× face so sticks meet end-to-end, not pierce.
+  const craft = diameter < 0.55;
+  const pad = cylindrical
+    ? Math.min(diameter * (craft ? 0.1 : 0.14), craft ? 0.28 : 0.55)
+    : Math.min(diameter * (craft ? 0.28 : 0.4), craft ? 0.35 : 1.1);
 
   if (from && to) {
     _dir.set(to.x - from.x, to.y - from.y, to.z - from.z);
@@ -1353,7 +1356,7 @@ function DrawerLook({
           envMapIntensity={look.env}
         />
       </mesh>
-      <mesh position={[0, 0, d / 2 + 0.12]} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} castShadow={useShadows}>
+      <mesh position={[w * 0.32, 0, d / 2 + 0.12]} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} castShadow={useShadows}>
         <cylinderGeometry args={[0.16, 0.16, pullW, 10]} />
         <meshStandardMaterial color="#3a342c" roughness={0.32} metalness={0.55} envMapIntensity={1.1} />
       </mesh>
