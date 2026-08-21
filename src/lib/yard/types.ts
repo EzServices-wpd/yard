@@ -282,6 +282,9 @@ export type CutLine = {
   thicknessIn: number;
   material: string;
   notes?: string;
+  /** Shop key — A, B, C. Same size shares a letter. */
+  label?: string;
+  whole?: boolean;
 };
 
 export type ShopOffer = {
@@ -335,6 +338,8 @@ export type BuildPlan = {
   effort?: string;
   generatedAt: string;
   grokNotes?: string;
+  /** "whole" = glue full sticks; "cut" = saw to the letters. */
+  partsKind?: "cut" | "whole";
   render?: {
     url: string;
     prompt: string;

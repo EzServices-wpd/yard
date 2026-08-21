@@ -227,6 +227,53 @@ if (!ladderPlan.instructions.some((s) => /rung/i.test(s.title))) {
   console.error("FAIL ladder plan never screws rungs", ladderPlan.instructions.map((s) => s.title));
   process.exit(1);
 }
+if (eiffel) {
+  const cutN = eiffel.project.instances.filter((i) => i.cutLength != null).length;
+  if (cutN > 0) {
+    console.error("FAIL eiffel is still cutting popsicle sticks", cutN, "of", eiffel.pieces);
+    process.exit(1);
+  }
+  const eiffelPlan = buildPlan(eiffel.project);
+  if (eiffelPlan.partsKind !== "whole") {
+    console.error("FAIL eiffel plan is a cut list for craft sticks", eiffelPlan.partsKind, eiffelPlan.cutList.slice(0, 5));
+    process.exit(1);
+  }
+  if (eiffelPlan.cutList.length > 2) {
+    console.error("FAIL eiffel stick list split into unique lengths", eiffelPlan.cutList);
+    process.exit(1);
+  }
+  if (!eiffelPlan.instructions.some((s) => /do not cut/i.test(s.title))) {
+    console.error("FAIL eiffel plan still tells a kid to cut", eiffelPlan.instructions.map((s) => s.title));
+    process.exit(1);
+  }
+}
+if (!chairPlan.cutList.some((c) => c.quantity >= 2 && c.label)) {
+  console.error("FAIL chair cut list did not group same-size parts", chairPlan.cutList);
+  process.exit(1);
+}
+if (chairPlan.cutList.some((c) => /left|right/i.test(c.name) && c.quantity === 1)) {
+  console.error("FAIL chair still lists left/right separately", chairPlan.cutList);
+  process.exit(1);
+}
+if (desk) {
+  const deskPlan = buildPlan(desk.project);
+  const left = deskPlan.cutList.filter((c) => /left/i.test(c.name));
+  if (left.length) {
+    console.error("FAIL desk cut list still says Left instead of grouping", deskPlan.cutList.map((c) => `${c.label} ${c.quantity}× ${c.name}`));
+    process.exit(1);
+  }
+  if (!deskPlan.cutList.some((c) => /upright/i.test(c.name) && c.quantity >= 2)) {
+    console.error("FAIL desk uprights not batched", deskPlan.cutList.map((c) => `${c.quantity}× ${c.name}`));
+    process.exit(1);
+  }
+}
+if (straw) {
+  const strawCuts = straw.project.instances.filter((i) => i.cutLength != null).length;
+  if (strawCuts > straw.pieces * 0.15) {
+    console.error("FAIL straw bridge is cutting drinking straws", strawCuts, straw.pieces);
+    process.exit(1);
+  }
+}
 console.log("OK", {
   archPieces: arch.pieces,
   archTraverse: arch.traverse,
@@ -243,6 +290,8 @@ console.log("OK", {
   pyramidTraverse: pyramid.traverse,
   chairPieces: chair.pieces,
   chairRoles,
+  chairCuts: chairPlan.cutList.map((c) => `${c.label} ${c.quantity}× ${c.name} ${c.lengthIn}"`),
   ladderPieces: ladder.pieces,
   ladderRoles,
+  eiffelStickLines: eiffel ? buildPlan(eiffel.project).cutList.length : 0,
 });

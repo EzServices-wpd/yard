@@ -20,11 +20,11 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     if (project.prompt) setValue(project.prompt);
   }, [project.prompt]);
 
-  async function run(raw: string) {
+  async function run(raw: string, fresh = false) {
     const prompt = raw.trim();
     if (!prompt) return;
     setValue(prompt);
-    const next = generate(prompt);
+    const next = generate(prompt, undefined, undefined, { fresh });
     makePlan();
     onBuilt();
     if (next.kind === "closet" || next.kind === "opening" || isLockedForm(next.kind)) {
@@ -98,7 +98,11 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="3 foot Eiffel Tower from popsicle sticks"
+          placeholder={
+            project.prompt
+              ? "taller · from 2x4 · or type a new thing"
+              : "3 foot Eiffel Tower from popsicle sticks"
+          }
           enterKeyHint="go"
           className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
         />
@@ -117,7 +121,7 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
           <button
             key={d.id}
             type="button"
-            onClick={() => void run(d.prompt)}
+            onClick={() => void run(d.prompt, true)}
             className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-fg/30 hover:text-fg"
           >
             {d.label}

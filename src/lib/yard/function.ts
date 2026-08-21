@@ -5,6 +5,7 @@
  */
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
+import { isWholeStock, toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { pyramidDoorDims } from "./lattice";
 import type {
@@ -177,7 +178,7 @@ function median(nums: number[]) {
   return s[Math.floor(s.length / 2)];
 }
 
-function member(from: Vec3, to: Vec3, catalogId: string, role: string, join: string): YardInstance {
+function member(from: Vec3, to: Vec3, catalogId: string, role: string, join: string, whole = false): YardInstance {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dz = to.z - from.z;
@@ -187,12 +188,42 @@ function member(from: Vec3, to: Vec3, catalogId: string, role: string, join: str
     catalogId,
     position: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: (from.z + to.z) / 2 },
     rotation: { x: 0, y: Math.atan2(dx, dz), z: 0 },
-    cutLength: len,
+    cutLength: whole ? undefined : len,
     role,
     join,
     from,
     to,
   };
+}
+
+function runMembers(from: Vec3, to: Vec3, item: CatalogItem, role: string, join: string): YardInstance[] {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const length = Math.hypot(dx, dy, dz) || 1;
+  if (!isWholeStock(item)) return [member(from, to, item.id, role, join)];
+  const stock = toPrimitive(item).length;
+  const ux = dx / (length || 1);
+  const uy = dy / (length || 1);
+  const uz = dz / (length || 1);
+  const along = (origin: Vec3, t: number): Vec3 => ({
+    x: origin.x + ux * t,
+    y: origin.y + uy * t,
+    z: origin.z + uz * t,
+  });
+  if (length < stock * 0.4) return [];
+  if (length <= stock * 1.08) {
+    const extra = (stock - length) / 2;
+    return [member(along(from, -extra), along(from, stock - extra), item.id, role, join, true)];
+  }
+  const n = Math.max(2, Math.ceil(length / stock));
+  const step = (length - stock) / (n - 1);
+  const out: YardInstance[] = [];
+  for (let s = 0; s < n; s++) {
+    const a = along(from, s * step);
+    out.push(member(a, along(a, stock), item.id, role, join, true));
+  }
+  return out;
 }
 
 function withBridgeDeck(project: YardProject): YardProject {
@@ -228,12 +259,12 @@ function withBridgeDeck(project: YardProject): YardProject {
   const extras: YardInstance[] = [];
   for (const z of [z0, z1]) {
     extras.push(
-      member({ x: box.minX, y: deckTop + railH, z }, { x: box.maxX, y: deckTop + railH, z }, item.id, "brace", join),
+      ...runMembers({ x: box.minX, y: deckTop + railH, z }, { x: box.maxX, y: deckTop + railH, z }, item, "brace", join),
     );
     for (let i = 0; i <= posts; i++) {
       const x = box.minX + (span * i) / posts;
       extras.push(
-        member({ x, y: deckTop, z }, { x, y: deckTop + railH, z }, item.id, "brace", join),
+        ...runMembers({ x, y: deckTop, z }, { x, y: deckTop + railH, z }, item, "brace", join),
       );
     }
   }

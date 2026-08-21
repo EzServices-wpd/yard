@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createId } from "@/lib/utils";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
+import { applyFollowOnSize, followOnNamesStock, looksLikeFollowOn } from "./promptHelpers";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
 import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
@@ -41,7 +42,7 @@ type YardState = {
   revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean }) => YardProject;
   setJoinMethod: (join: JoinMethod) => void;
   setDetail: (v: DetailLevel) => void;
   setBuildScale: (v: BuildScale) => void;
@@ -135,7 +136,23 @@ export const useYard = create<YardState>((set, get) => ({
   generate: (prompt, materialId, form, opts) => {
     set({ building: true, grokError: null });
     const scale = opts?.scale ?? get().buildScale;
-    const next = generateFromPrompt(prompt, materialId, form, { ...opts, scale });
+    const current = get().project;
+    let used = prompt;
+    const genOpts: {
+      includeSpine?: boolean;
+      joinMethod?: JoinMethod;
+      scale: BuildScale;
+      sizeOverride?: { width: number; height: number; depth: number };
+      cutStock?: boolean;
+    } = { ...opts, scale };
+    if (!opts?.fresh && current.prompt.trim() && looksLikeFollowOn(prompt, current.prompt)) {
+      used = `${current.prompt.replace(/\. Then:[\s\S]*$/, "")}. Then: ${prompt}`;
+      genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
+      if (!materialId && !followOnNamesStock(prompt)) materialId = current.primaryMaterialId;
+      if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) genOpts.cutStock = true;
+      if (/don'?t cut|whole sticks/.test(prompt.toLowerCase())) genOpts.cutStock = false;
+    }
+    const next = generateFromPrompt(used, materialId, form, genOpts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     if (next.pocket) flags.showHull = true;
     if (next.fitted?.opening.kind === "alcove") flags.showHull = true;

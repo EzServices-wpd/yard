@@ -1,6 +1,6 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
-import { toPrimitive } from "./geometry";
+import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
@@ -41,7 +41,7 @@ export function generateFromPrompt(
   prompt: string,
   materialOverride?: string,
   formOverride?: FormRecipe,
-  opts: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale } = {},
+  opts: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; sizeOverride?: { width: number; height: number; depth: number }; cutStock?: boolean } = {},
 ): YardProject {
   const lower = prompt.toLowerCase().trim();
   const size = parseSize(lower);
@@ -64,6 +64,13 @@ export function generateFromPrompt(
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
   const recipe0 = formOverride ?? detectForm(prompt, size);
   let box = defaultSizeFor(recipe0.kind, size, prompt);
+  if (opts.sizeOverride) {
+    box = {
+      width: opts.sizeOverride.width || box.width,
+      height: opts.sizeOverride.height || box.height,
+      depth: opts.sizeOverride.depth || box.depth,
+    };
+  }
   const lowerP = prompt.toLowerCase();
   if (/arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
     const H = box.height;
@@ -92,6 +99,9 @@ export function generateFromPrompt(
   }
   const recipe = formOverride ?? detectForm(prompt, box);
   const kind = recipe.kind;
+  const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
+  const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
+  const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
 
   if (wantsSheetBox(prompt, item, kind)) {
     return attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name));
@@ -110,7 +120,7 @@ export function generateFromPrompt(
     const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
     const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
     return finalize(
-      attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod)),
+      attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod, undefined, whole)),
       item,
       box,
       scale,
@@ -120,7 +130,7 @@ export function generateFromPrompt(
   const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind, grain });
   return finalize(
     attachFunction(
-      projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name),
+      projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name, whole),
     ),
     item,
     box,
@@ -205,8 +215,9 @@ function projectFromGraph(
   offer?: YardProject["supportOffer"],
   joinMethod?: JoinMethod,
   displayName?: string,
+  whole?: boolean,
 ): YardProject {
-  const mapped = graphToInstances(graph, item, joinMethod);
+  const mapped = graphToInstances(graph, item, joinMethod, { whole });
   const joinUsed = joinMethod || item.preferredJoins?.[0] || "glue";
   const instances: YardInstance[] = mapped.instances.map((g) => ({
     id: g.id,
@@ -220,12 +231,17 @@ function projectFromGraph(
     to: g.to ? { x: g.to[0], y: g.to[1], z: g.to[2] } : undefined,
   }));
   const stats = analyzePieces(instances, item);
+  const useWhole = whole ?? isWholeStock(item);
   const notes = [
     ...graph.notes,
     ...graph.assumptions,
     mapped.spliceCount > 0
-      ? `${mapped.spliceCount} lap splice(s) where members exceed stock — overlap the joint, then glue`
-      : "No splices — each member fits in one stock piece",
+      ? useWhole
+        ? `${mapped.spliceCount} overlaps — full ${item.name}s lap at the joint. Glue both faces. Do not cut.`
+        : `${mapped.spliceCount} lap splice(s) where members exceed stock — overlap the joint, then glue`
+      : useWhole
+        ? `Full ${item.name}s from the pack. Glue them as they come. Do not cut.`
+        : "No splices — each member fits in one stock piece",
     `Joins: ${mapped.joinSummary.join(", ") || joinUsed}`,
     stats.components <= 1 && stats.loose === 0
       ? `Connected structure · ${stats.joints} joints · every piece meets another`

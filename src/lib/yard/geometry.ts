@@ -129,3 +129,15 @@ export function describeMaterial(id: string): string {
   }
   return `${item.name} (${p.length}" × ${p.width}" × ${p.height}")`;
 }
+
+/**
+ * Craft stock is bought in a pack and glued whole.
+ * A 10-year-old with 1,000 popsicle sticks should not be asked to cut 847 unique lengths.
+ * Lumber, plywood, and shop-length pipe still cut to the list.
+ */
+export function isWholeStock(item: CatalogItem): boolean {
+  if (item.formFactor === "stick") return true;
+  if (item.category === "craft_wood") return true;
+  if (item.category === "plastic") return true;
+  return false;
+}

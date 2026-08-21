@@ -258,3 +258,55 @@ export function toProject(
     },
   };
 }
+
+const OBJECT_WORD =
+  /\b(eiffel|pyramid|taj|giraffe|robot|castle|arch|bridge|chair|desk|vanity|closet|ladder|table|birdhouse|window|stool|bench|tower)\b/;
+
+/** Short change to the thing already on the bench — not a new object. */
+export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolean {
+  const p = prompt.trim();
+  if (!currentPrompt.trim() || p.length > 160) return false;
+  const lower = p.toLowerCase();
+  const current = currentPrompt.toLowerCase();
+  const named = lower.match(OBJECT_WORD);
+  if (named && !current.includes(named[0]) && !/^(make |add |from |cut |don'?t|taller|shorter|wider)/i.test(lower)) {
+    return false;
+  }
+  return (
+    /^(make |add |remove |taller|shorter|wider|narrower|from |cut the |don'?t cut|without |with \d|more |less |bigger|smaller|whole sticks|glue only)/i.test(
+      p,
+    ) || (p.length < 56 && !OBJECT_WORD.test(lower))
+  );
+}
+
+export function followOnNamesStock(prompt: string): boolean {
+  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar/.test(
+    prompt.toLowerCase(),
+  );
+}
+
+export function applyFollowOnSize(
+  box: { width: number; height: number; depth: number },
+  prompt: string,
+): { width: number; height: number; depth: number } {
+  const lower = prompt.toLowerCase();
+  const take = (re: RegExp) => {
+    const m = lower.match(re);
+    if (!m) return null;
+    const n = parseFloat(m[1]);
+    return /ft|foot/.test(m[0]) ? n * 12 : n;
+  };
+  let { width, height, depth } = box;
+  const taller = take(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|ft|foot|feet)?\s*(?:taller|higher)/);
+  if (taller) height += taller;
+  else if (/taller|higher/.test(lower)) height *= 1.18;
+  const shorter = take(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|ft|foot|feet)?\s*shorter/);
+  if (shorter) height = Math.max(8, height - shorter);
+  else if (/\bshorter\b/.test(lower)) height *= 0.85;
+  const wider = take(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|ft|foot|feet)?\s*wider/);
+  if (wider) width += wider;
+  else if (/\bwider\b/.test(lower)) width *= 1.18;
+  const deeper = take(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)?\s*deeper/);
+  if (deeper) depth += deeper;
+  return { width, height, depth };
+}

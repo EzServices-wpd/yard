@@ -194,10 +194,16 @@ function PlanBody({
 
           {plan.cutList.length > 0 && (
             <section>
-              <h3 className="font-display text-lg text-fg">Cut list</h3>
+              <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
+              <p className="mt-1 text-xs text-muted">
+                {plan.partsKind === "whole"
+                  ? "Full pieces from the pack. Glue them. Do not cut."
+                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+              </p>
               <table className="mt-3 w-full text-left text-xs">
                 <thead className="text-faint">
                   <tr>
+                    <th className="py-1 font-medium"> </th>
                     <th className="py-1 font-medium">Qty</th>
                     <th className="py-1 font-medium">Part</th>
                     <th className="py-1 font-medium">Size</th>
@@ -206,6 +212,7 @@ function PlanBody({
                 <tbody>
                   {plan.cutList.map((c) => (
                     <tr key={c.id} className="border-t border-border/70">
+                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
                       <td className="py-1.5 font-mono">{c.quantity}</td>
                       <td className="py-1.5">{c.name}</td>
                       <td className="py-1.5 font-mono text-muted">

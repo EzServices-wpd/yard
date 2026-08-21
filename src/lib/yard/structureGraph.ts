@@ -5,7 +5,7 @@
  */
 
 import type { CatalogItem, JoinMethod, Vec3 } from "./types";
-import { toPrimitive } from "./geometry";
+import { isWholeStock, toPrimitive } from "./geometry";
 
 export type { Vec3 };
 
@@ -117,11 +117,14 @@ export function rotationForDirection(
  * Long edges are subdivided into stock-length pieces with lap splices.
  * Pyramid hips are a chain of short collinear legs — emit them as one
  * spliced member so the BOM is four long rafters, not 80 toothpicks.
+ * Craft stock (popsicle, straw, toothpick) is laid as WHOLE sticks —
+ * never snipped to a unique length.
  */
 export function graphToInstances(
   graph: StructureGraph,
   item: CatalogItem,
   joinOverride?: JoinMethod,
+  opts: { whole?: boolean } = {},
 ): { instances: GraphInstance[]; joinSummary: string[]; spliceCount: number } {
   const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]));
   const prim = toPrimitive(item);
@@ -132,6 +135,7 @@ export function graphToInstances(
     item.formFactor === "pipe" ||
     item.formFactor === "dowel";
   const canCut = item.canCut ?? true;
+  const whole = opts.whole ?? isWholeStock(item);
   const defaultJoin: JoinMethod =
     joinOverride || (item.preferredJoins && item.preferredJoins[0]) || "glue";
   const lap = Math.min(stock * 0.12, Math.max(thick * 3, 0.22));
@@ -142,6 +146,33 @@ export function graphToInstances(
 
   const bumpJoin = (j: JoinMethod) =>
     joinCounts.set(j, (joinCounts.get(j) ?? 0) + 1);
+
+  const pushPiece = (
+    a: Vec3,
+    b: Vec3,
+    join: JoinMethod,
+    role: StructureEdge["role"],
+    id: string,
+    cut?: number,
+  ) => {
+    const segLen = dist(a, b);
+    const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
+    const minLen = Math.max(face * 2.2, item.formFactor === "sheet" ? 1.2 : 0.4);
+    if (segLen < minLen) return;
+    const m = mid(a, b);
+    const rot = rotationForDirection(a, b, cylindrical);
+    instances.push({
+      id,
+      catalogId: graph.materialId,
+      position: [m.x, m.y, m.z],
+      rotation: rot,
+      cutLength: whole ? undefined : cut,
+      join,
+      role,
+      from: [a.x, a.y, a.z],
+      to: [b.x, b.y, b.z],
+    });
+  };
 
   const emitRun = (
     p0: Vec3,
@@ -155,6 +186,32 @@ export function graphToInstances(
     const minLen = Math.max(face * 2.2, item.formFactor === "sheet" ? 1.2 : 0.4);
     if (length < minLen) return;
     bumpJoin(join);
+
+    if (whole) {
+      const ux = (p1.x - p0.x) / (length || 1);
+      const uy = (p1.y - p0.y) / (length || 1);
+      const uz = (p1.z - p0.z) / (length || 1);
+      const along = (origin: Vec3, t: number): Vec3 => ({
+        x: origin.x + ux * t,
+        y: origin.y + uy * t,
+        z: origin.z + uz * t,
+      });
+      if (length <= stock * 1.08) {
+        const extra = (stock - length) / 2;
+        pushPiece(along(p0, -extra), along(p0, stock - extra), join, role, `${id}-s0`);
+        return;
+      }
+      const n = Math.max(2, Math.ceil(length / stock));
+      const step = (length - stock) / (n - 1);
+      for (let s = 0; s < n; s++) {
+        const a = along(p0, s * step);
+        const b = along(a, stock);
+        if (s > 0) spliceCount += 1;
+        pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`);
+      }
+      return;
+    }
+
     const usable = Math.max(stock - lap, stock * 0.82);
     const segments =
       canCut && length > stock * 1.02
@@ -168,22 +225,10 @@ export function graphToInstances(
       const t1 = s === segments - 1 ? raw1 : Math.min(1, raw1 + overlap * 0.5);
       const a = lerp(p0, p1, t0);
       const b = lerp(p0, p1, t1);
-      const m = mid(a, b);
-      const rot = rotationForDirection(a, b, cylindrical);
       const segLen = dist(a, b);
       const cut = canCut ? Math.min(segLen, stock) : undefined;
       if (s > 0) spliceCount += 1;
-      instances.push({
-        id: `${id}-s${s}`,
-        catalogId: graph.materialId,
-        position: [m.x, m.y, m.z],
-        rotation: rot,
-        cutLength: cut,
-        join: s > 0 ? "glue" : join,
-        role,
-        from: [a.x, a.y, a.z],
-        to: [b.x, b.y, b.z],
-      });
+      pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, cut);
     }
   };
 

@@ -116,15 +116,22 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
 
   if (plan.cutList.length) {
-    heading("Cut list");
+    heading(plan.partsKind === "whole" ? "Stick list" : "Cut list");
+    muted(
+      plan.partsKind === "whole"
+        ? "Full pieces from the pack. Glue them. Do not cut."
+        : "Same size is the same letter. Mark A on the first cut, then batch.",
+    );
     for (const c of plan.cutList) {
       ensure(16);
-      doc.setFont("times", "normal");
+      doc.setFont("times", "bold");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
-      doc.text(`${c.quantity}×`, left, y);
-      const nameLines = wrap(c.name, 11, width - 150);
-      doc.text(nameLines, left + 28, y);
+      doc.text(c.label ?? "", left, y);
+      doc.setFont("times", "normal");
+      doc.text(`${c.quantity}×`, left + 18, y);
+      const nameLines = wrap(c.name, 11, width - 160);
+      doc.text(nameLines, left + 42, y);
       doc.setTextColor(...MUTED);
       doc.text(`${c.lengthIn}" × ${c.widthIn}" × ${c.thicknessIn}"`, right, y, { align: "right" });
       y += Math.max(16, nameLines.length * 14);

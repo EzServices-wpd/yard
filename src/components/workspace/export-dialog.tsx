@@ -166,10 +166,16 @@ export function ExportDialog({
 
           {plan.cutList.length > 0 && (
             <section className="mt-8">
-              <h2 className="font-display text-xl text-ink">Cut list</h2>
+              <h2 className="font-display text-xl text-ink">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                {plan.partsKind === "whole"
+                  ? "Full pieces from the pack. Glue them. Do not cut."
+                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+              </p>
               <table className="mt-3 w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-ink-muted">
                   <tr>
+                    <th className="py-1 font-medium"> </th>
                     <th className="py-1 font-medium">Qty</th>
                     <th className="py-1 font-medium">Part</th>
                     <th className="py-1 font-medium">Size</th>
@@ -178,6 +184,7 @@ export function ExportDialog({
                 <tbody>
                   {plan.cutList.map((c) => (
                     <tr key={c.id} className="border-t border-rule">
+                      <td className="py-1.5 font-mono font-semibold">{c.label ?? ""}</td>
                       <td className="py-1.5 font-mono">{c.quantity}</td>
                       <td className="py-1.5">{c.name}</td>
                       <td className="py-1.5 font-mono text-ink-muted">

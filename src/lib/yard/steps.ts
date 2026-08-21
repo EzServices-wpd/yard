@@ -1,7 +1,7 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
 import { getCatalogItem } from "./catalog";
-import { toPrimitive } from "./geometry";
+import { isWholeStock, toPrimitive } from "./geometry";
 import { slideInches } from "./stockLook";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 
@@ -389,6 +389,9 @@ function uniqueSheetSteps(project: YardProject): AssemblyStep[] {
 
 function cutSummary(instances: YardInstance[], itemName: string) {
   const marked = instances.filter((i) => i.cutLength);
+  if (marked.length === 0) {
+    return `${instances.length} full ${itemName}${instances.length === 1 ? "" : "s"}. Glue. Do not cut.`;
+  }
   const full = instances.length - marked.length;
   const lens = [...new Set(marked.map((i) => (i.cutLength ?? 0).toFixed(1)))].slice(0, 8);
   return `${instances.length} pieces of ${itemName}. ${marked.length} marked cuts${
@@ -409,10 +412,14 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   }
   const steps: AssemblyStep[] = [];
   let n = 1;
+  const marked = project.instances.filter((i) => i.cutLength);
+  const whole = !!item && isWholeStock(item) && marked.length === 0;
 
   steps.push({
     step: n++,
-    title: `Read this ${project.name} before you cut`,
+    title: whole
+      ? `Read this ${project.name} before you glue`
+      : `Read this ${project.name} before you cut`,
     description: `${cutSummary(project.instances, item?.name ?? "stock")} Envelope about ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}". ${
       project.buildStats
         ? `${project.buildStats.joints} joints · ${project.buildStats.loose} loose · ${project.buildStats.components} cluster${project.buildStats.components === 1 ? "" : "s"}.`
@@ -432,8 +439,15 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     tips: "A crooked base cannot be fixed later. Square it now.",
   });
 
-  const marked = project.instances.filter((i) => i.cutLength);
-  if (marked.length) {
+  if (whole) {
+    steps.push({
+      step: n++,
+      title: `Do not cut — ${item?.name ?? "stock"}s stay whole`,
+      description: `${project.instances.length} full pieces from the pack. Glue them as they come. If you run short, buy another pack — do not start snipping leftovers to odd lengths.`,
+      tips: "A pack of 1,000 and a bottle of glue is the whole kit. The bench is a gluing diagram, not a cutting diagram.",
+      partsUsed: ["*"],
+    });
+  } else if (marked.length) {
     const groups = new Map<string, number>();
     for (const i of marked) {
       const k = (i.cutLength ?? 0).toFixed(1);
@@ -446,8 +460,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       .join("; ");
     steps.push({
       step: n++,
-      title: `Cut the marked lengths — ${marked.length} cuts`,
-      description: `${tool.how} ${lines}. Cut one, check it against the next piece in that role, then batch the rest. Keep offcuts longer than 1" — they become gussets.`,
+      title: `Cut the marked lengths — same size is the same letter`,
+      description: `${tool.how} ${lines}. Mark A, B, C on the first of each size, then batch the rest. Left and right of the same length are the same cut.`,
       tips: tool.tip,
     });
   } else {

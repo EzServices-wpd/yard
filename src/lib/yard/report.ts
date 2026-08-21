@@ -1,5 +1,5 @@
 import { getCatalogItem } from "./catalog";
-import { toPrimitive } from "./geometry";
+import { isWholeStock, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { framingNotes, matchWindows } from "./space";
 import { uniqueSteps } from "./steps";
@@ -12,6 +12,36 @@ import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } 
 
 function roleOf(role?: string) {
   return role ?? "member";
+}
+
+function letterLabel(i: number) {
+  let n = i;
+  let s = "";
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+}
+
+function stampLabels(lines: CutLine[]): CutLine[] {
+  const sorted = [...lines].sort((a, b) => b.lengthIn - a.lengthIn || a.name.localeCompare(b.name));
+  return sorted.map((line, i) => ({ ...line, label: letterLabel(i) }));
+}
+
+function partFamily(name: string, type?: string) {
+  if (type === "upright") return "Upright";
+  if (type === "shelf") return "Shelf";
+  if (type === "divider") return "Divider";
+  if (type === "top" || type === "counter") return "Top";
+  if (type === "bottom") return "Bottom";
+  if (type === "back") return "Back";
+  if (type === "door") return "Door";
+  if (type === "drawer") return "Drawer box";
+  if (type === "kick") return "Kick";
+  if (type === "deck") return "Deck";
+  if (type === "rail") return "Rail";
+  return name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "") || name;
 }
 
 function effortLabel(project: YardProject, pieces: number): string {
@@ -128,23 +158,27 @@ function closetCuts(project: YardProject): CutLine[] {
   const grouped = new Map<string, CutLine>();
   for (const p of project.panels) {
     const item = getCatalogItem(p.materialId);
-    const key = `${p.name}|${p.size.width}|${p.size.depth}|${p.size.height}`;
+    const w = Math.round(p.size.width * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const family = partFamily(p.name, p.type);
+    const key = `${p.materialId}|${family}|${w}|${d}|${h}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += 1;
       continue;
     }
     grouped.set(key, {
-      id: p.id,
-      name: p.name,
+      id: key,
+      name: family,
       quantity: 1,
-      lengthIn: Math.max(p.size.width, p.size.depth),
-      widthIn: Math.min(p.size.width, p.size.depth),
-      thicknessIn: Math.min(p.size.height, p.size.width, p.size.depth),
+      lengthIn: Math.max(w, d, h),
+      widthIn: [w, d, h].sort((a, b) => b - a)[1],
+      thicknessIn: Math.min(w, d, h),
       material: item?.name ?? p.materialId,
     });
   }
-  return [...grouped.values()];
+  return stampLabels([...grouped.values()]);
 }
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
@@ -462,7 +496,7 @@ export function buildPlan(project: YardProject): BuildPlan {
         issues.push({ severity: "info", message: note });
       }
     }
-    const cutList = windowCuts(project);
+    const cutList = stampLabels(windowCuts(project));
     const bom = decorateBom(windowBom(project));
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     return {
@@ -484,6 +518,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       effort: "½-day",
       generatedAt: new Date().toISOString(),
       render: project.render,
+      partsKind: "cut",
     };
   }
 
@@ -511,7 +546,7 @@ export function buildPlan(project: YardProject): BuildPlan {
         status,
         summary:
           status === "ok"
-            ? `${cutList.length} unique parts · ${effortLabel(project, project.panels.length)} · ~$${cost.toFixed(0)}`
+            ? `${project.panels.length} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, project.panels.length)} · ~$${cost.toFixed(0)}`
             : "Review the notes before you cut.",
         issues,
       },
@@ -526,6 +561,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       effort: effortLabel(project, project.panels.length),
       generatedAt: new Date().toISOString(),
       render: project.render,
+      partsKind: "cut",
     };
   }
 
@@ -651,50 +687,90 @@ export function buildPlan(project: YardProject): BuildPlan {
     item && project.instances.length
       ? binderBom(item, project.instances, project.joinMethod)
       : [];
-  const cutMap = new Map<string, CutLine>();
+  const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
+  const cutMap = new Map<string, CutLine & { roles: Set<string> }>();
   for (const inst of project.instances) {
     const cat = getCatalogItem(inst.catalogId);
     if (!cat) continue;
     const prim = toPrimitive(cat, inst.cutLength);
+    const stockLen = toPrimitive(cat).length;
     const raw = inst.cutLength ?? prim.length;
-    const stock = prim.length;
-    const len = Math.abs(raw - stock) / Math.max(stock, 0.5) < 0.06 ? stock : Math.round(raw * 4) / 4;
-    const key = `${inst.catalogId}|${len.toFixed(2)}|${roleOf(inst.role)}`;
+    const len = whole
+      ? stockLen
+      : Math.abs(raw - stockLen) / Math.max(stockLen, 0.5) < 0.06
+        ? stockLen
+        : Math.round(raw * 4) / 4;
+    const key = `${inst.catalogId}|${len.toFixed(2)}|${prim.width.toFixed(3)}|${prim.height.toFixed(3)}`;
     const existing = cutMap.get(key);
+    const role = roleOf(inst.role);
     if (existing) {
       existing.quantity += 1;
+      existing.roles.add(role);
     } else {
       cutMap.set(key, {
         id: key,
-        name: `${cat.name}${inst.role ? ` · ${inst.role}` : ""}`,
+        name: cat.name,
         quantity: 1,
         lengthIn: len,
         widthIn: prim.width,
         thicknessIn: prim.height,
         material: cat.name,
-        notes: inst.cutLength ? `Cut from ${prim.length}" stock` : "Full stock length",
+        notes: whole ? "Full stock. Glue. Do not cut." : inst.cutLength ? `Cut from ${stockLen}" stock` : "Full stock length",
+        whole,
+        roles: new Set([role]),
       });
     }
   }
   for (const p of project.panels) {
     const cat = getCatalogItem(p.materialId);
-    const key = `panel|${p.materialId}|${p.size.width.toFixed(1)}x${p.size.depth.toFixed(1)}`;
+    const w = Math.round(p.size.width * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const family = partFamily(p.name, p.type);
+    const key = `panel|${p.materialId}|${family}|${w}|${d}|${h}`;
     const existing = cutMap.get(key);
     if (existing) {
       existing.quantity += 1;
     } else {
       cutMap.set(key, {
         id: key,
-        name: p.name,
+        name: family,
         quantity: 1,
-        lengthIn: Math.max(p.size.width, p.size.depth),
-        widthIn: Math.min(p.size.width, p.size.depth),
-        thicknessIn: p.size.height,
+        lengthIn: Math.max(w, d),
+        widthIn: Math.min(w, d),
+        thicknessIn: h,
         material: cat?.name ?? p.materialId,
         notes: "Sheet for the working surface",
+        roles: new Set([p.type]),
       });
     }
   }
+
+  const cutList = stampLabels(
+    [...cutMap.values()].map((line) => {
+      const roles = [...line.roles];
+      const roleName =
+        roles.length === 1
+          ? roles[0] === "member"
+            ? line.name
+            : `${roles[0].charAt(0).toUpperCase()}${roles[0].slice(1)}`
+          : roles
+              .filter((r) => r !== "member")
+              .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
+              .join(" / ") || line.name;
+      return {
+        id: line.id,
+        name: whole ? line.material : roleName,
+        quantity: line.quantity,
+        lengthIn: line.lengthIn,
+        widthIn: line.widthIn,
+        thicknessIn: line.thicknessIn,
+        material: line.material,
+        notes: line.notes,
+        whole: line.whole,
+      };
+    }),
+  );
 
   const status = issues.some((i) => i.severity === "critical")
     ? "critical"
@@ -712,11 +788,13 @@ export function buildPlan(project: YardProject): BuildPlan {
       status,
       summary:
         status === "ok"
-          ? `${pieces} pieces of ${item?.name ?? "stock"} · ${effort} · ~$${cost.toFixed(2)}`
+          ? whole
+            ? `${pieces} full ${item?.name ?? "sticks"} · glue, do not cut · ${effort} · ~$${cost.toFixed(2)}`
+            : `${pieces} pieces of ${item?.name ?? "stock"} · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effort} · ~$${cost.toFixed(2)}`
           : `${pieces} pieces — ${effort}. Read the notes before you buy.`,
       issues,
     },
-    cutList: [...cutMap.values()].sort((a, b) => b.lengthIn - a.lengthIn),
+    cutList,
     bom,
     instructions: uniqueSteps(project),
     totals: {
@@ -727,6 +805,7 @@ export function buildPlan(project: YardProject): BuildPlan {
     effort,
     generatedAt: new Date().toISOString(),
     render: project.render,
+    partsKind: whole ? "whole" : "cut",
   };
 }
 
@@ -740,9 +819,10 @@ export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
     plan.feasibility.summary,
     ...plan.feasibility.issues.map((i) => `- ${i.severity}: ${i.message}${i.suggestion ? ` — ${i.suggestion}` : ""}`),
     "",
-    `## Cut list`,
+    `## ${plan.partsKind === "whole" ? "Stick list" : "Cut list"}`,
     ...plan.cutList.map(
-      (c) => `- ${c.quantity}× ${c.name} — ${c.lengthIn}" × ${c.widthIn}" × ${c.thicknessIn}" (${c.material})`,
+      (c) =>
+        `- ${c.label ? `${c.label} · ` : ""}${c.quantity}× ${c.name} — ${c.lengthIn}" × ${c.widthIn}" × ${c.thicknessIn}" (${c.material})${c.notes ? ` · ${c.notes}` : ""}`,
     ),
     "",
     `## Buy`,

@@ -1,6 +1,6 @@
 import type { BomLine, YardInstance } from "./types";
 import { getCatalogItem } from "./catalog";
-import { toPrimitive } from "./geometry";
+import { isWholeStock, toPrimitive } from "./geometry";
 
 export type ForgeBomLine = {
   catalogId: string;
@@ -56,6 +56,7 @@ export function buildForgeBom(
     const estCost =
       unitCost != null ? packsNeeded * unitsPerPack * unitCost : undefined;
 
+    const whole = isWholeStock(item) && data.cuts.length === 0;
     const uniqueCuts = [
       ...new Set(data.cuts.map((c) => Math.round(c * 100) / 100).filter((c) => c > 0)),
     ].sort((a, b) => b - a);
@@ -72,8 +73,9 @@ export function buildForgeBom(
       searchQuery: item.searchQuery,
       asin: item.asin,
       cutLengths: uniqueCuts,
-      notes:
-        (item.canCut ?? true) && uniqueCuts.length
+      notes: whole
+        ? `${data.count} full pieces. Glue. Do not cut.`
+        : (item.canCut ?? true) && uniqueCuts.length
           ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}`
           : item.notes,
     });
