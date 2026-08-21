@@ -56,13 +56,18 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   const thick = dens.thick;
   const fat = dens.fat;
 
+  // Published stations + an extra visual belt near mid-shaft for fidelity
   const platforms = eiffel ? eiffelPlatformTs() : [0, 0.33, 0.66, 1];
   const t1 = platforms[1] ?? 0.18;
   const t2 = platforms[2] ?? 0.36;
+  const tBelt = eiffel ? 0.55 : 0.5;
+  const force = eiffel
+    ? uniqueTs([...platforms, tBelt].filter((t) => t > 0.01 && t < 0.99))
+    : platforms;
   const nLevels = opts.levels;
   const ts = nLevels
     ? uniqueTs(Array.from({ length: nLevels + 1 }, (_, i) => i / nLevels))
-    : storyTs(H, dens.bay, platforms);
+    : storyTs(H, dens.bay, force);
 
   const joinPrimary: JoinMethod =
     (opts.item.preferredJoins && opts.item.preferredJoins[0]) || "glue";
@@ -74,7 +79,11 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     halfAt: (t) => (eiffel ? eiffelHalfAt(t, H) : eiffelHalfAt(t, H)),
     ts,
     item: opts.item,
-    hoopAt: hoopSchedule(ts, eiffel ? [t1, t2, platforms[3] ?? 0.85] : [0.33, 0.66], fat ? 2 : 3),
+    hoopAt: hoopSchedule(
+      ts,
+      eiffel ? [t1, t2, tBelt, platforms[3] ?? 0.85] : [0.33, 0.66],
+      fat ? 2 : 3,
+    ),
     laceFace: (t0, t1b) => {
       if (!eiffel) return true;
       // Below the first platform the four piers stand apart — only the arch + deck tie them.
@@ -83,7 +92,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     join: joinPrimary,
     braceJoin: joinBrace,
     pierChords: dens.chords,
-    maxFaceDivs: 8,
+    maxFaceDivs: fat ? 6 : 10,
     bothDiagonals: (t) => t >= t2 - 0.02,
   });
 
@@ -112,7 +121,8 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   // Platform decks — diaphragm on the published floors only
   if (opts.platforms !== false) {
     for (let L = 0; L < ts.length; L++) {
-      const onPlat = platforms.some((p) => Math.abs(p - ts[L]) < 0.012) && ts[L] > 0.02 && ts[L] < 0.98;
+      const onPlat =
+        platforms.some((p) => Math.abs(p - ts[L]) < 0.012) && ts[L] > 0.02 && ts[L] < 0.98;
       if (!onPlat) continue;
       const row = mains[L];
       addEdge(createId(`plat-a-${L}`), row[0], row[2], "rail", true);
@@ -126,9 +136,29 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     }
   }
 
+  // Pier → shaft transition: short struts from each pier corner into the
+  // first-platform ring so the four legs visually lock before the single shaft.
+  if (eiffel) {
+    const platL = ts.findIndex((t) => Math.abs(t - t1) < 0.02);
+    if (platL > 0) {
+      const prev = mains[platL - 1] ?? mains[0];
+      const row = mains[platL];
+      for (let f = 0; f < 4; f++) {
+        addEdge(createId(`trans-${f}`), prev[f], row[f], "leg", true);
+        // Cross lock on the platform face for craft stock
+        if (!fat) {
+          addEdge(createId(`trans-x-${f}`), prev[f], row[(f + 1) % 4], "brace", false, joinBrace);
+        }
+      }
+    }
+  }
+
   if (eiffel) {
     const archY = (EIFFEL_REAL.archM / EIFFEL_REAL.heightM) * H;
-    const segs = fat ? 5 : Math.max(7, Math.min(14, Math.round((eiffelHalfAt(0, H) * 2) / dens.faceStep)));
+    // Thin stock needs more arch samples so the curve reads as continuous
+    const segs = fat
+      ? 5
+      : Math.max(9, Math.min(16, Math.round((eiffelHalfAt(0, H) * 2) / dens.faceStep)));
     const platL = ts.findIndex((t) => Math.abs(t - t1) < 0.02);
     for (let f = 0; f < 4; f++) {
       const a = nodeOf(mains[0][f]).position;
