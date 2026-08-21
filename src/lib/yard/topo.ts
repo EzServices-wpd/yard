@@ -101,8 +101,8 @@ export function pruneTopology(
 ): TopoResult {
   // Figures keep detail — only light prune
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
-  const spanKind = kind === "bridge" || kind === "arch" || kind === "opening" || kind === "pyramid";
-  const base = fig ? 0.1 : spanKind ? 0.18 : 0.32;
+  const spanKind = kind === "bridge" || kind === "arch" || kind === "opening" || kind === "pyramid" || kind === "eiffel";
+  const base = fig ? 0.1 : spanKind ? 0.12 : 0.32;
   const agg = Math.min(0.85, Math.max(0.05, opts.aggressiveness ?? base));
 
   if (graph.edges.length < 8) {
@@ -188,6 +188,11 @@ export function densifyTriangles(
   maxLen: number,
   maxAdd = 24,
 ): StructureGraph {
+  // Locked anatomy wires (Eiffel, arch portal, Warren, pyramid) are already
+  // intentional — densifying them turns a clean truss into a cage.
+  if (kind === "eiffel" || kind === "arch" || kind === "bridge" || kind === "pyramid" || kind === "opening") {
+    return graph;
+  }
   if (graph.nodes.length < 4) return graph;
   const nodes = graph.nodes;
   const have = new Set(graph.edges.map((e) => [e.from, e.to].sort().join("|")));
@@ -215,8 +220,8 @@ export function densifyTriangles(
         id: createId("topo"),
         from: a.id,
         to: b.id,
-        join: "glue",
         role: "brace",
+        join: "glue",
         critical: false,
       };
       added.push(edge);
