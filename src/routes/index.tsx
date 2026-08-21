@@ -64,7 +64,7 @@ function Home() {
             Type it. Buy the parts. Build it.
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-muted sm:text-lg">
-            Give it a space and a use — a wonky bathroom pocket, a 60″ desk, a bookcase — and Yard returns the unit, the cut list, and the hardware. Makers get the same bench for a popsicle Eiffel.
+            Type a space and a use — a wonky bathroom pocket, a 60″ desk, a 3-ft Eiffel — and Yard returns real parts, a cut list, and a plan you can shop.
           </p>
 
           <form
@@ -129,7 +129,7 @@ function Home() {
               icon={<ShoppingBag className="size-5" />}
               n="03"
               title="A plan you can shop"
-              body="Cut list, pack counts, store searches, plates you can print."
+              body="Cut list, pack counts, store links, plates you can print and take to the shop."
             />
           </div>
         </section>

@@ -141,7 +141,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
   if (plan.bom.length) {
     heading("Buy");
-    muted(`${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`);
+    muted(
+      `${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`,
+    );
     for (const b of plan.bom) {
       ensure(16);
       doc.setFont("times", "normal");
@@ -152,8 +154,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.text(lines, left, y);
       y += lines.length * 14;
       if (b.notes) muted(b.notes);
-      const best = b.offers?.find((o) => o.best) ?? b.offers?.[0];
-      if (best) muted(`${best.label}: ${best.title} — ${best.href}`);
+      const offers = b.offers ?? [];
+      const best = offers.find((o) => o.best) ?? offers[0];
+      if (best) {
+        muted(`Shop · ${best.label}: ${best.title}`);
+        muted(best.href);
+        const second = offers.find((o) => o !== best);
+        if (second) muted(`Also · ${second.label}: ${second.title}`);
+      }
     }
     y += 6;
   }
