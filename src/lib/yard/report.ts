@@ -7,6 +7,7 @@ import { decorateBom } from "./listings";
 import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
+import { slideInches } from "./stockLook";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function roleOf(role?: string) {
@@ -205,14 +206,34 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     const doors = project.panels.filter((p) => p.type === "door").length;
     const shelves = project.panels.filter((p) => p.type === "shelf").length;
     if (drawers) {
+      const depth = project.fitted?.unit.depth ?? project.pocket?.unit.depth ?? 16;
+      const slide = slideInches(depth);
       bom.push({
-        name: "Side-mount drawer slides 16\"",
+        name: `Side-mount drawer slides ${slide}"`,
         quantity: drawers,
         unit: "pair",
-        searchQuery: "16 inch side mount drawer slides",
+        searchQuery: `${slide} inch side mount drawer slides`,
         estimatedCost: drawers * 12,
-        notes: `Pair per drawer. Confirm depth against the ${project.fitted?.unit.depth ?? project.pocket?.unit.depth ?? 16}" carcase.`,
+        notes: `Pair per drawer. Confirm depth against the ${depth}" carcase.`,
       });
+      bom.push({
+        name: "Cup pulls",
+        quantity: drawers,
+        unit: "pull",
+        searchQuery: "3 inch cup pull cabinet",
+        estimatedCost: drawers * 6,
+        notes: "One per drawer front, centered.",
+      });
+      if (project.fitted?.program === "desk" || project.fitted?.program === "vanity") {
+        bom.push({
+          name: "Iron-on edge banding",
+          quantity: 1,
+          unit: "roll",
+          searchQuery: "3/4 inch iron on edge banding birch",
+          estimatedCost: 12,
+          notes: "Front of the top and the drawer fronts — the plywood people see.",
+        });
+      }
     }
     if (doors) {
       bom.push({

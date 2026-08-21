@@ -60,6 +60,26 @@ if (desk && (desk.kind !== "closet" || desk.panels < 6)) {
   console.error("FAIL desk not fitted", desk);
   process.exit(1);
 }
+if (desk) {
+  const deskPlan = buildPlan(desk.project);
+  const titles = deskPlan.instructions.map((s) => s.title).join(" | ");
+  if (/mark studs/i.test(titles)) {
+    console.error("FAIL freestanding desk still talks like a closet", titles);
+    process.exit(1);
+  }
+  if (!deskPlan.instructions.some((s) => /knee/i.test(`${s.title} ${s.description}`))) {
+    console.error("FAIL desk plan lost the knee bay", titles);
+    process.exit(1);
+  }
+  if (!deskPlan.instructions.some((s) => /false front/i.test(s.title))) {
+    console.error("FAIL desk plan does not build drawer fronts", titles);
+    process.exit(1);
+  }
+  if (deskPlan.instructions.filter((s) => /hang drawer/i.test(s.title)).length > 1) {
+    console.error("FAIL desk still repeats hang-drawer six times", titles);
+    process.exit(1);
+  }
+}
 const vanity = results.find((r) => r.label.startsWith("Build a vanity"));
 if (vanity && (vanity.overall.height > 48 || vanity.panels < 6)) {
   console.error("FAIL 36x22 vanity should be a counter-height unit", vanity);

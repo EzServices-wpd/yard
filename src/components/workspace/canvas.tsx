@@ -4,8 +4,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { isCylindrical, isHollow, visualPrimitive } from "@/lib/yard/geometry";
+import { stockLook } from "@/lib/yard/stockLook";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { pilePosition, stepInstanceIds } from "@/lib/yard/assembly";
@@ -17,6 +19,22 @@ import { WalkRig } from "@/components/workspace/walk-rig";
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
 const SLOT = "#f2ebe1";
+
+function WorkshopEnv() {
+  const { gl, scene } = useThree();
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTex;
+    scene.environmentIntensity = 0.55;
+    return () => {
+      scene.environment = null;
+      envTex.dispose();
+      pmrem.dispose();
+    };
+  }, [gl, scene]);
+  return null;
+}
 
 export function WorkspaceCanvas() {
   const project = useYard((s) => s.project);
@@ -45,13 +63,15 @@ export function WorkspaceCanvas() {
     () => (step ? stepInstanceIds(project, step) : []),
     [step, project],
   );
+  const useShadows = project.instances.length + project.panels.length < 180;
 
   return (
     <div className="absolute inset-0">
       <Canvas
         key={project.id}
         camera={{ position: [48, 32, 48], fov: 34, near: 0.1, far: 4000 }}
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: "default", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.12 }}
+        shadows={useShadows}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: "default", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
         frameloop="always"
         dpr={[1, 1.5]}
         style={{ display: "block", width: "100%", height: "100%" }}
@@ -64,11 +84,25 @@ export function WorkspaceCanvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        <ambientLight intensity={0.42} />
-        <hemisphereLight args={["#ffe8c8", "#2a241c", 0.7]} />
-        <directionalLight position={[36, 64, 28]} intensity={1.55} color="#fff4e4" />
-        <directionalLight position={[-28, 22, -18]} intensity={0.35} color="#9bb4d4" />
-        <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={90} blur={2.4} far={50} color="#0c0a08" />
+        <WorkshopEnv />
+        <ambientLight intensity={0.28} />
+        <hemisphereLight args={["#ffe8c8", "#1a1612", 0.55]} />
+        <directionalLight
+          position={[36, 64, 28]}
+          intensity={1.35}
+          color="#fff4e4"
+          castShadow={useShadows}
+          shadow-mapSize={[1024, 1024]}
+          shadow-camera-near={2}
+          shadow-camera-far={220}
+          shadow-camera-left={-70}
+          shadow-camera-right={70}
+          shadow-camera-top={70}
+          shadow-camera-bottom={-70}
+          shadow-bias={-0.00025}
+        />
+        <directionalLight position={[-28, 22, -18]} intensity={0.28} color="#9bb4d4" />
+        <ContactShadows position={[0, 0.02, 0]} opacity={0.48} scale={90} blur={2.2} far={50} color="#0c0a08" />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
           <planeGeometry args={[240, 240]} />
           <meshStandardMaterial color="#241e18" roughness={0.92} metalness={0} />
@@ -91,6 +125,7 @@ export function WorkspaceCanvas() {
           pending={pending}
           detail={detail}
           joinMethod={project.joinMethod}
+          useShadows={useShadows}
         />
         <Grid
           args={[80, 80]}
@@ -302,6 +337,7 @@ function BenchScene({
   pending,
   detail,
   joinMethod,
+  useShadows,
 }: {
   project: YardProject;
   explode: boolean;
@@ -320,6 +356,7 @@ function BenchScene({
   pending: boolean;
   detail: DetailLevel;
   joinMethod?: YardProject["joinMethod"];
+  useShadows: boolean;
 }) {
   const explodeScale = explode ? 1.35 : 1;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
@@ -355,6 +392,7 @@ function BenchScene({
           overall={project.overall}
           onSelect={onSelect}
           joinMethod={joinMethod}
+          useShadows={useShadows}
         />
       )}
       {!pending &&
@@ -369,6 +407,7 @@ function BenchScene({
           inStep={stepIds.length ? stepIds.includes(panel.id) : false}
           hasStep={stepIds.length > 0}
           onSelect={() => onSelect(panel.id)}
+          useShadows={useShadows}
         />
       ))}
       {workMode === "free" && (
@@ -495,6 +534,7 @@ function StickCloud({
   overall,
   onSelect,
   joinMethod,
+  useShadows,
 }: {
   instances: YardInstance[];
   explode: number;
@@ -507,6 +547,7 @@ function StickCloud({
   overall: { width: number; height: number; depth: number };
   onSelect: (id: string | null) => void;
   joinMethod?: YardProject["joinMethod"];
+  useShadows?: boolean;
 }) {
   const span = spanOf(overall);
   const boxes = useMemo(() => {
@@ -563,6 +604,7 @@ function StickCloud({
         onSelect={onSelect}
         cylindrical={false}
         hollow={false}
+        useShadows={useShadows}
       />
       <CloudKind
         rows={solidCyls}
@@ -578,6 +620,7 @@ function StickCloud({
         onSelect={onSelect}
         cylindrical={true}
         hollow={false}
+        useShadows={useShadows}
       />
       <CloudKind
         rows={hollowCyls}
@@ -593,6 +636,7 @@ function StickCloud({
         onSelect={onSelect}
         cylindrical={true}
         hollow={true}
+        useShadows={useShadows}
       />
       {workMode !== "build" && (
         <BinderCloud cyls={cyls} boxes={boxes} explode={explode} joinMethod={joinMethod} />
@@ -632,6 +676,7 @@ function CloudKind({
   onSelect,
   cylindrical,
   hollow,
+  useShadows,
 }: {
   rows: {
     inst: YardInstance;
@@ -652,6 +697,7 @@ function CloudKind({
   onSelect: (id: string | null) => void;
   cylindrical: boolean;
   hollow: boolean;
+  useShadows?: boolean;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const { controls } = useThree();
@@ -741,25 +787,31 @@ function CloudKind({
 
   if (!live.length) return null;
   const stock = live[0]?.item;
-  const rough = stock?.roughness ?? 0.68;
-  const metal = stock?.metalness ?? 0.04;
+  const look = stockLook(stock);
 
   return (
     <instancedMesh
       ref={mesh}
       args={[undefined, undefined, Math.max(live.length, 1)]}
       frustumCulled={false}
+      castShadow={!!useShadows}
+      receiveShadow={!!useShadows}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={up}
     >
       {cylindrical ? (
-        <cylinderGeometry args={[0.5, 0.5, 1, hollow ? 16 : 12, 1, hollow]} />
+        <cylinderGeometry args={[0.5, 0.5, 1, hollow ? 20 : 14, 1, hollow]} />
       ) : (
         <boxGeometry args={[1, 1, 1]} />
       )}
-      <meshStandardMaterial roughness={rough} metalness={metal} />
+      <meshStandardMaterial
+        roughness={look.roughness}
+        metalness={look.metalness}
+        map={look.map ?? undefined}
+        envMapIntensity={look.env}
+      />
     </instancedMesh>
   );
 }
@@ -1091,6 +1143,27 @@ function InstanceMesh({
   );
 }
 
+function punchCutout(
+  w: number,
+  h: number,
+  d: number,
+  cut: { x: number; y: number; width: number; height: number },
+) {
+  const parts: { pos: [number, number, number]; size: [number, number, number] }[] = [];
+  const x0 = -w / 2;
+  const y0 = -h / 2;
+  const left = cut.x;
+  const right = w - cut.x - cut.width;
+  const below = cut.y;
+  const above = h - cut.y - cut.height;
+  if (left > 0.05) parts.push({ pos: [x0 + left / 2, 0, 0], size: [left, h, d] });
+  if (right > 0.05) parts.push({ pos: [x0 + cut.x + cut.width + right / 2, 0, 0], size: [right, h, d] });
+  const midX = x0 + cut.x + cut.width / 2;
+  if (below > 0.05) parts.push({ pos: [midX, y0 + below / 2, 0], size: [cut.width, below, d] });
+  if (above > 0.05) parts.push({ pos: [midX, y0 + cut.y + cut.height + above / 2, 0], size: [cut.width, above, d] });
+  return parts;
+}
+
 function PanelMesh({
   panel,
   explode,
@@ -1098,6 +1171,7 @@ function PanelMesh({
   inStep,
   hasStep,
   onSelect,
+  useShadows,
 }: {
   panel: Panel;
   explode: number;
@@ -1105,52 +1179,161 @@ function PanelMesh({
   inStep: boolean;
   hasStep: boolean;
   onSelect: () => void;
+  useShadows?: boolean;
 }) {
   const item = getCatalogItem(panel.materialId);
+  const look = stockLook(item);
   const cx = panel.position.x + panel.size.width / 2;
   const cy = panel.position.y + panel.size.height / 2;
   const cz = panel.position.z + panel.size.depth / 2;
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
-  const opacity = hasStep && !inStep ? 0.2 : glass ? 0.4 : panel.type === "door" ? 0.72 : 1;
+  const opacity = hasStep && !inStep ? 0.2 : glass ? 0.42 : 1;
   const byType: Record<string, string> = {
     counter: "#e6d3b0",
     drawer: "#c9a56a",
-    kick: "#7a6a54",
-    mirror: "#b9d4e4",
+    kick: "#6a5844",
+    mirror: "#c5dcea",
     door: "#b08948",
     back: "#8e806c",
     rail: "#d8c4a0",
     divider: "#c4a06a",
     upright: "#c4a06a",
     shelf: "#d2b07a",
+    top: "#e2c9a0",
+    bottom: "#c4a06a",
     deck: item?.color ?? "#8a7a64",
   };
   const color = selected || inStep ? "#fff6e6" : byType[panel.type] ?? item?.color ?? "#c4a06a";
   const deck = panel.type === "deck";
+  const ply = item?.category === "sheet_goods";
+  const w = panel.size.width;
+  const h = panel.size.height;
+  const d = panel.size.depth;
+  const cut = panel.cutouts?.[0];
+  const bodies = cut
+    ? punchCutout(w, h, d, cut)
+    : [{ pos: [0, 0, 0] as [number, number, number], size: [w, h, d] as [number, number, number] }];
+  const drawer = panel.type === "drawer" && !cut;
+  const door = panel.type === "door" && !cut;
+  const showEdge = ply && (panel.type === "counter" || panel.type === "top" || panel.type === "shelf" || panel.type === "door");
+
   return (
     <group position={[cx * explode, cy, cz * explode]}>
-      <mesh
-        frustumCulled={false}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-      >
-        <boxGeometry args={[panel.size.width, panel.size.height, panel.size.depth]} />
-        <meshStandardMaterial
+      {drawer ? (
+        <DrawerLook
+          w={w}
+          h={h}
+          d={d}
           color={color}
-          transparent={opacity < 1 || glass}
+          look={look}
           opacity={opacity}
-          roughness={glass ? 0.12 : deck ? 0.92 : 0.7}
-          metalness={glass ? 0.15 : 0.03}
+          useShadows={!!useShadows}
+          onSelect={onSelect}
         />
-      </mesh>
+      ) : (
+        bodies.map((b, i) => (
+          <mesh
+            key={i}
+            position={b.pos}
+            frustumCulled={false}
+            castShadow={!!useShadows}
+            receiveShadow={!!useShadows}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+          >
+            <boxGeometry args={b.size} />
+            <meshStandardMaterial
+              color={color}
+              map={glass ? undefined : look.map ?? undefined}
+              transparent={opacity < 1 || glass}
+              opacity={opacity}
+              roughness={glass ? 0.08 : deck ? 0.92 : look.roughness}
+              metalness={glass ? 0.22 : look.metalness}
+              envMapIntensity={glass ? 1.4 : look.env}
+            />
+          </mesh>
+        ))
+      )}
+      {showEdge && (
+        <mesh position={[0, 0, d / 2 + 0.015]} frustumCulled={false} castShadow={!!useShadows}>
+          <boxGeometry args={[w, h, 0.04]} />
+          <meshStandardMaterial color="#6a5438" roughness={0.85} metalness={0} />
+        </mesh>
+      )}
+      {door && (
+        <mesh position={[w * 0.32, 0, d / 2 + 0.22]} frustumCulled={false} castShadow={!!useShadows}>
+          <sphereGeometry args={[0.28, 12, 10]} />
+          <meshStandardMaterial color="#3a342c" roughness={0.32} metalness={0.55} envMapIntensity={1.1} />
+        </mesh>
+      )}
       {deck && (
-        <mesh position={[0, panel.size.height / 2 + 0.02, 0]} frustumCulled={false}>
-          <boxGeometry args={[panel.size.width * 0.96, 0.03, Math.max(0.1, panel.size.depth * 0.035)]} />
+        <mesh position={[0, h / 2 + 0.02, 0]} frustumCulled={false}>
+          <boxGeometry args={[w * 0.96, 0.03, Math.max(0.1, d * 0.035)]} />
           <meshStandardMaterial color="#3a342c" roughness={1} metalness={0} />
         </mesh>
       )}
+    </group>
+  );
+}
+
+function DrawerLook({
+  w,
+  h,
+  d,
+  color,
+  look,
+  opacity,
+  useShadows,
+  onSelect,
+}: {
+  w: number;
+  h: number;
+  d: number;
+  color: string;
+  look: ReturnType<typeof stockLook>;
+  opacity: number;
+  useShadows: boolean;
+  onSelect: () => void;
+}) {
+  const frontT = Math.min(0.75, Math.max(0.45, d * 0.05));
+  const pullW = Math.min(3.2, w * 0.35);
+  return (
+    <group
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+    >
+      <mesh position={[0, 0, -frontT * 0.35]} frustumCulled={false} castShadow={useShadows} receiveShadow={useShadows}>
+        <boxGeometry args={[Math.max(w - 0.4, 1), Math.max(h - 0.35, 0.8), Math.max(d - frontT, 1)]} />
+        <meshStandardMaterial
+          color={color}
+          map={look.map ?? undefined}
+          transparent={opacity < 1}
+          opacity={opacity}
+          roughness={look.roughness}
+          metalness={look.metalness}
+          envMapIntensity={look.env}
+        />
+      </mesh>
+      <mesh position={[0, 0, d / 2 - frontT / 2]} frustumCulled={false} castShadow={useShadows} receiveShadow={useShadows}>
+        <boxGeometry args={[w, h, frontT]} />
+        <meshStandardMaterial
+          color={color}
+          map={look.map ?? undefined}
+          transparent={opacity < 1}
+          opacity={opacity}
+          roughness={look.roughness}
+          metalness={look.metalness}
+          envMapIntensity={look.env}
+        />
+      </mesh>
+      <mesh position={[0, 0, d / 2 + 0.12]} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} castShadow={useShadows}>
+        <cylinderGeometry args={[0.16, 0.16, pullW, 10]} />
+        <meshStandardMaterial color="#3a342c" roughness={0.32} metalness={0.55} envMapIntensity={1.1} />
+      </mesh>
     </group>
   );
 }
