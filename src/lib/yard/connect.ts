@@ -617,6 +617,145 @@ export function ribBands(graph: StructureGraph, band: number, skipGround = true)
   return graph;
 }
 
+/**
+ * Detect mid-span crossings between non-adjacent edges and split them into
+ * end-to-end segments that meet at a real joint node. This is the systemic
+ * fix so no stick is drawn through another — the graph itself becomes
+ * buildable with true seams.
+ */
+export function splitCrossings(graph: StructureGraph, item: CatalogItem): StructureGraph {
+  if (graph.edges.length < 2 || graph.nodes.length < 2) return graph;
+  const tol = joinTol(item);
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const nodes = [...graph.nodes];
+  const edgeList = [...graph.edges];
+  const splits = new Map<string, { t: number; nodeId: string }[]>();
+  const ensure = (edgeId: string) => {
+    if (!splits.has(edgeId)) splits.set(edgeId, []);
+    return splits.get(edgeId)!;
+  };
+
+  const closestOnSeg = (p: Vec3, a: Vec3, b: Vec3): { point: Vec3; t: number; d: number } => {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const abz = b.z - a.z;
+    const ab2 = abx * abx + aby * aby + abz * abz || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / ab2));
+    const point = { x: a.x + abx * t, y: a.y + aby * t, z: a.z + abz * t };
+    return { point, t, d: dist(p, point) };
+  };
+
+  const n = edgeList.length;
+  const maxPairs = 8000;
+  let considered = 0;
+  for (let i = 0; i < n && considered < maxPairs; i++) {
+    const ea = edgeList[i];
+    const a0 = byId.get(ea.from);
+    const a1 = byId.get(ea.to);
+    if (!a0 || !a1) continue;
+    const la = dist(a0.position, a1.position);
+    if (la < tol * 2.5) continue;
+    for (let j = i + 1; j < n && considered < maxPairs; j++) {
+      const eb = edgeList[j];
+      if (ea.from === eb.from || ea.from === eb.to || ea.to === eb.from || ea.to === eb.to) continue;
+      const b0 = byId.get(eb.from);
+      const b1 = byId.get(eb.to);
+      if (!b0 || !b1) continue;
+      const lb = dist(b0.position, b1.position);
+      if (lb < tol * 2.5) continue;
+      considered += 1;
+
+      let bestD = Infinity;
+      let bestTa = 0.5;
+      let bestTb = 0.5;
+      let bestPa: Vec3 = a0.position;
+      let bestPb: Vec3 = b0.position;
+      for (const ta of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
+        const pa = lerp(a0.position, a1.position, ta);
+        const cb = closestOnSeg(pa, b0.position, b1.position);
+        if (cb.d < bestD) {
+          bestD = cb.d;
+          bestTa = ta;
+          bestTb = cb.t;
+          bestPa = pa;
+          bestPb = cb.point;
+        }
+      }
+      for (const tb of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
+        const pb = lerp(b0.position, b1.position, tb);
+        const ca = closestOnSeg(pb, a0.position, a1.position);
+        if (ca.d < bestD) {
+          bestD = ca.d;
+          bestTa = ca.t;
+          bestTb = tb;
+          bestPa = ca.point;
+          bestPb = pb;
+        }
+      }
+
+      if (bestD > tol) continue;
+      if (bestTa < 0.12 || bestTa > 0.88 || bestTb < 0.12 || bestTb > 0.88) continue;
+
+      const joint: Vec3 = {
+        x: (bestPa.x + bestPb.x) / 2,
+        y: (bestPa.y + bestPb.y) / 2,
+        z: (bestPa.z + bestPb.z) / 2,
+      };
+      const nodeId = createId("x");
+      nodes.push({ id: nodeId, position: joint, role: "brace" });
+      byId.set(nodeId, nodes[nodes.length - 1]);
+      ensure(ea.id).push({ t: bestTa, nodeId });
+      ensure(eb.id).push({ t: bestTb, nodeId });
+    }
+  }
+
+  if (!splits.size) return graph;
+
+  const newEdges: StructureEdge[] = [];
+  for (const e of edgeList) {
+    const pts = splits.get(e.id);
+    if (!pts || !pts.length) {
+      newEdges.push(e);
+      continue;
+    }
+    const ordered = [...pts].sort((p, q) => p.t - q.t);
+    const clean: { t: number; nodeId: string }[] = [];
+    for (const p of ordered) {
+      if (!clean.length || Math.abs(p.t - clean[clean.length - 1].t) > 0.04) clean.push(p);
+    }
+    let prevId = e.from;
+    for (const p of clean) {
+      newEdges.push({
+        id: createId("xs"),
+        from: prevId,
+        to: p.nodeId,
+        join: e.join,
+        role: e.role,
+        critical: e.critical,
+      });
+      prevId = p.nodeId;
+    }
+    newEdges.push({
+      id: createId("xs"),
+      from: prevId,
+      to: e.to,
+      join: e.join,
+      role: e.role,
+      critical: e.critical,
+    });
+  }
+
+  return {
+    ...graph,
+    nodes,
+    edges: newEdges,
+    notes: [
+      ...graph.notes,
+      `Crossings split into end-to-end joints (${splits.size} edges touched) — no stick through another.`,
+    ],
+  };
+}
+
 export function finishGraph(
   graph: StructureGraph,
   item: CatalogItem,
@@ -634,6 +773,8 @@ export function finishGraph(
         ? Math.max(thin * 1.8, 0.22)
         : Math.max(d.thick * 1.6, 0.22);
   let next = weldGraph(graph, weldTol);
+  // Split mid-span crossings so sticks meet end-to-end instead of piercing.
+  if (!memberKeep) next = splitCrossings(next, item);
   if (!memberKeep) next = stitchComponents(next, kind);
   const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
   const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";
