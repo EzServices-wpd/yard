@@ -24,7 +24,7 @@ export type FlatSeg = {
   y1: number;
   x2: number;
   y2: number;
-  /** Stock thickness in inches (for stroke weight). */
+  /** Stock face width in inches (for stick silhouette on the print map). */
   thick: number;
   /** True 3D length of the member (inches). */
   lengthIn: number;
@@ -57,7 +57,6 @@ function endsOf(inst: YardInstance): { a: { x: number; y: number; z: number }; b
   const len = prim?.length ?? inst.cutLength ?? 4;
   const p = homeOf(inst);
   if (inst.from && inst.to) return { a: inst.from, b: inst.to };
-  // Fallback: rotate length along Y rotation (matches iso.ts convention)
   const half = len / 2;
   const sy = Math.sin(inst.rotation.y);
   const cy = Math.cos(inst.rotation.y);
@@ -71,15 +70,19 @@ function projectPoint(
   p: { x: number; y: number; z: number },
   plane: FlatPlane,
 ): { x: number; y: number } {
-  if (plane === "top") return { x: p.x, y: p.z }; // X right, Z down-on-page
-  if (plane === "front") return { x: p.x, y: -p.y }; // X right, Y up → page Y down flips
-  return { x: p.z, y: -p.y }; // side: Z right, Y up
+  if (plane === "top") return { x: p.x, y: p.z };
+  if (plane === "front") return { x: p.x, y: -p.y };
+  return { x: p.z, y: -p.y };
 }
 
 function thickOf(inst: YardInstance): number {
   const item = getCatalogItem(inst.catalogId);
   if (!item) return 0.15;
   const prim = toPrimitive(item, inst.cutLength);
+  // Face width for sticks so the print map looks like real stock (not a hairline).
+  if (item.formFactor === "stick") {
+    return Math.max(0.12, prim.width || prim.height || 0.25);
+  }
   return Math.max(0.08, prim.height || prim.width || 0.15);
 }
 
@@ -114,7 +117,6 @@ export function buildFlatMap(project: YardProject, plane?: FlatPlane): FlatMap {
     const pa = projectPoint(a, face);
     const pb = projectPoint(b, face);
     const len3 = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-    // Drop near-zero projected segments (members perpendicular to the face)
     if (Math.hypot(pb.x - pa.x, pb.y - pa.y) < 0.05 && len3 > 0.5) continue;
     segs.push({
       id: inst.id,
@@ -196,12 +198,22 @@ export function flatSvgString(
 
   const lines = map.segs
     .map((s) => {
-      const sw = Math.max(0.04, Math.min(0.22, s.thick * scale));
-      return `<line x1="${toX(s.x1).toFixed(3)}" y1="${toY(s.y1).toFixed(3)}" x2="${toX(s.x2).toFixed(3)}" y2="${toY(s.y2).toFixed(3)}" stroke="#1a1612" stroke-width="${sw.toFixed(3)}" stroke-linecap="round"/>`;
+      const x1 = toX(s.x1);
+      const y1 = toY(s.y1);
+      const x2 = toX(s.x2);
+      const y2 = toY(s.y2);
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      if (len < 0.02) return "";
+      const sw = Math.max(0.06, Math.min(0.28, s.thick * scale));
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+      const deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+      const rx = Math.min(sw / 2, 0.12);
+      return `<g transform="translate(${cx.toFixed(3)} ${cy.toFixed(3)}) rotate(${deg.toFixed(2)})"><rect x="${(-len / 2).toFixed(3)}" y="${(-sw / 2).toFixed(3)}" width="${len.toFixed(3)}" height="${sw.toFixed(3)}" rx="${rx.toFixed(3)}" ry="${rx.toFixed(3)}" fill="#e8d5a3" stroke="#5c4a28" stroke-width="0.012"/></g>`;
     })
+    .filter(Boolean)
     .join("\n  ");
 
-  // Scale bar ~ 2\" of real stock
   const barReal = map.widthIn >= 12 ? 4 : map.widthIn >= 6 ? 2 : 1;
   const barPx = barReal * scale;
   const barX = margin;
@@ -221,10 +233,10 @@ export function flatSvgString(
 
 function escapeXml(s: string) {
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, """);
 }
 
 /** Trigger a browser download of the 2D map SVG. */
