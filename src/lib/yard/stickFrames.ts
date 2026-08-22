@@ -166,6 +166,11 @@ export function stickEdges(subject: string): StickEdge[] {
   return stickEdges("frame");
 }
 
+/**
+ * One whole stick per edge. Paper craft is "glue sticks on the lines" —
+ * never densify into micro-segments. Scale the silhouette so the longest
+ * edge fits in one stock length (with a small visual allowance).
+ */
 export function segmentInstances(
   edges: StickEdge[],
   paperW: number,
@@ -178,42 +183,51 @@ export function segmentInstances(
   const faceW = Math.max(prim.width || 0.25, prim.height || 0.08);
   const drawW = paperW - margin * 2;
   const drawH = paperH - margin * 2;
-  const toIn = (p: Pt): Pt => ({ x: margin + p.x * drawW, y: margin + p.y * drawH });
+
+  // Longest normalized edge → real inches if drawn full-paper
+  let maxNorm = 0;
+  for (const edge of edges) {
+    const ln = Math.hypot(edge.b.x - edge.a.x, edge.b.y - edge.a.y);
+    if (ln > maxNorm) maxNorm = ln;
+  }
+  const fullMaxIn = maxNorm * Math.max(drawW, drawH);
+  // Fit longest edge into one stock stick (allow 8% overshoot for visual presence)
+  const fit = fullMaxIn > stockLen * 1.08 ? (stockLen * 1.02) / fullMaxIn : 1;
+  const scaleW = drawW * fit;
+  const scaleH = drawH * fit;
+  // Center the scaled drawing on the paper
+  const ox = margin + (drawW - scaleW) / 2;
+  const oy = margin + (drawH - scaleH) / 2;
+  const toIn = (p: Pt): Pt => ({ x: ox + p.x * scaleW, y: oy + p.y * scaleH });
+
   const instances: YardInstance[] = [];
-  const wholePreferred = isWholeStock(item);
+  const minLen = Math.max(0.4, faceW * 1.4);
 
   for (const edge of edges) {
     const a = toIn(edge.a);
     const b = toIn(edge.b);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (len < Math.max(0.35, faceW * 1.2)) continue;
-    const n = Math.max(1, Math.ceil(len / (stockLen * 0.98)));
-    for (let i = 0; i < n; i++) {
-      const t0 = i / n;
-      const t1 = (i + 1) / n;
-      const x1 = a.x + (b.x - a.x) * t0;
-      const y1 = a.y + (b.y - a.y) * t0;
-      const x2 = a.x + (b.x - a.x) * t1;
-      const y2 = a.y + (b.y - a.y) * t1;
-      const segLen = Math.hypot(x2 - x1, y2 - y1);
-      if (segLen < 0.3) continue;
-      const from: Vec3 = { x: x1 - paperW / 2, y: y1, z: 0 };
-      const to: Vec3 = { x: x2 - paperW / 2, y: y2, z: 0 };
-      const mid: Vec3 = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: 0 };
-      const ang = Math.atan2(to.y - from.y, to.x - from.x);
-      const nearWhole = wholePreferred && segLen >= stockLen * 0.85;
-      instances.push({
-        id: createId("f"),
-        catalogId: item.id,
-        position: mid,
-        rotation: { x: 0, y: 0, z: ang },
-        cutLength: nearWhole ? undefined : Math.min(segLen, stockLen),
-        role: "rail",
-        join: item.preferredJoins?.[0] || "glue",
-        from,
-        to,
-      });
-    }
+    if (len < minLen) continue;
+
+    // Always one whole stick — never split for paper craft
+    const from: Vec3 = { x: a.x - paperW / 2, y: a.y, z: 0 };
+    const to: Vec3 = { x: b.x - paperW / 2, y: b.y, z: 0 };
+    const mid: Vec3 = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: 0 };
+    const ang = Math.atan2(to.y - from.y, to.x - from.x);
+    const nearWhole = isWholeStock(item) && len >= stockLen * 0.82;
+
+    instances.push({
+      id: createId("f"),
+      catalogId: item.id,
+      position: mid,
+      rotation: { x: 0, y: 0, z: ang },
+      // Whole pack stick when close; otherwise a single cut to edge length
+      cutLength: nearWhole ? undefined : Math.min(len, stockLen),
+      role: "rail",
+      join: item.preferredJoins?.[0] || "glue",
+      from,
+      to,
+    });
   }
   return instances;
 }
