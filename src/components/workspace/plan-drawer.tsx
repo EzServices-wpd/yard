@@ -191,7 +191,10 @@ function PlanBody({
             <section>
               <h3 className="font-display text-lg text-fg">Buy</h3>
               <p className="mt-1 text-xs text-muted">
-                {plan.totals.pieces} pieces · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
+                {plan.partsKind === "whole"
+                  ? `${plan.totals.pieces} full pieces · glue · do not cut`
+                  : `${plan.totals.pieces} pieces`}{" "}
+                · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
               </p>
               <p className="mt-1 text-[11px] text-faint">{tagNote()} Prices checked 19 Aug 2026.</p>
               <ul className="mt-3 space-y-3">
@@ -389,7 +392,11 @@ function PlanBody({
             {showFlatPreview && flatPreview && (
               <div className="mt-2 overflow-hidden rounded-md border border-border bg-bg">
                 <p className="border-b border-border px-2 py-1 text-[11px] text-faint">
-                  {flatPreview.plane} · {flatPreview.map.pieceCount} pieces · {flatPreview.paper.label}
+                  {flatPreview.plane} · {flatPreview.map.pieceCount}{" "}
+                  {project.flat && !project.flat.lifted
+                    ? "whole sticks · glue ends"
+                    : "pieces"}{" "}
+                  · {flatPreview.paper.label}
                 </p>
                 <div
                   className="max-h-72 overflow-auto p-2 [&_svg]:h-auto [&_svg]:w-full"
