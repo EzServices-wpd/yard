@@ -2,6 +2,7 @@
  * Prompt-native 2D layouts + lift to 3D.
  *
  * Design rule: whole craft sticks on paper, ~8–28 pieces, one sitting.
+ * Never cut — glue full sticks end-to-end on the printed lines.
  */
 
 import { createId } from "@/lib/utils";
@@ -106,11 +107,11 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
     joinMethod: item.preferredJoins?.[0],
     notes: [
       `2D stick layout · ${paperLabel} paper · ${intent.subject.toLowerCase()} in ${item.name}.`,
-      `${instances.length} sticks — whole or near-full length where the edge allows.`,
+      `${instances.length} whole sticks — no cutting. Glue ends where sticks meet.`,
       stats.components <= 1
-        ? `Connected outline · ${stats.joints} joints`
-        : `Outline · ${stats.joints} joints · ${stats.components} clusters`,
-      "Print the 2D map → glue sticks on the lines → optional Convert to 3D.",
+        ? `Connected outline · ${stats.joints} glue joints`
+        : `Outline · ${stats.joints} glue joints · ${stats.components} clusters`,
+      "Print the 2D map → lay full sticks on the lines → glue ends → optional Convert to 3D.",
     ],
     historic: false,
     buildStats: stats,
@@ -173,17 +174,20 @@ export function liftFlatTo3d(project: YardProject): YardProject {
   });
 
   const ties: YardInstance[] = [];
+  const stockLen = item ? toPrimitive(item).length || 4.5 : 4.5;
   const step = Math.max(1, Math.floor(project.instances.length / 10));
   for (let i = 0; i < project.instances.length; i += step) {
     const inst = project.instances[i];
     const a = { x: inst.position.x, y: inst.position.y, z: -depth * 0.15 };
     const b = { x: inst.position.x, y: inst.position.y, z: depth * 0.35 };
+    // Keep whole-stick rule on lift ties when possible
+    const span = Math.abs(b.z - a.z);
     ties.push({
       id: createId("t"),
       catalogId: project.primaryMaterialId,
       position: { x: a.x, y: a.y, z: (a.z + b.z) / 2 },
       rotation: { x: Math.PI / 2, y: 0, z: 0 },
-      cutLength: depth * 0.5,
+      cutLength: span <= stockLen * 1.05 ? undefined : Math.min(span, stockLen),
       role: "brace",
       join: project.joinMethod || "glue",
       from: a,
@@ -206,7 +210,7 @@ export function liftFlatTo3d(project: YardProject): YardProject {
     notes: [
       `Lifted from 2D · ${project.flat.subject} · was ${project.flat.paper} paper.`,
       `Same outline ratios. Dual face + cross-ties for a buildable volume.`,
-      `${all.length} pieces after lift.`,
+      `${all.length} pieces after lift — still prefer whole sticks + glue.`,
       ...project.notes.filter((n) => !n.startsWith("2D stick") && !n.startsWith("Print the")),
     ],
     buildStats: stats,
