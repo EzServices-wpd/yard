@@ -258,6 +258,13 @@ export type YardProject = {
     prompt: string;
     scene?: string;
   };
+  /** Prompt-native 2D paper layout (Phase B). */
+  flat?: {
+    paper: "letter" | "letter-landscape" | "8x10" | "a4";
+    plane: "top" | "front" | "side";
+    subject: string;
+    lifted?: boolean;
+  };
   assumptions: {
     load: "light" | "medium" | "heavy";
     use?: LoadUse;
