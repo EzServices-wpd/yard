@@ -343,7 +343,9 @@ function PlanBody({
           <section>
             <h3 className="font-display text-lg text-fg">2D map</h3>
             <p className="mt-1 text-xs text-muted">
-              Flat stock layout for print — parents, kids, and the bench. Same pieces as the 3D model, orthographic.
+              {project.flat && !project.flat.lifted
+                ? "Printable gluing diagram — whole sticks on the lines, glue ends, do not cut."
+                : "Flat stock layout for print — same pieces as the 3D model, orthographic."}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <label className="text-xs text-faint">
@@ -414,7 +416,7 @@ function PlanBody({
                   const next = liftTo3d();
                   if (next) {
                     setFlatNote(
-                      `Lifted to 3D — ${next.instances.length} pieces. Same outline ratios, dual face + cross-ties. Close and reopen Build plan for a fresh plan.`,
+                      `Lifted to 3D — ${next.instances.length} whole sticks · glue ends · do not cut. Same outline ratios, dual face + cross-ties. Close and reopen Build plan for a fresh plan.`,
                     );
                   }
                 }}
@@ -424,7 +426,7 @@ function PlanBody({
               </button>
             )}
             {project.flat?.lifted && (
-              <p className="mt-2 text-xs text-muted">Already lifted from 2D paper layout.</p>
+              <p className="mt-2 text-xs text-muted">Already lifted from 2D paper layout — still whole sticks, no cuts.</p>
             )}
             {flatNote && <p className="mt-2 text-xs text-muted">{flatNote}</p>}
           </section>
