@@ -21,6 +21,7 @@ import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
+import { isWireStock } from "@/lib/yard/promptHelpers";
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
@@ -182,6 +183,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [workMode, setWorkMode, project.traverse]);
 
   const material = getCatalogItem(project.primaryMaterialId);
+  const wire = isWireStock(material);
+  const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const pieceCount = project.instances.length + project.panels.length;
   const historicOk = hasHistoricProfile(project.kind) || !!project.historic;
   const locked = selectedId ? lockedIds.includes(selectedId) : false;
@@ -555,16 +558,32 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               data-yard-traverse={project.traverse?.kind ?? ""}
               data-yard-load={project.assumptions.use ?? ""}
               data-yard-deck={project.panels.some((p) => p.type === "deck") ? "1" : "0"}
+              data-yard-wire={wire ? "1" : "0"}
+              data-yard-flat={paperCraft ? "1" : "0"}
               className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
             >
               <p>
-                {material?.name ?? "No stock"}
-                {pieceCount ? ` · ${pieceCount} pieces` : ""}
+                {wire
+                  ? "Choose stock · open Stock panel"
+                  : material?.name ?? "No stock"}
+                {pieceCount
+                  ? paperCraft
+                    ? ` · ${pieceCount} whole sticks · glue ends`
+                    : ` · ${pieceCount} pieces`
+                  : ""}
               </p>
               <p className="mt-0.5 text-faint">
                 {inches(project.overall.width)} × {inches(project.overall.height)} × {inches(project.overall.depth)}
                 {" · "}
-                {workMode === "look" ? "Orbit" : workMode === "walk" ? "On the road" : workMode === "build" ? "Snap to the glow" : "Drag · snap home"}
+                {wire
+                  ? "Skeleton only — pick a real material to densify"
+                  : workMode === "look"
+                    ? "Orbit"
+                    : workMode === "walk"
+                      ? "On the road"
+                      : workMode === "build"
+                        ? "Snap to the glow"
+                        : "Drag · snap home"}
               </p>
             </div>
             <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
