@@ -1,22 +1,54 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
+import { writeInstructions, renderProject } from "@/lib/ai/grok";
+import { planToMarkdown } from "@/lib/yard/report";
+import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type PaperSize } from "@/lib/yard/flat";
+import { usd } from "@/lib/utils";
+import { tagNote } from "@/lib/yard/listings";
+import { IsoPlate } from "@/components/workspace/iso-plate";
+import { ExportDialog } from "@/components/workspace/export-dialog";
 import type { BuildPlan } from "@/lib/yard/types";
-import { ExportDialog } from "./export-dialog";
-import {
-  downloadFlatSvg,
-  bestFlatPlane,
-  flatSvgString,
-  type FlatPlane,
-  type PaperSize,
-} from "@/lib/yard/flat";
 
-export function PlanDrawer({
+export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const project = useYard((s) => s.project);
+  const plan = useYard((s) => s.plan);
+  const setPlan = useYard((s) => s.setPlan);
+  const grokBusy = useYard((s) => s.grokBusy);
+  const grokError = useYard((s) => s.grokError);
+
+  if (!open || !plan) return null;
+
+  return (
+    <PlanBody
+      projectName={project.name}
+      projectPrompt={project.prompt}
+      plan={plan}
+      setPlan={setPlan}
+      grokBusy={grokBusy}
+      grokError={grokError}
+      onClose={onClose}
+    />
+  );
+}
+
+function PlanBody({
+  projectName,
+  projectPrompt,
   plan,
+  setPlan,
+  grokBusy,
+  grokError,
   onClose,
 }: {
+  projectName: string;
+  projectPrompt: string;
   plan: BuildPlan;
+  setPlan: (plan: BuildPlan | null) => void;
+  grokBusy: boolean;
+  grokError: string | null;
   onClose: () => void;
 }) {
   const project = useYard((s) => s.project);
@@ -58,36 +90,36 @@ export function PlanDrawer({
   async function grokSteps() {
     useYard.setState({ grokBusy: true, grokError: null });
     try {
-      const res = await fetch("/api/grok/instructions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseline: plan.steps.map((s) => ({ title: s.title, body: s.body, role: s.role })),
-          kind: project.kind,
-          material: project.primaryMaterialId,
-          joints: plan.joints?.length ?? project.instances.length,
-          envelope: project.overall,
-          name: project.name,
-          notes: project.notes,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { steps?: { title: string; body: string; role?: string }[] };
-      if (data.steps?.length) {
-        useYard.getState().setPlan({
-          ...plan,
-          steps: data.steps.map((s, i) => ({
-            id: plan.steps[i]?.id ?? `s${i}`,
+      const itemName = project.primaryMaterialId?.replace(/_/g, " ") ?? undefined;
+      const res = await writeInstructions({
+        data: {
+          prompt: projectPrompt || projectName,
+          planText: planToMarkdown(project, plan),
+          baseline: plan.instructions.map((s) => ({
+            step: s.step,
             title: s.title,
-            body: s.body,
-            role: s.role ?? plan.steps[i]?.role,
+            description: s.description,
+            tips: s.tips,
+            partsUsed: s.partsUsed,
           })),
-        });
-      }
-    } catch (err) {
-      useYard.setState({
-        grokError: err instanceof Error ? err.message : "Could not enrich instructions",
+          kind: project.kind,
+          materialName: itemName,
+          pieceCount: project.instances.length || project.panels.length || undefined,
+          joints: project.buildStats?.joints,
+          envelope: `${project.overall.width.toFixed(0)}×${project.overall.height.toFixed(0)}×${project.overall.depth.toFixed(0)}"`,
+        },
       });
+      if (!res.ok) {
+        useYard.setState({ grokError: res.error });
+        return;
+      }
+      setPlan({
+        ...plan,
+        instructions: res.steps,
+        grokNotes: "Steps enriched for this project — same order and counts, more detail on holds, square checks, and what good looks like.",
+      });
+    } catch {
+      useYard.setState({ grokError: "Could not reach Grok." });
     } finally {
       useYard.setState({ grokBusy: false });
     }
@@ -97,100 +129,207 @@ export function PlanDrawer({
     setRenderBusy(true);
     setRenderErr(null);
     try {
-      const res = await fetch("/api/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: project.id,
+      const brief = [
+        project.notes.slice(0, 4).join(" "),
+        project.pocket
+          ? `Trapezoidal pocket vanity, ${project.pocket.unit.width} by ${project.pocket.unit.depth} by ${project.pocket.unit.height} inches, oak plywood, drawers, mirror, upper cabinets.`
+          : "",
+        project.fitted ? `${project.fitted.program} in ${project.fitted.unit.width} by ${project.fitted.unit.depth} by ${project.fitted.unit.height} inch plywood.` : "",
+        project.instances.length
+          ? `${project.instances.length} pieces of ${project.primaryMaterialId}, ${project.overall.height.toFixed(0)} inches tall.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const res = await renderProject({
+        data: {
           name: project.name,
-          scene: scene || undefined,
-          kind: project.kind,
-          material: project.primaryMaterialId,
-        }),
+          prompt: project.prompt,
+          brief,
+          scene: scene.trim() || undefined,
+        },
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { url: string; prompt: string; scene?: string };
-      setRender({ url: data.url, prompt: data.prompt, scene: data.scene ?? scene });
-    } catch (err) {
-      setRenderErr(err instanceof Error ? err.message : "Render failed");
+      if (!res.ok) {
+        setRenderErr(res.error);
+        return;
+      }
+      setRender({ url: res.url, prompt: res.prompt, scene: res.scene });
+    } catch {
+      setRenderErr("Could not render.");
     } finally {
       setRenderBusy(false);
     }
   }
 
-  const steps = plan.steps ?? [];
-  const grokBusy = useYard((s) => s.grokBusy);
-  const grokError = useYard((s) => s.grokError);
+  const tone =
+    plan.feasibility.status === "critical"
+      ? "text-danger"
+      : plan.feasibility.status === "warnings"
+        ? "text-warn"
+        : "text-ok";
 
   return (
-    <>
-      <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-border bg-panel shadow-xl">
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div className="pointer-events-none fixed inset-0 z-50 flex justify-end print:static print:bg-paper print:text-ink">
+      <div className="pointer-events-auto flex h-full w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl sm:max-w-xl print:max-w-none print:border-0 print:bg-paper">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4 print:hidden">
           <div>
-            <h2 className="font-display text-xl text-fg">Build plan</h2>
-            <p className="text-xs text-muted">{project.name}</p>
+            <p className="font-display text-xl text-fg">Build plan</p>
+            <p className={`mt-0.5 text-xs ${tone}`}>{plan.feasibility.summary}</p>
+            {plan.effort && (
+              <p className="mt-1 text-[11px] text-faint">
+                About {plan.effort} · {usd(plan.totals.estCostUsd)} all-in
+              </p>
+            )}
           </div>
           <button type="button" onClick={onClose} className="grid size-11 place-items-center text-muted hover:text-fg" aria-label="Close">
-            ×
+            <X className="size-4" />
           </button>
-        </header>
+        </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 text-sm">
+          {plan.bom.length > 0 && (
+            <section>
+              <h3 className="font-display text-lg text-fg">Buy</h3>
+              <p className="mt-1 text-xs text-muted">
+                {plan.totals.pieces} pieces · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
+              </p>
+              <p className="mt-1 text-[11px] text-faint">{tagNote()} Prices checked 19 Aug 2026.</p>
+              <ul className="mt-3 space-y-3">
+                {plan.bom.map((b, i) => (
+                  <li key={i} className="border-b border-rule/60 pb-3 last:border-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-fg">
+                          {b.quantity} {b.unit} · {b.name}
+                        </p>
+                        {b.notes && <p className="text-xs text-muted">{b.notes}</p>}
+                      </div>
+                      {b.estimatedCost != null && <p className="font-mono text-xs text-muted">{usd(b.estimatedCost)}</p>}
+                    </div>
+                    {b.offers && b.offers.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {b.offers.map((o) => (
+                          <li key={o.href} className="flex items-baseline justify-between gap-2">
+                            <a
+                              href={o.href}
+                              target="_blank"
+                              rel="noreferrer sponsored"
+                              className={`text-xs underline-offset-2 hover:underline ${o.best ? "text-fg" : "text-muted hover:text-fg"}`}
+                              data-yard-shop={o.retailer}
+                              data-yard-affiliate={o.retailer === "amazon" ? "1" : "0"}
+                              data-yard-best={o.best ? "1" : "0"}
+                            >
+                              {o.best ? "Best · " : ""}
+                              {o.label} · {o.title}
+                            </a>
+                            <span className="shrink-0 font-mono text-[11px] text-muted">
+                              {o.packsNeeded} × {usd(o.packPrice)} · {usd(o.unitPrice)}/ea
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {plan.cutList.length > 0 && (
+            <section>
+              <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
+              <p className="mt-1 text-xs text-muted">
+                {plan.partsKind === "whole"
+                  ? "Full pieces from the pack. Glue them. Do not cut."
+                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+              </p>
+              <table className="mt-3 w-full text-left text-xs">
+                <thead className="text-faint">
+                  <tr>
+                    <th className="py-1 font-medium"> </th>
+                    <th className="py-1 font-medium">Qty</th>
+                    <th className="py-1 font-medium">Part</th>
+                    <th className="py-1 font-medium">Size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.cutList.map((c) => (
+                    <tr key={c.id} className="border-t border-border/70">
+                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
+                      <td className="py-1.5 font-mono">{c.quantity}</td>
+                      <td className="py-1.5">{c.name}</td>
+                      <td className="py-1.5 font-mono text-muted">
+                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+
           <section>
-            <h3 className="font-display text-lg text-fg">Overview</h3>
-            <p className="mt-1 text-sm text-muted">{plan.summary ?? project.notes?.[0]}</p>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-md border border-border p-2">
-                <dt className="text-faint">Pieces</dt>
-                <dd className="text-fg">{plan.stats?.pieceCount ?? project.instances.length}</dd>
-              </div>
-              <div className="rounded-md border border-border p-2">
-                <dt className="text-faint">Joints</dt>
-                <dd className="text-fg">{plan.joints?.length ?? "—"}</dd>
-              </div>
-              <div className="rounded-md border border-border p-2">
-                <dt className="text-faint">Stock</dt>
-                <dd className="text-fg">{project.primaryMaterialId}</dd>
-              </div>
-              <div className="rounded-md border border-border p-2">
-                <dt className="text-faint">Size</dt>
-                <dd className="text-fg">
-                  {project.overall.width}" × {project.overall.height}" × {project.overall.depth}"
-                </dd>
-              </div>
-            </dl>
+            <h3 className="font-display text-lg text-fg">Check</h3>
+            <p className={`mt-1 text-xs ${tone}`}>{plan.feasibility.summary}</p>
+            {plan.feasibility.issues.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {plan.feasibility.issues.slice(0, 4).map((issue, i) => (
+                  <li key={i} className="border-b border-border/60 pb-2">
+                    <p className="text-fg">{issue.message}</p>
+                    {issue.suggestion && <p className="mt-0.5 text-muted">{issue.suggestion}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {plan.feasibility.issues.length > 4 && (
+              <p className="mt-2 text-xs text-faint">{plan.feasibility.issues.length - 4} more on the printed plan.</p>
+            )}
           </section>
 
           <section>
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-lg text-fg">Steps</h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-display text-lg text-fg">Build</h3>
               <button
                 type="button"
                 onClick={() => void grokSteps()}
                 disabled={grokBusy}
-                className="h-8 rounded-md border border-border px-2 text-xs text-fg disabled:opacity-50"
+                className="text-xs text-muted hover:text-fg disabled:opacity-50 print:hidden"
               >
-                {grokBusy ? "Enriching…" : "Add more instructions"}
+                {grokBusy ? "Adding detail…" : "Add more instructions"}
               </button>
             </div>
-            {grokError && <p className="mt-1 text-xs text-danger">{grokError}</p>}
+            {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
+            {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <ol className="mt-3 space-y-3">
-              {steps.map((step, i) => {
-                const active = activeStep === i;
+              {plan.instructions.map((s) => {
+                const on = activeStep === s.step;
                 return (
-                  <li key={step.id ?? i}>
+                  <li key={s.step}>
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveStep(active ? null : i);
+                        if (on) {
+                          setActiveStep(null);
+                          return;
+                        }
+                        setActiveStep(s.step);
+                        onClose();
                       }}
-                      className={`w-full rounded-md border p-3 text-left transition ${
-                        active ? "border-accent bg-accent/10" : "border-border hover:border-fg/30"
+                      className={`flex w-full gap-3 rounded-md border p-3 text-left transition ${
+                        on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"
                       }`}
                     >
-                      <span className="text-xs text-faint">Step {i + 1}{step.role ? ` · ${step.role}` : ""}</span>
-                      <span className="mt-0.5 block font-medium text-fg">{step.title}</span>
-                      <span className="mt-1 block text-sm text-muted whitespace-pre-wrap">{step.body}</span>
+                      <IsoPlate project={project} step={s} className="h-24 w-28 shrink-0 border border-rule sm:h-28 sm:w-36" />
+                      <span className="min-w-0">
+                        <span className="block font-medium text-fg">
+                          <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
+                        </span>
+                        <span className="mt-1 block text-muted">{s.description}</span>
+                        {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                        <span className="mt-2 block text-xs text-faint print:hidden">
+                          {on ? "On the bench now — click again to leave" : "View this step on the bench"}
+                        </span>
+                      </span>
                     </button>
                   </li>
                 );
@@ -248,22 +387,18 @@ export function PlanDrawer({
               </button>
             </div>
             {showFlatPreview && flatPreview && (
-              <div className="mt-3 overflow-hidden rounded-md border border-border bg-[#f3eee4]">
-                <div className="border-b border-border/60 px-2 py-1 text-[10px] text-muted">
+              <div className="mt-2 overflow-hidden rounded-md border border-border bg-bg">
+                <p className="border-b border-border px-2 py-1 text-[11px] text-faint">
                   {flatPreview.plane} · {flatPreview.map.pieceCount} pieces · {flatPreview.paper.label}
-                </div>
+                </p>
                 <div
-                  className="max-h-72 w-full overflow-auto p-1 [&_svg]:h-auto [&_svg]:w-full"
-                  dangerouslySetInnerHTML={{
-                    __html: flatPreview.svg
-                      .replace(/width="[^"]*"/, 'width="100%"')
-                      .replace(/height="[^"]*"/, 'height="auto"'),
-                  }}
+                  className="max-h-72 overflow-auto p-2 [&_svg]:h-auto [&_svg]:w-full"
+                  dangerouslySetInnerHTML={{ __html: flatPreview.svg }}
                 />
               </div>
             )}
             {showFlatPreview && !flatPreview && (
-              <p className="mt-2 text-xs text-danger">Could not build preview for this layout.</p>
+              <p className="mt-2 text-xs text-danger">Could not draw a 2D preview for this project.</p>
             )}
             {project.flat && !project.flat.lifted && (
               <button
@@ -299,36 +434,38 @@ export function PlanDrawer({
                 className="mt-3 w-full rounded-md border border-border object-cover"
               />
             )}
-            <textarea
-              value={scene}
-              onChange={(e) => setScene(e.target.value)}
-              placeholder="Optional scene notes for the photo…"
-              className="mt-2 h-20 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-fg"
-            />
+            <label className="mt-3 block">
+              <span className="text-xs text-faint">Scene (optional)</span>
+              <input
+                value={scene}
+                onChange={(e) => setScene(e.target.value)}
+                placeholder="white subway-tile bathroom, morning light"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+              />
+            </label>
             <button
               type="button"
               onClick={() => void makeRender()}
               disabled={renderBusy}
               className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
             >
-              {renderBusy ? "Rendering…" : render?.url ? "Re-render photo" : "Generate photo"}
+              {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
             </button>
-            {renderErr && <p className="mt-1 text-xs text-danger">{renderErr}</p>}
+            {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
           </section>
         </div>
 
-        <footer className="border-t border-border p-4">
+        <div className="flex gap-2 border-t border-border p-4 print:hidden">
           <button
             type="button"
             onClick={() => setExportOpen(true)}
-            className="h-11 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
+            className="h-10 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg"
           >
-            Export PDF / share
+            Export PDF…
           </button>
-        </footer>
+        </div>
       </div>
-
-      {exportOpen && <ExportDialog plan={plan} onClose={() => setExportOpen(false)} />}
-    </>
+      {exportOpen && <ExportDialog project={project} plan={plan} onClose={() => setExportOpen(false)} />}
+    </div>
   );
 }
