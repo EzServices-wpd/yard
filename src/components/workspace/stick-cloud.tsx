@@ -15,6 +15,7 @@ import {
   ROLE_TINT,
   spanOf,
 } from "@/components/workspace/stick-helpers";
+import { BinderCloud } from "@/components/workspace/binder-cloud";
 import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 
 type Row = {
@@ -25,7 +26,7 @@ type Row = {
 };
 
 export function StickCloud({
-  instances, explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragPos, overall, onSelect, useShadows,
+  instances, explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragPos, overall, onSelect, joinMethod, useShadows,
 }: {
   instances: YardInstance[];
   explode: number;
@@ -62,12 +63,24 @@ export function StickCloud({
 
   const common = { explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragId: dragPos?.id ?? null, overall, count: instances.length, onSelect, useShadows };
 
+  const solidBars = useMemo(
+    () => [...groups.flatBars, ...groups.boxes],
+    [groups.flatBars, groups.boxes],
+  );
+  const cyls = useMemo(
+    () => [...groups.solidCyls, ...groups.hollowCyls],
+    [groups.solidCyls, groups.hollowCyls],
+  );
+
   return (
     <group>
       <CloudKind rows={groups.flatBars} {...common} cylindrical={false} hollow={false} flatBar />
       <CloudKind rows={groups.boxes} {...common} cylindrical={false} hollow={false} />
       <CloudKind rows={groups.solidCyls} {...common} cylindrical={true} hollow={false} />
       <CloudKind rows={groups.hollowCyls} {...common} cylindrical={true} hollow={true} />
+      {workMode !== "build" && (
+        <BinderCloud cyls={cyls} boxes={solidBars} explode={explode} joinMethod={joinMethod} />
+      )}
     </group>
   );
 }
