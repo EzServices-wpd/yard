@@ -48,6 +48,10 @@ function cutHow(item?: CatalogItem | null) {
 }
 
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
+  // Paper craft: print map → whole sticks on the lines → glue ends. Never cut.
+  if (project.flat && !project.flat.lifted) {
+    return uniqueFlatSteps(project);
+  }
   if (project.panels.length && !project.instances.length) {
     return uniquePanelSteps(project);
   }
@@ -59,6 +63,77 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
       description: "Generate a thing first. These steps are written from the pieces on the bench.",
     },
   ];
+}
+
+/** 2D paper craft — kids / parents, one sitting, no saw. */
+function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
+  const item = getCatalogItem(project.primaryMaterialId);
+  const name = item?.name ?? "craft sticks";
+  const subject = project.flat?.subject ?? project.name;
+  const paper =
+    project.flat?.paper === "8x10"
+      ? '8×10"'
+      : project.flat?.paper === "a4"
+        ? "A4"
+        : project.flat?.paper === "letter-landscape"
+          ? "Letter landscape"
+          : "Letter";
+  const n = project.instances.length;
+  const { hold } = joinHold(item);
+  const steps: AssemblyStep[] = [];
+  let s = 1;
+
+  steps.push({
+    step: s++,
+    title: `Print the ${subject} map`,
+    description: `Download the 2D stock map (SVG) and print it on ${paper} paper at 100% scale. Do not “fit to page.” You will lay full ${name} on these lines.`,
+    tips: "The map is a gluing diagram, not a cutting diagram.",
+    partsUsed: ["*"],
+  });
+
+  steps.push({
+    step: s++,
+    title: `Count out ${n} whole ${name}`,
+    description: `${n} full pieces from the pack. Do not cut any of them. Open the glue.`,
+    tips: "A pack and a bottle of glue is the whole kit.",
+    partsUsed: ["*"],
+  });
+
+  steps.push({
+    step: s++,
+    title: "Lay sticks on the long lines first",
+    description: `Start with the longest edges of the ${subject}. Center each full stick on its printed line so the ends reach the joints.`,
+    tips: "Short decorative edges still get a full stick — ends will overlap the neighbors. That overlap is where the glue lives.",
+    partsUsed: ["rail"],
+  });
+
+  steps.push({
+    step: s++,
+    title: "Glue every meeting end",
+    description: `Where two sticks cross or meet, put a small bead of glue on both faces and hold. ${hold}`,
+    tips: "Work from the outline inward. Wipe squeeze-out with a damp finger before it skins.",
+    partsUsed: ["rail"],
+  });
+
+  steps.push({
+    step: s++,
+    title: "Fill the remaining lines",
+    description: `Place the rest of the ${n} sticks. Every printed edge gets one whole stick. No floating pieces.`,
+    tips: project.buildStats
+      ? `About ${project.buildStats.joints} glue joints on this outline.`
+      : "Touch every joint once before you walk away.",
+    partsUsed: ["rail"],
+  });
+
+  steps.push({
+    step: s,
+    title: "Cure flat, then lift",
+    description: `Leave ${project.name} flat on the paper until the glue has set. Then peel it up carefully. Optional: Convert to 3D on the bench for a dual-face version.`,
+    tips: "Guidance only — not stamped engineering. Fun first.",
+    partsUsed: ["*"],
+  });
+
+  return steps;
 }
 
 function uniquePanelSteps(project: YardProject): AssemblyStep[] {
