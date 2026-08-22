@@ -183,9 +183,10 @@ export function flatSvgString(
   } = {},
 ): { svg: string; map: FlatMap; paper: { wIn: number; hIn: number; label: string } } {
   const map = buildFlatMap(project, opts.plane);
-  const paper = PAPER[opts.paper ?? "letter"];
+  const paper = PAPER[opts.paper ?? (project.flat?.paper as PaperSize) ?? "letter"];
   const margin = opts.marginIn ?? 0.6;
   const showLabels = opts.showLabels !== false;
+  const paperCraft = Boolean(project.flat && !project.flat.lifted);
 
   const drawW = paper.wIn - margin * 2;
   const drawH = paper.hIn - margin * 2 - (showLabels ? 0.85 : 0.15);
@@ -220,11 +221,18 @@ export function flatSvgString(
   const barY = paper.hIn - margin * 0.55;
   const scaleBar = `\n  <line x1="${barX}" y1="${barY}" x2="${barX + barPx}" y2="${barY}" stroke="#1a1612" stroke-width="0.04" stroke-linecap="square"/>\n  <line x1="${barX}" y1="${barY - 0.08}" x2="${barX}" y2="${barY + 0.08}" stroke="#1a1612" stroke-width="0.03"/>\n  <line x1="${barX + barPx}" y1="${barY - 0.08}" x2="${barX + barPx}" y2="${barY + 0.08}" stroke="#1a1612" stroke-width="0.03"/>\n  <text x="${barX + barPx / 2}" y="${barY - 0.12}" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.14" fill="#6b6358">${barReal}\"</text>`;
 
+  const subLine = paperCraft
+    ? `${map.pieceCount} whole sticks · glue ends · do not cut · ${escapeXml(map.materialName)}`
+    : `${escapeXml(map.planeLabel)} · ${map.pieceCount} pieces · ${escapeXml(map.materialName)} · ${map.widthIn.toFixed(1)}\" × ${map.heightIn.toFixed(1)}\"`;
+
   const header = showLabels
-    ? `\n  <text x="${margin}" y="${margin + 0.22}" font-family="ui-serif, Georgia, serif" font-size="0.28" fill="#1a1612">${escapeXml(project.name)}</text>\n  <text x="${margin}" y="${margin + 0.48}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.14" fill="#6b6358">${escapeXml(map.planeLabel)} · ${map.pieceCount} pieces · ${escapeXml(map.materialName)} · ${map.widthIn.toFixed(1)}\" × ${map.heightIn.toFixed(1)}\"</text>\n  <text x="${paper.wIn - margin}" y="${margin + 0.22}" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.12" fill="#6b6358">${paper.label}</text>`
+    ? `\n  <text x="${margin}" y="${margin + 0.22}" font-family="ui-serif, Georgia, serif" font-size="0.28" fill="#1a1612">${escapeXml(project.name)}</text>\n  <text x="${margin}" y="${margin + 0.48}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.14" fill="#6b6358">${subLine}</text>\n  <text x="${paper.wIn - margin}" y="${margin + 0.22}" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.12" fill="#6b6358">${paper.label}</text>`
     : "";
 
-  const footer = `\n  <text x="${paper.wIn - margin}" y="${paper.hIn - margin * 0.35}" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.11" fill="#6b6358">Yard · 2D stock map · guidance only</text>`;
+  const footerNote = paperCraft
+    ? "Yard · paper craft map · lay full sticks on the lines · glue ends"
+    : "Yard · 2D stock map · guidance only";
+  const footer = `\n  <text x="${paper.wIn - margin}" y="${paper.hIn - margin * 0.35}" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.11" fill="#6b6358">${footerNote}</text>`;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${paper.wIn}in" height="${paper.hIn}in" viewBox="0 0 ${paper.wIn} ${paper.hIn}">\n  <rect width="100%" height="100%" fill="#f3eee4"/>\n  ${header}\n  ${lines}\n  ${scaleBar}\n  ${footer}\n</svg>`;
 
