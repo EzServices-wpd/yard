@@ -16,6 +16,7 @@ import type { BuildScale, CatalogItem, JoinMethod, StructureKind, YardInstance, 
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor } from "./promptHelpers";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
+import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 
 export function emptyProject(): YardProject {
   return {
@@ -59,6 +60,13 @@ export function generateFromPrompt(
     const pocket = parsePocket(prompt);
     if (pocket) return buildPocket(pocket, prompt);
     return buildClosetFromPrompt(prompt, size);
+  }
+
+  // Phase B: prompt-native 2D paper layouts (kids / printable)
+  const flatIntent = detectFlatPrompt(prompt);
+  if (flatIntent && !formOverride) {
+    const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
+    return buildFlatProject(prompt, item, flatIntent);
   }
 
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
