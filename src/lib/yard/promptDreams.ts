@@ -54,24 +54,24 @@ export const DREAMS = [
     id: "paper-house",
     label: "House on paper",
     prompt: "8x10 paper house of popsicle sticks",
-    blurb: "Classic stick house — floor, walls, roof, door. Print and glue.",
+    blurb: "Whole sticks on the lines. Print, glue ends, no cutting.",
   },
   {
     id: "paper-star",
     label: "Star on paper",
     prompt: "letter paper star of popsicle sticks",
-    blurb: "10 sticks, one sitting. Fastest practical 2D craft.",
+    blurb: "10 full sticks, one sitting. Glue the points — never cut.",
   },
   {
     id: "paper-car",
     label: "Car on paper",
     prompt: "8x10 paper car of popsicle sticks",
-    blurb: "Side-view stick car — whole sticks, no micro pieces.",
+    blurb: "Side-view car from whole sticks. Glue ends where lines meet.",
   },
   {
     id: "paper-frame",
     label: "Picture frame",
     prompt: "8x10 paper picture frame of popsicle sticks",
-    blurb: "Outer + inner border. Glue, hang, done.",
+    blurb: "Outer + inner border, full sticks only. Glue, hang, done.",
   },
 ] as const;
