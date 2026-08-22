@@ -201,7 +201,10 @@ export function ExportDialog({
             <section className="mt-8">
               <h2 className="font-display text-xl text-ink">Buy</h2>
               <p className="mt-1 text-xs text-ink-muted">
-                {plan.totals.pieces} pieces · {usd(plan.totals.estCostUsd)} estimated
+                {plan.partsKind === "whole"
+                  ? `${plan.totals.pieces} full pieces · glue · do not cut`
+                  : `${plan.totals.pieces} pieces`}{" "}
+                · {usd(plan.totals.estCostUsd)} estimated
               </p>
               <ul className="mt-3 space-y-2 text-sm">
                 {plan.bom.map((b, i) => (

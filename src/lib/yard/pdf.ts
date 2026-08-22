@@ -142,7 +142,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   if (plan.bom.length) {
     heading("Buy");
     muted(
-      `${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`,
+      plan.partsKind === "whole"
+        ? `${plan.totals.pieces} full pieces · glue · do not cut · ${usd(plan.totals.estCostUsd)} estimated`
+        : `${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`,
     );
     for (const b of plan.bom) {
       ensure(16);
