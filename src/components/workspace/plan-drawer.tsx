@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
 import { planToMarkdown } from "@/lib/yard/report";
+import { downloadFlatSvg, bestFlatPlane, type FlatPlane, type PaperSize } from "@/lib/yard/flat";
 import { usd } from "@/lib/utils";
 import { tagNote } from "@/lib/yard/listings";
 import { IsoPlate } from "@/components/workspace/iso-plate";
@@ -58,7 +59,20 @@ function PlanBody({
   const [scene, setScene] = useState(project.render?.scene ?? "");
   const [renderBusy, setRenderBusy] = useState(false);
   const [renderErr, setRenderErr] = useState<string | null>(null);
+  const [flatPlane, setFlatPlane] = useState<FlatPlane | "auto">("auto");
+  const [flatPaper, setFlatPaper] = useState<PaperSize>("letter");
+  const [flatNote, setFlatNote] = useState<string | null>(null);
   const render = plan.render ?? project.render;
+
+  function printFlatMap() {
+    try {
+      const plane = flatPlane === "auto" ? bestFlatPlane(project) : flatPlane;
+      const { paperLabel } = downloadFlatSvg(project, { plane, paper: flatPaper });
+      setFlatNote(`2D map downloaded (${paperLabel}, ${plane} view). Open the SVG and print — scale to fit page, no margins crop.`);
+    } catch (err) {
+      setFlatNote(err instanceof Error ? err.message : "Could not build the 2D map.");
+    }
+  }
 
   async function grokSteps() {
     useYard.setState({ grokBusy: true, grokError: null });
@@ -308,6 +322,49 @@ function PlanBody({
                 );
               })}
             </ol>
+          </section>
+
+          <section>
+            <h3 className="font-display text-lg text-fg">2D map</h3>
+            <p className="mt-1 text-xs text-muted">
+              Flat stock layout for print — parents, kids, and the bench. Same pieces as the 3D model, orthographic.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label className="text-xs text-faint">
+                Face
+                <select
+                  value={flatPlane}
+                  onChange={(e) => setFlatPlane(e.target.value as FlatPlane | "auto")}
+                  className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="front">Front</option>
+                  <option value="top">Top</option>
+                  <option value="side">Side</option>
+                </select>
+              </label>
+              <label className="text-xs text-faint">
+                Paper
+                <select
+                  value={flatPaper}
+                  onChange={(e) => setFlatPaper(e.target.value as PaperSize)}
+                  className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
+                >
+                  <option value="letter">Letter</option>
+                  <option value="letter-landscape">Letter landscape</option>
+                  <option value="8x10">8×10</option>
+                  <option value="a4">A4</option>
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={printFlatMap}
+              className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg"
+            >
+              Download 2D map (SVG)
+            </button>
+            {flatNote && <p className="mt-2 text-xs text-muted">{flatNote}</p>}
           </section>
 
           <section>
