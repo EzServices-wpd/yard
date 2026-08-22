@@ -115,7 +115,7 @@ export function WorkspaceCanvas() {
           useShadows={useShadows}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
-        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={6} maxDistance={480} target={[0, 14, 0]} />
+        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
       </Canvas>
@@ -150,26 +150,31 @@ function CameraRig({
   const { camera, controls } = useThree();
   useEffect(() => {
     if (locked) return;
-    const h = Math.max(project.overall.height, 12);
-    const fit = Math.max(h, project.overall.width, project.overall.depth, 12);
-    const dist = fit * 1.55;
+    const isFlat = !!project.flat && !project.flat.lifted;
+    const h = Math.max(project.overall.height, isFlat ? 6 : 12);
+    const fit = Math.max(h, project.overall.width, project.overall.depth, isFlat ? 8 : 12);
+    const dist = fit * (isFlat ? 1.35 : 1.55);
     const focus = focusOf(project, stepIds);
+    // Paper craft sits on the bench (y ~ paper height/2). Keep camera low.
+    const fy = isFlat ? Math.max(focus.y, h * 0.35) : focus.y;
     const presets: Record<typeof preset, [number, number, number]> = {
-      iso: [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [focus.x, focus.y, focus.z + dist * 1.28],
-      side: [focus.x + dist * 1.28, focus.y, focus.z],
-      top: [focus.x, focus.y + fit * 1.35, focus.z + 0.01],
+      iso: isFlat
+        ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
+        : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+      front: [focus.x, fy, focus.z + dist * (isFlat ? 1.05 : 1.28)],
+      side: [focus.x + dist * (isFlat ? 1.05 : 1.28), fy, focus.z],
+      top: [focus.x, fy + fit * (isFlat ? 1.15 : 1.35), focus.z + 0.01],
     };
     const [x, y, z] = presets[preset];
     camera.position.set(x, y, z);
-    const tgt = new THREE.Vector3(focus.x, focus.y, focus.z);
+    const tgt = new THREE.Vector3(focus.x, fy, focus.z);
     camera.lookAt(tgt);
     const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
     if (orbit?.target) {
       orbit.target.copy(tgt);
       orbit.update?.();
     }
-  }, [preset, project.id, project.overall, project.instances.length, stepIds.join("|"), camera, controls, locked]);
+  }, [preset, project.id, project.overall, project.instances.length, project.flat, stepIds.join("|"), camera, controls, locked]);
   return null;
 }
 
