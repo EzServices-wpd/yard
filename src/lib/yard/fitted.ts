@@ -46,14 +46,17 @@ export function looksLikeFitted(prompt: string) {
 }
 
 export function detectProgram(lower: string): FittedProgram {
-  if (/desk|workbench|work table/.test(lower)) return "desk";
-  if (/vanity|sink|bathroom/.test(lower)) return "vanity";
-  if (/bookcase|bookshelf|books/.test(lower)) return "bookcase";
+  if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
+  if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
+  if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
-  if (/media|tv|console/.test(lower)) return "media";
-  if (/bench|mudroom|window seat/.test(lower)) return "bench";
-  if (/closet|linen|towel|cabinet|storage|built-?in|alcove|shelf/.test(lower)) return "closet";
+  if (/\bmedia\b|\btv\b|console/.test(lower)) return "media";
+  if (/\bmudroom\b|window seat/.test(lower)) return "bench";
+  if (/\bcloset\b|linen|alcove|built-?in/.test(lower)) return "closet";
+  if (/towel|cabinet|storage|shelves|shelf/.test(lower)) return "closet";
+  if (/\bbench\b/.test(lower)) return "bench";
+  if (/bathroom/.test(lower)) return "vanity";
   return "storage";
 }
 
@@ -101,9 +104,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const program = detectProgram(lower);
   const trip = triple(t);
 
-  let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, trip.w ?? 36);
+  let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
-  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, trip.d ?? NaN);
+  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
+
+  if (!Number.isFinite(width)) {
+    const alcove = t.match(
+      /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:bathroom\s+)?(?:alcove|opening|niche|closet)\b/i,
+    );
+    if (alcove) width = parseFloat(alcove[1]);
+  }
+  if (!Number.isFinite(width)) width = trip.w ?? (program === "desk" ? 48 : 36);
 
   if (!Number.isFinite(height)) {
     if (program === "desk" || program === "bench") {
@@ -353,7 +364,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     name: spec.name,
     prompt,
     kind: "closet",
-    overall: { width: W + 4, height: H + 2, depth: D + 2 },
+    overall: { width: W, height: H, depth: D },
     instances: [],
     panels,
     primaryMaterialId: PLY,

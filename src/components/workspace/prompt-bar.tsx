@@ -101,7 +101,7 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
           placeholder={
             project.prompt
               ? "taller · from 2x4 · or type a new thing"
-              : "3 foot Eiffel Tower from popsicle sticks"
+              : "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep"
           }
           enterKeyHint="go"
           className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"

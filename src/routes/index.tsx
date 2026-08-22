@@ -8,6 +8,9 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+const HOUSE = DREAMS.filter((d) => d.group === "house");
+const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
+
 function LandingPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
@@ -43,13 +46,13 @@ function LandingPage() {
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-16">
         <section className="max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-            The material universe
+            Measure a space. Get a plan.
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             Type it. Buy the parts. Build it.
           </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-muted sm:text-lg">
-            Type a space and a use — a wonky bathroom pocket, a 60″ desk, a 3-ft Eiffel — and Yard returns real parts, a stick or cut list, and a plan you can shop.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
+            Type the opening — a 31.5″ linen closet, a wonky bathroom pocket, a 36×48 window — and Yard returns a cut list, hardware, and shop links. Crafts still work. Same engine.
           </p>
 
           <form
@@ -67,7 +70,7 @@ function LandingPage() {
                 id="dream"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="3 foot Eiffel Tower from popsicle sticks"
+                placeholder="linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep"
                 className="h-12 flex-1 rounded-lg border border-rule bg-paper px-4 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted focus:ring-2"
               />
               <button
@@ -80,40 +83,59 @@ function LandingPage() {
             </div>
           </form>
 
-          <ul className="mt-10 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {DREAMS.map((d) => (
-              <li key={d.id}>
-                <button
-                  type="button"
-                  onClick={() => go(d.prompt)}
-                  className="group flex h-full w-full flex-col rounded-xl border border-rule bg-surface/40 p-4 text-left transition hover:border-ink/30 hover:bg-surface"
-                >
-                  <span className="font-display text-base text-ink group-hover:underline">{d.label}</span>
-                  <span className="mt-1.5 text-xs leading-snug text-ink-muted">{d.blurb}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <ChipRow title="For the house" items={HOUSE} onGo={go} />
+          <ChipRow title="For the weekend" items={WEEKEND} onGo={go} />
         </section>
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
           <Feature
-            icon={<Box className="size-5" />}
-            title="Real stock"
-            body="Popsicle sticks, paper-towel cores, PVC, 2×4s. Nominal retail sizes — not fake geometry."
+            icon={<Ruler className="size-5" />}
+            title="The size you typed"
+            body="31.5 × 78 × 16 means 31.5 × 78 × 16. Geometry is deterministic. Grok writes the assembly voice — it does not invent a 36″ closet."
           />
           <Feature
-            icon={<Ruler className="size-5" />}
-            title="True scale"
-            body="A 3-ft Eiffel is three feet on the bench. Lattice densifies with the stock you pick."
+            icon={<Box className="size-5" />}
+            title="Cut list + hardware"
+            body="¾″ plywood, screws, shelf pins, a window unit. Nominal retail sizes — not fake geometry."
           />
           <Feature
             icon={<ShoppingBag className="size-5" />}
-            title="Shop links"
-            body="BOM with packs, prices, and deep links. Glue ends or cut list — whatever the build needs."
+            title="Shop, then build"
+            body="BOM with packs, prices, and deep links. Print the plan. Buy the parts. Crafts (Eiffel, arch, bridge) use the same bench."
           />
         </section>
       </main>
+    </div>
+  );
+}
+
+function ChipRow({
+  title,
+  items,
+  onGo,
+}: {
+  title: string;
+  items: typeof DREAMS[number][];
+  onGo: (text: string) => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-10">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">{title}</p>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {items.map((d) => (
+          <li key={d.id}>
+            <button
+              type="button"
+              onClick={() => onGo(d.prompt)}
+              className="group flex h-full w-full flex-col rounded-xl border border-rule bg-surface/40 p-4 text-left transition hover:border-ink/30 hover:bg-surface"
+            >
+              <span className="font-display text-base text-ink group-hover:underline">{d.label}</span>
+              <span className="mt-1.5 text-xs leading-snug text-ink-muted">{d.blurb}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
