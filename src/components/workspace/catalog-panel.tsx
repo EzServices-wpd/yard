@@ -16,7 +16,7 @@ export function CatalogPanel() {
   const commit = useYard((s) => s.commit);
   const items = useMemo(() => {
     const list = q.trim() ? searchCatalog(q, 40) : FORGE_CATALOG;
-    return list.filter((i) => !i.tags?.includes("binder"));
+    return list.filter((i) => !i.tags?.includes("binder") && i.id !== "wire-frame" && !i.tags?.includes("wire"));
   }, [q]);
   const active = getCatalogItem(project.primaryMaterialId);
   const joins = (active?.preferredJoins ?? []) as JoinMethod[];
