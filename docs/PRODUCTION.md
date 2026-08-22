@@ -45,9 +45,9 @@ Weekend (same engine, not the hero):
 
 ## Sequence
 
-1. **This ship** — house-first landing, paper chips off, closet size lock (bathroom ≠ vanity, envelope = unit).
-2. **Plan voice** — fitted steps name parts, counts, joins. A stranger can cut from the PDF.
-3. **Walk the 10** — generate, plan, PDF, screenshot. Fail = fix, not a new tower.
+1. **Shipped** — house-first landing, paper chips off, closet size lock (bathroom ≠ vanity, envelope = unit).
+2. **Shipped** — fitted plan voice: confirm → cut (counts × sizes) → stand carcase → dividers/drawers/shelves/doors → shim or level. Unique to the panels on the bench.
+3. **Walk the 10** — `scripts/walk-launch.ts` 10/10 green locally. Re-walk on production after deploy.
 4. **Ask Ezra** before Amazon tag, domain, or accounts.
 
 ## Do not

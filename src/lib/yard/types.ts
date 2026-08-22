@@ -189,6 +189,7 @@ export type FittedUnit = {
   kneeW?: number;
   upperStart?: number;
   shelfCount?: number;
+  cubbies?: number;
   drawersPerBank?: number;
   doors?: boolean;
   mirror?: boolean;

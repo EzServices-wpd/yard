@@ -132,23 +132,250 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
 }
 
 function uniquePanelSteps(project: YardProject): AssemblyStep[] {
-  const p = project.panels[0];
-  const item = getCatalogItem(p?.materialId ?? project.primaryMaterialId);
+  const panels = project.panels;
+  if (!panels.length) {
+    return [
+      {
+        step: 1,
+        title: "Empty bench",
+        description: "Generate a thing first. These steps are written from the pieces on the bench.",
+      },
+    ];
+  }
+
+  const item = getCatalogItem(panels[0]?.materialId ?? project.primaryMaterialId);
   const tool = cutHow(item);
-  return [
-    {
-      step: 1,
-      title: `Cut the ${item?.name ?? "sheet"}`,
-      description: `${tool.how} Target about ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}".`,
-      tips: tool.tip,
-    },
-    {
-      step: 2,
-      title: "Square and label",
-      description: "Mark the good face. Square the corners.",
-      tips: "A sheet that is out of square fights every joint after this.",
-    },
-  ];
+  const of = (t: Panel["type"]) => panels.filter((p) => p.type === t);
+  const names = (list: Panel[]) => list.map((p) => p.name);
+  const cutLine = (p: Panel) =>
+    `${p.name} — ${round(p.size.width)} × ${round(p.size.height)} × ${round(p.size.depth)}"`;
+
+  const uprights = of("upright");
+  const backs = of("back");
+  const bottoms = of("bottom");
+  const dividers = of("divider");
+  const shelves = of("shelf");
+  const drawers = of("drawer");
+  const doors = of("door");
+  const kicks = of("kick");
+  const mirrors = of("mirror");
+  const rails = of("rail");
+
+  const u = project.fitted?.unit;
+  const pocket = project.pocket;
+  const opening = project.opening;
+  const program = project.fitted?.program ?? (pocket ? "vanity" : "closet");
+  const W = u?.width ?? opening?.width ?? project.overall.width;
+  const H = u?.height ?? opening?.height ?? project.overall.height;
+  const D = u?.depth ?? opening?.depth ?? project.overall.depth;
+  const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
+  const slide = drawers.length ? slideInches(D) : 0;
+
+  const sheetCuts = groupSheetCuts(panels);
+  const steps: AssemblyStep[] = [];
+  let n = 1;
+
+  if (pocket) {
+    steps.push({
+      step: n++,
+      title: "Confirm the pocket — do not cut yet",
+      description: `Back ${pocket.walls.backWidth}" · left depth ${pocket.walls.leftDepth}" @ ${pocket.walls.leftAngleDeg.toFixed(1)}° · right depth ${pocket.walls.rightDepth}" @ ${pocket.walls.rightAngleDeg.toFixed(1)}° · ${pocket.walls.height}" high. Unit ${pocket.unit.width}" W × ${pocket.unit.depth}" D × ${pocket.unit.height}" H, centered, front parallel to the back wall. Measure three heights and both flares.`,
+      tips: "The walls are the trapezoid. The unit is a rectangle. Do not rack the box to follow the flare.",
+      partsUsed: ["*"],
+    });
+  } else {
+    steps.push({
+      step: n++,
+      title: alcove ? "Confirm the opening — do not cut yet" : "Confirm the footprint — do not cut yet",
+      description: `${project.name}. Unit ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${
+        alcove
+          ? `Fitted to a ${opening?.width}" × ${opening?.height}" × ${opening?.depth}" ${opening?.kind}. Measure width, height, and depth in three places. Cut to the smallest width.`
+          : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
+      } ${panels.length} parts on this list.`,
+      tips: "If a number on this plan disagrees with the cut list, trust the cut list. Geometry is from the bench, not from the prompt’s adjectives.",
+      partsUsed: ["*"],
+    });
+  }
+
+  steps.push({
+    step: n++,
+    title: `Cut the ${item?.name ?? "¾\" plywood"}`,
+    description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+    tips: tool.tip,
+    partsUsed: names(panels),
+  });
+
+  if (uprights.length && (backs.length || bottoms.length || of("top").length)) {
+    const uDesc = uprights.map(cutLine).join("; ");
+    const box = [...backs, ...bottoms, ...of("top")].map(cutLine).join("; ");
+    steps.push({
+      step: n++,
+      title: "Stand the carcase",
+      description: `Lay the two uprights on edge. ${uDesc}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${box || "Back, top, and bottom as labeled."} Predrill near the ends so the ply does not blow out.`,
+      tips: "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors.",
+      partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+    });
+  }
+
+  if (dividers.length) {
+    const knee = dividers.filter((p) => /knee/i.test(p.name));
+    const cubby = dividers.filter((p) => /cubby/i.test(p.name));
+    const rest = dividers.filter((p) => !/knee|cubby/i.test(p.name));
+    if (knee.length) {
+      steps.push({
+        step: n++,
+        title: "Set the knee dividers",
+        description: `${knee.map(cutLine).join("; ")}. They land ${u?.kneeW ?? pocket?.unit.kneeW ?? 22}" apart, centered. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the chair space.`,
+        tips: "Hang drawer slides on these faces before the last divider goes in — you can still get a screwdriver in.",
+        partsUsed: names(knee),
+      });
+    }
+    if (cubby.length) {
+      steps.push({
+        step: n++,
+        title: "Set cubby dividers",
+        description: `${cubby.map(cutLine).join("; ")}. Space them evenly. Screw through the top, bottom, and back into each divider.`,
+        partsUsed: names(cubby),
+      });
+    }
+    if (rest.length) {
+      steps.push({
+        step: n++,
+        title: "Set remaining dividers",
+        description: `${rest.map(cutLine).join("; ")}. Plumb each one. Screw through the back and the nearest shelf or top.`,
+        partsUsed: names(rest),
+      });
+    }
+  }
+
+  const counters = of("counter");
+  if (counters.length) {
+    steps.push({
+      step: n++,
+      title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
+      description: `${counters.map(cutLine).join("; ")}. Glue and screw down into the uprights and the knee dividers. Front edge flush. Iron-on banding on the front if people will see plywood edge.`,
+      partsUsed: names(counters),
+    });
+  }
+
+  if (kicks.length) {
+    steps.push({
+      step: n++,
+      title: "Toekick on the banks only",
+      description: `${kicks.map(cutLine).join("; ")}. ${
+        pocket || u?.kneeW
+          ? "Kick the drawer banks. Leave the knee open to the floor."
+          : "Kick the front, 3½\" up, ½\" in from the face."
+      }`,
+      partsUsed: names(kicks),
+    });
+  }
+
+  if (drawers.length) {
+    steps.push({
+      step: n++,
+      title: `Hang ${drawers.length} drawers on ${slide}" slides`,
+      description: `${drawers.map(cutLine).join("; ")}. One pair of ${slide}" side-mount slides per drawer. Build the boxes, hang the slides on the dividers first, then set the boxes. Cup pull centered on each front.`,
+      tips: `Confirm the slide against the ${round(D)}" carcase before you buy. A 16" box does not take an 18" slide.`,
+      partsUsed: names(drawers),
+    });
+  }
+
+  if (shelves.length) {
+    steps.push({
+      step: n++,
+      title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"}`,
+      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm / 1¼" apart. Four pins per shelf. Do not glue the shelves.`,
+      tips: "A pegboard jig or a 32mm system jig beats measuring every hole twice.",
+      partsUsed: names(shelves),
+    });
+  }
+
+  if (rails.length) {
+    steps.push({
+      step: n++,
+      title: "Hanging rod",
+      description: `${rails.map(cutLine).join("; ")}. Seat in closet-rod sockets on the uprights, about 12" down from the top of the hanging bay.`,
+      partsUsed: names(rails),
+    });
+  }
+
+  if (doors.length) {
+    steps.push({
+      step: n++,
+      title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"}`,
+      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door, 3–4" from top and bottom. Overlay the carcase. Soft-close if you bought them. Adjust the screws until the gap is even.`,
+      partsUsed: names(doors),
+    });
+  }
+
+  if (mirrors.length) {
+    steps.push({
+      step: n++,
+      title: "Hang the mirror",
+      description: `${mirrors.map(cutLine).join("; ")}. Over the knee, between the counter and the uppers. French cleat or mirror clips into studs — not into the plywood back alone.`,
+      partsUsed: names(mirrors),
+    });
+  }
+
+  steps.push({
+    step: n++,
+    title: alcove ? "Shim, then lag into studs" : "Level it",
+    description: alcove
+      ? pocket
+        ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (R ${pocket.rightClear.toFixed(1)}" / L ${pocket.leftClear.toFixed(1)}"). Scribe, don't force. The rectangle stays a rectangle.`
+        : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side. Lag through the uprights into studs (or masonry anchors). Do not rack the box to match a wonky wall.`
+      : "Level the unit. The back is already on it so it cannot rack. If it sits on a floor that is out, shim the feet — do not twist the carcase.",
+    tips: "Guidance only — confirm plumbing, studs, and the real opening before you cut. Not stamped engineering.",
+    partsUsed: names(uprights.concat(backs)),
+  });
+
+  return steps;
+}
+
+function groupSheetCuts(panels: Panel[]): string[] {
+  const map = new Map<string, { qty: number; label: string; w: number; h: number; d: number }>();
+  for (const p of panels) {
+    const w = Math.round(p.size.width * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    const family =
+      p.type === "upright"
+        ? "upright"
+        : p.type === "shelf"
+          ? "shelf"
+          : p.type === "divider"
+            ? "divider"
+            : p.type === "top" || p.type === "counter"
+              ? p.type === "counter"
+                ? "counter"
+                : "top"
+              : p.type === "bottom"
+                ? "bottom"
+                : p.type === "back"
+                  ? "back"
+                  : p.type === "door"
+                    ? "door"
+                    : p.type === "drawer"
+                      ? "drawer box"
+                      : p.type === "kick"
+                        ? "toekick"
+                        : p.type === "mirror"
+                          ? "mirror"
+                          : p.type === "rail"
+                            ? "rod"
+                            : p.name;
+    const key = `${family}|${w}|${h}|${d}`;
+    const g = map.get(key);
+    if (g) g.qty += 1;
+    else map.set(key, { qty: 1, label: family, w, h, d });
+  }
+  return [...map.values()].map((g) => {
+    const a = round(g.w);
+    const b = round(g.h);
+    const c = round(g.d);
+    return `${g.qty} ${g.label}${g.qty === 1 ? "" : "s"} ${a} × ${b} × ${c}".`;
+  });
 }
 
 function cutSummary(instances: YardInstance[], itemName: string) {

@@ -152,6 +152,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       : undefined;
   const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
   const shelfCount = pick(t, /(\d+)\s*shel(?:f|ves)/i, program === "bookcase" ? 5 : program === "closet" || program === "pantry" || program === "wardrobe" ? 4 : 0);
+  const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
   const doors =
     /door/.test(lower) ||
@@ -181,6 +182,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     kneeW,
     upperStart,
     shelfCount: shelfCount || undefined,
+    cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
     drawersPerBank: drawers ? 3 : undefined,
     doors,
     mirror,
@@ -331,6 +333,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (u.rod && spec.program === "wardrobe") {
     const rodY = Math.min(H - 8, Math.max(60, H * 0.72));
     panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
+  }
+
+  const cubbyN = u.cubbies ?? 0;
+  if (cubbyN >= 2 && !hasKnee) {
+    for (let i = 1; i < cubbyN; i++) {
+      const x = x0 + (W * i) / cubbyN - P / 2;
+      panels.push(panel("divider", `Cubby divider ${i}`, x, 0, 0, P, H, D));
+    }
   }
 
   if (u.doors) {
