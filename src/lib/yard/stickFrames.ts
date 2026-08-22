@@ -1,9 +1,15 @@
 /**
- * Stick-native 2D frames — each edge is one practical craft stick.
+ * Stick-native 2D frames — each edge is one full craft stick (no cutting).
+ *
+ * Design rule for paper craft:
+ *   • Buy a pack of sticks
+ *   • Lay whole sticks on the printed lines
+ *   • Glue ends where they meet
+ *   • Never cut to length
  */
 
 import { createId } from "@/lib/utils";
-import { toPrimitive, isWholeStock } from "./geometry";
+import { toPrimitive } from "./geometry";
 import type { CatalogItem, Vec3, YardInstance } from "./types";
 
 type Pt = { x: number; y: number };
@@ -167,9 +173,11 @@ export function stickEdges(subject: string): StickEdge[] {
 }
 
 /**
- * One whole stick per edge. Paper craft is "glue sticks on the lines" —
- * never densify into micro-segments. Scale the silhouette so the longest
- * edge fits in one stock length (with a small visual allowance).
+ * One FULL stick per edge. Never cut for paper craft.
+ *
+ * Scale the silhouette so the longest geometric edge ≈ stock length.
+ * Each stick is centered on its line and spans the full pack length along
+ * that direction — ends meet (and slightly overlap) at joints for glue.
  */
 export function segmentInstances(
   edges: StickEdge[],
@@ -191,8 +199,8 @@ export function segmentInstances(
     if (ln > maxNorm) maxNorm = ln;
   }
   const fullMaxIn = maxNorm * Math.max(drawW, drawH);
-  // Fit longest edge into one stock stick (allow 8% overshoot for visual presence)
-  const fit = fullMaxIn > stockLen * 1.08 ? (stockLen * 1.02) / fullMaxIn : 1;
+  // Fit longest edge into one stock stick (tiny allowance for visual presence)
+  const fit = fullMaxIn > stockLen * 1.02 ? stockLen / fullMaxIn : 1;
   const scaleW = drawW * fit;
   const scaleH = drawH * fit;
   // Center the scaled drawing on the paper
@@ -201,28 +209,49 @@ export function segmentInstances(
   const toIn = (p: Pt): Pt => ({ x: ox + p.x * scaleW, y: oy + p.y * scaleH });
 
   const instances: YardInstance[] = [];
-  const minLen = Math.max(0.4, faceW * 1.4);
+  // Drop only micro-edges that are decorative noise (under ~1.2× face width)
+  const minGeom = Math.max(0.35, faceW * 1.2);
 
   for (const edge of edges) {
     const a = toIn(edge.a);
     const b = toIn(edge.b);
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (len < minLen) continue;
+    const geomLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (geomLen < minGeom) continue;
 
-    // Always one whole stick — never split for paper craft
-    const from: Vec3 = { x: a.x - paperW / 2, y: a.y, z: 0 };
-    const to: Vec3 = { x: b.x - paperW / 2, y: b.y, z: 0 };
-    const mid: Vec3 = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: 0 };
+    // Direction of the printed line
+    const dx = (b.x - a.x) / geomLen;
+    const dy = (b.y - a.y) / geomLen;
+
+    // Geometric midpoint on the paper
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+
+    // FULL stick centered on the line — never cut
+    const half = stockLen / 2;
+    const from: Vec3 = {
+      x: mx - dx * half - paperW / 2,
+      y: my - dy * half,
+      z: 0,
+    };
+    const to: Vec3 = {
+      x: mx + dx * half - paperW / 2,
+      y: my + dy * half,
+      z: 0,
+    };
+    const mid: Vec3 = {
+      x: (from.x + to.x) / 2,
+      y: (from.y + to.y) / 2,
+      z: 0,
+    };
     const ang = Math.atan2(to.y - from.y, to.x - from.x);
-    const nearWhole = isWholeStock(item) && len >= stockLen * 0.82;
 
     instances.push({
       id: createId("f"),
       catalogId: item.id,
       position: mid,
       rotation: { x: 0, y: 0, z: ang },
-      // Whole pack stick when close; otherwise a single cut to edge length
-      cutLength: nearWhole ? undefined : Math.min(len, stockLen),
+      // Whole pack stick — no cutLength means full retail length
+      cutLength: undefined,
       role: "rail",
       join: item.preferredJoins?.[0] || "glue",
       from,
