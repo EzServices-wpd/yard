@@ -11,7 +11,7 @@ import { withHome } from "./assembly";
 import { analyzePieces } from "./connect";
 import { stickEdges, segmentInstances } from "./stickFrames";
 import type { FlatPlane, PaperSize } from "./flat";
-import type { CatalogItem, StructureKind, YardProject } from "./types";
+import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 const PAPER_IN: Record<PaperSize, { w: number; h: number }> = {
   letter: { w: 8.5, h: 11 },
