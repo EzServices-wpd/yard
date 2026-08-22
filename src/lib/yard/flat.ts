@@ -80,7 +80,7 @@ function thickOf(inst: YardInstance): number {
   const item = getCatalogItem(inst.catalogId);
   if (!item) return 0.15;
   const prim = toPrimitive(item, inst.cutLength);
-  return Math.max(0.08, prim.thickness || prim.width || 0.15);
+  return Math.max(0.08, prim.height || prim.width || 0.15);
 }
 
 function spanOnPlane(inst: YardInstance, plane: FlatPlane): number {
@@ -235,7 +235,7 @@ export function flatSvgString(
 }
 
 function escapeXml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """);
 }
 
 /** Trigger a browser download of the 2D map SVG. */
