@@ -1,6 +1,12 @@
 /**
  * Form-factor aware helpers for Yard materials.
- * Used by freehand placement, prompt generation, and packing.
+ * Used by freehand placement, prompt generation, packing, and canvas mesh kind.
+ *
+ * True-to-form rule (global):
+ * - stick with clear flat aspect  → flat bar + rounded ends (popsicle, craft stick)
+ * - stick nearly square / pin     → thin cylinder (toothpick, pin)
+ * - dowel / tube / pipe           → cylinder (hollow when innerDiameter present)
+ * - board / sheet / block         → rectangular prism (sawn faces stay sharp)
  */
 
 import type { CatalogItem, FormFactor } from "./types";
@@ -15,21 +21,37 @@ export interface PrimitiveDims {
   innerRadius?: number;
 }
 
+/** Cross-section kind for canvas InstancedMesh routing. */
+export type MeshKind = "flatBar" | "box" | "cylinder" | "hollow";
+
 /**
  * Tiny floor so a toothpick does not vanish. Aspect ratio stays true —
- * a popsicle stick stays flat, 3/4" PVC stays 1.05" OD.
+ * a popsicle stick stays flat, 3/4" PVC stays 1.05" OD. Never force a
+ * square cross-section on a flat stick: scale both faces by the same factor
+ * when the thinner face would vanish.
  */
 export function visualPrimitive(item: CatalogItem, cutLength?: number, overallSpan = 36): PrimitiveDims {
   const p = toPrimitive(item, cutLength);
   const min = Math.max(0.05, Math.min(overallSpan * 0.0016, 0.12));
+
+  // Near-square stick (toothpick) → true pin cylinder.
+  if (isPinStick(item) && p.radius == null) {
+    const dia = Math.max((p.width + p.height) / 2, min);
+    const r = dia / 2;
+    return { length: p.length, width: dia, height: dia, radius: r };
+  }
+
   if (p.radius != null) {
     const r = Math.max(p.radius, min / 2);
     return { ...p, radius: r, innerRadius: p.innerRadius, width: r * 2, height: r * 2 };
   }
+  const thin = Math.min(p.width, p.height);
+  if (thin >= min) return p;
+  const scale = min / thin;
   return {
     ...p,
-    width: Math.max(p.width, min),
-    height: Math.max(p.height, min),
+    width: p.width * scale,
+    height: p.height * scale,
   };
 }
 
@@ -77,6 +99,40 @@ export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDim
         height: d.height ?? d.thickness ?? d.diameter ?? 1,
       };
   }
+}
+
+/**
+ * Face aspect (width / thickness). Popsicle ~4.7, jumbo ~9, toothpick ~1.
+ * Flat bars get rounded ends; near-square sticks render as thin cylinders.
+ */
+export function faceAspect(item: CatalogItem): number {
+  const d = item.dims;
+  const w = d.width ?? d.diameter ?? 0.5;
+  const t = d.thickness ?? d.height ?? d.diameter ?? 0.1;
+  return w / Math.max(t, 1e-4);
+}
+
+/** True craft stick: clearly flat rectangular bar (popsicle, jumbo, mini). */
+export function isFlatBar(item: CatalogItem): boolean {
+  if (item.formFactor !== "stick") return false;
+  return faceAspect(item) >= 2.2;
+}
+
+/**
+ * Near-round pin stock catalogued as stick (toothpick). More true as a thin cylinder
+ * than a square box.
+ */
+export function isPinStick(item: CatalogItem): boolean {
+  if (item.formFactor !== "stick") return false;
+  return faceAspect(item) < 2.2;
+}
+
+/** Global mesh routing used by the canvas cloud. */
+export function meshKind(item: CatalogItem): MeshKind {
+  if (isHollow(item.formFactor)) return "hollow";
+  if (isCylindrical(item.formFactor) || isPinStick(item)) return "cylinder";
+  if (isFlatBar(item)) return "flatBar";
+  return "box";
 }
 
 /** How many whole units needed for a target length (with optional kerf/waste) */
