@@ -66,6 +66,7 @@ Weekend (same engine, not the hero):
 
 - **Shipped ~11:45pm EDT** — Attention to detail: pin holes only on uprights when the unit has adjustable shelves (no holes on fixed carcases / desks without shelves). True 32mm pitch (1.26"), 5mm dia, 1¼" back from front edge. Walk 10/10 green; linen still Closet 31.5 × 78 × 16.
 - **~12:15am EDT (this fire)** — Restored canvas.tsx + stick-cloud.tsx + function/promptHelpers/steps + package.json after placeholder wipe from earlier overnight commits. Re-applied pin-hole gate for real: `hasAdjustableShelves` from panel types (shelf present), PinHoles at 1.26" / 5mm / 1¼" back. Walk **10/10 green**; linen still Closet 31.5 × 78 × 16.
+- **~1:15am EDT** — Full content push of the five stubbed files (canvas, stick-cloud, steps, function, promptHelpers) that had remained PLACEHOLDER/see-local on origin. Pin holes gated on `hasAdjustableShelves` (shelf panels present); true 32mm pitch 1.26", ~5mm dia, 1¼" back. Typecheck clean; walk-launch **10/10 green**; linen still Closet 31.5 × 78 × 16. Attention-to-detail track.
 
 ## Do not
 
