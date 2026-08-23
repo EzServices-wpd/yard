@@ -269,12 +269,14 @@ export function PanelMesh({
   if (isDoor && open) {
     const hingeX = isLeft ? panel.position.x : panel.position.x + w;
     const hingeZ = panel.position.z + d / 2;
-    const swing = ((isLeft ? 1 : -1) * 72 * Math.PI) / 180;
+    // Overlay doors open into the room (+Z). Three.js +Y rotation sends +X toward -Z,
+    // so a left-hand leaf (offset +X) takes a negative angle.
+    const swing = ((isLeft ? -1 : 1) * 72 * Math.PI) / 180;
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
     meshPos = [isLeft ? w / 2 : -w / 2, 0, 0];
   } else if (isDrawer && open) {
-    const pull = Math.min(d * 0.55, 8);
+    const pull = Math.max(8, Math.min(d * 0.75, 16));
     groupPos = [cx * explode, cy, (cz + pull) * explode];
   }
 
