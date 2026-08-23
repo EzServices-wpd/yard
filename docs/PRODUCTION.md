@@ -5,7 +5,7 @@ Locked with Ezra. Overnight refiner **paused**. No new form classes until the fo
 ## Decisions
 
 | # | Call |
-|---|---|
+|---|------|
 | Audience | Both. Homepage hero = **house** (measure a space). Weekend crafts stay, second row. |
 | Done in 2 weeks | A stranger can finish a real build from a Yard PDF. |
 | Primary path | Closet / fitted. Craft secondary, not forgotten. |
@@ -68,3 +68,7 @@ Weekend (same engine, not the hero):
 - Restart the hourly refiner
 - Push empty / PLACEHOLDER files
 - Invent a size the prompt did not give
+
+## Overnight push (22–23 Aug 2026)
+
+- **Shipped ~11:40pm EDT** — Type honesty + instructions floor: formFactor/JoinMethod/StructureKind literals match the types (no dead `zip`/`lumber`/`chair`/`table` comparisons); isSingleStockCraft no longer compares against narrowed pipe; carcase step now states ~N of #8 × 1¼″ screws from upright×box joint count. `tsc --noEmit` clean. `scripts/walk-launch.ts` **10/10 green**. Linen still Closet 31.5 × 78 × 16.
