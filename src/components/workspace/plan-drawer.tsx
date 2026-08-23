@@ -322,7 +322,7 @@ function PlanBody({
                         on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"
                       }`}
                     >
-                      <IsoPlate project={project} step={s} className="h-24 w-28 shrink-0 border border-rule sm:h-28 sm:w-36" />
+                      <IsoPlate project={project} step={s} className="h-32 w-32 shrink-0 border border-rule sm:h-36 sm:w-40" />
                       <span className="min-w-0">
                         <span className="block font-medium text-fg">
                           <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}

@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import { isoMarks, isoViewBox } from "./iso";
+import { isoCaption, isoDims, isoFaces, isoMarks, isoViewBox } from "./iso";
 import { stepInstanceIds } from "./assembly";
 import type { AssemblyStep, BuildPlan, YardProject } from "./types";
 
@@ -29,20 +29,47 @@ function drawStepPlate(
   const ids = stepInstanceIds(project, step);
   const box = isoViewBox(project, ids);
   const marks = isoMarks(project, ids);
-  if (!marks.length || box.w <= 0 || box.h <= 0) return;
+  const dims = isoDims(project, ids);
+  const faces = isoFaces(project, ids);
+  const caption = isoCaption(project, ids, step);
+  if ((!marks.length && !faces.length) || box.w <= 0 || box.h <= 0) return;
   const pad = 10;
-  const s = Math.min((w - pad * 2) / box.w, (h - pad * 2) / box.h);
+  const captionH = caption ? 14 : 0;
+  const s = Math.min((w - pad * 2) / box.w, (h - pad * 2 - captionH) / box.h);
   const ox = x + (w - box.w * s) / 2;
-  const oy = y + (h - box.h * s) / 2;
+  const oy = y + (h - captionH - box.h * s) / 2;
+  const mapX = (v: number) => ox + (v - box.minX) * s;
+  const mapY = (v: number) => oy + (v - box.minY) * s;
+  for (const f of faces) {
+    const pts = f.points.split(" ").map((p) => {
+      const [px, py] = p.split(",").map(Number);
+      return { x: mapX(px), y: mapY(py) };
+    });
+    if (pts.length < 3) continue;
+    doc.setFillColor(f.hot ? 217 : 236, f.hot ? 203 : 230, f.hot ? 176 : 218);
+    doc.triangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y, "F");
+    if (pts[3]) {
+      doc.triangle(pts[0].x, pts[0].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y, "F");
+    }
+  }
   for (const m of marks) {
     doc.setDrawColor(...(m.hot || !ids.length ? INK : RULE));
     doc.setLineWidth(m.hot || !ids.length ? 1.15 : 0.4);
-    doc.line(
-      ox + (m.x1 - box.minX) * s,
-      oy + (m.y1 - box.minY) * s,
-      ox + (m.x2 - box.minX) * s,
-      oy + (m.y2 - box.minY) * s,
-    );
+    doc.line(mapX(m.x1), mapY(m.y1), mapX(m.x2), mapY(m.y2));
+  }
+  doc.setDrawColor(...MUTED);
+  doc.setTextColor(...INK);
+  doc.setFont("times", "normal");
+  doc.setFontSize(8);
+  doc.setLineWidth(0.4);
+  for (const d of dims) {
+    doc.line(mapX(d.x1), mapY(d.y1), mapX(d.x2), mapY(d.y2));
+    doc.text(d.label, mapX(d.lx), mapY(d.ly) - 2, { align: "center" });
+  }
+  if (caption) {
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(8);
+    doc.text(caption, x + w / 2, y + h - 5, { align: "center" });
   }
 }
 
