@@ -57,6 +57,7 @@ Weekend (same engine, not the hero):
 - **Shipped 9:06** — Closet shop truth: edge banding on cut edges, two concealed hinges + bar pull per door, cup pull on drawers, 32mm-style pin holes on uprights. Hardware rides the door when it swings.
 - **Shipped 9:26** — Stock shape: popsicle rounded on the 3/8″ face (not the thin edge); PVC/straw are hollow at catalog ID; ¾″ doors are 0.75″ not 0.35″; sheet cuts honor cutLength.
 - **Shipped 9:46** — Shop-drawing plates: filled boards, W×H×D callout, dimension lines on the iso. Same drawing on the PDF.
+- **Shipped 10:06** — Carcase join marks: #8 screw heads and glue lines at upright/shelf/back butts. Hidden when exploded.
 
 ## Do not
 

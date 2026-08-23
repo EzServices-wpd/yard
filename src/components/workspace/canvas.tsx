@@ -11,7 +11,7 @@ import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
-import { StickCloud, PanelMesh } from "@/components/workspace/stick-cloud";
+import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
@@ -333,6 +333,9 @@ function BenchScene({
               facesOpen={facesOpen}
             />
           ))}
+      {!pending && project.panels.length > 0 && (
+        <CarcaseJoins panels={project.panels} explode={explodeScale} />
+      )}
       {workMode === "free" && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
