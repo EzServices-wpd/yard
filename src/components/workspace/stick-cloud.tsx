@@ -243,7 +243,7 @@ export function PanelMesh({
   const cz = panel.position.z + panel.size.depth / 2;
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
   const opacity = hasStep && !inStep ? 0.2 : glass ? 0.42 : 1;
-  const color = selected || inStep ? "#fff6e6" : item?.color ?? "#c4a06a";
+  const color = selected || inStep ? "#fff6e6" : look.map ? "#f3e6cc" : item?.color ?? "#c4a06a";
   const { width: w, height: h, depth: d } = panel.size;
 
   const isDoor = panel.type === "door";

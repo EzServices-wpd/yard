@@ -22,7 +22,7 @@ function WorkshopEnv() {
     const pmrem = new THREE.PMREMGenerator(gl);
     const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.82;
     return () => {
       scene.environment = null;
       envTex.dispose();
@@ -30,6 +30,52 @@ function WorkshopEnv() {
     };
   }, [gl, scene]);
   return null;
+}
+
+function StudioLights({
+  project,
+  useShadows,
+}: {
+  project: YardProject;
+  useShadows: boolean;
+}) {
+  const W = Math.max(project.overall.width, 16);
+  const H = Math.max(project.overall.height, 16);
+  const D = Math.max(project.overall.depth, 12);
+  const span = Math.max(W, H, D);
+  const fitted = project.panels.length > 0;
+  const camSpan = Math.max(span * 0.75, 36);
+  return (
+    <>
+      <ambientLight intensity={fitted ? 0.2 : 0.3} />
+      <hemisphereLight args={["#ffe8c8", "#2a2218", fitted ? 0.4 : 0.52]} />
+      <directionalLight
+        position={[span * 0.55, Math.max(H * 1.25, 48), span * 0.42]}
+        intensity={fitted ? 1.7 : 1.42}
+        color="#fff3e0"
+        castShadow={useShadows}
+        shadow-mapSize={fitted ? [2048, 2048] : [1024, 1024]}
+        shadow-bias={-0.00018}
+        shadow-normalBias={0.035}
+        shadow-camera-near={1}
+        shadow-camera-far={span * 5}
+        shadow-camera-left={-camSpan}
+        shadow-camera-right={camSpan}
+        shadow-camera-top={camSpan}
+        shadow-camera-bottom={-camSpan}
+      />
+      <directionalLight position={[-span * 0.65, H * 0.42, -span * 0.35]} intensity={fitted ? 0.4 : 0.3} color="#a8c0dc" />
+      <directionalLight position={[span * 0.12, H * 0.85, -span * 0.75]} intensity={0.24} color="#ffd7a8" />
+      <ContactShadows
+        position={[0, 0.015, 0]}
+        opacity={fitted ? 0.56 : 0.42}
+        scale={Math.max(W, D) * 2.6 + 18}
+        blur={fitted ? 1.55 : 2.3}
+        far={Math.max(H * 0.35, 20)}
+        color="#0c0a08"
+      />
+    </>
+  );
 }
 
 export function WorkspaceCanvas() {
@@ -71,7 +117,7 @@ export function WorkspaceCanvas() {
           preserveDrawingBuffer: true,
           powerPreference: "default",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
+          toneMappingExposure: 1.12,
         }}
         frameloop="always"
         dpr={[1, 1.5]}
@@ -86,14 +132,10 @@ export function WorkspaceCanvas() {
       >
         <color attach="background" args={["#1a1612"]} />
         <WorkshopEnv />
-        <ambientLight intensity={0.28} />
-        <hemisphereLight args={["#ffe8c8", "#1a1612", 0.55]} />
-        <directionalLight position={[36, 64, 28]} intensity={1.35} color="#fff4e4" castShadow={useShadows} shadow-mapSize={[1024, 1024]} />
-        <directionalLight position={[-28, 22, -18]} intensity={0.28} color="#9bb4d4" />
-        <ContactShadows position={[0, 0.02, 0]} opacity={0.48} scale={90} blur={2.2} far={50} color="#0c0a08" />
+        <StudioLights project={project} useShadows={useShadows} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
           <planeGeometry args={[240, 240]} />
-          <meshStandardMaterial color="#241e18" roughness={0.92} metalness={0} />
+          <meshStandardMaterial color="#2a241c" roughness={0.9} metalness={0} />
         </mesh>
         <BenchScene
           project={project}
@@ -154,19 +196,26 @@ function CameraRig({
     if (locked) return;
     const isFlat = !!project.flat && !project.flat.lifted;
     const eiffel = project.kind === "eiffel";
+    const fitted = project.panels.length > 0 && !eiffel && !isFlat;
     const h = Math.max(project.overall.height, isFlat ? 6 : 12);
     const fit = Math.max(h, project.overall.width, project.overall.depth, isFlat ? 8 : 12);
-    const dist = eiffel ? Math.max(h * 0.62, project.overall.width * 1.15) * 2.05 : fit * (isFlat ? 1.35 : 1.55);
+    const dist = eiffel
+      ? Math.max(h * 0.62, project.overall.width * 1.15) * 2.05
+      : fitted
+        ? fit * 1.42
+        : fit * (isFlat ? 1.35 : 1.55);
     const focus = focusOf(project, stepIds);
-    const fy = isFlat ? Math.max(focus.y, h * 0.35) : eiffel ? h * 0.28 : focus.y;
+    const fy = isFlat ? Math.max(focus.y, h * 0.35) : eiffel ? h * 0.28 : fitted ? h * 0.42 : focus.y;
     const presets: Record<typeof preset, [number, number, number]> = {
       iso: isFlat
         ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
         : eiffel
           ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]
-          : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [focus.x, eiffel ? h * 0.22 : fy, focus.z + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28)],
-      side: [focus.x + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28), eiffel ? h * 0.22 : fy, focus.z],
+          : fitted
+            ? [focus.x + dist * 0.82, h * 0.38, focus.z + dist * 0.92]
+            : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+      front: [focus.x, eiffel ? h * 0.22 : fitted ? h * 0.45 : fy, focus.z + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28)],
+      side: [focus.x + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28), eiffel ? h * 0.22 : fitted ? h * 0.45 : fy, focus.z],
       top: [focus.x, fy + fit * (isFlat ? 1.15 : 1.35), focus.z + 0.01],
     };
     const [x, y, z] = presets[preset];

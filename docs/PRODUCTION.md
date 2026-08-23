@@ -13,7 +13,7 @@ Locked with Ezra. Overnight refiner **paused**. No new form classes until the fo
 | Money | Shop links untagged. Ask before public launch. |
 | Accounts | Later. Local save is enough. |
 | Launch sizes | Invented (below). |
-| Automation | Paused. |
+| Automation | Evening push 8:30–11pm EDT 22 Aug — 20 min slices. Overnight refiner stays paused. |
 
 ## Freeze walk (must stay green)
 
@@ -49,6 +49,10 @@ Weekend (same engine, not the hero):
 2. **Shipped** — fitted plan voice: confirm → cut (counts × sizes) → stand carcase → dividers/drawers/shelves/doors → shim or level. Unique to the panels on the bench.
 3. **Walk the 10** — `scripts/walk-launch.ts` 10/10 green locally. Re-walk on production after deploy.
 4. **Ask Ezra** before Amazon tag, domain, or accounts.
+
+## Evening push (22 Aug 2026)
+
+- **Shipped 8:30** — studio lighting: shadow camera actually covers a closet, ply face veneer (not stick grain), fitted 3/4 eye-level, contact shadow sized to the unit. Eiffel still skips per-stick shadows.
 
 ## Do not
 

@@ -54,24 +54,25 @@ function ensure(): Maps | null {
   });
   wood.repeat.set(2, 8);
 
+  // Face veneer — rotary birch, not end-grain stripes (those belong on the edge).
   const ply = paint(256, (ctx, n) => {
-    ctx.fillStyle = "#d7b07a";
+    ctx.fillStyle = "#e6d0a4";
     ctx.fillRect(0, 0, n, n);
-    for (let i = 0; i < 28; i++) {
-      const y = (i / 28) * n;
-      ctx.fillStyle = i % 2 === 0 ? "rgba(90,62,32,0.18)" : "rgba(232,210,160,0.2)";
-      ctx.fillRect(0, y, n, n / 28 + 0.5);
-    }
-    for (let i = 0; i < 18; i++) {
-      ctx.strokeStyle = "rgba(70,48,24,0.12)";
+    for (let i = 0; i < 38; i++) {
+      const y = (i / 38) * n + Math.sin(i * 0.85) * 1.6;
+      ctx.strokeStyle = i % 7 === 0 ? "rgba(120,82,42,0.2)" : "rgba(168,124,70,0.1)";
+      ctx.lineWidth = i % 9 === 0 ? 1.6 : 0.9;
       ctx.beginPath();
-      const y = (i / 18) * n;
       ctx.moveTo(0, y);
-      for (let x = 0; x <= n; x += 10) ctx.lineTo(x, y + Math.sin(x * 0.05 + i) * 2);
+      for (let x = 0; x <= n; x += 6) ctx.lineTo(x, y + Math.sin(x * 0.032 + i * 0.4) * 2.4);
       ctx.stroke();
     }
+    for (let k = 0; k < 30; k++) {
+      ctx.fillStyle = "rgba(90,62,32,0.05)";
+      ctx.fillRect((k * 23) % n, (k * 17) % n, 18, 2);
+    }
   });
-  ply.repeat.set(3, 3);
+  ply.repeat.set(2.4, 2.4);
 
   const card = paint(256, (ctx, n) => {
     ctx.fillStyle = "#c4a06a";
@@ -104,10 +105,13 @@ export function stockLook(item?: CatalogItem | null, fallbackRough = 0.68, fallb
     return { map: m?.card ?? null, roughness: 0.9, metalness: 0.0, env: 0.35 };
   }
   if (cat === "sheet_goods") {
-    return { map: m?.wood ?? null, roughness: 0.72, metalness: 0.02, env: 0.55 };
+    return { map: m?.ply ?? null, roughness: 0.62, metalness: 0.03, env: 0.72 };
+  }
+  if (cat === "lumber") {
+    return { map: m?.wood ?? null, roughness: item.roughness ?? 0.74, metalness: 0.02, env: 0.58 };
   }
   if (cat === "pvc_plumbing" || cat === "plastic") {
-    return { map: null, roughness: item.roughness ?? 0.28, metalness: item.metalness ?? 0.12, env: 1.15 };
+    return { map: null, roughness: item.roughness ?? 0.22, metalness: item.metalness ?? 0.08, env: 1.25 };
   }
   if (cat === "metal") {
     return { map: null, roughness: 0.35, metalness: 0.7, env: 1.2 };
