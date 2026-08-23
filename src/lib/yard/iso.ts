@@ -10,6 +10,37 @@ function iso(x: number, y: number, z: number) {
   return { x: (x - z) * c, y: -y + (x + z) * s };
 }
 
+function aabbEdges(
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+  minZ: number,
+  maxZ: number,
+  hot: boolean,
+) {
+  const c: [number, number, number][] = [
+    [minX, minY, minZ],
+    [maxX, minY, minZ],
+    [maxX, minY, maxZ],
+    [minX, minY, maxZ],
+    [minX, maxY, minZ],
+    [maxX, maxY, minZ],
+    [maxX, maxY, maxZ],
+    [minX, maxY, maxZ],
+  ];
+  const segs: [number, number][] = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7],
+  ];
+  return segs.map(([i, j]) => {
+    const a = iso(c[i][0], c[i][1], c[i][2]);
+    const b = iso(c[j][0], c[j][1], c[j][2]);
+    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot };
+  });
+}
+
 export function isoViewBox(project: YardProject, highlightIds?: string[]) {
   const pts: { x: number; y: number }[] = [];
   const hot = new Set(highlightIds ?? []);
@@ -53,23 +84,40 @@ export function isoViewBox(project: YardProject, highlightIds?: string[]) {
 export function isoMarks(project: YardProject, highlightIds: string[]) {
   const marks: { x1: number; y1: number; x2: number; y2: number; hot: boolean }[] = [];
   const hot = new Set(highlightIds);
-  for (const inst of project.instances) {
-    const item = getCatalogItem(inst.catalogId);
-    const prim = item ? toPrimitive(item, inst.cutLength) : null;
-    const p = homeOf(inst);
-    const a3 = inst.from ?? {
-      x: p.x - Math.sin(inst.rotation.y) * ((prim?.length ?? 4) / 2),
-      y: p.y,
-      z: p.z - Math.cos(inst.rotation.y) * ((prim?.length ?? 4) / 2),
-    };
-    const b3 = inst.to ?? {
-      x: p.x + Math.sin(inst.rotation.y) * ((prim?.length ?? 4) / 2),
-      y: p.y,
-      z: p.z + Math.cos(inst.rotation.y) * ((prim?.length ?? 4) / 2),
-    };
-    const a = iso(a3.x, a3.y, a3.z);
-    const b = iso(b3.x, b3.y, b3.z);
-    marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: hot.has(inst.id) });
+  const dense = project.instances.length > 80;
+  const preferHot = hot.size > 0 && hot.size < project.instances.length * 0.8;
+  const overview = dense && !preferHot;
+
+  if (dense) {
+    const W = project.overall.width;
+    const H = project.overall.height;
+    const D = project.overall.depth;
+    marks.push(...aabbEdges(-W / 2, W / 2, 0, H, -D / 2, D / 2, overview));
+  }
+
+  if (!overview) {
+    const stride = preferHot && hot.size > 140 ? Math.ceil(hot.size / 90) : 1;
+    let n = 0;
+    for (const inst of project.instances) {
+      if (preferHot && !hot.has(inst.id)) continue;
+      if (preferHot && stride > 1 && n++ % stride !== 0) continue;
+      const item = getCatalogItem(inst.catalogId);
+      const prim = item ? toPrimitive(item, inst.cutLength) : null;
+      const p = homeOf(inst);
+      const a3 = inst.from ?? {
+        x: p.x - Math.sin(inst.rotation.y) * ((prim?.length ?? 4) / 2),
+        y: p.y,
+        z: p.z - Math.cos(inst.rotation.y) * ((prim?.length ?? 4) / 2),
+      };
+      const b3 = inst.to ?? {
+        x: p.x + Math.sin(inst.rotation.y) * ((prim?.length ?? 4) / 2),
+        y: p.y,
+        z: p.z + Math.cos(inst.rotation.y) * ((prim?.length ?? 4) / 2),
+      };
+      const a = iso(a3.x, a3.y, a3.z);
+      const b = iso(b3.x, b3.y, b3.z);
+      marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: hot.has(inst.id) || !hot.size });
+    }
   }
   for (const panel of project.panels) {
     const x = panel.position.x;
@@ -113,7 +161,7 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
 }
 
 function escXml(s: string) {
-  return s.replace(/&/g, "&").replace(/</g, "<");
+  return s.split("&").join("&").split("<").join("<");
 }
 
 function inchLabel(n: number) {
@@ -199,7 +247,15 @@ export function isoCaption(project: YardProject, highlightIds: string[], step?: 
   }
   const b = hotBounds(project, highlightIds);
   if (b) {
-    return `${inchLabel(b.maxX - b.minX)} W × ${inchLabel(b.maxY - b.minY)} H × ${inchLabel(b.maxZ - b.minZ)} D`;
+    const size = `${inchLabel(b.maxX - b.minX)} W × ${inchLabel(b.maxY - b.minY)} H × ${inchLabel(b.maxZ - b.minZ)} D`;
+    if (!panels.length && project.instances.length) {
+      const n =
+        !highlightIds.length || highlightIds.length >= project.instances.length * 0.8
+          ? project.instances.length
+          : highlightIds.length;
+      return `${n} sticks · ${size}`;
+    }
+    return size;
   }
   return step?.title ?? "";
 }

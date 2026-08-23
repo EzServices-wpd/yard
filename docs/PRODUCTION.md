@@ -58,6 +58,7 @@ Weekend (same engine, not the hero):
 - **Shipped 9:26** — Stock shape: popsicle rounded on the 3/8″ face (not the thin edge); PVC/straw are hollow at catalog ID; ¾″ doors are 0.75″ not 0.35″; sheet cuts honor cutLength.
 - **Shipped 9:46** — Shop-drawing plates: filled boards, W×H×D callout, dimension lines on the iso. Same drawing on the PDF.
 - **Shipped 10:06** — Carcase join marks: #8 screw heads and glue lines at upright/shelf/back butts. Hidden when exploded.
+- **Shipped 10:26** — Eiffel plates: ghost envelope + the lit band, not 790 overlapping sticks. Caption is stick count × band size.
 
 ## Do not
 
