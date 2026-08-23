@@ -153,18 +153,20 @@ function CameraRig({
   useEffect(() => {
     if (locked) return;
     const isFlat = !!project.flat && !project.flat.lifted;
+    const eiffel = project.kind === "eiffel";
     const h = Math.max(project.overall.height, isFlat ? 6 : 12);
     const fit = Math.max(h, project.overall.width, project.overall.depth, isFlat ? 8 : 12);
-    const dist = fit * (isFlat ? 1.35 : 1.55);
+    const dist = eiffel ? Math.max(h * 0.62, project.overall.width * 1.15) * 2.05 : fit * (isFlat ? 1.35 : 1.55);
     const focus = focusOf(project, stepIds);
-    // Paper craft sits on the bench (y ~ paper height/2). Keep camera low.
-    const fy = isFlat ? Math.max(focus.y, h * 0.35) : focus.y;
+    const fy = isFlat ? Math.max(focus.y, h * 0.35) : eiffel ? h * 0.28 : focus.y;
     const presets: Record<typeof preset, [number, number, number]> = {
       iso: isFlat
         ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
-        : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [focus.x, fy, focus.z + dist * (isFlat ? 1.05 : 1.28)],
-      side: [focus.x + dist * (isFlat ? 1.05 : 1.28), fy, focus.z],
+        : eiffel
+          ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]
+          : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+      front: [focus.x, eiffel ? h * 0.22 : fy, focus.z + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28)],
+      side: [focus.x + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28), eiffel ? h * 0.22 : fy, focus.z],
       top: [focus.x, fy + fit * (isFlat ? 1.15 : 1.35), focus.z + 0.01],
     };
     const [x, y, z] = presets[preset];

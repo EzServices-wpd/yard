@@ -56,9 +56,11 @@ function storyTs(H: number, bay: number, force: number[]): number[] {
   return uniqueTs(ts);
 }
 
-/** Published arch height. Do not boost for “tabletop readability” — 31.5 means 31.5. */
-function archRise(publishedRatio: number, H: number): number {
-  return publishedRatio * H;
+/** Craft-scale character: arches fill the lower third so the silhouette reads as Eiffel, not a mast. */
+function characterRise(publishedRatio: number, H: number): number {
+  const base = publishedRatio * H;
+  const target = Math.max(base * 1.55, H * 0.22);
+  return Math.min(target, H * 0.3);
 }
 
 export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGraph {
@@ -174,7 +176,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
 
   if (eiffel) {
     const publishedRatio = EIFFEL_REAL.archM / EIFFEL_REAL.heightM;
-    const archY = archRise(publishedRatio, H);
+    const archY = characterRise(publishedRatio, H);
     const springY = Math.min(H * t1 * 0.08, archY * 0.16);
     const segs = fat
       ? 6
@@ -377,7 +379,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
 
   const assumptions = [
     `Scale: ${H.toFixed(0)}" overall. Profile from published stations (125·72·41·17·11·4 m faces on a 324 m tower).`,
-    `Four piers to the first platform, then a single shaft. Arches are the published 40 m of 324 m — under the first deck, not a cartoon lower-third.`,
+    `Four piers to the first platform, then a single shaft. Base arches fill the lower third — that is the signature, not decoration.`,
     `${ts.length - 1} stories · bay ≈ ${dens.bay.toFixed(1)}" (driven by ${opts.item.name} @ ${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
     `Primary join: ${joinPrimary}. Warren lacing is the face above the first deck — a bare frame will rack.`,
     `Slenderness H/B ≈ ${slenderness.toFixed(1)}. Arches + first deck take the splay.`,

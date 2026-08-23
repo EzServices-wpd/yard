@@ -207,6 +207,14 @@ export function toProject(
   }
   const stockW = toPrimitive(item).width || 1;
   const pad = Math.max(0.5, stockW * 0.55);
+  let width = Math.max(8, (Math.max(...xs, 0) - Math.min(...xs, 0) || 0) + pad * 2);
+  let height = Math.max(8, (Math.max(...ys, 0) - Math.min(...ys, 0) || 0) + pad);
+  let depth = Math.max(8, (Math.max(...zs, 0) - Math.min(...zs, 0) || 0) + pad * 2);
+  if (kind === "eiffel") {
+    const publishedBase = height * (125 / 324);
+    width = Math.max(width, publishedBase);
+    depth = Math.max(depth, publishedBase);
+  }
   const names: Partial<Record<StructureKind, string>> = {
     eiffel: "Eiffel frame",
     arch: "Garden arch",
@@ -222,9 +230,9 @@ export function toProject(
     prompt,
     kind,
     overall: {
-      width: Math.max(8, (Math.max(...xs, 0) - Math.min(...xs, 0) || 0) + pad * 2),
-      height: Math.max(8, (Math.max(...ys, 0) - Math.min(...ys, 0) || 0) + pad),
-      depth: Math.max(8, (Math.max(...zs, 0) - Math.min(...zs, 0) || 0) + pad * 2),
+      width,
+      height,
+      depth,
     },
     instances: withHome(list),
     panels: [],

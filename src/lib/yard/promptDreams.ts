@@ -35,9 +35,9 @@ export const DREAMS = [
   {
     id: "eiffel",
     group: "weekend" as const,
-    label: "3-ft Eiffel lattice",
+    label: "3-ft popsicle Eiffel",
     prompt: "3 foot Eiffel Tower from popsicle sticks",
-    blurb: "Published 324 m profile, scaled to 36″. Four arches under the first deck — not a desk toy.",
+    blurb: "Four arches, four piers, one shaft. Weekend lattice at the size you typed.",
   },
   {
     id: "arch",

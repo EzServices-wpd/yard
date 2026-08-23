@@ -24,7 +24,7 @@ import { getCatalogItem } from "@/lib/yard/catalog";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
-import { hasHistoricProfile, isFamousKind } from "@/lib/yard/ghost";
+import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { isLockedForm, recipeFromAnatomy } from "@/lib/yard/form";
 import { loadIssues } from "@/lib/yard/function";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
@@ -195,8 +195,6 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const canWalk = Boolean(project.traverse);
   const stickModel = project.instances.some((i) => i.role === "skin") || project.instances.length > 40;
   const makerJob = project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
-  const famousForm = isFamousKind(project.kind);
-  const scaleChoices = (famousForm ? (["weekend", "full"] as const) : (["tabletop", "weekend", "full"] as const));
   const showLoadBtn = Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
   const hasFaces = project.panels.some((p) => p.type === "door" || p.type === "drawer");
@@ -424,7 +422,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             )}
             {makerJob && (
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              {scaleChoices.map((s) => (
+              {(["tabletop", "weekend", "full"] as const).map((s) => (
                 <GhostBtn
                   key={s}
                   on={buildScale === s}

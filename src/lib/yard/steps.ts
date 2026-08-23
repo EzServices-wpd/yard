@@ -424,7 +424,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: whole ? "Read this Eiffel before you glue" : "Read this Eiffel before you cut",
-    description: `${cutSummary(project.instances, item?.name ?? "stock")} About ${project.overall.height.toFixed(0)}" tall — the size you typed, published 324 m profile. Four arches sit under the first deck. The bench is the same tower as the plates.`,
+    description: `${cutSummary(project.instances, item?.name ?? "stock")} About ${project.overall.height.toFixed(0)}" tall. Four arches, four piers, then one shaft — same tower as the bench. Each step lights only that part.`,
     tips: "If a plate looks like a scribble, you are on the face lattice. Go back to the arches — those are the holes you walk through.",
     partsUsed: ["*"],
   });

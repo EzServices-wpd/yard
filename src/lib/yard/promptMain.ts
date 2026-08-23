@@ -107,7 +107,7 @@ export function generateFromPrompt(
       depth: Math.max(6, Math.min(span * 0.14, 14)),
     };
   }
-  if (scale === "tabletop" && !/eiffel|taj mahal|pyramid|parthenon/.test(lowerP)) {
+  if (scale === "tabletop") {
     const cap = 12;
     const m = Math.max(box.height, box.width, box.depth, 1);
     if (m > cap) {
@@ -135,7 +135,7 @@ export function generateFromPrompt(
       grain,
     });
     const finished = finishGraph(raw, item, kind, !!opts.includeSpine, grain);
-    const topo = pruneTopology(finished.graph, kind, { aggressiveness: 0.18 });
+    const topo = pruneTopology(finished.graph, kind, { aggressiveness: kind === "eiffel" ? 0.06 : 0.18 });
     const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
     return finalize(
       attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod, undefined, whole)),
@@ -158,7 +158,7 @@ export function generateFromPrompt(
 
 function finalize(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }, scale: BuildScale): YardProject {
   const notes = [...project.notes];
-  if (scale === "tabletop" && !/eiffel|taj mahal|pyramid|parthenon/.test(project.prompt.toLowerCase())) {
+  if (scale === "tabletop") {
     notes.unshift(`Tabletop scale — about ${box.height.toFixed(0)}" high. Weekend / Full on the bench grow it.`);
   } else if (scale === "weekend") {
     notes.unshift("Weekend density — coarser than Full, still the same form.");
