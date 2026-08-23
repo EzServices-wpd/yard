@@ -35,6 +35,7 @@ function WorkshopEnv() {
 export function WorkspaceCanvas() {
   const project = useYard((s) => s.project);
   const explode = useYard((s) => s.explode);
+  const facesOpen = useYard((s) => s.facesOpen);
   const selectedId = useYard((s) => s.selectedId);
   const camera = useYard((s) => s.camera);
   const select = useYard((s) => s.select);
@@ -97,6 +98,7 @@ export function WorkspaceCanvas() {
         <BenchScene
           project={project}
           explode={explode}
+          facesOpen={facesOpen}
           selectedId={selectedId}
           onSelect={select}
           onPlace={placePiece}
@@ -208,10 +210,11 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
 }
 
 function BenchScene({
-  project, explode, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows,
+  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows,
 }: {
   project: YardProject;
   explode: boolean;
+  facesOpen: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onPlace: (catalogId: string, pos: Vec3) => void;
@@ -276,6 +279,7 @@ function BenchScene({
               hasStep={stepIds.length > 0}
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
+              facesOpen={facesOpen}
             />
           ))}
       {workMode === "free" && (

@@ -225,7 +225,7 @@ function CloudKind({
 }
 
 export function PanelMesh({
-  panel, explode, selected, inStep, hasStep, onSelect, useShadows,
+  panel, explode, selected, inStep, hasStep, onSelect, useShadows, facesOpen = true,
 }: {
   panel: Panel;
   explode: number;
@@ -234,6 +234,7 @@ export function PanelMesh({
   hasStep: boolean;
   onSelect: () => void;
   useShadows?: boolean;
+  facesOpen?: boolean;
 }) {
   const item = getCatalogItem(panel.materialId);
   const look = stockLook(item);
@@ -244,9 +245,32 @@ export function PanelMesh({
   const opacity = hasStep && !inStep ? 0.2 : glass ? 0.42 : 1;
   const color = selected || inStep ? "#fff6e6" : item?.color ?? "#c4a06a";
   const { width: w, height: h, depth: d } = panel.size;
+
+  const isDoor = panel.type === "door";
+  const isDrawer = panel.type === "drawer";
+  const open = facesOpen && (isDoor || isDrawer);
+  const isLeft = /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
+
+  let groupPos: [number, number, number] = [cx * explode, cy, cz * explode];
+  let groupRot: [number, number, number] = [0, 0, 0];
+  let meshPos: [number, number, number] = [0, 0, 0];
+
+  if (isDoor && open) {
+    const hingeX = isLeft ? panel.position.x : panel.position.x + w;
+    const hingeZ = panel.position.z + d / 2;
+    const swing = (isLeft ? 1 : -1) * (72 * Math.PI) / 180;
+    groupPos = [hingeX * explode, cy, hingeZ * explode];
+    groupRot = [0, swing, 0];
+    meshPos = [isLeft ? w / 2 : -w / 2, 0, 0];
+  } else if (isDrawer && open) {
+    const pull = Math.min(d * 0.55, 8);
+    groupPos = [cx * explode, cy, (cz + pull) * explode];
+  }
+
   return (
-    <group position={[cx * explode, cy, cz * explode]}>
+    <group position={groupPos} rotation={groupRot}>
       <mesh
+        position={meshPos}
         frustumCulled={false}
         castShadow={!!useShadows}
         receiveShadow={!!useShadows}

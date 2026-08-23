@@ -18,10 +18,18 @@ export function stepInstanceIds(project: YardProject, step: AssemblyStep): strin
   if (!keys.length) return [];
   const ids: string[] = [];
   for (const inst of project.instances) {
+    if (keys.includes(inst.id.toLowerCase())) {
+      ids.push(inst.id);
+      continue;
+    }
     const role = (inst.role ?? "member").toLowerCase();
     if (keys.some((k) => k === role || k.includes(role) || role.includes(k))) ids.push(inst.id);
   }
   for (const p of project.panels) {
+    if (keys.includes(p.id.toLowerCase())) {
+      ids.push(p.id);
+      continue;
+    }
     const name = p.name.toLowerCase();
     const type = p.type.toLowerCase();
     if (keys.some((k) => name.includes(k) || k.includes(name) || k.includes(type) || type.includes(k))) {

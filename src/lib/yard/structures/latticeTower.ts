@@ -211,14 +211,14 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
 
       if (platL > 0) {
         const crown = archIds[Math.floor(archIds.length / 2)];
-        addEdge(createId(`strut-${f}`), crown, mains[platL][f], "support", true);
-        addEdge(createId(`strut2-${f}`), crown, mains[platL][(f + 1) % 4], "support", true);
+        addEdge(createId(`strut-${f}`), crown, mains[platL][f], "brace", true);
+        addEdge(createId(`strut2-${f}`), crown, mains[platL][(f + 1) % 4], "brace", true);
         if (!fat) {
           const fractions = [0.12, 0.22, 0.32, 0.42, 0.5, 0.58, 0.68, 0.78, 0.88];
           for (const frac of fractions) {
             const node = archIds[Math.floor(archIds.length * frac)];
             const target = frac <= 0.5 ? mains[platL][f] : mains[platL][(f + 1) % 4];
-            addEdge(createId(`strut-w-${f}-${frac}`), node, target, "support", false, joinBrace);
+            addEdge(createId(`strut-w-${f}-${frac}`), node, target, "brace", false, joinBrace);
           }
         }
       }

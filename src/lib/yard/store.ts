@@ -21,6 +21,7 @@ type YardState = {
   plan: BuildPlan | null;
   selectedId: string | null;
   explode: boolean;
+  facesOpen: boolean;
   camera: "iso" | "front" | "side" | "top";
   showDims: boolean;
   showHull: boolean;
@@ -54,6 +55,7 @@ type YardState = {
   redo: () => void;
   select: (id: string | null) => void;
   setExplode: (v: boolean) => void;
+  setFacesOpen: (v: boolean) => void;
   setCamera: (v: YardState["camera"]) => void;
   setShowHull: (v: boolean) => void;
   setShowHistoric: (v: boolean) => void;
@@ -94,6 +96,7 @@ export const useYard = create<YardState>((set, get) => ({
   plan: null,
   selectedId: null,
   explode: false,
+  facesOpen: true,
   camera: "iso",
   showDims: true,
   showHull: false,
@@ -169,6 +172,7 @@ export const useYard = create<YardState>((set, get) => ({
       lockedIds: [],
       dragPos: null,
       selectedId: null,
+      facesOpen: true,
       measure: next.pocket
         ? {
             width: String(next.pocket.unit.width),
@@ -258,6 +262,7 @@ export const useYard = create<YardState>((set, get) => ({
   },
   select: (id) => set({ selectedId: id }),
   setExplode: (v) => set({ explode: v }),
+  setFacesOpen: (v) => set({ facesOpen: v }),
   setCamera: (v) => set({ camera: v }),
   setShowHull: (v) => set({ showHull: v }),
   setShowHistoric: (v) => set({ showHistoric: v }),

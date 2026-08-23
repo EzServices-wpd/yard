@@ -390,7 +390,124 @@ function cutSummary(instances: YardInstance[], itemName: string) {
   }. ${full} stay full stock.`;
 }
 
+function midY(i: YardInstance) {
+  if (i.from && i.to) return (i.from.y + i.to.y) / 2;
+  return i.position.y;
+}
+
+/** Eiffel steps follow the picture: four arches, four piers, decks, shaft, then the face lattice. */
+function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
+  const item = getCatalogItem(project.primaryMaterialId);
+  const { hold } = joinHold(item);
+  const H = Math.max(project.overall.height, 1);
+  const y1 = (57 / 324) * H;
+  const yLantern = 0.9 * H;
+  const whole = !!item && isWholeStock(item) && project.instances.every((i) => !i.cutLength);
+
+  const band = (key: string) =>
+    project.instances.filter((i) => {
+      const y = midY(i);
+      const role = i.role ?? "member";
+      if (key === "arch") return role === "support";
+      if (key === "foot") return role === "base" || y < H * 0.025;
+      if (key === "lantern") return y >= yLantern || role === "tip";
+      if (key === "web") return role === "brace";
+      if (key === "deck1") return (role === "rail" || role === "ring") && Math.abs(y - y1) < H * 0.06;
+      if (key === "pier") return role === "leg" && y < y1;
+      if (key === "shaft") return role === "leg" && y >= y1 && y < yLantern;
+      if (key === "belts") return (role === "rail" || role === "ring") && y > y1 + H * 0.06 && y < yLantern;
+      return false;
+    });
+
+  const steps: AssemblyStep[] = [];
+  let n = 1;
+  steps.push({
+    step: n++,
+    title: whole ? "Read this Eiffel before you glue" : "Read this Eiffel before you cut",
+    description: `${cutSummary(project.instances, item?.name ?? "stock")} About ${project.overall.height.toFixed(0)}" tall. The bench is the same tower as the plates — each step lights only that part. Four open arches, four piers, then one shaft.`,
+    tips: "If a plate looks like a scribble, you are on the face lattice. Go back to the arches — those are the holes you walk through.",
+    partsUsed: ["*"],
+  });
+  steps.push({
+    step: n++,
+    title: "Tape the four feet on the bench",
+    description: `Tape a square ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}". One pad per corner. Check both diagonals.`,
+    tips: "A parallelogram base makes a leaning tower. You cannot fix that later.",
+    partsUsed: band("foot").map((i) => i.id),
+  });
+  if (whole) {
+    steps.push({
+      step: n++,
+      title: `Do not cut — ${item?.name ?? "stock"}s stay whole`,
+      description: `${project.instances.length} full pieces from the pack. Glue them as they come. The bench is a gluing diagram.`,
+      partsUsed: ["*"],
+    });
+  }
+
+  const scenes: { key: string; title: string; why: string }[] = [
+    {
+      key: "arch",
+      title: "Glue the four arches",
+      why: "One chain of sticks per face. These are the four holes you walk through — the thing that makes it Eiffel, not a pyramid. Same four curves as the render.",
+    },
+    {
+      key: "pier",
+      title: "Stand the four piers",
+      why: "Each corner is a thick lattice column up to the first deck. Glue only as high as you can still reach the joints.",
+    },
+    {
+      key: "deck1",
+      title: "Close the first deck",
+      why: "This ring is the break in the picture: four legs become one shaft. Square it before you go up.",
+    },
+    {
+      key: "shaft",
+      title: "Raise the shaft",
+      why: "Above the first deck the four piers have merged. Keep going up the center.",
+    },
+    {
+      key: "belts",
+      title: "Add the belts",
+      why: "Horizontal rings at the upper platforms. They read as floors in the render.",
+    },
+    {
+      key: "web",
+      title: "Lace the face lattice",
+      why: "This is the texture in the render — Warren faces and pier web. Ends meet at nodes. Glue last so you can still reach the arches.",
+    },
+    {
+      key: "lantern",
+      title: "Cap the lantern",
+      why: "The little cage at the tip. Do not pick the tower up by this until the glue has set.",
+    },
+  ];
+
+  for (const scene of scenes) {
+    const listI = band(scene.key);
+    if (!listI.length) continue;
+    const perFace = scene.key === "arch" ? Math.round(listI.length / 4) : 0;
+    steps.push({
+      step: n++,
+      title: scene.title,
+      description: `${listI.length} stick${listI.length === 1 ? "" : "s"}${
+        perFace ? ` — about ${perFace} per arch` : ""
+      }. ${hold} ${scene.why}`,
+      partsUsed: listI.map((i) => i.id),
+      tips: scene.why,
+    });
+  }
+
+  steps.push({
+    step: n++,
+    title: "Stand it up and walk around",
+    description: `If an arch sags, that joint was dry. The four openings should still read as arches, not a fence. Overnight before you lift by the tip.`,
+    tips: "Guidance only — not stamped engineering.",
+  });
+  return steps;
+}
+
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
+  if (project.kind === "eiffel") return uniqueEiffelSteps(project);
   const item = getCatalogItem(project.primaryMaterialId);
   const { join, hold } = joinHold(item);
   const tool = cutHow(item);

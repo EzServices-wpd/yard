@@ -44,6 +44,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const reset = useYard((s) => s.reset);
   const explode = useYard((s) => s.explode);
   const setExplode = useYard((s) => s.setExplode);
+  const facesOpen = useYard((s) => s.facesOpen);
+  const setFacesOpen = useYard((s) => s.setFacesOpen);
   const camera = useYard((s) => s.camera);
   const setCamera = useYard((s) => s.setCamera);
   const deleteSelected = useYard((s) => s.deleteSelected);
@@ -195,6 +197,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const makerJob = project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
   const showLoadBtn = Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
+  const hasFaces = project.panels.some((p) => p.type === "door" || p.type === "drawer");
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -276,6 +279,15 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     setMoreOpen(false);
                   }}
                 />
+                {hasFaces && (
+                  <MoreItem
+                    label={facesOpen ? "Shut doors / drawers" : "Open doors / drawers"}
+                    onClick={() => {
+                      setFacesOpen(!facesOpen);
+                      setMoreOpen(false);
+                    }}
+                  />
+                )}
                 <MoreItem
                   label="Stock"
                   onClick={() => {
@@ -585,6 +597,15 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                         ? "Snap to the glow"
                         : "Drag · snap home"}
               </p>
+              {hasFaces && (
+                <button
+                  type="button"
+                  onClick={() => setFacesOpen(!facesOpen)}
+                  className="mt-1.5 rounded border border-border px-2 py-1 text-[11px] text-fg hover:bg-elevated"
+                >
+                  {facesOpen ? "Shut doors / drawers" : "Open doors / drawers"}
+                </button>
+              )}
             </div>
             <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
               Clear bench
