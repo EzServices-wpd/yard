@@ -258,7 +258,7 @@ export function PanelMesh({
   if (isDoor && open) {
     const hingeX = isLeft ? panel.position.x : panel.position.x + w;
     const hingeZ = panel.position.z + d / 2;
-    const swing = (isLeft ? 1 : -1) * (72 * Math.PI) / 180;
+    const swing = ((isLeft ? 1 : -1) * 72 * Math.PI) / 180;
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
     meshPos = [isLeft ? w / 2 : -w / 2, 0, 0];
@@ -267,29 +267,161 @@ export function PanelMesh({
     groupPos = [cx * explode, cy, (cz + pull) * explode];
   }
 
+  const grain = useMemo(() => {
+    if (glass || !look.map) return null;
+    const t = look.map.clone();
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    const along = Math.max(w, h, d) / 16;
+    const across = Math.min(w, h, d, 12) / 10;
+    if (h >= w) t.repeat.set(Math.max(across, 1), Math.max(along, 1));
+    else t.repeat.set(Math.max(along, 1), Math.max(across, 1));
+    t.needsUpdate = true;
+    return t;
+  }, [glass, look.map, w, h, d]);
+
   return (
     <group position={groupPos} rotation={groupRot}>
-      <mesh
-        position={meshPos}
-        frustumCulled={false}
-        castShadow={!!useShadows}
-        receiveShadow={!!useShadows}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-      >
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial
-          color={color}
-          map={glass ? undefined : look.map ?? undefined}
-          transparent={opacity < 1 || glass}
-          opacity={opacity}
-          roughness={glass ? 0.08 : look.roughness}
-          metalness={glass ? 0.22 : look.metalness}
-          envMapIntensity={glass ? 1.4 : look.env}
-        />
+      <group position={meshPos}>
+        <mesh
+          frustumCulled={false}
+          castShadow={!!useShadows}
+          receiveShadow={!!useShadows}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+        >
+          <boxGeometry args={[w, h, d]} />
+          <meshStandardMaterial
+            color={color}
+            map={glass ? undefined : grain ?? look.map ?? undefined}
+            transparent={opacity < 1 || glass}
+            opacity={opacity}
+            roughness={glass ? 0.08 : look.roughness}
+            metalness={glass ? 0.22 : look.metalness}
+            envMapIntensity={glass ? 1.4 : look.env}
+          />
+        </mesh>
+        {!glass && opacity > 0.4 && <EdgeBand w={w} h={h} d={d} />}
+        {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
+        {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
+        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
+        {panel.type === "upright" && h >= 24 && opacity > 0.4 && (
+          <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
+        )}
+      </group>
+    </group>
+  );
+}
+
+const BAND = "#c49a62";
+const STEEL = "#8c9096";
+const PULL = "#3e3832";
+const PIN = "#d4cdc4";
+
+function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
+  const face = w * h >= w * d && w * h >= h * d ? "xy" : w * d >= h * d ? "xz" : "yz";
+  const t = Math.min(0.16, Math.min(w, h, d) * 0.28);
+  const mat = <meshStandardMaterial color={BAND} roughness={0.58} metalness={0.04} />;
+  if (face === "xy") {
+    return (
+      <group>
+        <mesh position={[0, h / 2 - t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+        <mesh position={[0, -h / 2 + t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+        <mesh position={[-w / 2 + t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
+        <mesh position={[w / 2 - t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
+      </group>
+    );
+  }
+  if (face === "xz") {
+    return (
+      <group>
+        <mesh position={[0, 0, d / 2 - t / 2]}>{mat}<boxGeometry args={[w + 0.01, h + 0.01, t]} /></mesh>
+        <mesh position={[0, 0, -d / 2 + t / 2]}>{mat}<boxGeometry args={[w + 0.01, h + 0.01, t]} /></mesh>
+        <mesh position={[-w / 2 + t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h + 0.01, d - t * 2]} /></mesh>
+        <mesh position={[w / 2 - t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h + 0.01, d - t * 2]} /></mesh>
+      </group>
+    );
+  }
+  return (
+    <group>
+      <mesh position={[0, h / 2 - t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+      <mesh position={[0, -h / 2 + t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+      <mesh position={[0, 0, d / 2 - t / 2]}>{mat}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
+      <mesh position={[0, 0, -d / 2 + t / 2]}>{mat}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
+    </group>
+  );
+}
+
+function DoorHinges({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
+  const x = isLeft ? -w / 2 + 0.85 : w / 2 - 0.85;
+  const z = -d / 2 + 0.12;
+  const ys = [h / 2 - 3.5, -h / 2 + 3.5];
+  return (
+    <group>
+      {ys.map((y) => (
+        <group key={y} position={[x, y, z]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.7, 0.7, 0.22, 20]} />
+            <meshStandardMaterial color={STEEL} metalness={0.72} roughness={0.32} />
+          </mesh>
+          <mesh position={[isLeft ? 0.55 : -0.55, 0, -0.18]}>
+            <boxGeometry args={[0.9, 0.42, 0.12]} />
+            <meshStandardMaterial color={STEEL} metalness={0.65} roughness={0.38} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function BarPull({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
+  const x = isLeft ? w / 2 - 1.1 : -w / 2 + 1.1;
+  const z = d / 2 + 0.28;
+  return (
+    <group position={[x, 0, z]}>
+      <mesh>
+        <boxGeometry args={[0.28, 4.2, 0.28]} />
+        <meshStandardMaterial color={PULL} metalness={0.55} roughness={0.4} />
       </mesh>
+      <mesh position={[0, 1.7, -0.22]}>
+        <boxGeometry args={[0.22, 0.22, 0.4]} />
+        <meshStandardMaterial color={PULL} metalness={0.55} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, -1.7, -0.22]}>
+        <boxGeometry args={[0.22, 0.22, 0.4]} />
+        <meshStandardMaterial color={PULL} metalness={0.55} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function CupPull({ d }: { w: number; h: number; d: number }) {
+  return (
+    <mesh position={[0, 0, d / 2 + 0.22]} rotation={[Math.PI / 2, 0, 0]}>
+      <cylinderGeometry args={[0.55, 0.7, 0.35, 16, 1, true]} />
+      <meshStandardMaterial color={PULL} metalness={0.5} roughness={0.42} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
+  const x = isLeft ? w / 2 - 0.08 : -w / 2 + 0.08;
+  const z = d / 2 - 1.25;
+  const start = -h / 2 + 8;
+  const end = h / 2 - 6;
+  const step = 4;
+  const ys: number[] = [];
+  for (let y = start; y <= end; y += step) ys.push(y);
+  return (
+    <group>
+      {ys.map((y) => (
+        <mesh key={y} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.28, 8]} />
+          <meshStandardMaterial color={PIN} roughness={0.55} metalness={0.15} />
+        </mesh>
+      ))}
     </group>
   );
 }
