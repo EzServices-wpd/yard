@@ -295,8 +295,6 @@ function BenchScene({
       : detail === "full"
         ? project.instances.filter((i) => !isSkinRole(i.role))
         : project.instances;
-  // Pin holes only when the carcase actually has adjustable shelves.
-  const showPinHoles = project.panels.some((p) => p.type === "shelf");
 
   return (
     <group>
@@ -333,7 +331,6 @@ function BenchScene({
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
               facesOpen={facesOpen}
-              showPinHoles={showPinHoles}
             />
           ))}
       {!pending && project.panels.length > 0 && (

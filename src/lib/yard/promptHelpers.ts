@@ -154,16 +154,11 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/popsicle|craft stick/, "popsicle-standard"],
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
-    [/pool noodle/, "pool-noodle"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
     [/1\s*[x×]\s*4|1x4/, "lumber-1x4-8"],
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
-    [/1\s*[x×]\s*6|1x6/, "lumber-1x6-8"],
-    [/2\s*[x×]\s*6|2x6/, "lumber-2x6-8"],
     [/\bdowel\b/, "dowel-1-4-36"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
-    [/cardboard/, "cardboard-sheet"],
-    [/lego|\bbrick\b/, "lego-2x4"],
     [/bamboo|skewer/, "bamboo-skewer-12"],
     [/paper.?towel/, "paper-towel-roll"],
   ];
@@ -196,8 +191,6 @@ export function toProject(
   } else if (list.length > 1500) {
     notes = [...notes, `${list.length} pieces. Orbit may hitch on a phone — that is expected, not a cap.`];
   }
-  // Prefer member endpoints (from/to) so furniture envelopes match the form,
-  // not center-points + a lumber-width pad that turns an 18" chair into 32".
   const xs: number[] = [];
   const ys: number[] = [];
   const zs: number[] = [];
@@ -213,9 +206,15 @@ export function toProject(
     }
   }
   const stockW = toPrimitive(item).width || 1;
-  // Light pad: half the face so the envelope still covers the stock thickness
-  // without inventing a second chair's worth of air.
   const pad = Math.max(0.5, stockW * 0.55);
+  let width = Math.max(8, (Math.max(...xs, 0) - Math.min(...xs, 0) || 0) + pad * 2);
+  let height = Math.max(8, (Math.max(...ys, 0) - Math.min(...ys, 0) || 0) + pad);
+  let depth = Math.max(8, (Math.max(...zs, 0) - Math.min(...zs, 0) || 0) + pad * 2);
+  if (kind === "eiffel") {
+    const publishedBase = height * (125 / 324);
+    width = Math.max(width, publishedBase);
+    depth = Math.max(depth, publishedBase);
+  }
   const names: Partial<Record<StructureKind, string>> = {
     eiffel: "Eiffel frame",
     arch: "Garden arch",
@@ -223,6 +222,7 @@ export function toProject(
     closet: "Fitted unit",
     furniture: "Furniture",
     ladder: "Ladder",
+    table: "Table",
   };
   return {
     id: createId("proj"),
@@ -230,9 +230,9 @@ export function toProject(
     prompt,
     kind,
     overall: {
-      width: Math.max(8, (Math.max(...xs, 0) - Math.min(...xs, 0) || 0) + pad * 2),
-      height: Math.max(8, (Math.max(...ys, 0) - Math.min(...ys, 0) || 0) + pad),
-      depth: Math.max(8, (Math.max(...zs, 0) - Math.min(...zs, 0) || 0) + pad * 2),
+      width,
+      height,
+      depth,
     },
     instances: withHome(list),
     panels: [],
@@ -254,7 +254,6 @@ export function toProject(
 const OBJECT_WORD =
   /\b(eiffel|pyramid|taj|giraffe|robot|castle|arch|bridge|chair|desk|vanity|closet|ladder|table|birdhouse|window|stool|bench|tower)\b/;
 
-/** Short change to the thing already on the bench — not a new object. */
 export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolean {
   const p = prompt.trim();
   if (!currentPrompt.trim() || p.length > 160) return false;
