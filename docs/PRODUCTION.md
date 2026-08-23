@@ -65,6 +65,7 @@ Weekend (same engine, not the hero):
 ## Overnight push (22–23 Aug 2026)
 
 - **Shipped ~11:45pm EDT** — Attention to detail: pin holes only on uprights when the unit has adjustable shelves (no holes on fixed carcases / desks without shelves). True 32mm pitch (1.26"), 5mm dia, 1¼" back from front edge. Walk 10/10 green; linen still Closet 31.5 × 78 × 16.
+- **~12:15am EDT (this fire)** — Restored canvas.tsx + stick-cloud.tsx + function/promptHelpers/steps + package.json after placeholder wipe from earlier overnight commits. Re-applied pin-hole gate for real: `hasAdjustableShelves` from panel types (shelf present), PinHoles at 1.26" / 5mm / 1¼" back. Walk **10/10 green**; linen still Closet 31.5 × 78 × 16.
 
 ## Do not
 
