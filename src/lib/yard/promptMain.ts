@@ -107,7 +107,7 @@ export function generateFromPrompt(
       depth: Math.max(6, Math.min(span * 0.14, 14)),
     };
   }
-  if (scale === "tabletop") {
+  if (scale === "tabletop" && !/eiffel|taj mahal|pyramid|parthenon/.test(lowerP)) {
     const cap = 12;
     const m = Math.max(box.height, box.width, box.depth, 1);
     if (m > cap) {
@@ -158,7 +158,7 @@ export function generateFromPrompt(
 
 function finalize(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }, scale: BuildScale): YardProject {
   const notes = [...project.notes];
-  if (scale === "tabletop") {
+  if (scale === "tabletop" && !/eiffel|taj mahal|pyramid|parthenon/.test(project.prompt.toLowerCase())) {
     notes.unshift(`Tabletop scale — about ${box.height.toFixed(0)}" high. Weekend / Full on the bench grow it.`);
   } else if (scale === "weekend") {
     notes.unshift("Weekend density — coarser than Full, still the same form.");

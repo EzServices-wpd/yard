@@ -9,7 +9,7 @@ import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist
 import { defaultPlaceLength } from "./bom";
 import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
-import { defaultGhostFlags } from "./ghost";
+import { defaultGhostFlags, isFamousKind } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { projectFromMeasurement } from "./space";
 import { buildPocket } from "./pocket";
@@ -173,6 +173,7 @@ export const useYard = create<YardState>((set, get) => ({
       dragPos: null,
       selectedId: null,
       facesOpen: true,
+      buildScale: isFamousKind(next.kind) && (opts?.scale ?? get().buildScale) === "tabletop" ? "full" : (opts?.scale ?? get().buildScale),
       measure: next.pocket
         ? {
             width: String(next.pocket.unit.width),
@@ -214,6 +215,8 @@ export const useYard = create<YardState>((set, get) => ({
   },
   setDetail: (v) => set({ detail: v }),
   setBuildScale: (v) => {
+    const { project } = get();
+    if (isFamousKind(project.kind) && v === "tabletop") v = "full";
     set({ buildScale: v });
     const { project, generate, makePlan } = get();
     if (project.prompt.trim()) {
