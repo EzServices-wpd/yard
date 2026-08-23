@@ -58,6 +58,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const setDetail = useYard((s) => s.setDetail);
   const buildScale = useYard((s) => s.buildScale);
   const setBuildScale = useYard((s) => s.setBuildScale);
+  const cutMode = useYard((s) => s.cutMode);
+  const setCutMode = useYard((s) => s.setCutMode);
   const showLoad = useYard((s) => s.showLoad);
   const setShowLoad = useYard((s) => s.setShowLoad);
   const showHull = useYard((s) => s.showHull);
@@ -198,6 +200,16 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const showLoadBtn = Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
   const hasFaces = project.panels.some((p) => p.type === "door" || p.type === "drawer");
+  const sheetOnly = project.panels.length > 0 && project.instances.length === 0;
+  const cutChoice = paperCraft || project.instances.length > 0 || sheetOnly;
+  const wholeOn =
+    paperCraft ||
+    (!sheetOnly &&
+      (cutMode === "whole" ||
+        (cutMode === "auto" &&
+          project.instances.length > 0 &&
+          project.instances.every((i) => i.cutLength == null))));
+  const cutOn = !wholeOn;
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -437,6 +449,28 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   }
                 />
               ))}
+            </div>
+            )}
+            {cutChoice && (
+            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
+              <GhostBtn
+                on={cutOn}
+                onClick={() => setCutMode("cut")}
+                label="Cut"
+                disabled={paperCraft}
+                title={paperCraft ? "Paper craft is whole sticks — no cutting" : "Saw stock to the list"}
+              />
+              <GhostBtn
+                on={wholeOn}
+                onClick={() => setCutMode("whole")}
+                label="Don't cut"
+                disabled={sheetOnly}
+                title={
+                  sheetOnly
+                    ? "Sheet goods are ripped to the opening"
+                    : "Full pieces from the pack. Glue. Do not cut."
+                }
+              />
             </div>
             )}
             {(historicOk || showLoadBtn) && (

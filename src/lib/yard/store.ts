@@ -29,6 +29,7 @@ type YardState = {
   workMode: WorkMode;
   detail: DetailLevel;
   buildScale: BuildScale;
+  cutMode: "auto" | "cut" | "whole";
   activeStep: number | null;
   placedIds: string[];
   lockedIds: string[];
@@ -44,10 +45,11 @@ type YardState = {
   revealBench: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean }) => YardProject;
   setJoinMethod: (join: JoinMethod) => void;
   setDetail: (v: DetailLevel) => void;
   setBuildScale: (v: BuildScale) => void;
+  setCutMode: (v: "auto" | "cut" | "whole") => void;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
@@ -89,6 +91,12 @@ const defaultMeasure: MeasureDraft = {
   kind: "closet_niche",
 };
 
+function stockFlag(mode: "auto" | "cut" | "whole"): boolean | undefined {
+  if (mode === "cut") return true;
+  if (mode === "whole") return false;
+  return undefined;
+}
+
 let revealTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useYard = create<YardState>((set, get) => ({
@@ -104,6 +112,7 @@ export const useYard = create<YardState>((set, get) => ({
   workMode: "look",
   detail: "fill",
   buildScale: "full" as BuildScale,
+  cutMode: "auto" as const,
   activeStep: null,
   placedIds: [],
   lockedIds: [],
@@ -144,19 +153,30 @@ export const useYard = create<YardState>((set, get) => ({
     const scale = opts?.scale ?? get().buildScale;
     const current = get().project;
     let used = prompt;
+    const follow = !opts?.fresh && current.prompt.trim() && looksLikeFollowOn(prompt, current.prompt);
+    let mode: "auto" | "cut" | "whole" = get().cutMode;
+    if (opts?.cutStock === true) mode = "cut";
+    else if (opts?.cutStock === false) mode = "whole";
+    else if (!follow && current.prompt.trim() !== prompt.trim()) mode = "auto";
     const genOpts: {
       includeSpine?: boolean;
       joinMethod?: JoinMethod;
       scale: BuildScale;
       sizeOverride?: { width: number; height: number; depth: number };
       cutStock?: boolean;
-    } = { ...opts, scale };
-    if (!opts?.fresh && current.prompt.trim() && looksLikeFollowOn(prompt, current.prompt)) {
+    } = { ...opts, scale, cutStock: stockFlag(mode) };
+    if (follow) {
       used = `${current.prompt.replace(/\. Then:[\s\S]*$/, "")}. Then: ${prompt}`;
       genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
       if (!materialId && !followOnNamesStock(prompt)) materialId = current.primaryMaterialId;
-      if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) genOpts.cutStock = true;
-      if (/don'?t cut|whole sticks/.test(prompt.toLowerCase())) genOpts.cutStock = false;
+      if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) {
+        mode = "cut";
+        genOpts.cutStock = true;
+      }
+      if (/don'?t cut|whole sticks/.test(prompt.toLowerCase())) {
+        mode = "whole";
+        genOpts.cutStock = false;
+      }
     }
     const next = generateFromPrompt(used, materialId, form, genOpts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
@@ -165,6 +185,7 @@ export const useYard = create<YardState>((set, get) => ({
     get().commit(next);
     set({
       ...flags,
+      cutMode: mode,
       workMode: "look",
       showLoad: false,
       activeStep: null,
@@ -201,11 +222,12 @@ export const useYard = create<YardState>((set, get) => ({
     return next;
   },
   setJoinMethod: (join) => {
-    const { project, generate, makePlan } = get();
+    const { project, generate, makePlan, cutMode } = get();
     if (project.prompt.trim()) {
       generate(project.prompt, project.primaryMaterialId, undefined, {
         includeSpine: project.supportOffer?.included,
         joinMethod: join,
+        cutStock: stockFlag(cutMode),
       });
       makePlan();
     } else {
@@ -215,12 +237,38 @@ export const useYard = create<YardState>((set, get) => ({
   setDetail: (v) => set({ detail: v }),
   setBuildScale: (v) => {
     set({ buildScale: v });
-    const { project, generate, makePlan } = get();
+    const { project, generate, makePlan, cutMode } = get();
     if (project.prompt.trim()) {
       generate(project.prompt, project.primaryMaterialId, undefined, {
         includeSpine: project.supportOffer?.included,
         joinMethod: project.joinMethod,
         scale: v,
+        cutStock: stockFlag(cutMode),
+      });
+      makePlan();
+    }
+  },
+  setCutMode: (v) => {
+    if (v === "auto") {
+      set({ cutMode: "auto" });
+      return;
+    }
+    const { project, generate, makePlan } = get();
+    if (project.flat && !project.flat.lifted) {
+      set({ cutMode: "whole" });
+      return;
+    }
+    if (project.panels.length > 0 && project.instances.length === 0) {
+      set({ cutMode: "cut" });
+      return;
+    }
+    set({ cutMode: v });
+    if (project.prompt.trim()) {
+      generate(project.prompt, project.primaryMaterialId, undefined, {
+        includeSpine: project.supportOffer?.included,
+        joinMethod: project.joinMethod,
+        scale: get().buildScale,
+        cutStock: v === "cut",
       });
       makePlan();
     }
@@ -451,6 +499,7 @@ export const useYard = create<YardState>((set, get) => ({
       showHistoric: false,
       workMode: "look",
       showLoad: false,
+      cutMode: "auto",
     });
   },
 }));
