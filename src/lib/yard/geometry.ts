@@ -82,7 +82,7 @@ export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDim
     }
     case "sheet":
       return {
-        length: d.length ?? 48,
+        length: L,
         width: d.width ?? 24,
         height: d.thickness ?? 0.25,
       };
@@ -181,7 +181,8 @@ export function describeMaterial(id: string): string {
   if (!item) return "Unknown material";
   const p = toPrimitive(item);
   if (isCylindrical(item.formFactor)) {
-    return `${item.name} (⌀${(p.radius! * 2).toFixed(2)}" × ${p.length}")`;
+    const id = p.innerRadius ? ` ID ${(p.innerRadius * 2).toFixed(2)}"` : "";
+    return `${item.name} (⌀${(p.radius! * 2).toFixed(2)}"${id} × ${p.length}")`;
   }
   return `${item.name} (${p.length}" × ${p.width}" × ${p.height}")`;
 }

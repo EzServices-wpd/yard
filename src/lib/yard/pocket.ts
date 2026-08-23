@@ -189,8 +189,8 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   });
 
   // Two large upper doors
-  panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - 0.35, W / 2 - 0.2, uH, 0.35));
-  panels.push(panel("door", "Right upper door", 0.1, u0, D - 0.35, W / 2 - 0.2, uH, 0.35));
+  panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, W / 2 - 0.2, uH, P));
+  panels.push(panel("door", "Right upper door", 0.1, u0, D - P, W / 2 - 0.2, uH, P));
 
   const notes = [
     `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,

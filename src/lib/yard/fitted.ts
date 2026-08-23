@@ -347,10 +347,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const doorY = u.upperStart ?? 0;
     const doorH = H - doorY;
     if (W > 28) {
-      panels.push(panel("door", "Left door", x0 + 0.1, doorY, D - 0.35, W / 2 - 0.2, doorH, 0.35));
-      panels.push(panel("door", "Right door", 0.1, doorY, D - 0.35, W / 2 - 0.2, doorH, 0.35));
+      panels.push(panel("door", "Left door", x0 + 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
+      panels.push(panel("door", "Right door", 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
     } else {
-      panels.push(panel("door", "Door", x0 + 0.1, doorY, D - 0.35, W - 0.2, doorH, 0.35));
+      panels.push(panel("door", "Door", x0 + 0.1, doorY, D - P, W - 0.2, doorH, P));
     }
   }
 

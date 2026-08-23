@@ -11,6 +11,7 @@ import {
   applyMemberPose,
   displayPos,
   flatBarGeometry,
+  pipeGeometry,
   meshDiameter,
   ROLE_TINT,
   spanOf,
@@ -128,9 +129,10 @@ function CloudKind({
         dummy.quaternion.identity();
         const diameter = meshDiameter(prim, cylindrical);
         if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+        else if (flatBar) dummy.scale.set(prim.length, prim.width, prim.height);
         else dummy.scale.set(prim.length, prim.height, prim.width);
       } else {
-        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation, overall);
+        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation, overall, flatBar);
       }
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
@@ -194,6 +196,10 @@ function CloudKind({
 
   if (!live.length) return null;
   const look = stockLook(live[0]?.item);
+  const innerFrac =
+    hollow && live[0]?.prim.radius
+      ? (live[0].prim.innerRadius ?? live[0].prim.radius * 0.72) / live[0].prim.radius
+      : 0.76;
 
   return (
     <instancedMesh
@@ -208,7 +214,11 @@ function CloudKind({
       onPointerCancel={up}
     >
       {cylindrical ? (
-        <cylinderGeometry args={[0.5, 0.5, 1, hollow ? 20 : 14, 1, hollow]} />
+        hollow ? (
+          <primitive object={pipeGeometry(innerFrac)} attach="geometry" />
+        ) : (
+          <cylinderGeometry args={[0.5, 0.5, 1, 14, 1]} />
+        )
       ) : flatBar ? (
         <primitive object={flatBarGeometry()} attach="geometry" />
       ) : (

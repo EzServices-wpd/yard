@@ -55,6 +55,7 @@ Weekend (same engine, not the hero):
 - **Shipped 8:30** — studio lighting: shadow camera actually covers a closet, ply face veneer (not stick grain), fitted 3/4 eye-level, contact shadow sized to the unit. Eiffel still skips per-stick shadows.
 - **Shipped 8:46** — Cut / Don’t cut on the HUD. Ply/closet stays Cut. Popsicle/straw default Don’t cut. Paper locked whole. Regenerates the graph/plan language.
 - **Shipped 9:06** — Closet shop truth: edge banding on cut edges, two concealed hinges + bar pull per door, cup pull on drawers, 32mm-style pin holes on uprights. Hardware rides the door when it swings.
+- **Shipped 9:26** — Stock shape: popsicle rounded on the 3/8″ face (not the thin edge); PVC/straw are hollow at catalog ID; ¾″ doors are 0.75″ not 0.35″; sheet cuts honor cutLength.
 
 ## Do not
 

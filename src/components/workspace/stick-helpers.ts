@@ -4,20 +4,22 @@ import type { PrimitiveDims } from "@/lib/yard/geometry";
 import { pilePosition } from "@/lib/yard/assembly";
 
 export function makeFlatBarGeometry(): THREE.BufferGeometry {
+  // Unit popsicle: XY is the FACE (length × width), Z is thickness.
+  // Rounded ends live on the 3/8" face, not the thin edge.
   const shape = new THREE.Shape();
   const L = 1;
-  const H = 1;
+  const W = 1;
   const R = 0.5;
-  shape.moveTo(-L / 2 + R, -H / 2);
-  shape.lineTo(L / 2 - R, -H / 2);
+  shape.moveTo(-L / 2 + R, -W / 2);
+  shape.lineTo(L / 2 - R, -W / 2);
   shape.absarc(L / 2 - R, 0, R, -Math.PI / 2, Math.PI / 2, false);
-  shape.lineTo(-L / 2 + R, H / 2);
+  shape.lineTo(-L / 2 + R, W / 2);
   shape.absarc(-L / 2 + R, 0, R, Math.PI / 2, (3 * Math.PI) / 2, false);
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: 1,
     bevelEnabled: false,
     steps: 1,
-    curveSegments: 8,
+    curveSegments: 10,
   });
   geo.translate(0, 0, -0.5);
   geo.computeVertexNormals();
@@ -28,6 +30,26 @@ let _flatBarGeo: THREE.BufferGeometry | null = null;
 export function flatBarGeometry(): THREE.BufferGeometry {
   if (!_flatBarGeo) _flatBarGeo = makeFlatBarGeometry();
   return _flatBarGeo;
+}
+
+let _pipeGeos: Map<number, THREE.LatheGeometry> | null = null;
+export function pipeGeometry(innerFrac: number): THREE.LatheGeometry {
+  if (!_pipeGeos) _pipeGeos = new Map();
+  const k = Math.round(Math.min(0.92, Math.max(0.15, innerFrac)) * 100);
+  let g = _pipeGeos.get(k);
+  if (!g) {
+    const inner = (k / 100) * 0.5;
+    const pts = [
+      new THREE.Vector2(inner, -0.5),
+      new THREE.Vector2(0.5, -0.5),
+      new THREE.Vector2(0.5, 0.5),
+      new THREE.Vector2(inner, 0.5),
+    ];
+    g = new THREE.LatheGeometry(pts, 24);
+    g.computeVertexNormals();
+    _pipeGeos.set(k, g);
+  }
+  return g;
 }
 
 export const ROLE_TINT: Record<string, string> = {
@@ -79,6 +101,7 @@ export function applyMemberPose(
   fallback: Vec3,
   rot: Vec3,
   overall: { width: number; height: number; depth: number },
+  flatBar = false,
 ) {
   const from = inst.from;
   const to = inst.to;
@@ -99,6 +122,7 @@ export function applyMemberPose(
     else dummy.quaternion.setFromUnitVectors(axis, _dir);
     const length = span + pad * 2;
     if (cylindrical) dummy.scale.set(diameter, length, diameter);
+    else if (flatBar) dummy.scale.set(length, prim.width, prim.height);
     else if (courseOnEdge(inst, prim)) dummy.scale.set(length, prim.width, prim.height);
     else dummy.scale.set(length, prim.height, prim.width);
     return;
@@ -107,6 +131,7 @@ export function applyMemberPose(
   dummy.position.set(fallback.x * explode, fallback.y, fallback.z * explode);
   dummy.quaternion.setFromEuler(new THREE.Euler(rot.x, rot.y, rot.z));
   if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+  else if (flatBar) dummy.scale.set(prim.length, prim.width, prim.height);
   else dummy.scale.set(prim.length, prim.height, prim.width);
 }
 
