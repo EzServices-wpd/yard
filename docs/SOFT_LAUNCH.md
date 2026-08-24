@@ -6,10 +6,20 @@ Autonomous closeout plan started **2026-08-24**. Founder input paused until 10/1
 
 | Phase | Gate | Status |
 |-------|------|--------|
-| P0 | Auto-capture on Build plan + enrich retry + shop glossary in PDF | In progress @ tip post-a2d3894 |
-| P1 | Freeze-4 (linen, pocket, Andersen, desk) geometry + plan quality | Pending |
+| P0 | Auto-capture on plan + enrich retry + shop glossary in PDF | **Shipped** — AutoCaptureRunner + autoCapture helper + PDF glossary (prior) |
+| P1 | Freeze-4 geometry + plan quality | Pending walk-soft-launch |
 | P2 | Full 10 launch builds | Pending |
-| P3 | Docs freeze package | Pending |
+| P3 | Docs freeze package | Partial (this file + scripts) |
+
+## Tip trail
+
+| When | Tip | Notes |
+|------|-----|-------|
+| Start | a2d3894 | Glossary + photo size |
+| P0 scripts | 43bdc4b | walk-soft-launch.ts + SOFT_LAUNCH.md |
+| P0 helper | b586522 | autoCapture.ts |
+| P0 runner | 7043279 | AutoCaptureRunner component |
+| P0 mount | 202ee1f | Canvas mounts AutoCaptureRunner |
 
 ## Run
 
@@ -18,24 +28,7 @@ npx tsx --tsconfig tsconfig.json scripts/walk-launch.ts
 npx tsx --tsconfig tsconfig.json scripts/walk-soft-launch.ts
 ```
 
-Photo capture and enrich require a live browser on production (WebGL). Geometry/nest/steps are CI-checkable.
-
-## Freeze-4 expected sizes
-
-| Build | Size / kind |
-|-------|-------------|
-| Linen | 31.5 × 78 × 16 closet |
-| Pocket | trapezoid RO → rectangular unit, closet/vanity |
-| Andersen | opening, 36×48 RO path |
-| Desk | 60 × 30 × 29, 24″ knee |
-
-## Results
-
-_Append rows as walks complete._
-
-| When | Tip | walk-launch | walk-soft-launch | Notes |
-|------|-----|-------------|------------------|-------|
-| 2026-08-24 start | a2d3894 | last green Phase 0 | not yet | P0 code next |
+Photo capture runs automatically after makePlan for panel builds (first 4 steps, ~1.2s each). Enrich retries once on parse failure.
 
 ## Do not
 
