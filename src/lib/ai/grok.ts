@@ -192,28 +192,55 @@ export const writeInstructions = createServerFn({ method: "POST" })
       [
         {
           role: "system",
-          content: `You enrich the shop walkthrough for THIS project only. You are given a deterministic baseline already written from the pieces on the bench.\n\nYour job: make every step more detailed, more helpful, and more specific to this exact build — without changing counts, lengths, part names, or the build order.\n\nAudience: a careful first-time builder with a circular saw and a tape measure, not a cabinet shop. Prefer plain English.\n\nRules:\n- Keep the same number of steps (or add at most 2 intermediate steps if a critical dry-fit / square check is missing). Never invent new piece counts or cut lengths.\n- Every sentence must mention something on this bench: a named role, a measured length, a join method, a clearance, a footprint dimension, or a joint count.\n- Expand each description into 3–6 short sentences: what to do, how to hold it, what \"good\" looks like, what goes wrong if you skip the dry-fit.\n- When you use a shop term, explain it in parentheses on first use in that step. Examples: carcase (the main box of the unit), toekick (the recessed strip at the floor so your toes clear), dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).\n- Tips must be actionable (tool choice, order of operations, cure time, square check).\n- Frame → support → brace language for lattice / tower / pyramid / bridge. Portal stays open on arch. Abutments plant on the ground for bridge. North door stays open on pyramid.\n- No cheerleading. No generic \"assemble the structure.\" No changing the cut list.\n- Return JSON only: {\"steps\":[{\"title\":\"...\",\"description\":\"...\",\"tips\":\"...optional\"}]}`,
+          content: `You enrich the shop walkthrough for THIS project only. You are given a deterministic baseline already written from the pieces on the bench.\n\nYour job: make every step more detailed, more helpful, and more specific to this exact build — without changing counts, lengths, part names, or the build order.\n\nAudience: a careful first-time builder with a circular saw and a tape measure, not a cabinet shop. Prefer plain English.\n\nRules:\n- Keep the same number of steps (or add at most 2 intermediate steps if a critical dry-fit / square check is missing). Never invent new piece counts or cut lengths.\n- Every sentence must mention something on this bench: a named role, a measured length, a join method, a clearance, a footprint dimension, or a joint count.\n- Expand each description into 3–6 short sentences: what to do, how to hold it, what "good" looks like, what goes wrong if you skip the dry-fit.\n- When you use a shop term, explain it in parentheses on first use in that step. Examples: carcase (the main box of the unit), toekick (the recessed strip at the floor so your toes clear), dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).\n- Tips must be actionable (tool choice, order of operations, cure time, square check).\n- Frame → support → brace language for lattice / tower / pyramid / bridge. Portal stays open on arch. Abutments plant on the ground for bridge. North door stays open on pyramid.\n- No cheerleading. No generic "assemble the structure." No changing the cut list.\n- Return JSON only, one object, no markdown fences: {"steps":[{"title":"...","description":"...","tips":"...optional"}]}`,
         },
         {
           role: "user",
           content: `Prompt: ${data.prompt}\n\nProject scan:\n${scan || "(none)"}\n\nBaseline steps (enrich these):\n${baselineBlock}\n\nDeterministic plan (cut list + buy + check — numbers are law):\n${data.planText.slice(0, 5500)}`,
         },
       ],
-      1400,
+      2800,
     );
     if (!result.ok) return result;
     try {
-      const cleaned = result.text.trim().replace(/^```json\s*|```$/g, "");
-      const parsed = JSON.parse(cleaned) as {
-        steps?: { title: string; description: string; tips?: string }[];
-      };
-      const steps = (parsed.steps ?? []).slice(0, 18).map((s, i) => ({
-        step: i + 1,
-        title: s.title,
-        description: s.description,
-        tips: s.tips,
-      }));
-      if (!steps.length) return { ok: false as const, error: "No steps returned" };
+      // Prefer the shared parser — survives markdown fences and a cut-off tail.
+      const parsed = parseModelJson(result.text) as {
+        steps?: { title?: string; description?: string; tips?: string; step?: number }[];
+      } | null;
+
+      let rawSteps = parsed?.steps;
+      if (!Array.isArray(rawSteps) || !rawSteps.length) {
+        // Fallback: extract a steps array even if the outer object is incomplete.
+        const m = result.text.match(/"steps"\s*:\s*(\[[\s\S]*)/);
+        if (m) {
+          let arr = m[1];
+          // Close any truncated array/object so JSON.parse can try.
+          const opens = (arr.match(/\[/g) || []).length - (arr.match(/\]/g) || []).length;
+          const braces = (arr.match(/\{/g) || []).length - (arr.match(/\}/g) || []).length;
+          arr = arr + "}".repeat(Math.max(0, braces)) + "]".repeat(Math.max(0, opens));
+          try {
+            rawSteps = JSON.parse(arr) as typeof rawSteps;
+          } catch {
+            /* leave null */
+          }
+        }
+      }
+
+      const steps = (rawSteps ?? [])
+        .filter((s) => s && (s.title || s.description))
+        .slice(0, 18)
+        .map((s, i) => ({
+          step: typeof s.step === "number" && s.step > 0 ? s.step : i + 1,
+          title: String(s.title || `Step ${i + 1}`),
+          description: String(s.description || ""),
+          tips: s.tips ? String(s.tips) : undefined,
+        }));
+      if (!steps.length) {
+        return {
+          ok: false as const,
+          error: "Could not parse steps — the model returned no usable step list. Try again.",
+        };
+      }
       return { ok: true as const, steps };
     } catch {
       return { ok: false as const, error: "Could not parse steps" };
