@@ -11,6 +11,7 @@ import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
+import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
@@ -78,7 +79,6 @@ function StepCapture() {
     }
 
     const existing = plan.instructions.find((s) => s.step === activeStep)?.imageDataUrl;
-    // Already have a real photo for this step and we already captured it this session.
     if (existing?.startsWith("data:image") && existing.length > 800 && last.current === activeStep) {
       return;
     }
@@ -90,9 +90,7 @@ function StepCapture() {
       if (cancelled) return;
       tries.current += 1;
       try {
-        // Force one more frame so CameraRig + step lighting are on the buffer.
         gl.render(scene, camera);
-        // 0.92 quality — sharp enough for full-width PDF plates without huge payloads.
         const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.92);
         if (dataUrl?.startsWith("data:image") && dataUrl.length > 1200) {
           attachStepImage(activeStep!, dataUrl);
@@ -102,13 +100,11 @@ function StepCapture() {
       } catch {
         /* canvas may be tainted or disposed */
       }
-      // Retry once after a longer settle (mobile WebGL is slow).
       if (tries.current < 2) {
         window.setTimeout(grab, 700);
       }
     }
 
-    // First attempt after camera + lighting settle.
     const t = window.setTimeout(grab, 900);
     return () => {
       cancelled = true;
@@ -148,6 +144,7 @@ export function WorkspaceCanvas() {
 
   return (
     <div className="absolute inset-0">
+      <AutoCaptureRunner />
       <Canvas
         key={project.id}
         camera={{ position: [48, 32, 48], fov: 34, near: 0.1, far: 4000 }}
@@ -172,7 +169,6 @@ export function WorkspaceCanvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        {/* Shop HDRI for real reflections on ply/maple; solid bg stays dark product floor */}
         <Environment preset="warehouse" environmentIntensity={0.88} background={false} />
         <StudioLights project={project} useShadows={useShadows} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
@@ -338,7 +334,6 @@ function BenchScene({
       : detail === "full"
         ? project.instances.filter((i) => !isSkinRole(i.role))
         : project.instances;
-  // True 32mm pin holes only when the unit actually has adjustable shelves.
   const showPinHoles = useMemo(
     () => project.panels.some((p) => p.type === "shelf"),
     [project.panels],
