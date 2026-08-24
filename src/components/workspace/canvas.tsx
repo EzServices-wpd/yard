@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
@@ -76,6 +76,46 @@ function StudioLights({
       />
     </>
   );
+}
+
+/** Capture the live Canvas (lit parts for the active step) into plan.instructions[].imageDataUrl. */
+function StepCapture() {
+  const { gl } = useThree();
+  const activeStep = useYard((s) => s.activeStep);
+  const plan = useYard((s) => s.plan);
+  const attachStepImage = useYard((s) => s.attachStepImage);
+  const last = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (activeStep == null || !plan) {
+      last.current = null;
+      return;
+    }
+    // Skip if we already have a photo for this step (avoid re-capture loops).
+    const existing = plan.instructions.find((s) => s.step === activeStep)?.imageDataUrl;
+    if (existing?.startsWith("data:image") && last.current === activeStep) return;
+
+    let cancelled = false;
+    // Wait for CameraRig + step lighting to settle, then grab JPEG.
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      try {
+        const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.82);
+        if (dataUrl?.startsWith("data:image") && dataUrl.length > 800) {
+          attachStepImage(activeStep, dataUrl);
+          last.current = activeStep;
+        }
+      } catch {
+        /* canvas may be tainted or disposed — ignore */
+      }
+    }, 420);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [activeStep, plan?.instructions.length, gl, attachStepImage]);
+
+  return null;
 }
 
 export function WorkspaceCanvas() {
@@ -162,6 +202,7 @@ export function WorkspaceCanvas() {
         <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
+        <StepCapture />
       </Canvas>
     </div>
   );
@@ -245,7 +286,7 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   const hx = width / 2, hz = depth / 2;
   const pts: [number, number, number][][] = [
     [[-hx, 0, -hz], [hx, 0, -hz], [hx, 0, hz], [-hx, 0, hz], [-hx, 0, -hz]],
-    [[-hx, height, -hz], [hx, height, -hz], [hx, height, hz], [-hx, height, hz], [-hx, height, -hz]],
+    [[-hx, height, -hz], [hx, height, -hz], [hx, height, hz], [-hx, height, -hz], [-hx, height, -hz]],
     [[-hx, 0, -hz], [-hx, height, -hz]],
     [[hx, 0, -hz], [hx, height, -hz]],
     [[hx, 0, hz], [hx, height, hz]],
