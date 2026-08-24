@@ -29,9 +29,23 @@ const KINDS: StructureKind[] = [
   "custom",
 ];
 
-async function chat(messages: { role: "system" | "user"; content: string }[], maxTokens = 700) {
+async function chat(
+  messages: { role: "system" | "user"; content: string }[],
+  maxTokens = 700,
+  opts?: { json?: boolean },
+) {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
+
+  const body: Record<string, unknown> = {
+    model: "grok-4.5",
+    messages,
+    max_tokens: maxTokens,
+    temperature: 0.2,
+  };
+  if (opts?.json) {
+    body.response_format = { type: "json_object" };
+  }
 
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
@@ -39,16 +53,11 @@ async function chat(messages: { role: "system" | "user"; content: string }[], ma
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: "grok-4.5",
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.2,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return { ok: false as const, error: `xAI API error ${res.status}` };
-  const body = (await res.json()) as { choices: { message: { content: string } }[] };
-  return { ok: true as const, text: body.choices[0]?.message.content ?? "" };
+  const payload = (await res.json()) as { choices: { message: { content: string } }[] };
+  return { ok: true as const, text: payload.choices[0]?.message.content ?? "" };
 }
 
 export const interpretPrompt = createServerFn({ method: "POST" })
@@ -76,6 +85,7 @@ export const interpretPrompt = createServerFn({ method: "POST" })
         },
       ],
       1600,
+      { json: true },
     );
     if (!result.ok) {
       return {
@@ -192,7 +202,7 @@ export const writeInstructions = createServerFn({ method: "POST" })
       [
         {
           role: "system",
-          content: `You enrich the shop walkthrough for THIS project only. You are given a deterministic baseline already written from the pieces on the bench.\n\nYour job: make every step more detailed, more helpful, and more specific to this exact build — without changing counts, lengths, part names, or the build order.\n\nAudience: a careful first-time builder with a circular saw and a tape measure, not a cabinet shop. Prefer plain English.\n\nRules:\n- Keep the same number of steps (or add at most 2 intermediate steps if a critical dry-fit / square check is missing). Never invent new piece counts or cut lengths.\n- Every sentence must mention something on this bench: a named role, a measured length, a join method, a clearance, a footprint dimension, or a joint count.\n- Expand each description into 3–6 short sentences: what to do, how to hold it, what "good" looks like, what goes wrong if you skip the dry-fit.\n- When you use a shop term, explain it in parentheses on first use in that step. Examples: carcase (the main box of the unit), toekick (the recessed strip at the floor so your toes clear), dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).\n- Tips must be actionable (tool choice, order of operations, cure time, square check).\n- Frame → support → brace language for lattice / tower / pyramid / bridge. Portal stays open on arch. Abutments plant on the ground for bridge. North door stays open on pyramid.\n- No cheerleading. No generic "assemble the structure." No changing the cut list.\n- Return JSON only, one object, no markdown fences: {"steps":[{"title":"...","description":"...","tips":"...optional"}]}`,
+          content: `You enrich the shop walkthrough for THIS project only. You are given a deterministic baseline already written from the pieces on the bench.\n\nYour job: make every step more detailed, more helpful, and more specific to this exact build — without changing counts, lengths, part names, or the build order.\n\nAudience: a careful first-time builder with a circular saw and a tape measure, not a cabinet shop. Prefer plain English.\n\nRules:\n- Keep the same number of steps (or add at most 2 intermediate steps if a critical dry-fit / square check is missing). Never invent new piece counts or cut lengths.\n- Every sentence must mention something on this bench: a named role, a measured length, a join method, a clearance, a footprint dimension, or a joint count.\n- Expand each description into 3–6 short sentences: what to do, how to hold it, what "good" looks like, what goes wrong if you skip the dry-fit.\n- When you use a shop term, explain it in parentheses on first use in that step. Examples: carcase (the main box of the unit), toekick (the recessed strip at the floor so your toes clear), dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).\n- Tips must be actionable (tool choice, order of operations, cure time, square check).\n- Frame → support → brace language for lattice / tower / pyramid / bridge. Portal stays open on arch. Abutments plant on the ground for bridge. North door stays open on pyramid.\n- No cheerleading. No generic "assemble the structure." No changing the cut list.\n- Reply with one JSON object only. Shape: {"steps":[{"title":"string","description":"string","tips":"string optional"}]}. No markdown fences.`,
         },
         {
           role: "user",
@@ -200,21 +210,26 @@ export const writeInstructions = createServerFn({ method: "POST" })
         },
       ],
       2800,
+      { json: true },
     );
     if (!result.ok) return result;
     try {
-      // Prefer the shared parser — survives markdown fences and a cut-off tail.
       const parsed = parseModelJson(result.text) as {
         steps?: { title?: string; description?: string; tips?: string; step?: number }[];
       } | null;
 
       let rawSteps = parsed?.steps;
+      // Accept top-level array if the model ignored the wrapper key.
       if (!Array.isArray(rawSteps) || !rawSteps.length) {
-        // Fallback: extract a steps array even if the outer object is incomplete.
+        const asArray = parseModelJson(`{"steps":${result.text.trim()}}`) as {
+          steps?: typeof rawSteps;
+        } | null;
+        if (Array.isArray(asArray?.steps) && asArray.steps.length) rawSteps = asArray.steps;
+      }
+      if (!Array.isArray(rawSteps) || !rawSteps.length) {
         const m = result.text.match(/"steps"\s*:\s*(\[[\s\S]*)/);
         if (m) {
           let arr = m[1];
-          // Close any truncated array/object so JSON.parse can try.
           const opens = (arr.match(/\[/g) || []).length - (arr.match(/\]/g) || []).length;
           const braces = (arr.match(/\{/g) || []).length - (arr.match(/\}/g) || []).length;
           arr = arr + "}".repeat(Math.max(0, braces)) + "]".repeat(Math.max(0, opens));
