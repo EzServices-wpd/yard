@@ -210,9 +210,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const box = [...backs, ...bottoms, ...of("top")].map(cutLine).join("; ");
     steps.push({
       step: n++,
-      title: "Stand the carcase",
-      description: `Lay the two uprights on edge. ${uDesc}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${box || "Back, top, and bottom as labeled."} Predrill near the ends so the ply does not blow out.`,
-      tips: "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors.",
+      title: "Stand the carcase (the main box)",
+      description: `Lay the two uprights on edge. ${uDesc}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${box || "Back, top, and bottom as labeled."} Predrill near the ends so the ply does not split.`,
+      tips: "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box.",
       partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
     });
   }
@@ -253,7 +253,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
-      description: `${counters.map(cutLine).join("; ")}. Glue and screw down into the uprights and the knee dividers. Front edge flush. Iron-on banding on the front if people will see plywood edge.`,
+      description: `${counters.map(cutLine).join("; ")}. Glue and screw down into the uprights and the knee dividers. Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
       partsUsed: names(counters),
     });
   }
@@ -264,8 +264,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: "Toekick on the banks only",
       description: `${kicks.map(cutLine).join("; ")}. ${
         pocket || u?.kneeW
-          ? "Kick the drawer banks. Leave the knee open to the floor."
-          : "Kick the front, 3½\" up, ½\" in from the face."
+          ? "The toekick is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."
+          : "The toekick is the recessed strip at the floor so your toes clear. Kick the front, 3½\" up, ½\" in from the face."
       }`,
       partsUsed: names(kicks),
     });
@@ -275,14 +275,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Build ${drawers.length} drawer boxes + fronts`,
-      description: `${drawers.map(cutLine).join("; ")}. Build each box to the cut list. Drawer fronts are the faces people see — edge-band the plywood edge if the carcase is ply. One cup pull centered on each front.`,
-      tips: "Dry-fit the box in the bay before you glue the front on.",
+      description: `${drawers.map(cutLine).join("; ")}. Build each box to the cut list. Drawer fronts are the faces people see — edge-band the plywood edge (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
+      tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
       partsUsed: names(drawers),
     });
     steps.push({
       step: n++,
       title: `Hang ${drawers.length} drawers on ${slide}" slides`,
-      description: `One pair of ${slide}" side-mount slides per drawer (slide length = box depth). Hang the slides on the dividers first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the dividers first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
       tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
       partsUsed: names(drawers),
     });
@@ -292,8 +292,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
-      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm / 1¼" apart. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves.`,
-      tips: "A pegboard jig or a 32mm system jig beats measuring every hole twice.",
+      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
+      tips: "A pegboard jig or a 32mm shelf-pin jig beats measuring every hole twice.",
       partsUsed: names(shelves),
     });
   }
@@ -311,7 +311,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"} — 2 hinges each`,
-      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase. Soft-close if you bought them. Adjust the screws until the gap is even.`,
+      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even.`,
       partsUsed: names(doors),
     });
   }
@@ -320,7 +320,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Hang the mirror",
-      description: `${mirrors.map(cutLine).join("; ")}. Over the knee, between the counter and the uppers. French cleat or mirror clips into studs — not into the plywood back alone.`,
+      description: `${mirrors.map(cutLine).join("; ")}. Over the knee, between the counter and the uppers. French cleat (two interlocking angled strips — one on the wall, one on the mirror) or mirror clips into studs — not into the plywood back alone.`,
       partsUsed: names(mirrors),
     });
   }
@@ -330,9 +330,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     title: alcove ? "Shim, then lag into studs" : "Level it",
     description: alcove
       ? pocket
-        ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (R ${pocket.rightClear.toFixed(1)}" / L ${pocket.leftClear.toFixed(1)}"). Scribe, don't force. The rectangle stays a rectangle.`
-        : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side. Lag through the uprights into studs (or masonry anchors). Do not rack the box to match a wonky wall.`
-      : "Level the unit. The back is already on it so it cannot rack. If it sits on a floor that is out, shim the feet — do not twist the carcase.",
+        ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${pocket.rightClear.toFixed(1)}" / L ${pocket.leftClear.toFixed(1)}"). Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
+        : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
+      : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the carcase (main box).",
     tips: "Guidance only — confirm plumbing, studs, and the real opening before you cut. Not stamped engineering.",
     partsUsed: names(uprights.concat(backs)),
   });
