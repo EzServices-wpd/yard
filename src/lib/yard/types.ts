@@ -327,6 +327,8 @@ export type AssemblyStep = {
   description: string;
   partsUsed?: string[];
   tips?: string;
+  /** JPEG data URL from the live bench Canvas (lit parts for this step). */
+  imageDataUrl?: string;
 };
 
 export type BuildPlan = {
