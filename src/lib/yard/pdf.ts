@@ -2,12 +2,15 @@ import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
 import { isoCaption, isoDims, isoFaces, isoMarks, isoViewBox } from "./iso";
 import { stepInstanceIds } from "./assembly";
+import { nestCutList, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, YardProject } from "./types";
 
 const INK: [number, number, number] = [26, 22, 18];
 const MUTED: [number, number, number] = [107, 99, 88];
 const RULE: [number, number, number] = [216, 208, 194];
 const PAPER: [number, number, number] = [243, 238, 228];
+const PLY_FILL: [number, number, number] = [232, 220, 196];
+const PLY_EDGE: [number, number, number] = [160, 140, 110];
 
 export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
@@ -71,6 +74,70 @@ function drawStepPlate(
     doc.setFontSize(8);
     doc.text(caption, x + w / 2, y + h - 5, { align: "center" });
   }
+}
+
+/** Draw one 4×8 sheet layout (parts lettered to match cut list). */
+function drawNestSheet(
+  doc: jsPDF,
+  sheet: NestSheet,
+  x: number,
+  y: number,
+  maxW: number,
+  maxH: number,
+) {
+  const pad = 8;
+  const s = Math.min((maxW - pad * 2) / sheet.width, (maxH - pad * 2 - 18) / sheet.height);
+  const sheetW = sheet.width * s;
+  const sheetH = sheet.height * s;
+  const ox = x + (maxW - sheetW) / 2;
+  const oy = y + 14;
+
+  doc.setFillColor(250, 246, 238);
+  doc.setDrawColor(...PLY_EDGE);
+  doc.setLineWidth(1.1);
+  doc.rect(ox, oy, sheetW, sheetH, "FD");
+
+  doc.setDrawColor(230, 220, 200);
+  doc.setLineWidth(0.3);
+  for (let gy = 0; gy < sheet.height; gy += 6) {
+    const ly = oy + gy * s;
+    if (ly > oy + sheetH - 1) break;
+    doc.line(ox + 1, ly, ox + sheetW - 1, ly);
+  }
+
+  for (const p of sheet.parts) {
+    const px = ox + p.x * s;
+    const py = oy + p.y * s;
+    const pw = p.width * s;
+    const ph = p.height * s;
+    doc.setFillColor(...PLY_FILL);
+    doc.setDrawColor(...INK);
+    doc.setLineWidth(0.7);
+    doc.rect(px, py, pw, ph, "FD");
+    const letter = p.label || "?";
+    doc.setFont("times", "bold");
+    doc.setFontSize(Math.min(14, Math.max(8, Math.min(pw, ph) * 0.35)));
+    doc.setTextColor(...INK);
+    doc.text(letter, px + pw / 2, py + ph / 2 + 3, { align: "center" });
+    if (pw > 28 && ph > 16) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...MUTED);
+      const dim = `${p.width.toFixed(1)}×${p.height.toFixed(1)}`;
+      doc.text(dim, px + pw / 2, py + ph - 4, { align: "center" });
+    }
+  }
+
+  doc.setFont("times", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  const util = Math.round(sheet.utilization * 100);
+  doc.text(
+    `Sheet ${sheet.index} · ${sheet.material} · 96″ × 48″ · ${util}% used · ⅛″ kerf`,
+    x + maxW / 2,
+    oy + sheetH + 12,
+    { align: "center" },
+  );
 }
 
 export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
@@ -166,6 +233,35 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     y += 6;
   }
 
+  // Sheet nest — house ply only (partsKind cut). Crafts stay whole-pack.
+  if (plan.partsKind !== "whole" && plan.cutList.length) {
+    const nest = nestCutList(plan.cutList);
+    if (nest && nest.sheets.length > 0) {
+      for (const sheet of nest.sheets) {
+        doc.addPage();
+        paintPage();
+        y = 56;
+        doc.setFont("times", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...INK);
+        doc.text("Cut this 4×8", left, y);
+        y += 16;
+        doc.setFont("times", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(...MUTED);
+        doc.text(
+          "Letters match the cut list. ⅛″ kerf included. Grain runs long on the sheet.",
+          left,
+          y,
+        );
+        y += 18;
+        const plateH = pageH - y - 48;
+        drawNestSheet(doc, sheet, left, y, width, plateH);
+      }
+      y = pageH; // force ensure to new page on next content
+    }
+  }
+
   if (plan.bom.length) {
     heading("Buy");
     muted(
@@ -202,8 +298,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const descLines = wrap(s.description, 11);
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
       const hasPhoto = Boolean(s.imageDataUrl && s.imageDataUrl.startsWith("data:image"));
-      // Full-width bench capture when present; otherwise demote the old 132-pt
-      // triangle iso to a small secondary plate so prose leads.
       const photoH = hasPhoto ? 198 : 0;
       const isoH = hasPhoto ? 52 : 72;
       ensure(
@@ -239,7 +333,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         }
       }
 
-      // Secondary iso plate (demoted from the old hero scribble)
       drawStepPlate(doc, project, s, left, y, width, isoH);
       y += isoH + 8;
 
