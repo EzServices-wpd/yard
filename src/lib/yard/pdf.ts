@@ -12,6 +12,28 @@ const PAPER: [number, number, number] = [243, 238, 228];
 const PLY_FILL: [number, number, number] = [232, 220, 196];
 const PLY_EDGE: [number, number, number] = [160, 140, 110];
 
+/** Plain-English definitions for every shop term used in house plans. */
+const SHOP_GLOSSARY: { term: string; def: string }[] = [
+  { term: "Carcase", def: "The main box of the unit — uprights, top, bottom, and back screwed together." },
+  { term: "Toekick", def: "The recessed strip at the floor so your toes clear when you stand close to the face." },
+  { term: "Dry-fit", def: "Assemble without glue or screws first, to check fit and square before you commit." },
+  { term: "Overlay", def: "Door or drawer front sits on top of the face, not inside the opening." },
+  { term: "Lag", def: "Long heavy screw driven into a wall stud (or masonry anchor) to hold the unit." },
+  { term: "Edge banding", def: "Thin strip of veneer ironed onto a raw plywood edge so the edge looks finished." },
+  { term: "Shim", def: "Thin wedge used to fill a gap and level or plumb the unit against an uneven wall or floor." },
+  { term: "Scribe", def: "Mark and cut an edge to match a wavy wall so the box stays square instead of being forced." },
+  { term: "Rack / racking", def: "Twisting the box out of square. A racked carcase makes doors and drawers bind." },
+  { term: "Plumb", def: "Truly vertical — checked with a level on the uprights." },
+  { term: "Square", def: "Corners at 90°. Check by measuring both diagonals — they should match within about 1/16\"." },
+  { term: "Predrill", def: "Drill a small pilot hole before driving a screw so the plywood does not split." },
+  { term: "Side-mount slides", def: "Metal drawer tracks that screw to the sides of the box and the cabinet opening." },
+  { term: "Concealed hinges", def: "Cup hinges that mount inside the door and carcase so you do not see the hinge from the front." },
+  { term: "Soft-close", def: "Hinges or slides that pull the door or drawer shut gently on the last inch." },
+  { term: "French cleat", def: "Two interlocking angled strips — one on the wall, one on the piece — so the piece hangs strong and level." },
+  { term: "Kerf", def: "The width of material the saw blade removes (about ⅛\" on a circular saw). Already included in the nest." },
+  { term: "32mm pin holes", def: "Standard shelf-pin spacing: holes 32mm (about 1¼\") apart, 5mm diameter, set back about 1¼\" from the front edge." },
+];
+
 export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
 }
@@ -153,8 +175,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const left = 54;
-  const right = pageW - 54;
+  const left = 48;
+  const right = pageW - 48;
   const width = right - left;
   let y = 56;
 
@@ -300,6 +322,25 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     y += 6;
   }
 
+  // Full shop-words glossary so a first-time builder never has to guess.
+  if (plan.partsKind !== "whole" || plan.instructions.some((s) => /carcase|toekick|dry-fit|overlay|lag|shim|scribe/i.test(s.description + (s.tips ?? "")))) {
+    heading("Shop words");
+    muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
+    for (const g of SHOP_GLOSSARY) {
+      ensure(28);
+      doc.setFont("times", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      doc.text(g.term, left, y);
+      const defLines = wrap(g.def, 10, width - 110);
+      doc.setFont("times", "normal");
+      doc.setTextColor(...MUTED);
+      doc.text(defLines, left + 100, y);
+      y += Math.max(14, defLines.length * 12) + 4;
+    }
+    y += 4;
+  }
+
   if (plan.instructions.length) {
     heading("Build");
     for (const s of plan.instructions) {
@@ -308,43 +349,46 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
       const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
       const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
-      const photoH = hasPhoto ? 198 : 0;
-      const isoH = hasPhoto ? 52 : 72;
+      // Big photo: ~4.2" tall full-width. Skip the tiny iso when a real bench photo exists.
+      const photoH = hasPhoto ? 300 : 0;
+      const isoH = hasPhoto ? 0 : 88;
       ensure(
         titleLines.length * 16 +
           photoH +
           isoH +
           descLines.length * 14 +
           tipLines.length * 13 +
-          28,
+          32,
       );
       doc.setFont("times", "bold");
       doc.setFontSize(13);
       doc.setTextColor(...INK);
       doc.text(titleLines, left, y);
-      y += titleLines.length * 16 + 4;
+      y += titleLines.length * 16 + 6;
 
       if (hasPhoto && s.imageDataUrl && fmt) {
         try {
           const imgW = width;
           const imgH = photoH;
-          doc.addImage(s.imageDataUrl, fmt, left, y, imgW, imgH);
+          doc.addImage(s.imageDataUrl, fmt, left, y, imgW, imgH, undefined, "FAST");
           doc.setDrawColor(...RULE);
-          doc.setLineWidth(0.4);
+          doc.setLineWidth(0.5);
           doc.rect(left, y, imgW, imgH, "S");
           y += imgH + 6;
           doc.setFont("times", "italic");
-          doc.setFontSize(8);
+          doc.setFontSize(9);
           doc.setTextColor(...MUTED);
           doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
-          y += 12;
+          y += 14;
         } catch {
           /* fall through to iso only */
+          drawStepPlate(doc, project, s, left, y, width, 88);
+          y += 96;
         }
+      } else if (isoH > 0) {
+        drawStepPlate(doc, project, s, left, y, width, isoH);
+        y += isoH + 8;
       }
-
-      drawStepPlate(doc, project, s, left, y, width, isoH);
-      y += isoH + 8;
 
       doc.setFont("times", "normal");
       doc.setFontSize(11);
@@ -358,7 +402,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         doc.text(tipLines, left, y);
         y += tipLines.length * 13;
       }
-      y += 10;
+      y += 14;
     }
   }
 

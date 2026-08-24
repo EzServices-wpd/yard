@@ -92,7 +92,8 @@ function StepCapture() {
       try {
         // Force one more frame so CameraRig + step lighting are on the buffer.
         gl.render(scene, camera);
-        const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.78);
+        // 0.92 quality — sharp enough for full-width PDF plates without huge payloads.
+        const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.92);
         if (dataUrl?.startsWith("data:image") && dataUrl.length > 1200) {
           attachStepImage(activeStep!, dataUrl);
           last.current = activeStep!;
@@ -160,7 +161,7 @@ export function WorkspaceCanvas() {
           toneMappingExposure: 1.08,
         }}
         frameloop="always"
-        dpr={[1, 1.5]}
+        dpr={[1, 1.75]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
           gl.setClearColor("#1a1612", 1);
