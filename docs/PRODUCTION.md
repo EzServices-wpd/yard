@@ -69,6 +69,10 @@ Weekend (same engine, not the hero):
 - **~1:15am EDT** — Full content push of the five stubbed files (canvas, stick-cloud, steps, function, promptHelpers) that had remained PLACEHOLDER/see-local on origin. Pin holes gated on `hasAdjustableShelves` (shelf panels present); true 32mm pitch 1.26", ~5mm dia, 1¼" back. Typecheck clean; walk-launch **10/10 green**; linen still Closet 31.5 × 78 × 16. Attention-to-detail track.
 - **~2:15am EDT** — Real restore of the five critical files (canvas, stick-cloud, steps, function, promptHelpers) from last good evening commits (1079a07 / 4724d50 / 3c3131b). Prior overnight “restores” had only pushed PLACEHOLDER strings. Pin holes now gated for real on `showPinHoles = panels.some(p => p.type === "shelf")`; true 32mm pitch 1.26″, ~5mm dia, 1¼″ back from front. Type honesty fixes (cable_tie, formFactor, StructureKind). Wire-first `isWireStock` + `detectMaterial` restored. Typecheck clean; walk-launch **10/10 green**; linen still Closet 31.5 × 78 × 16. Attention-to-detail track.
 
+## Evening push 23 Aug 2026
+
+- **~10:23pm EDT** — Attention-to-detail honesty: re-applied true 32mm pin holes gated on adjustable shelves. Prior tip (0f72c09 door-swing) had lost the gate and still used 4″ pitch. Now: `showPinHoles = panels.some(p => p.type === "shelf")` wired from BenchScene into PanelMesh; PinHoles step = 1.26″, ~5mm dia (0.098″ radius), 1¼″ back. Desks / fixed carcases stay clean. Commits 26bf1f3 + 9ee3ebf. Tip: 9ee3ebf. Walk expected 10/10 (no size/name changes; linen remains Closet 31.5 × 78 × 16).
+
 ## Do not
 
 - Add 2D silhouettes or more paper chips
