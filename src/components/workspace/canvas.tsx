@@ -295,6 +295,11 @@ function BenchScene({
       : detail === "full"
         ? project.instances.filter((i) => !isSkinRole(i.role))
         : project.instances;
+  // True 32mm pin holes only when the unit actually has adjustable shelves.
+  const showPinHoles = useMemo(
+    () => project.panels.some((p) => p.type === "shelf"),
+    [project.panels],
+  );
 
   return (
     <group>
@@ -331,6 +336,7 @@ function BenchScene({
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
               facesOpen={facesOpen}
+              showPinHoles={showPinHoles}
             />
           ))}
       {!pending && project.panels.length > 0 && (
