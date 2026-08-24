@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Grid, Line, OrbitControls, ContactShadows } from "@react-three/drei";
+import { Grid, Line, OrbitControls, ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
 import { stepInstanceIds } from "@/lib/yard/assembly";
@@ -15,22 +14,6 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 
 const HULL = "#8a8478";
 const HIST = "#d7cbb6";
-
-function WorkshopEnv() {
-  const { gl, scene } = useThree();
-  useEffect(() => {
-    const pmrem = new THREE.PMREMGenerator(gl);
-    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = envTex;
-    scene.environmentIntensity = 0.82;
-    return () => {
-      scene.environment = null;
-      envTex.dispose();
-      pmrem.dispose();
-    };
-  }, [gl, scene]);
-  return null;
-}
 
 function StudioLights({
   project,
@@ -47,11 +30,11 @@ function StudioLights({
   const camSpan = Math.max(span * 0.75, 36);
   return (
     <>
-      <ambientLight intensity={fitted ? 0.2 : 0.3} />
-      <hemisphereLight args={["#ffe8c8", "#2a2218", fitted ? 0.4 : 0.52]} />
+      <ambientLight intensity={fitted ? 0.18 : 0.28} />
+      <hemisphereLight args={["#ffe8c8", "#2a2218", fitted ? 0.36 : 0.48]} />
       <directionalLight
         position={[span * 0.55, Math.max(H * 1.25, 48), span * 0.42]}
-        intensity={fitted ? 1.7 : 1.42}
+        intensity={fitted ? 1.55 : 1.35}
         color="#fff3e0"
         castShadow={useShadows}
         shadow-mapSize={fitted ? [2048, 2048] : [1024, 1024]}
@@ -64,8 +47,8 @@ function StudioLights({
         shadow-camera-top={camSpan}
         shadow-camera-bottom={-camSpan}
       />
-      <directionalLight position={[-span * 0.65, H * 0.42, -span * 0.35]} intensity={fitted ? 0.4 : 0.3} color="#a8c0dc" />
-      <directionalLight position={[span * 0.12, H * 0.85, -span * 0.75]} intensity={0.24} color="#ffd7a8" />
+      <directionalLight position={[-span * 0.65, H * 0.42, -span * 0.35]} intensity={fitted ? 0.38 : 0.28} color="#a8c0dc" />
+      <directionalLight position={[span * 0.12, H * 0.85, -span * 0.75]} intensity={0.22} color="#ffd7a8" />
       <ContactShadows
         position={[0, 0.015, 0]}
         opacity={fitted ? 0.56 : 0.42}
@@ -157,7 +140,7 @@ export function WorkspaceCanvas() {
           preserveDrawingBuffer: true,
           powerPreference: "default",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.12,
+          toneMappingExposure: 1.08,
         }}
         frameloop="always"
         dpr={[1, 1.5]}
@@ -171,7 +154,8 @@ export function WorkspaceCanvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        <WorkshopEnv />
+        {/* Shop HDRI for real reflections on ply/maple; solid bg stays dark product floor */}
+        <Environment preset="warehouse" environmentIntensity={0.88} background={false} />
         <StudioLights project={project} useShadows={useShadows} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
           <planeGeometry args={[240, 240]} />
