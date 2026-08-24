@@ -23,6 +23,9 @@ export function ExportDialog({
   const [pdfBusy, setPdfBusy] = useState(false);
   const render = plan.render ?? project.render;
   const md = planToMarkdown(project, plan);
+  const photoCount = plan.instructions.filter(
+    (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
+  ).length;
 
   useEffect(() => {
     let url: string | null = null;
@@ -37,14 +40,18 @@ export function ExportDialog({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setDlNote("PDF ready. If no download started, it is on the page below.");
+      setDlNote(
+        photoCount
+          ? `PDF ready with ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. If no download started, it is on the page below.`
+          : "PDF ready. Tip: open a step on the bench first so its photo lands in the plan, then export again.",
+      );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
     }
     return () => {
       if (url) URL.revokeObjectURL(url);
     };
-  }, [project, plan]);
+  }, [project, plan, photoCount]);
 
   async function copyMd() {
     try {
@@ -90,7 +97,11 @@ export function ExportDialog({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setDlNote("PDF is open below. If no download started, use the viewer or right-click → save.");
+      setDlNote(
+        photoCount
+          ? `PDF is open below with ${photoCount} bench photo${photoCount === 1 ? "" : "s"}.`
+          : "PDF is open below. View steps on the bench first to capture photos into the plan.",
+      );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
     } finally {
@@ -219,19 +230,39 @@ export function ExportDialog({
 
           <section className="mt-8">
             <h2 className="font-display text-xl text-ink">Build</h2>
+            {!photoCount && (
+              <p className="mt-2 text-xs text-ink-muted">
+                No bench photos yet. In the plan drawer, click a step to view it on the bench — that captures the photo into the plan and PDF.
+              </p>
+            )}
             <ol className="mt-4 space-y-6">
-              {plan.instructions.map((s) => (
-                <li key={s.step} className="flex gap-4 border-t border-rule pt-4">
-                  <IsoPlate project={project} step={s} className="hidden h-24 w-28 shrink-0 sm:block" />
-                  <div>
-                    <p className="font-medium">
-                      <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
-                    {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
-                  </div>
-                </li>
-              ))}
+              {plan.instructions.map((s) => {
+                const hasPhoto = Boolean(
+                  s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
+                );
+                return (
+                  <li key={s.step} className="border-t border-rule pt-4">
+                    {hasPhoto && s.imageDataUrl ? (
+                      <img
+                        src={s.imageDataUrl}
+                        alt={`Bench view — step ${s.step}`}
+                        className="mb-3 w-full border border-rule object-cover"
+                      />
+                    ) : (
+                      <div className="mb-3 flex gap-4">
+                        <IsoPlate project={project} step={s} className="hidden h-24 w-28 shrink-0 sm:block" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">
+                        <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
+                      {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           </section>
 
