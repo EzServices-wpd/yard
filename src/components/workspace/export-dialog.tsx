@@ -21,29 +21,24 @@ export function ExportDialog({
   const [dlNote, setDlNote] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const render = plan.render ?? project.render;
   const md = planToMarkdown(project, plan);
   const photoCount = plan.instructions.filter(
     (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
   ).length;
 
+  // Build a preview blob only — never auto-download.
   useEffect(() => {
     let url: string | null = null;
     try {
       const blob = buildPlanPdf(project, plan).output("blob");
       url = URL.createObjectURL(blob);
       setPdfUrl(url);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${slugPlan(project.name)}-plan.pdf`;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
       setDlNote(
         photoCount
-          ? `PDF ready with ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. If no download started, it is on the page below.`
-          : "PDF ready. Tip: open a step on the bench first so its photo lands in the plan, then export again.",
+          ? `Ready · ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. Tap Save PDF when you want the file.`
+          : "Ready. Save PDF for the shop copy. Open a step on the bench first if you want photos in the plan.",
       );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
@@ -81,7 +76,7 @@ export function ExportDialog({
     }
   }
 
-  function exportPdf() {
+  function savePdf() {
     setPdfBusy(true);
     setDlNote(null);
     try {
@@ -99,8 +94,8 @@ export function ExportDialog({
       a.remove();
       setDlNote(
         photoCount
-          ? `PDF is open below with ${photoCount} bench photo${photoCount === 1 ? "" : "s"}.`
-          : "PDF is open below. View steps on the bench first to capture photos into the plan.",
+          ? `Saved · ${photoCount} bench photo${photoCount === 1 ? "" : "s"} in the file.`
+          : "Saved. View steps on the bench first next time to capture photos into the plan.",
       );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
@@ -109,27 +104,35 @@ export function ExportDialog({
     }
   }
 
+  const unit =
+    project.fitted?.unit ??
+    project.pocket?.unit ??
+    project.overall;
+
   return (
     <div className="pointer-events-auto fixed inset-0 z-[60] flex flex-col bg-paper text-ink">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-rule px-4 py-3 print:hidden">
         <div className="min-w-0">
           <p className="truncate font-display text-lg text-ink">{project.name}</p>
-          <p className="text-xs text-ink-muted">Plan on paper. PDF is the shop copy.</p>
+          <p className="text-xs text-ink-muted">
+            {unit.width}" × {unit.height}" × {unit.depth}" · the plan on paper
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button type="button" onClick={() => void copyMd()} className="h-10 rounded-md border border-rule px-3 text-sm text-ink">
-            {copied ? "Copied" : "Copy"}
-          </button>
-          <button type="button" onClick={downloadMd} className="h-10 rounded-md border border-rule px-3 text-sm text-ink">
-            .md
+          <button
+            type="button"
+            onClick={savePdf}
+            disabled={pdfBusy}
+            className="h-10 rounded-md bg-ink px-4 text-sm font-medium text-paper disabled:opacity-50"
+          >
+            {pdfBusy ? "Building…" : "Save PDF"}
           </button>
           <button
             type="button"
-            onClick={exportPdf}
-            disabled={pdfBusy}
-            className="h-10 rounded-md bg-ink px-3.5 text-sm font-medium text-paper disabled:opacity-50"
+            onClick={() => setMoreOpen((v) => !v)}
+            className="h-10 rounded-md border border-rule px-3 text-sm text-ink-muted hover:text-ink"
           >
-            {pdfBusy ? "Building…" : "PDF"}
+            More
           </button>
           <button type="button" onClick={onClose} className="grid size-10 place-items-center text-ink-muted hover:text-ink" aria-label="Close">
             <X className="size-4" />
@@ -137,10 +140,24 @@ export function ExportDialog({
         </div>
       </header>
 
+      {moreOpen && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-rule bg-paper px-4 py-2 print:hidden">
+          <button type="button" onClick={() => void copyMd()} className="h-9 rounded-md border border-rule px-3 text-xs text-ink">
+            {copied ? "Copied" : "Copy markdown"}
+          </button>
+          <button type="button" onClick={downloadMd} className="h-9 rounded-md border border-rule px-3 text-xs text-ink">
+            Download .md
+          </button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto">
         <article className="mx-auto max-w-2xl px-5 py-8 sm:px-8">
           <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Yard plan</p>
           <h1 className="mt-2 font-display text-3xl tracking-tight text-ink">{project.name}</h1>
+          <p className="mt-2 font-mono text-sm tracking-tight text-ink">
+            {unit.width}" × {unit.height}" × {unit.depth}"
+          </p>
           {project.prompt && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.prompt}</p>}
           {dlNote && <p className="mt-3 text-xs text-ink-muted">{dlNote}</p>}
 
