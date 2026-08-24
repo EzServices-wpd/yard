@@ -63,40 +63,57 @@ function StudioLights({
 
 /** Capture the live Canvas (lit parts for the active step) into plan.instructions[].imageDataUrl. */
 function StepCapture() {
-  const { gl } = useThree();
+  const { gl, scene, camera } = useThree();
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
   const attachStepImage = useYard((s) => s.attachStepImage);
   const last = useRef<number | null>(null);
+  const tries = useRef(0);
 
   useEffect(() => {
     if (activeStep == null || !plan) {
       last.current = null;
+      tries.current = 0;
       return;
     }
-    // Skip if we already have a photo for this step (avoid re-capture loops).
+
     const existing = plan.instructions.find((s) => s.step === activeStep)?.imageDataUrl;
-    if (existing?.startsWith("data:image") && last.current === activeStep) return;
+    // Already have a real photo for this step and we already captured it this session.
+    if (existing?.startsWith("data:image") && existing.length > 800 && last.current === activeStep) {
+      return;
+    }
 
     let cancelled = false;
-    // Wait for CameraRig + step lighting to settle, then grab JPEG.
-    const t = window.setTimeout(() => {
+    tries.current = 0;
+
+    function grab() {
       if (cancelled) return;
+      tries.current += 1;
       try {
-        const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.82);
-        if (dataUrl?.startsWith("data:image") && dataUrl.length > 800) {
-          attachStepImage(activeStep, dataUrl);
-          last.current = activeStep;
+        // Force one more frame so CameraRig + step lighting are on the buffer.
+        gl.render(scene, camera);
+        const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.78);
+        if (dataUrl?.startsWith("data:image") && dataUrl.length > 1200) {
+          attachStepImage(activeStep!, dataUrl);
+          last.current = activeStep!;
+          return;
         }
       } catch {
-        /* canvas may be tainted or disposed — ignore */
+        /* canvas may be tainted or disposed */
       }
-    }, 420);
+      // Retry once after a longer settle (mobile WebGL is slow).
+      if (tries.current < 2) {
+        window.setTimeout(grab, 700);
+      }
+    }
+
+    // First attempt after camera + lighting settle.
+    const t = window.setTimeout(grab, 900);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [activeStep, plan?.instructions.length, gl, attachStepImage]);
+  }, [activeStep, plan?.instructions.length, gl, scene, camera, attachStepImage]);
 
   return null;
 }
