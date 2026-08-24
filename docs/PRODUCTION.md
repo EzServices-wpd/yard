@@ -73,6 +73,10 @@ Weekend (same engine, not the hero):
 
 - **~10:23pm EDT** — Attention-to-detail honesty: re-applied true 32mm pin holes gated on adjustable shelves. Prior tip (0f72c09 door-swing) had lost the gate and still used 4″ pitch. Now: `showPinHoles = panels.some(p => p.type === "shelf")` wired from BenchScene into PanelMesh; PinHoles step = 1.26″, ~5mm dia (0.098″ radius), 1¼″ back. Desks / fixed carcases stay clean. Commits 26bf1f3 + 9ee3ebf. Tip: 9ee3ebf. Walk expected 10/10 (no size/name changes; linen remains Closet 31.5 × 78 × 16).
 
+## Overnight strategy execution (24 Aug 2026)
+
+- **~00:55am EDT** — Phase 0 punch list (slice A). Tip still `1301e58`. Ran `scripts/walk-launch.ts` → **10/10 green**. Linen remains **Closet 31.5 × 78 × 16** on name, HUD, unit, overall, cut list. No size fails. Soft note from honesty-smoke: desk plan titles do not yet say “drawer fronts” (not a walk-launch fail). Product gaps scored: nest missing on all house builds; no geometry step photos in PDF (triangle iso still hero); hardware counts soft in BOM qty. **No code change this slice.** NEXT = B (Canvas step captures into PDF + plan drawer). Full table in `artifacts/Yard-overnight-awe-2026-08-24.md`.
+
 ## Do not
 
 - Add 2D silhouettes or more paper chips
