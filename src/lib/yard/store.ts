@@ -52,6 +52,8 @@ type YardState = {
   setCutMode: (v: "auto" | "cut" | "whole") => void;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
+  /** Attach a live bench JPEG (data URL) to one assembly step for the PDF + plan drawer. */
+  attachStepImage: (step: number, imageDataUrl: string) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
   undo: () => void;
   redo: () => void;
@@ -279,6 +281,17 @@ export const useYard = create<YardState>((set, get) => ({
     return plan;
   },
   setPlan: (plan) => set({ plan }),
+  attachStepImage: (step, imageDataUrl) => {
+    const { plan } = get();
+    if (!plan || !imageDataUrl?.startsWith("data:image")) return;
+    const next = {
+      ...plan,
+      instructions: plan.instructions.map((s) =>
+        s.step === step ? { ...s, imageDataUrl } : s,
+      ),
+    };
+    set({ plan: next });
+  },
   setRender: (render) => {
     const { project, plan, commit } = get();
     commit({ ...project, render });
