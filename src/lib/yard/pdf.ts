@@ -201,15 +201,48 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const titleLines = wrap(`${String(s.step).padStart(2, "0")}  ${s.title}`, 13);
       const descLines = wrap(s.description, 11);
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
-      const plateH = 132;
-      ensure(titleLines.length * 16 + descLines.length * 14 + tipLines.length * 13 + plateH + 22);
+      const hasPhoto = Boolean(s.imageDataUrl && s.imageDataUrl.startsWith("data:image"));
+      // Full-width bench capture when present; otherwise demote the old 132-pt
+      // triangle iso to a small secondary plate so prose leads.
+      const photoH = hasPhoto ? 198 : 0;
+      const isoH = hasPhoto ? 52 : 72;
+      ensure(
+        titleLines.length * 16 +
+          photoH +
+          isoH +
+          descLines.length * 14 +
+          tipLines.length * 13 +
+          28,
+      );
       doc.setFont("times", "bold");
       doc.setFontSize(13);
       doc.setTextColor(...INK);
       doc.text(titleLines, left, y);
-      y += titleLines.length * 16;
-      drawStepPlate(doc, project, s, left, y, width, plateH);
-      y += plateH + 8;
+      y += titleLines.length * 16 + 4;
+
+      if (hasPhoto && s.imageDataUrl) {
+        try {
+          const imgW = width;
+          const imgH = photoH;
+          doc.addImage(s.imageDataUrl, "JPEG", left, y, imgW, imgH);
+          doc.setDrawColor(...RULE);
+          doc.setLineWidth(0.4);
+          doc.rect(left, y, imgW, imgH, "S");
+          y += imgH + 6;
+          doc.setFont("times", "italic");
+          doc.setFontSize(8);
+          doc.setTextColor(...MUTED);
+          doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
+          y += 12;
+        } catch {
+          /* fall through to iso only */
+        }
+      }
+
+      // Secondary iso plate (demoted from the old hero scribble)
+      drawStepPlate(doc, project, s, left, y, width, isoH);
+      y += isoH + 8;
+
       doc.setFont("times", "normal");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
