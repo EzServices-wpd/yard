@@ -276,7 +276,30 @@ export const useYard = create<YardState>((set, get) => ({
     }
   },
   makePlan: () => {
+    const prev = get().plan;
     const plan = buildPlan(get().project);
+    // Build plan is clicked every time the drawer opens — keep captured bench photos.
+    if (prev?.instructions?.length) {
+      const photos = new Map<
+        number,
+        string
+      >();
+      for (const s of prev.instructions) {
+        if (
+          s.imageDataUrl &&
+          s.imageDataUrl.startsWith("data:image") &&
+          s.imageDataUrl.length > 800
+        ) {
+          photos.set(s.step, s.imageDataUrl);
+        }
+      }
+      if (photos.size) {
+        plan.instructions = plan.instructions.map((s) => {
+          const imageDataUrl = photos.get(s.step);
+          return imageDataUrl ? { ...s, imageDataUrl } : s;
+        });
+      }
+    }
     set({ plan });
     return plan;
   },
