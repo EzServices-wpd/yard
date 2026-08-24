@@ -60,6 +60,7 @@ function PlanBody({
   const [scene, setScene] = useState(project.render?.scene ?? "");
   const [renderBusy, setRenderBusy] = useState(false);
   const [renderErr, setRenderErr] = useState<string | null>(null);
+  const [showRender, setShowRender] = useState(false);
   const [flatPlane, setFlatPlane] = useState<FlatPlane | "auto">("auto");
   const [flatPaper, setFlatPaper] = useState<PaperSize>("letter");
   const [flatNote, setFlatNote] = useState<string | null>(null);
@@ -116,7 +117,6 @@ function PlanBody({
 
       let res = await callWrite(fullBaseline);
 
-      // One-shot retry on parse fail: shorter baseline (title + first 120 chars) reduces truncation risk.
       if (!res.ok) {
         const shortBaseline = fullBaseline.map((s) => ({
           step: s.step,
@@ -136,7 +136,6 @@ function PlanBody({
         });
         return;
       }
-      // Merge enriched text onto existing steps so photos + partsUsed survive.
       const byStep = new Map(res.steps.map((s) => [s.step, s]));
       const merged = plan.instructions.map((orig) => {
         const enriched = byStep.get(orig.step);
@@ -146,10 +145,8 @@ function PlanBody({
           title: enriched.title || orig.title,
           description: enriched.description || orig.description,
           tips: enriched.tips ?? orig.tips,
-          // keep partsUsed + imageDataUrl from the deterministic baseline
         };
       });
-      // If Grok added extra intermediate steps, append them (rare; max +2).
       const extra = res.steps.filter((s) => !plan.instructions.some((o) => o.step === s.step));
       setPlan({
         ...plan,
@@ -210,6 +207,7 @@ function PlanBody({
       : plan.feasibility.status === "warnings"
         ? "text-warn"
         : "text-ok";
+  const hasIssues = plan.feasibility.issues.length > 0;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex justify-end print:static print:bg-paper print:text-ink">
@@ -314,23 +312,25 @@ function PlanBody({
             </section>
           )}
 
-          <section>
-            <h3 className="font-display text-lg text-fg">Check</h3>
-            <p className={`mt-1 text-xs ${tone}`}>{plan.feasibility.summary}</p>
-            {plan.feasibility.issues.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {plan.feasibility.issues.slice(0, 4).map((issue, i) => (
-                  <li key={i} className="border-b border-border/60 pb-2">
-                    <p className="text-fg">{issue.message}</p>
-                    {issue.suggestion && <p className="mt-0.5 text-muted">{issue.suggestion}</p>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {plan.feasibility.issues.length > 4 && (
-              <p className="mt-2 text-xs text-faint">{plan.feasibility.issues.length - 4} more on the printed plan.</p>
-            )}
-          </section>
+          {(!housePath || hasIssues) && (
+            <section>
+              <h3 className="font-display text-lg text-fg">Check</h3>
+              <p className={`mt-1 text-xs ${tone}`}>{plan.feasibility.summary}</p>
+              {hasIssues && (
+                <ul className="mt-3 space-y-2">
+                  {plan.feasibility.issues.slice(0, 4).map((issue, i) => (
+                    <li key={i} className="border-b border-border/60 pb-2">
+                      <p className="text-fg">{issue.message}</p>
+                      {issue.suggestion && <p className="mt-0.5 text-muted">{issue.suggestion}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {plan.feasibility.issues.length > 4 && (
+                <p className="mt-2 text-xs text-faint">{plan.feasibility.issues.length - 4} more on the printed plan.</p>
+              )}
+            </section>
+          )}
 
           <section>
             <div className="flex items-center justify-between gap-3">
@@ -349,17 +349,31 @@ function PlanBody({
             <p className="mt-2 text-[11px] text-faint print:hidden">
               View a step on the bench to capture its photo into the plan and PDF. Auto-capture runs for the first 4 steps after Build plan.
             </p>
-            <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
-              <p className="font-medium text-fg">Shop words (also printed in the PDF)</p>
-              <p className="mt-1">
-                <span className="text-fg">Carcase</span> = main box · <span className="text-fg">Toekick</span> = recessed floor strip ·{" "}
-                <span className="text-fg">Dry-fit</span> = assemble without glue · <span className="text-fg">Overlay</span> = door sits on the face ·{" "}
-                <span className="text-fg">Lag</span> = long screw into a stud · <span className="text-fg">Edge banding</span> = veneer over raw ply edge ·{" "}
-                <span className="text-fg">Shim</span> = thin wedge to fill a gap · <span className="text-fg">Scribe</span> = mark/cut to match a wall ·{" "}
-                <span className="text-fg">Rack</span> = twist out of square · <span className="text-fg">Plumb</span> = truly vertical ·{" "}
-                <span className="text-fg">Predrill</span> = pilot hole before the screw · <span className="text-fg">Kerf</span> = width the saw blade removes
-              </p>
-            </div>
+            {housePath ? (
+              <details className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <summary className="cursor-pointer font-medium text-fg">Shop words</summary>
+                <p className="mt-2">
+                  <span className="text-fg">Carcase</span> = main box · <span className="text-fg">Toekick</span> = recessed floor strip ·{" "}
+                  <span className="text-fg">Dry-fit</span> = assemble without glue · <span className="text-fg">Overlay</span> = door sits on the face ·{" "}
+                  <span className="text-fg">Lag</span> = long screw into a stud · <span className="text-fg">Edge banding</span> = veneer over raw ply edge ·{" "}
+                  <span className="text-fg">Shim</span> = thin wedge to fill a gap · <span className="text-fg">Scribe</span> = mark/cut to match a wall ·{" "}
+                  <span className="text-fg">Rack</span> = twist out of square · <span className="text-fg">Plumb</span> = truly vertical ·{" "}
+                  <span className="text-fg">Predrill</span> = pilot hole before the screw · <span className="text-fg">Kerf</span> = width the saw blade removes
+                </p>
+              </details>
+            ) : (
+              <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <p className="font-medium text-fg">Shop words (also printed in the PDF)</p>
+                <p className="mt-1">
+                  <span className="text-fg">Carcase</span> = main box · <span className="text-fg">Toekick</span> = recessed floor strip ·{" "}
+                  <span className="text-fg">Dry-fit</span> = assemble without glue · <span className="text-fg">Overlay</span> = door sits on the face ·{" "}
+                  <span className="text-fg">Lag</span> = long screw into a stud · <span className="text-fg">Edge banding</span> = veneer over raw ply edge ·{" "}
+                  <span className="text-fg">Shim</span> = thin wedge to fill a gap · <span className="text-fg">Scribe</span> = mark/cut to match a wall ·{" "}
+                  <span className="text-fg">Rack</span> = twist out of square · <span className="text-fg">Plumb</span> = truly vertical ·{" "}
+                  <span className="text-fg">Predrill</span> = pilot hole before the screw · <span className="text-fg">Kerf</span> = width the saw blade removes
+                </p>
+              </div>
+            )}
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
                 const on = activeStep === s.step;
@@ -421,138 +435,154 @@ function PlanBody({
           </section>
 
           {(paperCraft || !housePath) && (
-          <section>
-            <h3 className="font-display text-lg text-fg">2D map</h3>
-            <p className="mt-1 text-xs text-muted">
-              {project.flat && !project.flat.lifted
-                ? "Printable gluing diagram — whole sticks on the lines, glue ends, do not cut."
-                : "Flat stock layout for print — same pieces as the 3D model, orthographic."}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <label className="text-xs text-faint">
-                Face
-                <select
-                  value={flatPlane}
-                  onChange={(e) => setFlatPlane(e.target.value as FlatPlane | "auto")}
-                  className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
-                >
-                  <option value="auto">Auto</option>
-                  <option value="front">Front</option>
-                  <option value="top">Top</option>
-                  <option value="side">Side</option>
-                </select>
-              </label>
-              <label className="text-xs text-faint">
-                Paper
-                <select
-                  value={flatPaper}
-                  onChange={(e) => setFlatPaper(e.target.value as PaperSize)}
-                  className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
-                >
-                  <option value="letter">Letter</option>
-                  <option value="letter-landscape">Letter landscape</option>
-                  <option value="8x10">8×10</option>
-                  <option value="a4">A4</option>
-                </select>
-              </label>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setShowFlatPreview((v) => !v)}
-                className="h-10 rounded-md border border-border text-sm text-fg"
-              >
-                {showFlatPreview ? "Hide preview" : "Live preview"}
-              </button>
-              <button
-                type="button"
-                onClick={printFlatMap}
-                className="h-10 rounded-md border border-border text-sm text-fg"
-              >
-                Download SVG
-              </button>
-            </div>
-            {showFlatPreview && flatPreview && (
-              <div className="mt-2 overflow-hidden rounded-md border border-border bg-bg">
-                <p className="border-b border-border px-2 py-1 text-[11px] text-faint">
-                  {flatPreview.plane} · {flatPreview.map.pieceCount}{" "}
-                  {project.flat && !project.flat.lifted
-                    ? "whole sticks · glue ends"
-                    : "pieces"}{" "}
-                  · {flatPreview.paper.label}
-                </p>
-                <div
-                  className="max-h-72 overflow-auto p-2 [&_svg]:h-auto [&_svg]:w-full"
-                  dangerouslySetInnerHTML={{ __html: flatPreview.svg }}
-                />
+            <section>
+              <h3 className="font-display text-lg text-fg">2D map</h3>
+              <p className="mt-1 text-xs text-muted">
+                {project.flat && !project.flat.lifted
+                  ? "Printable gluing diagram — whole sticks on the lines, glue ends, do not cut."
+                  : "Flat stock layout for print — same pieces as the 3D model, orthographic."}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <label className="text-xs text-faint">
+                  Face
+                  <select
+                    value={flatPlane}
+                    onChange={(e) => setFlatPlane(e.target.value as FlatPlane | "auto")}
+                    className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="front">Front</option>
+                    <option value="top">Top</option>
+                    <option value="side">Side</option>
+                  </select>
+                </label>
+                <label className="text-xs text-faint">
+                  Paper
+                  <select
+                    value={flatPaper}
+                    onChange={(e) => setFlatPaper(e.target.value as PaperSize)}
+                    className="ml-1.5 h-8 rounded-md border border-border bg-bg px-2 text-sm text-fg"
+                  >
+                    <option value="letter">Letter</option>
+                    <option value="letter-landscape">Letter landscape</option>
+                    <option value="8x10">8×10</option>
+                    <option value="a4">A4</option>
+                  </select>
+                </label>
               </div>
-            )}
-            {showFlatPreview && !flatPreview && (
-              <p className="mt-2 text-xs text-danger">Could not draw a 2D preview for this project.</p>
-            )}
-            {project.flat && !project.flat.lifted && (
-              <button
-                type="button"
-                onClick={() => {
-                  const next = liftTo3d();
-                  if (next) {
-                    setFlatNote(
-                      `Lifted to 3D — ${next.instances.length} whole sticks · glue ends · do not cut. Same outline ratios, dual face + cross-ties. Close and reopen Build plan for a fresh plan.`,
-                    );
-                  }
-                }}
-                className="mt-2 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
-              >
-                Convert to 3D
-              </button>
-            )}
-            {project.flat?.lifted && (
-              <p className="mt-2 text-xs text-muted">Already lifted from 2D paper layout — still whole sticks, no cuts.</p>
-            )}
-            {flatNote && <p className="mt-2 text-xs text-muted">{flatNote}</p>}
-          </section>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFlatPreview((v) => !v)}
+                  className="h-10 rounded-md border border-border text-sm text-fg"
+                >
+                  {showFlatPreview ? "Hide preview" : "Live preview"}
+                </button>
+                <button
+                  type="button"
+                  onClick={printFlatMap}
+                  className="h-10 rounded-md border border-border text-sm text-fg"
+                >
+                  Download SVG
+                </button>
+              </div>
+              {showFlatPreview && flatPreview && (
+                <div className="mt-2 overflow-hidden rounded-md border border-border bg-bg">
+                  <p className="border-b border-border px-2 py-1 text-[11px] text-faint">
+                    {flatPreview.plane} · {flatPreview.map.pieceCount}{" "}
+                    {project.flat && !project.flat.lifted
+                      ? "whole sticks · glue ends"
+                      : "pieces"}{" "}
+                    · {flatPreview.paper.label}
+                  </p>
+                  <div
+                    className="max-h-72 overflow-auto p-2 [&_svg]:h-auto [&_svg]:w-full"
+                    dangerouslySetInnerHTML={{ __html: flatPreview.svg }}
+                  />
+                </div>
+              )}
+              {showFlatPreview && !flatPreview && (
+                <p className="mt-2 text-xs text-danger">Could not draw a 2D preview for this project.</p>
+              )}
+              {project.flat && !project.flat.lifted && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = liftTo3d();
+                    if (next) {
+                      setFlatNote(
+                        `Lifted to 3D — ${next.instances.length} whole sticks · glue ends · do not cut. Same outline ratios, dual face + cross-ties. Close and reopen Build plan for a fresh plan.`,
+                      );
+                    }
+                  }}
+                  className="mt-2 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
+                >
+                  Convert to 3D
+                </button>
+              )}
+              {project.flat?.lifted && (
+                <p className="mt-2 text-xs text-muted">Already lifted from 2D paper layout — still whole sticks, no cuts.</p>
+              )}
+              {flatNote && <p className="mt-2 text-xs text-muted">{flatNote}</p>}
+            </section>
           )}
 
-          <section>
-            <h3 className="font-display text-lg text-fg">Render</h3>
-            <p className="mt-1 text-xs text-muted">
-              After the design is set, generate a photograph of the finished piece to sit with the instructions.
-            </p>
-            {render?.url && (
-              <img
-                src={render.url}
-                alt={`Finished render of ${project.name}`}
-                className="mt-3 w-full rounded-md border border-border object-cover"
-              />
-            )}
-            <label className="mt-3 block">
-              <span className="text-xs text-faint">Scene (optional)</span>
-              <input
-                value={scene}
-                onChange={(e) => setScene(e.target.value)}
-                placeholder="white subway-tile bathroom, morning light"
-                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
-              />
-            </label>
+          {(!housePath || showRender || render?.url) && (
+            <section>
+              {housePath && !showRender && !render?.url ? null : (
+                <>
+                  <h3 className="font-display text-lg text-fg">Render</h3>
+                  <p className="mt-1 text-xs text-muted">
+                    After the design is set, generate a photograph of the finished piece to sit with the instructions.
+                  </p>
+                  {render?.url && (
+                    <img
+                      src={render.url}
+                      alt={`Finished render of ${project.name}`}
+                      className="mt-3 w-full rounded-md border border-border object-cover"
+                    />
+                  )}
+                  <label className="mt-3 block">
+                    <span className="text-xs text-faint">Scene (optional)</span>
+                    <input
+                      value={scene}
+                      onChange={(e) => setScene(e.target.value)}
+                      placeholder="white subway-tile bathroom, morning light"
+                      className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void makeRender()}
+                    disabled={renderBusy}
+                    className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
+                  >
+                    {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
+                  </button>
+                  {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
+                </>
+              )}
+            </section>
+          )}
+
+          {housePath && !showRender && !render?.url && (
             <button
               type="button"
-              onClick={() => void makeRender()}
-              disabled={renderBusy}
-              className="mt-2 h-10 w-full rounded-md border border-border text-sm text-fg disabled:opacity-50"
+              onClick={() => setShowRender(true)}
+              className="text-xs text-muted underline-offset-2 hover:text-fg hover:underline print:hidden"
             >
-              {renderBusy ? "Rendering…" : render?.url ? "Render again" : "Render the finished piece"}
+              Show finished look (optional)
             </button>
-            {renderErr && <p className="mt-2 text-xs text-danger">{renderErr}</p>}
-          </section>
+          )}
         </div>
 
         <div className="flex gap-2 border-t border-border p-4 print:hidden">
           <button
             type="button"
             onClick={() => setExportOpen(true)}
-            className="h-10 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg"
+            className="h-11 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg"
           >
-            Export PDF…
+            Print the plan
           </button>
         </div>
       </div>
