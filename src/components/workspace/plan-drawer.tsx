@@ -110,16 +110,38 @@ function PlanBody({
         },
       });
       if (!res.ok) {
-        useYard.setState({ grokError: res.error });
+        useYard.setState({
+          grokError:
+            res.error ||
+            "Could not add more instructions. Check that AI is available, then try again.",
+        });
         return;
       }
+      // Merge enriched text onto existing steps so photos + partsUsed survive.
+      const byStep = new Map(res.steps.map((s) => [s.step, s]));
+      const merged = plan.instructions.map((orig) => {
+        const enriched = byStep.get(orig.step);
+        if (!enriched) return orig;
+        return {
+          ...orig,
+          title: enriched.title || orig.title,
+          description: enriched.description || orig.description,
+          tips: enriched.tips ?? orig.tips,
+          // keep partsUsed + imageDataUrl from the deterministic baseline
+        };
+      });
+      // If Grok added extra intermediate steps, append them (rare; max +2).
+      const extra = res.steps.filter((s) => !plan.instructions.some((o) => o.step === s.step));
       setPlan({
         ...plan,
-        instructions: res.steps,
-        grokNotes: "Steps enriched for this project — same order and counts, more detail on holds, square checks, and what good looks like.",
+        instructions: [...merged, ...extra],
+        grokNotes:
+          "Steps enriched for this project — same order and counts, more detail on holds, square checks, and what good looks like. Bench photos kept.",
       });
     } catch {
-      useYard.setState({ grokError: "Could not reach Grok." });
+      useYard.setState({
+        grokError: "Could not reach the instruction service. Try again in a moment.",
+      });
     } finally {
       useYard.setState({ grokBusy: false });
     }
@@ -305,6 +327,9 @@ function PlanBody({
             {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <p className="mt-2 text-[11px] text-faint print:hidden">
               View a step on the bench to capture its photo into the plan and PDF.
+            </p>
+            <p className="mt-1.5 text-[11px] leading-snug text-faint">
+              Shop words on first use: carcase = main box · toekick = recessed floor strip · dry-fit = assemble without glue · overlay = door sits on the face · lag = long screw into a stud · edge banding = veneer strip over raw plywood edge.
             </p>
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
