@@ -328,9 +328,17 @@ function PlanBody({
             <p className="mt-2 text-[11px] text-faint print:hidden">
               View a step on the bench to capture its photo into the plan and PDF.
             </p>
-            <p className="mt-1.5 text-[11px] leading-snug text-faint">
-              Shop words on first use: carcase = main box · toekick = recessed floor strip · dry-fit = assemble without glue · overlay = door sits on the face · lag = long screw into a stud · edge banding = veneer strip over raw plywood edge.
-            </p>
+            <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              <p className="font-medium text-fg">Shop words (also printed in the PDF)</p>
+              <p className="mt-1">
+                <span className="text-fg">Carcase</span> = main box · <span className="text-fg">Toekick</span> = recessed floor strip ·{" "}
+                <span className="text-fg">Dry-fit</span> = assemble without glue · <span className="text-fg">Overlay</span> = door sits on the face ·{" "}
+                <span className="text-fg">Lag</span> = long screw into a stud · <span className="text-fg">Edge banding</span> = veneer over raw ply edge ·{" "}
+                <span className="text-fg">Shim</span> = thin wedge to fill a gap · <span className="text-fg">Scribe</span> = mark/cut to match a wall ·{" "}
+                <span className="text-fg">Rack</span> = twist out of square · <span className="text-fg">Plumb</span> = truly vertical ·{" "}
+                <span className="text-fg">Predrill</span> = pilot hole before the screw · <span className="text-fg">Kerf</span> = width the saw blade removes
+              </p>
+            </div>
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
                 const on = activeStep === s.step;
@@ -355,7 +363,7 @@ function PlanBody({
                         <img
                           src={s.imageDataUrl}
                           alt={`Bench view — step ${s.step}`}
-                          className="h-36 w-full rounded border border-rule object-cover sm:h-40"
+                          className="h-40 w-full rounded border border-rule object-cover sm:h-48"
                         />
                       ) : (
                         <div className="flex gap-3">
