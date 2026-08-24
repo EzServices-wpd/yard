@@ -11,6 +11,33 @@ export const Route = createFileRoute("/")({
 const HOUSE = DREAMS.filter((d) => d.group === "house");
 const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
 
+const HEROES = [
+  {
+    id: "linen",
+    src: "/heroes/linen.svg",
+    label: "Linen closet",
+    size: "31.5 × 78 × 16",
+    prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
+    caption: "Bathroom alcove — the numbers you typed",
+  },
+  {
+    id: "pocket",
+    src: "/heroes/pocket.svg",
+    label: "Pocket vanity",
+    size: "trapezoid fit",
+    prompt: DREAMS.find((d) => d.id === "pocket")?.prompt ?? "",
+    caption: "Wonky pocket in, straight unit out",
+  },
+  {
+    id: "desk",
+    src: "/heroes/desk.svg",
+    label: "60″ desk",
+    size: "60 × 30 × 29 · 24″ knee",
+    prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
+    caption: "Drawers + clear knee space",
+  },
+] as const;
+
 function LandingPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
@@ -43,12 +70,47 @@ function LandingPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-16">
-        <section className="max-w-3xl">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-12">
+        {/* Hero stills — house first, locked geometry */}
+        <section className="mb-12">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-            Measure a space. Get a plan.
+            Built for the hole you measured
           </p>
-          <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {HEROES.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => go(h.prompt)}
+                className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition hover:border-ink/30 hover:bg-surface"
+              >
+                <div className="relative aspect-[4/3] bg-paper">
+                  <img
+                    src={h.src}
+                    alt={`${h.label} ${h.size}`}
+                    className="h-full w-full object-cover"
+                    width={640}
+                    height={480}
+                  />
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <span className="font-display text-base text-ink group-hover:underline">
+                    {h.label}
+                  </span>
+                  <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">
+                    {h.size}
+                  </span>
+                  <span className="mt-1.5 text-xs leading-snug text-ink-muted">
+                    {h.caption}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="max-w-3xl">
+          <h1 className="max-w-3xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             Type it. Buy the parts. Build it.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
@@ -115,7 +177,7 @@ function ChipRow({
   onGo,
 }: {
   title: string;
-  items: typeof DREAMS[number][];
+  items: (typeof DREAMS)[number][];
   onGo: (text: string) => void;
 }) {
   if (!items.length) return null;
