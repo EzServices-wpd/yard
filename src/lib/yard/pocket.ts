@@ -10,6 +10,10 @@ import type { Panel, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
 
+/** Chip / everyday sentence. parsePocket fills Ezra's bathroom as the example pocket. */
+export const POCKET_SHORT = "pocket vanity";
+
+/** Full survey of the original bathroom — preset data, not the chip prompt. */
 export const POCKET_DREAM = `I have a pocket space in my bathroom with these exact dimensions:
 Back wall: 38.5 inches wide. Left side depth: 26 inches. Right side depth: 33.5 inches. All walls: 102 inches high. Open to the front.
 The side walls are angled (almost trapezoidal): at 20 inches perpendicular from the back wall, the opening is 46 inches wide. Left of centerline at 20": 25 inches. Right of centerline at 20": 21 inches. Left wall angle ≈ 16.05°. Right wall angle ≈ 5.00°.
@@ -32,7 +36,7 @@ export function looksLikePocket(prompt: string) {
   const lower = prompt.toLowerCase();
   // Wonky geometry only — "alcove" alone is a rectangular fitted unit.
   const wonky =
-    /pocket|trapezoid|centerline|angled/.test(lower) ||
+    /pocket|trapezoid|centerline|angled|wonky/.test(lower) ||
     (/back wall/.test(lower) && /left/.test(lower) && /right/.test(lower));
   if (!wonky) return false;
   const use = /vanity|linen|towel|built-?in|cabinet|closet|storage/.test(lower);

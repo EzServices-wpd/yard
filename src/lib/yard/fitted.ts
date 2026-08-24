@@ -42,7 +42,12 @@ export function looksLikeFitted(prompt: string) {
     return false;
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
-  return BUILDER.test(lower) && nums >= 2;
+  if (!BUILDER.test(lower)) return false;
+  // Named house programs don't need two numbers — honest defaults fill in.
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|alcove|built-?in/.test(lower)) {
+    return true;
+  }
+  return nums >= 2;
 }
 
 export function detectProgram(lower: string): FittedProgram {
@@ -56,7 +61,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (/\bcloset\b|linen|alcove|built-?in/.test(lower)) return "closet";
   if (/towel|cabinet|storage|shelves|shelf/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
-  if (/bathroom/.test(lower)) return "vanity";
+  if (/bathroom/.test(lower) && !/closet|linen|alcove/.test(lower)) return "vanity";
   return "storage";
 }
 
@@ -108,13 +113,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
   let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
 
+  if (!Number.isFinite(width) && trip.w) width = trip.w;
+
   if (!Number.isFinite(width)) {
     const alcove = t.match(
       /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:bathroom\s+)?(?:alcove|opening|niche|closet)\b/i,
     );
-    if (alcove) width = parseFloat(alcove[1]);
+    if (alcove && !(trip.w && trip.h)) width = parseFloat(alcove[1]);
   }
-  if (!Number.isFinite(width)) width = trip.w ?? (program === "desk" ? 48 : 36);
+  if (!Number.isFinite(width)) width = trip.w ?? (program === "desk" ? 48 : program === "vanity" ? 36 : 36);
+
+  const wantsUppers =
+    program === "vanity" &&
+    /upper|to the ceiling|floor.?to.?ceiling|linen storage|towels to/.test(lower);
 
   if (!Number.isFinite(height)) {
     if (program === "desk" || program === "bench") {
@@ -123,15 +134,32 @@ export function parseBrief(prompt: string): FittedSpec | null {
         depth = trip.h;
         height = trip.d;
       } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+    } else if (program === "vanity") {
+      if (trip.h && trip.h >= 48) height = trip.h;
+      else if (trip.h && trip.h < 42) {
+        if (!Number.isFinite(depth)) depth = trip.h;
+        height = 34;
+      } else {
+        height = wantsUppers ? 84 : 34;
+      }
     } else if (trip.h && trip.h < 40 && !trip.d) {
       depth = trip.h;
-      height = program === "media" ? 24 : program === "vanity" ? 36 : 84;
+      height = program === "media" ? 24 : 84;
     } else {
       height = trip.h ?? (program === "media" ? 24 : 84);
     }
   }
   if (!Number.isFinite(depth)) {
-    depth = program === "desk" ? 24 : program === "bookcase" ? 12 : program === "media" ? 16 : 16;
+    depth =
+      program === "desk"
+        ? 24
+        : program === "vanity"
+          ? 21
+          : program === "bookcase"
+            ? 12
+            : program === "media"
+              ? 16
+              : 16;
   }
 
   const counterH = /(?:counter|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i.test(t)

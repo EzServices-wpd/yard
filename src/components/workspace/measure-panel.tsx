@@ -4,12 +4,14 @@ import { useEffect, useRef } from "react";
 import { useYard } from "@/lib/yard/store";
 import type { SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
+import { POCKET_DREAM } from "@/lib/yard/pocket";
 
 export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
   const setMeasure = useYard((s) => s.setMeasure);
   const applyMeasure = useYard((s) => s.applyMeasure);
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
+  const generate = useYard((s) => s.generate);
   const project = useYard((s) => s.project);
   const makePlan = useYard((s) => s.makePlan);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,17 +36,60 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     onBuilt();
   }
 
+  const isPocket = Boolean(project.pocket);
+
   return (
     <div className="p-4">
-      <h2 className="font-display text-lg text-fg">Measure a space</h2>
+      <h2 className="font-display text-lg text-fg">{isPocket ? "The pocket you measured" : "Measure a space"}</h2>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        {project.pocket
-          ? "W × H × D is the rectangular unit. The pocket walls stay put — they are the trapezoid. Front face stays parallel to the back wall."
+        {isPocket
+          ? "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls."
           : project.fitted
-            ? "W × H × D refits this unit. The program — drawers, knee, doors, shelves — stays. Same engine as the bathroom pocket."
-            : "The opening is on the bench — type into the arrows or these fields. An alcove becomes a closet. A shallow opening becomes a window package."}
+            ? "W × H × D refits this unit. Drawers, knee, doors, and shelves stay."
+            : "The opening is on the bench — type into the arrows or these fields."}
       </p>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+
+      {isPocket && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Field
+            label="Back wall"
+            value={measure.backWidth ?? ""}
+            onChange={(v) => {
+              setMeasure({ backWidth: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="Ceiling"
+            value={measure.height}
+            onChange={(v) => {
+              setMeasure({ height: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="Left depth"
+            value={measure.leftDepth ?? ""}
+            onChange={(v) => {
+              setMeasure({ leftDepth: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="Right depth"
+            value={measure.rightDepth ?? ""}
+            onChange={(v) => {
+              setMeasure({ rightDepth: v });
+              liveIfFitted();
+            }}
+          />
+        </div>
+      )}
+
+      <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-faint">
+        {isPocket ? "Unit inside the pocket" : "Opening"}
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
         <Field
           label="W"
           value={measure.width}
@@ -70,22 +115,24 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           }}
         />
       </div>
-      <label className="mt-3 block text-xs text-muted">
-        This is a
-        <select
-          value={measure.kind}
-          onChange={(e) => {
-            setMeasure({ kind: e.target.value as SpaceKind });
-            liveIfFitted();
-          }}
-          className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-2 text-sm text-fg"
-        >
-          <option value="closet_niche">Closet / alcove</option>
-          <option value="window_rough_opening">Window rough opening</option>
-          <option value="shelving_alcove">Shelving niche</option>
-          <option value="general_volume">General volume</option>
-        </select>
-      </label>
+      {!isPocket && (
+        <label className="mt-3 block text-xs text-muted">
+          This is a
+          <select
+            value={measure.kind}
+            onChange={(e) => {
+              setMeasure({ kind: e.target.value as SpaceKind });
+              liveIfFitted();
+            }}
+            className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-2 text-sm text-fg"
+          >
+            <option value="closet_niche">Closet / alcove</option>
+            <option value="window_rough_opening">Window rough opening</option>
+            <option value="shelving_alcove">Shelving niche</option>
+            <option value="general_volume">General volume</option>
+          </select>
+        </label>
+      )}
       {measure.kind === "window_rough_opening" && (
         <label className="mt-3 block text-xs text-muted">
           Stock window
@@ -118,8 +165,21 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
         onClick={apply}
         className="mt-4 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
       >
-        Fit this opening
+        {isPocket ? "Refit this pocket" : "Fit this opening"}
       </button>
+      {isPocket && (
+        <button
+          type="button"
+          onClick={() => {
+            generate(POCKET_DREAM, undefined, undefined, { fresh: true });
+            makePlan();
+            onBuilt();
+          }}
+          className="mt-2 h-10 w-full rounded-md border border-border text-sm text-muted hover:text-fg"
+        >
+          Load the example pocket
+        </button>
+      )}
     </div>
   );
 }

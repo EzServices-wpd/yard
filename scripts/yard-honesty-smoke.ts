@@ -87,7 +87,7 @@ if (vanity && (vanity.overall.height > 48 || vanity.panels < 6)) {
   console.error("FAIL 36x22 vanity should be a counter-height unit", vanity);
   process.exit(1);
 }
-const pocket = results.find((r) => r.label === "closet");
+const pocket = results.find((r) => r.label === "pocket");
 if (pocket && (pocket.overall.height < 90 || pocket.panels < 10)) {
   console.error("FAIL pocket vanity lost the trapezoid", pocket);
   process.exit(1);

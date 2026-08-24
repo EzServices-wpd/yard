@@ -1,22 +1,22 @@
-import { POCKET_DREAM } from "./pocket";
+import { POCKET_SHORT } from "./pocket";
 
 export type DreamGroup = "house" | "weekend";
 
-/** Hero chips. House first (launch), weekend second (same engine). Paper stays in the engine, off the homepage. */
+/** Hero chips. House first. Weekend second. Paper stays in the engine, off the homepage. */
 export const DREAMS = [
   {
     id: "pocket",
     group: "house" as const,
-    label: "Bathroom pocket vanity",
-    prompt: POCKET_DREAM,
-    blurb: "Wonky trapezoid in, straight unit out — cut list and hardware you can buy.",
+    label: "Pocket vanity",
+    prompt: POCKET_SHORT,
+    blurb: "Fits the bathroom pocket you measured.",
   },
   {
     id: "linen",
     group: "house" as const,
     label: "31.5″ linen closet",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
-    blurb: "The opening you typed is the unit you get. ¾″ ply, shelves, alcove fit.",
+    blurb: "The alcove you typed is the unit you get.",
   },
   {
     id: "window",
@@ -30,7 +30,7 @@ export const DREAMS = [
     group: "house" as const,
     label: "60″ desk with drawers",
     prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
-    blurb: "Same fitted engine — measure it, cut it, sit at it.",
+    blurb: "Drawers, 24″ knee, sit down.",
   },
   {
     id: "eiffel",

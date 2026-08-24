@@ -394,6 +394,9 @@ export type MeasureDraft = {
   depth: string;
   kind: SpaceKind;
   windowId?: string;
+  backWidth?: string;
+  leftDepth?: string;
+  rightDepth?: string;
 };
 
 export type ExportOptions = {

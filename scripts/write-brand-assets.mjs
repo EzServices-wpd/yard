@@ -20,3 +20,6 @@ function write(rel, dest) {
 write("scripts/brand/og.jpg.b64", "public/og.jpg");
 write("scripts/brand/x-banner.jpg.b64", "public/x-banner.jpg");
 write("scripts/brand/icon-180.png.b64", "public/__grok/icon-180.png");
+write("scripts/brand/hero-pocket.jpg.b64", "public/heroes/pocket.jpg");
+write("scripts/brand/hero-linen.jpg.b64", "public/heroes/linen.jpg");
+write("scripts/brand/hero-desk.jpg.b64", "public/heroes/desk.jpg");

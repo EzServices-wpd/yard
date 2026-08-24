@@ -182,6 +182,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [undo, redo, deleteSelected, selectedId]);
 
   useEffect(() => {
+    if (project.pocket) setSide("measure");
+  }, [project.id, project.pocket]);
+
+  useEffect(() => {
     if (workMode === "build") setWorkMode("look");
     if (workMode === "walk" && !project.traverse) setWorkMode("look");
   }, [workMode, setWorkMode, project.traverse]);

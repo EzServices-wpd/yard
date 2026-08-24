@@ -103,7 +103,7 @@ export function buildClosetFromPrompt(prompt: string, size: { width: number; hei
   let H = size.height;
   let D = size.depth;
 
-  if (/linen|bathroom/.test(lower) && !/\d/.test(lower)) {
+  if (/linen/.test(lower) && !/vanity/.test(lower) && !/\d/.test(lower)) {
     W = 31.5;
     H = 78;
     D = 16;
@@ -122,11 +122,13 @@ export function buildClosetFromPrompt(prompt: string, size: { width: number; hei
   }
 
   const project = buildClosetFromOpening(W, H, D, prompt);
-  project.name = /wardrobe/.test(lower)
+  project.name = /vanity/.test(lower)
+    ? "Vanity"
+    : /wardrobe/.test(lower)
     ? "Wide wardrobe"
     : /pantry/.test(lower)
       ? "Pantry tower"
-      : /linen|bathroom/.test(lower)
+      : /linen/.test(lower)
         ? "Linen closet"
         : /media/.test(lower)
           ? "Media niche"

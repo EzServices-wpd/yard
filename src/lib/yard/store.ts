@@ -202,6 +202,9 @@ export const useYard = create<YardState>((set, get) => ({
             height: String(next.pocket.unit.height),
             depth: String(next.pocket.unit.depth),
             kind: "closet_niche",
+            backWidth: String(next.pocket.walls.backWidth),
+            leftDepth: String(next.pocket.walls.leftDepth),
+            rightDepth: String(next.pocket.walls.rightDepth),
           }
         : next.windowPkg
           ? {
@@ -469,8 +472,15 @@ export const useYard = create<YardState>((set, get) => ({
       return;
     }
     if (project.pocket) {
+      const walls = { ...project.pocket.walls };
+      const back = parseFloat(measure.backWidth ?? "");
+      const left = parseFloat(measure.leftDepth ?? "");
+      const right = parseFloat(measure.rightDepth ?? "");
+      if (back > 0) walls.backWidth = back;
+      if (left > 0) walls.leftDepth = left;
+      if (right > 0) walls.rightDepth = right;
       const unit = { ...project.pocket.unit, width: w, height: h, depth: d || project.pocket.unit.depth };
-      const built = buildPocket({ ...project.pocket, unit, leftClear: 0, rightClear: 0 }, project.prompt);
+      const built = buildPocket({ ...project.pocket, walls, unit, leftClear: 0, rightClear: 0 }, project.prompt);
       commit({ ...built, id: project.id });
       set({ showHull: true, showHistoric: false, workMode: "look", placedIds: [], activeStep: null });
       return;

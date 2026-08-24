@@ -64,4 +64,58 @@ for (const b of BUILDS) {
 }
 
 console.log(failed ? `\n${failed} failed` : "\n10/10 green");
-process.exit(failed ? 1 : 0);
+
+const INTAKE: { id: string; prompt: string; check: (p: ReturnType<typeof generateFromPrompt>) => string | null }[] = [
+  {
+    id: "vanity-plain",
+    prompt: "bathroom vanity",
+    check: (p) => {
+      if (p.fitted?.program !== "vanity") return `program ${p.fitted?.program ?? "none"} ≠ vanity`;
+      if (/linen/i.test(p.name)) return `named linen: ${p.name}`;
+      const h = p.fitted?.unit.height ?? p.overall.height;
+      if (h > 48) return `counter vanity grew to ${h}"`;
+      return null;
+    },
+  },
+  {
+    id: "vanity-36",
+    prompt: "vanity 36 inches wide",
+    check: (p) => {
+      if (p.fitted?.program !== "vanity") return `program ${p.fitted?.program ?? "none"} ≠ vanity`;
+      const w = p.fitted?.unit.width ?? 0;
+      if (Math.abs(w - 36) > 0.2) return `W ${w} ≠ 36`;
+      const h = p.fitted?.unit.height ?? p.overall.height;
+      if (h > 48) return `counter vanity grew to ${h}"`;
+      return null;
+    },
+  },
+  {
+    id: "pocket-short",
+    prompt: "pocket vanity",
+    check: (p) => {
+      if (!p.pocket) return "not a pocket";
+      if (!/vanity/i.test(p.name)) return `name "${p.name}"`;
+      if ((p.pocket.unit.height ?? 0) < 90) return `lost 102" mixed-use (${p.pocket.unit.height})`;
+      return null;
+    },
+  },
+];
+
+let intakeFail = 0;
+for (const b of INTAKE) {
+  const project = generateFromPrompt(b.prompt);
+  const err = b.check(project);
+  if (err) {
+    intakeFail += 1;
+    console.log(`FAIL ${b.id.padEnd(14)} ${err}`);
+  } else {
+    console.log(`ok   ${b.id.padEnd(14)} ${project.name}  ${project.fitted?.unit.width ?? project.pocket?.unit.width}×${project.fitted?.unit.height ?? project.pocket?.unit.height}×${project.fitted?.unit.depth ?? project.pocket?.unit.depth}`);
+  }
+}
+
+if (intakeFail) {
+  console.log(`\nintake ${intakeFail} failed`);
+  process.exit(1);
+}
+if (failed) process.exit(1);
+process.exit(0);
