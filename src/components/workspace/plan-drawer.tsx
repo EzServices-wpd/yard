@@ -91,24 +91,43 @@ function PlanBody({
     useYard.setState({ grokBusy: true, grokError: null });
     try {
       const itemName = project.primaryMaterialId?.replace(/_/g, " ") ?? undefined;
-      const res = await writeInstructions({
-        data: {
-          prompt: projectPrompt || projectName,
-          planText: planToMarkdown(project, plan),
-          baseline: plan.instructions.map((s) => ({
-            step: s.step,
-            title: s.title,
-            description: s.description,
-            tips: s.tips,
-            partsUsed: s.partsUsed,
-          })),
-          kind: project.kind,
-          materialName: itemName,
-          pieceCount: project.instances.length || project.panels.length || undefined,
-          joints: project.buildStats?.joints,
-          envelope: `${project.overall.width.toFixed(0)}×${project.overall.height.toFixed(0)}×${project.overall.depth.toFixed(0)}"`,
-        },
-      });
+      const fullBaseline = plan.instructions.map((s) => ({
+        step: s.step,
+        title: s.title,
+        description: s.description,
+        tips: s.tips,
+        partsUsed: s.partsUsed,
+      }));
+
+      async function callWrite(baseline: typeof fullBaseline) {
+        return writeInstructions({
+          data: {
+            prompt: projectPrompt || projectName,
+            planText: planToMarkdown(project, plan),
+            baseline,
+            kind: project.kind,
+            materialName: itemName,
+            pieceCount: project.instances.length || project.panels.length || undefined,
+            joints: project.buildStats?.joints,
+            envelope: `${project.overall.width.toFixed(0)}×${project.overall.height.toFixed(0)}×${project.overall.depth.toFixed(0)}"`,
+          },
+        });
+      }
+
+      let res = await callWrite(fullBaseline);
+
+      // One-shot retry on parse fail: shorter baseline (title + first 120 chars) reduces truncation risk.
+      if (!res.ok) {
+        const shortBaseline = fullBaseline.map((s) => ({
+          step: s.step,
+          title: s.title,
+          description: (s.description || "").slice(0, 120),
+          tips: s.tips ? s.tips.slice(0, 80) : undefined,
+          partsUsed: s.partsUsed,
+        }));
+        res = await callWrite(shortBaseline);
+      }
+
       if (!res.ok) {
         useYard.setState({
           grokError:
@@ -326,7 +345,7 @@ function PlanBody({
             {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
             {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <p className="mt-2 text-[11px] text-faint print:hidden">
-              View a step on the bench to capture its photo into the plan and PDF.
+              View a step on the bench to capture its photo into the plan and PDF. Auto-capture runs for the first 4 steps after Build plan.
             </p>
             <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
               <p className="font-medium text-fg">Shop words (also printed in the PDF)</p>
