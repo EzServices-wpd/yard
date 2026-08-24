@@ -303,9 +303,13 @@ function PlanBody({
             </div>
             {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
             {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
+            <p className="mt-2 text-[11px] text-faint print:hidden">
+              View a step on the bench to capture its photo into the plan and PDF.
+            </p>
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
                 const on = activeStep === s.step;
+                const hasPhoto = Boolean(s.imageDataUrl && s.imageDataUrl.startsWith("data:image"));
                 return (
                   <li key={s.step}>
                     <button
@@ -318,21 +322,43 @@ function PlanBody({
                         setActiveStep(s.step);
                         onClose();
                       }}
-                      className={`flex w-full gap-3 rounded-md border p-3 text-left transition ${
+                      className={`flex w-full flex-col gap-2 rounded-md border p-3 text-left transition ${
                         on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"
                       }`}
                     >
-                      <IsoPlate project={project} step={s} className="h-32 w-32 shrink-0 border border-rule sm:h-36 sm:w-40" />
-                      <span className="min-w-0">
-                        <span className="block font-medium text-fg">
-                          <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
+                      {hasPhoto ? (
+                        <img
+                          src={s.imageDataUrl}
+                          alt={`Bench view — step ${s.step}`}
+                          className="h-36 w-full rounded border border-rule object-cover sm:h-40"
+                        />
+                      ) : (
+                        <div className="flex gap-3">
+                          <IsoPlate project={project} step={s} className="h-32 w-32 shrink-0 border border-rule sm:h-36 sm:w-40" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium text-fg">
+                              <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
+                            </span>
+                            <span className="mt-1 block text-muted">{s.description}</span>
+                            {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                            <span className="mt-2 block text-xs text-faint print:hidden">
+                              {on ? "On the bench now — click again to leave" : "View this step on the bench (captures photo)"}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      {hasPhoto && (
+                        <span className="min-w-0">
+                          <span className="block font-medium text-fg">
+                            <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
+                          </span>
+                          <span className="mt-1 block text-muted">{s.description}</span>
+                          {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                          <span className="mt-2 block text-xs text-faint print:hidden">
+                            {on ? "On the bench now — click again to leave" : "View this step on the bench"}
+                          </span>
                         </span>
-                        <span className="mt-1 block text-muted">{s.description}</span>
-                        {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
-                        <span className="mt-2 block text-xs text-faint print:hidden">
-                          {on ? "On the bench now — click again to leave" : "View this step on the bench"}
-                        </span>
-                      </span>
+                      )}
                     </button>
                   </li>
                 );
