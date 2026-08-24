@@ -202,6 +202,8 @@ function PlanBody({
     }
   }
 
+  const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
+  const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const tone =
     plan.feasibility.status === "critical"
       ? "text-danger"
@@ -418,6 +420,7 @@ function PlanBody({
             </ol>
           </section>
 
+          {(paperCraft || !housePath) && (
           <section>
             <h3 className="font-display text-lg text-fg">2D map</h3>
             <p className="mt-1 text-xs text-muted">
@@ -508,6 +511,7 @@ function PlanBody({
             )}
             {flatNote && <p className="mt-2 text-xs text-muted">{flatNote}</p>}
           </section>
+          )}
 
           <section>
             <h3 className="font-display text-lg text-fg">Render</h3>

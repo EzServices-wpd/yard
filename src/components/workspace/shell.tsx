@@ -182,14 +182,28 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [undo, redo, deleteSelected, selectedId]);
 
   useEffect(() => {
-    if (project.pocket) setSide("measure");
-  }, [project.id, project.pocket]);
+    const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket);
+    if (!house) {
+      setSide((s) => (s === "measure" ? null : s));
+      return;
+    }
+    if (project.pocket) {
+      setSide("measure");
+      return;
+    }
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      setSide("measure");
+    }
+  }, [project.id, project.kind, project.pocket]);
 
   useEffect(() => {
     if (workMode === "build") setWorkMode("look");
-    if (workMode === "walk" && !project.traverse) setWorkMode("look");
-  }, [workMode, setWorkMode, project.traverse]);
+    const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
+    if (house && workMode !== "look") setWorkMode("look");
+    else if (workMode === "walk" && !project.traverse) setWorkMode("look");
+  }, [workMode, setWorkMode, project.traverse, project.kind, project.fitted]);
 
+  const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const material = getCatalogItem(project.primaryMaterialId);
   const wire = isWireStock(material);
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
@@ -198,14 +212,14 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const locked = selectedId ? lockedIds.includes(selectedId) : false;
   const steps = plan?.instructions ?? [];
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
-  const canWalk = Boolean(project.traverse);
-  const stickModel = project.instances.some((i) => i.role === "skin") || project.instances.length > 40;
-  const makerJob = project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
-  const showLoadBtn = Boolean(project.traverse && project.traverse.kind !== "around");
+  const canWalk = Boolean(project.traverse) && !housePath;
+  const stickModel = !housePath && (project.instances.some((i) => i.role === "skin") || project.instances.length > 40);
+  const makerJob = !housePath && project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
+  const showLoadBtn = !housePath && Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
   const hasFaces = project.panels.some((p) => p.type === "door" || p.type === "drawer");
   const sheetOnly = project.panels.length > 0 && project.instances.length === 0;
-  const cutChoice = paperCraft || project.instances.length > 0 || sheetOnly;
+  const cutChoice = !housePath && (paperCraft || project.instances.length > 0 || sheetOnly);
   const wholeOn =
     paperCraft ||
     (!sheetOnly &&
@@ -272,24 +286,28 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     setMoreOpen(false);
                   }}
                 />
+                {!housePath && (
+                  <>
+                    <MoreItem
+                      label="Delete piece"
+                      disabled={!selectedId}
+                      onClick={() => {
+                        deleteSelected();
+                        setMoreOpen(false);
+                      }}
+                    />
+                    <MoreItem
+                      label={locked ? "Unlock piece" : "Lock piece"}
+                      disabled={!selectedId}
+                      onClick={() => {
+                        toggleLockSelected();
+                        setMoreOpen(false);
+                      }}
+                    />
+                  </>
+                )}
                 <MoreItem
-                  label="Delete piece"
-                  disabled={!selectedId}
-                  onClick={() => {
-                    deleteSelected();
-                    setMoreOpen(false);
-                  }}
-                />
-                <MoreItem
-                  label={locked ? "Unlock piece" : "Lock piece"}
-                  disabled={!selectedId}
-                  onClick={() => {
-                    toggleLockSelected();
-                    setMoreOpen(false);
-                  }}
-                />
-                <MoreItem
-                  label={explode ? "Collapse" : "Explode"}
+                  label={explode ? "Put it back" : "See inside"}
                   onClick={() => {
                     setExplode(!explode);
                     setMoreOpen(false);
@@ -311,16 +329,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     setMoreOpen(false);
                   }}
                 />
-                {(["iso", "front", "side", "top"] as const).map((c) => (
-                  <MoreItem
-                    key={c}
-                    label={`Camera ${c}`}
-                    onClick={() => {
-                      setCamera(c);
-                      setMoreOpen(false);
-                    }}
-                  />
-                ))}
+                {!housePath &&
+                  (["iso", "front", "side", "top"] as const).map((c) => (
+                    <MoreItem
+                      key={c}
+                      label={`Camera ${c}`}
+                      onClick={() => {
+                        setCamera(c);
+                        setMoreOpen(false);
+                      }}
+                    />
+                  ))}
                 {authEnabled && !user && !isPending && (
                   <Link to="/login" className="block rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-elevated hover:text-fg" onClick={() => setMoreOpen(false)}>
                     Sign in
@@ -414,7 +433,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             </div>
           )}
 
-          {!pending && (
+          {!pending && !housePath && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
             {stickModel && (
@@ -594,6 +613,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
           <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-2 text-xs text-muted">
             <div
+              data-yard-house={housePath ? "1" : "0"}
               data-yard-pieces={pieceCount}
               data-yard-kind={project.kind}
               data-yard-mode={workMode}
@@ -624,16 +644,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               </p>
               <p className="mt-0.5 text-faint">
                 {inches(project.overall.width)} × {inches(project.overall.height)} × {inches(project.overall.depth)}
-                {" · "}
-                {wire
-                  ? "Skeleton only — pick a real material to densify"
-                  : workMode === "look"
-                    ? "Orbit"
-                    : workMode === "walk"
-                      ? "On the road"
-                      : workMode === "build"
-                        ? "Snap to the glow"
-                        : "Drag · snap home"}
+                {housePath
+                  ? " · the unit"
+                  : wire
+                    ? " · Skeleton only — pick a real material to densify"
+                    : workMode === "look"
+                      ? " · Orbit"
+                      : workMode === "walk"
+                        ? " · On the road"
+                        : workMode === "build"
+                          ? " · Snap to the glow"
+                          : " · Drag · snap home"}
               </p>
               {hasFaces && (
                 <button

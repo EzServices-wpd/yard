@@ -117,12 +117,23 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
       </form>
       <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-1">
         <YardsMenu />
-        {DREAMS.map((d) => (
+        {DREAMS.filter((d) => d.group === "house").map((d) => (
           <button
             key={d.id}
             type="button"
             onClick={() => void run(d.prompt, true)}
             className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-fg/30 hover:text-fg"
+          >
+            {d.label}
+          </button>
+        ))}
+        <span className="shrink-0 pl-1 text-[10px] uppercase tracking-[0.14em] text-faint">Weekend</span>
+        {DREAMS.filter((d) => d.group === "weekend").map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            onClick={() => void run(d.prompt, true)}
+            className="shrink-0 rounded-full border border-border/70 px-3 py-1 text-xs text-faint hover:border-fg/30 hover:text-fg"
           >
             {d.label}
           </button>

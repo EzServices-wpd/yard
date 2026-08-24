@@ -58,116 +58,134 @@ function LandingPage() {
     <div className="min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-rule/80 bg-paper/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-7 w-auto" />
-            <span className="font-display text-lg tracking-tight">Yard</span>
+          <Link to="/" className="flex items-center">
+            <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-3 text-sm">
-            <Link to="/workspace" className="text-ink-muted hover:text-ink">
-              Bench
-            </Link>
-            <Link
-              to="/workspace"
-              className="inline-flex h-9 items-center rounded-md bg-ink px-3.5 text-sm font-medium text-paper"
-            >
-              Open the bench
-            </Link>
-          </nav>
+          <Link to="/workspace" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+            Bench
+          </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-10">
-        <section className="mb-12">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-            The plan the lumber aisle should have printed
-          </p>
-          <div className="mt-4 grid gap-4 lg:grid-cols-5">
-            <button
-              type="button"
-              onClick={() => go(featured.prompt)}
-              className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition hover:border-ink/30 hover:bg-surface lg:col-span-3"
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:pt-12">
+        <section className="grid items-end gap-8 lg:grid-cols-12 lg:gap-10">
+          <div className="yard-hero-in lg:col-span-5 lg:pb-2">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+              The plan the lumber aisle should have printed
+            </p>
+            <h1 className="mt-4 max-w-xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+              Type it. Buy the parts. Build it.
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-relaxed text-ink-muted sm:text-lg">
+              Measure a space. Yard returns a cut list, hardware, and shop links — for the hole you actually have.
+            </p>
+
+            <form
+              className="mt-8"
+              onSubmit={(e) => {
+                e.preventDefault();
+                go(prompt);
+              }}
             >
-              <div className="relative aspect-[4/3] bg-paper">
+              <label htmlFor="dream" className="sr-only">
+                What do you want to build?
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="dream"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="bathroom vanity, 36 wide"
+                  className="h-12 flex-1 rounded-lg border border-rule bg-paper px-4 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow,border-color] duration-150 focus:border-ink/30 focus:ring-2"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-medium text-paper transition-transform duration-150 ease-out active:scale-[0.96]"
+                >
+                  Build this
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {HOUSE.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => go(d.prompt)}
+                    className="rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50"
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {WEEKEND.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => go(d.prompt)}
+                    className="rounded-full border border-rule/80 px-3.5 py-1.5 text-sm text-ink-muted transition-colors duration-150 hover:border-ink/30 hover:text-ink"
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => go(featured.prompt)}
+            className="yard-hero-in yard-hero-in-2 group relative overflow-hidden rounded-xl border border-rule bg-surface/40 text-left lg:col-span-7"
+          >
+            <div className="relative aspect-[4/3] bg-paper sm:aspect-[5/4]">
+              <img
+                src={featured.src}
+                alt={`${featured.label} ${featured.size}`}
+                className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
+                width={1280}
+                height={960}
+              />
+            </div>
+            <div className="flex flex-col p-4 sm:absolute sm:inset-x-0 sm:bottom-0 sm:bg-gradient-to-t sm:from-paper sm:via-paper/90 sm:to-transparent sm:p-5 sm:pt-16">
+              <span className="font-display text-lg text-ink group-hover:underline">{featured.label}</span>
+              <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{featured.size}</span>
+              <span className="mt-1.5 text-sm leading-snug text-ink-muted">{featured.caption}</span>
+            </div>
+          </button>
+        </section>
+
+        <section className="yard-hero-in yard-hero-in-3 mt-4 grid gap-4 sm:grid-cols-2">
+          {rest.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              onClick={() => go(h.prompt)}
+              className="group flex overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition-colors duration-150 hover:border-ink/30"
+            >
+              <div className="relative aspect-[4/3] w-2/5 shrink-0 overflow-hidden bg-paper sm:w-1/2">
                 <img
-                  src={featured.src}
-                  alt={`${featured.label} ${featured.size}`}
-                  className="h-full w-full object-cover"
+                  src={h.src}
+                  alt={`${h.label} ${h.size}`}
+                  className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
                   width={1280}
                   height={960}
                 />
               </div>
-              <div className="flex flex-1 flex-col p-4">
-                <span className="font-display text-lg text-ink group-hover:underline">{featured.label}</span>
-                <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{featured.size}</span>
-                <span className="mt-1.5 text-sm leading-snug text-ink-muted">{featured.caption}</span>
+              <div className="flex flex-1 flex-col justify-center p-4">
+                <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
+                <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
+                <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
               </div>
             </button>
-            <div className="grid gap-4 lg:col-span-2">
-              {rest.map((h) => (
-                <button
-                  key={h.id}
-                  type="button"
-                  onClick={() => go(h.prompt)}
-                  className="group flex overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition hover:border-ink/30 hover:bg-surface sm:flex-col"
-                >
-                  <div className="relative aspect-[4/3] w-2/5 shrink-0 bg-paper sm:w-full">
-                    <img
-                      src={h.src}
-                      alt={`${h.label} ${h.size}`}
-                      className="h-full w-full object-cover"
-                      width={1280}
-                      height={960}
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col justify-center p-4">
-                    <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
-                    <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
-                    <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="max-w-3xl">
-          <h1 className="max-w-3xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
-            Type it. Buy the parts. Build it.
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
-            Measure a space. Yard returns a cut list, hardware, and shop links — for the hole you actually have. Crafts still work. Same engine.
-          </p>
-
-          <form
-            className="mt-8 max-w-3xl"
-            onSubmit={(e) => {
-              e.preventDefault();
-              go(prompt);
-            }}
-          >
-            <label htmlFor="dream" className="sr-only">
-              What do you want to build?
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                id="dream"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="bathroom vanity, 36 wide"
-                className="h-12 flex-1 rounded-lg border border-rule bg-paper px-4 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted focus:ring-2"
-              />
-              <button
-                type="submit"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-medium text-paper"
-              >
-                Build this
-                <ArrowRight className="size-4" />
-              </button>
-            </div>
-          </form>
-
-          <ChipRow title="For the house" items={HOUSE} onGo={go} />
-          <ChipRow title="For the weekend" items={WEEKEND} onGo={go} />
+          ))}
         </section>
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
@@ -188,37 +206,6 @@ function LandingPage() {
           />
         </section>
       </main>
-    </div>
-  );
-}
-
-function ChipRow({
-  title,
-  items,
-  onGo,
-}: {
-  title: string;
-  items: (typeof DREAMS)[number][];
-  onGo: (text: string) => void;
-}) {
-  if (!items.length) return null;
-  return (
-    <div className="mt-10">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">{title}</p>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-        {items.map((d) => (
-          <li key={d.id}>
-            <button
-              type="button"
-              onClick={() => onGo(d.prompt)}
-              className="group flex h-full w-full flex-col rounded-xl border border-rule bg-surface/40 p-4 text-left transition hover:border-ink/30 hover:bg-surface"
-            >
-              <span className="font-display text-base text-ink group-hover:underline">{d.label}</span>
-              <span className="mt-1.5 text-xs leading-snug text-ink-muted">{d.blurb}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
