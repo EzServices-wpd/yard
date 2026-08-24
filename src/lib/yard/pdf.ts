@@ -43,7 +43,7 @@ function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
   if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
   if (dataUrl.startsWith("data:image/png")) return "PNG";
   if (dataUrl.startsWith("data:image/webp")) return "WEBP";
-  if (dataUrl.startsWith("data:image")) return "JPEG"; // StepCapture uses jpeg; guess
+  if (dataUrl.startsWith("data:image")) return "JPEG";
   return null;
 }
 
@@ -180,6 +180,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const width = right - left;
   let y = 56;
 
+  const unit = project.fitted?.unit ?? project.pocket?.unit ?? project.overall;
+  const sizeLine = `${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+
   function paintPage() {
     doc.setFillColor(...PAPER);
     doc.rect(0, 0, pageW, pageH, "F");
@@ -205,18 +208,38 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
   paintPage();
 
+  // Cover: name + the three numbers — the thing you take to the lumber aisle.
   doc.setFont("times", "italic");
   doc.setFontSize(10);
   doc.setTextColor(...MUTED);
   doc.text("YARD PLAN", left, y);
-  y += 22;
+  y += 26;
 
   doc.setFont("times", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(24);
   doc.setTextColor(...INK);
-  const title = wrap(project.name, 22);
+  const title = wrap(project.name, 24);
   doc.text(title, left, y);
-  y += title.length * 26 + 6;
+  y += title.length * 28 + 10;
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(...INK);
+  doc.text(sizeLine, left, y);
+  y += 22;
+
+  const meta: string[] = [];
+  if (plan.effort) meta.push(`About ${plan.effort}`);
+  if (plan.totals?.estCostUsd != null) meta.push(`${usd(plan.totals.estCostUsd)} estimated`);
+  if (plan.partsKind === "whole") meta.push(`${plan.totals.pieces} whole pieces · glue · do not cut`);
+  else if (plan.totals?.pieces) meta.push(`${plan.totals.pieces} pieces`);
+  if (meta.length) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(...MUTED);
+    doc.text(meta.join(" · "), left, y);
+    y += 18;
+  }
 
   if (project.prompt) {
     doc.setFont("times", "italic");
@@ -225,6 +248,32 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const p = wrap(project.prompt, 11);
     doc.text(p, left, y);
     y += p.length * 14 + 12;
+  }
+
+  // Optional cover photo: first step with a real bench capture.
+  const coverStep = plan.instructions.find(
+    (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
+  );
+  if (coverStep?.imageDataUrl) {
+    const fmt = dataUrlFormat(coverStep.imageDataUrl);
+    if (fmt) {
+      try {
+        const imgH = 200;
+        ensure(imgH + 24);
+        doc.addImage(coverStep.imageDataUrl, fmt, left, y, width, imgH, undefined, "FAST");
+        doc.setDrawColor(...RULE);
+        doc.setLineWidth(0.5);
+        doc.rect(left, y, width, imgH, "S");
+        y += imgH + 8;
+        doc.setFont("times", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        doc.text("The unit on the bench", left + width / 2, y, { align: "center" });
+        y += 16;
+      } catch {
+        /* skip cover photo */
+      }
+    }
   }
 
   doc.setDrawColor(...RULE);
@@ -264,7 +313,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     y += 6;
   }
 
-  // Sheet nest — house ply only (partsKind cut). Crafts stay whole-pack.
   if (plan.partsKind !== "whole" && plan.cutList.length) {
     const nest = nestCutList(plan.cutList);
     if (nest && nest.sheets.length > 0) {
@@ -289,7 +337,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         const plateH = pageH - y - 48;
         drawNestSheet(doc, sheet, left, y, width, plateH);
       }
-      y = pageH; // force ensure to new page on next content
+      y = pageH;
     }
   }
 
@@ -322,7 +370,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     y += 6;
   }
 
-  // Full shop-words glossary so a first-time builder never has to guess.
   if (plan.partsKind !== "whole" || plan.instructions.some((s) => /carcase|toekick|dry-fit|overlay|lag|shim|scribe/i.test(s.description + (s.tips ?? "")))) {
     heading("Shop words");
     muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
@@ -349,7 +396,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
       const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
       const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
-      // Big photo: ~4.2" tall full-width. Skip the tiny iso when a real bench photo exists.
       const photoH = hasPhoto ? 300 : 0;
       const isoH = hasPhoto ? 0 : 88;
       ensure(
@@ -381,7 +427,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
           doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
           y += 14;
         } catch {
-          /* fall through to iso only */
           drawStepPlate(doc, project, s, left, y, width, 88);
           y += 96;
         }
