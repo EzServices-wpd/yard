@@ -236,7 +236,7 @@ function CloudKind({
 }
 
 export function PanelMesh({
-  panel, explode, selected, inStep, hasStep, onSelect, useShadows, facesOpen = true,
+  panel, explode, selected, inStep, hasStep, onSelect, useShadows, facesOpen = true, showPinHoles = false,
 }: {
   panel: Panel;
   explode: number;
@@ -246,6 +246,8 @@ export function PanelMesh({
   onSelect: () => void;
   useShadows?: boolean;
   facesOpen?: boolean;
+  /** Only true when the unit has adjustable shelf panels (true 32mm system). */
+  showPinHoles?: boolean;
 }) {
   const item = getCatalogItem(panel.materialId);
   const look = stockLook(item);
@@ -320,7 +322,7 @@ export function PanelMesh({
         {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
         {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
         {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
-        {panel.type === "upright" && h >= 24 && opacity > 0.4 && (
+        {panel.type === "upright" && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
       </group>
@@ -419,19 +421,20 @@ function CupPull({ d }: { w: number; h: number; d: number }) {
   );
 }
 
+/** True 32mm system: 1.26" pitch, ~5mm dia, 1¼" back from front edge. */
 function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
   const x = isLeft ? w / 2 - 0.08 : -w / 2 + 0.08;
   const z = d / 2 - 1.25;
-  const start = -h / 2 + 8;
-  const end = h / 2 - 6;
-  const step = 4;
+  const start = -h / 2 + 6;
+  const end = h / 2 - 4;
+  const step = 1.26; // 32mm system
   const ys: number[] = [];
   for (let y = start; y <= end; y += step) ys.push(y);
   return (
     <group>
       {ys.map((y) => (
         <mesh key={y} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.28, 8]} />
+          <cylinderGeometry args={[0.098, 0.098, 0.28, 8]} />
           <meshStandardMaterial color={PIN} roughness={0.55} metalness={0.15} />
         </mesh>
       ))}
