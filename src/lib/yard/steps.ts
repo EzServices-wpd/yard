@@ -274,9 +274,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (drawers.length) {
     steps.push({
       step: n++,
+      title: `Build ${drawers.length} drawer boxes + fronts`,
+      description: `${drawers.map(cutLine).join("; ")}. Build each box to the cut list. Drawer fronts are the faces people see — edge-band the plywood edge if the carcase is ply. One cup pull centered on each front.`,
+      tips: "Dry-fit the box in the bay before you glue the front on.",
+      partsUsed: names(drawers),
+    });
+    steps.push({
+      step: n++,
       title: `Hang ${drawers.length} drawers on ${slide}" slides`,
-      description: `${drawers.map(cutLine).join("; ")}. One pair of ${slide}" side-mount slides per drawer. Build the boxes, hang the slides on the dividers first, then set the boxes. Cup pull centered on each front.`,
-      tips: `Confirm the slide against the ${round(D)}" carcase before you buy. A 16" box does not take an 18" slide.`,
+      description: `One pair of ${slide}" side-mount slides per drawer (slide length = box depth). Hang the slides on the dividers first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+      tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
       partsUsed: names(drawers),
     });
   }
@@ -284,8 +291,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (shelves.length) {
     steps.push({
       step: n++,
-      title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"}`,
-      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm / 1¼" apart. Four pins per shelf. Do not glue the shelves.`,
+      title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
+      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm / 1¼" apart. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves.`,
       tips: "A pegboard jig or a 32mm system jig beats measuring every hole twice.",
       partsUsed: names(shelves),
     });
@@ -294,7 +301,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (rails.length) {
     steps.push({
       step: n++,
-      title: "Hanging rod",
+      title: "Seat the hanging rod",
       description: `${rails.map(cutLine).join("; ")}. Seat in closet-rod sockets on the uprights, about 12" down from the top of the hanging bay.`,
       partsUsed: names(rails),
     });
@@ -303,8 +310,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (doors.length) {
     steps.push({
       step: n++,
-      title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"}`,
-      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door, 3–4" from top and bottom. Overlay the carcase. Soft-close if you bought them. Adjust the screws until the gap is even.`,
+      title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"} — 2 hinges each`,
+      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase. Soft-close if you bought them. Adjust the screws until the gap is even.`,
       partsUsed: names(doors),
     });
   }
