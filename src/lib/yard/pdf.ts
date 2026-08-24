@@ -16,6 +16,15 @@ export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
 }
 
+/** jsPDF needs the right format string; wrong format → silent catch and no photo. */
+function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
+  if (dataUrl.startsWith("data:image")) return "JPEG"; // StepCapture uses jpeg; guess
+  return null;
+}
+
 function drawStepPlate(
   doc: jsPDF,
   project: YardProject,
@@ -297,7 +306,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const titleLines = wrap(`${String(s.step).padStart(2, "0")}  ${s.title}`, 13);
       const descLines = wrap(s.description, 11);
       const tipLines = s.tips ? wrap(s.tips, 10) : [];
-      const hasPhoto = Boolean(s.imageDataUrl && s.imageDataUrl.startsWith("data:image"));
+      const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
+      const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
       const photoH = hasPhoto ? 198 : 0;
       const isoH = hasPhoto ? 52 : 72;
       ensure(
@@ -314,11 +324,11 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.text(titleLines, left, y);
       y += titleLines.length * 16 + 4;
 
-      if (hasPhoto && s.imageDataUrl) {
+      if (hasPhoto && s.imageDataUrl && fmt) {
         try {
           const imgW = width;
           const imgH = photoH;
-          doc.addImage(s.imageDataUrl, "JPEG", left, y, imgW, imgH);
+          doc.addImage(s.imageDataUrl, fmt, left, y, imgW, imgH);
           doc.setDrawColor(...RULE);
           doc.setLineWidth(0.4);
           doc.rect(left, y, imgW, imgH, "S");
