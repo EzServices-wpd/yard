@@ -77,6 +77,7 @@ Weekend (same engine, not the hero):
 
 - **~00:55am EDT** — Phase 0 punch list (slice A). Tip still `1301e58`. Ran `scripts/walk-launch.ts` → **10/10 green**. Linen remains **Closet 31.5 × 78 × 16** on name, HUD, unit, overall, cut list. No size fails. Soft note from honesty-smoke: desk plan titles do not yet say “drawer fronts” (not a walk-launch fail). Product gaps scored: nest missing on all house builds; no geometry step photos in PDF (triangle iso still hero); hardware counts soft in BOM qty. **No code change this slice.** NEXT = B (Canvas step captures into PDF + plan drawer). Full table in `artifacts/Yard-overnight-awe-2026-08-24.md`.
 - **~01:15am EDT** — Slice **B** (partial): step photos into PDF. Tip `ceb8fc7`. `AssemblyStep.imageDataUrl` added. `pdf.ts` embeds full-width JPEG when present and demotes the old 132-pt triangle iso to a 52–72pt secondary plate. Capture path (canvas.toDataURL on “View this step”) drafted for plan-drawer; UI push remaining. No size changes. Linen stays **Closet 31.5 × 78 × 16**. NEXT = finish B UI then **C** nest.
+- **~02:10am EDT** — Slice **B complete**. Tip `2ec3548`. `attachStepImage` on store; `StepCapture` inside Canvas (preserveDrawingBuffer → toDataURL JPEG 0.82 after 420ms settle when activeStep set); plan-drawer shows full-width bench photo when present (IsoPlate only as fallback). PDF already embeds full-width + demotes triangle iso. No size changes. Linen stays **Closet 31.5 × 78 × 16**. Walk expected 10/10 (geometry untouched). **NEXT = C** sheet nest.
 
 ## Do not
 
