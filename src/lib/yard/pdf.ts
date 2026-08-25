@@ -35,20 +35,52 @@ const SHOP_GLOSSARY: { term: string; def: string }[] = [
 ];
 
 export function slugPlan(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 48) || "yard-plan"
-  );
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48) || "yard-plan";
 }
 
-function dataUrlFormat(url: string): "JPEG" | "PNG" | null {
-  if (url.startsWith("data:image/jpeg") || url.startsWith("data:image/jpg")) return "JPEG";
-  if (url.startsWith("data:image/png")) return "PNG";
-  if (url.startsWith("data:image")) return "JPEG";
+function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
+  if (dataUrl.startsWith("data:image")) return "JPEG";
   return null;
+}
+
+function drawStepPlate(doc: jsPDF, project: YardProject, step: AssemblyStep, x: number, y: number, w: number, h: number) {
+  doc.setFillColor(232, 226, 214);
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.5);
+  doc.rect(x, y, w, h, "FD");
+  const ids = stepInstanceIds(project, step);
+  const box = isoViewBox(project, ids);
+  const marks = isoMarks(project, ids);
+  const faces = isoFaces(project, ids);
+  const s = Math.min((w - 16) / Math.max(box.maxX - box.minX, 1), (h - 28) / Math.max(box.maxY - box.minY, 1));
+  const mapX = (v: number) => x + 8 + (v - box.minX) * s;
+  const mapY = (v: number) => y + 8 + (v - box.minY) * s;
+  for (const f of faces) {
+    doc.setFillColor(...PLY_FILL);
+    doc.setDrawColor(...PLY_EDGE);
+    doc.setLineWidth(0.4);
+    const pts = f.pts.map((p) => [mapX(p[0]), mapY(p[1])] as [number, number]);
+    if (pts.length < 2) continue;
+    doc.lines(
+      pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]),
+      pts[0][0],
+      pts[0][1],
+      [1, 1],
+      "FD",
+      true,
+    );
+  }
+  doc.setFont("times", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(isoCaption(project, step) || isoDims(project), x + w / 2, y + h - 8, { align: "center" });
 }
 
 export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
@@ -150,9 +182,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(p, left, y);
     y += p.length * 14 + 12;
   }
-  // Prefer last captured step (finished unit) over first (confirm-only) for cover.
-  const coverPhotos = plan.instructions.filter((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800);
-  const coverStep = coverPhotos[coverPhotos.length - 1] ?? coverPhotos[0];
+  const coverStep = plan.instructions.find((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800);
   if (coverStep?.imageDataUrl) {
     const fmt = dataUrlFormat(coverStep.imageDataUrl);
     if (fmt) {
@@ -219,11 +249,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         doc.text("Letters match the cut list. 1/8\" kerf included. Grain runs long on the sheet.", left, y);
         y += 14;
         if (thin.length) {
-          doc.text("Thin backer (" + thin.map((t) => t.label ?? t.name).join(", ") + ") is not on this sheet — buy 1/4\" separately.", left, y);
+          doc.text(
+            `Thin backer (${thin.map((t) => t.label ?? t.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
+            left,
+            y,
+          );
           y += 16;
         }
         drawNestSheet(doc, sheet, left, y, width);
-        footer(doc.getNumberOfPages());
       }
     }
   }
@@ -232,23 +265,15 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   doc.addPage();
   y = 52;
   heading("Buy");
-  body(`${plan.totals.pieces} pieces · ${plan.totals.estCostUsd != null ? `~${usd(plan.totals.estCostUsd)} estimated` : "cost varies"} · cheapest same-size listing first`);
+  body(
+    `${plan.totals.pieces} pieces · ${plan.totals.estCostUsd != null ? `~${usd(plan.totals.estCostUsd)} estimated` : "cost varies"} · cheapest same-size listing first`,
+  );
   for (const b of plan.bom) {
-    ensure(40);
+    ensure(48);
     doc.setFont("times", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...INK);
-    const unit =
-      b.quantity === 1
-        ? b.unit
-        : b.unit === "box"
-          ? "boxes"
-          : b.unit === "sheet"
-            ? "sheets"
-            : b.unit.endsWith("s")
-              ? b.unit
-              : `${b.unit}s`;
-    const label = `${b.quantity} ${unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
+    const label = `${b.quantity} ${b.unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
     const lines = wrap(label, 11);
     doc.text(lines, left, y);
     y += lines.length * 14;
@@ -264,7 +289,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.setFont("times", "italic");
       doc.setFontSize(9);
       doc.setTextColor(...MUTED);
-      const shop = b.shopUrl ?? `https://www.google.com/search?q=${encodeURIComponent(b.searchQuery)}`;
       const shopLine = wrap(`Shop · ${b.searchQuery}`, 9);
       doc.text(shopLine, left, y);
       y += shopLine.length * 11 + 6;
@@ -322,21 +346,24 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         doc.setTextColor(...MUTED);
         doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
         y += 16;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     } else {
-      // Fallback iso plate
       try {
-        const ids = stepInstanceIds(project, s);
-        // minimal placeholder text if no photo
+        const isoH = 120;
+        ensure(isoH + 12);
+        drawStepPlate(doc, project, s, left, y, width, isoH);
+        y += isoH + 10;
+      } catch {
         muted(`${project.overall.width}" W × ${project.overall.height}" H × ${project.overall.depth}" D`);
-      } catch { /* skip */ }
+      }
     }
     body(s.description);
     if (s.tips) muted(s.tips);
     y += 8;
   }
 
-  // Footers on all pages
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
