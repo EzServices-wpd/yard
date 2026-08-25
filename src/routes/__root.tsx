@@ -11,10 +11,12 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
-/** Env-gated: only loads when VITE_PUBLIC_PLAUSIBLE_DOMAIN is set (e.g. yard.wiki). */
+/** Plausible analytics. Defaults to production host. Set VITE_PUBLIC_PLAUSIBLE_DOMAIN=off to disable. */
 function Plausible() {
   useEffect(() => {
-    const domain = (import.meta.env.VITE_PUBLIC_PLAUSIBLE_DOMAIN as string | undefined)?.trim();
+    const raw = (import.meta.env.VITE_PUBLIC_PLAUSIBLE_DOMAIN as string | undefined)?.trim();
+    if (raw === "off") return;
+    const domain = raw || host;
     if (!domain) return;
     if (document.querySelector(`script[data-domain="${domain}"]`)) return;
     const s = document.createElement("script");
