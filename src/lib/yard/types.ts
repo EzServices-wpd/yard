@@ -179,7 +179,8 @@ export type FittedProgram =
   | "bookcase"
   | "media"
   | "bench"
-  | "storage";
+  | "storage"
+  | "table";
 
 export type FittedUnit = {
   width: number;
@@ -195,6 +196,12 @@ export type FittedUnit = {
   mirror?: boolean;
   rod?: boolean;
   centered?: boolean;
+  /** Freestanding table legs (3–4). */
+  legs?: number;
+  /** Table / top plan shape. */
+  shape?: "rect" | "round";
+  /** Multi-bay closet systems. */
+  bays?: number;
 };
 
 export type FittedSpec = {
