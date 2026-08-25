@@ -3,6 +3,7 @@ import { usd } from "@/lib/utils";
 import { nestCutList, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, YardProject } from "./types";
 import { ACCENT, PHOTO_RULE } from "./pdfTheme";
+import { fmtDims, fmtDimsWHD } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
 import { drawStepPlate } from "./pdfPlate";
 import { drawNestSheet } from "./pdfNest";
@@ -104,14 +105,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   doc.setFont("times", "normal");
   doc.setFontSize(12);
   doc.setTextColor(...MUTED);
-  const dim = `${project.overall.width}" x ${project.overall.height}" x ${project.overall.depth}"`;
+  const dim = fmtDims(project.overall.width, project.overall.height, project.overall.depth);
   doc.text(dim, left, y);
   y += 16;
   if (plan.effort || plan.totals.estCostUsd) {
     doc.setFontSize(10);
     const bits = [
       plan.effort ? `About ${plan.effort}` : null,
-      plan.totals.estCostUsd ? `~${usd(plan.totals.estCostUsd)} estimated` : null,
+      plan.totals.estCostUsd ? `${usd(plan.totals.estCostUsd)} estimated` : null,
       plan.totals.pieces ? `${plan.totals.pieces} pieces` : null,
     ].filter(Boolean);
     doc.text(bits.join(" · "), left, y);
@@ -170,6 +171,29 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.text(dims, right, y, { align: "right" });
       y += 15;
     }
+  } else if (plan.partsKind === "whole") {
+    heading("Stick list");
+    muted("Full pieces from the pack. Glue them. Do not cut.");
+    for (const b of plan.bom) {
+      if (/glue|join|screw|nail|tape|zip/i.test(b.name) && !/stick|straw|pvc|pipe|dowel|toothpick/i.test(b.name)) continue;
+      ensure(18);
+      doc.setFont("times", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...INK);
+      doc.text(`${b.quantity} ${b.unit} · ${b.name}`, left, y);
+      y += 14;
+      if (b.notes) {
+        doc.setFont("times", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...MUTED);
+        const n = wrap(b.notes, 10);
+        doc.text(n, left, y);
+        y += n.length * 12 + 4;
+      }
+    }
+    if (plan.totals.pieces) {
+      muted(`${plan.totals.pieces} full pieces on the bench. Open the glue.`);
+    }
   }
 
   // Nest pages
@@ -209,7 +233,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   y = 52;
   heading("Buy");
   body(
-    `${plan.totals.pieces} pieces · ${plan.totals.estCostUsd != null ? `~${usd(plan.totals.estCostUsd)} estimated` : "cost varies"} · cheapest same-size listing first`,
+    `${plan.totals.pieces} pieces · ${plan.totals.estCostUsd != null ? `${usd(plan.totals.estCostUsd)} estimated` : "cost varies"} · cheapest same-size listing first`,
   );
   for (const b of plan.bom) {
     ensure(48);
@@ -245,7 +269,20 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   y = 52;
   heading("Shop words");
   muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
-  for (const g of SHOP_GLOSSARY) {
+  const glossary =
+    plan.partsKind === "whole"
+      ? [
+          { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them. Do not cut." },
+          { term: "Dry-fit", def: "Assemble without glue first to check fit and square before you commit." },
+          { term: "Lattice", def: "Open criss-cross of sticks that makes the face texture of a tower or truss." },
+          { term: "Pier", def: "A thick corner column of sticks from the ground up to the first platform." },
+          { term: "Shaft", def: "The upper tower above the first platform where the four legs have merged." },
+          { term: "Arch", def: "The open walk-through face at the base of a tower or garden arch." },
+          { term: "Joint", def: "Where two sticks meet — a small bead of glue on both faces, then hold." },
+          { term: "Square", def: "Corners at 90 degrees. Check by measuring both diagonals — they should match." },
+        ]
+      : SHOP_GLOSSARY;
+  for (const g of glossary) {
     ensure(28);
     doc.setFont("times", "bold");
     doc.setFontSize(10);
@@ -299,7 +336,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         drawStepPlate(doc, project, s, left, y, width, isoH);
         y += isoH + 10;
       } catch {
-        muted(`${project.overall.width}" W × ${project.overall.height}" H × ${project.overall.depth}" D`);
+        muted(fmtDimsWHD(project.overall.width, project.overall.height, project.overall.depth));
       }
     }
     body(s.description);
