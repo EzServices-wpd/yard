@@ -4,6 +4,7 @@ import { isoCaption, isoDims, isoFaces, isoMarks, isoViewBox } from "./iso";
 import { stepInstanceIds } from "./assembly";
 import { nestCutList, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, YardProject } from "./types";
+import { ACCENT, PHOTO_RULE } from "./pdfTheme";
 
 const INK: [number, number, number] = [26, 22, 18];
 const MUTED: [number, number, number] = [107, 99, 88];
@@ -172,13 +173,17 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     return doc.splitTextToSize(text, max) as string[];
   }
   function heading(label: string) {
-    ensure(36);
-    y += 8;
+    ensure(42);
+    y += 10;
     doc.setFont("times", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(...INK);
-    doc.text(label, left, y);
-    y += 18;
+    doc.setFontSize(13);
+    doc.setTextColor(...ACCENT);
+    doc.text(label.toUpperCase(), left, y);
+    y += 6;
+    doc.setDrawColor(...ACCENT);
+    doc.setLineWidth(1.1);
+    doc.line(left, y, left + 36, y);
+    y += 14;
   }
   function body(text: string) {
     const lines = wrap(text, 11);
@@ -199,11 +204,15 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     y += lines.length * 13 + 2;
   }
   paintPage();
-  doc.setFont("times", "italic");
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
+  doc.setFont("times", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...ACCENT);
   doc.text("YARD PLAN", left, y);
-  y += 26;
+  y += 4;
+  doc.setDrawColor(...ACCENT);
+  doc.setLineWidth(1.0);
+  doc.line(left, y, left + 52, y);
+  y += 22;
   doc.setFont("times", "bold");
   doc.setFontSize(24);
   doc.setTextColor(...INK);
@@ -240,18 +249,18 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const fmt = dataUrlFormat(coverStep.imageDataUrl);
     if (fmt) {
       try {
-        const imgH = 200;
-        ensure(imgH + 24);
+        const imgH = 220;
+        ensure(imgH + 28);
         doc.addImage(coverStep.imageDataUrl, fmt, left, y, width, imgH, undefined, "FAST");
-        doc.setDrawColor(...RULE);
-        doc.setLineWidth(0.5);
+        doc.setDrawColor(...PHOTO_RULE);
+        doc.setLineWidth(0.75);
         doc.rect(left, y, width, imgH, "S");
-        y += imgH + 8;
+        y += imgH + 10;
         doc.setFont("times", "italic");
         doc.setFontSize(9);
         doc.setTextColor(...MUTED);
         doc.text("The unit on the bench", left + width / 2, y, { align: "center" });
-        y += 16;
+        y += 18;
       } catch { /* skip */ }
     }
   }
@@ -365,23 +374,27 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const photoH = hasPhoto ? 300 : 0;
       const isoH = hasPhoto ? 0 : 88;
       ensure(titleLines.length * 16 + photoH + isoH + descLines.length * 14 + tipLines.length * 13 + 32);
+      const stepNo = String(s.step).padStart(2, "0");
       doc.setFont("times", "bold");
       doc.setFontSize(13);
+      doc.setTextColor(...ACCENT);
+      doc.text(stepNo, left, y);
       doc.setTextColor(...INK);
-      doc.text(titleLines, left, y);
-      y += titleLines.length * 16 + 6;
+      const titleRest = wrap(s.title, 13, width - 28);
+      doc.text(titleRest, left + 28, y);
+      y += Math.max(1, titleRest.length) * 16 + 8;
       if (hasPhoto && s.imageDataUrl && fmt) {
         try {
           doc.addImage(s.imageDataUrl, fmt, left, y, width, photoH, undefined, "FAST");
-          doc.setDrawColor(...RULE);
-          doc.setLineWidth(0.5);
+          doc.setDrawColor(...PHOTO_RULE);
+          doc.setLineWidth(0.75);
           doc.rect(left, y, width, photoH, "S");
-          y += photoH + 6;
+          y += photoH + 8;
           doc.setFont("times", "italic");
           doc.setFontSize(9);
           doc.setTextColor(...MUTED);
           doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
-          y += 14;
+          y += 16;
         } catch {
           drawStepPlate(doc, project, s, left, y, width, 88);
           y += 96;
