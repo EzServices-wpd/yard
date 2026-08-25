@@ -52,7 +52,6 @@ type YardState = {
   setCutMode: (v: "auto" | "cut" | "whole") => void;
   makePlan: () => BuildPlan;
   setPlan: (plan: BuildPlan | null) => void;
-  /** Attach a live bench JPEG (data URL) to one assembly step for the PDF + plan drawer. */
   attachStepImage: (step: number, imageDataUrl: string) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
   undo: () => void;
@@ -76,7 +75,6 @@ type YardState = {
   setMeasureOpen: (v: boolean) => void;
   setMeasure: (patch: Partial<MeasureDraft>) => void;
   applyMeasure: () => void;
-  /** Lift a prompt-native 2D paper layout into a dual-face 3D model. */
   liftTo3d: () => YardProject | null;
   reset: () => void;
 };
@@ -349,7 +347,6 @@ export const useYard = create<YardState>((set, get) => ({
     const item = getCatalogItem(catalogId);
     if (!item) return;
     const len = defaultPlaceLength(item);
-    const prim = toPrimitive(item, len);
     const inst = {
       id: createId("inst"),
       catalogId,
@@ -368,7 +365,7 @@ export const useYard = create<YardState>((set, get) => ({
       plan: null,
     });
     persist(next);
-    void prim;
+    void toPrimitive(item, len);
   },
   setMeasureOpen: (v) => set({ measureOpen: v }),
   setMeasure: (patch) => set({ measure: { ...get().measure, ...patch } }),
@@ -402,7 +399,6 @@ export const useYard = create<YardState>((set, get) => ({
   },
 }));
 
-/** Boot from localStorage / server once on the client. */
 export function hydrateYard() {
   if (typeof window === "undefined") return;
   const loaded = loadProject();
