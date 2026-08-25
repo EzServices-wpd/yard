@@ -3,6 +3,7 @@
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { slideInches } from "./stockLook";
+import { shopPlural } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 
 function dim(p: Panel) {
@@ -379,7 +380,7 @@ function groupSheetCuts(panels: Panel[]): string[] {
     const a = round(g.w);
     const b = round(g.h);
     const c = round(g.d);
-    return `${g.qty} ${g.label}${g.qty === 1 ? "" : "s"} ${a} × ${b} × ${c}".`;
+    return `${g.qty} ${shopPlural(g.label, g.qty)} ${a} × ${b} × ${c}".`;
   });
 }
 
