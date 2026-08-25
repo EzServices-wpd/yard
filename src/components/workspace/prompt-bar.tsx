@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { DREAMS } from "@/lib/yard/prompt";
-import { hintSubject, interpretPrompt, briefHousePrompt } from "@/lib/ai/grok";
+import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
+import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
