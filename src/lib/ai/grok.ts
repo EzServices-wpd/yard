@@ -66,7 +66,6 @@ export const interpretPrompt = createServerFn({ method: "POST" })
     const catalog = FORGE_CATALOG.map((c) => `${c.id}: ${c.name} [${(c.aliases ?? []).slice(0, 4).join(", ")}]`).join("\n");
     const subject = subjectFromPrompt(data.prompt);
     const looked = await lookupRealForm(subject);
-    const real = looked.measures;
     const heightIn = data.heightIn ?? 36;
     const widthIn = data.widthIn ?? heightIn * 0.5;
     const realBlock = looked.summary
@@ -159,26 +158,7 @@ export const hintSubject = createServerFn({ method: "POST" })
     };
   });
 
-export const writeInstructions = createServerFn({ method: "POST" })
-  .validator((input: { name: string; prompt: string; steps: string; cutList: string }) => input)
-  .handler(async ({ data }) => {
-    const result = await chat(
-      [
-        {
-          role: "system",
-          content:
-            "You write short shop instructions for a DIY build. Numbered steps. Plain English. No fluff. Reply with the steps only.",
-        },
-        {
-          role: "user",
-          content: `Name: ${data.name}\nPrompt: ${data.prompt}\nCut list:\n${data.cutList}\nExisting steps:\n${data.steps}`,
-        },
-      ],
-      900,
-    );
-    if (!result.ok) return result;
-    return { ok: true as const, text: result.text };
-  });
+export { writeInstructions } from "./writeInstructions";
 
 export const renderProject = createServerFn({ method: "POST" })
   .validator((input: { name: string; prompt: string; brief: string; scene?: string }) => input)
