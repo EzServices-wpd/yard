@@ -168,7 +168,6 @@ export function detectMaterial(prompt: string): CatalogItem {
       if (item) return item;
     }
   }
-  // No stock named → wire skeleton. User picks real material from Stock panel.
   return getCatalogItem("wire-frame") || FORGE_CATALOG[0];
 }
 
@@ -216,9 +215,9 @@ export function toProject(
     depth = Math.max(depth, publishedBase);
   }
   const names: Partial<Record<StructureKind, string>> = {
-    eiffel: "Eiffel frame",
+    eiffel: "Eiffel Tower",
     arch: "Garden arch",
-    bridge: "Bridge",
+    bridge: "Warren bridge",
     closet: "Fitted unit",
     furniture: "Furniture",
     ladder: "Ladder",
@@ -230,9 +229,9 @@ export function toProject(
     prompt,
     kind,
     overall: {
-      width,
-      height,
-      depth,
+      width: Math.round(width * 10) / 10,
+      height: Math.round(height * 10) / 10,
+      depth: Math.round(depth * 10) / 10,
     },
     instances: withHome(list),
     panels: [],
