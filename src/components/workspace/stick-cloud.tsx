@@ -1,18 +1,24 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useMemo } from "react";
+import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import type { Panel, Vec3, YardProject } from "@/lib/yard/types";
+import type { Panel, Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 import { stockLook } from "@/lib/yard/stockLook";
 
-const SCREW_HEAD = "#c0c0c0";
-
-function useShadows() {
-  return true;
+/** Join markers — no-op when exploded. */
+export function CarcaseJoins({
+  panels,
+  explode,
+}: {
+  panels: Panel[];
+  explode: number;
+}) {
+  if (Math.abs(explode - 1) > 0.05) return null;
+  return null;
 }
 
 function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
@@ -31,39 +37,25 @@ function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
   );
 }
 
-function DoorHinges({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
-  return null;
-}
-
-function BarPull({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
-  return null;
-}
-
-function CupPull({ w, h, d }: { w: number; h: number; d: number }) {
-  return null;
-}
-
-function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
-  return null;
-}
-
 export function PanelMesh({
   panel,
-  selected,
-  onSelect,
   explode,
-  facesOpen,
-  hasStep,
+  selected,
   inStep,
-  showPinHoles,
+  hasStep,
+  onSelect,
+  useShadows,
+  facesOpen = true,
+  showPinHoles = false,
 }: {
   panel: Panel;
-  selected: boolean;
-  onSelect: () => void;
   explode: number;
-  facesOpen: boolean;
-  hasStep: boolean;
+  selected: boolean;
   inStep: boolean;
+  hasStep: boolean;
+  onSelect: () => void;
+  useShadows?: boolean;
+  facesOpen?: boolean;
   showPinHoles?: boolean;
 }) {
   const item = getCatalogItem(panel.materialId);
@@ -83,17 +75,20 @@ export function PanelMesh({
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
   if (hasStep && !inStep && (isDoor || isDrawer)) return null;
+
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
+  const fittedShape = useYard((s) => s.project.fitted?.unit?.shape);
   const stepTitle = plan?.instructions.find((s) => s.step === activeStep)?.title ?? "";
   const allowSwing =
     facesOpen && (activeStep == null || /hang|door|drawer|front|pull/i.test(stepTitle));
   const open = allowSwing && (isDoor || isDrawer) && (!hasStep || inStep);
-  const isLeft = /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
+  const isLeft =
+    /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
-  const cx = panel.position.x + panel.size.width / 2;
-  const cy = panel.position.y + panel.size.height / 2;
-  const cz = panel.position.z + panel.size.depth / 2;
+  const cx = panel.position.x + w / 2;
+  const cy = panel.position.y + h / 2;
+  const cz = panel.position.z + d / 2;
 
   let groupPos: [number, number, number] = [cx * explode, cy, cz * explode];
   let groupRot: [number, number, number] = [0, 0, 0];
@@ -113,35 +108,38 @@ export function PanelMesh({
 
   const grain = useMemo(() => {
     if (glass || !look.map) return null;
-    const t = look.map.clone();
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.RepeatWrapping;
+    const tex = look.map.clone();
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
     const along = Math.max(w, h, d) / 16;
     const across = Math.min(w, h, d, 12) / 10;
-    if (h >= w) t.repeat.set(Math.max(across, 1), Math.max(along, 1));
-    else t.repeat.set(Math.max(along, 1), Math.max(across, 1));
-    t.needsUpdate = true;
-    return t;
+    if (h >= w) tex.repeat.set(Math.max(across, 1), Math.max(along, 1));
+    else tex.repeat.set(Math.max(along, 1), Math.max(across, 1));
+    tex.needsUpdate = true;
+    return tex;
   }, [glass, look.map, w, h, d]);
 
-  // Round table tops: disc mesh (cut list still uses the square blank).
-  const isRoundTop = panel.type === "top" && /cut round|Ø|diameter/i.test(panel.name);
+  // Round table tops: disc when fitted.shape is round OR the panel name says so.
+  const isRoundTop =
+    panel.type === "top" &&
+    (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
   const topRadius = Math.min(w, d) / 2;
+  const shadows = !!useShadows;
 
   return (
     <group position={groupPos} rotation={groupRot}>
       <group position={meshPos}>
         <mesh
           frustumCulled={false}
-          castShadow={!!useShadows()}
-          receiveShadow={!!useShadows()}
+          castShadow={shadows}
+          receiveShadow={shadows}
           onPointerDown={(e) => {
             e.stopPropagation();
             onSelect();
           }}
         >
           {isRoundTop ? (
-            <cylinderGeometry args={[topRadius, topRadius, h, 48]} />
+            <cylinderGeometry args={[topRadius, topRadius, h, 64]} />
           ) : (
             <boxGeometry args={[w, h, d]} />
           )}
@@ -157,96 +155,64 @@ export function PanelMesh({
           />
         </mesh>
         {!glass && opacity > 0.4 && !isRoundTop && <EdgeBand w={w} h={h} d={d} />}
-        {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
-        {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
-        {panel.type === "upright" && h >= 24 && opacity > 0.4 && showPinHoles && (
-          <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
-        )}
       </group>
     </group>
   );
 }
 
-function BenchScene({ project }: { project: YardProject }) {
-  const selectedId = useYard((s) => s.selectedId);
-  const select = useYard((s) => s.select);
-  const explode = useYard((s) => s.explode);
-  const facesOpen = useYard((s) => s.facesOpen);
-  const activeStep = useYard((s) => s.activeStep);
-  const plan = useYard((s) => s.plan);
-  const showPinHoles = true;
-
-  const stepParts = plan?.instructions.find((s) => s.step === activeStep)?.partsUsed ?? null;
-  const hasStep = activeStep != null && !!stepParts;
-  const inStepIds = new Set(stepParts ?? []);
-
-  const exp = explode ? 1.35 : 1;
-
+/** Stick / craft instances — canvas passes the prop bag; we read what we need. */
+export function StickCloud({
+  instances,
+  explode,
+  selectedId,
+  onSelect,
+  useShadows,
+  overall,
+}: {
+  instances: YardInstance[];
+  explode: number;
+  selectedId: string | null;
+  workMode?: WorkMode;
+  stepIds?: string[];
+  placedIds?: string[];
+  lockedIds?: string[];
+  dragPos?: { id: string; pos: Vec3 } | null;
+  overall?: { width: number; height: number; depth: number };
+  onSelect: (id: string | null) => void;
+  joinMethod?: string;
+  useShadows?: boolean;
+}) {
+  // Stick path is demoted; fitted panels render via PanelMesh in canvas.
+  // Keep a minimal instance renderer so craft prompts still show something.
+  if (!instances?.length) return null;
   return (
-    <>
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[8, 14, 6]} intensity={1.1} castShadow />
-      <Environment preset="warehouse" environmentIntensity={0.88} background={false} />
-      <ContactShadows position={[0, 0.01, 0]} opacity={0.35} scale={80} blur={2.5} />
-      {project.panels.map((p) => {
-        const inStep =
-          !hasStep ||
-          inStepIds.has("*") ||
-          inStepIds.has(p.id) ||
-          inStepIds.has(p.name) ||
-          inStepIds.some?.((id) => p.name.toLowerCase().includes(String(id).toLowerCase()));
-        const inStepBool = Array.isArray(stepParts)
-          ? stepParts.includes("*") ||
-            stepParts.includes(p.id) ||
-            stepParts.includes(p.name) ||
-            stepParts.some((id) => p.name.toLowerCase().includes(String(id).toLowerCase()))
-          : true;
+    <group>
+      {instances.map((inst) => {
+        const item = getCatalogItem(inst.catalogId);
+        const len = inst.cutLength ?? 36;
+        const selected = selectedId === inst.id;
         return (
-          <PanelMesh
-            key={p.id}
-            panel={p}
-            selected={selectedId === p.id}
-            onSelect={() => select(p.id)}
-            explode={exp}
-            facesOpen={facesOpen}
-            hasStep={hasStep}
-            inStep={!hasStep || inStepBool}
-            showPinHoles={showPinHoles}
-          />
+          <mesh
+            key={inst.id}
+            position={[
+              inst.position.x * explode,
+              inst.position.y + len / 2,
+              inst.position.z * explode,
+            ]}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onSelect(inst.id);
+            }}
+            castShadow={!!useShadows}
+          >
+            <boxGeometry args={[1.5, len, 3.5]} />
+            <meshStandardMaterial
+              color={selected ? "#fff6e6" : item?.color ?? "#c4a06a"}
+              roughness={0.7}
+            />
+          </mesh>
         );
       })}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#1a1a1a" roughness={0.95} />
-      </mesh>
-      <OrbitControls makeDefault target={[0, project.overall.height / 3, 0]} />
-    </>
-  );
-}
-
-export function StickCloud() {
-  const project = useYard((s) => s.project);
-  const camera = useYard((s) => s.camera);
-
-  const camPos: [number, number, number] =
-    camera === "front"
-      ? [0, project.overall.height * 0.5, Math.max(project.overall.width, project.overall.depth) * 1.8]
-      : camera === "side"
-        ? [Math.max(project.overall.width, project.overall.depth) * 1.8, project.overall.height * 0.5, 0]
-        : camera === "top"
-          ? [0, Math.max(project.overall.width, project.overall.depth) * 1.6, 0.01]
-          : [
-              project.overall.width * 0.9,
-              project.overall.height * 0.85,
-              project.overall.depth * 1.2,
-            ];
-
-  return (
-    <div className="absolute inset-0 bg-[#0c0c0c]">
-      <Canvas shadows camera={{ position: camPos, fov: 35, near: 0.5, far: 500 }}>
-        <BenchScene project={project} />
-      </Canvas>
-    </div>
+    </group>
   );
 }
