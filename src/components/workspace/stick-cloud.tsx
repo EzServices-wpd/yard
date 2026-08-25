@@ -140,7 +140,7 @@ function CloudKind({
       const inStep = hasStep && stepIds.includes(inst.id);
       const selected = inst.id === selectedId;
       const stock = live[i].item.color || ROLE_TINT[inst.role ?? ""] || "#e0b86a";
-      color.set(hasStep && !inStep ? "#3a342e" : selected || inStep ? "#fff1d0" : stock);
+      color.set(hasStep && !inStep ? "#8a7e6e" : selected || inStep ? "#fff1d0" : stock);
       m.setColorAt(i, color);
     }
     m.instanceMatrix.needsUpdate = true;
@@ -246,7 +246,6 @@ export function PanelMesh({
   onSelect: () => void;
   useShadows?: boolean;
   facesOpen?: boolean;
-  /** Only true when the unit has adjustable shelf panels (true 32mm system). */
   showPinHoles?: boolean;
 }) {
   const item = getCatalogItem(panel.materialId);
@@ -255,11 +254,12 @@ export function PanelMesh({
   const cy = panel.position.y + panel.size.height / 2;
   const cz = panel.position.z + panel.size.depth / 2;
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
-  // Progressive assembly photos: out-of-step parts nearly vanish (was 0.2 — still read as finished).
-  const opacity = hasStep && !inStep ? 0.06 : glass ? 0.42 : 1;
+  // Progressive: out-of-step parts stay as soft cream ghosts (not black voids).
+  // Doorless carcase against a black env was reading as a silhouette — soft ghosts fix that.
+  const opacity = hasStep && !inStep ? 0.28 : glass ? 0.42 : 1;
   const color =
     hasStep && !inStep
-      ? "#2e2a26"
+      ? "#b5a690"
       : selected || inStep
         ? "#fff6e6"
         : look.map
@@ -270,7 +270,6 @@ export function PanelMesh({
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
   // Doors/drawers only swing open when they are the active step (or no step is lit).
-  // Otherwise every auto-capture looked like the finished unit.
   const open = facesOpen && (isDoor || isDrawer) && (!hasStep || inStep);
   const isLeft = /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
@@ -281,8 +280,6 @@ export function PanelMesh({
   if (isDoor && open) {
     const hingeX = isLeft ? panel.position.x : panel.position.x + w;
     const hingeZ = panel.position.z + d / 2;
-    // Overlay doors open into the room (+Z). Three.js +Y rotation sends +X toward -Z,
-    // so a left-hand leaf (offset +X) takes a negative angle.
     const swing = ((isLeft ? -1 : 1) * 72 * Math.PI) / 180;
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
@@ -432,13 +429,12 @@ function CupPull({ d }: { w: number; h: number; d: number }) {
   );
 }
 
-/** True 32mm system: 1.26" pitch, ~5mm dia, 1¼" back from front edge. */
 function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
   const x = isLeft ? w / 2 - 0.08 : -w / 2 + 0.08;
   const z = d / 2 - 1.25;
   const start = -h / 2 + 6;
   const end = h / 2 - 4;
-  const step = 1.26; // 32mm system
+  const step = 1.26;
   const ys: number[] = [];
   for (let y = start; y <= end; y += step) ys.push(y);
   return (
@@ -459,7 +455,6 @@ function overlap(a0: number, a1: number, b0: number, b1: number) {
   return Math.min(a1, b1) - Math.max(a0, b0);
 }
 
-/** #8 heads + glue lines at carcase butts. Hidden when exploded so parts can still fly apart. */
 export function CarcaseJoins({ panels, explode }: { panels: Panel[]; explode: number }) {
   if (Math.abs(explode - 1) > 0.05) return null;
   const uprights = panels.filter((p) => p.type === "upright");
@@ -472,8 +467,6 @@ export function CarcaseJoins({ panels, explode }: { panels: Panel[]; explode: nu
   for (const u of uprights) {
     const left = /left/i.test(u.name) || u.position.x + u.size.width / 2 < 0;
     const innerX = left ? u.position.x + u.size.width : u.position.x;
-    const ux0 = u.position.x;
-    const ux1 = u.position.x + u.size.width;
     const uy0 = u.position.y;
     const uy1 = u.position.y + u.size.height;
     const uz0 = u.position.z;
