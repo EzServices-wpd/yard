@@ -43,7 +43,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   panels.push(
     panel(
       "top",
-      u.shape === "round" ? `Top (cut round Ø${W}")` : "Top",
+      u.shape === "round" ? `Top (cut round dia ${W}")` : "Top",
       x0,
       H - topT,
       z0,
@@ -67,7 +67,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const notes = [
     `${spec.name}. Freestanding table — top + ${legN} legs.`,
     u.shape === "round"
-      ? `Round top: cut a ${W}" square blank, then band-saw / jigsaw to Ø${W}". Height ${H}".`
+      ? `Round top: cut a ${W}" square blank, then band-saw / jigsaw to a ${W}" diameter circle. Height ${H}".`
       : `Top ${W}" × ${D}". Height ${H}".`,
     `Legs are 3-1/2" square posts (${legN}×) — buy solid 4x4 or laminate 3/4" ply. Not nested on the sheet.`,
     "Guidance only — level the top; do not rack the legs.",
