@@ -41,19 +41,23 @@ Local only — not pushed. Tag to set later: `VITE_PUBLIC_AMAZON_ASSOCIATE_TAG`.
 
 ## Stage 3 — Launch
 
+**Opened 2026-08-25.** Full checklist: [`docs/STAGE3.md`](STAGE3.md).
+
 Production freeze 2026-08-22: house-first homepage, closet size lock, paper demoted, refiner paused. See `docs/PRODUCTION.md`.
 
 - [ ] Custom domain + `VITE_PUBLIC_HOSTNAME` so og:image unfurls.
-- [ ] Legal line stays: guidance only, not stamped engineering.
+- [x] Legal line stays: guidance only, not stamped engineering.
 - [ ] Analytics (privacy-light), error tracking, uptime.
 - [x] Mobile pass: prompt, measure, export on a phone.
 - [ ] Soft launch: 10 real projects — 8 house + 2 weekend (listed in PRODUCTION.md).
 - [ ] Public launch once house PDFs are followable. Affiliate tag: **ask before setting**.
 - [ ] Accounts: after the product is honest. Local save until then.
 
+Wave 2 house PDF + craft Eiffel PDF closed before Stage 3 open (tip `54911a9`).
+
 ## You set on Vercel (not code)
 
 1. `XAI_API_KEY` — Stage 0
 2. `VITE_PUBLIC_AMAZON_ASSOCIATE_TAG` — **ask before launch** (shop stays untagged)
 3. `DATABASE_URL` + `BETTER_AUTH_*` + `GROK_AUTH_*` — after the product is honest
-4. Custom domain — Stage 3
+4. Custom domain + `VITE_PUBLIC_HOSTNAME` — Stage 3 (founder)
