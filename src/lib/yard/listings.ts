@@ -43,7 +43,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "popsicle-standard",
     retailer: "amazon",
-    title: "GUSTO 4.5″ popsicle sticks, 1000 count",
+    title: "GUSTO 4.5\" popsicle sticks, 1000 count",
     href: "https://www.amazon.com/dp/B0931TYTN4",
     asin: "B0931TYTN4",
     packQty: 1000,
@@ -56,7 +56,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "popsicle-standard",
     retailer: "amazon",
-    title: "CraftySticks 4.5″ × 3/8″ sticks, 1000 pack",
+    title: "CraftySticks 4.5\" x 3/8\" sticks, 1000 pack",
     href: "https://www.amazon.com/dp/B07YM541VG",
     asin: "B07YM541VG",
     packQty: 1000,
@@ -69,7 +69,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "popsicle-jumbo",
     retailer: "amazon",
-    title: "Darice 6″ jumbo craft sticks, 500 pack",
+    title: "Darice 6\" jumbo craft sticks, 500 pack",
     href: "https://www.amazon.com/dp/B0CPKHS44K",
     asin: "B0CPKHS44K",
     packQty: 500,
@@ -82,7 +82,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "popsicle-jumbo",
     retailer: "amazon",
-    title: "1200 pack 6″ jumbo wood sticks",
+    title: "1200 pack 6\" jumbo wood sticks",
     href: "https://www.amazon.com/dp/B0CD7PP3R1",
     asin: "B0CD7PP3R1",
     packQty: 1200,
@@ -116,7 +116,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "straw-plastic",
     retailer: "amazon",
-    title: "Plastic drinking straws, 500 count (7.75″)",
+    title: "Plastic drinking straws, 500 count (7.75\")",
     href: "https://www.amazon.com/s?k=plastic+drinking+straws+bulk+500",
     packQty: 500,
     packPrice: 8.99,
@@ -146,7 +146,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "bamboo-skewer-12",
     retailer: "amazon",
-    title: "Perfect Stix 12″ bamboo skewers, 100 count",
+    title: "Perfect Stix 12\" bamboo skewers, 100 count",
     href: "https://www.amazon.com/s?k=Perfect+Stix+12+inch+bamboo+skewers+100",
     packQty: 100,
     packPrice: 6.99,
@@ -156,7 +156,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "lumber-2x4-8",
     retailer: "homedepot",
-    title: "2×4×96″ #2 KD-HT stud",
+    title: "2x4x96\" #2 KD-HT stud",
     href: "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
     packQty: 1,
     packPrice: 3.95,
@@ -168,7 +168,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "lumber-2x4-8",
     retailer: "lowes",
-    title: "2×4×8 kiln-dried whitewood stud",
+    title: "2x4x8 kiln-dried whitewood stud",
     href: "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
     packQty: 1,
     packPrice: 4.15,
@@ -180,7 +180,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "plywood-3-4-4x8",
     retailer: "homedepot",
-    title: "3/4″ × 4×8 Sande sanded plywood",
+    title: "3/4\" x 4x8 Sande sanded plywood",
     href: "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
     packQty: 1,
     packPrice: 38.43,
@@ -192,7 +192,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-3-4-sch40",
     retailer: "homedepot",
-    title: "Charlotte 3/4″ × 10′ Sch 40 PVC",
+    title: "Charlotte 3/4\" x 10' Sch 40 PVC",
     href: "https://www.homedepot.com/p/Charlotte-Pipe-3-4-in-x-10-ft-PVC-Schedule-40-Pressure-Plain-End-Pipe-PVC-04007-0600/100348472",
     packQty: 1,
     packPrice: 5.76,
@@ -202,7 +202,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-3-4-sch40",
     retailer: "lowes",
-    title: "3/4″ × 10′ Sch 40 PVC pipe",
+    title: "3/4\" x 10' Sch 40 PVC pipe",
     href: "https://www.lowes.com/search?searchTerm=3%2F4%20inch%20schedule%2040%20PVC%2010%20ft",
     packQty: 1,
     packPrice: 6.28,
@@ -212,7 +212,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "dowel-1-2-36",
     retailer: "amazon",
-    title: "1/2″ × 36″ hardwood dowels, 10 pack",
+    title: "1/2\" x 36\" hardwood dowels, 10 pack",
     href: "https://www.amazon.com/s?k=ALBO+1%2F2+x+36+wooden+dowel+10+pack",
     packQty: 10,
     packPrice: 16.99,
@@ -242,7 +242,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "tape-packing",
     retailer: "homedepot",
-    title: "Scotch 1.88″ packing tape",
+    title: "Scotch 1.88\" packing tape",
     href: "https://www.homedepot.com/s/packing%20tape",
     packQty: 1,
     packPrice: 3.97,
@@ -262,7 +262,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-tee",
     retailer: "homedepot",
-    title: "Charlotte 3/4″ Sch 40 PVC tee",
+    title: "Charlotte 3/4\" Sch 40 PVC tee",
     href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%20tee%20schedule%2040",
     packQty: 1,
     packPrice: 1.18,
@@ -272,7 +272,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-elbow-90",
     retailer: "homedepot",
-    title: "Charlotte 3/4″ Sch 40 90° elbow",
+    title: "Charlotte 3/4\" Sch 40 90 degree elbow",
     href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2090%20elbow",
     packQty: 1,
     packPrice: 0.88,
@@ -282,7 +282,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-elbow-45",
     retailer: "homedepot",
-    title: "Charlotte 3/4″ Sch 40 45° elbow",
+    title: "Charlotte 3/4\" Sch 40 45 degree elbow",
     href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2045%20elbow",
     packQty: 1,
     packPrice: 0.92,
@@ -292,7 +292,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "pvc-coupling",
     retailer: "homedepot",
-    title: "Charlotte 3/4″ Sch 40 coupling",
+    title: "Charlotte 3/4\" Sch 40 coupling",
     href: "https://www.homedepot.com/s/3%2F4%20inch%20PVC%20coupling",
     packQty: 1,
     packPrice: 0.68,
@@ -302,7 +302,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "screws-8",
     retailer: "homedepot",
-    title: "#8 × 1-1/4″ wood screws, 1 lb",
+    title: "#8 x 1-1/4\" wood screws, 1 lb",
     href: "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
     packQty: 1,
     packPrice: 8.47,
@@ -312,7 +312,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "screws-8",
     retailer: "amazon",
-    title: "#8 × 1-1/4″ wood screws",
+    title: "#8 x 1-1/4\" wood screws",
     href: "https://www.amazon.com/s?k=%238+1-1%2F4+wood+screws",
     packQty: 1,
     packPrice: 9.29,
@@ -322,7 +322,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "drawer-slides-16",
     retailer: "amazon",
-    title: "16″ side-mount drawer slides, pair",
+    title: "16\" side-mount drawer slides, pair",
     href: "https://www.amazon.com/s?k=16+inch+side+mount+drawer+slides",
     packQty: 1,
     packPrice: 12.99,
@@ -332,7 +332,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "drawer-slides-16",
     retailer: "homedepot",
-    title: "16″ side-mount drawer slides",
+    title: "16\" side-mount drawer slides",
     href: "https://www.homedepot.com/s/16%20inch%20side%20mount%20drawer%20slides",
     packQty: 1,
     packPrice: 14.98,
@@ -366,6 +366,16 @@ export const LISTINGS: ListingOffer[] = [
     href: "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
     packQty: 1,
     packPrice: 18.97,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "structural-screws",
+    retailer: "amazon",
+    title: "GRK RSS structural screws",
+    href: "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+    packQty: 1,
+    packPrice: 19.99,
     lengthIn: 0,
     checkedAt: CHECK,
   },
@@ -442,7 +452,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "lumber-2x6-8",
     retailer: "homedepot",
-    title: "2×6×8 kiln-dried framing lumber",
+    title: "2x6x8 kiln-dried framing lumber",
     href: "https://www.homedepot.com/s/2x6x8%20framing%20lumber",
     packQty: 1,
     packPrice: 8.75,
@@ -452,7 +462,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "lumber-2x8-8",
     retailer: "homedepot",
-    title: "2×8×8 kiln-dried framing lumber",
+    title: "2x8x8 kiln-dried framing lumber",
     href: "https://www.homedepot.com/s/2x8x8%20framing%20lumber",
     packQty: 1,
     packPrice: 11.48,
@@ -462,11 +472,23 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "lumber-2x10-8",
     retailer: "homedepot",
-    title: "2×10×8 kiln-dried framing lumber",
+    title: "2x10x8 kiln-dried framing lumber",
     href: "https://www.homedepot.com/s/2x10x8%20framing%20lumber",
     packQty: 1,
     packPrice: 16.87,
     lengthIn: 96,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "plywood-1-4-4x8",
+    retailer: "homedepot",
+    title: "1/4\" x 4x8 sanded plywood",
+    href: "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+    packQty: 1,
+    packPrice: 24.98,
+    lengthIn: 96,
+    widthIn: 48,
+    thickIn: 0.25,
     checkedAt: CHECK,
   },
 ];
@@ -575,6 +597,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";
   if (/foam board|foamcore|foam-board/.test(hay)) return "foam-board-20x30";
   if (/cardboard/.test(hay)) return "cardboard-corrugated-sheet";
+  // Thin backer before generic plywood
+  if (/1\/4|quarter.?inch|backer/.test(hay) && /ply/.test(hay)) return "plywood-1-4-4x8";
   if (/plywood/.test(hay)) return "plywood-3-4-4x8";
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
@@ -585,12 +609,15 @@ function guessCatalogId(line: BomLine): string | null {
   if (/dowel/.test(hay)) return "dowel-1-2-36";
   if (/titebond|wood glue|\bglue\b/.test(hay)) return "glue";
   if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
+  // Structural / lag BEFORE generic wood screws ("Structural wood screws / lag" contains both)
+  if (/grk|structural|lag|rss|tapcon|masonry/.test(hay)) {
+    if (/tapcon|masonry|concrete/.test(hay)) return "tapcon";
+    return "structural-screws";
+  }
   if (/#8|wood screw/.test(hay)) return "screws-8";
   if (/slide/.test(hay)) return "drawer-slides-16";
   if (/hinge/.test(hay)) return "cabinet-hinges";
   if (/shelf pin/.test(hay)) return "shelf-pins";
-  if (/tapcon|masonry/.test(hay)) return "tapcon";
-  if (/grk|structural|lag/.test(hay)) return "structural-screws";
   if (/flashing|sill pan/.test(hay)) return "flashing-tape";
   if (/shim/.test(hay)) return "shims";
   if (/16d|framing nail/.test(hay)) return "framing-nails";
