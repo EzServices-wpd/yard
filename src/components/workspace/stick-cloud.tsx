@@ -140,7 +140,7 @@ function CloudKind({
       const inStep = hasStep && stepIds.includes(inst.id);
       const selected = inst.id === selectedId;
       const stock = live[i].item.color || ROLE_TINT[inst.role ?? ""] || "#e0b86a";
-      color.set(hasStep && !inStep ? "#5c5348" : selected || inStep ? "#fff1d0" : stock);
+      color.set(hasStep && !inStep ? "#3a342e" : selected || inStep ? "#fff1d0" : stock);
       m.setColorAt(i, color);
     }
     m.instanceMatrix.needsUpdate = true;
@@ -255,13 +255,23 @@ export function PanelMesh({
   const cy = panel.position.y + panel.size.height / 2;
   const cz = panel.position.z + panel.size.depth / 2;
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
-  const opacity = hasStep && !inStep ? 0.2 : glass ? 0.42 : 1;
-  const color = selected || inStep ? "#fff6e6" : look.map ? "#f3e6cc" : item?.color ?? "#c4a06a";
+  // Progressive assembly photos: out-of-step parts nearly vanish (was 0.2 — still read as finished).
+  const opacity = hasStep && !inStep ? 0.06 : glass ? 0.42 : 1;
+  const color =
+    hasStep && !inStep
+      ? "#2e2a26"
+      : selected || inStep
+        ? "#fff6e6"
+        : look.map
+          ? "#f3e6cc"
+          : item?.color ?? "#c4a06a";
   const { width: w, height: h, depth: d } = panel.size;
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
-  const open = facesOpen && (isDoor || isDrawer);
+  // Doors/drawers only swing open when they are the active step (or no step is lit).
+  // Otherwise every auto-capture looked like the finished unit.
+  const open = facesOpen && (isDoor || isDrawer) && (!hasStep || inStep);
   const isLeft = /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
   let groupPos: [number, number, number] = [cx * explode, cy, cz * explode];
@@ -316,6 +326,7 @@ export function PanelMesh({
             roughness={glass ? 0.08 : look.roughness}
             metalness={glass ? 0.22 : look.metalness}
             envMapIntensity={glass ? 1.4 : look.env}
+            depthWrite={opacity > 0.5}
           />
         </mesh>
         {!glass && opacity > 0.4 && <EdgeBand w={w} h={h} d={d} />}
