@@ -4,11 +4,10 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Yard";
-const host = import.meta.env.VITE_PUBLIC_HOSTNAME;
-const ogImage = host ? `https://${host}/og.jpg` : undefined;
-const xBanner = host
-  ? `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`
-  : undefined;
+/** Production domain. Env override still wins if set on Vercel. */
+const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
+const ogImage = `https://${host}/og.jpg`;
+const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -29,20 +28,13 @@ export const Route = createRootRoute({
         property: "og:description",
         content: "Type it. Buy the parts. Build it.",
       },
-      ...(ogImage
-        ? [
-            { property: "og:image", content: ogImage },
-            { property: "og:image:width", content: "1200" },
-            { property: "og:image:height", content: "630" },
-          ]
-        : []),
-      ...(xBanner
-        ? [
-            { property: "x:game:image", content: xBanner },
-            { property: "x:game:image:width", content: "1200" },
-            { property: "x:game:image:height", content: "264" },
-          ]
-        : []),
+      { property: "og:image", content: ogImage },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:url", content: `https://${host}/` },
+      { property: "x:game:image", content: xBanner },
+      { property: "x:game:image:width", content: "1200" },
+      { property: "x:game:image:height", content: "264" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -55,6 +47,7 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "canonical", href: `https://${host}/` },
     ],
   }),
   component: () => (
