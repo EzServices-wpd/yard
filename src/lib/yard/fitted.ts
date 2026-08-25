@@ -28,7 +28,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|shelves|shelf|drawer|storage|bench seat|window seat/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -44,7 +44,7 @@ export function looksLikeFitted(prompt: string) {
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
   if (!BUILDER.test(lower)) return false;
   // Named house programs don't need two numbers — honest defaults fill in.
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|alcove|built-?in/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -56,9 +56,10 @@ export function detectProgram(lower: string): FittedProgram {
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
-  if (/\bmedia\b|\btv\b|console/.test(lower)) return "media";
+  if (/\btable\b/.test(lower) && !/work table|console table/.test(lower)) return "table";
+  if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
   if (/\bmudroom\b|window seat/.test(lower)) return "bench";
-  if (/\bcloset\b|linen|alcove|built-?in/.test(lower)) return "closet";
+  if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/towel|cabinet|storage|shelves|shelf/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove/.test(lower)) return "vanity";
@@ -108,6 +109,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const lower = t.toLowerCase();
   const program = detectProgram(lower);
   const trip = triple(t);
+  const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
+  const isRound = /round|circular|diameter|\bdia\b/.test(lower);
+  const diameter = pick(t, /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, NaN);
+  const legs = Math.max(
+    3,
+    Math.min(4, Math.round(pick(t, /(\d+)\s*(?:-?\s*)legs?/i, program === "table" ? (isRound ? 3 : 4) : 4))),
+  );
 
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
@@ -121,14 +129,48 @@ export function parseBrief(prompt: string): FittedSpec | null {
     );
     if (alcove && !(trip.w && trip.h)) width = parseFloat(alcove[1]);
   }
-  if (!Number.isFinite(width)) width = trip.w ?? (program === "desk" ? 48 : program === "vanity" ? 36 : 36);
+  if (!Number.isFinite(width)) {
+    width =
+      trip.w ??
+      (program === "desk" ? 48 : program === "vanity" ? 36 : program === "table" ? 40 : program === "media" ? 60 : 36);
+  }
+
+  // Round table diameter → square footprint.
+  if (program === "table" && (isRound || Number.isFinite(diameter))) {
+    const dia = Number.isFinite(diameter)
+      ? diameter
+      : pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*round/i, width);
+    width = dia;
+    depth = dia;
+    if (!Number.isFinite(height)) height = trip.h && trip.h < 42 ? trip.h : 30;
+  }
+
+  // Closet system "80 by 120 space".
+  if (isSystem && trip.w && trip.h && !Number.isFinite(pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN))) {
+    const a = trip.w;
+    const b = trip.h;
+    width = Math.max(a, b);
+    const other = Math.min(a, b);
+    if (other >= 60) {
+      height = other;
+      depth = 24;
+    } else {
+      depth = other;
+      height = 84;
+    }
+  }
 
   const wantsUppers =
     program === "vanity" &&
     /upper|to the ceiling|floor.?to.?ceiling|linen storage|towels to/.test(lower);
 
   if (!Number.isFinite(height)) {
-    if (program === "desk" || program === "bench") {
+    if (program === "table") {
+      height = trip.h && trip.h < 42 ? trip.h : 30;
+    } else if (program === "media") {
+      if (trip.h && trip.h < 48) height = trip.h;
+      else height = trip.h ?? 30;
+    } else if (program === "desk" || program === "bench") {
       height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
       if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
         depth = trip.h;
@@ -144,9 +186,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
       }
     } else if (trip.h && trip.h < 40 && !trip.d) {
       depth = trip.h;
-      height = program === "media" ? 24 : 84;
+      height = 84;
     } else {
-      height = trip.h ?? (program === "media" ? 24 : 84);
+      height = trip.h ?? 84;
     }
   }
   if (!Number.isFinite(depth)) {
@@ -159,7 +201,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? 12
             : program === "media"
               ? 16
-              : 16;
+              : program === "table"
+                ? width
+                : 16;
+  }
+
+  let bays: number | undefined;
+  if (
+    (isSystem || width >= 84) &&
+    (program === "closet" || program === "wardrobe" || program === "pantry" || program === "storage")
+  ) {
+    bays = Math.max(2, Math.min(6, Math.round(width / 32)));
   }
 
   const counterH = /(?:counter|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i.test(t)
@@ -179,7 +231,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? Math.min(24, Math.max(18, width * 0.4))
       : undefined;
   const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
-  const shelfCount = pick(t, /(\d+)\s*shel(?:f|ves)/i, program === "bookcase" ? 5 : program === "closet" || program === "pantry" || program === "wardrobe" ? 4 : 0);
+  const shelfCount = pick(
+    t,
+    /(\d+)\s*shel(?:f|ves)/i,
+    program === "bookcase"
+      ? 5
+      : program === "closet" || program === "pantry" || program === "wardrobe"
+        ? 4
+        : program === "media"
+          ? 2
+          : 0,
+  );
   const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
   const doors =
@@ -188,6 +250,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54);
+  const doorsFinal = program === "media" && !/door/.test(lower) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity";
   const rod = /rod|hang|rail/.test(lower) || program === "wardrobe";
 
@@ -212,10 +275,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
     shelfCount: shelfCount || undefined,
     cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
     drawersPerBank: drawers ? 3 : undefined,
-    doors,
+    doors: doorsFinal,
     mirror,
     rod,
     centered: true,
+    legs: program === "table" ? legs : undefined,
+    shape: program === "table" ? (isRound || Number.isFinite(diameter) ? "round" : "rect") : undefined,
+    bays,
   };
 
   const names: Record<FittedProgram, string> = {
@@ -228,6 +294,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     media: "Media unit",
     bench: "Bench",
     storage: "Storage unit",
+    table: "Table",
   };
 
   return {
@@ -294,8 +361,58 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const x0 = -W / 2;
   const panels: Panel[] = [];
 
+  if (spec.program === "table") {
+    const legN = Math.max(3, Math.min(4, u.legs ?? 4));
+    const legW = 3.5;
+    const topT = P;
+    panels.push(panel("top", u.shape === "round" ? "Top (cut round)" : "Top", x0, H - topT, 0, W, topT, D));
+    for (let i = 0; i < legN; i++) {
+      const ang = (Math.PI * 2 * i) / legN + (legN === 4 ? Math.PI / 4 : -Math.PI / 2);
+      const rx = (W / 2 - legW) * 0.78;
+      const rz = (D / 2 - legW) * 0.78;
+      const lx = Math.cos(ang) * rx - legW / 2;
+      const lz = Math.sin(ang) * rz;
+      panels.push(panel("upright", `Leg ${i + 1}`, lx, 0, Math.max(0, lz), legW, H - topT, legW));
+    }
+    const notes = [
+      `${spec.name}. Freestanding table — top + ${legN} legs.`,
+      u.shape === "round"
+        ? `Round top from a ${W}" square blank (cut the circle after the sheet nest). Height ${H}".`
+        : `Top ${W}" × ${D}". Height ${H}".`,
+      `Leg stock reads as 3-1/2" square posts from 3/4" ply laminated or solid lumber — confirm before you buy.`,
+      "Guidance only — level the top; do not rack the legs.",
+    ];
+    return {
+      id: createId("proj"),
+      name: spec.name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes,
+      historic: false,
+      opening: spec.opening,
+      fitted: spec,
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "freestanding",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  const bayN = u.bays && u.bays >= 2 ? u.bays : 1;
+  if (bayN >= 2) {
+    for (let i = 1; i < bayN; i++) {
+      const x = x0 + (W * i) / bayN - P / 2;
+      panels.push(panel("divider", `Bay divider ${i}`, x, 0, 0, P, H, D));
+    }
+  }
   panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
   panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
   panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
