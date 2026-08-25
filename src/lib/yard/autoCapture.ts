@@ -11,7 +11,7 @@ export async function autoCaptureSteps(
   setActiveStep: (n: number | null) => void,
   opts?: { max?: number; settleMs?: number },
 ): Promise<number> {
-  const max = opts?.max ?? 4;
+  const max = opts?.max ?? 6;
   const settleMs = opts?.settleMs ?? 1400;
   const targets = steps
     .filter((s) => !s.imageDataUrl || s.imageDataUrl.length < 1200)
@@ -31,5 +31,5 @@ export async function autoCaptureSteps(
 export function needsAutoCapture(steps: CaptureStep[]): boolean {
   if (!steps.length) return false;
   const withPhoto = steps.filter((s) => s.imageDataUrl && s.imageDataUrl.length > 1200).length;
-  return withPhoto < Math.min(3, steps.length);
+  return withPhoto < Math.min(6, steps.length);
 }
