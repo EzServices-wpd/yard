@@ -32,7 +32,7 @@ export function AutoCaptureRunner() {
       try {
         const n = await autoCaptureSteps(plan.instructions, setActiveStep, {
           max: 6,
-          settleMs: 1400,
+          settleMs: 1600,
         });
         if (n > 0) makePlan(); // re-merge photos into fresh plan object
         ranFor.current = projectId;
