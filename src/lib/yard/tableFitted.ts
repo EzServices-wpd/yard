@@ -1,6 +1,5 @@
 /**
- * Freestanding table builder — top + legs on a circle.
- * Split out so geometry fixes push cleanly without touching the rest of fitted.ts.
+ * Freestanding table builder — top + legs on a circle under the top.
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
@@ -33,7 +32,9 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const W = u.width;
   const H = u.height;
   const D = u.depth;
+  // Center the top on the origin in XZ so legs (also around origin) sit under it.
   const x0 = -W / 2;
+  const z0 = -D / 2;
   const panels: Panel[] = [];
   const legN = Math.max(3, Math.min(4, u.legs ?? 4));
   const legW = 3.5;
@@ -45,21 +46,22 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       u.shape === "round" ? `Top (cut round Ø${W}")` : "Top",
       x0,
       H - topT,
-      0,
+      z0,
       W,
       topT,
       D,
     ),
   );
 
+  // Radius to leg centers — near the rim of a round top, inset by half the post.
+  const rim = Math.min(W, D) / 2 - legW * 0.55;
   for (let i = 0; i < legN; i++) {
-    // Evenly space legs on a circle. Do NOT clamp z — rear legs must sit behind the top.
-    const ang = (Math.PI * 2 * i) / legN + (legN === 4 ? Math.PI / 4 : -Math.PI / 2);
-    const rx = (W / 2 - legW) * 0.72;
-    const rz = (D / 2 - legW) * 0.72;
-    const lx = Math.cos(ang) * rx - legW / 2;
-    const lz = Math.sin(ang) * rz - legW / 2;
-    panels.push(panel("upright", `Leg ${i + 1}`, lx, 0, lz, legW, H - topT, legW));
+    const ang = (Math.PI * 2 * i) / legN - Math.PI / 2; // first leg toward -Z (rear)
+    const cx = Math.cos(ang) * rim;
+    const cz = Math.sin(ang) * rim;
+    panels.push(
+      panel("upright", `Leg ${i + 1}`, cx - legW / 2, 0, cz - legW / 2, legW, H - topT, legW),
+    );
   }
 
   const notes = [
