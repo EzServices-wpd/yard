@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
@@ -8,6 +9,22 @@ const APP_NAME = "Yard";
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
+
+
+/** Env-gated: only loads when VITE_PUBLIC_PLAUSIBLE_DOMAIN is set (e.g. yard.wiki). */
+function Plausible() {
+  useEffect(() => {
+    const domain = (import.meta.env.VITE_PUBLIC_PLAUSIBLE_DOMAIN as string | undefined)?.trim();
+    if (!domain) return;
+    if (document.querySelector(`script[data-domain="${domain}"]`)) return;
+    const s = document.createElement("script");
+    s.defer = true;
+    s.dataset.domain = domain;
+    s.src = "https://plausible.io/js/script.js";
+    document.head.appendChild(s);
+  }, []);
+  return null;
+}
 
 export const Route = createRootRoute({
   head: () => ({
@@ -61,6 +78,7 @@ export const Route = createRootRoute({
           <Outlet />
         </AuthProvider>
         <Scripts />
+        <Plausible />
       </body>
     </html>
   ),
