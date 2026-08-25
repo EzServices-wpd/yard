@@ -8,6 +8,7 @@ import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
+import { nestCutList } from "./nesting";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function roleOf(role?: string) {
@@ -45,15 +46,15 @@ function partFamily(name: string, type?: string) {
 }
 
 function effortLabel(project: YardProject, pieces: number): string {
-  if (project.kind === "opening") return "½-day";
+  if (project.kind === "opening") return "1/2-day";
   if (project.pocket) return project.panels.length > 18 ? "weekend" : "1-day";
   if (project.fitted || project.kind === "closet") {
-    if (project.panels.length <= 10) return "½-day";
+    if (project.panels.length <= 10) return "1/2-day";
     if (project.panels.length <= 20) return "1-day";
     return "weekend";
   }
   if (pieces <= 30) return "an hour";
-  if (pieces <= 120) return "½-day";
+  if (pieces <= 120) return "1/2-day";
   if (pieces <= 400) return "1-day";
   if (pieces <= 900) return "weekend";
   if (pieces <= 2000) return "a week";
@@ -73,7 +74,7 @@ function closetFeasibility(project: YardProject): FeasibilityIssue[] {
         issues.push({
           severity: "warning",
           message: `${p.name} spans ${span.toFixed(1)}" — a stretcher under the middle keeps it honest.`,
-          suggestion: "A 1× or 2× apron front-to-back, or a center divider, is Saturday-DIY for a 5-ft top.",
+          suggestion: "A 1x or 2x apron front-to-back, or a center divider, is Saturday-DIY for a 5-ft top.",
         });
       } else if (span > 48) {
         issues.push({
@@ -102,14 +103,14 @@ function closetFeasibility(project: YardProject): FeasibilityIssue[] {
     const p = project.pocket;
     issues.push({
       severity: "info",
-      message: `Trapezoidal pocket. Unit ${p.unit.width}" × ${p.unit.depth}" × ${p.unit.height}" on the back-wall centerline.`,
+      message: `Trapezoidal pocket. Unit ${p.unit.width}" x ${p.unit.depth}" x ${p.unit.height}" on the back-wall centerline.`,
       suggestion: `Front clearances: left ${p.leftClear.toFixed(2)}" · right ${p.rightClear.toFixed(2)}". The unit stays rectangular. The walls are the thing that flare.`,
     });
     if (p.leftClear < 0.5 || p.rightClear < 0.5) {
       issues.push({
         severity: "critical",
         message: "Unit hits a side wall at this depth.",
-        suggestion: "Pull the unit shallower or narrow it until both clearances are at least ½\".",
+        suggestion: "Pull the unit shallower or narrow it until both clearances are at least 1/2\".",
       });
     } else if (p.rightClear < 2 || p.leftClear < 2) {
       issues.push({
@@ -135,7 +136,7 @@ function closetFeasibility(project: YardProject): FeasibilityIssue[] {
     issues.push({
       severity: "info",
       message: `${project.fitted.name} — ${project.fitted.program}.`,
-      suggestion: "Measure is live. Change W × H × D to refit. Drawers, knee, and doors stay with the program.",
+      suggestion: "Measure is live. Change W x H x D to refit. Drawers, knee, and doors stay with the program.",
     });
     if (u.kneeW && u.kneeW < 21 && (project.fitted.program === "vanity" || project.fitted.program === "desk")) {
       issues.push({
@@ -147,7 +148,7 @@ function closetFeasibility(project: YardProject): FeasibilityIssue[] {
   } else if (project.opening) {
     issues.push({
       severity: "info",
-      message: `Fitted to a ${project.opening.width}" × ${project.opening.height}" × ${project.opening.depth}" ${project.opening.kind}.`,
+      message: `Fitted to a ${project.opening.width}" x ${project.opening.height}" x ${project.opening.depth}" ${project.opening.kind}.`,
       suggestion: "Measure twice. Out-of-square openings need scribed uprights.",
     });
   }
@@ -183,22 +184,42 @@ function closetCuts(project: YardProject): CutLine[] {
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
-  const area = cuts.reduce((s, c) => s + c.lengthIn * c.widthIn * c.quantity, 0);
-  const stockA = Math.max(1, (sheet?.dims.length ?? 96) * (sheet?.dims.width ?? 48));
-  const sheets = Math.max(1, Math.ceil(area / stockA / 0.7));
-  const cardboard = sheet?.category === "cardboard" || sheet?.formFactor === "sheet" && sheet?.unitCostUsd === 0.5;
+  const cardboard = sheet?.category === "cardboard" || (sheet?.formFactor === "sheet" && sheet?.unitCostUsd === 0.5);
   const screws = Math.max(16, project.panels.length * 6);
+
+  // Structural 3/4" sheets from the real nest (not a 70% area guess).
+  // Thin backs (< 1/2") are excluded from the nest — buy 1/4" separately.
+  const structural = cuts.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5);
+  const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
+  const nest = structural.length ? nestCutList(structural) : null;
+  const sheets = Math.max(1, nest?.totalSheets ?? nest?.sheets.length ?? 1);
+
   const bom: BuildPlan["bom"] = [
     {
-      name: sheet?.name ?? '3/4" plywood 4×8',
+      name: sheet?.name ?? '3/4" plywood 4x8',
       quantity: sheets,
-      unit: cardboard ? "sheet" : "sheet",
+      unit: "sheet",
       catalogId: sheet?.id,
       searchQuery: sheet?.searchQuery,
       estimatedCost: (sheet?.unitCostUsd ?? 55) * sheets,
-      notes: cardboard ? "Corrugated — save boxes if you have them." : "Kerf-aware nest assumed at ~70% yield.",
+      notes: cardboard
+        ? "Corrugated — save boxes if you have them."
+        : nest
+          ? `From nest · ${sheets} sheet${sheets === 1 ? "" : "s"} · 1/8" kerf included.`
+          : "Kerf-aware nest.",
     },
   ];
+  if (thinBacks.length) {
+    const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
+    bom.push({
+      name: '1/4" plywood 4x8 (backer)',
+      quantity: 1,
+      unit: "sheet",
+      searchQuery: "1/4 inch sanded plywood 4x8",
+      estimatedCost: 28,
+      notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.`,
+    });
+  }
   if (cardboard || sheet?.preferredJoins?.[0] === "tape") {
     bom.push({
       name: "Packing tape",
@@ -210,7 +231,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   } else {
     bom.push({
-      name: '#8 × 1-1/4" wood screws',
+      name: '#8 x 1-1/4" wood screws',
       quantity: Math.ceil(screws / 50),
       unit: "box",
       searchQuery: "#8 wood screws 1-1/4",
@@ -285,7 +306,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         unit: "pack",
         searchQuery: "5mm shelf pins",
         estimatedCost: 6,
-        notes: `${shelves} adjustable shelves × 4 pins.`,
+        notes: `${shelves} adjustable shelves x 4 pins.`,
       });
     }
     if (project.panels.some((p) => p.type === "mirror")) {
@@ -315,7 +336,7 @@ export function buildPlan(project: YardProject): BuildPlan {
     if (!project.windowPkg && project.opening) {
       issues.push({
         severity: "info",
-        message: `Window rough opening ${project.opening.width}" × ${project.opening.height}".`,
+        message: `Window rough opening ${project.opening.width}" x ${project.opening.height}".`,
       });
       for (const note of framingNotes(project.opening.width, project.opening.height)) {
         issues.push({ severity: "info", message: note });
@@ -328,7 +349,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       feasibility: {
         status: issues.some((i) => i.severity === "critical") ? "critical" : issues.some((i) => i.severity === "warning") ? "warnings" : "ok",
         summary: project.windowPkg
-          ? `${project.windowPkg.window.brand} ${project.windowPkg.window.callW}×${project.windowPkg.window.callH} + framing · ½-day · ~$${cost.toFixed(0)}`
+          ? `${project.windowPkg.window.brand} ${project.windowPkg.window.callW}x${project.windowPkg.window.callH} + framing · 1/2-day · ~$${cost.toFixed(0)}`
           : "Framing package for this rough opening. Guidance only — check local code.",
         issues,
       },
@@ -340,7 +361,7 @@ export function buildPlan(project: YardProject): BuildPlan {
         estCostUsd: cost,
         packs: bom.reduce((s, b) => s + b.quantity, 0),
       },
-      effort: "½-day",
+      effort: "1/2-day",
       generatedAt: new Date().toISOString(),
       render: project.render,
       partsKind: "cut",
@@ -399,7 +420,7 @@ export function buildPlan(project: YardProject): BuildPlan {
           {
             severity: "critical",
             message: "Empty structure",
-            suggestion: "Try “3 foot Eiffel Tower from popsicle sticks” or place a piece from the catalog.",
+            suggestion: 'Try "3 foot Eiffel Tower from popsicle sticks" or place a piece from the catalog.',
           },
         ],
       },
@@ -568,7 +589,7 @@ export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
     `## ${plan.partsKind === "whole" ? "Stick list" : "Cut list"}`,
     ...plan.cutList.map(
       (c) =>
-        `- ${c.label ? `${c.label} · ` : ""}${c.quantity}× ${c.name} — ${c.lengthIn}" × ${c.widthIn}" × ${c.thicknessIn}" (${c.material})${c.notes ? ` · ${c.notes}` : ""}`,
+        `- ${c.label ? `${c.label} · ` : ""}${c.quantity}x ${c.name} — ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}" (${c.material})${c.notes ? ` · ${c.notes}` : ""}`,
     ),
     "",
     `## Buy`,
