@@ -12,7 +12,8 @@ const PAPER: [number, number, number] = [243, 238, 228];
 const PLY_FILL: [number, number, number] = [232, 220, 196];
 const PLY_EDGE: [number, number, number] = [160, 140, 110];
 
-/** Plain-English definitions for every shop term used in house plans. */
+/** Plain-English definitions for every shop term used in house plans.
+ *  ASCII only — jsPDF default fonts mangle Unicode fractions. */
 const SHOP_GLOSSARY: { term: string; def: string }[] = [
   { term: "Carcase", def: "The main box of the unit — uprights, top, bottom, and back screwed together." },
   { term: "Toekick", def: "The recessed strip at the floor so your toes clear when you stand close to the face." },
@@ -24,14 +25,14 @@ const SHOP_GLOSSARY: { term: string; def: string }[] = [
   { term: "Scribe", def: "Mark and cut an edge to match a wavy wall so the box stays square instead of being forced." },
   { term: "Rack / racking", def: "Twisting the box out of square. A racked carcase makes doors and drawers bind." },
   { term: "Plumb", def: "Truly vertical — checked with a level on the uprights." },
-  { term: "Square", def: "Corners at 90°. Check by measuring both diagonals — they should match within about 1/16\"." },
+  { term: "Square", def: "Corners at 90 degrees. Check by measuring both diagonals — they should match within about 1/16\"." },
   { term: "Predrill", def: "Drill a small pilot hole before driving a screw so the plywood does not split." },
   { term: "Side-mount slides", def: "Metal drawer tracks that screw to the sides of the box and the cabinet opening." },
   { term: "Concealed hinges", def: "Cup hinges that mount inside the door and carcase so you do not see the hinge from the front." },
   { term: "Soft-close", def: "Hinges or slides that pull the door or drawer shut gently on the last inch." },
   { term: "French cleat", def: "Two interlocking angled strips — one on the wall, one on the piece — so the piece hangs strong and level." },
-  { term: "Kerf", def: "The width of material the saw blade removes (about ⅛\" on a circular saw). Already included in the nest." },
-  { term: "32mm pin holes", def: "Standard shelf-pin spacing: holes 32mm (about 1¼\") apart, 5mm diameter, set back about 1¼\" from the front edge." },
+  { term: "Kerf", def: "The width of material the saw blade removes (about 1/8\" on a circular saw). Already included in the nest." },
+  { term: "32mm pin holes", def: "Standard shelf-pin spacing: holes 32mm (about 1-1/4\") apart, 5mm diameter, set back about 1-1/4\" from the front edge." },
 ];
 
 export function slugPlan(name: string) {
@@ -107,7 +108,7 @@ function drawStepPlate(
   }
 }
 
-/** Draw one 4×8 sheet layout (parts lettered to match cut list). */
+/** Draw one 4x8 sheet layout (parts lettered to match cut list). */
 function drawNestSheet(
   doc: jsPDF,
   sheet: NestSheet,
@@ -154,7 +155,7 @@ function drawNestSheet(
       doc.setFont("times", "normal");
       doc.setFontSize(7);
       doc.setTextColor(...MUTED);
-      const dim = `${p.width.toFixed(1)}×${p.height.toFixed(1)}`;
+      const dim = `${p.width.toFixed(1)}x${p.height.toFixed(1)}`;
       doc.text(dim, px + pw / 2, py + ph - 4, { align: "center" });
     }
   }
@@ -163,8 +164,9 @@ function drawNestSheet(
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
   const util = Math.round(sheet.utilization * 100);
+  // Pure ASCII — jsPDF default fonts corrupt Unicode fractions and smart quotes.
   doc.text(
-    `Sheet ${sheet.index} · ${sheet.material} · 96″ × 48″ · ${util}% used · ⅛″ kerf`,
+    `Sheet ${sheet.index} · ${sheet.material} · 96" x 48" · ${util}% used · 1/8" kerf`,
     x + maxW / 2,
     oy + sheetH + 12,
     { align: "center" },
@@ -181,7 +183,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   let y = 56;
 
   const unit = project.fitted?.unit ?? project.pocket?.unit ?? project.overall;
-  const sizeLine = `${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  const sizeLine = `${unit.width}" x ${unit.height}" x ${unit.depth}"`;
 
   function paintPage() {
     doc.setFillColor(...PAPER);
@@ -303,11 +305,11 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.setTextColor(...INK);
       doc.text(c.label ?? "", left, y);
       doc.setFont("times", "normal");
-      doc.text(`${c.quantity}×`, left + 18, y);
+      doc.text(`${c.quantity}x`, left + 18, y);
       const nameLines = wrap(c.name, 11, width - 160);
       doc.text(nameLines, left + 42, y);
       doc.setTextColor(...MUTED);
-      doc.text(`${c.lengthIn}" × ${c.widthIn}" × ${c.thicknessIn}"`, right, y, { align: "right" });
+      doc.text(`${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`, right, y, { align: "right" });
       y += Math.max(16, nameLines.length * 14);
     }
     y += 6;
@@ -323,17 +325,27 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         doc.setFont("times", "bold");
         doc.setFontSize(14);
         doc.setTextColor(...INK);
-        doc.text("Cut this 4×8", left, y);
+        doc.text("Cut this 4x8", left, y);
         y += 16;
         doc.setFont("times", "italic");
         doc.setFontSize(10);
         doc.setTextColor(...MUTED);
         doc.text(
-          "Letters match the cut list. ⅛″ kerf included. Grain runs long on the sheet.",
+          "Letters match the cut list. 1/8\" kerf included. Grain runs long on the sheet.",
           left,
           y,
         );
-        y += 18;
+        y += 14;
+        // Thin backs (1/4") are intentionally off these pages — note when cut list has them.
+        const thinBacks = plan.cutList.filter((c) => (c.thicknessIn ?? 1) < 0.5);
+        if (thinBacks.length) {
+          doc.text(
+            `Thin backer (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
+            left,
+            y,
+          );
+          y += 14;
+        }
         const plateH = pageH - y - 48;
         drawNestSheet(doc, sheet, left, y, width, plateH);
       }

@@ -2,6 +2,9 @@
  * MaxRects Best Short Side Fit (BSSF) sheet nest for Yard house ply.
  * Ported from BuildHQ 0.5. All dimensions in inches.
  * House ply only — crafts stay whole-pack / do not cut.
+ *
+ * Thin backs (thickness < 1/2") are intentionally excluded from 3/4" sheets.
+ * Buy 1/4" backer as a separate sheet; do not nest it with structural ply.
  */
 
 import type { CutLine } from "./types";
@@ -54,8 +57,10 @@ interface FreeRect {
   height: number;
 }
 
-const DEFAULT_SHEET = { width: 96, height: 48 }; // 4×8 ft plywood (long side first)
+const DEFAULT_SHEET = { width: 96, height: 48 }; // 4x8 ft plywood (long side first)
 const KERF = 0.125; // 1/8" blade kerf
+/** Structural sheet goods only. Thin backs (< 1/2") buy separately. */
+const MIN_NEST_THICKNESS = 0.5;
 
 function expandWithKerf(w: number, h: number) {
   return { width: w + KERF, height: h + KERF };
@@ -189,7 +194,7 @@ function packSheet(
 }
 
 /**
- * Nest parts onto standard 4×8 sheets (96" × 48"), grouped by material.
+ * Nest parts onto standard 4x8 sheets (96" x 48"), grouped by material.
  */
 export function nestParts(
   parts: NestPart[],
@@ -250,6 +255,7 @@ export function nestParts(
 /**
  * Expand a cut list into individual NestPart instances for sheet packing.
  * Only non-whole sheet/board parts (house ply). Crafts with whole=true are skipped.
+ * Thin backs (thickness < 1/2") are skipped — buy as separate 1/4" sheet.
  * Grain: longer edge prefers sheet long axis; rotation allowed for square-ish panels.
  */
 export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
@@ -262,10 +268,22 @@ export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
       /ply|sheet|board|panel|mdf|osb/i.test(c.material + " " + c.name);
     if (!isSheet) continue;
 
-    // Face dimensions: length × width (thickness is the saw kerf axis, not nested)
+    // Thin backer (1/4" or thinner) does not belong on a 3/4" structural sheet.
+    const thick = c.thicknessIn ?? 0.75;
+    if (thick < MIN_NEST_THICKNESS) continue;
+
+    // Face dimensions: length x width (thickness is the saw kerf axis, not nested)
     const w = Math.max(c.lengthIn, c.widthIn);
     const h = Math.min(c.lengthIn, c.widthIn);
     const qty = Math.max(1, Math.floor(c.quantity) || 1);
+    // ASCII material label — avoid Unicode fractions in PDF footers
+    const material =
+      c.material
+        ?.replace(/¾/g, "3/4")
+        .replace(/½/g, "1/2")
+        .replace(/¼/g, "1/4")
+        .replace(/″/g, "\"")
+        .replace(/×/g, "x") || '3/4" plywood';
     for (let i = 0; i < qty; i++) {
       parts.push({
         id: `${c.id || c.label || "p"}-${i}`,
@@ -273,7 +291,7 @@ export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
         label: c.label,
         width: w,
         height: h,
-        material: c.material || "¾″ plywood",
+        material,
         // Allow rotate unless strongly grain-oriented long strip
         allowRotate: h / w > 0.25,
       });
