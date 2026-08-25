@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { DREAMS } from "@/lib/yard/prompt";
-import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
+import { hintSubject, interpretPrompt, briefHousePrompt } from "@/lib/ai/grok";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
@@ -24,10 +24,12 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     const prompt = raw.trim();
     if (!prompt) return;
     setValue(prompt);
+    // Deterministic first — always something on the bench immediately.
     const next = generate(prompt, undefined, undefined, { fresh });
     makePlan();
     onBuilt();
-    if (next.kind === "closet" || next.kind === "opening" || isLockedForm(next.kind)) {
+    // Openings + locked craft monuments stay deterministic-only.
+    if (next.kind === "opening" || isLockedForm(next.kind)) {
       revealBench();
       return;
     }
@@ -44,6 +46,35 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
       revealBench();
     }, 22000);
     try {
+      const houseLike =
+        next.kind === "closet" ||
+        !!next.fitted ||
+        /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system/i.test(
+          prompt,
+        );
+
+      // House path: LLM brief trained on every known-good walk build.
+      // Falls through to deterministic result if the key is missing or parse fails.
+      if (houseLike) {
+        const house = await briefHousePrompt({ data: { prompt } });
+        if (house.ok && house.brief) {
+          generate(prompt, undefined, undefined, {
+            fresh: true,
+            fittedOverride: house.brief as never,
+          });
+          makePlan();
+          const current = useYard.getState().project;
+          const note = "Brief refined from house training set.";
+          if (!current.notes.includes(note)) {
+            useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
+          }
+          return;
+        }
+      }
+
+      // Craft / form path (monuments, sticks) — skip when we already have a house unit.
+      if (next.kind === "closet") return;
+
       const hint = await hintSubject({ data: { prompt } });
       if (hint.summary && hint.summary !== hint.subject) {
         const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
@@ -101,7 +132,7 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
           placeholder={
             project.prompt
               ? "taller · from 2x4 · or type a new thing"
-              : "bathroom vanity, 36 wide"
+              : "table 40 round · tv console 70 wide · closet system"
           }
           enterKeyHint="go"
           className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
