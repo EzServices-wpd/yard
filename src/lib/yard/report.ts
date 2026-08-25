@@ -88,7 +88,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     {
       name: sheet?.name ?? '3/4" plywood 4x8',
       quantity: sheets,
-      unit: "sheet",
+      unit: sheets === 1 ? "sheet" : "sheets",
       catalogId: sheet?.id,
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * sheets,
