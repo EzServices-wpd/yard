@@ -35,111 +35,20 @@ const SHOP_GLOSSARY: { term: string; def: string }[] = [
 ];
 
 export function slugPlan(name: string) {
-  return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 48) || "yard-plan"
+  );
 }
 
-function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
-  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
-  if (dataUrl.startsWith("data:image/png")) return "PNG";
-  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
-  if (dataUrl.startsWith("data:image")) return "JPEG";
+function dataUrlFormat(url: string): "JPEG" | "PNG" | null {
+  if (url.startsWith("data:image/jpeg") || url.startsWith("data:image/jpg")) return "JPEG";
+  if (url.startsWith("data:image/png")) return "PNG";
+  if (url.startsWith("data:image")) return "JPEG";
   return null;
-}
-
-function drawStepPlate(doc: jsPDF, project: YardProject, step: AssemblyStep, x: number, y: number, w: number, h: number) {
-  doc.setFillColor(232, 226, 214);
-  doc.setDrawColor(...RULE);
-  doc.setLineWidth(0.5);
-  doc.rect(x, y, w, h, "FD");
-  const ids = stepInstanceIds(project, step);
-  const box = isoViewBox(project, ids);
-  const marks = isoMarks(project, ids);
-  const dims = isoDims(project, ids);
-  const faces = isoFaces(project, ids);
-  const caption = isoCaption(project, ids, step);
-  if ((!marks.length && !faces.length) || box.w <= 0 || box.h <= 0) return;
-  const pad = 10;
-  const captionH = caption ? 14 : 0;
-  const s = Math.min((w - pad * 2) / box.w, (h - pad * 2 - captionH) / box.h);
-  const ox = x + (w - box.w * s) / 2;
-  const oy = y + (h - captionH - box.h * s) / 2;
-  const mapX = (v: number) => ox + (v - box.minX) * s;
-  const mapY = (v: number) => oy + (v - box.minY) * s;
-  for (const f of faces) {
-    const pts = f.points.split(" ").map((p) => {
-      const [px, py] = p.split(",").map(Number);
-      return { x: mapX(px), y: mapY(py) };
-    });
-    if (pts.length < 3) continue;
-    doc.setFillColor(f.hot ? 217 : 236, f.hot ? 203 : 230, f.hot ? 176 : 218);
-    doc.triangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y, "F");
-    if (pts[3]) doc.triangle(pts[0].x, pts[0].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y, "F");
-  }
-  for (const m of marks) {
-    doc.setDrawColor(...(m.hot || !ids.length ? INK : RULE));
-    doc.setLineWidth(m.hot || !ids.length ? 1.15 : 0.4);
-    doc.line(mapX(m.x1), mapY(m.y1), mapX(m.x2), mapY(m.y2));
-  }
-  doc.setDrawColor(...MUTED);
-  doc.setTextColor(...INK);
-  doc.setFont("times", "normal");
-  doc.setFontSize(8);
-  doc.setLineWidth(0.4);
-  for (const d of dims) {
-    doc.line(mapX(d.x1), mapY(d.y1), mapX(d.x2), mapY(d.y2));
-    doc.text(d.label, mapX(d.lx), mapY(d.ly) - 2, { align: "center" });
-  }
-  if (caption) {
-    doc.setTextColor(...MUTED);
-    doc.setFontSize(8);
-    doc.text(caption, x + w / 2, y + h - 5, { align: "center" });
-  }
-}
-
-function drawNestSheet(doc: jsPDF, sheet: NestSheet, x: number, y: number, maxW: number, maxH: number) {
-  const pad = 8;
-  const s = Math.min((maxW - pad * 2) / sheet.width, (maxH - pad * 2 - 18) / sheet.height);
-  const sheetW = sheet.width * s;
-  const sheetH = sheet.height * s;
-  const ox = x + (maxW - sheetW) / 2;
-  const oy = y + 14;
-  doc.setFillColor(250, 246, 238);
-  doc.setDrawColor(...PLY_EDGE);
-  doc.setLineWidth(1.1);
-  doc.rect(ox, oy, sheetW, sheetH, "FD");
-  doc.setDrawColor(230, 220, 200);
-  doc.setLineWidth(0.3);
-  for (let gy = 0; gy < sheet.height; gy += 6) {
-    const ly = oy + gy * s;
-    if (ly > oy + sheetH - 1) break;
-    doc.line(ox + 1, ly, ox + sheetW - 1, ly);
-  }
-  for (const p of sheet.parts) {
-    const px = ox + p.x * s;
-    const py = oy + p.y * s;
-    const pw = p.width * s;
-    const ph = p.height * s;
-    doc.setFillColor(...PLY_FILL);
-    doc.setDrawColor(...INK);
-    doc.setLineWidth(0.7);
-    doc.rect(px, py, pw, ph, "FD");
-    const letter = p.label || "?";
-    doc.setFont("times", "bold");
-    doc.setFontSize(Math.min(14, Math.max(8, Math.min(pw, ph) * 0.35)));
-    doc.setTextColor(...INK);
-    doc.text(letter, px + pw / 2, py + ph / 2 + 3, { align: "center" });
-    if (pw > 28 && ph > 16) {
-      doc.setFont("times", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(...MUTED);
-      doc.text(`${p.width.toFixed(1)}x${p.height.toFixed(1)}`, px + pw / 2, py + ph - 4, { align: "center" });
-    }
-  }
-  doc.setFont("times", "italic");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  const util = Math.round(sheet.utilization * 100);
-  doc.text(`Sheet ${sheet.index} · ${sheet.material} · 96\" x 48\" · ${util}% used · 1/8\" kerf`, x + maxW / 2, oy + sheetH + 12, { align: "center" });
 }
 
 export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
@@ -149,92 +58,89 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const left = 48;
   const right = pageW - 48;
   const width = right - left;
-  let y = 56;
-  const unit = project.fitted?.unit ?? project.pocket?.unit ?? project.overall;
-  const sizeLine = `${unit.width}\" x ${unit.height}\" x ${unit.depth}\"`;
-  function paintPage() {
-    doc.setFillColor(...PAPER);
-    doc.rect(0, 0, pageW, pageH, "F");
+  let y = 52;
+
+  const ensure = (need: number) => {
+    if (y + need > pageH - 48) {
+      doc.addPage();
+      y = 52;
+    }
+  };
+
+  const footer = (n: number) => {
     doc.setFont("times", "italic");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...MUTED);
     doc.text("Yard — guidance only. Not stamped engineering.", left, pageH - 28);
-    doc.text(String(doc.getCurrentPageInfo().pageNumber), right, pageH - 28, { align: "right" });
-  }
-  function ensure(h: number) {
-    if (y + h > pageH - 48) {
-      doc.addPage();
-      paintPage();
-      y = 56;
-    }
-  }
-  function wrap(text: string, size: number, max = width) {
-    doc.setFontSize(size);
-    return doc.splitTextToSize(text, max) as string[];
-  }
-  function heading(label: string) {
-    ensure(42);
-    y += 10;
+    doc.text(String(n), right, pageH - 28, { align: "right" });
+  };
+
+  const heading = (t: string) => {
+    ensure(36);
     doc.setFont("times", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(...ACCENT);
-    doc.text(label.toUpperCase(), left, y);
-    y += 6;
+    doc.setFontSize(12);
+    doc.setTextColor(...INK);
+    doc.text(t.toUpperCase(), left, y);
+    const tw = doc.getTextWidth(t.toUpperCase());
     doc.setDrawColor(...ACCENT);
-    doc.setLineWidth(1.1);
-    doc.line(left, y, left + 36, y);
-    y += 14;
-  }
-  function body(text: string) {
-    const lines = wrap(text, 11);
-    ensure(lines.length * 14 + 4);
+    doc.setLineWidth(1.2);
+    doc.line(left, y + 3, left + Math.max(tw, 36), y + 3);
+    y += 20;
+  };
+
+  const body = (t: string, size = 11) => {
+    const lines = doc.splitTextToSize(t, width);
+    ensure(lines.length * (size + 3) + 6);
     doc.setFont("times", "normal");
-    doc.setFontSize(11);
+    doc.setFontSize(size);
     doc.setTextColor(...INK);
     doc.text(lines, left, y);
-    y += lines.length * 14 + 4;
-  }
-  function muted(text: string) {
-    const lines = wrap(text, 10);
-    ensure(lines.length * 13 + 2);
+    y += lines.length * (size + 3) + 6;
+  };
+
+  const muted = (t: string) => {
+    const lines = doc.splitTextToSize(t, width);
+    ensure(lines.length * 13 + 4);
     doc.setFont("times", "italic");
     doc.setFontSize(10);
     doc.setTextColor(...MUTED);
     doc.text(lines, left, y);
-    y += lines.length * 13 + 2;
-  }
-  paintPage();
+    y += lines.length * 13 + 4;
+  };
+
+  const wrap = (t: string, size = 11) => doc.splitTextToSize(t, width);
+
+  // Cover
   doc.setFont("times", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...ACCENT);
   doc.text("YARD PLAN", left, y);
-  y += 4;
+  const eyeW = doc.getTextWidth("YARD PLAN");
   doc.setDrawColor(...ACCENT);
-  doc.setLineWidth(1.0);
-  doc.line(left, y, left + 52, y);
+  doc.setLineWidth(1);
+  doc.line(left, y + 3, left + eyeW, y + 3);
   y += 22;
   doc.setFont("times", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setTextColor(...INK);
-  const title = wrap(project.name, 24);
-  doc.text(title, left, y);
-  y += title.length * 28 + 10;
-  doc.setFont("times", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...INK);
-  doc.text(sizeLine, left, y);
-  y += 22;
-  const meta: string[] = [];
-  if (plan.effort) meta.push(`About ${plan.effort}`);
-  if (plan.totals?.estCostUsd != null) meta.push(`${usd(plan.totals.estCostUsd)} estimated`);
-  if (plan.partsKind === "whole") meta.push(`${plan.totals.pieces} whole pieces · glue · do not cut`);
-  else if (plan.totals?.pieces) meta.push(`${plan.totals.pieces} pieces`);
-  if (meta.length) {
-    doc.setFont("times", "italic");
-    doc.setFontSize(11);
-    doc.setTextColor(...MUTED);
-    doc.text(meta.join(" · "), left, y);
-    y += 18;
+  const titleLines = wrap(project.name, 22);
+  doc.text(titleLines, left, y);
+  y += titleLines.length * 26 + 6;
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  doc.setTextColor(...MUTED);
+  const dim = `${project.overall.width}" x ${project.overall.height}" x ${project.overall.depth}"`;
+  doc.text(dim, left, y);
+  y += 16;
+  if (plan.effort || plan.totals.estCostUsd) {
+    doc.setFontSize(10);
+    const bits = [
+      plan.effort ? `About ${plan.effort}` : null,
+      plan.totals.estCostUsd ? `~${usd(plan.totals.estCostUsd)} estimated` : null,
+      plan.totals.pieces ? `${plan.totals.pieces} pieces` : null,
+    ].filter(Boolean);
+    doc.text(bits.join(" · "), left, y);
+    y += 14;
   }
   if (project.prompt) {
     doc.setFont("times", "italic");
@@ -244,7 +150,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(p, left, y);
     y += p.length * 14 + 12;
   }
-  const coverStep = plan.instructions.find((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800);
+  // Prefer last captured step (finished unit) over first (confirm-only) for cover.
+  const coverPhotos = plan.instructions.filter((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800);
+  const coverStep = coverPhotos[coverPhotos.length - 1] ?? coverPhotos[0];
   if (coverStep?.imageDataUrl) {
     const fmt = dataUrlFormat(coverStep.imageDataUrl);
     if (fmt) {
@@ -282,143 +190,199 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.setFont("times", "bold");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
-      doc.text(c.label ?? "", left, y);
+      const label = c.label ? `${c.label}  ` : "";
+      doc.text(`${label}${c.quantity}x  ${c.name}`, left, y);
       doc.setFont("times", "normal");
-      doc.text(`${c.quantity}x`, left + 18, y);
-      const nameLines = wrap(c.name, 11, width - 160);
-      doc.text(nameLines, left + 42, y);
-      doc.setTextColor(...MUTED);
-      doc.text(`${c.lengthIn}\" x ${c.widthIn}\" x ${c.thicknessIn}\"`, right, y, { align: "right" });
-      y += Math.max(16, nameLines.length * 14);
+      const dims = `${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`;
+      doc.text(dims, right, y, { align: "right" });
+      y += 15;
     }
-    y += 6;
   }
+
+  // Nest pages
   if (plan.partsKind !== "whole" && plan.cutList.length) {
-    const nest = nestCutList(plan.cutList);
-    if (nest && nest.sheets.length > 0) {
+    const structural = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5);
+    const thin = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
+    if (structural.length) {
+      const nest = nestCutList(structural);
       for (const sheet of nest.sheets) {
         doc.addPage();
-        paintPage();
-        y = 56;
+        y = 52;
         doc.setFont("times", "bold");
         doc.setFontSize(14);
         doc.setTextColor(...INK);
         doc.text("Cut this 4x8", left, y);
-        y += 16;
+        y += 18;
         doc.setFont("times", "italic");
         doc.setFontSize(10);
         doc.setTextColor(...MUTED);
         doc.text("Letters match the cut list. 1/8\" kerf included. Grain runs long on the sheet.", left, y);
         y += 14;
-        const thinBacks = plan.cutList.filter((c) => (c.thicknessIn ?? 1) < 0.5);
-        if (thinBacks.length) {
-          doc.text(`Thin backer (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`, left, y);
-          y += 14;
-        }
-        drawNestSheet(doc, sheet, left, y, width, pageH - y - 48);
-      }
-      y = pageH;
-    }
-  }
-  if (plan.bom.length) {
-    heading("Buy");
-    muted(plan.partsKind === "whole"
-      ? `${plan.totals.pieces} full pieces · glue · do not cut · ${usd(plan.totals.estCostUsd)} estimated`
-      : `${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`);
-    for (const b of plan.bom) {
-      ensure(16);
-      doc.setFont("times", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(...INK);
-      const label = `${b.quantity} ${b.unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
-      const lines = wrap(label, 11);
-      doc.text(lines, left, y);
-      y += lines.length * 14;
-      if (b.notes) muted(b.notes);
-      const offers = b.offers ?? [];
-      const best = offers.find((o) => o.best) ?? offers[0];
-      if (best) {
-        muted(`Shop · ${best.label}: ${best.title}`);
-        muted(best.href);
-        const second = offers.find((o) => o !== best);
-        if (second) muted(`Also · ${second.label}: ${second.title}`);
-      }
-    }
-    y += 6;
-  }
-  if (plan.partsKind !== "whole" || plan.instructions.some((s) => /carcase|toekick|dry-fit|overlay|lag|shim|scribe/i.test(s.description + (s.tips ?? "")))) {
-    heading("Shop words");
-    muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
-    for (const g of SHOP_GLOSSARY) {
-      ensure(28);
-      doc.setFont("times", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...INK);
-      doc.text(g.term, left, y);
-      const defLines = wrap(g.def, 10, width - 110);
-      doc.setFont("times", "normal");
-      doc.setTextColor(...MUTED);
-      doc.text(defLines, left + 100, y);
-      y += Math.max(14, defLines.length * 12) + 4;
-    }
-    y += 4;
-  }
-  if (plan.instructions.length) {
-    heading("Build");
-    for (const s of plan.instructions) {
-      const titleLines = wrap(`${String(s.step).padStart(2, "0")}  ${s.title}`, 13);
-      const descLines = wrap(s.description, 11);
-      const tipLines = s.tips ? wrap(s.tips, 10) : [];
-      const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
-      const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
-      const photoH = hasPhoto ? 300 : 0;
-      const isoH = hasPhoto ? 0 : 88;
-      ensure(titleLines.length * 16 + photoH + isoH + descLines.length * 14 + tipLines.length * 13 + 32);
-      const stepNo = String(s.step).padStart(2, "0");
-      doc.setFont("times", "bold");
-      doc.setFontSize(13);
-      doc.setTextColor(...ACCENT);
-      doc.text(stepNo, left, y);
-      doc.setTextColor(...INK);
-      const titleRest = wrap(s.title, 13, width - 28);
-      doc.text(titleRest, left + 28, y);
-      y += Math.max(1, titleRest.length) * 16 + 8;
-      if (hasPhoto && s.imageDataUrl && fmt) {
-        try {
-          doc.addImage(s.imageDataUrl, fmt, left, y, width, photoH, undefined, "FAST");
-          doc.setDrawColor(...PHOTO_RULE);
-          doc.setLineWidth(0.75);
-          doc.rect(left, y, width, photoH, "S");
-          y += photoH + 8;
-          doc.setFont("times", "italic");
-          doc.setFontSize(9);
-          doc.setTextColor(...MUTED);
-          doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
+        if (thin.length) {
+          doc.text("Thin backer (" + thin.map((t) => t.label ?? t.name).join(", ") + ") is not on this sheet — buy 1/4\" separately.", left, y);
           y += 16;
-        } catch {
-          drawStepPlate(doc, project, s, left, y, width, 88);
-          y += 96;
         }
-      } else if (isoH > 0) {
-        drawStepPlate(doc, project, s, left, y, width, isoH);
-        y += isoH + 8;
+        drawNestSheet(doc, sheet, left, y, width);
+        footer(doc.getNumberOfPages());
       }
-      doc.setFont("times", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(...INK);
-      doc.text(descLines, left, y);
-      y += descLines.length * 14;
-      if (tipLines.length) {
-        doc.setFont("times", "italic");
-        doc.setFontSize(10);
-        doc.setTextColor(...MUTED);
-        doc.text(tipLines, left, y);
-        y += tipLines.length * 13;
-      }
-      y += 14;
     }
+  }
+
+  // Buy
+  doc.addPage();
+  y = 52;
+  heading("Buy");
+  body(`${plan.totals.pieces} pieces · ${plan.totals.estCostUsd != null ? `~${usd(plan.totals.estCostUsd)} estimated` : "cost varies"} · cheapest same-size listing first`);
+  for (const b of plan.bom) {
+    ensure(40);
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...INK);
+    const unit =
+      b.quantity === 1
+        ? b.unit
+        : b.unit === "box"
+          ? "boxes"
+          : b.unit === "sheet"
+            ? "sheets"
+            : b.unit.endsWith("s")
+              ? b.unit
+              : `${b.unit}s`;
+    const label = `${b.quantity} ${unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
+    const lines = wrap(label, 11);
+    doc.text(lines, left, y);
+    y += lines.length * 14;
+    if (b.notes) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(...MUTED);
+      const n = wrap(b.notes, 10);
+      doc.text(n, left, y);
+      y += n.length * 12;
+    }
+    if (b.searchQuery) {
+      doc.setFont("times", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(...MUTED);
+      const shop = b.shopUrl ?? `https://www.google.com/search?q=${encodeURIComponent(b.searchQuery)}`;
+      const shopLine = wrap(`Shop · ${b.searchQuery}`, 9);
+      doc.text(shopLine, left, y);
+      y += shopLine.length * 11 + 6;
+    } else {
+      y += 6;
+    }
+  }
+
+  // Shop words
+  doc.addPage();
+  y = 52;
+  heading("Shop words");
+  muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
+  for (const g of SHOP_GLOSSARY) {
+    ensure(28);
+    doc.setFont("times", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    doc.text(g.term, left, y);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...MUTED);
+    const def = doc.splitTextToSize(g.def, width - 110);
+    doc.text(def, left + 110, y);
+    y += Math.max(14, def.length * 12) + 4;
+  }
+
+  // Build steps
+  doc.addPage();
+  y = 52;
+  heading("Build");
+  for (const s of plan.instructions) {
+    ensure(80);
+    doc.setFont("times", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...ACCENT);
+    const num = String(s.step).padStart(2, "0");
+    doc.text(num, left, y);
+    doc.setTextColor(...INK);
+    doc.setFontSize(12);
+    doc.text(s.title, left + 36, y);
+    y += 18;
+    const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
+    const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
+    if (hasPhoto && s.imageDataUrl && fmt) {
+      try {
+        const photoH = 300;
+        ensure(photoH + 24);
+        doc.addImage(s.imageDataUrl, fmt, left, y, width, photoH, undefined, "FAST");
+        doc.setDrawColor(...PHOTO_RULE);
+        doc.setLineWidth(0.75);
+        doc.rect(left, y, width, photoH, "S");
+        y += photoH + 8;
+        doc.setFont("times", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
+        y += 16;
+      } catch { /* skip */ }
+    } else {
+      // Fallback iso plate
+      try {
+        const ids = stepInstanceIds(project, s);
+        // minimal placeholder text if no photo
+        muted(`${project.overall.width}" W × ${project.overall.height}" H × ${project.overall.depth}" D`);
+      } catch { /* skip */ }
+    }
+    body(s.description);
+    if (s.tips) muted(s.tips);
+    y += 8;
+  }
+
+  // Footers on all pages
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    footer(i);
   }
   return doc;
+}
+
+function drawNestSheet(doc: jsPDF, sheet: NestSheet, left: number, top: number, width: number) {
+  const sheetW = 96;
+  const sheetH = 48;
+  const scale = Math.min(width / sheetW, 280 / sheetH);
+  const drawW = sheetW * scale;
+  const drawH = sheetH * scale;
+  doc.setDrawColor(...PLY_EDGE);
+  doc.setFillColor(...PAPER);
+  doc.setLineWidth(0.8);
+  doc.rect(left, top, drawW, drawH, "FD");
+  for (const p of sheet.placements) {
+    const x = left + p.x * scale;
+    const y = top + p.y * scale;
+    const w = p.w * scale;
+    const h = p.h * scale;
+    doc.setFillColor(...PLY_FILL);
+    doc.setDrawColor(...PLY_EDGE);
+    doc.rect(x, y, w, h, "FD");
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...INK);
+    const label = p.label || "?";
+    doc.text(label, x + w / 2, y + h / 2 - 4, { align: "center" });
+    doc.setFont("times", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text(`${p.w.toFixed(1)}x${p.h.toFixed(1)}`, x + w / 2, y + h / 2 + 8, { align: "center" });
+  }
+  doc.setFont("times", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  const used = sheet.usedPct != null ? ` · ${Math.round(sheet.usedPct)}% used` : "";
+  doc.text(
+    `Sheet ${sheet.index} · 3/4\" Plywood 4x8 · 96\" x 48\"${used} · 1/8\" kerf`,
+    left + drawW / 2,
+    top + drawH + 14,
+    { align: "center" },
+  );
 }
 
 export function planPdfBlob(project: YardProject, plan: BuildPlan): Blob {
