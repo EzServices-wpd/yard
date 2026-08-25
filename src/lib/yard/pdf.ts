@@ -39,6 +39,7 @@ export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
 }
 
+/** jsPDF needs the right format string; wrong format → silent catch and no photo. */
 function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
   if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
   if (dataUrl.startsWith("data:image/png")) return "PNG";
@@ -47,9 +48,451 @@ function dataUrlFormat(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
   return null;
 }
 
-// HOTFIX RESTORE - full file continues via second push if needed
+function drawStepPlate(
+  doc: jsPDF,
+  project: YardProject,
+  step: AssemblyStep,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  doc.setFillColor(232, 226, 214);
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.5);
+  doc.rect(x, y, w, h, "FD");
+  const ids = stepInstanceIds(project, step);
+  const box = isoViewBox(project, ids);
+  const marks = isoMarks(project, ids);
+  const dims = isoDims(project, ids);
+  const faces = isoFaces(project, ids);
+  const caption = isoCaption(project, ids, step);
+  if ((!marks.length && !faces.length) || box.w <= 0 || box.h <= 0) return;
+  const pad = 10;
+  const captionH = caption ? 14 : 0;
+  const s = Math.min((w - pad * 2) / box.w, (h - pad * 2 - captionH) / box.h);
+  const ox = x + (w - box.w * s) / 2;
+  const oy = y + (h - captionH - box.h * s) / 2;
+  const mapX = (v: number) => ox + (v - box.minX) * s;
+  const mapY = (v: number) => oy + (v - box.minY) * s;
+  for (const f of faces) {
+    const pts = f.points.split(" ").map((p) => {
+      const [px, py] = p.split(",").map(Number);
+      return { x: mapX(px), y: mapY(py) };
+    });
+    if (pts.length < 3) continue;
+    doc.setFillColor(f.hot ? 217 : 236, f.hot ? 203 : 230, f.hot ? 176 : 218);
+    doc.triangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y, "F");
+    if (pts[3]) {
+      doc.triangle(pts[0].x, pts[0].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y, "F");
+    }
+  }
+  for (const m of marks) {
+    doc.setDrawColor(...(m.hot || !ids.length ? INK : RULE));
+    doc.setLineWidth(m.hot || !ids.length ? 1.15 : 0.4);
+    doc.line(mapX(m.x1), mapY(m.y1), mapX(m.x2), mapY(m.y2));
+  }
+  doc.setDrawColor(...MUTED);
+  doc.setTextColor(...INK);
+  doc.setFont("times", "normal");
+  doc.setFontSize(8);
+  doc.setLineWidth(0.4);
+  for (const d of dims) {
+    doc.line(mapX(d.x1), mapY(d.y1), mapX(d.x2), mapY(d.y2));
+    doc.text(d.label, mapX(d.lx), mapY(d.ly) - 2, { align: "center" });
+  }
+  if (caption) {
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(8);
+    doc.text(caption, x + w / 2, y + h - 5, { align: "center" });
+  }
+}
+
+/** Draw one 4x8 sheet layout (parts lettered to match cut list). */
+function drawNestSheet(
+  doc: jsPDF,
+  sheet: NestSheet,
+  x: number,
+  y: number,
+  maxW: number,
+  maxH: number,
+) {
+  const pad = 8;
+  const s = Math.min((maxW - pad * 2) / sheet.width, (maxH - pad * 2 - 18) / sheet.height);
+  const sheetW = sheet.width * s;
+  const sheetH = sheet.height * s;
+  const ox = x + (maxW - sheetW) / 2;
+  const oy = y + 14;
+
+  doc.setFillColor(250, 246, 238);
+  doc.setDrawColor(...PLY_EDGE);
+  doc.setLineWidth(1.1);
+  doc.rect(ox, oy, sheetW, sheetH, "FD");
+
+  doc.setDrawColor(230, 220, 200);
+  doc.setLineWidth(0.3);
+  for (let gy = 0; gy < sheet.height; gy += 6) {
+    const ly = oy + gy * s;
+    if (ly > oy + sheetH - 1) break;
+    doc.line(ox + 1, ly, ox + sheetW - 1, ly);
+  }
+
+  for (const p of sheet.parts) {
+    const px = ox + p.x * s;
+    const py = oy + p.y * s;
+    const pw = p.width * s;
+    const ph = p.height * s;
+    doc.setFillColor(...PLY_FILL);
+    doc.setDrawColor(...INK);
+    doc.setLineWidth(0.7);
+    doc.rect(px, py, pw, ph, "FD");
+    const letter = p.label || "?";
+    doc.setFont("times", "bold");
+    doc.setFontSize(Math.min(14, Math.max(8, Math.min(pw, ph) * 0.35)));
+    doc.setTextColor(...INK);
+    doc.text(letter, px + pw / 2, py + ph / 2 + 3, { align: "center" });
+    if (pw > 28 && ph > 16) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...MUTED);
+      const dim = `${p.width.toFixed(1)}x${p.height.toFixed(1)}`;
+      doc.text(dim, px + pw / 2, py + ph - 4, { align: "center" });
+    }
+  }
+
+  doc.setFont("times", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  const util = Math.round(sheet.utilization * 100);
+  // Pure ASCII — jsPDF default fonts corrupt Unicode fractions and smart quotes.
+  doc.text(
+    `Sheet ${sheet.index} · ${sheet.material} · 96\" x 48\" · ${util}% used · 1/8\" kerf`,
+    x + maxW / 2,
+    oy + sheetH + 12,
+    { align: "center" },
+  );
+}
+
 export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const left = 48;
+  const right = pageW - 48;
+  const width = right - left;
+  let y = 56;
+
+  const unit = project.fitted?.unit ?? project.pocket?.unit ?? project.overall;
+  const sizeLine = `${unit.width}\" x ${unit.height}\" x ${unit.depth}\"`;
+
+  function paintPage() {
+    doc.setFillColor(...PAPER);
+    doc.rect(0, 0, pageW, pageH, "F");
+    doc.setFont("times", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text("Yard — guidance only. Not stamped engineering.", left, pageH - 28);
+    doc.text(String(doc.getCurrentPageInfo().pageNumber), right, pageH - 28, { align: "right" });
+  }
+
+  function ensure(h: number) {
+    if (y + h > pageH - 48) {
+      doc.addPage();
+      paintPage();
+      y = 56;
+    }
+  }
+
+  function wrap(text: string, size: number, max = width) {
+    doc.setFontSize(size);
+    return doc.splitTextToSize(text, max) as string[];
+  }
+
+  paintPage();
+
+  // Cover: name + the three numbers — the thing you take to the lumber aisle.
+  doc.setFont("times", "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(...MUTED);
+  doc.text("YARD PLAN", left, y);
+  y += 26;
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(24);
+  doc.setTextColor(...INK);
+  const title = wrap(project.name, 24);
+  doc.text(title, left, y);
+  y += title.length * 28 + 10;
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(...INK);
+  doc.text(sizeLine, left, y);
+  y += 22;
+
+  const meta: string[] = [];
+  if (plan.effort) meta.push(`About ${plan.effort}`);
+  if (plan.totals?.estCostUsd != null) meta.push(`${usd(plan.totals.estCostUsd)} estimated`);
+  if (plan.partsKind === "whole") meta.push(`${plan.totals.pieces} whole pieces · glue · do not cut`);
+  else if (plan.totals?.pieces) meta.push(`${plan.totals.pieces} pieces`);
+  if (meta.length) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(...MUTED);
+    doc.text(meta.join(" · "), left, y);
+    y += 18;
+  }
+
+  if (project.prompt) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(...MUTED);
+    const p = wrap(project.prompt, 11);
+    doc.text(p, left, y);
+    y += p.length * 14 + 12;
+  }
+
+  // Optional cover photo: first step with a real bench capture.
+  const coverStep = plan.instructions.find(
+    (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
+  );
+  if (coverStep?.imageDataUrl) {
+    const fmt = dataUrlFormat(coverStep.imageDataUrl);
+    if (fmt) {
+      try {
+        const imgH = 200;
+        ensure(imgH + 24);
+        doc.addImage(coverStep.imageDataUrl, fmt, left, y, width, imgH, undefined, "FAST");
+        doc.setDrawColor(...RULE);
+        doc.setLineWidth(0.5);
+        doc.rect(left, y, width, imgH, "S");
+        y += imgH + 8;
+        doc.setFont("times", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        doc.text("The unit on the bench", left + width / 2, y, { align: "center" });
+        y += 16;
+      } catch {
+        /* skip cover photo */
+      }
+    }
+  }
+
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.6);
+  doc.line(left, y, right, y);
+  y += 22;
+
+  heading("Check");
+  body(plan.feasibility.summary);
+  for (const issue of plan.feasibility.issues) {
+    const line = `${issue.severity === "critical" ? "Stop — " : issue.severity === "warning" ? "Note — " : ""}${issue.message}`;
+    body(line);
+    if (issue.suggestion) muted(issue.suggestion);
+  }
+
+  if (plan.cutList.length) {
+    heading(plan.partsKind === "whole" ? "Stick list" : "Cut list");
+    muted(
+      plan.partsKind === "whole"
+        ? "Full pieces from the pack. Glue them. Do not cut."
+        : "Same size is the same letter. Mark A on the first cut, then batch.",
+    );
+    for (const c of plan.cutList) {
+      ensure(16);
+      doc.setFont("times", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...INK);
+      doc.text(c.label ?? "", left, y);
+      doc.setFont("times", "normal");
+      doc.text(`${c.quantity}x`, left + 18, y);
+      const nameLines = wrap(c.name, 11, width - 160);
+      doc.text(nameLines, left + 42, y);
+      doc.setTextColor(...MUTED);
+      doc.text(`${c.lengthIn}\" x ${c.widthIn}\" x ${c.thicknessIn}\"`, right, y, { align: "right" });
+      y += Math.max(16, nameLines.length * 14);
+    }
+    y += 6;
+  }
+
+  if (plan.partsKind !== "whole" && plan.cutList.length) {
+    const nest = nestCutList(plan.cutList);
+    if (nest && nest.sheets.length > 0) {
+      for (const sheet of nest.sheets) {
+        doc.addPage();
+        paintPage();
+        y = 56;
+        doc.setFont("times", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...INK);
+        doc.text("Cut this 4x8", left, y);
+        y += 16;
+        doc.setFont("times", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(...MUTED);
+        doc.text(
+          "Letters match the cut list. 1/8\" kerf included. Grain runs long on the sheet.",
+          left,
+          y,
+        );
+        y += 14;
+        // Thin backs (1/4") are intentionally off these pages — note when cut list has them.
+        const thinBacks = plan.cutList.filter((c) => (c.thicknessIn ?? 1) < 0.5);
+        if (thinBacks.length) {
+          doc.text(
+            `Thin backer (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
+            left,
+            y,
+          );
+          y += 14;
+        }
+        const plateH = pageH - y - 48;
+        drawNestSheet(doc, sheet, left, y, width, plateH);
+      }
+      y = pageH;
+    }
+  }
+
+  if (plan.bom.length) {
+    heading("Buy");
+    muted(
+      plan.partsKind === "whole"
+        ? `${plan.totals.pieces} full pieces · glue · do not cut · ${usd(plan.totals.estCostUsd)} estimated`
+        : `${plan.totals.pieces} pieces · ${usd(plan.totals.estCostUsd)} estimated · cheapest same-size listing first`,
+    );
+    for (const b of plan.bom) {
+      ensure(16);
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(...INK);
+      const label = `${b.quantity} ${b.unit} · ${b.name}${b.estimatedCost != null ? ` · ${usd(b.estimatedCost)}` : ""}`;
+      const lines = wrap(label, 11);
+      doc.text(lines, left, y);
+      y += lines.length * 14;
+      if (b.notes) muted(b.notes);
+      const offers = b.offers ?? [];
+      const best = offers.find((o) => o.best) ?? offers[0];
+      if (best) {
+        muted(`Shop · ${best.label}: ${best.title}`);
+        muted(best.href);
+        const second = offers.find((o) => o !== best);
+        if (second) muted(`Also · ${second.label}: ${second.title}`);
+      }
+    }
+    y += 6;
+  }
+
+  if (plan.partsKind !== "whole" || plan.instructions.some((s) => /carcase|toekick|dry-fit|overlay|lag|shim|scribe/i.test(s.description + (s.tips ?? "")))) {
+    heading("Shop words");
+    muted("Every term used in this plan, defined once so you can build without a trade dictionary.");
+    for (const g of SHOP_GLOSSARY) {
+      ensure(28);
+      doc.setFont("times", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      doc.text(g.term, left, y);
+      const defLines = wrap(g.def, 10, width - 110);
+      doc.setFont("times", "normal");
+      doc.setTextColor(...MUTED);
+      doc.text(defLines, left + 100, y);
+      y += Math.max(14, defLines.length * 12) + 4;
+    }
+    y += 4;
+  }
+
+  if (plan.instructions.length) {
+    heading("Build");
+    for (const s of plan.instructions) {
+      const titleLines = wrap(`${String(s.step).padStart(2, "0")}  ${s.title}`, 13);
+      const descLines = wrap(s.description, 11);
+      const tipLines = s.tips ? wrap(s.tips, 10) : [];
+      const fmt = s.imageDataUrl ? dataUrlFormat(s.imageDataUrl) : null;
+      const hasPhoto = Boolean(fmt && s.imageDataUrl && s.imageDataUrl.length > 800);
+      const photoH = hasPhoto ? 300 : 0;
+      const isoH = hasPhoto ? 0 : 88;
+      ensure(
+        titleLines.length * 16 +
+          photoH +
+          isoH +
+          descLines.length * 14 +
+          tipLines.length * 13 +
+          32,
+      );
+      doc.setFont("times", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(...INK);
+      doc.text(titleLines, left, y);
+      y += titleLines.length * 16 + 6;
+
+      if (hasPhoto && s.imageDataUrl && fmt) {
+        try {
+          const imgW = width;
+          const imgH = photoH;
+          doc.addImage(s.imageDataUrl, fmt, left, y, imgW, imgH, undefined, "FAST");
+          doc.setDrawColor(...RULE);
+          doc.setLineWidth(0.5);
+          doc.rect(left, y, imgW, imgH, "S");
+          y += imgH + 6;
+          doc.setFont("times", "italic");
+          doc.setFontSize(9);
+          doc.setTextColor(...MUTED);
+          doc.text("Bench view — lit parts are this step", left + width / 2, y, { align: "center" });
+          y += 14;
+        } catch {
+          drawStepPlate(doc, project, s, left, y, width, 88);
+          y += 96;
+        }
+      } else if (isoH > 0) {
+        drawStepPlate(doc, project, s, left, y, width, isoH);
+        y += isoH + 8;
+      }
+
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(...INK);
+      doc.text(descLines, left, y);
+      y += descLines.length * 14;
+      if (tipLines.length) {
+        doc.setFont("times", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(...MUTED);
+        doc.text(tipLines, left, y);
+        y += tipLines.length * 13;
+      }
+      y += 14;
+    }
+  }
+
+  function heading(label: string) {
+    ensure(36);
+    y += 8;
+    doc.setFont("times", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...INK);
+    doc.text(label, left, y);
+    y += 18;
+  }
+
+  function body(text: string) {
+    const lines = wrap(text, 11);
+    ensure(lines.length * 14 + 4);
+    doc.setFont("times", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(...INK);
+    doc.text(lines, left, y);
+    y += lines.length * 14 + 4;
+  }
+
+  function muted(text: string) {
+    const lines = wrap(text, 10);
+    ensure(lines.length * 13 + 2);
+    doc.setFont("times", "italic");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    doc.text(lines, left, y);
+    y += lines.length * 13 + 2;
+  }
+
   return doc;
 }
 
