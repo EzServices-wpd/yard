@@ -4,7 +4,7 @@ export type CaptureStep = { step: number; imageDataUrl?: string };
 
 /**
  * Cycle activeStep so StepCapture can grab JPEGs. Caller must keep the plan drawer closed
- * so the canvas is visible. Settles ~1.4s per step (mobile WebGL + opacity paint).
+ * so the canvas is visible. Settles ~1.6s per step (mobile WebGL + opacity paint).
  */
 export async function autoCaptureSteps(
   steps: CaptureStep[],
@@ -12,7 +12,7 @@ export async function autoCaptureSteps(
   opts?: { max?: number; settleMs?: number },
 ): Promise<number> {
   const max = opts?.max ?? 6;
-  const settleMs = opts?.settleMs ?? 1400;
+  const settleMs = opts?.settleMs ?? 1600;
   const targets = steps
     .filter((s) => !s.imageDataUrl || s.imageDataUrl.length < 1200)
     .slice(0, max);
@@ -24,7 +24,7 @@ export async function autoCaptureSteps(
   }
   setActiveStep(null);
   // Final settle so last attachStepImage lands before makePlan re-merge.
-  await new Promise((r) => setTimeout(r, 400));
+  await new Promise((r) => setTimeout(r, 700));
   return targets.length;
 }
 
