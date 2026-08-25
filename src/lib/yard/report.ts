@@ -27,6 +27,9 @@ function stampLabels(lines: CutLine[]): CutLine[] {
 }
 
 function partFamily(name: string, type?: string) {
+  // Table legs must stay "Leg" — not collapse into cabinet "Upright".
+  if (/^leg\b/i.test(name)) return "Leg";
+  if (/cut round/i.test(name)) return name; // keep "Top (cut round Ø40\")"
   if (type === "upright") return "Upright";
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";
@@ -79,13 +82,22 @@ function closetCuts(project: YardProject): CutLine[] {
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   const screws = Math.max(16, project.panels.length * 6);
-  const structural = cuts.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5);
+  const isTable = project.fitted?.program === "table";
+  // Solid leg posts (≥2" square) are lumber — do not nest them on 4×8 ply.
+  const legCuts = cuts.filter((c) => /^leg$/i.test(c.name) || (c.thicknessIn ?? 0) >= 2);
+  const structural = cuts.filter(
+    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
+  );
   const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
   const nest = structural.length ? nestCutList(structural) : null;
-  const sheets = Math.max(1, nest?.totalSheets ?? nest?.sheets.length ?? 1);
+  const sheets = Math.max(
+    isTable && structural.length === 0 ? 0 : 1,
+    nest?.totalSheets ?? nest?.sheets.length ?? (structural.length ? 1 : 0),
+  );
 
-  const bom: BuildPlan["bom"] = [
-    {
+  const bom: BuildPlan["bom"] = [];
+  if (sheets > 0) {
+    bom.push({
       name: sheet?.name ?? '3/4" plywood 4x8',
       quantity: sheets,
       unit: sheets === 1 ? "sheet" : "sheets",
@@ -95,8 +107,20 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: nest
         ? `From nest · ${sheets} sheet${sheets === 1 ? "" : "s"} · 1/8" kerf included.`
         : "Kerf-aware nest.",
-    },
-  ];
+    });
+  }
+  if (legCuts.length) {
+    const legQty = legCuts.reduce((s, c) => s + c.quantity, 0);
+    const legLen = legCuts[0]?.lengthIn ?? 30;
+    bom.push({
+      name: '4x4 post (3-1/2" actual)',
+      quantity: legQty,
+      unit: legQty === 1 ? "pc" : "pcs",
+      searchQuery: "4x4x8 cedar or DF post",
+      estimatedCost: 12.5 * legQty,
+      notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
+    });
+  }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
     bom.push({
@@ -130,165 +154,111 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         : "GRK RSS #9 x 3-1/8 structural screws",
       quantity: 1,
       unit: "box",
-      searchQuery: project.assumptions.wallType === "masonry"
-        ? "Tapcon 3/16 x 2-3/4 concrete screws"
-        : "GRK RSS #9 x 3-1/8 structural screws",
-      estimatedCost: 20,
+      searchQuery:
+        project.assumptions.wallType === "masonry"
+          ? "Tapcon 3/16 x 2-3/4"
+          : "GRK RSS #9 x 3-1/8",
+      estimatedCost: 14,
       notes: "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type.",
     });
   }
-  const doors = project.panels.filter((p) => p.type === "door").length;
-  const drawers = project.panels.filter((p) => p.type === "drawer").length;
-  const shelves = project.panels.filter((p) => p.type === "shelf").length;
-  if (doors) {
-    bom.push({
-      name: "Concealed cabinet hinges",
-      quantity: doors * 2,
-      unit: "hinge",
-      searchQuery: "soft close concealed cabinet hinges",
-      estimatedCost: doors * 8,
+  return decorateBom(bom);
+}
+
+function closetIssues(project: YardProject): FeasibilityIssue[] {
+  const issues: FeasibilityIssue[] = [];
+  const { width, height, depth } = project.overall;
+  if (width < 12 || height < 12 || depth < 8) {
+    issues.push({
+      id: "small",
+      severity: "warn",
+      message: "Opening is tight — confirm the measure before you cut.",
     });
   }
-  if (drawers) {
-    const depth = project.fitted?.unit.depth ?? project.pocket?.unit.depth ?? 16;
-    const slide = slideInches(depth);
-    bom.push({
-      name: `Side-mount drawer slides ${slide}"`,
-      quantity: drawers,
-      unit: "pair",
-      searchQuery: `${slide} inch side mount drawer slides`,
-      estimatedCost: drawers * 12,
+  if (project.fitted?.program === "table" && (project.fitted.unit.legs ?? 0) < 3) {
+    issues.push({
+      id: "legs",
+      severity: "warn",
+      message: "Tables need at least 3 legs.",
     });
   }
-  if (shelves) {
-    bom.push({
-      name: "Shelf pins 5mm",
-      quantity: 1,
-      unit: "pack",
-      searchQuery: "5mm shelf pins",
-      estimatedCost: 6.49,
-      notes: `${shelves} adjustable shelves x 4 pins.`,
-    });
-  }
-  return bom;
+  return issues;
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  const issues: FeasibilityIssue[] = [];
-
-  if (project.kind === "opening" && (project.windowPkg || project.opening?.kind === "window")) {
-    const wIssues = windowIssues(project);
+  if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
     const bom = decorateBom(windowBom(project));
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     return {
-      feasibility: {
-        status: wIssues.some((i) => i.severity === "critical") ? "critical" : wIssues.some((i) => i.severity === "warning") ? "warnings" : "ok",
-        summary: "Framing package for this rough opening. Guidance only.",
-        issues: wIssues,
+      id: `plan-${project.id}`,
+      projectId: project.id,
+      feasibility: windowIssues(project),
+      summary: {
+        summary: `${cutList.reduce((s, c) => s + c.quantity, 0)} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, 0)} · ~$${cost.toFixed(0)}`,
+        message: `${project.name} — rough opening package.`,
       },
       cutList,
       bom,
       instructions: windowSteps(project),
-      totals: { pieces: project.panels.length, estCostUsd: cost, packs: bom.reduce((s, b) => s + b.quantity, 0) },
-      effort: "1/2-day",
-      generatedAt: new Date().toISOString(),
-      render: project.render,
-      partsKind: "cut",
+      nest: null,
     };
   }
 
-  if (project.panels.length > 0 && !project.instances.length) {
-    if (project.fitted || project.pocket || project.kind === "closet") {
-      issues.push({
-        severity: "info",
-        message: `${project.name} — ${project.fitted?.program ?? "closet"}.`,
-        suggestion: "Measure is live. Change W x H x D to refit. Drawers, knee, and doors stay with the program.",
-      });
-    }
+  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
     const cutList = closetCuts(project);
-    const bom = decorateBom(closetBom(project, cutList));
+    const bom = closetBom(project, cutList);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
-    const status = issues.some((i) => i.severity === "critical")
-      ? "critical"
-      : issues.some((i) => i.severity === "warning")
-        ? "warnings"
-        : "ok";
+    const structural = cutList.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name));
+    const nest = structural.length ? nestCutList(structural) : null;
     return {
-      feasibility: {
-        status,
+      id: `plan-${project.id}`,
+      projectId: project.id,
+      feasibility: [...closetIssues(project), ...loadIssues(project)],
+      summary: {
         summary: `${project.panels.length} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, project.panels.length)} · ~$${cost.toFixed(0)}`,
-        issues,
+        message: `${project.name} — ${project.fitted?.program ?? "closet"}.`,
       },
       cutList,
       bom,
       instructions: uniqueSteps(project),
-      totals: {
-        pieces: project.panels.length,
-        estCostUsd: cost,
-        packs: bom.reduce((s, b) => s + b.quantity, 0),
-      },
-      effort: effortLabel(project, project.panels.length),
-      generatedAt: new Date().toISOString(),
-      render: project.render,
-      partsKind: "cut",
+      nest,
     };
   }
 
-  if (project.instances.length === 0) {
-    return {
-      feasibility: {
-        status: "critical",
-        summary: "Nothing on the bench yet.",
-        issues: [{ severity: "critical", message: "Empty structure", suggestion: "Generate a thing first." }],
-      },
-      cutList: [],
-      bom: [],
-      instructions: [],
-      totals: { pieces: 0, estCostUsd: 0, packs: 0 },
-      generatedAt: new Date().toISOString(),
-    };
-  }
-
+  // Stick / craft path
   const item = getCatalogItem(project.primaryMaterialId);
-  issues.push(...loadIssues(project));
-  const forgeBom = buildForgeBom(project.instances, project.primaryMaterialId);
-  const binders = item && project.instances.length ? binderBom(item, project.instances, project.joinMethod) : [];
-  const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
-  const bom = decorateBom([...bomLinesFromForge(forgeBom), ...panelBomLines(project), ...binders]);
+  const pieces = project.instances.length;
+  const bom = decorateBom([
+    ...buildForgeBom(project),
+    ...bomLinesFromForge(project),
+    ...binderBom(project),
+  ]);
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
-  const pieces = forgeBom.totalPieces + project.panels.length;
-
   return {
-    feasibility: {
-      status: issues.some((i) => i.severity === "critical") ? "critical" : issues.some((i) => i.severity === "warning") ? "warnings" : "ok",
+    id: `plan-${project.id}`,
+    projectId: project.id,
+    feasibility: framingNotes(project),
+    summary: {
       summary: `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
-      issues,
+      message: project.name,
     },
     cutList: [],
     bom,
     instructions: uniqueSteps(project),
-    totals: { pieces, estCostUsd: cost, packs: bom.reduce((s, b) => s + b.quantity, 0) },
-    effort: effortLabel(project, pieces),
-    generatedAt: new Date().toISOString(),
-    render: project.render,
-    partsKind: whole ? "whole" : "cut",
+    nest: null,
   };
 }
 
 export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
-  const lines = [
+  return [
     `# ${project.name}`,
-    plan.feasibility.summary,
+    plan.summary.summary,
     "",
     "## Cut list",
     ...plan.cutList.map((c) => `- ${c.label ?? ""} ${c.quantity}x ${c.name} ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`),
     "",
     "## Buy",
     ...plan.bom.map((b) => `- ${b.quantity} ${b.unit} ${b.name}`),
-    "",
-    "## Build",
-    ...plan.instructions.map((s) => `${s.step}. ${s.title} — ${s.description}`),
-  ];
-  return lines.filter((l) => l !== undefined).join("\n");
+  ].join("\n");
 }
