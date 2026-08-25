@@ -8,17 +8,13 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Homepage heroes are photographs of the house units. Share card is the linen alcove, not the popsicle Eiffel.
 
 **Slices 3–4 (live):**
-- House path hides the CAD cockpit. Measure + Build plan stay primary. Weekend crafts keep the full bench.
-- Homepage is type + prompt beside the pocket photo; house programs are pills. Logo is ink on paper.
+- House path hides the craft form chips on the homepage; crafts stay one click away.
+- Build plan is one action: cut list + nest + buy + one-action steps + shop words.
+- Soft-launch stranger path: type opening → Build plan → auto step photos → Export PDF.
 
-**Wave 1 — print path (live):**
-- House plan: Buy → Cut → Build. Shop words collapsed. Render optional. Footer is **Print the plan**.
-- Export no longer auto-downloads. One **Save PDF** button; markdown under More.
-- PDF cover: name + W×H×D + effort/cost, optional first bench photo, then Check / Cut / nest / Buy / Build.
-
-**Wave 2 — stranger PDF walk (25 Aug):**
-- Real linen 31.5×78×16 PDF scored ~3.7/5. Usable, not yet print-and-go.
-- **P0 shipped:** (1) Kerf glyph — jsPDF was mangling ⅛ into "!3"; all PDF text is now ASCII (`1/8"`, `96" x 48"`). (2) Nest footer forced to `96" x 48" · 1/8" kerf`. (3) Thin backs (thickness < 1/2") no longer nest on 3/4" sheets — note on nest page + buy separately.
-- Still open (P1): cover photo reliability, auto-capture completeness for steps 01–04, lag screw SKU, sheet-count consistency between nest and Buy.
+**Wave 2 — stranger PDF walk (25 Aug): CLOSED @ tip 4b85f25**
+- Linen 31.5×78×16 re-walk ~4.4/5. Stranger path complete.
+- Shipped: ASCII kerf, nest footer, thin-backer buy, progressive open-bay photos (6/6), settleMs 1600, GRK RSS #9×3-1/8, sheets plural, shelves plural, PDF hierarchy polish, cover prefers finished step, buy unit plurals (boxes/hinges).
+- Soft-launch polish only from here. No new forms / hourly bot / Amazon / domain.
 
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
