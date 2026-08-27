@@ -89,9 +89,10 @@ export function PanelMesh({
   const cx = panel.position.x + w / 2;
   const cy = panel.position.y + h / 2;
   const cz = panel.position.z + d / 2;
+  const yaw = panel.yaw ?? 0;
 
   let groupPos: [number, number, number] = [cx * explode, cy, cz * explode];
-  let groupRot: [number, number, number] = [0, 0, 0];
+  let groupRot: [number, number, number] = [0, yaw, 0];
   let meshPos: [number, number, number] = [0, 0, 0];
 
   if (isDoor && open) {
@@ -119,7 +120,6 @@ export function PanelMesh({
     return tex;
   }, [glass, look.map, w, h, d]);
 
-  // Round table tops: disc when fitted.shape is round OR the panel name says so.
   const isRoundTop =
     panel.type === "top" &&
     (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
@@ -160,14 +160,12 @@ export function PanelMesh({
   );
 }
 
-/** Stick / craft instances — canvas passes the prop bag; we read what we need. */
 export function StickCloud({
   instances,
   explode,
   selectedId,
   onSelect,
   useShadows,
-  overall,
 }: {
   instances: YardInstance[];
   explode: number;
@@ -182,8 +180,6 @@ export function StickCloud({
   joinMethod?: string;
   useShadows?: boolean;
 }) {
-  // Stick path is demoted; fitted panels render via PanelMesh in canvas.
-  // Keep a minimal instance renderer so craft prompts still show something.
   if (!instances?.length) return null;
   return (
     <group>
