@@ -27,9 +27,9 @@ function stampLabels(lines: CutLine[]): CutLine[] {
 }
 
 function partFamily(name: string, type?: string) {
-  // Table legs must stay "Leg" — not collapse into cabinet "Upright".
   if (/^leg\b/i.test(name)) return "Leg";
-  if (/cut round/i.test(name)) return name; // keep "Top (cut round Ø40\")"
+  if (/cut round/i.test(name)) return name;
+  if (/^apron\b/i.test(name)) return "Apron";
   if (type === "upright") return "Upright";
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";
@@ -83,7 +83,6 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   const screws = Math.max(16, project.panels.length * 6);
   const isTable = project.fitted?.program === "table";
-  // Solid leg posts (≥2" square) are lumber — do not nest them on 4×8 ply.
   const legCuts = cuts.filter((c) => /^leg$/i.test(c.name) || (c.thicknessIn ?? 0) >= 2);
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
@@ -113,11 +112,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     const legQty = legCuts.reduce((s, c) => s + c.quantity, 0);
     const legLen = legCuts[0]?.lengthIn ?? 30;
     bom.push({
-      name: '4x4 post (3-1/2" actual)',
+      name: '2x2 (1-1/2" actual)',
       quantity: legQty,
       unit: legQty === 1 ? "pc" : "pcs",
-      searchQuery: "4x4x8 cedar or DF post",
-      estimatedCost: 12.5 * legQty,
+      searchQuery: "2x2x8 pine poplar",
+      estimatedCost: 6.5 * legQty,
       notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
     });
   }
@@ -171,16 +170,9 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   if (width < 12 || height < 12 || depth < 8) {
     issues.push({
       id: "small",
-      severity: "warn",
+      severity: "warn" as never,
       message: "Opening is tight — confirm the measure before you cut.",
-    });
-  }
-  if (project.fitted?.program === "table" && (project.fitted.unit.legs ?? 0) < 3) {
-    issues.push({
-      id: "legs",
-      severity: "warn",
-      message: "Tables need at least 3 legs.",
-    });
+    } as FeasibilityIssue);
   }
   return issues;
 }
@@ -202,7 +194,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       bom,
       instructions: windowSteps(project),
       nest: null,
-    };
+    } as BuildPlan;
   }
 
   if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
@@ -223,10 +215,9 @@ export function buildPlan(project: YardProject): BuildPlan {
       bom,
       instructions: uniqueSteps(project),
       nest,
-    };
+    } as BuildPlan;
   }
 
-  // Stick / craft path
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const bom = decorateBom([
@@ -247,13 +238,13 @@ export function buildPlan(project: YardProject): BuildPlan {
     bom,
     instructions: uniqueSteps(project),
     nest: null,
-  };
+  } as BuildPlan;
 }
 
 export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
   return [
     `# ${project.name}`,
-    plan.summary.summary,
+    (plan as { summary?: { summary: string } }).summary?.summary ?? "",
     "",
     "## Cut list",
     ...plan.cutList.map((c) => `- ${c.label ?? ""} ${c.quantity}x ${c.name} ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`),
