@@ -2,7 +2,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { framingNotes } from "./space";
-import { uniqueSteps } from "./steps";
+import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom } from "./listings";
 import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
