@@ -103,9 +103,7 @@ export type YardInstance = {
   cutLength?: number;
   role?: string;
   join?: string;
-  /** Original generated seat — snap target. */
   home?: Vec3;
-  /** Exact member ends after stock mapping. */
   from?: Vec3;
   to?: Vec3;
 };
@@ -133,6 +131,8 @@ export type Panel = {
   position: Vec3;
   size: { width: number; height: number; depth: number };
   materialId: string;
+  /** Yaw in radians — table legs/aprons rotate about Y. */
+  yaw?: number;
   cutouts?: {
     id: string;
     x: number;
@@ -196,11 +196,8 @@ export type FittedUnit = {
   mirror?: boolean;
   rod?: boolean;
   centered?: boolean;
-  /** Freestanding table legs (3–4). */
   legs?: number;
-  /** Table / top plan shape. */
   shape?: "rect" | "round";
-  /** Multi-bay closet systems. */
   bays?: number;
 };
 
@@ -236,7 +233,6 @@ export type YardProject = {
   instances: YardInstance[];
   panels: Panel[];
   primaryMaterialId: string;
-  /** Overrides catalog preferredJoins[0] when the user picks a binder. */
   joinMethod?: JoinMethod;
   notes: string[];
   historic?: boolean;
@@ -266,7 +262,6 @@ export type YardProject = {
     prompt: string;
     scene?: string;
   };
-  /** Prompt-native 2D paper layout (Phase B). */
   flat?: {
     paper: "letter" | "letter-landscape" | "8x10" | "a4";
     plane: "top" | "front" | "side";
@@ -297,7 +292,6 @@ export type CutLine = {
   thicknessIn: number;
   material: string;
   notes?: string;
-  /** Shop key — A, B, C. Same size shares a letter. */
   label?: string;
   whole?: boolean;
 };
@@ -334,7 +328,6 @@ export type AssemblyStep = {
   description: string;
   partsUsed?: string[];
   tips?: string;
-  /** JPEG data URL from the live bench Canvas (lit parts for this step). */
   imageDataUrl?: string;
 };
 
@@ -355,7 +348,6 @@ export type BuildPlan = {
   effort?: string;
   generatedAt: string;
   grokNotes?: string;
-  /** "whole" = glue full sticks; "cut" = saw to the letters. */
   partsKind?: "cut" | "whole";
   render?: {
     url: string;
