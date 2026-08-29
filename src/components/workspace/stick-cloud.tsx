@@ -92,17 +92,25 @@ export function PanelMesh({
     const tex = look.map.clone();
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    const along = Math.max(w, h, d) / 16;
-    const across = Math.min(w, h, d, 12) / 10;
-    if (h >= w) tex.repeat.set(Math.max(across, 1), Math.max(along, 1));
-    else tex.repeat.set(Math.max(along, 1), Math.max(across, 1));
+    const isDisc =
+      panel.type === "top" &&
+      (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
+    if (isDisc) {
+      tex.repeat.set(2.2, 2.2);
+    } else {
+      const along = Math.max(w, h, d) / 16;
+      const across = Math.min(w, h, d, 12) / 10;
+      if (h >= w) tex.repeat.set(Math.max(across, 1), Math.max(along, 1));
+      else tex.repeat.set(Math.max(along, 1), Math.max(across, 1));
+    }
     tex.needsUpdate = true;
     return tex;
-  }, [glass, look.map, w, h, d]);
+  }, [glass, look.map, w, h, d, panel.type, panel.name, fittedShape]);
 
   const isRoundTop =
     panel.type === "top" &&
     (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
+  const isPost = Math.min(w, d) <= 2.2 && h > Math.max(w, d) * 4;
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
 
@@ -134,11 +142,11 @@ export function PanelMesh({
             depthWrite={opacity > 0.5}
           />
         </mesh>
-        {!glass && opacity > 0.4 && !isRoundTop && <EdgeBand w={w} h={h} d={d} />}
+        {!glass && opacity > 0.4 && !isRoundTop && !isPost && <EdgeBand w={w} h={h} d={d} />}
         {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
         {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
         {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
-        {panel.type === "upright" && h >= 24 && opacity > 0.4 && showPinHoles && (
+        {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
       </group>

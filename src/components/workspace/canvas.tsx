@@ -234,27 +234,48 @@ function CameraRig({
     if (locked) return;
     const isFlat = !!project.flat && !project.flat.lifted;
     const eiffel = project.kind === "eiffel";
+    const table = project.fitted?.program === "table";
     const fitted = project.panels.length > 0 && !eiffel && !isFlat;
     const h = Math.max(project.overall.height, isFlat ? 6 : 12);
     const fit = Math.max(h, project.overall.width, project.overall.depth, isFlat ? 8 : 12);
     const dist = eiffel
       ? Math.max(h * 0.62, project.overall.width * 1.15) * 2.05
-      : fitted
-        ? fit * 1.42
-        : fit * (isFlat ? 1.35 : 1.55);
+      : table
+        ? fit * 1.72
+        : fitted
+          ? fit * 1.42
+          : fit * (isFlat ? 1.35 : 1.55);
     const focus = focusOf(project, stepIds);
-    const fy = isFlat ? Math.max(focus.y, h * 0.35) : eiffel ? h * 0.28 : fitted ? h * 0.42 : focus.y;
+    const fy = isFlat
+      ? Math.max(focus.y, h * 0.35)
+      : eiffel
+        ? h * 0.28
+        : table
+          ? h * 0.48
+          : fitted
+            ? h * 0.42
+            : focus.y;
     const presets: Record<typeof preset, [number, number, number]> = {
       iso: isFlat
         ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
         : eiffel
           ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]
-          : fitted
-            ? [focus.x + dist * 0.55, h * 0.42, focus.z + dist * 1.18]
-            : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [focus.x, eiffel ? h * 0.22 : fitted ? h * 0.45 : fy, focus.z + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28)],
-      side: [focus.x + dist * (isFlat ? 1.05 : eiffel ? 1.05 : 1.28), eiffel ? h * 0.22 : fitted ? h * 0.45 : fy, focus.z],
-      top: [focus.x, fy + fit * (isFlat ? 1.15 : 1.35), focus.z + 0.01],
+          : table
+            ? [focus.x + dist * 0.62, fy + dist * 0.54, focus.z + dist * 0.62]
+            : fitted
+              ? [focus.x + dist * 0.55, h * 0.42, focus.z + dist * 1.18]
+              : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
+      front: [
+        focus.x,
+        table ? fy + dist * 0.12 : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
+        focus.z + dist * (isFlat ? 1.05 : table ? 1.05 : eiffel ? 1.05 : 1.28),
+      ],
+      side: [
+        focus.x + dist * (isFlat ? 1.05 : table ? 1.05 : eiffel ? 1.05 : 1.28),
+        table ? fy + dist * 0.12 : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
+        focus.z,
+      ],
+      top: [focus.x, fy + fit * (isFlat ? 1.15 : table ? 1.05 : 1.35), focus.z + 0.01],
     };
     const [x, y, z] = presets[preset];
     camera.position.set(x, y, z);
@@ -265,7 +286,7 @@ function CameraRig({
       orbit.target.copy(tgt);
       orbit.update?.();
     }
-  }, [preset, project.id, project.overall, project.instances.length, project.flat, stepIds.join("|"), camera, controls, locked]);
+  }, [preset, project.id, project.overall, project.instances.length, project.fitted?.program, project.flat, stepIds.join("|"), camera, controls, locked]);
   return null;
 }
 

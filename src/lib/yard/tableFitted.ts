@@ -1,10 +1,11 @@
 /**
- * Freestanding table — round or rect top, legs fully under the top, aprons on the chords.
+ * Freestanding table — round or rect top, 2x2 legs under the top, aprons inside the legs.
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
+const TWO_BY_TWO = "lumber-2x2-8";
 const P = 0.75;
 
 function panel(
@@ -17,6 +18,7 @@ function panel(
   h: number,
   d: number,
   yaw = 0,
+  materialId = PLY,
 ): Panel {
   return {
     id: createId(type.slice(0, 2)),
@@ -24,7 +26,7 @@ function panel(
     name,
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
-    materialId: PLY,
+    materialId,
     yaw,
   };
 }
@@ -39,7 +41,6 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const panels: Panel[] = [];
   const legN = Math.max(3, Math.min(4, u.legs ?? 4));
   const round = u.shape === "round";
-  // 2x2 actual — a table, not a picnic post.
   const legW = 1.5;
   const topT = P;
   const apronH = 3.5;
@@ -64,17 +65,17 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
 
   if (round) {
     const radius = Math.min(W, D) / 2;
-    // Keep the square post fully inside the disc (corner radius + 1.75" from rim).
-    const corner = (legW * Math.SQRT2) / 2;
-    const rim = Math.max(radius * 0.52, radius - corner - 1.75);
-    // 3-leg: two toward +Z (camera), one away. 4-leg: on the diagonals.
-    const spin = legN === 3 ? Math.PI / 6 : Math.PI / 4;
+    // Visible overhang so it reads as a table, posts fully inside the disc.
+    const overhang = Math.min(4.25, Math.max(3.25, radius * 0.2));
+    const rim = Math.max(legW * 2, radius - overhang - legW / 2);
+    // One leg toward the iso camera (+X/+Z), the rest equally spaced.
+    const spin = Math.PI / 4;
     for (let i = 0; i < legN; i++) {
       const ang = (Math.PI * 2 * i) / legN + spin;
       centers.push({ x: Math.cos(ang) * rim, z: Math.sin(ang) * rim });
     }
   } else {
-    const inset = Math.max(2.5, legW + 1.25);
+    const inset = Math.max(3.25, legW + 1.75);
     const xs = [x0 + inset, x0 + W - inset];
     const zs = [z0 + inset, z0 + D - inset];
     if (legN === 3) {
@@ -85,13 +86,12 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   centers.forEach((c, i) => {
-    const yaw = Math.atan2(c.z, c.x);
     panels.push(
-      panel("upright", `Leg ${i + 1}`, c.x - legW / 2, 0, c.z - legW / 2, legW, legH, legW, yaw),
+      panel("upright", `Leg ${i + 1}`, c.x - legW / 2, 0, c.z - legW / 2, legW, legH, legW, 0, TWO_BY_TWO),
     );
   });
 
-  // Aprons: one rail on each chord, just under the top.
+  // Aprons sit INSIDE the legs (inner faces), not through the posts.
   const apronY = H - topT - apronH;
   for (let i = 0; i < centers.length; i++) {
     const a = centers[i];
@@ -99,10 +99,18 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     const dx = b.x - a.x;
     const dz = b.z - a.z;
     const span = Math.hypot(dx, dz);
-    const length = Math.max(4, span - legW * 0.9);
     const yaw = Math.atan2(dz, dx);
-    const mx = (a.x + b.x) / 2;
-    const mz = (a.z + b.z) / 2;
+    const midX = (a.x + b.x) / 2;
+    const midZ = (a.z + b.z) / 2;
+    let ix = -midX;
+    let iz = -midZ;
+    const il = Math.hypot(ix, iz) || 1;
+    ix /= il;
+    iz /= il;
+    const inset = legW / 2 + apronT / 2;
+    const mx = midX + ix * inset;
+    const mz = midZ + iz * inset;
+    const length = Math.max(4, span - legW);
     panels.push(
       panel(
         "rail",

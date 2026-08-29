@@ -11,6 +11,7 @@ function overlap(a0: number, a1: number, b0: number, b1: number) {
 
 export function CarcaseJoins({ panels, explode }: { panels: Panel[]; explode: number }) {
   if (Math.abs(explode - 1) > 0.05) return null;
+  if (panels.some((p) => /^leg\b/i.test(p.name))) return null;
   const uprights = panels.filter((p) => p.type === "upright");
   const members = panels.filter((p) => JOIN_TYPES.has(p.type));
   if (!uprights.length || !members.length) return null;
