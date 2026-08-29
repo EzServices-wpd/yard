@@ -60,7 +60,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
       step: n++,
       title: `Screw the ${aprons.length} aprons to the legs`,
       description: `Build the base upside-down on the bench. ${aprons.map(cutLine).join("; ")}. Each apron spans two legs, flush with the top of the posts. Glue + #8 × 1¼" screws, two per end. Predrill so the 2x2 does not split.`,
-      tips: "Check both diagonals of the base before the glue skins. A 1/8" difference will show as a wobble.",
+      tips: "Check both diagonals of the base before the glue skins. A 1/8 in difference will show as a wobble.",
       partsUsed: [...legs, ...aprons].map((p) => p.name),
     });
   }
