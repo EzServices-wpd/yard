@@ -213,6 +213,36 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const headboard =
+    /headboard/i.test(project.name) ||
+    /headboard/.test((project.prompt ?? "").toLowerCase());
+  if (headboard && !uprights.length) {
+    const slab = backs[0] ?? panels[0];
+    return [
+      {
+        step: 1,
+        title: "Confirm the size — do not cut yet",
+        description: `${project.name}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} part on this list.`,
+        tips: "A headboard is a wall board, not a box. If a number on this plan disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} ${slab ? cutLine(slab) + "." : ""} Label the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Hang it on studs",
+        description: `Find two studs behind the bed. Predrill the slab. Drive 3" structural screws through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
+        tips: "Guidance only — hit a stud. Drywall anchors alone will not hold a full-width plywood panel.",
+        partsUsed: names(panels),
+      },
+    ];
+  }
+
   if (pocket) {
     steps.push({
       step: n++,

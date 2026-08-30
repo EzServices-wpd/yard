@@ -162,9 +162,9 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     prompt: "headboard 60 wide",
     brief: {
       program: "storage",
-      name: 'Headboard 60" × 48" × 4"',
-      opening: { width: 60, height: 48, depth: 4, kind: "room" },
-      unit: { width: 60, depth: 4, height: 48, doors: false, centered: true },
+      name: 'Headboard 60" × 48" × 0.75"',
+      opening: { width: 60, height: 48, depth: 0.75, kind: "room" },
+      unit: { width: 60, depth: 0.75, height: 48, doors: false, centered: true },
     },
   },
   {

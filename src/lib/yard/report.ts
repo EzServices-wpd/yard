@@ -131,18 +131,24 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.`,
     });
   }
-  bom.push({
-    name: '#8 x 1-1/4" wood screws',
-    quantity: Math.ceil(screws / 50),
-    unit: "box",
-    catalogId: "screws-8",
-    searchQuery: "#8 wood screws 1-1/4",
-    estimatedCost: 8,
-    notes: `${screws} screws estimated at joints.`,
-  });
+  const headboard =
+    /headboard/i.test(project.name) ||
+    /headboard/.test((project.prompt ?? "").toLowerCase());
   const coatRack =
     /coat/i.test(project.name) ||
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  // Single-slab headboard has no carcase joints — skip join screws.
+  if (!headboard) {
+    bom.push({
+      name: '#8 x 1-1/4" wood screws',
+      quantity: Math.ceil(screws / 50),
+      unit: "box",
+      catalogId: "screws-8",
+      searchQuery: "#8 wood screws 1-1/4",
+      estimatedCost: 8,
+      notes: `${screws} screws estimated at joints.`,
+    });
+  }
   if (coatRack) {
     const hooks = Math.max(3, Math.min(8, Math.round(project.overall.width / 6)));
     bom.push({
@@ -169,14 +175,16 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Do not glue the shelves — the pins hold them.`,
     });
   }
-  bom.push({
-    name: "Wood glue",
-    quantity: 1,
-    unit: "bottle",
-    catalogId: "glue",
-    searchQuery: "titebond wood glue",
-    estimatedCost: 5.47,
-  });
+  if (!headboard) {
+    bom.push({
+      name: "Wood glue",
+      quantity: 1,
+      unit: "bottle",
+      catalogId: "glue",
+      searchQuery: "titebond wood glue",
+      estimatedCost: 5.47,
+    });
+  }
   if (project.assumptions.installMode !== "freestanding") {
     bom.push({
       name: project.assumptions.wallType === "masonry"
@@ -189,11 +197,13 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           ? "Tapcon 3/16 x 2-3/4"
           : "GRK RSS #9 x 3-1/8",
       estimatedCost: 14,
-      notes: coatRack
-        ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
-        : project.panels.some((p) => p.type === "upright")
-          ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
-          : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
+      notes: headboard
+        ? "4-6 screws through the board into studs (or a french cleat). Guidance only — confirm wall type."
+        : coatRack
+          ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
+          : project.panels.some((p) => p.type === "upright")
+            ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
+            : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
     });
   }
   return decorateBom(bom);
@@ -205,7 +215,10 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   const coatRack =
     /coat/i.test(project.name) ||
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
-  if (!coatRack && (width < 12 || height < 12 || depth < 8)) {
+  const headboard =
+    /headboard/i.test(project.name) ||
+    /headboard/.test((project.prompt ?? "").toLowerCase());
+  if (!coatRack && !headboard && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -276,7 +289,13 @@ export function buildPlan(project: YardProject): BuildPlan {
     const issues: FeasibilityIssue[] = [
       {
         severity: "info",
-        message: `${project.name} — ${project.fitted?.program ?? "closet"}.`,
+        message: `${project.name} — ${
+          /headboard/i.test(project.name) || /headboard/.test((project.prompt ?? "").toLowerCase())
+            ? "headboard"
+            : /coat/i.test(project.name)
+              ? "coat rack"
+              : (project.fitted?.program ?? "closet")
+        }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",
       },
       ...closetIssues(project),
