@@ -135,14 +135,30 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     name: '#8 x 1-1/4" wood screws',
     quantity: Math.ceil(screws / 50),
     unit: "box",
+    catalogId: "screws-8",
     searchQuery: "#8 wood screws 1-1/4",
     estimatedCost: 8,
     notes: `${screws} screws estimated at joints.`,
   });
+  const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
+  if (shelfCount > 0) {
+    const pins = shelfCount * 4;
+    const packs = Math.max(1, Math.ceil(pins / 50));
+    bom.push({
+      name: "5 mm shelf pins",
+      quantity: packs,
+      unit: packs === 1 ? "pack" : "packs",
+      catalogId: "shelf-pins",
+      searchQuery: "5mm shelf pins",
+      estimatedCost: 6.49 * packs,
+      notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Do not glue the shelves — the pins hold them.`,
+    });
+  }
   bom.push({
     name: "Wood glue",
     quantity: 1,
     unit: "bottle",
+    catalogId: "glue",
     searchQuery: "titebond wood glue",
     estimatedCost: 5.47,
   });
