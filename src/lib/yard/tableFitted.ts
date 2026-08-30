@@ -93,9 +93,9 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
 
   // Aprons span adjacent legs so they can be screwed into the 2x2s.
   // Rect: sit on the inner faces (inset a post + the ply).
-  // Round: the chord midpoint is already far inside the ring, so only
-  // offset by the apron thickness — otherwise the triangle floats in
-  // the middle and never meets a leg.
+  // Round 3-leg: do not inset. The chord already runs center-to-center;
+  // pulling it inward shrinks the triangle off the posts so it looks
+  // like a floating brace. Run each rail into both 2x2s.
   const apronY = H - topT - apronH;
   for (let i = 0; i < centers.length; i++) {
     const a = centers[i];
@@ -111,10 +111,10 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     const il = Math.hypot(ix, iz) || 1;
     ix /= il;
     iz /= il;
-    const inset = round ? apronT / 2 : legW / 2 + apronT / 2;
+    const inset = round ? 0 : legW / 2 + apronT / 2;
     const mx = midX + ix * inset;
     const mz = midZ + iz * inset;
-    const length = Math.max(4, span - (round ? 0.5 : legW));
+    const length = Math.max(4, span - (round ? 0 : legW));
     panels.push(
       panel(
         "rail",
