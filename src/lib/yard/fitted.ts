@@ -410,6 +410,40 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildTable(spec, prompt);
   }
 
+  const floating = /floating|wall-?mounted/.test(prompt.toLowerCase()) && /shel/.test(prompt.toLowerCase());
+  if (floating) {
+    const n = Math.max(1, Math.min(8, u.shelfCount ?? 3));
+    const gap = 10;
+    for (let i = 0; i < n; i++) {
+      panels.push(panel("shelf", n === 1 ? "Shelf" : `Shelf ${i + 1}`, x0, i * (P + gap), 0, W, P, D));
+    }
+    const stackH = n * P + Math.max(0, n - 1) * gap;
+    return {
+      id: createId("proj"),
+      name: spec.name.replace(/storage/i, "Shelves"),
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: stackH, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${n} floating ${W}" × ${D}" shelves. ¾" plywood. No box — each board mounts to the wall.`,
+        `Space them about ${gap}" apart (cleat or hidden bracket into studs).`,
+        "Guidance only — hit a stud, or use a french cleat.",
+      ],
+      historic: false,
+      opening: spec.opening,
+      fitted: { ...spec, unit: { ...u, height: stackH, doors: false, drawersPerBank: undefined } },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
   const bayN = u.bays && u.bays >= 2 ? u.bays : 1;
