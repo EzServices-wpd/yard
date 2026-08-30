@@ -157,8 +157,8 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
 
   // Toekick on the drawer banks only — knee stays open
   const kickH = 3.5;
-  panels.push(panel("kick", "Left toekick", x0 + P, 0, D - 0.5, leftBankW - P, kickH, 0.5));
-  panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - 0.5, rightBankW - P, kickH, 0.5));
+  panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftBankW - P, kickH, P));
+  panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - P, rightBankW - P, kickH, P));
 
   // Drawer stacks — three each side, 34" to kick
   const drawerSpan = unit.vanityH - kickH;

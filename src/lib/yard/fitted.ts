@@ -385,7 +385,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
   panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
   if (spec.program === "media") {
-    panels.push(panel("kick", "Toekick", x0 + P, 0, D - 3.5, W - P * 2, 3.5, 0.5));
+    panels.push(panel("kick", "Toekick", x0 + P, 0, D - 3.5, W - P * 2, 3.5, P));
   }
 
   const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
@@ -400,8 +400,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const boxH = Math.min(counterY, H);
     panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
-    panels.push(panel("kick", "Left toekick", x0 + P, 0, D - 0.5, leftW - P, 3.5, 0.5));
-    panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - 0.5, rightW - P, 3.5, 0.5));
+    panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
+    panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - P, rightW - P, 3.5, P));
     const n = u.drawersPerBank ?? 3;
     const span = boxH - 3.5;
     const dh = span / n;

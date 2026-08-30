@@ -262,11 +262,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (kicks.length) {
     steps.push({
       step: n++,
-      title: "Toekick on the banks only",
+      title: pocket || u?.kneeW ? "Toekick on the banks only" : "Add the toekick",
       description: `${kicks.map(cutLine).join("; ")}. ${
         pocket || u?.kneeW
           ? "The toekick is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."
-          : "The toekick is the recessed strip at the floor so your toes clear. Kick the front, 3½\" up, ½\" in from the face."
+          : "The toekick is the recessed strip at the floor so your toes clear. Cut it from the same ¾\" plywood — 3½\" tall, set back about 3½\" from the front face."
       }`,
       partsUsed: names(kicks),
     });
