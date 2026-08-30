@@ -17,6 +17,74 @@ function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   return HOUSE_HINT.test(prompt);
 }
 
+/** Numbers and form the user actually said beat the house-brief few-shot. */
+function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: FittedSpec): FittedSpec {
+  if (!parsed) return brief;
+  const lower = prompt.toLowerCase();
+  const saidWide = /wide|width/.test(lower);
+  const saidDeep = /deep|depth/.test(lower);
+  const saidTall = /tall|high|height/.test(lower);
+  const saidRound = /round|circular|diameter|\bdia\b/.test(lower);
+  const saidLegs = /\d+\s*-?\s*legs?/.test(lower);
+
+  const unit = { ...brief.unit };
+  const opening = { ...brief.opening };
+
+  if (saidWide || saidRound) {
+    unit.width = parsed.unit.width;
+    opening.width = parsed.opening.width;
+  }
+  if (saidDeep || saidRound) {
+    unit.depth = parsed.unit.depth;
+    opening.depth = parsed.opening.depth;
+  }
+  if (saidTall) {
+    unit.height = parsed.unit.height;
+    opening.height = parsed.opening.height;
+  }
+  if (saidRound) {
+    unit.shape = parsed.unit.shape ?? "round";
+    unit.depth = parsed.unit.depth;
+    unit.width = parsed.unit.width;
+  } else if (parsed.unit.shape && !unit.shape) {
+    unit.shape = parsed.unit.shape;
+  }
+  if (saidLegs || (parsed.program === "table" && parsed.unit.legs && !unit.legs)) {
+    unit.legs = parsed.unit.legs;
+  }
+  if (parsed.unit.bays && !unit.bays) unit.bays = parsed.unit.bays;
+  if (parsed.unit.kneeW && !unit.kneeW) unit.kneeW = parsed.unit.kneeW;
+
+  let program = brief.program;
+  if (parsed.program === "table" || parsed.program === "media") program = parsed.program;
+  else if (brief.program === "storage" && parsed.program && parsed.program !== "storage") {
+    program = parsed.program;
+  }
+
+  if (program === "media" && !saidTall) {
+    unit.height = Math.min(unit.height, 22);
+    opening.height = unit.height;
+    unit.doors = false;
+  }
+  if (program === "table") {
+    unit.doors = false;
+    if (parsed.unit.shape) unit.shape = parsed.unit.shape;
+    if (parsed.unit.legs) unit.legs = parsed.unit.legs;
+  }
+
+  const name = `${program[0].toUpperCase()}${program.slice(1)} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  return {
+    ...brief,
+    program,
+    name: brief.name && !saidDeep && !saidWide && !saidRound ? brief.name : name,
+    opening,
+    unit,
+    walls: parsed.walls ?? brief.walls,
+    leftClear: parsed.leftClear ?? brief.leftClear,
+    rightClear: parsed.rightClear ?? brief.rightClear,
+  };
+}
+
 /** Homepage ?q= and the bench prompt bar share this so house prompts never fall through to craft interpret. */
 export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {}) {
   const prompt = raw.trim();
@@ -70,7 +138,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       if (house.ok && house.brief) {
         generate(prompt, undefined, undefined, {
           fresh: true,
-          fittedOverride: house.brief as FittedSpec,
+          fittedOverride: mergeHouseBrief(prompt, parsed, house.brief as FittedSpec),
         });
         makePlan();
         const current = useYard.getState().project;

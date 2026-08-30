@@ -69,6 +69,15 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     },
   },
   {
+    prompt: "TV console 70 inches wide 30 inches deep",
+    brief: {
+      program: "media",
+      name: 'Media unit 70" × 22" × 30"',
+      opening: { width: 70, height: 22, depth: 30, kind: "room" },
+      unit: { width: 70, depth: 30, height: 22, shelfCount: 2, doors: false, centered: true },
+    },
+  },
+  {
     prompt: "table 40in round with 3 legs",
     brief: {
       program: "table",
@@ -147,7 +156,7 @@ Rules:
 - opening.kind: "alcove" | "room" | "pocket" | "window".
 - unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"), bays (2-6 for wide closet systems).
 - Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
-- TV / media console: program "media", doors false unless doors requested, depth default 16, shelves default 2.
+- TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32.
 - Prefer honest shop geometry over decoration. No markdown.
 

@@ -166,8 +166,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     if (program === "table") {
       height = trip.h && trip.h < 42 ? trip.h : 30;
     } else if (program === "media") {
-      if (trip.h && trip.h < 48) height = trip.h;
-      else height = trip.h ?? 30;
+      if (trip.h && trip.d) height = trip.h;
+      else height = 22;
     } else if (program === "desk" || program === "bench") {
       height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
       if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
@@ -191,7 +191,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
   if (!Number.isFinite(depth)) {
     depth =
-      program === "desk"
+      trip.d ??
+      (program === "desk"
         ? 24
         : program === "vanity"
           ? 21
@@ -201,7 +202,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 16
               : program === "table"
                 ? width
-                : 16;
+                : 16);
   }
 
   let bays: number | undefined;
@@ -302,7 +303,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       width,
       height,
       depth,
-      kind: walls ? "pocket" : /alcove|built-?in|closet|niche/.test(lower) ? "alcove" : "room",
+      kind: walls ? "pocket" : /alcove|built-?in|niche/.test(lower) ? "alcove" : "room",
     },
     unit,
     walls,
@@ -375,6 +376,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
   panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
   panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
+  if (spec.program === "media") {
+    panels.push(panel("kick", "Toekick", x0 + P, 0, D - 3.5, W - P * 2, 3.5, 0.5));
+  }
 
   const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
   const counterY = u.counterH ?? (spec.program === "desk" ? H : 34);
@@ -447,10 +451,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
   }
 
-  if (u.doors) {
+  if (u.doors && spec.program !== "media") {
     const doorY = u.upperStart ?? 0;
     const doorH = H - doorY;
-    if (W > 28) {
+    if (bayN >= 2) {
+      const bayW = W / bayN;
+      for (let i = 0; i < bayN; i++) {
+        panels.push(
+          panel("door", `Bay ${i + 1} door`, x0 + i * bayW + 0.1, doorY, D - P, bayW - 0.2, doorH, P),
+        );
+      }
+    } else if (W > 28) {
       panels.push(panel("door", "Left door", x0 + 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
       panels.push(panel("door", "Right door", 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
     } else {
@@ -466,6 +477,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
       : shelves
         ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
+        : spec.program === "media"
+        ? "Open front. TV sits on top. No leftover doors."
         : "Solid carcase.",
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
