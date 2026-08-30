@@ -22,10 +22,10 @@ import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { isWireStock } from "@/lib/yard/promptHelpers";
-import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
-import { isLockedForm, recipeFromAnatomy } from "@/lib/yard/form";
+import { isLockedForm } from "@/lib/yard/form";
+import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 import type { WorkMode } from "@/lib/yard/types";
@@ -81,83 +81,21 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") : null;
     const prompt = (initialPrompt || fromUrl || "").trim();
     if (prompt) {
-      try {
-        generate(prompt);
-        makePlan();
-      } catch (err) {
-        useYard.setState({
-          grokError: err instanceof Error ? err.message : "Could not generate that structure.",
-        });
-      }
-    } else {
-      hydrateYard();
-    }
-    setReady(true);
-    if (!prompt) return;
-    const seeded = useYard.getState().project;
-    // Deterministic layouts: closet, windows, locked historic forms, and 2D paper crafts.
-    // Never wait on Grok or allow form overwrite for these.
-    if (
-      seeded.kind === "closet" ||
-      seeded.kind === "opening" ||
-      isLockedForm(seeded.kind) ||
-      !!seeded.flat
-    ) {
-      revealBench();
-      return;
-    }
-    const offline =
-      typeof window !== "undefined" &&
-      /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
-    if (offline) {
-      revealBench();
-      return;
-    }
-    void (async () => {
-      useYard.setState({ grokBusy: true, grokError: null, building: true });
-      const timeout = window.setTimeout(() => {
-        useYard.setState({ grokBusy: false });
-        revealBench();
-      }, 22000);
-      try {
-        const hint = await hintSubject({ data: { prompt } });
-        if (hint.summary && hint.summary !== hint.subject) {
-          const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, seeded.overall);
-          generate(prompt, undefined, form);
-          makePlan();
-        }
-        const interp = await interpretPrompt({
-          data: { prompt, heightIn: seeded.overall.height, widthIn: seeded.overall.width },
-        });
-        const after = useYard.getState().project;
-        const locked =
-          isLockedForm(after.kind) ||
-          after.kind === "closet" ||
-          after.kind === "opening" ||
-          !!after.flat;
-        if (interp.ok && interp.form && !locked) {
-          generate(prompt, interp.materialId ?? undefined, interp.form);
-          makePlan();
-        } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId && !locked) {
-          generate(prompt, interp.materialId);
-          makePlan();
-        }
-        if (interp.ok && (interp.real || interp.notes)) {
-          const live = useYard.getState().project;
-          const extra = [interp.real ? `Queried form: ${interp.real}` : "", interp.notes].filter(Boolean);
-          useYard.getState().setProject({
-            ...live,
-            notes: [...live.notes, ...extra.filter((n) => !live.notes.includes(n))],
+      void (async () => {
+        try {
+          await runYardPrompt(prompt, { fresh: true });
+        } catch (err) {
+          useYard.setState({
+            grokError: err instanceof Error ? err.message : "Could not generate that structure.",
           });
+        } finally {
+          setReady(true);
         }
-      } catch {
-        /* deterministic already on the bench */
-      } finally {
-        window.clearTimeout(timeout);
-        useYard.setState({ grokBusy: false });
-        revealBench();
-      }
-    })();
+      })();
+      return;
+    }
+    hydrateYard();
+    setReady(true);
   }, [initialPrompt, generate, makePlan, revealBench]);
 
   useEffect(() => {

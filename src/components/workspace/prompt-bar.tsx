@@ -3,18 +3,13 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { DREAMS } from "@/lib/yard/prompt";
-import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
-import { briefHousePrompt } from "@/lib/ai/houseBrief";
-import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
+import { runYardPrompt } from "./run-prompt";
 
 export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
   const project = useYard((s) => s.project);
-  const generate = useYard((s) => s.generate);
-  const makePlan = useYard((s) => s.makePlan);
   const grokBusy = useYard((s) => s.grokBusy);
-  const revealBench = useYard((s) => s.revealBench);
   const [value, setValue] = useState(project.prompt);
 
   useEffect(() => {
@@ -25,97 +20,8 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
     const prompt = raw.trim();
     if (!prompt) return;
     setValue(prompt);
-    // Deterministic first — always something on the bench immediately.
-    const next = generate(prompt, undefined, undefined, { fresh });
-    makePlan();
     onBuilt();
-    // Openings + locked craft monuments stay deterministic-only.
-    if (next.kind === "opening" || isLockedForm(next.kind)) {
-      revealBench();
-      return;
-    }
-    const offline =
-      typeof window !== "undefined" &&
-      /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
-    if (offline) {
-      revealBench();
-      return;
-    }
-    useYard.setState({ grokBusy: true, grokError: null, building: true });
-    const timeout = window.setTimeout(() => {
-      useYard.setState({ grokBusy: false });
-      revealBench();
-    }, 22000);
-    try {
-      const houseLike =
-        next.kind === "closet" ||
-        !!next.fitted ||
-        /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system/i.test(
-          prompt,
-        );
-
-      // House path: LLM brief trained on every known-good walk build.
-      // Falls through to deterministic result if the key is missing or parse fails.
-      if (houseLike) {
-        const house = await briefHousePrompt({ data: { prompt } });
-        if (house.ok && house.brief) {
-          generate(prompt, undefined, undefined, {
-            fresh: true,
-            fittedOverride: house.brief as never,
-          });
-          makePlan();
-          const current = useYard.getState().project;
-          const note = "Brief refined from house training set.";
-          if (!current.notes.includes(note)) {
-            useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
-          }
-          return;
-        }
-      }
-
-      // Craft / form path (monuments, sticks) — skip when we already have a house unit.
-      if (next.kind === "closet") return;
-
-      const hint = await hintSubject({ data: { prompt } });
-      if (hint.summary && hint.summary !== hint.subject) {
-        const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
-        generate(prompt, undefined, form);
-        makePlan();
-        const current = useYard.getState().project;
-        const note = `Looked up: ${hint.summary}`;
-        if (!current.notes.includes(note)) {
-          useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
-        }
-      }
-      const interp = await interpretPrompt({
-        data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
-      });
-      const after = useYard.getState().project;
-      if (interp.ok && interp.form && interp.form.strokes && interp.form.strokes.length >= 2 && !isLockedForm(after.kind)) {
-        generate(prompt, interp.materialId ?? undefined, interp.form);
-        makePlan();
-      } else if (interp.ok && interp.form && !isLockedForm(after.kind) && after.kind !== "closet" && after.kind !== "opening") {
-        generate(prompt, interp.materialId ?? undefined, interp.form);
-        makePlan();
-      } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId && !isLockedForm(after.kind)) {
-        generate(prompt, interp.materialId);
-        makePlan();
-      }
-      if (interp.ok && (interp.real || interp.notes)) {
-        const current = useYard.getState().project;
-        const extra = [interp.real ? `Queried form: ${interp.real}` : "", interp.notes].filter(Boolean);
-        useYard.getState().setProject({
-          ...current,
-          notes: [...current.notes, ...extra.filter((n) => !current.notes.includes(n))],
-        });
-      }
-    } catch {
-      /* deterministic already on the bench */
-    } finally {
-      window.clearTimeout(timeout);
-      useYard.setState({ grokBusy: false });
-      revealBench();
-    }
+    await runYardPrompt(prompt, { fresh });
   }
 
   return (
