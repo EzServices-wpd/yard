@@ -258,10 +258,11 @@ export function buildPlan(project: YardProject): BuildPlan {
 
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
+  const forge = buildForgeBom(project.instances, project.primaryMaterialId);
+  const glue = item ? binderBom(item, project.instances, project.joinMethod) : [];
   const bom = decorateBom([
-    ...buildForgeBom(project),
-    ...bomLinesFromForge(project),
-    ...binderBom(project),
+    ...bomLinesFromForge(forge),
+    ...glue,
   ]);
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
   const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
