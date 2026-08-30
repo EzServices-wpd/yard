@@ -243,6 +243,61 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const island =
+    /island/i.test(project.name) ||
+    /island/.test((project.prompt ?? "").toLowerCase());
+  if (island) {
+    const counters = of("counter");
+    return [
+      {
+        step: 1,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. Freestanding island ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. Check it is square. ${panels.length} parts on this list. Open both sides — there is no back.`,
+        tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+        tips: tool.tip,
+        partsUsed: ["*"],
+      },
+      {
+        step: 3,
+        title: "Stand the two uprights and the bottom shelf",
+        description: `${uprights.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: bottom shelf into both uprights, sitting at 3½" (above the toekick). No back — this is an island you walk around.`,
+        tips: "Check both diagonals before the glue skins. Predrill near the ends so the ply does not split.",
+        partsUsed: names([...uprights, ...bottoms]),
+      },
+      {
+        step: 4,
+        title: "Glue in the middle shelf",
+        description: `${shelves.map(cutLine).join("; ") || "Middle shelf."} Glue and screw through the uprights into the shelf. Square it. This shelf is fixed — no pins.`,
+        partsUsed: names([...uprights, ...shelves]),
+      },
+      {
+        step: 5,
+        title: "Add the toekicks",
+        description: `${kicks.map(cutLine).join("; ")}. The toekick is the recessed strip at the floor so your toes clear when you stand close. One on the front, one on the back. 3½" tall, set back about 3½" from each long face.`,
+        partsUsed: names(kicks),
+      },
+      {
+        step: 6,
+        title: `Set the counter at ${round(H)}"`,
+        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Glue and screw down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
+        partsUsed: names(counters.length ? counters : of("top")),
+      },
+      {
+        step: 7,
+        title: "Level it",
+        description: "This island sits on the floor. Shim the feet if the floor is out — do not twist the box. It has no back, so keep it square.",
+        tips: "Guidance only — confirm the real kitchen before you cut. Not stamped engineering.",
+        partsUsed: names([...uprights, ...bottoms, ...of("counter"), ...kicks]),
+      },
+    ];
+  }
+
   if (pocket) {
     steps.push({
       step: n++,

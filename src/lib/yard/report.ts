@@ -137,6 +137,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const coatRack =
     /coat/i.test(project.name) ||
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
   // Single-slab headboard has no carcase joints — skip join screws.
   if (!headboard) {
     bom.push({
@@ -162,7 +163,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
-  if (shelfCount > 0 && !coatRack) {
+  if (shelfCount > 0 && !coatRack && !island) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({

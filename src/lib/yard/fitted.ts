@@ -485,6 +485,51 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  const island = /island/.test(prompt.toLowerCase());
+  if (island) {
+    const kickH = 3.5;
+    const counterT = 1.5;
+    const boxH = Math.max(24, H - counterT);
+    const innerW = W - P * 2;
+    const midY = kickH + (boxH - kickH) / 2;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, boxH, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, boxH, D));
+    panels.push(panel("bottom", "Bottom shelf", x0 + P, kickH, 0, innerW, P, D));
+    panels.push(panel("shelf", "Shelf", x0 + P, midY, 0, innerW, P, D));
+    panels.push(panel("kick", "Front toekick", x0 + P, 0, D - kickH, innerW, kickH, P));
+    panels.push(panel("kick", "Back toekick", x0 + P, 0, 0, innerW, kickH, P));
+    panels.push(panel("counter", "Counter", x0, boxH, 0, W, counterT, D));
+    const stackH = boxH + counterT;
+    return {
+      id: createId("proj"),
+      name: `Island ${W}" × ${stackH}" × ${D}"`,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: stackH, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood, 1½" counter, 3½" toekick.`,
+        "Bottom shelf and one middle shelf are glued in. Not a closet. Not a dining table.",
+        "Guidance only — level it on the floor. Confirm the real kitchen.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: stackH, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name: `Island ${W}" × ${stackH}" × ${D}"`,
+        unit: { ...u, height: stackH, depth: D, doors: false, shelfCount: 1, drawersPerBank: undefined, counterH: stackH },
+      },
+      assumptions: {
+        load: "heavy",
+        units: "inches",
+        installMode: "freestanding",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   const floating = /floating|wall-?mounted/.test(prompt.toLowerCase()) && /shel/.test(prompt.toLowerCase());
   if (floating) {
     const n = Math.max(1, Math.min(8, u.shelfCount ?? 3));
