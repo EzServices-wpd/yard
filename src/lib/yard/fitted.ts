@@ -235,7 +235,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /(\d+)\s*shel(?:f|ves)/i,
     program === "bookcase"
       ? 5
-      : program === "closet" || program === "pantry" || program === "wardrobe"
+      : program === "closet"
+        ? 1
+        : program === "pantry" || program === "wardrobe"
         ? 4
         : program === "media"
           ? 2
@@ -251,7 +253,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && height >= 54);
   const doorsFinal = program === "media" && !/door/.test(lower) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity";
-  const rod = /rod|hang|rail/.test(lower) || program === "wardrobe";
+  const rod = /rod|hang|rail/.test(lower) || program === "wardrobe" || program === "closet";
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
     ? {
@@ -422,9 +424,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     if (W >= 36) panels.push(panel("divider", "Upper divider", -P / 2, u.upperStart, 0, P, H - u.upperStart, D));
   }
 
-  const shelves = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" || spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
+  const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
+  const rodY = hang ? Math.min(H - 8, Math.max(60, H * 0.72)) : null;
+  const shelves = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
   if (shelves > 0) {
-    const y0 = u.upperStart ?? shelfZone0;
+    const y0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
     const y1 = shelfZone1;
     for (let i = 1; i <= shelves; i++) {
       const y = y0 + ((y1 - y0) * i) / (shelves + 1);
@@ -438,8 +442,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
   }
 
-  if (u.rod && spec.program === "wardrobe") {
-    const rodY = Math.min(H - 8, Math.max(60, H * 0.72));
+  if (rodY != null) {
     panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
   }
 
