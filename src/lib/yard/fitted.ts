@@ -230,18 +230,25 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? Math.min(24, Math.max(18, width * 0.4))
       : undefined;
   const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
+  const linen = /linen|towel/.test(lower);
+  const rod =
+    /rod|hang|rail/.test(lower) ||
+    program === "wardrobe" ||
+    (program === "closet" && isSystem && !linen);
   const shelfCount = pick(
     t,
     /(\d+)\s*shel(?:f|ves)/i,
     program === "bookcase"
       ? 5
       : program === "closet"
-        ? 1
+        ? rod
+          ? 1
+          : 4
         : program === "pantry" || program === "wardrobe"
-        ? 4
-        : program === "media"
-          ? 2
-          : 0,
+          ? 4
+          : program === "media"
+            ? 2
+            : 0,
   );
   const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
@@ -253,7 +260,6 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && height >= 54);
   const doorsFinal = program === "media" && !/door/.test(lower) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity";
-  const rod = /rod|hang|rail/.test(lower) || program === "wardrobe" || program === "closet";
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
     ? {
