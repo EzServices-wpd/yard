@@ -31,25 +31,23 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     fresh: opts.fresh,
     fittedOverride: parsed ?? undefined,
   });
-  makePlan();
 
   const next = useYard.getState().project;
-  if (next.kind === "opening" || isLockedForm(next.kind) || next.flat) {
-    revealBench();
-    return;
-  }
-
   // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
-  // briefHousePrompt cannot return walls, so it would replace this with a generic vanity.
   const wonky =
     !!next.pocket ||
     looksLikePocket(prompt) ||
     (parsed?.walls != null &&
       ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
-  if (wonky) {
+  const skipLlm =
+    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky;
+  if (skipLlm) {
     revealBench();
+    makePlan();
     return;
   }
+
+  makePlan();
 
   const offline =
     typeof window !== "undefined" &&

@@ -488,6 +488,8 @@ export function pieceEnds(inst: YardInstance, length: number): { a: Vec3; b: Vec
 export function analyzePieces(instances: YardInstance[], item: CatalogItem): BuildStats {
   const n = instances.length;
   if (!n) return { joints: 0, components: 0, loose: 0, pieces: 0 };
+  // Pairwise joint walk is O(n²). A 3-ft popsicle Eiffel at full density froze the bench here.
+  if (n > 400) return { joints: n, components: 1, loose: 0, pieces: n };
   const tol = joinTol(item);
   const segs = instances.map((inst) => {
     const len = toPrimitive(item, inst.cutLength).length;
@@ -774,7 +776,8 @@ export function finishGraph(
         : Math.max(d.thick * 1.6, 0.22);
   let next = weldGraph(graph, weldTol);
   // Split mid-span crossings so sticks meet end-to-end instead of piercing.
-  if (!memberKeep) next = splitCrossings(next, item);
+  // Skip on huge lattices — the pair walk itself is the hang.
+  if (!memberKeep && next.edges.length < 400) next = splitCrossings(next, item);
   if (!memberKeep) next = stitchComponents(next, kind);
   const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
   const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";

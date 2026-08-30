@@ -70,6 +70,9 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   const stock = dens.stock;
   const thick = dens.thick;
   const fat = dens.fat;
+  // Popsicle / craft-stick Eiffel at 3 ft used to emit ~790 members and freeze the bench.
+  // Keep four arches, four piers, one shaft — drop the extra web so the page can finish.
+  const simple = fat || (stock <= 6.5 && thick < 0.5);
 
   const platforms = eiffel ? eiffelPlatformTs() : [0, 0.33, 0.66, 1];
   const t1 = platforms[1] ?? 0.18;
@@ -97,14 +100,14 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     hoopAt: hoopSchedule(
       ts,
       eiffel ? [t1, t2, tBelt, tBelt2, platforms[3] ?? 0.85] : [0.33, 0.66],
-      fat ? 2 : eiffel ? 2 : 3,
+      simple ? 2 : eiffel ? 2 : 3,
     ),
     laceFace: () => true,
     join: joinPrimary,
     braceJoin: joinBrace,
-    pierChords: eiffel ? Math.max(dens.chords ?? 0, fat ? 2 : 4) : dens.chords,
-    maxFaceDivs: fat ? 6 : eiffel ? 12 : 10,
-    bothDiagonals: (t) => t >= t1 - 0.02,
+    pierChords: eiffel ? Math.max(dens.chords ?? 0, simple ? 2 : 4) : dens.chords,
+    maxFaceDivs: simple ? 6 : eiffel ? 12 : 10,
+    bothDiagonals: (t) => !simple && t >= t1 - 0.02,
   });
 
   const nodes: StructureNode[] = [...loft.nodes];
@@ -141,7 +144,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
       addEdge(createId(`plat-x-${L}b`), row[1], row[2], "rail", true);
       addEdge(createId(`plat-x-${L}c`), row[2], row[3], "rail", true);
       addEdge(createId(`plat-x-${L}d`), row[3], row[0], "rail", true);
-      if (!fat) {
+      if (!simple) {
         const major = Math.abs(ts[L] - t1) < 0.02 || Math.abs(ts[L] - t2) < 0.02;
         if (major) {
           for (let f = 0; f < 4; f++) {
@@ -166,7 +169,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
       const row = mains[platL];
       for (let f = 0; f < 4; f++) {
         addEdge(createId(`trans-${f}`), prev[f], row[f], "leg", true);
-        if (!fat) {
+        if (!simple) {
           addEdge(createId(`trans-x-${f}`), prev[f], row[(f + 1) % 4], "brace", false, joinBrace);
           addEdge(createId(`trans-x2-${f}`), prev[(f + 1) % 4], row[f], "brace", false, joinBrace);
         }
@@ -178,7 +181,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     const publishedRatio = EIFFEL_REAL.archM / EIFFEL_REAL.heightM;
     const archY = characterRise(publishedRatio, H);
     const springY = Math.min(H * t1 * 0.08, archY * 0.16);
-    const segs = fat
+    const segs = simple
       ? 6
       : Math.max(
           16,
@@ -213,7 +216,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
         const crown = archIds[Math.floor(archIds.length / 2)];
         addEdge(createId(`strut-${f}`), crown, mains[platL][f], "brace", true);
         addEdge(createId(`strut2-${f}`), crown, mains[platL][(f + 1) % 4], "brace", true);
-        if (!fat) {
+        if (!simple) {
           const fractions = [0.12, 0.22, 0.32, 0.42, 0.5, 0.58, 0.68, 0.78, 0.88];
           for (const frac of fractions) {
             const node = archIds[Math.floor(archIds.length * frac)];
@@ -223,7 +226,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
         }
       }
 
-      if (!fat && segs >= 12) {
+      if (!simple && segs >= 12) {
         const innerRise = archY * 0.58;
         const innerIds: string[] = [springAId];
         const innerSegs = Math.max(8, Math.floor(segs * 0.6));
@@ -268,7 +271,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
       }
     }
 
-    if (!fat && platL > 1) {
+    if (!simple && platL > 1) {
       const inset = Math.max(thick * 2.8, dens.faceStep * 0.4);
       for (let f = 0; f < 4; f++) {
         const base = nodeOf(mains[0][f]).position;
@@ -318,7 +321,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
       }
     }
 
-    if (!fat && platL > 2) {
+    if (!simple && platL > 2) {
       for (let L = 1; L < platL; L++) {
         const row = mains[L];
         for (let f = 0; f < 4; f++) {
@@ -348,7 +351,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
 
   const last = mains[mains.length - 1];
   const tipId = addNode(createId("tip"), { x: 0, y: H + stock * 0.2, z: 0 }, "tip");
-  if (!fat) {
+  if (!simple) {
     const lanternY = H - Math.min(stock * 1.1, H * 0.05);
     const lanternR = Math.max(thick * 3, eiffelHalfAt(0.97, H) * 0.85);
     const cage: string[] = [];
