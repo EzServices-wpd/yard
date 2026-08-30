@@ -71,6 +71,14 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     if (parsed.unit.shape) unit.shape = parsed.unit.shape;
     if (parsed.unit.legs) unit.legs = parsed.unit.legs;
   }
+  if (parsed.program === "closet" || parsed.program === "wardrobe") {
+    program = parsed.program;
+    unit.rod = true;
+    if (!/\d+\s*shel/.test(lower)) {
+      unit.shelfCount = parsed.unit.shelfCount ?? 1;
+    }
+  }
+  if (parsed.unit.rod) unit.rod = true;
 
   const name = `${program[0].toUpperCase()}${program.slice(1)} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   return {

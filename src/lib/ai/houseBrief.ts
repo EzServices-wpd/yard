@@ -92,7 +92,7 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
       program: "closet",
       name: 'Closet 120" × 80" × 24"',
       opening: { width: 120, height: 80, depth: 24, kind: "alcove" },
-      unit: { width: 120, depth: 24, height: 80, shelfCount: 4, doors: true, bays: 4, centered: true },
+      unit: { width: 120, depth: 24, height: 80, shelfCount: 1, doors: true, bays: 4, rod: true, centered: true },
     },
   },
   {
@@ -157,7 +157,7 @@ Rules:
 - unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"), bays (2-6 for wide closet systems).
 - Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
-- Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32.
+- Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
 - Prefer honest shop geometry over decoration. No markdown.
 
 Examples (training data — match this style exactly):
