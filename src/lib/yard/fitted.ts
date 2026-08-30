@@ -29,7 +29,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|shoe|coat/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -44,7 +44,7 @@ export function looksLikeFitted(prompt: string) {
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -60,7 +60,6 @@ export function detectProgram(lower: string): FittedProgram {
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
   if (/\bmudroom\b|window seat/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
-  if (/towel|cabinet|storage|shelves|shelf/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove/.test(lower)) return "vanity";
   return "storage";
@@ -135,6 +134,20 @@ export function parseBrief(prompt: string): FittedSpec | null {
       (program === "desk" ? 48 : program === "vanity" ? 36 : program === "table" ? 40 : program === "media" ? 60 : 36);
   }
 
+  const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
+  const furnitureTriple =
+    program !== "closet" && program !== "wardrobe" && program !== "pantry" && program !== "vanity";
+  let unlabeledWd = false;
+  if (!saidAxis && furnitureTriple && trip.w && trip.h && trip.d) {
+    width = trip.w;
+    depth = trip.h;
+    height = trip.d;
+  } else if (!saidAxis && furnitureTriple && trip.w && trip.h && !trip.d && trip.h < 20) {
+    width = trip.w;
+    depth = trip.h;
+    unlabeledWd = true;
+  }
+
   if (program === "table" && (isRound || Number.isFinite(diameter))) {
     const dia = Number.isFinite(diameter)
       ? diameter
@@ -162,7 +175,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "vanity" &&
     /upper|to the ceiling|floor.?to.?ceiling|linen storage|towels to/.test(lower);
 
-  if (!Number.isFinite(height)) {
+  if (!Number.isFinite(height) || height === 0) {
     if (program === "table") {
       height = trip.h && trip.h < 42 ? trip.h : 30;
     } else if (program === "media") {
@@ -182,11 +195,30 @@ export function parseBrief(prompt: string): FittedSpec | null {
       } else {
         height = wantsUppers ? 84 : 34;
       }
-    } else if (trip.h && trip.h < 40 && !trip.d) {
+    } else if (
+      (program === "closet" || program === "wardrobe" || program === "pantry") &&
+      trip.h &&
+      trip.h < 40 &&
+      !trip.d
+    ) {
       depth = trip.h;
       height = 84;
     } else {
-      height = trip.h ?? 84;
+      height =
+        (unlabeledWd ? undefined : trip.h) ??
+        (/headboard/.test(lower)
+          ? 48
+          : /nightstand|dresser/.test(lower)
+            ? 24
+            : /island/.test(lower)
+              ? 36
+              : /crate/.test(lower)
+                ? 30
+                : /rack|shelf/.test(lower)
+                  ? 18
+                  : program === "storage"
+                    ? 30
+                    : 84);
     }
   }
   if (!Number.isFinite(depth)) {
@@ -202,7 +234,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 16
               : program === "table"
                 ? width
-                : 16);
+                : /headboard/.test(lower)
+                  ? 4
+                  : /shelf|rack/.test(lower)
+                    ? 12
+                    : 16);
   }
 
   let bays: number | undefined;
@@ -248,10 +284,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 4
           : program === "media"
             ? 2
-            : 0,
+            : /rack|shelf|crate/.test(lower)
+              ? 3
+              : 0,
   );
   const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
-  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk";
+  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|dresser|hutch/.test(lower);
   const doors =
     /door/.test(lower) ||
     program === "closet" ||
@@ -306,7 +344,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/nightstand/.test(lower) ? "Nightstand" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,

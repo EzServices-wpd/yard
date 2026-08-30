@@ -9,7 +9,7 @@ import { useYard } from "@/lib/yard/store";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
-  /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system|dresser|nightstand|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer/i;
+  /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system|dresser|nightstand|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat/i;
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;
@@ -71,7 +71,21 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     if (parsed.unit.shape) unit.shape = parsed.unit.shape;
     if (parsed.unit.legs) unit.legs = parsed.unit.legs;
   }
-  if (parsed.program === "closet" || parsed.program === "wardrobe") {
+  if (parsed.program === "storage" || parsed.program === "bookcase") {
+    program = parsed.program;
+    unit.width = parsed.unit.width;
+    unit.depth = parsed.unit.depth;
+    unit.height = parsed.unit.height;
+    opening.width = parsed.opening.width;
+    opening.depth = parsed.opening.depth;
+    opening.height = parsed.opening.height;
+    unit.doors = parsed.unit.doors;
+    if (parsed.unit.shelfCount != null) unit.shelfCount = parsed.unit.shelfCount;
+    if (parsed.unit.drawersPerBank != null) unit.drawersPerBank = parsed.unit.drawersPerBank;
+  } else if (
+    (parsed.program === "closet" || parsed.program === "wardrobe") &&
+    /closet|wardrobe|linen/.test(lower)
+  ) {
     program = parsed.program;
     unit.rod = !!parsed.unit.rod;
     if (!/\d+\s*shel/.test(lower) && parsed.unit.shelfCount != null) {

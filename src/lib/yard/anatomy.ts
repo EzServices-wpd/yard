@@ -19,7 +19,7 @@ export type AnatomyHit = {
 
 const OPENING = /window|rough opening|\bro\b|andersen/;
 const FITTED =
-  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system/;
+  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch/;
 
 const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
@@ -77,7 +77,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
 
   if (/plane|airplane|jet|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
-  if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay))
+  if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay) && !/hutch/.test(hay))
     return { anatomy: "carcase", kind: /castle|fort/.test(hay) ? "castle" : "house" };
   if (/arch|gateway|portal|arbor|arbour|pergola/.test(hay)) return { anatomy: "span", kind: "arch" };
   if (/wall|fence|palisade/.test(hay)) return { anatomy: "span", kind: "wall" };

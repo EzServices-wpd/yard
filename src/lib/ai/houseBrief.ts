@@ -122,6 +122,60 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
       unit: { width: 30, depth: 11, height: 48, shelfCount: 4, doors: false, centered: true },
     },
   },
+  {
+    prompt: "nightstand 18 wide 16 deep 24 tall",
+    brief: {
+      program: "storage",
+      name: 'Nightstand 18" × 24" × 16"',
+      opening: { width: 18, height: 24, depth: 16, kind: "room" },
+      unit: { width: 18, depth: 16, height: 24, drawersPerBank: 3, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "shoe rack 36 wide 12 deep 18 tall",
+    brief: {
+      program: "storage",
+      name: 'Shoe rack 36" × 18" × 12"',
+      opening: { width: 36, height: 18, depth: 12, kind: "room" },
+      unit: { width: 36, depth: 12, height: 18, shelfCount: 3, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "floating shelves 48 wide 8 deep, 3 shelves",
+    brief: {
+      program: "storage",
+      name: 'Shelves 48" × 28" × 8"',
+      opening: { width: 48, height: 28, depth: 8, kind: "room" },
+      unit: { width: 48, depth: 8, height: 28, shelfCount: 3, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "kitchen island 60x36x36",
+    brief: {
+      program: "storage",
+      name: 'Island 60" × 36" × 36"',
+      opening: { width: 60, height: 36, depth: 36, kind: "room" },
+      unit: { width: 60, depth: 36, height: 36, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "headboard 60 wide",
+    brief: {
+      program: "storage",
+      name: 'Headboard 60" × 48" × 4"',
+      opening: { width: 60, height: 48, depth: 4, kind: "room" },
+      unit: { width: 60, depth: 4, height: 48, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "dog crate 36x24x30",
+    brief: {
+      program: "storage",
+      name: 'Crate 36" × 30" × 24"',
+      opening: { width: 36, height: 30, depth: 24, kind: "room" },
+      unit: { width: 36, depth: 24, height: 30, doors: false, centered: true },
+    },
+  },
 ];
 
 const HOUSE_PROGRAMS = [
@@ -158,6 +212,8 @@ Rules:
 - Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
+- Nightstand / dresser: program "storage", drawers, doors false. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Kitchen island: program "storage", honor W×D×H, not a closet. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
+- Furniture triples without wide/deep/tall are W×D×H.
 - Prefer honest shop geometry over decoration. No markdown.
 
 Examples (training data — match this style exactly):
