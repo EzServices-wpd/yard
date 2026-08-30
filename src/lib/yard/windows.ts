@@ -97,6 +97,15 @@ export function matchStockWindows(roW: number, roH: number) {
   });
 }
 
+function windowSizeFromPrompt(prompt: string): { w: number; h: number } | null {
+  const m = prompt.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/i);
+  if (!m) return null;
+  const w = parseFloat(m[1]);
+  const h = parseFloat(m[2]);
+  if (w < 18 || h < 18) return null;
+  return { w, h };
+}
+
 export function pickWindow(prompt: string, roW?: number, roH?: number): StockWindow {
   const lower = prompt.toLowerCase();
   let pool = STOCK_WINDOWS;
@@ -110,10 +119,18 @@ export function pickWindow(prompt: string, roW?: number, roH?: number): StockWin
   else if (/awning/.test(lower)) pool = pool.filter((w) => w.style === "awning");
   else if (/double.?hung|hung/.test(lower)) pool = pool.filter((w) => w.style === "double_hung");
   if (!pool.length) pool = STOCK_WINDOWS;
-  if (roW && roH) {
-    const hit = pool.find((w) => w.roW === roW && w.roH === roH) ?? pool.find((w) => w.callW === roW && w.callH === roH);
+  const typed = windowSizeFromPrompt(prompt);
+  const wantW = typed?.w ?? roW;
+  const wantH = typed?.h ?? roH;
+  if (wantW && wantH) {
+    const hit =
+      pool.find((w) => w.roW === wantW && w.roH === wantH) ??
+      pool.find((w) => w.callW === wantW && w.callH === wantH);
     if (hit) return hit;
-    return [...pool].sort((a, b) => Math.abs(a.roW - roW) + Math.abs(a.roH - roH) - (Math.abs(b.roW - roW) + Math.abs(b.roH - roH)))[0];
+    return [...pool].sort(
+      (a, b) =>
+        Math.abs(a.roW - wantW) + Math.abs(a.roH - wantH) - (Math.abs(b.roW - wantW) + Math.abs(b.roH - wantH)),
+    )[0];
   }
   return pool[0];
 }

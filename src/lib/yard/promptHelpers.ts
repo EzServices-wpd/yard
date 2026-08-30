@@ -68,9 +68,11 @@ export function parseSize(lower: string): { height: number; width: number; depth
 }
 
 function stripLumberStock(s: string): string {
-  return s
-    .replace(/\b\d+\s*[x×]\s*\d+(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi, " ")
-    .replace(/\b(?:1x4|2x4|1x6|2x6|4x4|2x8|1x2)\b/gi, " ");
+  // Only eat lumber nominals (2x4, 2x4x8). Do not delete 36x48 windows / 60x30 desks.
+  return s.replace(
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    " ",
+  );
 }
 
 function isLumberPair(a: number, b: number, c?: number): boolean {
