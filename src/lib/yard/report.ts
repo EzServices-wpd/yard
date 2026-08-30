@@ -1,7 +1,6 @@
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
-import { framingNotes } from "./space";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom } from "./listings";
 import { binderBom, effectiveJoin } from "./joints";
@@ -169,12 +168,47 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   const { width, height, depth } = project.overall;
   if (width < 12 || height < 12 || depth < 8) {
     issues.push({
-      id: "small",
-      severity: "warn" as never,
+      severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
-    } as FeasibilityIssue);
+    });
   }
   return issues;
+}
+
+function packPlan(
+  project: YardProject,
+  issues: FeasibilityIssue[],
+  summary: string,
+  cutList: CutLine[],
+  bom: BuildPlan["bom"],
+  instructions: AssemblyStep[],
+  pieces: number,
+  cost: number,
+  partsKind: "cut" | "whole" = "cut",
+): BuildPlan {
+  return {
+    feasibility: {
+      status: issues.some((i) => i.severity === "critical")
+        ? "critical"
+        : issues.some((i) => i.severity === "warning")
+          ? "warnings"
+          : "ok",
+      summary,
+      issues,
+    },
+    cutList,
+    bom,
+    instructions,
+    totals: {
+      pieces,
+      estCostUsd: cost,
+      packs: bom.reduce((s, b) => s + b.quantity, 0),
+    },
+    effort: effortLabel(project, pieces),
+    generatedAt: new Date().toISOString(),
+    render: project.render,
+    partsKind,
+  };
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
@@ -182,40 +216,44 @@ export function buildPlan(project: YardProject): BuildPlan {
     const cutList = stampLabels(windowCuts(project));
     const bom = decorateBom(windowBom(project));
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
-    return {
-      id: `plan-${project.id}`,
-      projectId: project.id,
-      feasibility: windowIssues(project),
-      summary: {
-        summary: `${cutList.reduce((s, c) => s + c.quantity, 0)} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, 0)} · ~$${cost.toFixed(0)}`,
-        message: `${project.name} — rough opening package.`,
-      },
+    const issues = windowIssues(project);
+    const pieces = cutList.reduce((s, c) => s + c.quantity, 0);
+    return packPlan(
+      project,
+      issues,
+      `${pieces} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, 0)} · ~$${cost.toFixed(0)}`,
       cutList,
       bom,
-      instructions: windowSteps(project),
-      nest: null,
-    } as BuildPlan;
+      windowSteps(project),
+      pieces,
+      cost,
+    );
   }
 
   if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
-    const structural = cutList.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name));
-    const nest = structural.length ? nestCutList(structural) : null;
-    return {
-      id: `plan-${project.id}`,
-      projectId: project.id,
-      feasibility: [...closetIssues(project), ...loadIssues(project)],
-      summary: {
-        summary: `${project.panels.length} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, project.panels.length)} · ~$${cost.toFixed(0)}`,
+    const issues: FeasibilityIssue[] = [
+      {
+        severity: "info",
         message: `${project.name} — ${project.fitted?.program ?? "closet"}.`,
+        suggestion: "Measure is live. Change W × H × D to refit.",
       },
+      ...closetIssues(project),
+      ...loadIssues(project),
+    ];
+    const pieces = project.panels.length;
+    return packPlan(
+      project,
+      issues,
+      `${pieces} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(0)}`,
       cutList,
       bom,
-      instructions: uniqueSteps(project),
-      nest,
-    } as BuildPlan;
+      uniqueSteps(project),
+      pieces,
+      cost,
+    );
   }
 
   const item = getCatalogItem(project.primaryMaterialId);
@@ -226,30 +264,45 @@ export function buildPlan(project: YardProject): BuildPlan {
     ...binderBom(project),
   ]);
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
-  return {
-    id: `plan-${project.id}`,
-    projectId: project.id,
-    feasibility: framingNotes(project),
-    summary: {
-      summary: `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
-      message: project.name,
-    },
-    cutList: [],
+  const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
+  const issues = loadIssues(project);
+  if (pieces === 0) {
+    return packPlan(
+      project,
+      [{ severity: "critical", message: "Empty structure", suggestion: "Generate a thing first." }],
+      "Nothing on the bench yet.",
+      [],
+      [],
+      [],
+      0,
+      0,
+    );
+  }
+  return packPlan(
+    project,
+    issues,
+    `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
+    [],
     bom,
-    instructions: uniqueSteps(project),
-    nest: null,
-  } as BuildPlan;
+    uniqueSteps(project),
+    pieces,
+    cost,
+    whole ? "whole" : "cut",
+  );
 }
 
 export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
   return [
     `# ${project.name}`,
-    (plan as { summary?: { summary: string } }).summary?.summary ?? "",
+    plan.feasibility.summary,
     "",
     "## Cut list",
     ...plan.cutList.map((c) => `- ${c.label ?? ""} ${c.quantity}x ${c.name} ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`),
     "",
     "## Buy",
     ...plan.bom.map((b) => `- ${b.quantity} ${b.unit} ${b.name}`),
+    "",
+    "## Build",
+    ...plan.instructions.map((s) => `${s.step}. ${s.title} — ${s.description}`),
   ].join("\n");
 }
