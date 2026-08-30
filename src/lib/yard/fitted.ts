@@ -454,9 +454,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const cubbyN = u.cubbies ?? 0;
   if (cubbyN >= 2 && !hasKnee) {
+    // Interior clear: top and bottom already take P each.
+    const cubbyH = Math.max(P, H - 2 * P);
     for (let i = 1; i < cubbyN; i++) {
       const x = x0 + (W * i) / cubbyN - P / 2;
-      panels.push(panel("divider", `Cubby divider ${i}`, x, 0, 0, P, H, D));
+      panels.push(panel("divider", `Cubby divider ${i}`, x, P, 0, P, cubbyH, D));
     }
   }
 
