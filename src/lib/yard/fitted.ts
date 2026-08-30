@@ -418,6 +418,36 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildTable(spec, prompt);
   }
 
+  const headboard = /headboard/.test(prompt.toLowerCase());
+  if (headboard) {
+    const slabD = P;
+    const slabH = Math.max(14, H);
+    panels.push(panel("back", "Headboard", x0, 0, 0, W, slabH, slabD));
+    return {
+      id: createId("proj"),
+      name: `Headboard ${W}" × ${slabH}" × ${slabD}"`,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: slabH, depth: slabD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `One ${W}" × ${slabH}" headboard from ¾" plywood. No box — it sits behind the mattress.`,
+        "Hang on a french cleat or lag into studs. Guidance only.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: slabH, depth: slabD },
+      fitted: { ...spec, unit: { ...u, height: slabH, depth: slabD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Headboard ${W}" × ${slabH}" × ${slabD}"` },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   const coatRack = /coat/.test(prompt.toLowerCase()) && /rack/.test(prompt.toLowerCase()) && !/shoe/.test(prompt.toLowerCase());
   if (coatRack) {
     const shelfD = Math.max(6, Math.min(D, 10));

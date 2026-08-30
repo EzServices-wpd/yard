@@ -189,7 +189,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           ? "Tapcon 3/16 x 2-3/4"
           : "GRK RSS #9 x 3-1/8",
       estimatedCost: 14,
-      notes: "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type.",
+      notes: coatRack
+        ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
+        : project.panels.some((p) => p.type === "upright")
+          ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
+          : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
     });
   }
   return decorateBom(bom);
