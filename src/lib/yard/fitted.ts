@@ -214,8 +214,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 36
               : /crate/.test(lower)
                 ? 30
-                : /rack|shelf/.test(lower)
-                  ? 18
+                : /coat/.test(lower) && /rack/.test(lower)
+                  ? 6
+                  : /shoe/.test(lower) && /rack/.test(lower)
+                    ? 18
+                    : /shelf/.test(lower)
+                      ? 18
                   : program === "storage"
                     ? 30
                     : 84);
@@ -236,9 +240,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? width
                 : /headboard/.test(lower)
                   ? 4
-                  : /shelf|rack/.test(lower)
-                    ? 12
-                    : 16);
+                  : /coat/.test(lower) && /rack/.test(lower)
+                    ? 8
+                    : /shelf|rack/.test(lower)
+                      ? 12
+                      : 16);
   }
 
   let bays: number | undefined;
@@ -284,9 +290,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 4
           : program === "media"
             ? 2
-            : /rack|shelf|crate/.test(lower)
+            : /shoe/.test(lower) && /rack/.test(lower)
               ? 3
-              : 0,
+              : /crate/.test(lower) || (/shelf/.test(lower) && !/coat/.test(lower))
+                ? 3
+                : 0,
   );
   const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|dresser|hutch/.test(lower);
@@ -344,7 +352,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/nightstand/.test(lower) ? "Nightstand" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/nightstand/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -408,6 +416,43 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (spec.program === "table") {
     return buildTable(spec, prompt);
+  }
+
+  const coatRack = /coat/.test(prompt.toLowerCase()) && /rack/.test(prompt.toLowerCase()) && !/shoe/.test(prompt.toLowerCase());
+  if (coatRack) {
+    const shelfD = Math.max(6, Math.min(D, 10));
+    const standing = H >= 36;
+    const railH = standing ? Math.max(24, H - P) : 5.5;
+    panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, W, railH, P));
+    panels.push(panel("top", "Hat shelf", x0, railH, 0, W, P, shelfD));
+    const stackH = railH + P;
+    const hooks = Math.max(3, Math.min(8, Math.round(W / 6)));
+    return {
+      id: createId("proj"),
+      name: `Coat rack ${W}" × ${stackH}" × ${shelfD}"`,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: stackH, depth: shelfD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        standing
+          ? `Wall-mounted coat board: ${W}" × ${stackH}" with an ${shelfD}" hat shelf. ¾" plywood.`
+          : `Wall-mounted coat rack: ${W}" peg rail with an ${shelfD}" hat shelf. ¾" plywood.`,
+        `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
+        "Guidance only — not a cubby. No leftover shelves.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: stackH, depth: shelfD },
+      fitted: { ...spec, unit: { ...u, height: stackH, depth: shelfD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Coat rack ${W}" × ${stackH}" × ${shelfD}"` },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
   }
 
   const floating = /floating|wall-?mounted/.test(prompt.toLowerCase()) && /shel/.test(prompt.toLowerCase());

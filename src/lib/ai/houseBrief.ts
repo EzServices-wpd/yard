@@ -168,6 +168,15 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     },
   },
   {
+    prompt: "coat rack",
+    brief: {
+      program: "storage",
+      name: 'Coat rack 36" × 6.25" × 8"',
+      opening: { width: 36, height: 6.25, depth: 8, kind: "room" },
+      unit: { width: 36, depth: 8, height: 6.25, doors: false, centered: true },
+    },
+  },
+  {
     prompt: "dog crate 36x24x30",
     brief: {
       program: "storage",
@@ -212,7 +221,7 @@ Rules:
 - Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
-- Nightstand / dresser: program "storage", drawers, doors false. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Kitchen island: program "storage", honor W×D×H, not a closet. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
+- Nightstand / dresser: program "storage", drawers, doors false. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, not a closet. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
 - Furniture triples without wide/deep/tall are W×D×H.
 - Prefer honest shop geometry over decoration. No markdown.
 

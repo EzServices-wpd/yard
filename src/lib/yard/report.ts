@@ -140,8 +140,23 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     estimatedCost: 8,
     notes: `${screws} screws estimated at joints.`,
   });
+  const coatRack =
+    /coat/i.test(project.name) ||
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  if (coatRack) {
+    const hooks = Math.max(3, Math.min(8, Math.round(project.overall.width / 6)));
+    bom.push({
+      name: "Coat hooks",
+      quantity: 1,
+      unit: "pack",
+      catalogId: "coat-hooks",
+      searchQuery: "coat hooks wall mount 6 pack",
+      estimatedCost: 12.98,
+      notes: `${hooks} hooks, 6" on center into the peg rail.`,
+    });
+  }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
-  if (shelfCount > 0) {
+  if (shelfCount > 0 && !coatRack) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
@@ -183,7 +198,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
 function closetIssues(project: YardProject): FeasibilityIssue[] {
   const issues: FeasibilityIssue[] = [];
   const { width, height, depth } = project.overall;
-  if (width < 12 || height < 12 || depth < 8) {
+  const coatRack =
+    /coat/i.test(project.name) ||
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  if (!coatRack && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",

@@ -174,6 +174,45 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const steps: AssemblyStep[] = [];
   let n = 1;
 
+  const coatRack =
+    /coat/i.test(project.name) ||
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()) && !/shoe/.test((project.prompt ?? "").toLowerCase()));
+  if (coatRack && !uprights.length) {
+    const hooks = Math.max(3, Math.min(8, Math.round(W / 6)));
+    const rail = backs[0] ?? panels[0];
+    const shelf = of("top")[0];
+    return [
+      {
+        step: 1,
+        title: "Cut the peg rail and hat shelf",
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 2,
+        title: "Glue the hat shelf on the rail",
+        description: `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
+        tips: "Predrill so the ply does not split. Wipe squeeze-out.",
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: `Screw ${hooks} coat hooks`,
+        description: `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
+        tips: "A cheap 6-pack of wall coat hooks is the whole hardware kit besides screws.",
+        partsUsed: names(backs.length ? backs : panels),
+      },
+      {
+        step: 4,
+        title: "Hang it on studs",
+        description: `Find two studs. Predrill the rail. Drive 3" structural screws through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
+        tips: "Guidance only — hit a stud. Confirm the wall.",
+        partsUsed: names(backs.length ? backs : panels),
+      },
+    ];
+  }
+
   if (pocket) {
     steps.push({
       step: n++,
