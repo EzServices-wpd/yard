@@ -227,7 +227,20 @@ export const useYard = create<YardState>((set, get) => ({
   setBuildScale: (v) => set({ buildScale: v }),
   setCutMode: (v) => set({ cutMode: v }),
   makePlan: () => {
+    const prev = get().plan;
     const plan = buildPlan(get().project);
+    if (prev?.instructions?.length) {
+      const photos = new Map(
+        prev.instructions
+          .filter((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image"))
+          .map((s) => [s.step, s.imageDataUrl as string]),
+      );
+      if (photos.size) {
+        plan.instructions = plan.instructions.map((s) =>
+          photos.has(s.step) ? { ...s, imageDataUrl: photos.get(s.step) } : s,
+        );
+      }
+    }
     set({ plan });
     return plan;
   },

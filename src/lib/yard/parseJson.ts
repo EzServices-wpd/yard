@@ -15,14 +15,14 @@ export function parseModelJson(text: string): Record<string, unknown> | null {
     try {
       return JSON.parse(slice.slice(0, end + 1)) as Record<string, unknown>;
     } catch {
-      /* salvage strokes */
+      /* salvage a cut-off array */
     }
   }
-  return salvageStrokes(slice);
+  return salvageKey(slice, "steps") ?? salvageKey(slice, "strokes");
 }
 
-function salvageStrokes(slice: string): Record<string, unknown> | null {
-  const mark = slice.match(/"strokes"\s*:\s*\[/);
+function salvageKey(slice: string, key: "steps" | "strokes"): Record<string, unknown> | null {
+  const mark = slice.match(key === "steps" ? /"steps"\s*:\s*\[/ : /"strokes"\s*:\s*\[/);
   if (!mark || mark.index == null) return null;
   const arrStart = slice.indexOf("[", mark.index);
   if (arrStart < 0) return null;
@@ -36,8 +36,8 @@ function salvageStrokes(slice: string): Record<string, unknown> | null {
       if (depth === 0) lastObj = i;
     } else if (c === "]" && depth === 0 && i > arrStart) {
       try {
-        const strokes = JSON.parse(slice.slice(arrStart, i + 1));
-        return wrap(strokes);
+        const arr = JSON.parse(slice.slice(arrStart, i + 1));
+        return wrap(key, arr);
       } catch {
         break;
       }
@@ -45,13 +45,14 @@ function salvageStrokes(slice: string): Record<string, unknown> | null {
   }
   if (lastObj < 0) return null;
   try {
-    const strokes = JSON.parse(`${slice.slice(arrStart, lastObj + 1)}]`);
-    return wrap(strokes);
+    const arr = JSON.parse(`${slice.slice(arrStart, lastObj + 1)}]`);
+    return wrap(key, arr);
   } catch {
     return null;
   }
 }
 
-function wrap(strokes: unknown): Record<string, unknown> {
-  return { form: { strokes } };
+function wrap(key: "steps" | "strokes", arr: unknown): Record<string, unknown> {
+  if (key === "steps") return { steps: arr };
+  return { form: { strokes: arr } };
 }
