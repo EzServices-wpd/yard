@@ -165,7 +165,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
       : pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*round/i, width);
     width = dia;
     depth = dia;
-    if (!Number.isFinite(height)) height = trip.h && trip.h < 42 ? trip.h : 30;
+    if (!Number.isFinite(height)) {
+      height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
+    }
   }
 
   if (isSystem && trip.w && trip.h && !Number.isFinite(pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN))) {
@@ -188,7 +190,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   if (!Number.isFinite(height) || height === 0) {
     if (program === "table") {
-      height = trip.h && trip.h < 42 ? trip.h : 30;
+      height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
     } else if (program === "media") {
       if (trip.h && trip.d) height = trip.h;
       else height = 22;
@@ -369,7 +371,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,

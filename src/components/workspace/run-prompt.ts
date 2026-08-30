@@ -70,6 +70,10 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     unit.doors = false;
     if (parsed.unit.shape) unit.shape = parsed.unit.shape;
     if (parsed.unit.legs) unit.legs = parsed.unit.legs;
+    if (/coffee/.test(lower) && !saidTall) {
+      unit.height = parsed.unit.height;
+      opening.height = parsed.opening.height;
+    }
   }
   if (parsed.program === "storage" || parsed.program === "bookcase") {
     program = parsed.program;
@@ -93,7 +97,9 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     }
   }
 
-  const label = /coat/.test(lower) && /rack/.test(lower)
+  const label = /coffee/.test(lower) && /table/.test(lower)
+    ? "Coffee table"
+    : /coat/.test(lower) && /rack/.test(lower)
     ? "Coat rack"
     : /dresser/.test(lower)
       ? "Dresser"
@@ -112,7 +118,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidRound &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !/dresser/.test(lower) &&
-    !/nightstand|bedside/.test(lower);
+    !/nightstand|bedside/.test(lower) &&
+    !(/coffee/.test(lower) && /table/.test(lower));
   return {
     ...brief,
     program,

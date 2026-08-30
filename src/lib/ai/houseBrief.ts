@@ -78,6 +78,15 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     },
   },
   {
+    prompt: "coffee table 48 round",
+    brief: {
+      program: "table",
+      name: 'Coffee table 48" × 18" × 48"',
+      opening: { width: 48, height: 18, depth: 48, kind: "room" },
+      unit: { width: 48, depth: 48, height: 18, legs: 4, shape: "round", doors: false, centered: true },
+    },
+  },
+  {
     prompt: "table 40in round with 3 legs",
     brief: {
       program: "table",
@@ -236,7 +245,7 @@ Rules:
 - All dimensions in inches. opening and unit share width/height/depth.
 - opening.kind: "alcove" | "room" | "pocket" | "window".
 - unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"), bays (2-6 for wide closet systems).
-- Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
+- Tables: program "table", legs 3 or 4, shape round when asked; dining height defaults 30. Coffee table: height ~18, not dining 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
 - Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
