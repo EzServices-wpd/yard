@@ -211,7 +211,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       step: n++,
       title: "Stand the carcase (the main box)",
       description: `Lay the two uprights on edge. ${uDesc}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${box || "Back, top, and bottom as labeled."} Predrill near the ends so the ply does not split.`,
-      tips: "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box.",
+      tips: doors.length
+        ? "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box."
+        : "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
       partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
     });
   }
