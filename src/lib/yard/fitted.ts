@@ -208,8 +208,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
         (unlabeledWd ? undefined : trip.h) ??
         (/headboard/.test(lower)
           ? 48
-          : /nightstand|dresser/.test(lower)
-            ? 24
+          : /dresser/.test(lower)
+            ? 36
+            : /nightstand/.test(lower)
+              ? 24
             : /island/.test(lower)
               ? 36
               : /crate/.test(lower)
@@ -242,9 +244,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 4
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
-                    : /shelf|rack/.test(lower)
-                      ? 12
-                      : 16);
+                    : /dresser/.test(lower)
+                      ? 18
+                      : /shelf|rack/.test(lower)
+                        ? 12
+                        : 16);
   }
 
   let bays: number | undefined;
@@ -352,7 +356,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/nightstand/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/dresser/.test(lower) ? "Dresser" : /nightstand/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -611,7 +615,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const n = u.drawersPerBank;
     const dh = (H - 4) / n;
     for (let i = 0; i < n; i++) {
-      panels.push(panel("drawer", `Drawer ${i + 1}`, x0 + P, 3.5 + i * dh, 0.15, W - P * 2, dh - 0.12, D - 0.3));
+      panels.push(panel("drawer", `Drawer ${i + 1}`, x0 + P + 0.5, 3.5 + i * dh, 0.15, W - P * 2 - 1, dh - 0.12, D - 0.3));
     }
   }
 

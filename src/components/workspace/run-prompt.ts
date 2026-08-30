@@ -93,13 +93,23 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     }
   }
 
-  const name = `${/coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : program[0].toUpperCase() + program.slice(1)} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  const label = /coat/.test(lower) && /rack/.test(lower)
+    ? "Coat rack"
+    : /dresser/.test(lower)
+      ? "Dresser"
+      : /island/.test(lower)
+        ? "Island"
+        : /headboard/.test(lower)
+          ? "Headboard"
+          : program[0].toUpperCase() + program.slice(1);
+  const name = `${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   const keepBriefName =
     brief.name &&
     !saidDeep &&
     !saidWide &&
     !saidRound &&
-    !(/coat/.test(lower) && /rack/.test(lower));
+    !(/coat/.test(lower) && /rack/.test(lower)) &&
+    !/dresser/.test(lower);
   return {
     ...brief,
     program,

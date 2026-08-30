@@ -82,7 +82,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   const screws = Math.max(16, project.panels.length * 6);
   const isTable = project.fitted?.program === "table";
-  const legCuts = cuts.filter((c) => /^leg$/i.test(c.name) || (c.thicknessIn ?? 0) >= 2);
+  const legCuts = cuts.filter((c) => /^leg$/i.test(c.name));
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
   );
@@ -148,6 +148,19 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,
       notes: `${screws} screws estimated at joints.`,
+    });
+  }
+  const drawers = project.panels.filter((panel) => panel.type === "drawer");
+  if (drawers.length) {
+    const slide = slideInches(project.overall.depth);
+    bom.push({
+      name: `${slide}" side-mount drawer slides`,
+      quantity: drawers.length,
+      unit: drawers.length === 1 ? "pair" : "pairs",
+      catalogId: "drawer-slides-16",
+      searchQuery: `${slide} inch side mount drawer slides`,
+      estimatedCost: 14.98 * drawers.length,
+      notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${project.overall.depth}" carcase.`,
     });
   }
   if (coatRack) {
