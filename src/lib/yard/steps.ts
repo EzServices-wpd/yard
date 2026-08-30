@@ -298,6 +298,62 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const nightstand =
+    /nightstand|bedside/i.test(project.name) ||
+    /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+  if (nightstand) {
+    return [
+      {
+        step: 1,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. Freestanding nightstand ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. One drawer over an open shelf — not a mini dresser. Mark the rectangle on the floor. ${panels.length} parts on this list.`,
+        tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+        tips: tool.tip,
+        partsUsed: ["*"],
+      },
+      {
+        step: 3,
+        title: "Stand the carcase (the main box)",
+        description: `${uprights.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${[...backs, ...bottoms, ...of("top")].map(cutLine).join("; ")}. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+      },
+      {
+        step: 4,
+        title: "Glue in the shelf",
+        description: `${shelves.map(cutLine).join("; ") || "Shelf."} This shelf is the floor of the drawer bay and the top of the open cubby. Glue and screw through the uprights into the shelf. Square it. No pins — it is fixed.`,
+        partsUsed: names([...uprights, ...shelves]),
+      },
+      {
+        step: 5,
+        title: "Build 1 drawer box + front",
+        description: `${drawers.map(cutLine).join("; ") || "Drawer."} Build the box to the cut list. The drawer front is the face people see — edge-band the plywood edge (thin veneer strip over the raw edge). One cup pull centered on the front.`,
+        tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
+        partsUsed: names(drawers),
+      },
+      {
+        step: 6,
+        title: `Hang the drawer on ${slide}" slides`,
+        description: `One pair of ${slide}" side-mount slides (metal tracks that screw to the sides of the box and the cabinet). Hang the slides on the uprights first, then set the box. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+        tips: `A 16" box does not take an 18" slide. 1 pair of ${slide}" slides.`,
+        partsUsed: names(drawers),
+      },
+      {
+        step: 7,
+        title: "Level it",
+        description: "This nightstand sits on the floor. The back is already on it so it cannot rack (twist). Shim the feet if the floor is out — do not twist the carcase (main box).",
+        tips: "Guidance only — confirm the bedside height before you cut. Not stamped engineering.",
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...drawers]),
+      },
+    ];
+  }
+
   if (pocket) {
     steps.push({
       step: n++,
@@ -407,7 +463,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Hang ${drawers.length} drawers on ${slide}" slides`,
-      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the dividers first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${dividers.length ? "dividers" : "uprights"} first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
       tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
       partsUsed: names(drawers),
     });

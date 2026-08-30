@@ -138,6 +138,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     /coat/i.test(project.name) ||
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
+  const nightstand =
+    /nightstand|bedside/i.test(project.name) ||
+    /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
   // Single-slab headboard has no carcase joints — skip join screws.
   if (!headboard) {
     bom.push({
@@ -162,6 +165,14 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       estimatedCost: 14.98 * drawers.length,
       notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${project.overall.depth}" carcase.`,
     });
+    bom.push({
+      name: "Cup pulls",
+      quantity: 1,
+      unit: "pack",
+      searchQuery: "3 inch cup pulls cabinet drawer",
+      estimatedCost: 12.98,
+      notes: `One cup pull centered on each drawer front (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
+    });
   }
   if (coatRack) {
     const hooks = Math.max(3, Math.min(8, Math.round(project.overall.width / 6)));
@@ -176,7 +187,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
-  if (shelfCount > 0 && !coatRack && !island) {
+  if (shelfCount > 0 && !coatRack && !island && !nightstand) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
@@ -308,6 +319,9 @@ export function buildPlan(project: YardProject): BuildPlan {
             ? "headboard"
             : /coat/i.test(project.name)
               ? "coat rack"
+              : /nightstand|bedside/i.test(project.name) ||
+                  /nightstand|bedside/.test((project.prompt ?? "").toLowerCase())
+                ? "nightstand"
               : (project.fitted?.program ?? "closet")
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",

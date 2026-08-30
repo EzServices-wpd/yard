@@ -132,12 +132,21 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     },
   },
   {
+    prompt: "nightstand 20 wide",
+    brief: {
+      program: "storage",
+      name: 'Nightstand 20" × 24" × 16"',
+      opening: { width: 20, height: 24, depth: 16, kind: "room" },
+      unit: { width: 20, depth: 16, height: 24, drawersPerBank: 1, shelfCount: 1, doors: false, centered: true },
+    },
+  },
+  {
     prompt: "nightstand 18 wide 16 deep 24 tall",
     brief: {
       program: "storage",
       name: 'Nightstand 18" × 24" × 16"',
       opening: { width: 18, height: 24, depth: 16, kind: "room" },
-      unit: { width: 18, depth: 16, height: 24, drawersPerBank: 3, doors: false, centered: true },
+      unit: { width: 18, depth: 16, height: 24, drawersPerBank: 1, shelfCount: 1, doors: false, centered: true },
     },
   },
   {
@@ -230,7 +239,7 @@ Rules:
 - Tables: program "table", legs 3 or 4, shape round when asked; height defaults 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
-- Nightstand: program "storage", ~24 tall, drawers, doors false. Dresser: program "storage", ~36 tall × ~18 deep, drawers, not a 24" nightstand and not a closet. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
+- Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Never turn a rack, crate, shelf, or island into a closet or a wire animal.
 - Furniture triples without wide/deep/tall are W×D×H.
 - Prefer honest shop geometry over decoration. No markdown.
 

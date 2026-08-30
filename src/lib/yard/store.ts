@@ -213,7 +213,7 @@ export const useYard = create<YardState>((set, get) => ({
                 width: String(next.fitted.unit.width),
                 height: String(next.fitted.unit.height),
                 depth: String(next.fitted.unit.depth),
-                kind: next.fitted.opening.kind === "alcove" ? "closet_niche" : "shelving_alcove",
+                kind: next.fitted.opening.kind === "alcove" ? "closet_niche" : "general_volume",
               }
             : get().measure,
     });

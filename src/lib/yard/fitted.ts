@@ -29,7 +29,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|shoe|coat/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|shoe|coat/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -44,7 +44,7 @@ export function looksLikeFitted(prompt: string) {
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -56,6 +56,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
+  if (/nightstand|bedside/.test(lower)) return "storage";
   if (/\btable\b/.test(lower) && !/work table|console table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
   if (/\bmudroom\b|window seat/.test(lower)) return "bench";
@@ -131,7 +132,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!Number.isFinite(width)) {
     width =
       trip.w ??
-      (program === "desk" ? 48 : program === "vanity" ? 36 : program === "table" ? 40 : program === "media" ? 60 : 36);
+      (program === "desk"
+        ? 48
+        : program === "vanity"
+          ? 36
+          : program === "table"
+            ? 40
+            : program === "media"
+              ? 60
+              : /nightstand|bedside/.test(lower)
+                ? 20
+                : 36);
   }
 
   const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
@@ -210,7 +221,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 48
           : /dresser/.test(lower)
             ? 36
-            : /nightstand/.test(lower)
+            : /nightstand|bedside/.test(lower)
               ? 24
             : /island/.test(lower)
               ? 36
@@ -298,10 +309,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 3
               : /crate/.test(lower) || (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
-                : 0,
+                : /nightstand|bedside/.test(lower)
+                  ? 1
+                  : 0,
   );
   const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
-  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|dresser|hutch/.test(lower);
+  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
     /door/.test(lower) ||
     program === "closet" ||
@@ -331,7 +344,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     upperStart,
     shelfCount: shelfCount || undefined,
     cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
-    drawersPerBank: drawers ? 3 : undefined,
+    drawersPerBank: drawers ? (/nightstand|bedside/.test(lower) ? 1 : 3) : undefined,
     doors: doorsFinal,
     mirror,
     rod,
@@ -356,7 +369,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/dresser/.test(lower) ? "Dresser" : /nightstand/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -418,7 +431,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const x0 = -W / 2;
   const panels: Panel[] = [];
 
-  if (spec.program === "table") {
+  const nightstand = /nightstand|bedside/.test(prompt.toLowerCase());
+  if (spec.program === "table" && !nightstand) {
     return buildTable(spec, prompt);
   }
 
@@ -563,6 +577,51 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         load: "medium",
         units: "inches",
         installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+
+  if (nightstand) {
+    const drawerH = Math.min(6.5, Math.max(4.5, Math.round(H * 0.28 * 8) / 8));
+    const shelfY = Math.max(P + 6, H - P - drawerH - P);
+    const drawerY = shelfY + P;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
+    panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
+    panels.push(panel("shelf", "Shelf", x0 + P, shelfY, 0.1, W - P * 2, P, D - 0.2));
+    panels.push(
+      panel("drawer", "Drawer", x0 + P + 0.5, drawerY, 0.15, W - P * 2 - 1, drawerH - 0.12, D - 0.3),
+    );
+    const name = `Nightstand ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. One ${drawerH}" drawer over an open shelf. ¾" plywood, ¼" back. Not a mini dresser.`,
+        `The drawer is 1" narrower than the bay so a pair of side-mount slides fit. The shelf is glued — it is the floor of the drawer bay.`,
+        "Guidance only — level it on the floor. Confirm the bedside height.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: { ...u, height: H, depth: D, doors: false, shelfCount: 1, drawersPerBank: 1 },
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "freestanding",
         wallType: "wood_stud",
       },
     };
