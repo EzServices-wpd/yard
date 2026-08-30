@@ -15,10 +15,10 @@ export function parseSize(lower: string): { height: number; width: number; depth
   const isArch = /arch|arbor|arbour|pergola|gateway|portal/.test(lower);
   const dimText = stripLumberStock(lower);
 
-  const ftTall = dimText.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\s*(?:tall|high|height|tower)\b/);
-  const inTall = dimText.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\s*(?:tall|high)\b/);
-  const ftAny = dimText.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
-  const inAny = dimText.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
+  const ftTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|foot|feet)\s*(?:tall|high|height|tower)\b/);
+  const inTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:in|inch|inches)\s*(?:tall|high)\b/);
+  const ftAny = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|foot|feet)\b/);
+  const inAny = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:in|inch|inches)\b/);
 
   if (ftTall) height = parseFloat(ftTall[1]) * 12;
   else if (inTall) height = parseFloat(inTall[1]);
@@ -83,7 +83,8 @@ function isLumberPair(a: number, b: number, c?: number): boolean {
 
 export function hasExplicitSize(prompt: string): boolean {
   const lower = prompt.toLowerCase();
-  if (/\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
+  if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
+  if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(stripLumberStock(lower))) return true;
   const pair = stripLumberStock(lower).match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]))) return true;
