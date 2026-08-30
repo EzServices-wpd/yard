@@ -178,6 +178,18 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "lumber-2x2-8",
+    retailer: "homedepot",
+    title: "2x2x8 lumber (1-1/2\" actual)",
+    href: "https://www.homedepot.com/s/2x2x8%20lumber",
+    packQty: 1,
+    packPrice: 4.5,
+    lengthIn: 96,
+    widthIn: 1.5,
+    thickIn: 1.5,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "plywood-3-4-4x8",
     retailer: "homedepot",
     title: "3/4\" x 4x8 Sande sanded plywood",
@@ -592,6 +604,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/paper towel/.test(hay)) return "paper-towel-roll";
   if (/straw/.test(hay)) return "straw-plastic";
   if (/2\s*[x×]\s*10/.test(hay)) return "lumber-2x10-8";
+  if (/2\s*[x×]\s*2|two by two/.test(hay)) return "lumber-2x2-8";
   if (/2\s*[x×]\s*8/.test(hay)) return "lumber-2x8-8";
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";

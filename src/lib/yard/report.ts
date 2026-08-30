@@ -114,6 +114,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       name: '2x2 (1-1/2" actual)',
       quantity: legQty,
       unit: legQty === 1 ? "pc" : "pcs",
+      catalogId: "lumber-2x2-8",
       searchQuery: "2x2x8 pine poplar",
       estimatedCost: 6.5 * legQty,
       notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
