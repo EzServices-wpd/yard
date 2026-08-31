@@ -290,6 +290,59 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+
+  const crate =
+    /crate/i.test(project.name) ||
+    /crate/.test((project.prompt ?? "").toLowerCase());
+  if (crate) {
+    const door = doors[0];
+    const floor = bottoms[0];
+    return [
+      {
+        step: 1,
+        title: "Confirm the kennel — do not cut yet",
+        description: `${project.name}. Freestanding wooden dog crate ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. The dog goes inside. Mark the rectangle on the floor. ${panels.length} parts on this list. No shelves.`,
+        tips: "This is a kennel with a door, not a bookcase. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the sides, floor, and back",
+        description: `${uprights.map(cutLine).join("; ")}. ${floor ? cutLine(floor) + "." : ""} ${backs.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws. Floor sits between the sides, tight to the back. Check both diagonals before the glue skins.`,
+        tips: "Predrill near the ends so the ply does not split. A square box is a crate; a parallelogram is not.",
+        partsUsed: names([...uprights, ...bottoms, ...backs]),
+      },
+      {
+        step: 4,
+        title: "Screw the top on",
+        description: `${of("top").map(cutLine).join("; ")}. Glue and screw down into both sides and the back. Edges flush.`,
+        tips: "Wipe squeeze-out. The top is structural — it keeps the sides from kicking out.",
+        partsUsed: names([...of("top"), ...uprights, ...backs]),
+      },
+      {
+        step: 5,
+        title: "Hang the door and latch it",
+        description: `${door ? cutLine(door) + "." : "Door."} Two 3" utility hinges on the left side of the door, into the left upright. A barrel bolt on the right, shooting into the right upright. The door sits above the floor and leaves a 1½" air gap at the top.`,
+        tips: "A crate without a latch is just a box. Test that the bolt catches before you call it done.",
+        partsUsed: names(doors),
+      },
+      {
+        step: 6,
+        title: "Drill air holes and set it down",
+        description: `Drill three 1½" holes, about 2" down from the top, on each side and the back — 4" apart. A wooden crate has to breathe. Set the kennel on the floor. No wall lag.`,
+        tips: "Guidance only — confirm the dog still has room to stand and turn. Not stamped engineering.",
+        partsUsed: names([...uprights, ...backs]),
+      },
+    ];
+  }
+
   const island =
     /island/i.test(project.name) ||
     /island/.test((project.prompt ?? "").toLowerCase());

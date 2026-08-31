@@ -138,6 +138,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     /coat/i.test(project.name) ||
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
+  const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
     /nightstand|bedside/i.test(project.name) ||
     /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
@@ -188,15 +189,34 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   const doors = project.panels.filter((panel) => panel.type === "door");
   if (doors.length) {
-    bom.push({
-      name: "Soft-close concealed cabinet hinges",
-      quantity: doors.length,
-      unit: doors.length === 1 ? "pair" : "pairs",
-      catalogId: "cabinet-hinges",
-      searchQuery: "soft close concealed cabinet hinges",
-      estimatedCost: 8.99 * doors.length,
-      notes: `Two hinges per door (${doors.length * 2} hinges / ${doors.length} pair${doors.length === 1 ? "" : "s"}).`,
-    });
+    if (crate) {
+      bom.push({
+        name: '3" utility hinges',
+        quantity: 1,
+        unit: "pair",
+        searchQuery: "3 inch utility hinges pair",
+        estimatedCost: 6.98,
+        notes: "Two hinges on the door, screwed into the left upright.",
+      });
+      bom.push({
+        name: "Barrel bolt latch",
+        quantity: 1,
+        unit: "pc",
+        searchQuery: "3 inch barrel bolt latch",
+        estimatedCost: 5.98,
+        notes: "Latch the door into the right upright so it stays shut.",
+      });
+    } else {
+      bom.push({
+        name: "Soft-close concealed cabinet hinges",
+        quantity: doors.length,
+        unit: doors.length === 1 ? "pair" : "pairs",
+        catalogId: "cabinet-hinges",
+        searchQuery: "soft close concealed cabinet hinges",
+        estimatedCost: 8.99 * doors.length,
+        notes: `Two hinges per door (${doors.length * 2} hinges / ${doors.length} pair${doors.length === 1 ? "" : "s"}).`,
+      });
+    }
   }
   const hangingRods = project.panels.filter(
     (panel) => panel.type === "rail" || /hanging rod/i.test(panel.name),
@@ -269,7 +289,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   const headboard =
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
-  if (!coatRack && !headboard && (width < 12 || height < 12 || depth < 8)) {
+  if (!coatRack && !headboard && !/crate/i.test(project.name) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -345,6 +365,8 @@ export function buildPlan(project: YardProject): BuildPlan {
             ? "headboard"
             : /coat/i.test(project.name)
               ? "coat rack"
+              : /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase())
+                ? "crate"
               : /nightstand|bedside/i.test(project.name) ||
                   /nightstand|bedside/.test((project.prompt ?? "").toLowerCase())
                 ? "nightstand"

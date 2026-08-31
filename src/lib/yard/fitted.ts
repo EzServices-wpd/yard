@@ -270,6 +270,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 18
                     : /dresser/.test(lower)
                       ? 18
+                      : /crate/.test(lower)
+                        ? 24
                       : /shelf|rack/.test(lower)
                         ? 12
                         : 16);
@@ -323,7 +325,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? 2
             : /shoe/.test(lower) && /rack/.test(lower)
               ? 3
-              : /crate/.test(lower) || (/shelf/.test(lower) && !/coat/.test(lower))
+              : /crate/.test(lower)
+                ? 0
+                : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
                   ? 1
@@ -333,6 +337,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
     /door/.test(lower) ||
+    /crate/.test(lower) ||
     program === "closet" ||
     program === "pantry" ||
     program === "wardrobe" ||
@@ -567,6 +572,49 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         load: "medium",
         units: "inches",
         installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+
+  const crate = /crate/.test(prompt.toLowerCase());
+  if (crate) {
+    const innerW = W - P * 2;
+    const doorGap = 1.5;
+    const doorH = Math.max(12, H - P - doorGap);
+    panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+    panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, D - P));
+    panels.push(panel("top", "Top", x0 + P, H - P, 0, innerW, P, D));
+    panels.push(panel("door", "Door", x0 + P + 0.06, P, D - P, innerW - 0.12, doorH, P));
+    const name = `Crate ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Wooden kennel the dog goes inside — floor, top, two sides, a back, and a hinged door. ¾" plywood. No shelves.`,
+        `The door is ${doorH}" tall, leaving a ${doorGap}" air gap at the top. Drill three 1½" holes near the top of each side and the back so it can breathe.`,
+        "Latch the door with a barrel bolt. Sits on the floor. Not a bookcase.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: { ...u, height: H, depth: D, doors: true, shelfCount: 0, drawersPerBank: undefined },
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "freestanding",
         wallType: "wood_stud",
       },
     };

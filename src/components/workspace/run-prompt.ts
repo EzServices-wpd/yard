@@ -118,6 +118,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
           ? "Island"
           : /headboard/.test(lower)
             ? "Headboard"
+            : /crate/.test(lower)
+              ? "Crate"
             : /range\s*hood|\bhood\b/.test(lower)
               ? "Range hood"
             : program[0].toUpperCase() + program.slice(1);
@@ -131,7 +133,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&
     !(/coffee/.test(lower) && /table/.test(lower)) &&
-    !/range\s*hood|\bhood\b/.test(lower);
+    !/range\s*hood|\bhood\b/.test(lower) &&
+    !/crate/.test(lower);
   return {
     ...brief,
     program,
