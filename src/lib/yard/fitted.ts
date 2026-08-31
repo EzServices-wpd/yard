@@ -272,9 +272,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 18
                       : /crate/.test(lower)
                         ? 24
-                      : /shelf|rack/.test(lower)
-                        ? 12
-                        : 16);
+                      : /floating/.test(lower) && /shel/.test(lower)
+                        ? 8
+                        : /shelf|rack/.test(lower)
+                          ? 12
+                          : 16);
   }
 
   let bays: number | undefined;
@@ -669,31 +671,46 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (floating) {
     const n = Math.max(1, Math.min(8, u.shelfCount ?? 3));
     const gap = 10;
+    const cleatH = 2.5;
+    const depthTyped =
+      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
+    const Df = depthTyped ? D : Math.min(D, 8);
     for (let i = 0; i < n; i++) {
-      panels.push(panel("shelf", n === 1 ? "Shelf" : `Shelf ${i + 1}`, x0, i * (P + gap), 0, W, P, D));
+      const y = i * (cleatH + P + gap);
+      const label = n === 1 ? "" : ` ${i + 1}`;
+      // Ledger cleat against the wall; shelf sits on it and screws down.
+      panels.push(panel("rail", `Wall cleat${label}`, x0, y, 0, W, cleatH, P));
+      panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, P, W, P, Df));
     }
-    const stackH = n * P + Math.max(0, n - 1) * gap;
+    const stackH = n * (cleatH + P) + Math.max(0, n - 1) * gap;
+    const name = `Shelves ${W}" × ${stackH}" × ${Df}"`;
     return {
       id: createId("proj"),
-      name: spec.name.replace(/storage/i, "Shelves"),
+      name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: stackH, depth: D },
+      overall: { width: W, height: stackH, depth: Df },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${n} floating ${W}" × ${D}" shelves. ¾" plywood. No box — each board mounts to the wall.`,
-        `Space them about ${gap}" apart (cleat or hidden bracket into studs).`,
-        "Guidance only — hit a stud, or use a french cleat.",
+        `${n} floating ${W}" × ${Df}" shelves on wall cleats. ¾" plywood. No box — no uprights.`,
+        `Space shelves about ${gap}" apart. Each cleat lags into studs; the shelf screws down onto its cleat.`,
+        "Guidance only — hit a stud. Confirm the wall type.",
       ],
       historic: false,
-      opening: spec.opening,
-      fitted: { ...spec, unit: { ...u, height: stackH, doors: false, drawersPerBank: undefined } },
+      opening: { width: W, height: stackH, depth: Df, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: { ...u, width: W, height: stackH, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: n },
+        opening: { width: W, height: stackH, depth: Df, kind: "room" },
+      },
       assumptions: {
         load: "medium",
         units: "inches",
-        installMode: "alcove",
+        installMode: "wall",
         wallType: "wood_stud",
       },
     };

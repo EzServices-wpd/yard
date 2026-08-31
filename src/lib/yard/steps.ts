@@ -243,6 +243,46 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const floatingShelves =
+    ((/floating|wall-?mounted/i.test(project.name) ||
+      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
+      /shel/i.test(`${project.name} ${project.prompt ?? ""}`) &&
+      !uprights.length);
+  if (floatingShelves) {
+    const cleats = rails.filter((p) => /cleat/i.test(p.name));
+    const shelfBoards = shelves.length ? shelves : panels.filter((p) => p.type === "shelf");
+    return [
+      {
+        step: 1,
+        title: "Confirm the wall span — do not cut yet",
+        description: `${project.name}. ${shelfBoards.length} floating shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights.`,
+        tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the shelves and wall cleats`,
+        description: `${tool.how} ${sheetCuts.join(" ")} ${shelfBoards.map(cutLine).join("; ")}. ${cleats.map(cutLine).join("; ") || "One wall cleat per shelf (ripped 3/4 strip)."}. Label the waste face.`,
+        tips: tool.tip,
+        partsUsed: names([...shelfBoards, ...cleats]),
+      },
+      {
+        step: 3,
+        title: "Lag each wall cleat into studs",
+        description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. Level a cleat on the wall, hit at least two studs, and drive 3" structural screws through the cleat into the studs. Repeat for each shelf height (about 10" clear between shelves).`,
+        tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+        partsUsed: names(cleats.length ? cleats : panels),
+      },
+      {
+        step: 4,
+        title: "Sit each shelf on its cleat and screw down",
+        description: `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
+        tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out if you add glue.",
+        partsUsed: names([...shelfBoards, ...cleats]),
+      },
+    ];
+  }
+
   const hood =
     /range\s*hood|kitchen\s*hood|\bhood\b/i.test(project.name) ||
     /range\s*hood|\bhood\b/.test((project.prompt ?? "").toLowerCase());

@@ -142,16 +142,24 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const nightstand =
     /nightstand|bedside/i.test(project.name) ||
     /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+  const floating =
+    (/floating|wall-?mounted/i.test(project.name) ||
+      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
+    /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
   // Single-slab headboard has no carcase joints — skip join screws.
+  // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   if (!headboard) {
+    const joinScrews = floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : screws;
     bom.push({
       name: '#8 x 1-1/4" wood screws',
-      quantity: Math.ceil(screws / 50),
+      quantity: Math.ceil(joinScrews / 50),
       unit: "box",
       catalogId: "screws-8",
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,
-      notes: `${screws} screws estimated at joints.`,
+      notes: floating
+        ? `${joinScrews} screws shelf into cleat (no carcase joints).`
+        : `${joinScrews} screws estimated at joints.`,
     });
   }
   const drawers = project.panels.filter((panel) => panel.type === "drawer");
@@ -233,7 +241,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
-  if (shelfCount > 0 && !coatRack && !island && !nightstand) {
+  // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
+  if (shelfCount > 0 && !coatRack && !island && !nightstand && !floating) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
@@ -272,6 +281,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         ? "4-6 screws through the board into studs (or a french cleat). Guidance only — confirm wall type."
         : coatRack
           ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
+          : floating
+            ? "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
             ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
@@ -289,7 +300,11 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   const headboard =
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
-  if (!coatRack && !headboard && !/crate/i.test(project.name) && (width < 12 || height < 12 || depth < 8)) {
+  const floatingIssue =
+    (/floating|wall-?mounted/i.test(project.name) ||
+      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
+    /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
+  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
