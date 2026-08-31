@@ -281,6 +281,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "closet" || program === "wardrobe" || program === "pantry" || program === "storage")
   ) {
     bays = Math.max(2, Math.min(6, Math.round(width / 32)));
+  } else if (program === "media" && width >= 48) {
+    // Wide media: center divider(s) so ¾" shelves and the TV top don't span 60–70" clear.
+    bays = Math.max(2, Math.min(4, Math.round(width / 28)));
   }
 
   const counterH = /(?:counter|work surface)[^\d]{0,18}(\d+(?:\.\d+)?)/i.test(t)
@@ -759,7 +762,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const y1 = shelfZone1;
     for (let i = 1; i <= shelves; i++) {
       const y = y0 + ((y1 - y0) * i) / (shelves + 1);
-      if (u.upperStart && W >= 36) {
+      if (bayN >= 2) {
+        const clear = (W - P * (bayN + 1)) / bayN;
+        for (let b = 0; b < bayN; b++) {
+          const x = x0 + P + b * (clear + P);
+          panels.push(panel("shelf", `Bay ${b + 1} shelf ${i}`, x, y, 0.1, clear, P, D - 0.2));
+        }
+      } else if (u.upperStart && W >= 36) {
         const bay = (W - P * 3) / 2;
         panels.push(panel("shelf", `Left shelf ${i}`, x0 + P, y, 0.1, bay, P, D - 0.2));
         panels.push(panel("shelf", `Right shelf ${i}`, P / 2, y, 0.1, bay, P, D - 0.2));
@@ -810,7 +819,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       : shelves
         ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
         : spec.program === "media"
-        ? "Open front. TV sits on top. No leftover doors."
+        ? bayN >= 2
+          ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
+          : "Open front. TV sits on top. No leftover doors."
         : "Solid carcase.",
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
