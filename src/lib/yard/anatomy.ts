@@ -19,7 +19,7 @@ export type AnatomyHit = {
 
 const OPENING = /window|rough opening|\bro\b|andersen/;
 const FITTED =
-  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch/;
+  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/;
 
 const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;

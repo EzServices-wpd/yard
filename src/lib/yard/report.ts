@@ -141,6 +141,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const nightstand =
     /nightstand|bedside/i.test(project.name) ||
     /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+  const hood =
+    /range\s*hood|\bhood\b/i.test(project.name) ||
+    /range\s*hood|\bhood\b/.test((project.prompt ?? "").toLowerCase());
   // Single-slab headboard has no carcase joints — skip join screws.
   if (!headboard) {
     bom.push({
@@ -187,7 +190,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
-  if (shelfCount > 0 && !coatRack && !island && !nightstand) {
+  if (shelfCount > 0 && !coatRack && !island && !nightstand && !hood) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
@@ -226,6 +229,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         ? "4-6 screws through the board into studs (or a french cleat). Guidance only — confirm wall type."
         : coatRack
           ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
+          : hood
+            ? "4-6 screws through the back into studs above the range. Guidance only — confirm wall type and burner clearance."
           : project.panels.some((p) => p.type === "upright")
             ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
@@ -322,6 +327,9 @@ export function buildPlan(project: YardProject): BuildPlan {
               : /nightstand|bedside/i.test(project.name) ||
                   /nightstand|bedside/.test((project.prompt ?? "").toLowerCase())
                 ? "nightstand"
+              : /range\s*hood|\bhood\b/i.test(project.name) ||
+                  /range\s*hood|\bhood\b/.test((project.prompt ?? "").toLowerCase())
+                ? "range hood"
               : (project.fitted?.program ?? "closet")
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",

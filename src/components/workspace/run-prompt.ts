@@ -9,7 +9,7 @@ import { useYard } from "@/lib/yard/store";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
-  /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat/i;
+  /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b/i;
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;
@@ -109,6 +109,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
           ? "Island"
           : /headboard/.test(lower)
             ? "Headboard"
+            : /range\s*hood|\bhood\b/.test(lower)
+              ? "Range hood"
             : program[0].toUpperCase() + program.slice(1);
   const name = `${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   const keepBriefName =
@@ -119,7 +121,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&
-    !(/coffee/.test(lower) && /table/.test(lower));
+    !(/coffee/.test(lower) && /table/.test(lower)) &&
+    !/range\s*hood|\bhood\b/.test(lower);
   return {
     ...brief,
     program,

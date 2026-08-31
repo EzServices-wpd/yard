@@ -243,6 +243,53 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const hood =
+    /range\s*hood|kitchen\s*hood|\bhood\b/i.test(project.name) ||
+    /range\s*hood|\bhood\b/.test((project.prompt ?? "").toLowerCase());
+  if (hood) {
+    const canopy = of("top").find((p) => /canopy/i.test(p.name)) ?? of("top")[0];
+    const chimney = of("top").find((p) => /chimney/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted plywood hood ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high, open on the bottom over the cooktop. Mark the center of the range and the height you want the bottom of the canopy. ${panels.length} parts on this list.`,
+        tips: "This is a wood canopy over the cooktop, not a closet. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Glue the canopy — open bottom",
+        description: `${uprights.filter((p) => /side/i.test(p.name)).map(cutLine).join("; ") || uprights.slice(0, 2).map(cutLine).join("; ")}. ${backs.filter((p) => /chimney/i.test(p.name) === false).map(cutLine).join("; ")}. ${rails.filter((p) => /apron/i.test(p.name)).map(cutLine).join("; ")}. ${canopy ? cutLine(canopy) : ""}. Glue and #8 × 1¼" screws. The bottom stays open so steam can rise into it.`,
+        tips: "Predrill. A closed bottom would trap grease and is not a hood.",
+        partsUsed: names(panels.filter((p) => !/chimney/i.test(p.name))),
+      },
+      {
+        step: 4,
+        title: chimney ? "Glue the chimney on the canopy" : "Check the open bottom",
+        description: chimney
+          ? `${uprights.filter((p) => /chimney/i.test(p.name)).map(cutLine).join("; ")}. ${chimney ? cutLine(chimney) + "." : ""} Sit the chimney on the canopy top, flush to the wall-side back. Glue and screws down into the canopy top.`
+          : "The canopy is open on the bottom. Do not add a floor.",
+        tips: chimney ? "The chimney is decorative / a chase — it is not a flue. A metal liner and fan are optional." : "Leave it open.",
+        partsUsed: names(panels.filter((p) => /chimney/i.test(p.name))),
+      },
+      {
+        step: 5,
+        title: "Hang it on studs above the range",
+        description: `Find two studs centered over the cooktop. Predrill the back. Drive 3" structural screws through the back into the studs. Bottom of the canopy typically sits 24–30" above the cooking surface — match your range and code.`,
+        tips: "Guidance only — hit a stud. Drywall anchors will not hold a plywood hood. Confirm clearance over the burners.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const island =
     /island/i.test(project.name) ||
     /island/.test((project.prompt ?? "").toLowerCase());

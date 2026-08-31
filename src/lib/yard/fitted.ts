@@ -29,7 +29,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|shoe|coat/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -44,7 +44,7 @@ export function looksLikeFitted(prompt: string) {
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -129,6 +129,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     );
     if (alcove && !(trip.w && trip.h)) width = parseFloat(alcove[1]);
   }
+  if (!Number.isFinite(width) && /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(lower)) {
+    width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);
+  }
   if (!Number.isFinite(width)) {
     width =
       trip.w ??
@@ -142,6 +145,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 60
               : /nightstand|bedside/.test(lower)
                 ? 20
+                : /range\s*hood|\bhood\b/.test(lower)
+                  ? 30
                 : 36);
   }
 
@@ -231,6 +236,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 30
                 : /coat/.test(lower) && /rack/.test(lower)
                   ? 6
+                  : /range\s*hood|\bhood\b/.test(lower)
+                    ? 24
                   : /shoe/.test(lower) && /rack/.test(lower)
                     ? 18
                     : /shelf/.test(lower)
@@ -257,6 +264,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 4
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
+                    : /range\s*hood|\bhood\b/.test(lower)
+                      ? 18
                     : /dresser/.test(lower)
                       ? 18
                       : /shelf|rack/.test(lower)
@@ -371,7 +380,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -496,6 +505,59 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       historic: false,
       opening: { ...spec.opening, width: W, height: stackH, depth: shelfD },
       fitted: { ...spec, unit: { ...u, height: stackH, depth: shelfD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Coat rack ${W}" × ${stackH}" × ${shelfD}"` },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+  const hood = /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(prompt.toLowerCase());
+  if (hood) {
+    const canopyH = Math.min(12, Math.max(8, Math.round(H * 0.5 * 8) / 8));
+    const chimneyH = Math.max(0, H - canopyH);
+    const chimneyW = Math.min(W, Math.max(10, Math.round(W * 0.4)));
+    const chimneyD = Math.min(D, Math.max(8, Math.round(D * 0.55)));
+    const cx = x0 + (W - chimneyW) / 2;
+    panels.push(panel("upright", "Left side", x0, 0, 0, P, canopyH, D));
+    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, canopyH, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, canopyH, P));
+    panels.push(panel("rail", "Front apron", x0 + P, 0, D - P, W - P * 2, canopyH, P));
+    panels.push(panel("top", "Canopy top", x0 + P, canopyH - P, 0, W - P * 2, P, D));
+    if (chimneyH >= 4) {
+      panels.push(panel("upright", "Chimney left", cx, canopyH, 0, P, chimneyH, chimneyD));
+      panels.push(panel("upright", "Chimney right", cx + chimneyW - P, canopyH, 0, P, chimneyH, chimneyD));
+      panels.push(panel("back", "Chimney back", cx + P, canopyH, 0, chimneyW - P * 2, chimneyH, P));
+      panels.push(panel("rail", "Chimney front", cx + P, canopyH, chimneyD - P, chimneyW - P * 2, chimneyH, P));
+      panels.push(panel("top", "Chimney top", cx + P, canopyH + chimneyH - P, 0, chimneyW - P * 2, P, chimneyD));
+    }
+    const stackH = canopyH + (chimneyH >= 4 ? chimneyH : 0);
+    const name = `Range hood ${W}" × ${stackH}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: stackH, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Wall-mounted plywood canopy, open on the bottom, over the cooktop. ¾" plywood.`,
+        chimneyH >= 4
+          ? `A ${canopyH}" canopy with a ${chimneyH}" chimney against the wall. Open bottom. Not a closet.`
+          : "Open-bottom canopy. Not a closet box.",
+        "Hang on studs above the range. A metal liner and a vent fan are optional and not on this list.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: stackH, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: { ...u, height: stackH, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+      },
       assumptions: {
         load: "medium",
         units: "inches",
