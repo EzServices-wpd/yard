@@ -227,7 +227,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     }
   }
   const hangingRods = project.panels.filter(
-    (panel) => panel.type === "rail" || /hanging rod/i.test(panel.name),
+    (panel) => /hanging rod/i.test(panel.name),
   );
   if (hangingRods.length) {
     bom.push({
