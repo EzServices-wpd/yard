@@ -372,6 +372,26 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "closet-rod-sockets",
+    retailer: "homedepot",
+    title: "Closet rod sockets / flanges, pair",
+    href: "https://www.homedepot.com/s/closet%20rod%20sockets",
+    packQty: 2,
+    packPrice: 7.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "closet-rod-sockets",
+    retailer: "amazon",
+    title: "Closet rod sockets flanges pair",
+    href: "https://www.amazon.com/s?k=closet+rod+sockets+flanges",
+    packQty: 2,
+    packPrice: 8.49,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "structural-screws",
     retailer: "homedepot",
     title: "GRK structural / RSS screws",
@@ -631,6 +651,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/slide/.test(hay)) return "drawer-slides-16";
   if (/hinge/.test(hay)) return "cabinet-hinges";
   if (/shelf pin/.test(hay)) return "shelf-pins";
+  if (/rod socket|rod flange|closet rod socket/.test(hay)) return "closet-rod-sockets";
   if (/flashing|sill pan/.test(hay)) return "flashing-tape";
   if (/shim/.test(hay)) return "shims";
   if (/16d|framing nail/.test(hay)) return "framing-nails";

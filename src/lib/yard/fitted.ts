@@ -178,12 +178,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (isSystem && trip.w && trip.h && !Number.isFinite(pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN))) {
     const a = trip.w;
     const b = trip.h;
-    width = Math.max(a, b);
-    const other = Math.min(a, b);
-    if (other >= 60) {
-      height = other;
+    // Both opening-sized (≥60): typed order is W×H (80x120 → 80 wide × 120 tall), not longer=width.
+    if (a >= 60 && b >= 60) {
+      width = a;
+      height = b;
       depth = 24;
     } else {
+      width = Math.max(a, b);
+      const other = Math.min(a, b);
       depth = other;
       height = 84;
     }

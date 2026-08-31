@@ -88,10 +88,19 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     if (parsed.unit.drawersPerBank != null) unit.drawersPerBank = parsed.unit.drawersPerBank;
   } else if (
     (parsed.program === "closet" || parsed.program === "wardrobe") &&
-    /closet|wardrobe|linen/.test(lower)
+    /closet|wardrobe|linen|system/.test(lower)
   ) {
     program = parsed.program;
+    // Local parse owns unlabeled W×H for closet systems (AI few-shot used to swap 80x120).
+    unit.width = parsed.unit.width;
+    unit.depth = parsed.unit.depth;
+    unit.height = parsed.unit.height;
+    opening.width = parsed.opening.width;
+    opening.depth = parsed.opening.depth;
+    opening.height = parsed.opening.height;
     unit.rod = !!parsed.unit.rod;
+    if (parsed.unit.doors != null) unit.doors = parsed.unit.doors;
+    if (parsed.unit.bays != null) unit.bays = parsed.unit.bays;
     if (!/\d+\s*shel/.test(lower) && parsed.unit.shelfCount != null) {
       unit.shelfCount = parsed.unit.shelfCount;
     }

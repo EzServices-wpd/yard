@@ -99,9 +99,9 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     prompt: "closet system for 80 in by 120 in space",
     brief: {
       program: "closet",
-      name: 'Closet 120" × 80" × 24"',
-      opening: { width: 120, height: 80, depth: 24, kind: "alcove" },
-      unit: { width: 120, depth: 24, height: 80, shelfCount: 1, doors: true, bays: 4, rod: true, centered: true },
+      name: 'Closet 80" × 120" × 24"',
+      opening: { width: 80, height: 120, depth: 24, kind: "alcove" },
+      unit: { width: 80, depth: 24, height: 120, shelfCount: 1, doors: true, bays: 3, rod: true, centered: true },
     },
   },
   {
@@ -256,7 +256,7 @@ Rules:
 - unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"), bays (2-6 for wide closet systems).
 - Tables: program "table", legs 3 or 4, shape round when asked; dining height defaults 30. Coffee table: height ~18, not dining 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
-- Closet system / wall of storage: program "closet", longer axis = width (run), height if ≥60 else default 84, depth default 24, set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
+- Closet system / wall of storage: program "closet", two unlabeled numbers both ≥60 are W×H in typed order (80x120 → 80 wide × 120 tall), depth default 24; one small number with a large one is depth with width = the large; height default 84 only when height was not given. Set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
 - Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Shoe rack / crate / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Range hood: program "storage", honor typed width (30 inch → 30 wide), default ~24 tall × ~18 deep, plywood canopy open on the bottom with a chimney, wall-mounted over the cooktop — never a giraffe, never a wire figure, never a closet. Never turn a rack, crate, shelf, island, or hood into a closet or a wire animal.
 - Furniture triples without wide/deep/tall are W×D×H.
 - Prefer honest shop geometry over decoration. No markdown.
