@@ -19,6 +19,10 @@ import { buildTable } from "./tableFitted";
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
 
+function isIroningCabinet(text: string) {
+  return /ironing/.test(text.toLowerCase());
+}
+
 function pick(text: string, re: RegExp, fallback: number) {
   const m = text.match(re);
   if (!m?.[1]) return fallback;
@@ -145,6 +149,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 60
               : /nightstand|bedside/.test(lower)
                 ? 20
+                : isIroningCabinet(lower)
+                  ? 16
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
                 : 36);
@@ -236,6 +242,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 36
               : /crate/.test(lower)
                 ? 30
+                : isIroningCabinet(lower)
+                  ? 48
                 : /coat/.test(lower) && /rack/.test(lower)
                   ? 6
                   : /range\s*hood|\bhood\b/.test(lower)
@@ -264,6 +272,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? width
                 : /headboard/.test(lower)
                   ? 4
+                  : isIroningCabinet(lower)
+                    ? 6
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
                     : /range\s*hood|\bhood\b/.test(lower)
@@ -329,6 +339,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 3
               : /crate/.test(lower)
                 ? 0
+                : isIroningCabinet(lower)
+                  ? 0
                 : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
@@ -340,6 +352,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const doors =
     /door/.test(lower) ||
     /crate/.test(lower) ||
+    isIroningCabinet(lower) ||
     program === "closet" ||
     program === "pantry" ||
     program === "wardrobe" ||
@@ -392,7 +405,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -457,6 +470,64 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const nightstand = /nightstand|bedside/.test(prompt.toLowerCase());
   if (spec.program === "table" && !nightstand) {
     return buildTable(spec, prompt);
+  }
+
+  if (isIroningCabinet(prompt)) {
+    const innerW = W - P * 2;
+    const backT = P;
+    const boardW = Math.max(10, innerW - 0.25);
+    const boardLen = Math.max(30, Math.round((H - P * 2 - 2) * 8) / 8);
+    const legLen = Math.min(32, Math.max(24, Math.round((H * 0.62) * 8) / 8));
+    const legW = 1.5;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+    panels.push(panel("deck", "Ironing board", x0 + P + (innerW - boardW) / 2, P, D - P * 2, boardW, boardLen, P));
+    panels.push(
+      panel(
+        "deck",
+        "Support leg",
+        x0 + P + (innerW - legW) / 2,
+        P,
+        D - P * 3,
+        legW,
+        legLen,
+        P,
+      ),
+    );
+    const name = `Ironing cabinet ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Wall-mounted cabinet with a fold-down ironing board inside — not a floor box. ¾" plywood.`,
+        `The ${boardLen}" × ${boardW}" board stores upright and hinges down on a piano hinge (a long continuous hinge along the bottom edge). A ${legLen}" support leg folds out to the floor.`,
+        "Hang the carcase on studs through the back. Concealed hinges on the door. Not a closet and not a freestanding rectangle on the floor.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        unit: { ...u, width: W, height: H, depth: D, doors: true, shelfCount: 0, drawersPerBank: undefined, rod: false },
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
   }
 
   const headboard = /headboard/.test(prompt.toLowerCase());

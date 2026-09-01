@@ -243,6 +243,59 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const ironingCabinet =
+    /ironing/i.test(project.name) ||
+    /ironing/.test((project.prompt ?? "").toLowerCase());
+  if (ironingCabinet) {
+    const door = doors[0];
+    const board = panels.find((p) => /ironing board/i.test(p.name));
+    const leg = panels.find((p) => /support leg/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted ironing cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom of the cabinet sits about 32–36" off the floor so the board comes down at ironing height. ${panels.length} parts on this list.`,
+        tips: "This is a fold-down ironing board in a shallow wall cabinet, not a storage box. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the carcase (the main box)",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+      },
+      {
+        step: 4,
+        title: "Hang the door — 2 concealed hinges",
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`,
+        tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
+        partsUsed: names(doors),
+      },
+      {
+        step: 5,
+        title: "Piano-hinge the ironing board and the support leg",
+        description: `${board ? cutLine(board) + "." : "Ironing board."} ${leg ? cutLine(leg) + "." : ""} Screw a piano hinge (a long continuous hinge) along the bottom edge of the board, into the front of the bottom panel, so the board stores upright and folds down out of the cabinet. A second short hinge on the support leg, onto the underside of the board, so the leg kicks out to the floor when the board is down.`,
+        tips: "Open the door first. The board must clear the door. Staple or clip the ironing-board cover on before you hang it if that is easier on the bench.",
+        partsUsed: names(panels.filter((p) => /ironing board|support leg/i.test(p.name))),
+      },
+      {
+        step: 6,
+        title: "Hang it on studs",
+        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A person leaning on an ironing board will rip this off drywall anchors. Cover the board. Close the door.`,
+        tips: "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can iron at.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const floatingShelves =
     ((/floating|wall-?mounted/i.test(project.name) ||
       /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
