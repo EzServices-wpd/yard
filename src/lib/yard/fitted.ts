@@ -949,9 +949,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const coatRack = /coat/.test(prompt.toLowerCase()) && /rack/.test(prompt.toLowerCase()) && !/shoe/.test(prompt.toLowerCase());
   if (coatRack) {
-    const shelfD = Math.max(6, Math.min(D, 10));
+    // Honor typed depth/height (min clamp only for absurd values). Old path forced 6" deep + 5.5" rail.
+    const shelfD = Math.max(3, Math.min(D, 12));
     const standing = H >= 36;
-    const railH = standing ? Math.max(24, H - P) : 5.5;
+    const railH = standing
+      ? Math.max(24, H - P)
+      : Math.max(4, Math.min(H - P, 24));
     panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, W, railH, P));
     panels.push(panel("top", "Hat shelf", x0, railH, 0, W, P, shelfD));
     const stackH = railH + P;
@@ -968,9 +971,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         standing
           ? `Wall-mounted coat board: ${W}" × ${stackH}" with an ${shelfD}" hat shelf. ¾" plywood.`
-          : `Wall-mounted coat rack: ${W}" peg rail with an ${shelfD}" hat shelf. ¾" plywood.`,
+          : `Wall-mounted coat rack: ${W}" peg rail (${railH}") with an ${shelfD}" hat shelf. ¾" plywood.`,
         `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
-        "Guidance only — not a cubby. No leftover shelves.",
+        "Guidance only — not a cubby. No leftover shelves. Size follows what you typed.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: stackH, depth: shelfD },
@@ -978,7 +981,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       assumptions: {
         load: "medium",
         units: "inches",
-        installMode: "alcove",
+        installMode: "wall",
         wallType: "wood_stud",
       },
     };
