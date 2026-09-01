@@ -23,6 +23,10 @@ function isIroningCabinet(text: string) {
   return /ironing/.test(text.toLowerCase());
 }
 
+function isMedicineCabinet(text: string) {
+  return /medicine/.test(text.toLowerCase());
+}
+
 function pick(text: string, re: RegExp, fallback: number) {
   const m = text.match(re);
   if (!m?.[1]) return fallback;
@@ -56,6 +60,7 @@ export function looksLikeFitted(prompt: string) {
 
 export function detectProgram(lower: string): FittedProgram {
   if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
+  if (isMedicineCabinet(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
@@ -151,6 +156,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 20
                 : isIroningCabinet(lower)
                   ? 16
+                : isMedicineCabinet(lower)
+                  ? 16
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
                 : 36);
@@ -244,6 +251,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 30
                 : isIroningCabinet(lower)
                   ? 48
+                : isMedicineCabinet(lower)
+                  ? 24
                 : /coat/.test(lower) && /rack/.test(lower)
                   ? 6
                   : /range\s*hood|\bhood\b/.test(lower)
@@ -274,6 +283,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 4
                   : isIroningCabinet(lower)
                     ? 6
+                  : isMedicineCabinet(lower)
+                    ? 4
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
                     : /range\s*hood|\bhood\b/.test(lower)
@@ -341,6 +352,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 0
                 : isIroningCabinet(lower)
                   ? 0
+                : isMedicineCabinet(lower)
+                  ? 2
                 : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
@@ -353,12 +366,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /door/.test(lower) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
+    isMedicineCabinet(lower) ||
     program === "closet" ||
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54);
   const doorsFinal = program === "media" && !/door/.test(lower) ? false : doors;
-  const mirror = /mirror/.test(lower) || program === "vanity";
+  const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
     ? {
@@ -405,7 +419,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -520,6 +534,64 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         name,
         program: "storage",
         unit: { ...u, width: W, height: H, depth: D, doors: true, shelfCount: 0, drawersPerBank: undefined, rod: false },
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+  if (isMedicineCabinet(prompt)) {
+    const innerW = W - P * 2;
+    const backT = P;
+    const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+    const innerH = H - P * 2;
+    for (let i = 1; i <= shelfN; i++) {
+      const y = P + (innerH * i) / (shelfN + 1);
+      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+    }
+    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+    const name = `Medicine cabinet ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood.`,
+        "Hang the carcase on studs through the back. Typical center sits about 60–66\" off the floor (eye height). Concealed hinges on the door. Glue a mirror to the door face.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        unit: {
+          ...u,
+          width: W,
+          height: H,
+          depth: D,
+          doors: true,
+          shelfCount: shelfN,
+          drawersPerBank: undefined,
+          rod: false,
+          kneeW: undefined,
+          counterH: undefined,
+          mirror: true,
+        },
       },
       assumptions: {
         load: "medium",

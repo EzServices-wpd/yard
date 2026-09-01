@@ -149,6 +149,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const ironing =
     /ironing/i.test(project.name) ||
     /ironing/.test((project.prompt ?? "").toLowerCase());
+  const medicine =
+    /medicine/i.test(project.name) ||
+    /medicine/.test((project.prompt ?? "").toLowerCase());
   // Single-slab headboard has no carcase joints — skip join screws.
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   if (!headboard) {
@@ -229,6 +232,16 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       });
     }
   }
+  if (medicine) {
+    bom.push({
+      name: "Mirror for the door",
+      quantity: 1,
+      unit: "pc",
+      searchQuery: "adhesive bathroom cabinet mirror",
+      estimatedCost: 14.98,
+      notes: "Glue to the outside of the door so the cabinet mirrors when closed. Order or cut close to the door size.",
+    });
+  }
   if (ironing) {
     bom.push({
       name: "Piano hinge",
@@ -306,6 +319,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
             ? "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
           : ironing
             ? "4-6 screws through the plywood back into studs. A loaded ironing board will rip it off drywall anchors. Guidance only — confirm wall type."
+          : medicine
+            ? "4 screws through the plywood back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
             ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
@@ -327,7 +342,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
     (/floating|wall-?mounted/i.test(project.name) ||
       /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && (width < 12 || height < 12 || depth < 8)) {
+  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -407,6 +422,8 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "crate"
               : /ironing/i.test(project.name) || /ironing/.test((project.prompt ?? "").toLowerCase())
                 ? "ironing cabinet"
+              : /medicine/i.test(project.name) || /medicine/.test((project.prompt ?? "").toLowerCase())
+                ? "medicine cabinet"
               : /nightstand|bedside/i.test(project.name) ||
                   /nightstand|bedside/.test((project.prompt ?? "").toLowerCase())
                 ? "nightstand"

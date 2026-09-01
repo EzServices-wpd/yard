@@ -296,6 +296,57 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const medicineCabinet =
+    /medicine/i.test(project.name) ||
+    /medicine/.test((project.prompt ?? "").toLowerCase());
+  if (medicineCabinet) {
+    const door = doors[0];
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted medicine cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical center sits about 60–66" off the floor so it is at eye height. ${panels.length} parts on this list.`,
+        tips: "This is a shallow wall cabinet with a mirrored door, not a bathroom vanity on the floor. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the carcase (the main box)",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+      },
+      {
+        step: 4,
+        title: "Set the shelves",
+        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. Rest each shelf on 5 mm pins (four per shelf — two in each upright). Do not glue the shelves; pins let you move them later.`,
+        tips: "A medicine bottle is taller than a spice tin — leave the middle gap honest.",
+        partsUsed: names(shelves),
+      },
+      {
+        step: 5,
+        title: "Hang the door — 2 concealed hinges",
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed.`,
+        tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
+        partsUsed: names(doors),
+      },
+      {
+        step: 6,
+        title: "Hang it on studs",
+        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws, one near each corner. A loaded medicine cabinet will rip off drywall anchors. Close the door and check the reveal.`,
+        tips: "Guidance only — hit a stud. Confirm the hang height so the mirror is at your eye line.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const floatingShelves =
     ((/floating|wall-?mounted/i.test(project.name) ||
       /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
