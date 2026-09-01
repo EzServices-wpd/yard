@@ -112,6 +112,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     ? "Mudroom bench"
     : /spice/.test(lower) && /rack/.test(lower)
     ? "Spice rack"
+    : /wine/.test(lower) && /rack/.test(lower)
+    ? "Wine rack"
     : /coat/.test(lower) && /rack/.test(lower)
     ? "Coat rack"
     : /dresser/.test(lower)
@@ -135,6 +137,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidRound &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !(/spice/.test(lower) && /rack/.test(lower)) &&
+    !(/wine/.test(lower) && /rack/.test(lower)) &&
     !(/mudroom/.test(lower) && /bench/.test(lower)) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&

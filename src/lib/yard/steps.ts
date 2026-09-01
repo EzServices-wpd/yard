@@ -442,6 +442,50 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const wineRack =
+    /wine/i.test(project.name) ||
+    (/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  if (wineRack) {
+    const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${panels.length} parts on this list.`,
+        tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the rack",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. Glue and #8 × 1¼" screws. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first rack.",
+        partsUsed: names([...uprights, ...backs, ...shelves]),
+      },
+      {
+        step: 4,
+        title: "Glue the bottle rails",
+        description: `${rails.map(cutLine).join("; ") || '1.5" bottle rails.'}. Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off. #8 × 1¼" screws from behind the rail into the shelf front edge.`,
+        tips: "The rail stands on the front edge of the shelf. Wipe squeeze-out before it skins. Bottles lie on their sides, necks facing out.",
+        partsUsed: names(rails),
+      },
+      {
+        step: 5,
+        title: "Hang it on studs",
+        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
+        tips: "Guidance only — hit a stud. Confirm the hang height so you can reach a bottle.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const overToilet =
     /over-toilet/i.test(project.name) ||
     /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf)|space[- ]?saver/.test((project.prompt ?? "").toLowerCase());

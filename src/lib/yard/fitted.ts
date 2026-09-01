@@ -32,6 +32,11 @@ function isSpiceRack(text: string) {
   return /spice/.test(lower) && /rack/.test(lower);
 }
 
+function isWineRack(text: string) {
+  const lower = text.toLowerCase();
+  return /wine/.test(lower) && /rack/.test(lower);
+}
+
 function isOverToilet(text: string) {
   const lower = text.toLowerCase();
   if (/toilet\s*paper/.test(lower)) return false;
@@ -75,6 +80,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (isMedicineCabinet(lower)) return "storage";
   if (isOverToilet(lower)) return "storage";
   if (isSpiceRack(lower)) return "storage";
+  if (isWineRack(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
@@ -174,6 +180,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 16
                 : isOverToilet(lower)
                   ? 27
+                : isWineRack(lower)
+                  ? 24
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
                 : 36);
@@ -273,6 +281,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 68
                 : isSpiceRack(lower)
                   ? 24
+                : isWineRack(lower)
+                  ? 36
                 : /coat/.test(lower) && /rack/.test(lower)
                   ? 6
                   : /range\s*hood|\bhood\b/.test(lower)
@@ -319,6 +329,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         ? 8
                         : isSpiceRack(lower)
                           ? 4
+                        : isWineRack(lower)
+                          ? 12
                         : /shelf|rack/.test(lower)
                           ? 12
                           : 16);
@@ -382,6 +394,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 3
                 : isSpiceRack(lower)
                   ? 3
+                : isWineRack(lower)
+                  ? Math.max(3, Math.min(10, Math.round((height - P) / 4.5)))
                 : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
@@ -454,7 +468,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : isWineRack(lower) ? "Wine rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -766,6 +780,68 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       },
       assumptions: {
         load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+  if (isWineRack(prompt)) {
+    const innerW = W - P * 2;
+    const backT = P;
+    const saidShelves = /\d+\s*shel/i.test(prompt);
+    const shelfN =
+      saidShelves && u.shelfCount && u.shelfCount > 0
+        ? Math.max(2, Math.min(12, u.shelfCount))
+        : Math.max(3, Math.min(10, Math.round((H - P) / 4.5)));
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    for (let i = 0; i < shelfN; i++) {
+      const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+      panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
+      if (i < shelfN - 1) {
+        panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+      }
+    }
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    const name = `Wine rack ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Wall-mounted open wine rack with bottle rails — not a bookcase and not a hollow box. ¾" plywood.`,
+        "Bottles lie on their sides, necks facing out. Glue a 1.5\" rail on the front of every shelf (except the top cap) so bottles cannot roll off. Glue the shelves; do not pin them — a loaded row is heavy.",
+        "Hang the rack on studs through the back. Typical bottom sits about 36–42\" off the floor, or sit it on a counter and still lag it so it cannot tip. Guidance only.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        unit: {
+          ...u,
+          width: W,
+          height: H,
+          depth: D,
+          doors: false,
+          shelfCount: shelfN,
+          drawersPerBank: undefined,
+          rod: false,
+          kneeW: undefined,
+          counterH: undefined,
+          mirror: false,
+        },
+      },
+      assumptions: {
+        load: "heavy",
         units: "inches",
         installMode: "wall",
         wallType: "wood_stud",
