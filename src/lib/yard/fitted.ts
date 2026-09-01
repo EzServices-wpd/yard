@@ -388,7 +388,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 1
                   : 0,
   );
-  const cubbies = pick(t, /(\d+)\s*cubb/i, NaN);
+  const cubbiesSaid = pick(t, /(\d+)\s*cubb/i, NaN);
+  // Mudroom / entry benches need cubby dividers so a ~48" seat does not sag under a sitting adult.
+  const cubbies =
+    Number.isFinite(cubbiesSaid) && cubbiesSaid >= 2
+      ? cubbiesSaid
+      : program === "bench"
+        ? Math.max(2, Math.min(4, Math.round(width / 16)))
+        : NaN;
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
     /door/.test(lower) ||
@@ -447,7 +454,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -761,6 +768,74 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         load: "medium",
         units: "inches",
         installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
+
+  if (spec.program === "bench") {
+    const innerW = W - P * 2;
+    const cubbyN =
+      u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));
+    const backT = 0.25;
+    const apronH = Math.min(3.5, Math.max(2.5, Math.round((H * 0.2) * 8) / 8));
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    panels.push(panel("bottom", "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("top", "Seat", x0 + P, H - P, backT, innerW, P, D - backT));
+    panels.push(
+      panel("rail", "Front apron", x0 + P, H - P - apronH, D - P, innerW, apronH, P),
+    );
+    for (let i = 1; i < cubbyN; i++) {
+      const x = x0 + (W * i) / cubbyN - P / 2;
+      panels.push(
+        panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT),
+      );
+    }
+    const mudroom = /mudroom/i.test(prompt);
+    const name = mudroom
+      ? `Mudroom bench ${W}" × ${H}" × ${D}"`
+      : `Bench ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
+        `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
+        "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "bench",
+        unit: {
+          ...u,
+          width: W,
+          height: H,
+          depth: D,
+          doors: false,
+          cubbies: cubbyN,
+          shelfCount: undefined,
+          drawersPerBank: undefined,
+          rod: false,
+          kneeW: undefined,
+          counterH: undefined,
+        },
+      },
+      assumptions: {
+        load: "heavy",
+        units: "inches",
+        installMode: "freestanding",
         wallType: "wood_stud",
       },
     };

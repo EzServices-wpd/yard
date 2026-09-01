@@ -347,6 +347,57 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+
+  const mudroomBench =
+    /mudroom bench|^bench\b/i.test(project.name) ||
+    ((/mudroom|window seat/.test((project.prompt ?? "").toLowerCase()) ||
+      (/\bbench\b/.test((project.prompt ?? "").toLowerCase()) &&
+        !/workbench|park bench/.test((project.prompt ?? "").toLowerCase()))) &&
+      project.fitted?.program === "bench");
+  if (mudroomBench) {
+    const seats = panels.filter((p) => /seat/i.test(p.name) || p.type === "top");
+    const shoe = panels.filter((p) => /shoe/i.test(p.name) || p.type === "bottom");
+    const aprons = panels.filter((p) => /apron/i.test(p.name) || (p.type === "rail" && !/hanging/i.test(p.name)));
+    const cubbies = panels.filter((p) => /cubby/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. Freestanding sittable bench ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with open shoe bays under the seat. Mark the rectangle on the floor and check it is square. ${panels.length} parts on this list.`,
+        tips: "This is a bench people sit on, not a hollow storage box. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face — especially Seat, Shoe shelf, Front apron, and each Cubby divider.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the carcase",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || "Shoe shelf."}. ${seats.map(cutLine).join("; ") || "Seat."}. Glue and #8 × 1¼" screws: back into both uprights, then shoe shelf, then seat. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
+        partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
+      },
+      {
+        step: 4,
+        title: "Set cubby dividers and front apron",
+        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. Screw through the seat, shoe shelf, and back into each divider — these carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. Glue and screw the front apron under the front edge of the seat between the uprights.`,
+        tips: "A 48\" seat without dividers will sag under a sitting adult. Do not skip the dividers.",
+        partsUsed: names([...cubbies, ...aprons]),
+      },
+      {
+        step: 5,
+        title: "Level it and sit-test",
+        description: `Set the bench in place. Shim the feet until it does not rock. Sit on the middle of the seat — it should feel solid, not springy. Wipe glue squeeze-out.`,
+        tips: "Guidance only — confirm the seat height for your entry before you finish the wood.",
+        partsUsed: ["*"],
+      },
+    ];
+  }
+
   const spiceRack =
     /spice/i.test(project.name) ||
     (/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));

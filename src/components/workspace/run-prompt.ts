@@ -108,6 +108,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
 
   const label = /coffee/.test(lower) && /table/.test(lower)
     ? "Coffee table"
+    : /mudroom/.test(lower) && /bench/.test(lower)
+    ? "Mudroom bench"
     : /spice/.test(lower) && /rack/.test(lower)
     ? "Spice rack"
     : /coat/.test(lower) && /rack/.test(lower)
@@ -133,6 +135,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidRound &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !(/spice/.test(lower) && /rack/.test(lower)) &&
+    !(/mudroom/.test(lower) && /bench/.test(lower)) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&
     !(/coffee/.test(lower) && /table/.test(lower)) &&
