@@ -347,6 +347,97 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const overToilet =
+    /over-toilet/i.test(project.name) ||
+    /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf)|space[- ]?saver/.test((project.prompt ?? "").toLowerCase());
+  if (overToilet) {
+    const tank = shelves.find((p) => /tank/i.test(p.name));
+    const upper = shelves.filter((p) => !/tank/i.test(p.name));
+    const tall = !bottoms.length && !!tank;
+    if (tall) {
+      return [
+        {
+          step: 1,
+          title: "Measure the toilet — do not cut yet",
+          description: `${project.name}. This stands over the toilet, ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Measure the tank: the ${round(W)}" unit must be wider than the tank, and the tank shelf must sit above it. ${panels.length} parts on this list. The bottom stays open so the toilet fits between the uprights.`,
+          tips: "This is not a closed floor box and not a vanity. If a number disagrees with the cut list, trust the cut list.",
+          partsUsed: ["*"],
+        },
+        {
+          step: 2,
+          title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+          description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+          tips: tool.tip,
+          partsUsed: names(panels),
+        },
+        {
+          step: 3,
+          title: "Stand the uprights and glue the tank shelf",
+          description: `${uprights.map(cutLine).join("; ")}. ${tank ? cutLine(tank) + "." : "Tank shelf."} Glue and #8 × 1¼" screws: tank shelf into both uprights at the marked height. Leave the floor open — a bottom panel would sit on the toilet.`,
+          tips: "Check both diagonals. The gap under the tank shelf is where the tank lives.",
+          partsUsed: names([...uprights, ...shelves.filter((p) => /tank/i.test(p.name))]),
+        },
+        {
+          step: 4,
+          title: "Add the upper shelves and the top",
+          description: `${upper.map(cutLine).join("; ") || "Upper shelves."} ${of("top").map(cutLine).join("; ")}. Pin the upper shelves (four 5 mm pins each). Glue and screw the top into both uprights.`,
+          tips: "Do not glue the upper shelves — pins let you move them later. The tank shelf stays glued.",
+          partsUsed: names([...upper, ...of("top")]),
+        },
+        {
+          step: 5,
+          title: "Screw the upper back on",
+          description: `${backs.map(cutLine).join("; ")}. The back starts at the tank shelf and goes to the top — it does not cover the toilet. Glue and #8 × 1¼" screws into the uprights.`,
+          tips: "A full-height back would hit the tank.",
+          partsUsed: names(backs),
+        },
+        {
+          step: 6,
+          title: "Set it over the toilet and lag into studs",
+          description: `Walk the unit over the toilet so the tank sits under the tank shelf, between the uprights. Predrill the uprights. Drive 3" structural screws through each upright into studs — a loaded étagère will tip without a wall lag.`,
+          tips: "Guidance only — hit a stud. Confirm tank clearance before you cut. Not stamped engineering.",
+          partsUsed: names(uprights),
+        },
+      ];
+    }
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high above the toilet tank. This hangs on the wall — do not mark a footprint on the floor. Typical bottom sits about 8–12" above the tank. ${panels.length} parts on this list.`,
+        tips: "This is a shallow wall cabinet over the toilet, not a floor vanity. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the carcase (the main box)",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top.`,
+        tips: "Check both diagonals before the glue skins.",
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+      },
+      {
+        step: 4,
+        title: "Set the shelves",
+        description: `${shelves.map(cutLine).join("; ") || "Shelves."}. Rest each shelf on 5 mm pins (four per shelf). Do not glue the shelves; pins let you move them later.`,
+        partsUsed: names(shelves),
+      },
+      {
+        step: 5,
+        title: "Hang it on studs above the tank",
+        description: `Find two studs above the toilet. Predrill the back. Drive 3" structural screws through the back into the studs. Leave clearance over the tank so the lid still opens.`,
+        tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded cabinet.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const floatingShelves =
     ((/floating|wall-?mounted/i.test(project.name) ||
       /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&

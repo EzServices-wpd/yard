@@ -27,6 +27,12 @@ function isMedicineCabinet(text: string) {
   return /medicine/.test(text.toLowerCase());
 }
 
+function isOverToilet(text: string) {
+  const lower = text.toLowerCase();
+  if (/toilet\s*paper/.test(lower)) return false;
+  return /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf|etagere|étagère)|space[- ]?saver/.test(lower);
+}
+
 function pick(text: string, re: RegExp, fallback: number) {
   const m = text.match(re);
   if (!m?.[1]) return fallback;
@@ -42,6 +48,7 @@ const BUILDER =
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
   if (looksLikePocket(prompt)) return true;
+  if (isOverToilet(lower)) return true;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
   const dimText = lower
@@ -61,6 +68,7 @@ export function looksLikeFitted(prompt: string) {
 export function detectProgram(lower: string): FittedProgram {
   if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicineCabinet(lower)) return "storage";
+  if (isOverToilet(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
@@ -71,7 +79,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (/\bmudroom\b|window seat/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
-  if (/bathroom/.test(lower) && !/closet|linen|alcove/.test(lower)) return "vanity";
+  if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
   return "storage";
 }
 
@@ -158,6 +166,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 16
                 : isMedicineCabinet(lower)
                   ? 16
+                : isOverToilet(lower)
+                  ? 27
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
                 : 36);
@@ -253,6 +263,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 48
                 : isMedicineCabinet(lower)
                   ? 24
+                : isOverToilet(lower)
+                  ? 68
                 : /coat/.test(lower) && /rack/.test(lower)
                   ? 6
                   : /range\s*hood|\bhood\b/.test(lower)
@@ -285,6 +297,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 6
                   : isMedicineCabinet(lower)
                     ? 4
+                  : isOverToilet(lower)
+                    ? 9
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
                     : /range\s*hood|\bhood\b/.test(lower)
@@ -354,6 +368,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isMedicineCabinet(lower)
                   ? 2
+                : isOverToilet(lower)
+                  ? 3
                 : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
@@ -419,7 +435,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -599,6 +615,87 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         installMode: "wall",
         wallType: "wood_stud",
       },
+    };
+  }
+
+  if (isOverToilet(prompt)) {
+    const innerW = W - P * 2;
+    const tall = H >= 48;
+    if (!tall) {
+      const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
+      panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+      panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+      panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+      panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P));
+      panels.push(panel("top", "Top", x0 + P, H - P, P, innerW, P, D - P));
+      const innerH = H - P * 2;
+      for (let i = 1; i <= shelfN; i++) {
+        const y = P + (innerH * i) / (shelfN + 1);
+        panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, P, innerW, P, D - P));
+      }
+      const name = `Over-toilet ${W}" × ${H}" × ${D}"`;
+      return {
+        id: createId("proj"),
+        name,
+        prompt,
+        kind: "closet",
+        overall: { width: W, height: H, depth: D },
+        instances: [],
+        panels,
+        primaryMaterialId: PLY,
+        notes: [
+          `${name}. Wall-mounted cabinet above the toilet tank — not a floor vanity. ¾" plywood.`,
+          "Hang the carcase on studs through the back. Typical bottom sits about 8–12\" above the tank.",
+        ],
+        historic: false,
+        opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+        fitted: {
+          ...spec,
+          name,
+          program: "storage",
+          unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: shelfN, drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined },
+        },
+        assumptions: { load: "medium", units: "inches", installMode: "wall", wallType: "wood_stud" },
+      };
+    }
+    const tankClear = Math.min(34, Math.max(28, Math.round((H * 0.47) * 8) / 8));
+    const backT = 0.25;
+    const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3;
+    const upperN = Math.max(1, shelfN - 1);
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("shelf", "Tank shelf", x0 + P, tankClear, 0, innerW, P, D));
+    panels.push(panel("top", "Top", x0 + P, H - P, 0, innerW, P, D));
+    const y0 = tankClear + P;
+    const y1 = H - P;
+    for (let i = 1; i <= upperN; i++) {
+      const y = y0 + ((y1 - y0) * i) / (upperN + 1);
+      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, 0.1, innerW, P, D - 0.2));
+    }
+    panels.push(panel("back", "Upper back", x0 + P, tankClear, 0, innerW, H - tankClear, backT));
+    const name = `Over-toilet ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Floor étagère that straddles the toilet — open under the tank shelf, not a closed floor box. ¾" plywood.`,
+        `The ${tankClear}" tank shelf sits above a typical toilet tank. Legs (the uprights) go to the floor on either side. Lag the uprights into studs so it cannot tip.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: shelfN, drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "wall", wallType: "wood_stud" },
     };
   }
 

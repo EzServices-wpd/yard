@@ -152,6 +152,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const medicine =
     /medicine/i.test(project.name) ||
     /medicine/.test((project.prompt ?? "").toLowerCase());
+  const overToilet =
+    /over-toilet/i.test(project.name) ||
+    /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf)|space[- ]?saver/.test((project.prompt ?? "").toLowerCase());
   // Single-slab headboard has no carcase joints — skip join screws.
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   if (!headboard) {
@@ -321,6 +324,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
             ? "4-6 screws through the plywood back into studs. A loaded ironing board will rip it off drywall anchors. Guidance only — confirm wall type."
           : medicine
             ? "4 screws through the plywood back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
+          : overToilet
+            ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
             ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
@@ -342,7 +347,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
     (/floating|wall-?mounted/i.test(project.name) ||
       /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && (width < 12 || height < 12 || depth < 8)) {
+  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
