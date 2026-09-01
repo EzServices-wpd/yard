@@ -347,6 +347,50 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const spiceRack =
+    /spice/i.test(project.name) ||
+    (/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+  if (spiceRack) {
+    const lips = panels.filter((p) => p.type === "rail" || /jar lip/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the hang — do not cut yet",
+        description: `${project.name}. Wall-mounted spice rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 48–54" off the floor so jars are at counter height. ${panels.length} parts on this list.`,
+        tips: "This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the rack",
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. Glue and #8 × 1¼" screws. Do not use shelf pins — jars are heavy and the lips need a solid shelf. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first rack.",
+        partsUsed: names([...uprights, ...backs, ...shelves]),
+      },
+      {
+        step: 4,
+        title: "Glue the jar lips",
+        description: `${lips.map(cutLine).join("; ") || "1.25\" jar lips."}. Glue a 1.25" jar lip on the front of every shelf so jars cannot slide off. #8 × 1¼" screws from behind the lip into the shelf front edge.`,
+        tips: "The lip stands on the front edge of the shelf. Wipe squeeze-out before it skins.",
+        partsUsed: names(lips),
+      },
+      {
+        step: 5,
+        title: "Hang it on studs",
+        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws. Loaded spice jars will rip off drywall anchors.`,
+        tips: "Guidance only — hit a stud. Confirm the hang height so jars sit at counter height.",
+        partsUsed: names(backs),
+      },
+    ];
+  }
+
   const overToilet =
     /over-toilet/i.test(project.name) ||
     /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf)|space[- ]?saver/.test((project.prompt ?? "").toLowerCase());
