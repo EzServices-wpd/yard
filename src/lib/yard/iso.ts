@@ -1,5 +1,5 @@
 import { getCatalogItem } from "./catalog";
-import { toPrimitive } from "./geometry";
+import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
 import type { AssemblyStep, YardProject } from "./types";
 import { stepInstanceIds } from "./assembly";
@@ -52,14 +52,7 @@ export function isoViewBox(project: YardProject, highlightIds?: string[]) {
   }
   for (const panel of project.panels) {
     if (preferHot && !hot.has(panel.id)) continue;
-    pts.push(iso(panel.position.x, panel.position.y, panel.position.z));
-    pts.push(
-      iso(
-        panel.position.x + panel.size.width,
-        panel.position.y + panel.size.height,
-        panel.position.z + panel.size.depth,
-      ),
-    );
+    for (const c of panelWorldCorners(panel)) pts.push(iso(c.x, c.y, c.z));
   }
   if (!pts.length) {
     for (const inst of project.instances) {
@@ -120,22 +113,8 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
     }
   }
   for (const panel of project.panels) {
-    const x = panel.position.x;
-    const y = panel.position.y;
-    const z = panel.position.z;
-    const w = panel.size.width;
-    const h = panel.size.height;
-    const d = panel.size.depth;
-    const c: [number, number, number][] = [
-      [x, y, z],
-      [x + w, y, z],
-      [x + w, y, z + d],
-      [x, y, z + d],
-      [x, y + h, z],
-      [x + w, y + h, z],
-      [x + w, y + h, z + d],
-      [x, y + h, z + d],
-    ];
+    const corners = panelWorldCorners(panel);
+    const c = corners.map((pt) => [pt.x, pt.y, pt.z] as [number, number, number]);
     const segs: [number, number][] = [
       [0, 1],
       [1, 2],
@@ -183,8 +162,7 @@ function hotBounds(project: YardProject, ids: string[]) {
   };
   for (const p of project.panels) {
     if (hot.size && !hot.has(p.id)) continue;
-    bump(p.position.x, p.position.y, p.position.z);
-    bump(p.position.x + p.size.width, p.position.y + p.size.height, p.position.z + p.size.depth);
+    for (const c of panelWorldCorners(p)) bump(c.x, c.y, c.z);
   }
   for (const inst of project.instances) {
     if (hot.size && !hot.has(inst.id)) continue;
@@ -210,8 +188,21 @@ export type IsoDim = {
   label: string;
 };
 
+function overviewBounds(project: YardProject) {
+  const W = project.overall.width;
+  const H = project.overall.height;
+  const D = project.overall.depth;
+  return { minX: -W / 2, maxX: W / 2, minY: 0, maxY: H, minZ: -D / 2, maxZ: D / 2 };
+}
+
+function useOverallDims(project: YardProject, highlightIds: string[]) {
+  if (!project.fitted && project.kind !== "closet") return false;
+  if (!highlightIds.length) return true;
+  return highlightIds.length >= Math.max(1, project.panels.length) * 0.8;
+}
+
 export function isoDims(project: YardProject, highlightIds: string[]): IsoDim[] {
-  const b = hotBounds(project, highlightIds);
+  const b = useOverallDims(project, highlightIds) ? overviewBounds(project) : hotBounds(project, highlightIds);
   if (!b) return [];
   const w = b.maxX - b.minX;
   const h = b.maxY - b.minY;
@@ -245,7 +236,7 @@ export function isoCaption(project: YardProject, highlightIds: string[], step?: 
     const p = panels[0];
     return `${p.name} · ${inchLabel(p.size.width)} × ${inchLabel(p.size.height)} × ${inchLabel(p.size.depth)}`;
   }
-  const b = hotBounds(project, highlightIds);
+  const b = useOverallDims(project, highlightIds) ? overviewBounds(project) : hotBounds(project, highlightIds);
   if (b) {
     const size = `${inchLabel(b.maxX - b.minX)} W × ${inchLabel(b.maxY - b.minY)} H × ${inchLabel(b.maxZ - b.minZ)} D`;
     if (!panels.length && project.instances.length) {
@@ -266,38 +257,21 @@ export function isoFaces(project: YardProject, highlightIds: string[]) {
   for (const panel of project.panels) {
     const on = !hot.size || hot.has(panel.id);
     if (highlightIds.length && !on) continue;
-    const x = panel.position.x;
-    const y = panel.position.y;
-    const z = panel.position.z;
+    const world = panelWorldCorners(panel);
     const { width: w, height: h, depth: d } = panel.size;
     const areaXY = w * h;
     const areaXZ = w * d;
     const areaYZ = h * d;
-    let corners: [number, number, number][];
+    let corners: { x: number; y: number; z: number }[];
     if (areaXY >= areaXZ && areaXY >= areaYZ) {
-      corners = [
-        [x, y, z + d],
-        [x + w, y, z + d],
-        [x + w, y + h, z + d],
-        [x, y + h, z + d],
-      ];
+      corners = [world[3], world[2], world[6], world[7]];
     } else if (areaXZ >= areaYZ) {
-      corners = [
-        [x, y + h, z],
-        [x + w, y + h, z],
-        [x + w, y + h, z + d],
-        [x, y + h, z + d],
-      ];
+      corners = [world[4], world[5], world[6], world[7]];
     } else {
-      corners = [
-        [x + w, y, z],
-        [x + w, y, z + d],
-        [x + w, y + h, z + d],
-        [x + w, y + h, z],
-      ];
+      corners = [world[1], world[2], world[6], world[5]];
     }
-    const pts = corners.map(([cx, cy, cz]) => {
-      const p = iso(cx, cy, cz);
+    const pts = corners.map((c) => {
+      const p = iso(c.x, c.y, c.z);
       return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
     });
     faces.push({ points: pts.join(" "), hot: on });

@@ -6,6 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
+import { enforceHonesty } from "./honesty";
 import { pickWindow, buildWindowProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -48,6 +49,13 @@ function withWireNote(project: YardProject, item: CatalogItem): YardProject {
   };
 }
 
+
+function honestHouse(project: YardProject, prompt: string): YardProject {
+  return enforceHonesty(project, {
+    rebuild: (spec) => buildFitted(spec, prompt),
+  });
+}
+
 export function generateFromPrompt(
   prompt: string,
   materialOverride?: string,
@@ -68,7 +76,7 @@ export function generateFromPrompt(
   const grain = scale === "weekend" ? 1.85 : 1;
 
   if (opts.fittedOverride) {
-    return buildFitted(opts.fittedOverride, prompt);
+    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt);
   }
 
   if (kindHint === "opening") {
@@ -77,10 +85,10 @@ export function generateFromPrompt(
   }
   if (kindHint === "closet" || looksLikeFitted(prompt)) {
     const brief = parseBrief(prompt);
-    if (brief) return buildFitted(brief, prompt);
+    if (brief) return honestHouse(buildFitted(brief, prompt), prompt);
     const pocket = parsePocket(prompt);
-    if (pocket) return buildPocket(pocket, prompt);
-    return buildClosetFromPrompt(prompt, size);
+    if (pocket) return enforceHonesty(buildPocket(pocket, prompt));
+    return enforceHonesty(buildClosetFromPrompt(prompt, size));
   }
 
   // Phase B: prompt-native 2D paper layouts (kids / printable)

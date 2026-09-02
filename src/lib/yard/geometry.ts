@@ -9,7 +9,7 @@
  * - board / sheet / block         → rectangular prism (sawn faces stay sharp)
  */
 
-import type { CatalogItem, FormFactor } from "./types";
+import type { CatalogItem, FormFactor, Panel } from "./types";
 import { getCatalogItem } from "./catalog";
 
 export interface PrimitiveDims {
@@ -185,6 +185,69 @@ export function describeMaterial(id: string): string {
     return `${item.name} (⌀${(p.radius! * 2).toFixed(2)}"${id} × ${p.length}")`;
   }
   return `${item.name} (${p.length}" × ${p.width}" × ${p.height}")`;
+}
+
+
+export type Aabb3 = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+};
+
+/** World-space corners. Yaw is about Y through the panel center (same as PanelMesh). */
+export function panelWorldCorners(panel: Panel): { x: number; y: number; z: number }[] {
+  const { x, y, z } = panel.position;
+  const { width: w, height: h, depth: d } = panel.size;
+  const yaw = panel.yaw ?? 0;
+  const locals: [number, number, number][] = [
+    [x, y, z],
+    [x + w, y, z],
+    [x + w, y, z + d],
+    [x, y, z + d],
+    [x, y + h, z],
+    [x + w, y + h, z],
+    [x + w, y + h, z + d],
+    [x, y + h, z + d],
+  ];
+  if (!yaw) return locals.map(([px, py, pz]) => ({ x: px, y: py, z: pz }));
+  const cx = x + w / 2;
+  const cz = z + d / 2;
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return locals.map(([px, py, pz]) => {
+    const dx = px - cx;
+    const dz = pz - cz;
+    return { x: cx + dx * c - dz * s, y: py, z: cz + dx * s + dz * c };
+  });
+}
+
+export function aabbOfPanels(panels: Panel[]): Aabb3 | null {
+  if (!panels.length) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const panel of panels) {
+    for (const c of panelWorldCorners(panel)) {
+      minX = Math.min(minX, c.x);
+      maxX = Math.max(maxX, c.x);
+      minY = Math.min(minY, c.y);
+      maxY = Math.max(maxY, c.y);
+      minZ = Math.min(minZ, c.z);
+      maxZ = Math.max(maxZ, c.z);
+    }
+  }
+  if (!Number.isFinite(minX)) return null;
+  return { minX, maxX, minY, maxY, minZ, maxZ };
+}
+
+export function aabbSize(b: Aabb3) {
+  return { width: b.maxX - b.minX, height: b.maxY - b.minY, depth: b.maxZ - b.minZ };
 }
 
 /**

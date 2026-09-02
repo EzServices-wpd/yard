@@ -168,6 +168,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const H = u?.height ?? opening?.height ?? project.overall.height;
   const D = u?.depth ?? opening?.depth ?? project.overall.depth;
   const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
+  const wallHang = project.assumptions.installMode === "wall";
   const slide = drawers.length ? slideInches(D) : 0;
 
   const sheetCuts = groupSheetCuts(panels);
@@ -839,11 +840,17 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   } else {
     steps.push({
       step: n++,
-      title: alcove ? "Confirm the opening — do not cut yet" : "Confirm the footprint — do not cut yet",
+      title: alcove
+        ? "Confirm the opening — do not cut yet"
+        : wallHang
+          ? "Confirm the hang — do not cut yet"
+          : "Confirm the footprint — do not cut yet",
       description: `${project.name}. Unit ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${
         alcove
           ? `Fitted to a ${opening?.width}" × ${opening?.height}" × ${opening?.depth}" ${opening?.kind}. Measure width, height, and depth in three places. Cut to the smallest width.`
-          : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
+          : wallHang
+            ? "This hangs on the wall — do not mark a footprint on the floor. Find two studs."
+            : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
       } ${panels.length} parts on this list.`,
       tips: "If a number on this plan disagrees with the cut list, trust the cut list. Geometry is from the bench, not from the prompt's adjectives.",
       partsUsed: ["*"],
@@ -982,12 +989,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
   steps.push({
     step: n++,
-    title: alcove ? "Shim, then lag into studs" : "Level it",
+    title: alcove ? "Shim, then lag into studs" : wallHang ? "Hang it on studs" : "Level it",
     description: alcove
       ? pocket
         ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${pocket.rightClear.toFixed(1)}" / L ${pocket.leftClear.toFixed(1)}"). Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
         : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
-      : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the carcase (main box).",
+      : wallHang
+        ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."
+        : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the carcase (main box).",
     tips: "Guidance only — confirm plumbing, studs, and the real opening before you cut. Not stamped engineering.",
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
   });

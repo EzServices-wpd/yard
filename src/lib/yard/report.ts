@@ -8,6 +8,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { nestCutList } from "./nesting";
+import { honestPlan, wantsRackAffordance } from "./honesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -285,7 +286,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
-  if (shelfCount > 0 && !coatRack && !island && !nightstand && !floating && !ironing && !spice && !wine) {
+  if (shelfCount > 0 && !coatRack && !island && !nightstand && !floating && !ironing && !spice && !wine && !wantsRackAffordance(project.prompt ?? "")) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
@@ -456,15 +457,18 @@ export function buildPlan(project: YardProject): BuildPlan {
       ...loadIssues(project),
     ];
     const pieces = project.panels.length;
-    return packPlan(
+    return honestPlan(
       project,
-      issues,
-      `${pieces} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(0)}`,
-      cutList,
-      bom,
-      uniqueSteps(project),
-      pieces,
-      cost,
+      packPlan(
+        project,
+        issues,
+        `${pieces} pieces · ${cutList.length} size${cutList.length === 1 ? "" : "s"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(0)}`,
+        cutList,
+        bom,
+        uniqueSteps(project),
+        pieces,
+        cost,
+      ),
     );
   }
 
