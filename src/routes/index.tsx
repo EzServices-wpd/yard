@@ -61,9 +61,14 @@ function LandingPage() {
           <Link to="/" className="flex items-center">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <Link to="/workspace" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
-            Bench
-          </Link>
+          <nav className="flex items-center gap-5">
+            <Link to="/ideas" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+              Ideas
+            </Link>
+            <Link to="/workspace" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+              Bench
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -122,6 +127,13 @@ function LandingPage() {
                   </button>
                 ))}
               </div>
+              <Link
+                to="/ideas"
+                className="mt-3 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
+              >
+                See more of the house
+                <ArrowRight className="size-3.5" />
+              </Link>
             </div>
             <div className="mt-5">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
