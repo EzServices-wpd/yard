@@ -91,43 +91,65 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     );
   });
 
-  // Aprons span adjacent legs so they can be screwed into the 2x2s.
-  // Rect: sit on the inner faces (inset a post + the ply).
-  // Round 3-leg: do not inset. The chord already runs center-to-center;
-  // pulling it inward shrinks the triangle off the posts so it looks
-  // like a floating brace. Run each rail into both 2x2s.
+  // Aprons screw into the 2x2s.
+  // Rect 4-leg: axis-aligned rails on the inner faces (no yaw). The old
+  // circular pairing walked leg order (x then z) so two "aprons" were
+  // diagonals (~43.5" on a 48×24 top) and yaw-blind plan bounds read 55.25".
+  // Round / 3-leg: chord rails center-to-center (yaw ok; no inward inset
+  // on round or the triangle floats off the posts).
   const apronY = H - topT - apronH;
-  for (let i = 0; i < centers.length; i++) {
-    const a = centers[i];
-    const b = centers[(i + 1) % centers.length];
-    const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const span = Math.hypot(dx, dz);
-    const yaw = Math.atan2(dz, dx);
-    const midX = (a.x + b.x) / 2;
-    const midZ = (a.z + b.z) / 2;
-    let ix = -midX;
-    let iz = -midZ;
-    const il = Math.hypot(ix, iz) || 1;
-    ix /= il;
-    iz /= il;
-    const inset = round ? 0 : legW / 2 + apronT / 2;
-    const mx = midX + ix * inset;
-    const mz = midZ + iz * inset;
-    const length = Math.max(4, span - (round ? 0 : legW));
+  if (!round && legN === 4 && centers.length === 4) {
+    const lx = Math.min(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
+    const rx = Math.max(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
+    const fz = Math.min(centers[0].z, centers[1].z, centers[2].z, centers[3].z);
+    const bz = Math.max(centers[0].z, centers[1].z, centers[2].z, centers[3].z);
+    const spanX = Math.max(4, rx - lx - legW);
+    const spanZ = Math.max(4, bz - fz - legW);
     panels.push(
-      panel(
-        "rail",
-        `Apron ${i + 1}`,
-        mx - length / 2,
-        apronY,
-        mz - apronT / 2,
-        length,
-        apronH,
-        apronT,
-        yaw,
-      ),
+      panel("rail", "Front apron", lx + legW / 2, apronY, fz + legW / 2, spanX, apronH, apronT),
     );
+    panels.push(
+      panel("rail", "Back apron", lx + legW / 2, apronY, bz - legW / 2 - apronT, spanX, apronH, apronT),
+    );
+    panels.push(
+      panel("rail", "Left apron", lx + legW / 2, apronY, fz + legW / 2, apronT, apronH, spanZ),
+    );
+    panels.push(
+      panel("rail", "Right apron", rx - legW / 2 - apronT, apronY, fz + legW / 2, apronT, apronH, spanZ),
+    );
+  } else {
+    for (let i = 0; i < centers.length; i++) {
+      const a = centers[i];
+      const b = centers[(i + 1) % centers.length];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const span = Math.hypot(dx, dz);
+      const yaw = Math.atan2(dz, dx);
+      const midX = (a.x + b.x) / 2;
+      const midZ = (a.z + b.z) / 2;
+      let ix = -midX;
+      let iz = -midZ;
+      const il = Math.hypot(ix, iz) || 1;
+      ix /= il;
+      iz /= il;
+      const apronInset = round ? 0 : legW / 2 + apronT / 2;
+      const mx = midX + ix * apronInset;
+      const mz = midZ + iz * apronInset;
+      const length = Math.max(4, span - (round ? 0 : legW));
+      panels.push(
+        panel(
+          "rail",
+          `Apron ${i + 1}`,
+          mx - length / 2,
+          apronY,
+          mz - apronT / 2,
+          length,
+          apronH,
+          apronT,
+          yaw,
+        ),
+      );
+    }
   }
 
   const notes = [
