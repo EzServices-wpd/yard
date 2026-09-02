@@ -188,8 +188,15 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
 
   const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
+  // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
+  // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
+  // not a 24" coffee height with a 36" deep top.
   const furnitureTriple =
-    program !== "closet" && program !== "wardrobe" && program !== "pantry" && program !== "vanity";
+    program !== "closet" &&
+    program !== "wardrobe" &&
+    program !== "pantry" &&
+    program !== "vanity" &&
+    program !== "table";
   let unlabeledWd = false;
   if (!saidAxis && furnitureTriple && trip.w && trip.h && trip.d) {
     width = trip.w;
