@@ -1312,7 +1312,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   if (rodY != null) {
-    panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
+    // One rod per bay. A single span through full-height dividers cannot be seated.
+    if (bayN >= 2) {
+      const clear = (W - P * (bayN + 1)) / bayN;
+      for (let b = 0; b < bayN; b++) {
+        const x = x0 + P + b * (clear + P);
+        panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, rodY, D * 0.45, clear, 1.25, 1.25));
+      }
+    } else {
+      panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
+    }
   }
 
   const cubbyN = u.cubbies ?? 0;

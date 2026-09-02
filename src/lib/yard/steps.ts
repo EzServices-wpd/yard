@@ -960,12 +960,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     });
   }
 
-  if (rails.length) {
+  const hangingRods = rails.filter((p) => /hanging rod/i.test(p.name));
+  if (hangingRods.length) {
     steps.push({
       step: n++,
-      title: "Seat the hanging rod",
-      description: `${rails.map(cutLine).join("; ")}. Seat in closet-rod sockets on the uprights, about 12" down from the top of the hanging bay.`,
-      partsUsed: names(rails),
+      title: hangingRods.length === 1 ? "Seat the hanging rod" : `Seat ${hangingRods.length} hanging rods — one per bay`,
+      description: `${hangingRods.map(cutLine).join("; ")}. Seat each rod in closet-rod sockets on that bay's uprights or dividers, about 12" down from the top of the hanging bay. A rod cannot pass through a divider.`,
+      partsUsed: names(hangingRods),
     });
   }
 

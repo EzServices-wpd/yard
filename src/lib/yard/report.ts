@@ -281,7 +281,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: "closet-rod-sockets",
       searchQuery: "closet rod sockets flanges pair",
       estimatedCost: 7.98 * hangingRods.length,
-      notes: `One pair of sockets/flanges per hanging rod (${hangingRods.length} rod${hangingRods.length === 1 ? "" : "s"}). Seat on the uprights.`,
+      notes: `One pair of sockets/flanges per hanging rod (${hangingRods.length} rod${hangingRods.length === 1 ? "" : "s"}). Seat on that bay's uprights or dividers. A rod cannot pass through a divider.`,
     });
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
