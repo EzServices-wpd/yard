@@ -294,7 +294,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
         </div>
       </header>
 
-      <PromptBar onBuilt={() => setPlanOpen(false)} />
+      <PromptBar onBuilt={() => setPlanOpen(false)} onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))} />
 
       <div className="relative flex min-h-0 flex-1">
         {side && (
@@ -314,7 +314,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
         <div className="relative min-w-0 flex-1">
           <WorkspaceCanvas />
           <MeasureOverlay />
-          {pending && <LavaLamp caption={grokBusy ? "Looking up the form" : "Building"} />}
+          {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
           {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && (
             <div
               className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg ${

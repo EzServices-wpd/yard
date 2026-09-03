@@ -42,25 +42,46 @@ function IdeasPage() {
           A house full of things you can actually build.
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
-          Tap one. Yard fills the bar with that prompt and returns a cut list, hardware, and steps.
-          Or type your own size. These are the ones we already trust.
+          These are real builds — not a catalogue of lies. Tap one. Yard fills the bar and returns a cut list,
+          hardware, and steps. Or type your own size.
         </p>
 
         {IDEA_SECTIONS.map((section) => {
           const rows = IDEAS.filter((d) => d.section === section);
           if (!rows.length) return null;
+          const weekend = section === "Weekend";
           return (
-            <section key={section} className="mt-14">
-              <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">{section}</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <section key={section} className={weekend ? "mt-20" : "mt-14"}>
+              {weekend ? (
+                <>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Weekend</p>
+                  <h2 className="mt-2 font-display text-3xl leading-tight tracking-tight text-ink sm:text-4xl">
+                    From popsicle / PVC / straw.
+                  </h2>
+                  <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">
+                    Same bench as the house. Named stock. The size you typed.
+                  </p>
+                </>
+              ) : (
+                <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">{section}</h2>
+              )}
+              <div className={`mt-4 grid gap-3 ${weekend ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
                 {rows.map((d) => (
                   <button
                     key={d.id}
                     type="button"
                     onClick={() => go(d.prompt)}
-                    className="group flex flex-col rounded-xl border border-rule bg-surface/30 p-4 text-left transition-colors duration-150 hover:border-ink/30 hover:bg-surface/60"
+                    className={`group relative flex flex-col overflow-hidden rounded-xl border border-rule bg-paper text-left transition-[border-color,background-color] duration-150 hover:border-ink/35 hover:bg-surface/40 ${
+                      weekend ? "p-5 sm:p-6" : "p-4"
+                    }`}
                   >
-                    <span className="font-display text-lg text-ink group-hover:underline">{d.label}</span>
+                    <span className="absolute inset-x-0 top-0 h-px bg-ink/0 transition-colors duration-150 group-hover:bg-ink/40" />
+                    {d.stock && (
+                      <span className="font-display text-[13px] italic leading-none text-ink-muted">{d.stock}</span>
+                    )}
+                    <span className={`font-display text-ink group-hover:underline ${weekend ? "mt-2 text-xl" : "text-lg"}`}>
+                      {d.label}
+                    </span>
                     <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{d.size}</span>
                     <span className="mt-2 text-sm leading-snug text-ink-muted">{d.blurb}</span>
                     <span className="mt-3 inline-flex items-center gap-1 text-xs text-ink-muted group-hover:text-ink">

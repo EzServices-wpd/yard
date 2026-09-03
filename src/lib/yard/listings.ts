@@ -352,6 +352,46 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "drawer-slides-18",
+    retailer: "amazon",
+    title: "18\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=18+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 14.99,
+    lengthIn: 18,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-18",
+    retailer: "homedepot",
+    title: "18\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/18%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 16.98,
+    lengthIn: 18,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-22",
+    retailer: "amazon",
+    title: "22\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=22+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 16.99,
+    lengthIn: 22,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-22",
+    retailer: "homedepot",
+    title: "22\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/22%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 19.98,
+    lengthIn: 22,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "cabinet-hinges",
     retailer: "amazon",
     title: "Soft-close concealed cabinet hinges, pair",
@@ -648,7 +688,11 @@ function guessCatalogId(line: BomLine): string | null {
     return "structural-screws";
   }
   if (/#8|wood screw/.test(hay)) return "screws-8";
-  if (/slide/.test(hay)) return "drawer-slides-16";
+  if (/slide/.test(hay)) {
+    if (/\b22\b/.test(hay)) return "drawer-slides-22";
+    if (/\b18\b/.test(hay)) return "drawer-slides-18";
+    return "drawer-slides-16";
+  }
   if (/hinge/.test(hay)) return "cabinet-hinges";
   if (/shelf pin/.test(hay)) return "shelf-pins";
   if (/rod socket|rod flange|closet rod socket/.test(hay)) return "closet-rod-sockets";

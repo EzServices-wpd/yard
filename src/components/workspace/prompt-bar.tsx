@@ -7,7 +7,9 @@ import { useYard } from "@/lib/yard/store";
 import { YardsMenu } from "./yards-menu";
 import { runYardPrompt } from "./run-prompt";
 
-export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
+const CHIP = "shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-fg/30 hover:text-fg";
+
+export function PromptBar({ onBuilt, onStock }: { onBuilt: () => void; onStock?: () => void }) {
   const project = useYard((s) => s.project);
   const grokBusy = useYard((s) => s.grokBusy);
   const [value, setValue] = useState(project.prompt);
@@ -55,24 +57,19 @@ export function PromptBar({ onBuilt }: { onBuilt: () => void }) {
       </form>
       <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-1">
         <YardsMenu />
+        {onStock && (
+          <button type="button" onClick={onStock} className={CHIP} data-yard-stock>
+            Stock
+          </button>
+        )}
         {DREAMS.filter((d) => d.group === "house").map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            onClick={() => void run(d.prompt, true)}
-            className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-fg/30 hover:text-fg"
-          >
+          <button key={d.id} type="button" onClick={() => void run(d.prompt, true)} className={CHIP}>
             {d.label}
           </button>
         ))}
         <span className="shrink-0 pl-1 text-[10px] uppercase tracking-[0.14em] text-faint">Weekend</span>
         {DREAMS.filter((d) => d.group === "weekend").map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            onClick={() => void run(d.prompt, true)}
-            className="shrink-0 rounded-full border border-border/70 px-3 py-1 text-xs text-faint hover:border-fg/30 hover:text-fg"
-          >
+          <button key={d.id} type="button" onClick={() => void run(d.prompt, true)} className={CHIP}>
             {d.label}
           </button>
         ))}

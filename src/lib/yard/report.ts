@@ -186,7 +186,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       name: `${slide}" side-mount drawer slides`,
       quantity: drawers.length,
       unit: drawers.length === 1 ? "pair" : "pairs",
-      catalogId: "drawer-slides-16",
+      catalogId: `drawer-slides-${slide}`,
       searchQuery: `${slide} inch side mount drawer slides`,
       estimatedCost: 14.98 * drawers.length,
       notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${project.overall.depth}" carcase.`,

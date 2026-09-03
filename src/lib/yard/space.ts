@@ -1,6 +1,7 @@
 import { buildClosetFromOpening } from "./closet";
 import { buildWindowProject, pickWindow, STOCK_WINDOWS } from "./windows";
-import type { SpaceKind, YardProject } from "./types";
+import type { FittedProgram, SpaceKind, YardProject } from "./types";
+import type { HouseFamily } from "./family";
 
 export type { SpaceKind };
 
@@ -20,6 +21,26 @@ export function classifySpace(m: SpaceMeasurement): SpaceKind {
   if (d > 0 && d <= 8 && m.widthIn >= 18 && m.heightIn >= 24) return "window_rough_opening";
   if (d >= 12 && d <= 30 && m.widthIn >= 18 && m.heightIn >= 48) return "closet_niche";
   if (d >= 8 && m.widthIn >= 24 && m.heightIn >= 36) return "shelving_alcove";
+  return "general_volume";
+}
+
+/** Seed the measure dropdown from the unit on the bench — never leftover "General volume" for a desk. */
+export function measureKindFromProject(project: YardProject): SpaceKind {
+  if (project.windowPkg) return "window_rough_opening";
+  if (project.pocket) return "closet_niche";
+  const opening = project.fitted?.opening.kind;
+  if (opening === "window") return "window_rough_opening";
+  if (opening === "alcove" || opening === "pocket") return "closet_niche";
+  const program = project.fitted?.program as FittedProgram | undefined;
+  const family = project.fitted?.family as HouseFamily | undefined;
+  if (program === "desk") return "desk";
+  if (program === "media") return "media";
+  if (program === "table" || family === "table") return "table";
+  if (program === "bench" || family === "seat") return "bench";
+  if (program === "closet" || program === "vanity" || program === "wardrobe" || program === "pantry") {
+    return "closet_niche";
+  }
+  if (family === "hung-open" || family === "hung-cabinet" || program === "bookcase") return "shelving_alcove";
   return "general_volume";
 }
 

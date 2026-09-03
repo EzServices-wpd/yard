@@ -11,7 +11,7 @@ import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { defaultGhostFlags } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
-import { projectFromMeasurement } from "./space";
+import { measureKindFromProject, projectFromMeasurement } from "./space";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
@@ -213,7 +213,7 @@ export const useYard = create<YardState>((set, get) => ({
                 width: String(next.fitted.unit.width),
                 height: String(next.fitted.unit.height),
                 depth: String(next.fitted.unit.depth),
-                kind: next.fitted.opening.kind === "alcove" ? "closet_niche" : "general_volume",
+                kind: measureKindFromProject(next),
               }
             : get().measure,
     });
@@ -384,7 +384,93 @@ export const useYard = create<YardState>((set, get) => ({
   setMeasure: (patch) => set({ measure: { ...get().measure, ...patch } }),
   applyMeasure: () => {
     const { measure, project } = get();
-    const built = projectFromMeasurement(measure, project.prompt || project.name);
+    const widthIn = parseFloat(measure.width);
+    const heightIn = parseFloat(measure.height);
+    const depthIn = parseFloat(measure.depth);
+    if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn)) return;
+    const depth = Number.isFinite(depthIn) ? depthIn : undefined;
+    const prompt = project.prompt || project.name;
+    if (measure.kind === "window_rough_opening" || project.windowPkg) {
+      const built = projectFromMeasurement(
+        {
+          widthIn,
+          heightIn,
+          depthIn: depth,
+          kindHint: "window_rough_opening",
+          windowId: measure.windowId ?? project.windowPkg?.window.id,
+        },
+        prompt,
+      );
+      if (built) get().commit(built);
+      return;
+    }
+    if (project.fitted) {
+      const spec = {
+        ...project.fitted,
+        opening: {
+          ...project.fitted.opening,
+          width: widthIn,
+          height: heightIn,
+          depth: depth ?? project.fitted.opening.depth,
+        },
+        unit: {
+          ...project.fitted.unit,
+          width: widthIn,
+          height: heightIn,
+          depth: depth ?? project.fitted.unit.depth,
+        },
+      };
+      if (spec.walls && measure.backWidth) {
+        const back = parseFloat(measure.backWidth);
+        const left = parseFloat(measure.leftDepth ?? "");
+        const right = parseFloat(measure.rightDepth ?? "");
+        spec.walls = {
+          ...spec.walls,
+          height: heightIn,
+          backWidth: Number.isFinite(back) ? back : spec.walls.backWidth,
+          leftDepth: Number.isFinite(left) ? left : spec.walls.leftDepth,
+          rightDepth: Number.isFinite(right) ? right : spec.walls.rightDepth,
+        };
+      }
+      const built = generateFromPrompt(prompt, undefined, undefined, { fittedOverride: spec });
+      if (built) get().commit(built);
+      return;
+    }
+    if (project.pocket) {
+      const back = parseFloat(measure.backWidth ?? "");
+      const left = parseFloat(measure.leftDepth ?? "");
+      const right = parseFloat(measure.rightDepth ?? "");
+      const built = buildPocket(
+        {
+          ...project.pocket,
+          walls: {
+            ...project.pocket.walls,
+            height: heightIn,
+            backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
+            leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
+            rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
+          },
+          unit: {
+            ...project.pocket.unit,
+            width: widthIn,
+            height: heightIn,
+            depth: depth ?? project.pocket.unit.depth,
+          },
+        },
+        prompt,
+      );
+      if (built) get().commit(built);
+      return;
+    }
+    const built = projectFromMeasurement(
+      {
+        widthIn,
+        heightIn,
+        depthIn: depth,
+        kindHint: measure.kind === "closet_niche" || measure.kind === "window_rough_opening" ? measure.kind : undefined,
+      },
+      prompt,
+    );
     if (built) get().commit(built);
   },
   liftTo3d: () => {

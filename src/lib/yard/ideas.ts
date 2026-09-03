@@ -10,6 +10,8 @@ export type Idea = {
   size: string;
   prompt: string;
   blurb: string;
+  /** Named stock for weekend cards — not a photo. */
+  stock?: string;
 };
 
 /** Honest prompts only — walked on yard.wiki. Each tap fills the prompt bar. */
@@ -228,7 +230,8 @@ export const IDEAS: Idea[] = [
     label: "Popsicle Eiffel",
     size: "3 ft",
     prompt: "3 foot Eiffel Tower from popsicle sticks",
-    blurb: "Four arches, four piers, one shaft.",
+    blurb: "Four arches, four piers, one shaft. Real sticks, the height you typed.",
+    stock: "from popsicle sticks",
   },
   {
     id: "arch",
@@ -237,7 +240,8 @@ export const IDEAS: Idea[] = [
     label: "PVC garden arch",
     size: "6 ft",
     prompt: "6 foot garden arch from 3/4 inch PVC pipe",
-    blurb: "Walk-through portal from Schedule 40.",
+    blurb: "Walk-through portal from Schedule 40. The pipe you named is the pipe you buy.",
+    stock: "from ¾″ PVC",
   },
   {
     id: "bridge",
@@ -246,7 +250,8 @@ export const IDEAS: Idea[] = [
     label: "Straw Warren bridge",
     size: "4 ft",
     prompt: "4 foot bridge from plastic drinking straws",
-    blurb: "Single stock, Warren truss, densified deck.",
+    blurb: "Single stock, Warren truss, densified deck. Drinking straws — not a lumber aisle.",
+    stock: "from drinking straws",
   },
 ];
 

@@ -11,6 +11,12 @@ export const Route = createFileRoute("/")({
 const HOUSE = DREAMS.filter((d) => d.group === "house");
 const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
 
+const STOCKS = [
+  { id: "plywood", label: "¾ plywood", append: "from 3/4 plywood" },
+  { id: "popsicle", label: "popsicle", append: "from popsicle sticks" },
+  { id: "pvc", label: "PVC", append: "from 3/4 inch PVC" },
+] as const;
+
 const HEROES = [
   {
     id: "pocket",
@@ -41,14 +47,39 @@ const HEROES = [
   },
 ] as const;
 
+const CHIP =
+  "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
+
 function LandingPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
+  const [stockId, setStockId] = useState<(typeof STOCKS)[number]["id"] | null>(null);
+
+  const stock = STOCKS.find((s) => s.id === stockId) ?? null;
+
+  function withStock(text: string) {
+    const q = text.trim();
+    if (!q) return "";
+    if (!stock) return q;
+    const hay = q.toLowerCase();
+    if (hay.includes(stock.append.toLowerCase()) || hay.includes(stock.label.toLowerCase())) return q;
+    return `${q} ${stock.append}`;
+  }
 
   function go(text: string) {
-    const q = text.trim();
+    const q = withStock(text);
     if (!q) return;
     void navigate({ to: "/workspace", search: { q } });
+  }
+
+  function pickStock(id: (typeof STOCKS)[number]["id"]) {
+    const next = stockId === id ? null : id;
+    setStockId(next);
+    const chosen = STOCKS.find((s) => s.id === next);
+    const t = prompt.trim();
+    if (!t || !chosen) return;
+    const stripped = t.replace(/\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC)\s*$/i, "").trim();
+    setPrompt(`${stripped} ${chosen.append}`);
   }
 
   const featured = HEROES.find((h) => h.featured) ?? HEROES[0];
@@ -111,43 +142,54 @@ function LandingPage() {
                   <ArrowRight className="size-4" />
                 </button>
               </div>
+              <p className="mt-3 text-sm text-ink-muted">
+                <span className="mr-1">from</span>
+                {STOCKS.map((s, i) => (
+                  <span key={s.id}>
+                    {i > 0 && <span className="mx-1.5 text-rule">/</span>}
+                    <button
+                      type="button"
+                      onClick={() => pickStock(s.id)}
+                      className={`rounded-full px-2 py-0.5 transition-colors duration-150 ${
+                        stockId === s.id
+                          ? "bg-ink text-paper"
+                          : "text-ink underline decoration-rule underline-offset-[5px] hover:decoration-ink"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  </span>
+                ))}
+              </p>
             </form>
 
-            <div className="mt-8">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {HOUSE.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => go(d.prompt)}
-                    className="rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50"
-                  >
-                    {d.label}
-                  </button>
-                ))}
+            <div className="mt-8 grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {HOUSE.map((d) => (
+                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                <Link
+                  to="/ideas"
+                  className="mt-3 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
+                >
+                  See more of the house
+                  <ArrowRight className="size-3.5" />
+                </Link>
               </div>
-              <Link
-                to="/ideas"
-                className="mt-3 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
-              >
-                See more of the house
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-            <div className="mt-5">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {WEEKEND.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => go(d.prompt)}
-                    className="rounded-full border border-rule/80 px-3.5 py-1.5 text-sm text-ink-muted transition-colors duration-150 hover:border-ink/30 hover:text-ink"
-                  >
-                    {d.label}
-                  </button>
-                ))}
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {WEEKEND.map((d) => (
+                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
