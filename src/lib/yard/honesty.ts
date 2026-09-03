@@ -537,13 +537,21 @@ function applyLocalFixes(project: YardProject): YardProject {
  */
 export function enforceHonesty(
   project: YardProject,
-  opts: { rebuild?: (spec: FittedSpec) => YardProject } = {},
+  opts: { rebuild?: (spec: FittedSpec) => YardProject; honorUnit?: boolean } = {},
 ): YardProject {
   const pocketWonky =
     !!project.pocket &&
     ((project.pocket.walls.leftAngleDeg ?? 0) > 0.2 || (project.pocket.walls.rightAngleDeg ?? 0) > 0.2);
   if (pocketWonky || project.kind === "opening") return project;
   if (!project.fitted && !project.panels.length) return project;
+
+  // Measure just typed W×H×D. That is the typed fact — do not snap back to the old prompt sizes.
+  if (opts.honorUnit) {
+    let next = project;
+    next = forceWallMount(next);
+    next = injectRackRails(next);
+    return next;
+  }
 
   const report = inspectHonesty(project);
   const needsRebuild = report.issues.some((i) => i.rebuild);

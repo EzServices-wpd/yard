@@ -15,6 +15,35 @@ export type SpaceMeasurement = {
 
 export { matchStockWindows as matchWindows } from "./windows";
 
+
+/** Rewrite the prompt so Measure W×H×D is the typed fact honesty will honor. */
+export function stampPromptSize(prompt: string, w: number, h: number, d: number): string {
+  let p = prompt.trim();
+  if (!p) return `${w} wide ${h} high ${d} deep`;
+  const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(n));
+  const W = fmt(w);
+  const H = fmt(h);
+  const D = fmt(d);
+  p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(wide|width)\b/i, `${W}$2$3`);
+  p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(tall|high|height)\b/i, `${H}$2$3`);
+  p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(deep|depth)\b/i, `${D}$2$3`);
+  p = p.replace(
+    /(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s+)((?:bathroom\s+)?alcove)\b/i,
+    `${W}$2$3`,
+  );
+  p = p.replace(
+    /(\d+(?:\.\d+)?)\s*(x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(x|by|×)\s*(\d+(?:\.\d+)?))?/i,
+    (m: string, a: string, sep1: string, b: string, sep2?: string, c?: string) => {
+      const na = parseFloat(a);
+      const nb = parseFloat(b);
+      if (na <= 4 && nb <= 12 && (c == null || parseFloat(c) <= 16)) return m;
+      if (c) return `${W}${sep1}${H}${sep2}${D}`;
+      return `${W}${sep1}${H}`;
+    },
+  );
+  return p.replace(/\s{2,}/g, " ").trim();
+}
+
 export function classifySpace(m: SpaceMeasurement): SpaceKind {
   if (m.kindHint) return m.kindHint;
   const d = m.depthIn ?? 0;

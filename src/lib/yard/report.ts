@@ -7,6 +7,7 @@ import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
+import { cutListName, sheetCutDims } from "./shopPlural";
 import { nestCutList } from "./nesting";
 import { honestPlan, wantsRackAffordance } from "./honesty";
 import { honestWeekendPlan } from "./weekendStockHonesty";
@@ -28,20 +29,7 @@ function stampLabels(lines: CutLine[]): CutLine[] {
 }
 
 function partFamily(name: string, type?: string) {
-  if (/^leg\b/i.test(name)) return "Leg";
-  if (/cut round/i.test(name)) return name;
-  if (/^apron\b/i.test(name)) return "Apron";
-  if (type === "upright") return "Upright";
-  if (type === "shelf") return "Shelf";
-  if (type === "divider") return "Divider";
-  if (type === "top" || type === "counter") return "Top";
-  if (type === "bottom") return "Bottom";
-  if (type === "back") return "Back";
-  if (type === "door") return "Door";
-  if (type === "drawer") return "Drawer box";
-  if (type === "kick") return "Kick";
-  if (type === "rail") return "Rail";
-  return name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "") || name;
+  return cutListName(name, type);
 }
 
 function effortLabel(project: YardProject, pieces: number): string {
@@ -71,9 +59,7 @@ function closetCuts(project: YardProject): CutLine[] {
       id: key,
       name: family,
       quantity: 1,
-      lengthIn: Math.max(w, d, h),
-      widthIn: [w, d, h].sort((a, b) => b - a)[1],
-      thicknessIn: Math.min(w, d, h),
+      ...sheetCutDims(w, h, d),
       material: item?.name ?? p.materialId,
     });
   }
@@ -181,7 +167,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   const drawers = project.panels.filter((panel) => panel.type === "drawer");
   if (drawers.length) {
-    const slide = slideInches(project.overall.depth);
+    const carcaseD =
+      project.pocket?.unit.depth ?? project.fitted?.unit.depth ?? project.overall.depth;
+    const slide = slideInches(carcaseD);
     bom.push({
       name: `${slide}" side-mount drawer slides`,
       quantity: drawers.length,
@@ -189,7 +177,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: `drawer-slides-${slide}`,
       searchQuery: `${slide} inch side mount drawer slides`,
       estimatedCost: 14.98 * drawers.length,
-      notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${project.overall.depth}" carcase.`,
+      notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${carcaseD}" carcase.`,
     });
     bom.push({
       name: "Cup pulls",

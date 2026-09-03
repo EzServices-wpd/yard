@@ -14,6 +14,7 @@ import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
 import { MeasureOverlay } from "@/components/workspace/measure-overlay";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
+import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { hydrateYard, useYard } from "@/lib/yard/store";
@@ -34,6 +35,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
@@ -129,9 +131,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       setSide("measure");
       return;
     }
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
-      setSide("measure");
-    }
+    setSide("measure");
   }, [project.id, project.kind, project.pocket]);
 
   useEffect(() => {
@@ -185,7 +185,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             }`}
           >
             <Ruler className="size-4" />
-            <span className="hidden xs:inline sm:inline">Measure</span>
+            <span>Measure</span>
           </button>
           <button
             type="button"
@@ -196,6 +196,16 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg sm:h-9"
           >
             Build plan
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              makePlan();
+              setExportOpen(true);
+            }}
+            className="inline-flex h-11 items-center rounded-md border border-border px-3 text-sm text-fg sm:h-9"
+          >
+            Print
           </button>
           <div className="relative">
             <button
@@ -612,6 +622,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       </div>
 
       <PlanDrawer open={planOpen} onClose={() => setPlanOpen(false)} />
+      {exportOpen && plan && (
+        <ExportDialog project={project} plan={plan} onClose={() => setExportOpen(false)} />
+      )}
     </div>
   );
 }

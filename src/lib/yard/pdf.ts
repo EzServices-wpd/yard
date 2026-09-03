@@ -208,12 +208,12 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         doc.setFont("times", "bold");
         doc.setFontSize(14);
         doc.setTextColor(...INK);
-        doc.text("Cut this 4x8", left, y);
+        doc.text("Cut this 4x8 plywood", left, y);
         y += 18;
         doc.setFont("times", "italic");
         doc.setFontSize(10);
         doc.setTextColor(...MUTED);
-        doc.text("Letters match the cut list. 1/8\" kerf included. Grain runs long on the sheet.", left, y);
+        doc.text("Letters match the cut list. 3/4\" plywood — not a pine board. 1/8\" kerf included. Grain runs long.", left, y);
         y += 14;
         if (thin.length) {
           doc.text(

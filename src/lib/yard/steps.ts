@@ -3,11 +3,11 @@
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { slideInches } from "./stockLook";
-import { shopPlural } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 
 function dim(p: Panel) {
-  return `${round(p.size.width)} × ${round(p.size.height)} × ${round(p.size.depth)}`;
+  return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
 }
 
 function round(n: number) {
@@ -43,7 +43,10 @@ function cutHow(item?: CatalogItem | null) {
   if (item.category === "plastic") {
     return { how: "Sharp snips. Square the cut so tape has a face to grab.", tip: "A crushed straw will not take a joint." };
   }
-  return { how: "Circular saw and a straightedge. Face up, label the waste face.", tip: "Support the offcut so it does not break out." };
+  return {
+    how: "Circular saw and a straightedge — or take this cut list to the lumber aisle and have them cut the sheets. Good face up. Write the letter from the cut list on the waste face (the side nobody sees).",
+    tip: "Support the offcut so it does not splinter. If a number here disagrees with the cut list, trust the cut list.",
+  };
 }
 
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
@@ -147,7 +150,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const of = (t: Panel["type"]) => panels.filter((p) => p.type === t);
   const names = (list: Panel[]) => list.map((p) => p.name);
   const cutLine = (p: Panel) =>
-    `${p.name} — ${round(p.size.width)} × ${round(p.size.height)} × ${round(p.size.depth)}"`;
+    `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`;
 
   const uprights = of("upright");
   const backs = of("back");
@@ -164,9 +167,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const pocket = project.pocket;
   const opening = project.opening;
   const program = project.fitted?.program ?? (pocket ? "vanity" : "closet");
-  const W = u?.width ?? opening?.width ?? project.overall.width;
-  const H = u?.height ?? opening?.height ?? project.overall.height;
-  const D = u?.depth ?? opening?.depth ?? project.overall.depth;
+  const W = u?.width ?? pocket?.unit.width ?? opening?.width ?? project.overall.width;
+  const H = u?.height ?? pocket?.unit.height ?? opening?.height ?? project.overall.height;
+  const D = pocket?.unit.depth ?? u?.depth ?? opening?.depth ?? project.overall.depth;
   const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
   const wallHang = project.assumptions.installMode === "wall";
   const slide = drawers.length ? slideInches(D) : 0;
@@ -1011,42 +1014,15 @@ function groupSheetCuts(panels: Panel[]): string[] {
     const w = Math.round(p.size.width * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;
-    const family =
-      p.type === "upright"
-        ? "upright"
-        : p.type === "shelf"
-          ? "shelf"
-          : p.type === "divider"
-            ? "divider"
-            : p.type === "top" || p.type === "counter"
-              ? p.type === "counter"
-                ? "counter"
-                : "top"
-              : p.type === "bottom"
-                ? "bottom"
-                : p.type === "back"
-                  ? "back"
-                  : p.type === "door"
-                    ? "door"
-                    : p.type === "drawer"
-                      ? "drawer box"
-                      : p.type === "kick"
-                        ? "toekick"
-                        : p.type === "mirror"
-                          ? "mirror"
-                          : p.type === "rail"
-                            ? "rod"
-                            : p.name;
-    const key = `${family}|${w}|${h}|${d}`;
+    const family = cutListName(p.name, p.type).toLowerCase();
+    const dims = fmtSheetCut(w, h, d);
+    const key = `${family}|${dims}`;
     const g = map.get(key);
     if (g) g.qty += 1;
-    else map.set(key, { qty: 1, label: family, w, h, d });
+    else map.set(key, { qty: 1, label: cutListName(p.name, p.type), w, h, d });
   }
   return [...map.values()].map((g) => {
-    const a = round(g.w);
-    const b = round(g.h);
-    const c = round(g.d);
-    return `${g.qty} ${shopPlural(g.label, g.qty)} ${a} × ${b} × ${c}".`;
+    return `${g.qty} ${shopPlural(g.label, g.qty)} ${fmtSheetCut(g.w, g.h, g.d)}".`;
   });
 }
 

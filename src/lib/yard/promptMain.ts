@@ -53,9 +53,10 @@ function withWireNote(project: YardProject, item: CatalogItem): YardProject {
 }
 
 
-function honestHouse(project: YardProject, prompt: string): YardProject {
+function honestHouse(project: YardProject, prompt: string, honorUnit = false): YardProject {
   return enforceHonesty(project, {
     rebuild: (spec) => buildFitted(spec, prompt),
+    honorUnit,
   });
 }
 
@@ -70,6 +71,7 @@ export function generateFromPrompt(
     sizeOverride?: { width: number; height: number; depth: number };
     cutStock?: boolean;
     fittedOverride?: import("./types").FittedSpec;
+    honorUnit?: boolean;
   } = {},
 ): YardProject {
   const lower = prompt.toLowerCase().trim();
@@ -79,7 +81,7 @@ export function generateFromPrompt(
   const grain = scale === "weekend" ? 1.85 : 1;
 
   if (opts.fittedOverride) {
-    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt);
+    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit);
   }
 
   if (kindHint === "opening") {

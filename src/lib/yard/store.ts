@@ -11,7 +11,7 @@ import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { defaultGhostFlags } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
-import { measureKindFromProject, projectFromMeasurement } from "./space";
+import { measureKindFromProject, projectFromMeasurement, stampPromptSize } from "./space";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
@@ -389,7 +389,7 @@ export const useYard = create<YardState>((set, get) => ({
     const depthIn = parseFloat(measure.depth);
     if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn)) return;
     const depth = Number.isFinite(depthIn) ? depthIn : undefined;
-    const prompt = project.prompt || project.name;
+    const prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? parseFloat(measure.depth) || 16);
     if (measure.kind === "window_rough_opening" || project.windowPkg) {
       const built = projectFromMeasurement(
         {
@@ -432,7 +432,7 @@ export const useYard = create<YardState>((set, get) => ({
           rightDepth: Number.isFinite(right) ? right : spec.walls.rightDepth,
         };
       }
-      const built = generateFromPrompt(prompt, undefined, undefined, { fittedOverride: spec });
+      const built = generateFromPrompt(prompt, undefined, undefined, { fittedOverride: spec, honorUnit: true });
       if (built) get().commit(built);
       return;
     }

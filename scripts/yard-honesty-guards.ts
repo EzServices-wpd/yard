@@ -475,3 +475,84 @@ console.log("WEEKEND STRUCTURE FAMILIES OK", {
   dino: dino.kind,
   box: craftBox.kind,
 });
+
+const coat = generateFromPrompt("coat rack 36 wide 6 high 8 deep");
+const coatPlan = buildPlan(coat);
+if (coatPlan.cutList.some((c) => /^(Back|Top|Rail)$/i.test(c.name))) {
+  failHonesty("coat rack cut list still says Back/Top/Rail", coatPlan.cutList.map((c) => c.name));
+}
+if (!coatPlan.cutList.some((c) => /peg rail/i.test(c.name)) || !coatPlan.cutList.some((c) => /hat shelf/i.test(c.name))) {
+  failHonesty("coat rack lost peg rail / hat shelf names", coatPlan.cutList.map((c) => c.name));
+}
+
+const closetRodPlan = buildPlan(closetRods);
+if (closetRodPlan.cutList.some((c) => /^Rail$/i.test(c.name))) {
+  failHonesty("closet hanging rod collapsed to Rail", closetRodPlan.cutList.map((c) => c.name));
+}
+if (!closetRodPlan.cutList.some((c) => /hanging rod/i.test(c.name))) {
+  failHonesty("closet cut list missing hanging rod", closetRodPlan.cutList.map((c) => c.name));
+}
+
+const jarPlan = buildPlan(jarShelf);
+if (!hasRackAffordance(jarShelf)) {
+  failHonesty("jar wall shelf missing lips", jarShelf.panels.map((p) => p.name));
+}
+if (jarPlan.cutList.some((c) => /^Rail$/i.test(c.name))) {
+  failHonesty("jar lips collapsed to Rail", jarPlan.cutList.map((c) => c.name));
+}
+if (!jarPlan.cutList.some((c) => /jar lip/i.test(c.name))) {
+  failHonesty("jar cut list missing Jar lip", jarPlan.cutList.map((c) => c.name));
+}
+
+const linenPrompt = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
+if (!linen.fitted) failHonesty("linen fitted missing");
+const refitSpec = {
+  ...linen.fitted!,
+  opening: { ...linen.fitted!.opening, width: 36, height: 80, depth: 18 },
+  unit: { ...linen.fitted!.unit, width: 36, height: 80, depth: 18 },
+};
+const linenRefit = generateFromPrompt(linenPrompt, undefined, undefined, { fittedOverride: refitSpec, honorUnit: true });
+if (!nearInch(linenRefit.overall.width, 36) || !nearInch(linenRefit.overall.height, 80) || !nearInch(linenRefit.overall.depth, 18)) {
+  failHonesty("Fit this opening snapped back to prompt size", linenRefit.overall);
+}
+if (!nearInch(linenRefit.fitted?.unit.width ?? 0, 36)) failHonesty("refit unit drifted", linenRefit.fitted?.unit);
+
+const pocket = generateFromPrompt("pocket vanity");
+const pocketPlan = buildPlan(pocket);
+const pocketBlob = [
+  ...pocketPlan.cutList.map((c) => `${c.name} ${c.material ?? ""}`),
+  ...pocketPlan.bom.map((b) => `${b.name} ${b.searchQuery ?? ""} ${b.notes ?? ""} ${b.offers?.map((o) => o.title).join(" ") ?? ""}`),
+  ...pocketPlan.instructions.map((s) => `${s.title} ${s.description}`),
+].join("\n");
+if (/pine board/i.test(pocketBlob) && /plywood/i.test(pocket.primaryMaterialId ?? "")) {
+  failHonesty("pocket plan says pine board on a plywood build", pocketBlob.match(/.{0,40}pine.{0,40}/i));
+}
+const pocketSlides = pocketPlan.bom.find((b) => /slide/i.test(b.name));
+if (pocketSlides && /22"/.test(pocketSlides.name)) {
+  failHonesty("pocket vanity buying 22in slides for a 17in unit", pocketSlides);
+}
+if (pocketPlan.instructions.some((s) => /22"/.test(s.description) && /slide/i.test(s.description))) {
+  failHonesty("pocket steps still quote 22in slides for a 17in unit", pocketPlan.instructions.filter((s) => /slide/i.test(s.description)).map((s) => s.description.slice(0, 160)));
+}
+
+const deskPlan = buildPlan(desk);
+const deskSlides = deskPlan.bom.find((b) => /slide/i.test(b.name));
+if (!deskSlides || !/22"/.test(deskSlides.name)) {
+  failHonesty("desk 30in deep should buy 22in slides", deskSlides);
+}
+
+const linenPlan = buildPlan(linen);
+const linenStand = linenPlan.instructions.find((s) => /stand the carcase/i.test(s.title));
+if (linenStand && /0\.75\s*×\s*78\s*×\s*16/.test(linenStand.description) && !/78\s*×\s*16\s*×\s*0\.75/.test(linenStand.description)) {
+  failHonesty("linen step axis order still W-H-D not cut-list long-mid-thick", linenStand.description);
+}
+
+console.log("STRANGER PLAN OK", {
+  coat: coatPlan.cutList.map((c) => c.name),
+  closet80: closetRodPlan.cutList.map((c) => c.name),
+  jar: jarPlan.cutList.map((c) => c.name),
+  refit: linenRefit.overall,
+  pocketSlides: pocketSlides?.name,
+  deskSlides: deskSlides?.name,
+});
+
