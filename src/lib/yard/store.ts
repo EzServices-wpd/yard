@@ -389,7 +389,7 @@ export const useYard = create<YardState>((set, get) => ({
     const depthIn = parseFloat(measure.depth);
     if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn)) return;
     const depth = Number.isFinite(depthIn) ? depthIn : undefined;
-    const prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? parseFloat(measure.depth) || 16);
+    const prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseFloat(measure.depth) || 16));
     if (measure.kind === "window_rough_opening" || project.windowPkg) {
       const built = projectFromMeasurement(
         {
