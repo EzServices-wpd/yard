@@ -32,8 +32,11 @@ export function isWeekendProject(project: YardProject): boolean {
   return (
     project.instances.length > 0 ||
     project.kind === "eiffel" ||
+    project.kind === "lattice" ||
     project.kind === "arch" ||
-    project.kind === "bridge"
+    project.kind === "bridge" ||
+    project.kind === "figure" ||
+    project.kind === "frame"
   );
 }
 

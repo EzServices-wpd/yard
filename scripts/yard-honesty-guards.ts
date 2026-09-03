@@ -2,6 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { buildFitted } from "../src/lib/yard/fitted";
 import { detectHouseFamily } from "../src/lib/yard/family";
+import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -311,4 +312,110 @@ console.log("WEEKEND STOCK HONESTY OK", {
   bridgeStock: bridge.primaryMaterialId,
   bridgeBom: bridgePlan.bom.map((b) => b.name),
   unnamed: unnamed.primaryMaterialId,
+});
+
+function expectWeekend(
+  prompt: string,
+  family: string,
+  extra?: { override?: string | undefined; kind?: string },
+) {
+  const hit = detectWeekendFamily(prompt);
+  if (!hit || hit.family !== family) {
+    failWeekend(`weekendFamily(${prompt}) → ${hit?.family ?? "null"} ≠ ${family}`, hit);
+  }
+  if (extra && "override" in extra && hit!.override !== extra.override) {
+    failWeekend(`weekendFamily(${prompt}) override ${hit!.override ?? "none"} ≠ ${extra.override ?? "none"}`, hit);
+  }
+  if (extra?.kind && hit!.kind !== extra.kind) {
+    failWeekend(`weekendFamily(${prompt}) kind ${hit!.kind} ≠ ${extra.kind}`, hit);
+  }
+  return hit!;
+}
+
+expectWeekend("3 foot Eiffel Tower from popsicle sticks", "lattice", { override: "eiffel", kind: "eiffel" });
+expectWeekend("3 foot tower from popsicle sticks", "lattice", { override: undefined, kind: "lattice" });
+expectWeekend("space frame from popsicle sticks", "lattice", { kind: "lattice" });
+expectWeekend("tower", "lattice", { kind: "lattice" });
+expectWeekend("6 foot garden arch from 3/4 inch PVC pipe", "arch", { override: "arch", kind: "arch" });
+expectWeekend("garden arch from 3/4 PVC", "arch", { override: "arch" });
+expectWeekend("4 foot bridge from plastic drinking straws", "truss", { override: "bridge", kind: "bridge" });
+expectWeekend("bridge from straws", "truss", { override: "bridge" });
+expectWeekend("dinosaur from popsicle sticks", "figure", { kind: "figure" });
+expectWeekend("giraffe from popsicle sticks", "figure");
+expectWeekend("box from popsicle sticks", "frame", { kind: "frame" });
+expectWeekend("catapult from popsicle sticks", "frame");
+
+if (detectWeekendFamily("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep")) {
+  failWeekend("linen should not be a weekend family");
+}
+if (detectWeekendFamily("kitchen chair from 1x4")) {
+  failWeekend("chair should not be a weekend family");
+}
+if (detectWeekendFamily("Andersen 100 Series 36 by 48 double hung window, frame the rough opening")) {
+  failWeekend("Andersen should not be a weekend family");
+}
+if (detectWeekendFamily("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space")) {
+  failWeekend("desk should not be a weekend family");
+}
+
+const novelTower = generateFromPrompt("3 foot tower from popsicle sticks");
+if (novelTower.kind !== "lattice") failWeekend("novel tower kind", novelTower.kind);
+if (!promptBoundStock(novelTower) || novelTower.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("novel tower stock bind", novelTower.primaryMaterialId);
+}
+if (novelTower.instances.some((i) => i.catalogId !== "popsicle-standard")) {
+  failWeekend("novel tower members not popsicle");
+}
+if (Math.abs(novelTower.overall.height - 37.4) > 2.5 && Math.abs(novelTower.overall.height - 36) > 2.5) {
+  failWeekend("3-ft popsicle tower height drifted", novelTower.overall);
+}
+if (novelTower.instances.length < 80) {
+  failWeekend("novel tower is a sparse taper, not lattice density", novelTower.instances.length);
+}
+if (novelTower.instances.some((i) => i.cutLength != null)) {
+  failWeekend("novel tower cut popsicle sticks");
+}
+const novelTowerPlan = buildPlan(novelTower);
+if (novelTowerPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("novel tower buy list has wood screws", novelTowerPlan.bom.map((b) => b.name));
+}
+if (!novelTowerPlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("novel tower buy list missing glue", novelTowerPlan.bom.map((b) => b.name));
+}
+const novelInspect = inspectWeekendHonesty(novelTower, novelTowerPlan);
+if (!novelInspect.ok) failWeekend("novel tower inspect", novelInspect.issues);
+
+const unnamedTower = generateFromPrompt("tower");
+if (unnamedTower.primaryMaterialId !== "wire-frame") {
+  failWeekend("unnamed tower defaulted stock", unnamedTower.primaryMaterialId);
+}
+if (unnamedTower.kind !== "lattice") {
+  failWeekend("unnamed tower should still be lattice family", unnamedTower.kind);
+}
+if (unnamedTower.instances.some((i) => i.catalogId.startsWith("popsicle"))) {
+  failWeekend("unnamed tower built from popsicle");
+}
+
+const spaceFrame = generateFromPrompt("space frame from popsicle sticks");
+if (spaceFrame.kind !== "lattice" || spaceFrame.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("space frame", { kind: spaceFrame.kind, stock: spaceFrame.primaryMaterialId });
+}
+
+const dino = generateFromPrompt("dinosaur from popsicle sticks");
+if (dino.kind !== "figure" || dino.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("dino family", { kind: dino.kind, stock: dino.primaryMaterialId });
+}
+
+const craftBox = generateFromPrompt("box from popsicle sticks");
+if (craftBox.kind !== "frame" || craftBox.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("craft box family", { kind: craftBox.kind, stock: craftBox.primaryMaterialId });
+}
+
+console.log("WEEKEND STRUCTURE FAMILIES OK", {
+  eiffel: { family: detectWeekendFamily("3 foot Eiffel Tower from popsicle sticks")?.family, override: "eiffel", kind: eiffel.kind },
+  novelTower: { kind: novelTower.kind, h: novelTower.overall.height, pieces: novelTower.instances.length, stock: novelTower.primaryMaterialId },
+  unnamedTower: { kind: unnamedTower.kind, stock: unnamedTower.primaryMaterialId },
+  spaceFrame: { kind: spaceFrame.kind, pieces: spaceFrame.instances.length },
+  dino: dino.kind,
+  box: craftBox.kind,
 });

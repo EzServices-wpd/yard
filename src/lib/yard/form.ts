@@ -26,6 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
+import { detectWeekendFamily, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -33,7 +34,6 @@ import {
   archOps,
   ladderOps,
   frameOps,
-  towerOps,
   chairOps,
   tableOps,
   bedOps,
@@ -115,12 +115,12 @@ const HITS: Hit[] = [
   { re: /dinosaur|t-?rex|raptor|dino/, kind: "figure", name: "Dinosaur", build: dinoOps },
   { re: /charizard|dragon|wyvern|godzilla|kaiju/, kind: "figure", name: "Wyvern", build: () => [] },
   { re: /giraffe/, kind: "figure", name: "Giraffe", build: giraffeOps },
-  { re: /horse|dog|cat|animal|creature/, kind: "figure", name: "Animal", build: animalOps },
+  { re: /horse|\bdog\b|\bcat\b|animal|creature/, kind: "figure", name: "Animal", build: animalOps },
   { re: /person|human|man|woman|figure|statue/, kind: "figure", name: "Figure", build: figureOps },
   { re: /guitar|violin|ukulele/, kind: "custom", name: "Guitar", build: guitarOps },
   { re: /swing/, kind: "frame", name: "Swing", build: swingOps },
-  { re: /lattice/, kind: "lattice", name: "Lattice", build: () => [] },
-  { re: /tower|spire|column|stack|skyscraper/, kind: "tower", name: "Tower", build: towerOps },
+  { re: /lattice|space\s*frame/, kind: "lattice", name: "Lattice", build: () => [] },
+  { re: /tower|spire|column|stack|skyscraper/, kind: "lattice", name: "Lattice tower", build: () => [] },
   { re: /frame|box|cube|platform/, kind: "frame", name: "Frame", build: frameOps },
 ];
 
@@ -163,10 +163,76 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
       };
     }
   }
+  const weekend = detectWeekendFamily(prompt);
+  if (weekend) return recipeFromWeekend(weekend, prompt, size);
   return recipeFromAnatomy(prompt, size);
 }
 
+function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRecipe {
+  if (hit.family === "figure") {
+    const stance = classifyAnatomy(prompt).stance ?? "quadruped";
+    const strokes = figureStrokes({
+      height: size.height,
+      stance,
+      width: size.width,
+    });
+    return {
+      name: hit.name,
+      kind: "figure",
+      notes: [
+        `${hit.name} · ${stance} armature.`,
+        "Weekend figure family — not a noun per file.",
+      ],
+      ops: [],
+      strokes,
+    };
+  }
+  if (hit.family === "lattice") {
+    return {
+      name: hit.name,
+      kind: hit.kind,
+      historic: hit.override === "eiffel",
+      notes: [
+        hit.override === "eiffel"
+          ? "Eiffel override — four arches, four piers, one shaft."
+          : `${hit.name} · lattice densified at the named stock's stick length / section.`,
+      ],
+      ops: [],
+    };
+  }
+  if (hit.family === "arch") {
+    return {
+      name: hit.name,
+      kind: "arch",
+      notes: ["Walk-through portal: four posts, front + back crowns, side rails only."],
+      ops: archOps(size),
+    };
+  }
+  if (hit.family === "truss") {
+    const named = /golden gate|brooklyn|suspension/.test(prompt.toLowerCase());
+    return {
+      name: hit.name,
+      kind: "bridge",
+      historic: named,
+      notes: [
+        named
+          ? "Published / historic proportions, scaled to the size you asked for."
+          : "Warren truss · continuous chords, densified at the named stock.",
+      ],
+      ops: named ? goldenGateOps(fitSuspension(size, prompt)) : bridgeOps(size),
+    };
+  }
+  return {
+    name: hit.name,
+    kind: "frame",
+    notes: ["Simple frame in the named craft stock."],
+    ops: frameOps(size),
+  };
+}
+
 export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
+  const weekend = detectWeekendFamily(prompt);
+  if (weekend) return recipeFromWeekend(weekend, prompt, size);
   const hit = classifyAnatomy(prompt);
   if (hit.anatomy === "figure") {
     const strokes = figureStrokes({
@@ -195,6 +261,17 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
     };
   }
   if (hit.anatomy === "loft") {
+    if (!hit.named) {
+      return {
+        name: hit.named || subjectTitle(prompt),
+        kind: "lattice",
+        notes: [
+          `${hit.named || subjectTitle(prompt)} · lattice densified at the named stock.`,
+          "Four chords, Warren faces, hoops at the stock's bay. Not a hollow taper.",
+        ],
+        ops: [],
+      };
+    }
     return {
       name: hit.named || subjectTitle(prompt),
       kind: hit.kind,

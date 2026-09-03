@@ -230,8 +230,11 @@ export function toProject(
   }
   const names: Partial<Record<StructureKind, string>> = {
     eiffel: "Eiffel Tower",
+    lattice: "Lattice tower",
     arch: "Garden arch",
     bridge: "Warren bridge",
+    figure: "Figure",
+    frame: "Frame",
     closet: "Fitted unit",
     furniture: "Furniture",
     ladder: "Ladder",

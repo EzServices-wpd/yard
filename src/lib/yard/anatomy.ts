@@ -6,6 +6,7 @@
 
 import type { StructureKind } from "./types";
 import { detectHouseFamily } from "./family";
+import { detectWeekendFamily } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
@@ -29,7 +30,7 @@ const SHELL =
 const SPAN = /bridge|span|viaduct|overpass|trestle/;
 const CARCASE = /chair|stool|table|desk|bed|bench|box|cube|frame|shelf|crate|cabinet/;
 const FIGURE =
-  /giraffe|horse|dog|cat|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|man|woman|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|cow|pig|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|ape|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
+  /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
 const LONGNECK = /giraffe|camel|llama|brachiosaurus|sauropod|flamingo/;
 const WINGED = /bird|eagle|angel|pteranodon|wing/;
 const WYVERN =
@@ -75,8 +76,21 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (BIPED.test(hay) || /statue/.test(hay))
     return { anatomy: "figure", kind: "figure", stance: "biped" };
   if (FIGURE.test(hay)) return { anatomy: "figure", kind: "figure", stance: "quadruped" };
+  const weekend = detectWeekendFamily(hay);
+  if (weekend) {
+    if (weekend.family === "figure") {
+      return { anatomy: "figure", kind: "figure", named: weekend.name };
+    }
+    if (weekend.family === "lattice") {
+      return { anatomy: "loft", kind: weekend.kind, named: weekend.name };
+    }
+    if (weekend.family === "arch" || weekend.family === "truss") {
+      return { anatomy: "span", kind: weekend.kind, named: weekend.name };
+    }
+    return { anatomy: "carcase", kind: weekend.kind, named: weekend.name };
+  }
   if (CARCASE.test(hay)) return { anatomy: "carcase", kind: "furniture" };
-  if (LOFT.test(hay)) return { anatomy: "loft", kind: "tower" };
+  if (LOFT.test(hay)) return { anatomy: "loft", kind: "lattice" };
 
   if (/plane|airplane|jet|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
@@ -87,7 +101,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/tree|cactus|plant/.test(hay)) return { anatomy: "figure", kind: "plant", stance: "biped" };
 
   const sizeTall = /foot|ft|inch|in/.test(hay);
-  if (sizeTall && /tall|high|tower/.test(hay)) return { anatomy: "loft", kind: "tower" };
+  if (sizeTall && /tall|high|tower/.test(hay)) return { anatomy: "loft", kind: "lattice" };
   return { anatomy: "figure", kind: "custom", stance: "quadruped" };
 }
 

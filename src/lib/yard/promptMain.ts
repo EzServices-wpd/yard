@@ -7,6 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { detectHouseFamily } from "./family";
+import { detectWeekendFamily, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
@@ -146,12 +147,16 @@ export function generateFromPrompt(
     return enforceWeekendHonesty(withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item));
   }
 
-  if ((kind === "eiffel" || kind === "lattice") && !(formOverride?.strokes && formOverride.strokes.length >= 4)) {
+  const weekend = detectWeekendFamily(prompt);
+  if (
+    weekendUsesLatticeGraph(prompt, kind) &&
+    !(formOverride?.strokes && formOverride.strokes.length >= 4)
+  ) {
     const raw = buildLatticeTowerGraph({
       targetHeightIn: box.height,
       materialId: item.id,
       item,
-      eiffel: kind === "eiffel" || /eiffel/.test(lower),
+      eiffel: kind === "eiffel" || weekend?.override === "eiffel" || /eiffel/.test(lower),
       platforms: true,
       grain,
     });
