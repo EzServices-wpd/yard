@@ -4,6 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { parseModelJson } from "@/lib/yard/parseJson";
+import { detectHouseFamily } from "@/lib/yard/family";
 
 async function chat(
   messages: { role: "system" | "user"; content: string }[],
@@ -275,6 +276,24 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
       unit: { width: 24, depth: 12, height: 36, doors: false, shelfCount: 8, centered: true },
     },
   },
+  {
+    prompt: "wall shelf for jars 24 wide",
+    brief: {
+      program: "storage",
+      name: 'Jar rack 24" × 18" × 4"',
+      opening: { width: 24, height: 18, depth: 4, kind: "room" },
+      unit: { width: 24, depth: 4, height: 18, shelfCount: 3, doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "bench 48 wide",
+    brief: {
+      program: "bench",
+      name: 'Bench 48" × 18" × 16"',
+      opening: { width: 48, height: 18, depth: 16, kind: "room" },
+      unit: { width: 48, depth: 16, height: 18, cubbies: 3, doors: false, centered: true },
+    },
+  },
 ];
 
 const HOUSE_PROGRAMS = [
@@ -311,7 +330,8 @@ Rules:
 - Tables: program "table", legs 3 or 4, shape round when asked; dining height defaults 30. Coffee table: height ~18, not dining 30.
 - TV / media console: program "media", doors false unless doors requested. Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front. Not a closet.
 - Closet system / wall of storage: program "closet", two unlabeled numbers both ≥60 are W×H in typed order (80x120 → 80 wide × 120 tall), depth default 24; one small number with a large one is depth with width = the large; height default 84 only when height was not given. Set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
-- Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Dog crate / kennel: program "storage", the animal goes inside, door true, no shelves, default ~36 wide × 30 tall × 24 deep when they only typed a width — not a bookcase and not a wire dog. Shoe rack / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Range hood: program "storage", honor typed width (30 inch → 30 wide), default ~24 tall × ~18 deep, plywood canopy open on the bottom with a chimney, wall-mounted over the cooktop — never a giraffe, never a wire figure, never a closet. Ironing board cabinet / wall-mounted ironing board: program "storage", honor typed W×H×D (16 wide × 48 high × 6 deep is typical), door true, no shelves — a shallow wall cabinet with a fold-down board inside, not a freestanding storage box and not a closet. Medicine cabinet / medicine chest: program "storage", honor typed W×H×D (16 wide × 24 high × 4 deep is typical), door true, two shelves, mirrored door, wall-mounted — not a floor vanity, not a sink, and not a closet just because it said bathroom. Over-the-toilet cabinet / space saver: program "storage", honor typed W×H×D (27 wide × 68 high × 9 deep is typical), doors false, three shelves — a floor étagère that straddles the toilet with an open bottom under the tank shelf, lagged to studs, not a closed floor box and not a vanity. Spice rack: program "storage", honor typed W×H×D (18 wide × 24 high × 4 deep is typical), doors false, three shelves — a wall-hung open rack with a front lip on each shelf so jars cannot slide off, lagged to studs, not a floor box, not a mirrored medicine cabinet, and not a shoe rack. Wine rack: program "storage", honor typed W×H×D (24 wide × 36 high × 12 deep is typical), doors false — a wall-hung open rack with fixed shelves and a 1.5" front rail on each bottle shelf so bottles cannot roll off, lagged to studs, not a floor bookcase, not a spice rack, and not a closet. Mudroom / entry bench / window seat: program "bench", honor typed W×H×D, doors false, default cubbies ≈ width/16 (3 cubbies at 48" wide) when cubbies were not said — a sittable seat over open shoe bays with dividers and a front apron, not a hollow storage box and not a vanity. Never turn a rack, crate, shelf, island, hood, ironing cabinet, medicine cabinet, over-toilet cabinet, spice rack, wine rack, or mudroom bench into a closet, a vanity, or a wire animal.
+- Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Dog crate / kennel: program "storage", the animal goes inside, door true, no shelves, default ~36 wide × 30 tall × 24 deep when they only typed a width — not a bookcase and not a wire dog. Shoe rack / headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Range hood: program "storage", honor typed width (30 inch → 30 wide), default ~24 tall × ~18 deep, plywood canopy open on the bottom with a chimney, wall-mounted over the cooktop — never a giraffe, never a wire figure, never a closet. Ironing board cabinet / wall-mounted ironing board: program "storage", honor typed W×H×D (16 wide × 48 high × 6 deep is typical), door true, no shelves — a shallow wall cabinet with a fold-down board inside, not a freestanding storage box and not a closet. Medicine cabinet / medicine chest: program "storage", honor typed W×H×D (16 wide × 24 high × 4 deep is typical), door true, two shelves, mirrored door, wall-mounted — not a floor vanity, not a sink, and not a closet just because it said bathroom. Over-the-toilet cabinet / space saver: program "storage", honor typed W×H×D (27 wide × 68 high × 9 deep is typical), doors false, three shelves — a floor étagère that straddles the toilet with an open bottom under the tank shelf, lagged to studs, not a closed floor box and not a vanity. Spice rack: program "storage", honor typed W×H×D (18 wide × 24 high × 4 deep is typical), doors false, three shelves — a wall-hung open rack with a front lip on each shelf so jars cannot slide off, lagged to studs, not a floor box, not a mirrored medicine cabinet, and not a shoe rack. Wine rack: program "storage", honor typed W×H×D (24 wide × 36 high × 12 deep is typical), doors false — a wall-hung open rack with fixed shelves and a 1.5" front rail on each bottle shelf so bottles cannot roll off, lagged to studs, not a floor bookcase, not a spice rack, and not a closet. Mudroom / entry bench / window seat: program "bench", honor typed W×H×D, doors false, default cubbies ≈ width/16 (3 cubbies at 48" wide) when cubbies were not said — a sittable seat over open shoe bays with dividers and a front apron, not a hollow storage box and not a vanity. Never turn a rack, crate, shelf, island, hood, ironing cabinet, medicine cabinet, over-toilet cabinet, spice rack, wine rack, or mudroom bench into a closet, a vanity, or a wire animal. A bare "bench 48 wide" is the same seat family (default ~18 high × 16 deep, cubbies), not a hollow box.
+- House family: a new noun reuses a shape — table, floor-carcase, hung-open, hung-cabinet, seat, slab, straddle — from mount (wall/floor/straddle) + use (sit/store/hang/work) + openings (open/door/fold-down). Affordances (jar lips, bottle rails, cubbies, a door, hanging rods) are flags, not a new program. "wall shelf for jars" is hung-open with lips, not a floor storage box. Do not invent extra programs. Do not bake building codes.
 - Furniture triples without wide/deep/tall are W×D×H.
 - Prefer honest shop geometry over decoration. No markdown.
 
@@ -350,10 +370,13 @@ ${examples}`,
           ? kindRaw
           : "room";
       const u = parsed.unit;
+      const house = detectHouseFamily(data.prompt);
       const brief = {
-        program,
+        program: house?.program ?? program,
         name: String(parsed.name || `${program} ${W}" × ${H}" × ${D}"`),
         opening: { width: W, height: H, depth: D, kind },
+        family: house?.family,
+        affordances: house?.affordances,
         unit: {
           width: Number(u.width ?? W),
           depth: Number(u.depth ?? D),

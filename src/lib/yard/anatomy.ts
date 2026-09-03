@@ -5,6 +5,7 @@
  */
 
 import type { StructureKind } from "./types";
+import { detectHouseFamily } from "./family";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
@@ -19,7 +20,7 @@ export type AnatomyHit = {
 
 const OPENING = /window|rough opening|\bro\b|andersen/;
 const FITTED =
-  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/;
+  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b|\bbench\b|\bseat\b|cubb|\bledge\b/;
 
 const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
@@ -41,10 +42,12 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
   const hay = looks ? `${looks[1]} ${lower}` : lower;
 
-  if (OPENING.test(hay) && !/stained/.test(hay)) return { anatomy: "opening", kind: "opening" };
+  if (OPENING.test(hay) && !/stained/.test(hay) && !/window seat/.test(hay))
+    return { anatomy: "opening", kind: "opening" };
   if (/ladder|stairs|staircase/.test(hay)) return { anatomy: "carcase", kind: "ladder" };
   if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };
   if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };
+  if (detectHouseFamily(hay)) return { anatomy: "fitted", kind: "closet" };
   if (FITTED.test(hay)) return { anatomy: "fitted", kind: "closet" };
 
   if (/eiffel/.test(hay)) return { anatomy: "loft", kind: "eiffel", named: "Eiffel" };

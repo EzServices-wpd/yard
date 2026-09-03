@@ -7,6 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
+import { detectHouseFamily } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -132,8 +133,11 @@ export function rackIntent(prompt: string): "spice" | "wine" | "jar" | "bottle" 
   const lower = prompt.toLowerCase();
   if (/spice/.test(lower) && /rack/.test(lower)) return "spice";
   if (/wine/.test(lower) && /rack/.test(lower)) return "wine";
-  if (/\bjar/.test(lower) && /rack/.test(lower)) return "jar";
-  if (/bottle/.test(lower) && /rack/.test(lower)) return "bottle";
+  if (/\bjar/.test(lower) && /rack|shelf|ledge/.test(lower)) return "jar";
+  if (/bottle/.test(lower) && /rack|shelf/.test(lower)) return "bottle";
+  const hit = detectHouseFamily(prompt);
+  if (hit?.affordances.includes("jar-lips")) return "jar";
+  if (hit?.affordances.includes("bottle-rails")) return "bottle";
   return null;
 }
 
@@ -152,6 +156,8 @@ const WALL_LANG =
 
 export function isWallHung(project: YardProject) {
   if (project.assumptions.installMode === "wall") return true;
+  const hit = detectHouseFamily(project.prompt ?? "");
+  if (hit?.mount === "wall" || hit?.family === "hung-open" || hit?.family === "hung-cabinet") return true;
   const blob = `${project.prompt ?? ""} ${project.name ?? ""}`;
   if (WALL_LANG.test(blob)) return true;
   return rackIntent(project.prompt ?? "") != null;

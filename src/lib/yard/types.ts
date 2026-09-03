@@ -209,6 +209,9 @@ export type FittedSpec = {
   walls?: PocketWalls;
   leftClear?: number;
   rightClear?: number;
+  /** Shape family from detectHouseFamily — not a noun program. */
+  family?: import("./family").HouseFamily;
+  affordances?: import("./family").HouseAffordance[];
 };
 
 export type LoadUse = "display" | "toy" | "person";

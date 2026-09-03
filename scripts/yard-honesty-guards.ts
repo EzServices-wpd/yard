@@ -1,6 +1,8 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { buildFitted } from "../src/lib/yard/fitted";
+import { detectHouseFamily } from "../src/lib/yard/family";
+import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
   enforceHonesty,
@@ -112,6 +114,66 @@ if (desk.kind !== "closet" || !desk.fitted || !nearInch(desk.overall.width, 60) 
   failHonesty("desk freeze", { kind: desk.kind, overall: desk.overall, fitted: !!desk.fitted });
 }
 
+function expectFamily(prompt: string, family: string, extra?: { lips?: boolean; seat?: boolean }) {
+  const hit = detectHouseFamily(prompt);
+  if (!hit || hit.family !== family) {
+    failHonesty(`family(${prompt}) → ${hit?.family ?? "null"} ≠ ${family}`, hit);
+  }
+  if (classifyAnatomy(prompt).anatomy !== "fitted") {
+    failHonesty(`anatomy(${prompt}) not fitted`, classifyAnatomy(prompt));
+  }
+  const project = generateFromPrompt(prompt);
+  if (extra?.lips) {
+    if (!isWallHung(project)) failHonesty(`${prompt} not wall-hung`, project.assumptions);
+    if (!hasRackAffordance(project)) failHonesty(`${prompt} missing jar lips`, project.panels.map((p) => p.name));
+    const plan = buildPlan(project);
+    const blob = plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n");
+    if (hasFloorBoxLie(blob)) failHonesty(`${prompt} plan is a floor box`, plan.instructions.map((s) => s.title));
+    if (project.panels.some((p) => p.type === "kick")) failHonesty(`${prompt} grew a toekick`, project.panels.map((p) => p.name));
+  }
+  if (extra?.seat) {
+    if (!project.panels.some((p) => /apron/i.test(p.name))) failHonesty(`${prompt} missing seat apron`, project.panels.map((p) => p.name));
+    if (!project.panels.some((p) => /divider|cubby/i.test(p.name))) failHonesty(`${prompt} missing cubby dividers`, project.panels.map((p) => p.name));
+    if (project.fitted?.program !== "bench") failHonesty(`${prompt} program not bench`, project.fitted);
+  }
+  return project;
+}
+
+const jarShelfPrompt = "wall shelf for jars 24 wide";
+const jarHit = detectHouseFamily(jarShelfPrompt);
+if (!jarHit || jarHit.family !== "hung-open" || !jarHit.affordances.includes("jar-lips") || jarHit.mount !== "wall") {
+  failHonesty("jar shelf family", jarHit);
+}
+const jarShelf = expectFamily(jarShelfPrompt, "hung-open", { lips: true });
+if (!nearInch(jarShelf.overall.width, 24)) failHonesty("jar shelf width", jarShelf.overall);
+if (jarShelf.assumptions.installMode !== "wall") failHonesty("jar shelf mount", jarShelf.assumptions);
+
+const seatPrompt = "bench 48 wide";
+const seatHit = detectHouseFamily(seatPrompt);
+if (!seatHit || seatHit.family !== "seat" || seatHit.use !== "sit" || !seatHit.affordances.includes("cubbies")) {
+  failHonesty("bench family", seatHit);
+}
+const seat = expectFamily(seatPrompt, "seat", { seat: true });
+if (!nearInch(seat.overall.width, 48)) failHonesty("bench width", seat.overall);
+if (!nearInch(seat.overall.height, 18)) failHonesty("bench default height should be sit height", seat.overall);
+
+if (detectHouseFamily("kitchen chair from 1x4")) failHonesty("chair should not be a house family");
+if (classifyAnatomy("kitchen chair from 1x4").anatomy === "fitted") failHonesty("chair anatomy drifted to fitted");
+const andersen = generateFromPrompt("Andersen 100 Series 36 by 48 double hung window, frame the rough opening");
+if (andersen.kind !== "opening") failHonesty("Andersen freeze", { kind: andersen.kind, name: andersen.name });
+if (detectHouseFamily("Andersen 100 Series 36 by 48 double hung window, frame the rough opening")) {
+  failHonesty("Andersen should not be a house family");
+}
+
+const closetRods = generateFromPrompt("closet system 80x120");
+const rodPanels = closetRods.panels.filter((p) => /hanging rod/i.test(p.name));
+if (rodPanels.length < 2) failHonesty("closet rods per bay freeze", closetRods.panels.map((p) => p.name));
+
+console.log("HOUSE FAMILY OK", {
+  jar: { family: jarHit.family, mount: jarHit.mount, lips: jarShelf.panels.filter((p) => p.type === "rail").length, mode: jarShelf.assumptions.installMode },
+  bench: { family: seatHit.family, overall: seat.overall, cubbies: seat.fitted?.unit.cubbies, apron: seat.panels.some((p) => /apron/i.test(p.name)) },
+  andersen: andersen.kind,
+});
 
 function failWeekend(msg: string, extra?: unknown) {
   console.error("FAIL weekend honesty", msg, extra ?? "");

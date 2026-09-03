@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
+import { detectHouseFamily, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -68,6 +69,7 @@ export function looksLikeFitted(prompt: string) {
     return false;
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower)) return false;
+  if (detectHouseFamily(prompt)) return true;
   if (!BUILDER.test(lower)) return false;
   if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
     return true;
@@ -76,6 +78,8 @@ export function looksLikeFitted(prompt: string) {
 }
 
 export function detectProgram(lower: string): FittedProgram {
+  const house = detectHouseFamily(lower);
+  if (house) return house.program;
   if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicineCabinet(lower)) return "storage";
   if (isOverToilet(lower)) return "storage";
@@ -137,6 +141,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
   const lower = t.toLowerCase();
   const program = detectProgram(lower);
+  const house = detectHouseFamily(lower);
   const trip = triple(t);
   const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
   const isRound = /round|circular|diameter|\bdia\b/.test(lower);
@@ -172,6 +177,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? 40
             : program === "media"
               ? 60
+              : program === "bench"
+                ? 48
               : /nightstand|bedside/.test(lower)
                 ? 20
                 : isIroningCabinet(lower)
@@ -245,8 +252,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
     } else if (program === "media") {
       if (trip.h && trip.d) height = trip.h;
       else height = 22;
-    } else if (program === "desk" || program === "bench") {
+    } else if (program === "desk") {
       height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
+      if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
+        depth = trip.h;
+        height = trip.d;
+      } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+    } else if (program === "bench") {
+      height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 18;
       if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
         depth = trip.h;
         height = trip.d;
@@ -343,6 +356,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                           : 16);
   }
 
+  const typedDepth = /deep|depth/.test(lower);
+  if (house && house.affordances.includes("jar-lips") && !typedDepth && !(trip.d && !saidAxis)) {
+    depth = 4;
+  }
+
   let bays: number | undefined;
   if (
     (isSystem || width >= 84) &&
@@ -426,7 +444,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "closet" ||
     program === "pantry" ||
     program === "wardrobe" ||
-    (program === "vanity" && height >= 54);
+    (program === "vanity" && height >= 54) ||
+    !!house?.affordances.includes("door");
   const doorsFinal = program === "media" && !/door/.test(lower) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
 
@@ -475,7 +494,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : isWineRack(lower) ? "Wine rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : isWineRack(lower) ? "Wine rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : house?.family === "hung-open" && house.affordances.includes("jar-lips") ? "Jar rack" : house?.family === "hung-open" && house.affordances.includes("bottle-rails") ? "Bottle rack" : house?.family === "hung-open" ? "Wall rack" : house?.family === "hung-cabinet" ? "Wall cabinet" : names[program]} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -486,6 +505,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     walls,
     leftClear: walls ? 0 : undefined,
     rightClear: walls ? 0 : undefined,
+    family: house?.family,
+    affordances: house?.affordances,
   };
 }
 
@@ -506,6 +527,160 @@ function panel(
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
     materialId: PLY,
+  };
+}
+
+
+function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const innerW = W - P * 2;
+  const backT = P;
+  const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3;
+  const lips = affordances.includes("jar-lips");
+  const rails = affordances.includes("bottle-rails") && !lips;
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  for (let i = 0; i < shelfN; i++) {
+    const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+    panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
+    if (lips) {
+      panels.push(panel("rail", `Jar lip ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.25, P));
+    } else if (rails && i < shelfN - 1) {
+      panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+    }
+  }
+  panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+  const kind = lips ? "Jar rack" : rails ? "Bottle rack" : "Wall rack";
+  const name = spec.name.match(/rack|shelf|shelves/i) ? spec.name : `${kind} ${W}" × ${H}" × ${D}"`;
+  const lipNote = lips
+    ? "Jar lips on every shelf so jars cannot slide off."
+    : rails
+      ? "Bottle rails on the shelf fronts so bottles cannot roll off."
+      : "Open shelves. Glue them; do not pin them.";
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Wall-mounted open rack — not a floor box. ¾" plywood.`,
+      lipNote,
+      "Hang the rack on studs through the back. Do not mark a footprint on the floor.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "hung-open",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: shelfN,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: false,
+      },
+    },
+    assumptions: {
+      load: rails ? "heavy" : "medium",
+      units: "inches",
+      installMode: "wall",
+      wallType: "wood_stud",
+    },
+  };
+}
+
+function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const innerW = W - P * 2;
+  const backT = P;
+  const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
+  const fold = affordances.includes("fold-down-board");
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  if (!fold) {
+    const innerH = H - P * 2;
+    for (let i = 1; i <= shelfN; i++) {
+      const y = P + (innerH * i) / (shelfN + 1);
+      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+    }
+  } else {
+    const boardW = Math.max(10, innerW - 0.25);
+    const boardLen = Math.max(30, Math.round((H - P * 2 - 2) * 8) / 8);
+    const legLen = Math.min(32, Math.max(24, Math.round(H * 0.62 * 8) / 8));
+    panels.push(panel("deck", "Fold-down board", x0 + P + (innerW - boardW) / 2, P, D - P * 2, boardW, boardLen, P));
+    panels.push(panel("deck", "Support leg", x0 + P + (innerW - 1.5) / 2, P, D - P * 3, 1.5, legLen, P));
+  }
+  panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+  const name = spec.name.match(/cabinet|ironing|medicine/i) ? spec.name : `Wall cabinet ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Wall-mounted cabinet — not a floor box. ¾" plywood.`,
+      fold
+        ? "The board stores upright and hinges down. Hang the carcase on studs through the back."
+        : "Hang the carcase on studs through the back. Concealed hinges on the door.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "hung-cabinet",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: true,
+        shelfCount: fold ? 0 : shelfN,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: affordances.includes("mirror") || u.mirror,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "wall",
+      wallType: "wood_stud",
+    },
   };
 }
 
@@ -536,9 +711,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const D = u.depth;
   const x0 = -W / 2;
   const panels: Panel[] = [];
+  const house = detectHouseFamily(prompt);
+  const family: HouseFamily | undefined = spec.family ?? house?.family;
+  const affordances: HouseAffordance[] = spec.affordances ?? house?.affordances ?? [];
 
   const nightstand = /nightstand|bedside/.test(prompt.toLowerCase());
-  if (spec.program === "table" && !nightstand) {
+  if ((spec.program === "table" || family === "table") && !nightstand) {
     return buildTable(spec, prompt);
   }
 
@@ -658,7 +836,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  if (isOverToilet(prompt)) {
+  if (isOverToilet(prompt) || family === "straddle") {
     const innerW = W - P * 2;
     const tall = H >= 48;
     if (!tall) {
@@ -857,7 +1035,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
-  if (spec.program === "bench") {
+  if (spec.program === "bench" || family === "seat") {
     const innerW = W - P * 2;
     const cubbyN =
       u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));
@@ -924,7 +1102,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  const headboard = /headboard/.test(prompt.toLowerCase());
+  const headboard = /headboard/.test(prompt.toLowerCase()) || family === "slab";
   if (headboard) {
     const slabD = P;
     const slabH = Math.max(14, H);
@@ -1228,6 +1406,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       },
     };
   }
+
+  if (family === "hung-open") return buildHungOpen(spec, prompt, affordances);
+  if (family === "hung-cabinet") return buildHungCabinet(spec, prompt, affordances);
 
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
