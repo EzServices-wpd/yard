@@ -5,7 +5,7 @@
  * Not a noun program. No wineRack.ts. Typed facts win.
  */
 import { createId } from "@/lib/utils";
-import { aabbOfPanels, aabbSize } from "./geometry";
+import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
@@ -13,7 +13,7 @@ import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
 
-export type HonestyGuard = "size" | "mount" | "rack";
+export type HonestyGuard = "size" | "mount" | "rack" | "table";
 
 export type HonestyIssue = {
   guard: HonestyGuard;
@@ -224,6 +224,104 @@ function sizeMismatch(
   return { guard: "size", message: `${where}: ${bits.join(", ")}`, rebuild: where === "envelope" };
 }
 
+
+function isTableProject(project: YardProject) {
+  return project.fitted?.program === "table" || project.fitted?.family === "table";
+}
+
+function xzOverlap(a: Aabb3, b: Aabb3, eps = 0.2) {
+  return !(a.maxX < b.minX - eps || a.minX > b.maxX + eps || a.maxZ < b.minZ - eps || a.minZ > b.maxZ + eps);
+}
+
+function tableLegs(project: YardProject) {
+  return project.panels.filter((p) => p.type === "upright" && /^leg\b/i.test(p.name));
+}
+
+function tableRails(project: YardProject) {
+  return project.panels.filter((p) => p.type === "rail" || /^apron\b/i.test(p.name));
+}
+
+/**
+ * Table aprons must sit under the top, span post-to-post, and never float or
+ * run past the legs. Do not snap HUD to hide this — rebuild the geometry.
+ */
+export function tableBraceIssues(project: YardProject): HonestyIssue[] {
+  if (!isTableProject(project)) return [];
+  const issues: HonestyIssue[] = [];
+  const tops = project.panels.filter((p) => p.type === "top");
+  const legs = tableLegs(project);
+  const rails = tableRails(project);
+  if (!tops.length || !legs.length) return issues;
+
+  const topBox = aabbOfPanels(tops);
+  const legBox = aabbOfPanels(legs);
+  const railBox = rails.length ? aabbOfPanels(rails) : null;
+  const slop = STOCK_TOL;
+
+  if (topBox && railBox) {
+    if (
+      railBox.minX < topBox.minX - slop ||
+      railBox.maxX > topBox.maxX + slop ||
+      railBox.minZ < topBox.minZ - slop ||
+      railBox.maxZ > topBox.maxZ + slop
+    ) {
+      issues.push({
+        guard: "table",
+        message: `Apron/brace AABB exceeds the top (${(railBox.maxX - railBox.minX).toFixed(1)}" × ${(railBox.maxZ - railBox.minZ).toFixed(1)}" vs ${(topBox.maxX - topBox.minX).toFixed(1)}" × ${(topBox.maxZ - topBox.minZ).toFixed(1)}").`,
+        rebuild: true,
+      });
+    }
+  }
+
+  if (legBox && railBox) {
+    if (
+      railBox.minX < legBox.minX - slop ||
+      railBox.maxX > legBox.maxX + slop ||
+      railBox.minZ < legBox.minZ - slop ||
+      railBox.maxZ > legBox.maxZ + slop
+    ) {
+      issues.push({
+        guard: "table",
+        message: "Apron/brace extends past the legs.",
+        rebuild: true,
+      });
+    }
+  }
+
+  const legBoxes = legs
+    .map((p) => ({ p, b: aabbOfPanels([p]) }))
+    .filter((x): x is { p: Panel; b: Aabb3 } => x.b != null);
+
+  for (const rail of rails) {
+    const rb = aabbOfPanels([rail]);
+    if (!rb) continue;
+    const hits = legBoxes.filter((l) => xzOverlap(rb, l.b));
+    if (hits.length < 2) {
+      issues.push({
+        guard: "table",
+        message: `${rail.name} does not terminate at two legs.`,
+        rebuild: true,
+      });
+      continue;
+    }
+    if (legs.length === 4) {
+      const cxs = hits.map((h) => h.p.position.x + h.p.size.width / 2);
+      const czs = hits.map((h) => h.p.position.z + h.p.size.depth / 2);
+      const shareX = Math.abs(cxs[0] - cxs[1]) <= 0.6;
+      const shareZ = Math.abs(czs[0] - czs[1]) <= 0.6;
+      if (!shareX && !shareZ) {
+        issues.push({
+          guard: "table",
+          message: `${rail.name} is a diagonal, not a post-to-post perimeter rail.`,
+          rebuild: true,
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
 export function inspectHonesty(project: YardProject, plan?: BuildPlan | null): HonestyReport {
   const issues: HonestyIssue[] = [];
   const prompt = project.prompt ?? "";
@@ -275,6 +373,8 @@ export function inspectHonesty(project: YardProject, plan?: BuildPlan | null): H
       });
     }
   }
+
+  issues.push(...tableBraceIssues(project));
 
   return { ok: issues.length === 0, issues, typed };
 }
@@ -422,8 +522,10 @@ function applyLocalFixes(project: YardProject): YardProject {
   if (pocketWonky || project.kind === "opening") return project;
   if (!project.fitted && !project.panels.length) return project;
   let next = project;
+  const tableLie = tableBraceIssues(next).length > 0;
   const typed = typedExtents(next.prompt ?? "");
-  if (typed && next.fitted) next = snapHud(next, typed);
+  // Do not snap HUD to hide a table apron/brace geometry lie — rebuild instead.
+  if (typed && next.fitted && !tableLie) next = snapHud(next, typed);
   next = forceWallMount(next);
   next = injectRackRails(next);
   return next;

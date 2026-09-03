@@ -12,6 +12,7 @@ import {
   inspectHonesty,
   isWallHung,
   nearInch,
+  tableBraceIssues,
   typedExtents,
 } from "../src/lib/yard/honesty";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
@@ -114,6 +115,61 @@ const desk = generateFromPrompt("desk 60 inches wide by 30 deep by 29 high with 
 if (desk.kind !== "closet" || !desk.fitted || !nearInch(desk.overall.width, 60) || !nearInch(desk.overall.depth, 30) || !nearInch(desk.overall.height, 29)) {
   failHonesty("desk freeze", { kind: desk.kind, overall: desk.overall, fitted: !!desk.fitted });
 }
+
+
+if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("desk 24in knee freeze", desk.fitted?.unit);
+const deskKnee = desk.panels.filter((p) => /knee divider/i.test(p.name));
+if (deskKnee.length < 2) failHonesty("desk lost knee dividers", desk.panels.map((p) => p.name));
+const deskAprons = desk.panels.filter((p) => /apron/i.test(p.name));
+if (deskAprons.length) failHonesty("desk grew table aprons across the knee", deskAprons.map((p) => p.name));
+if (tableBraceIssues(desk).length) failHonesty("desk table-brace guard false positive", tableBraceIssues(desk));
+
+function expectTableAprons(prompt: string, extra?: { legs?: number; round?: boolean }) {
+  const project = generateFromPrompt(prompt);
+  if (project.fitted?.program !== "table") failHonesty(`${prompt} not a table`, project.fitted);
+  const report = inspectHonesty(project);
+  if (!report.ok) failHonesty(`${prompt} table honesty`, report.issues);
+  const brace = tableBraceIssues(project);
+  if (brace.length) failHonesty(`${prompt} apron lie`, brace);
+  const legs = project.panels.filter((p) => p.type === "upright" && /^leg\b/i.test(p.name));
+  const rails = project.panels.filter((p) => p.type === "rail" || /^apron\b/i.test(p.name));
+  const wantLegs = extra?.legs ?? (extra?.round ? 3 : 4);
+  if (legs.length !== wantLegs) failHonesty(`${prompt} legs ${legs.length} ≠ ${wantLegs}`, legs.map((p) => p.name));
+  if (rails.length !== wantLegs) failHonesty(`${prompt} aprons ${rails.length} ≠ ${wantLegs}`, rails.map((p) => p.name));
+  if (extra?.round && project.fitted?.unit.shape !== "round") failHonesty(`${prompt} not round`, project.fitted?.unit);
+  const yawed = rails.filter((p) => Math.abs(p.yaw ?? 0) > 0.05);
+  if (wantLegs === 4 && yawed.length) failHonesty(`${prompt} 4-leg still yaws aprons`, yawed.map((p) => `${p.name} yaw=${p.yaw}`));
+  return project;
+}
+
+const laundryTable = expectTableAprons("laundry folding table 48 wide 36 high 24 deep", { legs: 4 });
+const round3 = expectTableAprons("40 inch round 3-leg table", { legs: 3, round: true });
+const coffee = expectTableAprons("coffee table 48 round", { legs: 3, round: true });
+const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
+void laundryTable;
+void round3;
+void coffee;
+void dining;
+
+const lyingApronTable = {
+  ...laundryTable,
+  panels: laundryTable.panels.map((p) =>
+    p.name === "Front apron"
+      ? { ...p, yaw: Math.atan2(24, 48), size: { ...p.size, width: 55.25 } }
+      : p,
+  ),
+};
+const lyingApron = tableBraceIssues(lyingApronTable);
+if (!lyingApron.length) failHonesty("diagonal 55.25 apron was not caught", lyingApron);
+
+console.log("TABLE APRON GUARD OK", {
+  laundry: { overall: laundryTable.overall, rails: laundryTable.panels.filter((p) => p.type === "rail").map((p) => p.name) },
+  round3: { overall: round3.overall, legs: round3.fitted?.unit.legs, shape: round3.fitted?.unit.shape },
+  coffee: { overall: coffee.overall, h: coffee.overall.height },
+  dining: dining.overall,
+  deskKnee: desk.fitted?.unit.kneeW,
+});
+
 
 function expectFamily(prompt: string, family: string, extra?: { lips?: boolean; seat?: boolean }) {
   const hit = detectHouseFamily(prompt);

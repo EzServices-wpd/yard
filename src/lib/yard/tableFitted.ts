@@ -1,5 +1,11 @@
 /**
  * Freestanding table — round or rect top, 2x2 legs under the top, aprons inside the legs.
+ *
+ * Global apron rule (every table this builder emits):
+ * - rails sit on the inner faces of the posts, spanning post-to-post
+ * - never a diagonal of the top AABB (the old 55.25" yaw-blind lie)
+ * - never a stretcher floating mid-span off the 2x2s
+ * - never longer than the inner span (nothing past the posts or the top)
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
@@ -91,14 +97,16 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     );
   });
 
-  // Aprons screw into the 2x2s.
-  // Rect 4-leg: axis-aligned rails on the inner faces (no yaw). The old
-  // circular pairing walked leg order (x then z) so two "aprons" were
-  // diagonals (~43.5" on a 48×24 top) and yaw-blind plan bounds read 55.25".
-  // Round / 3-leg: chord rails center-to-center (yaw ok; no inward inset
-  // on round or the triangle floats off the posts).
+  // Aprons screw into the 2x2s, under the top.
+  // 4-leg (round or rect): axis-aligned rails on the inner faces (no yaw).
+  //   Round 4-leg lands on an axis-aligned square because of the 45° spin.
+  //   The old circular pairing walked x-then-z so two "aprons" were diagonals
+  //   (~43.5" on a 48×24 top) and yaw-blind plan bounds read 55.25".
+  // 3-leg: chords between consecutive posts. Stay ON the chord — a radial
+  //   inset toward origin floats a triangle that never meets a 2x2. Length is
+  //   the inner span so each end terminates at a post, not past it.
   const apronY = H - topT - apronH;
-  if (!round && legN === 4 && centers.length === 4) {
+  if (legN === 4 && centers.length === 4) {
     const lx = Math.min(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const rx = Math.max(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const fz = Math.min(centers[0].z, centers[1].z, centers[2].z, centers[3].z);
@@ -127,22 +135,15 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       const yaw = Math.atan2(dz, dx);
       const midX = (a.x + b.x) / 2;
       const midZ = (a.z + b.z) / 2;
-      let ix = -midX;
-      let iz = -midZ;
-      const il = Math.hypot(ix, iz) || 1;
-      ix /= il;
-      iz /= il;
-      const apronInset = round ? 0 : legW / 2 + apronT / 2;
-      const mx = midX + ix * apronInset;
-      const mz = midZ + iz * apronInset;
-      const length = Math.max(4, span - (round ? 0 : legW));
+      // Inner span along the chord: ends at the posts, not through/past them.
+      const length = Math.max(4, span - legW);
       panels.push(
         panel(
           "rail",
           `Apron ${i + 1}`,
-          mx - length / 2,
+          midX - length / 2,
           apronY,
-          mz - apronT / 2,
+          midZ - apronT / 2,
           length,
           apronH,
           apronT,
