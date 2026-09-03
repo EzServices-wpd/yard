@@ -1,5 +1,5 @@
 import { createId } from "@/lib/utils";
-import { FORGE_CATALOG, getCatalogItem, searchCatalog } from "./catalog";
+import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
@@ -67,7 +67,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
   return { height, width, depth };
 }
 
-function stripLumberStock(s: string): string {
+export function stripLumberStock(s: string): string {
   // Only eat lumber nominals (2x4, 2x4x8). Do not delete 36x48 windows / 60x30 desks.
   return s.replace(
     /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
@@ -135,14 +135,9 @@ export function detectStructure(lower: string): StructureKind {
   return detectForm(lower, parseSize(lower)).kind;
 }
 
-/** True when the prompt names a concrete stock (not just a form). */
+/** True when the prompt names a catalog stock detectMaterial can bind. */
 export function hasExplicitStock(prompt: string): boolean {
-  const lower = prompt.toLowerCase();
-  return (
-    /jumbo (craft|popsicle)|giant (craft|popsicle)|popsicle|craft stick|toothpick|drinking straw|plastic straw|\bstraws?\b|pool noodle|pvc|schedule.?40|sch.?40|1\s*[x×]\s*[246]|2\s*[x×]\s*[246]|1x4|2x4|1x6|2x6|\bdowel\b|plywood|sheet goods|cardboard|lego|\bbrick\b|bamboo|skewer|paper.?towel|toilet.?paper|foam|balsa|basswood|cedar|pine board|lumber/.test(
-      lower,
-    )
-  );
+  return !isWireStock(detectMaterial(prompt));
 }
 
 export function isWireStock(item: CatalogItem | undefined | null): boolean {
@@ -152,14 +147,16 @@ export function isWireStock(item: CatalogItem | undefined | null): boolean {
 export function detectMaterial(prompt: string): CatalogItem {
   const lower = prompt.toLowerCase();
   const phrases: [RegExp, string][] = [
-    [/jumbo (craft|popsicle)/, "popsicle-jumbo"],
-    [/giant (craft|popsicle)/, "popsicle-giant"],
+    [/jumbo (craft|popsicle)|jumbo stick/, "popsicle-jumbo"],
+    [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
+    [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
     [/1\s*[x×]\s*4|1x4/, "lumber-1x4-8"],
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
+    [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bdowel\b/, "dowel-1-4-36"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
     [/bamboo|skewer/, "bamboo-skewer-12"],
@@ -171,7 +168,21 @@ export function detectMaterial(prompt: string): CatalogItem {
       if (item) return item;
     }
   }
-  return getCatalogItem("wire-frame") || FORGE_CATALOG[0];
+  // Unnamed stock is a wire placeholder — never silent popsicle.
+  const wire = getCatalogItem("wire-frame");
+  if (wire) return wire;
+  return {
+    id: "wire-frame",
+    name: "Wire frame (pick a stock)",
+    category: "other",
+    formFactor: "dowel",
+    dims: { length: 48, diameter: 0.06 },
+    tags: ["wire", "placeholder", "choose-stock"],
+    preferredJoins: ["none"],
+    canCut: true,
+    color: "#a8a296",
+    searchQuery: "",
+  };
 }
 
 export function toProject(

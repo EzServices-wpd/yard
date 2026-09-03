@@ -6,6 +6,7 @@ import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
+import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
@@ -221,10 +222,11 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       return;
     }
 
+    const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     const hint = await hintSubject({ data: { prompt } });
     if (hint.summary && hint.summary !== hint.subject) {
       const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
-      generate(prompt, undefined, form);
+      generate(prompt, namedStock, form);
       makePlan();
       const current = useYard.getState().project;
       const note = `Looked up: ${hint.summary}`;
@@ -238,11 +240,18 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     const after = useYard.getState().project;
     const locked =
       isLockedForm(after.kind) || after.kind === "closet" || after.kind === "opening" || !!after.flat;
+    // Named stock from the prompt binds like CatalogPanel. Unnamed stays wire-frame —
+    // LLM must not silently pick popsicle.
     if (interp.ok && interp.form && !locked) {
-      generate(prompt, interp.materialId ?? undefined, interp.form);
+      generate(prompt, namedStock, interp.form);
       makePlan();
-    } else if (interp.ok && interp.materialId && interp.materialId !== after.primaryMaterialId && !locked) {
-      generate(prompt, interp.materialId);
+    } else if (
+      interp.ok &&
+      namedStock &&
+      namedStock !== after.primaryMaterialId &&
+      !locked
+    ) {
+      generate(prompt, namedStock);
       makePlan();
     }
     if (interp.ok && (interp.real || interp.notes)) {

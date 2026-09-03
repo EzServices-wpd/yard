@@ -7,6 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { enforceHonesty } from "./honesty";
+import { enforceWeekendHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -95,7 +96,7 @@ export function generateFromPrompt(
   const flatIntent = detectFlatPrompt(prompt);
   if (flatIntent && !formOverride) {
     const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
-    return withWireNote(buildFlatProject(prompt, item, flatIntent), item);
+    return enforceWeekendHonesty(withWireNote(buildFlatProject(prompt, item, flatIntent), item));
   }
 
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
@@ -141,7 +142,7 @@ export function generateFromPrompt(
   const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
 
   if (wantsSheetBox(prompt, item, kind)) {
-    return withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item);
+    return enforceWeekendHonesty(withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item));
   }
 
   if ((kind === "eiffel" || kind === "lattice") && !(formOverride?.strokes && formOverride.strokes.length >= 4)) {
@@ -195,7 +196,7 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
   ) {
     next = withTableTop(next, item, box);
   }
-  return withWireNote(next, item);
+  return enforceWeekendHonesty(withWireNote(next, item));
 }
 
 function neverEmpty(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }): YardProject {

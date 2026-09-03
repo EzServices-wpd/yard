@@ -11,6 +11,12 @@ import {
   nearInch,
   typedExtents,
 } from "../src/lib/yard/honesty";
+import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
+import {
+  inspectWeekendHonesty,
+  promptBoundStock,
+  weekendTypedSize,
+} from "../src/lib/yard/weekendStockHonesty";
 
 function failHonesty(msg: string, extra?: unknown) {
   console.error("FAIL honesty", msg, extra ?? "");
@@ -95,4 +101,152 @@ console.log("HONESTY GUARDS OK", {
   wineRails: wine.panels.filter((p) => p.type === "rail").length,
   spiceMode: spice.assumptions.installMode,
   wineMode: wine.assumptions.installMode,
+});
+
+const linen = generateFromPrompt("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep");
+if (!linen.fitted || !nearInch(linen.overall.width, 31.5) || !nearInch(linen.overall.height, 78) || !nearInch(linen.overall.depth, 16)) {
+  failHonesty("linen freeze", linen.overall);
+}
+const desk = generateFromPrompt("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space");
+if (desk.kind !== "closet" || !desk.fitted || !nearInch(desk.overall.width, 60) || !nearInch(desk.overall.depth, 30) || !nearInch(desk.overall.height, 29)) {
+  failHonesty("desk freeze", { kind: desk.kind, overall: desk.overall, fitted: !!desk.fitted });
+}
+
+
+function failWeekend(msg: string, extra?: unknown) {
+  console.error("FAIL weekend honesty", msg, extra ?? "");
+  process.exit(1);
+}
+
+function expectStock(prompt: string, id: string) {
+  const got = detectMaterial(prompt);
+  if (got.id !== id) failWeekend(`detectMaterial(${prompt}) → ${got.id} ≠ ${id}`);
+  if (id === "wire-frame") {
+    if (hasExplicitStock(prompt)) failWeekend(`unnamed ${prompt} flagged as explicit stock`);
+  } else if (!hasExplicitStock(prompt)) {
+    failWeekend(`named ${prompt} not explicit stock`);
+  }
+}
+
+expectStock("3 foot Eiffel Tower from popsicle sticks", "popsicle-standard");
+expectStock("3-ft Eiffel Tower from popsicle sticks", "popsicle-standard");
+expectStock("jumbo stick tower", "popsicle-jumbo");
+expectStock("6 foot garden arch from 3/4 inch PVC pipe", "pvc-3-4-sch40");
+expectStock("4 foot bridge from plastic drinking straws", "straw-plastic");
+expectStock("garden arch from 2x4", "lumber-2x4-8");
+expectStock("tower from 1/4 dowel", "dowel-1-4-36");
+expectStock("box from plywood", "plywood-3-4-4x8");
+expectStock("Eiffel Tower", "wire-frame");
+expectStock("garden arch", "wire-frame");
+expectStock("a bridge", "wire-frame");
+
+const eiffelPrompt = "3 foot Eiffel Tower from popsicle sticks";
+const eiffelHyphen = "3-ft Eiffel Tower from popsicle sticks";
+const typedE = weekendTypedSize(eiffelPrompt);
+const typedH = weekendTypedSize(eiffelHyphen);
+if (!typedE || !nearInch(typedE.height ?? 0, 36, 0.1)) failWeekend("3 foot did not parse as 36in", typedE);
+if (!typedH || !nearInch(typedH.height ?? 0, 36, 0.1)) failWeekend("3-ft did not parse as 36in", typedH);
+
+const eiffel = generateFromPrompt(eiffelPrompt);
+const eiffelPlan = buildPlan(eiffel);
+if (eiffel.kind !== "eiffel") failWeekend("eiffel kind", eiffel.kind);
+if (!promptBoundStock(eiffel) || eiffel.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("eiffel stock bind", eiffel.primaryMaterialId);
+}
+if (eiffel.instances.length < 400 || eiffel.instances.length > 1200) {
+  failWeekend("eiffel piece count drifted", eiffel.instances.length);
+}
+if (eiffel.instances.some((i) => i.catalogId !== "popsicle-standard")) {
+  failWeekend("eiffel members not popsicle");
+}
+if (eiffel.instances.some((i) => i.cutLength != null)) {
+  failWeekend("eiffel cut popsicle sticks");
+}
+if (Math.abs(eiffel.overall.height - 37.4) > 2.5 && Math.abs(eiffel.overall.height - 36) > 2.5) {
+  failWeekend("3-ft eiffel height drifted", eiffel.overall);
+}
+if (eiffelPlan.partsKind !== "whole") failWeekend("eiffel plan not whole", eiffelPlan.partsKind);
+if (eiffelPlan.cutList.some((c) => !c.whole && Math.abs(c.lengthIn - 4.5) > 0.15)) {
+  failWeekend("eiffel sold custom-cut sticks", eiffelPlan.cutList);
+}
+if (eiffelPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("eiffel buy list has wood screws", eiffelPlan.bom.map((b) => b.name));
+}
+if (!eiffelPlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("eiffel buy list missing glue", eiffelPlan.bom.map((b) => b.name));
+}
+const eiffelInspect = inspectWeekendHonesty(eiffel, eiffelPlan);
+if (!eiffelInspect.ok) failWeekend("eiffel inspect", eiffelInspect.issues);
+
+const lying = {
+  ...eiffel,
+  instances: eiffel.instances.map((i) => ({ ...i, catalogId: "straw-plastic" })),
+};
+const lyingStockReport = inspectWeekendHonesty(lying, eiffelPlan);
+if (lyingStockReport.ok || !lyingStockReport.issues.some((i) => i.guard === "stock")) {
+  failWeekend("straw members on popsicle eiffel was not caught", lyingStockReport);
+}
+
+const hyphen = generateFromPrompt(eiffelHyphen);
+if (hyphen.kind !== "eiffel" || hyphen.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("3-ft hyphen eiffel", { kind: hyphen.kind, stock: hyphen.primaryMaterialId, h: hyphen.overall.height });
+}
+if (Math.abs(hyphen.overall.height - 37.4) > 2.5 && Math.abs(hyphen.overall.height - 36) > 2.5) {
+  failWeekend("3-ft hyphen height", hyphen.overall);
+}
+
+const arch = generateFromPrompt("6 foot garden arch from 3/4 inch PVC pipe");
+const archPlan = buildPlan(arch);
+if (arch.kind !== "arch") failWeekend("arch kind", arch.kind);
+if (arch.primaryMaterialId !== "pvc-3-4-sch40") failWeekend("arch stock", arch.primaryMaterialId);
+if (arch.instances.some((i) => i.catalogId !== "pvc-3-4-sch40")) failWeekend("arch members not PVC");
+if (arch.instances.length < 8 || arch.instances.length > 28) failWeekend("arch piece count", arch.instances.length);
+if (archPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("arch buy list has wood screws", archPlan.bom.map((b) => b.name));
+}
+if (archPlan.bom.some((b) => /titebond|wood glue/i.test(b.name)) && !archPlan.bom.some((b) => /solvent/i.test(b.name))) {
+  failWeekend("arch Titebond as only join", archPlan.bom.map((b) => b.name));
+}
+if (!archPlan.bom.some((b) => /solvent/i.test(b.name))) {
+  failWeekend("arch missing solvent", archPlan.bom.map((b) => b.name));
+}
+const archInspect = inspectWeekendHonesty(arch, archPlan);
+if (!archInspect.ok) failWeekend("arch inspect", archInspect.issues);
+
+const bridge = generateFromPrompt("4 foot bridge from plastic drinking straws");
+const bridgePlan = buildPlan(bridge);
+if (bridge.kind !== "bridge") failWeekend("bridge kind", bridge.kind);
+if (bridge.primaryMaterialId !== "straw-plastic") failWeekend("bridge stock", bridge.primaryMaterialId);
+if (bridge.instances.some((i) => i.catalogId !== "straw-plastic")) failWeekend("bridge members not straw");
+if (bridgePlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("straw bridge buy list has wood screws", bridgePlan.bom.map((b) => b.name));
+}
+const strawCuts = bridge.instances.filter((i) => i.cutLength != null).length;
+if (strawCuts > bridge.instances.length * 0.15) {
+  failWeekend("straw bridge cutting drinking straws", { strawCuts, n: bridge.instances.length });
+}
+const bridgeInspect = inspectWeekendHonesty(bridge, bridgePlan);
+if (!bridgeInspect.ok) failWeekend("bridge inspect", bridgeInspect.issues);
+
+const unnamed = generateFromPrompt("Eiffel Tower");
+if (unnamed.primaryMaterialId !== "wire-frame") {
+  failWeekend("unnamed eiffel defaulted stock", unnamed.primaryMaterialId);
+}
+if (!promptBoundStock(unnamed)) failWeekend("unnamed not wire-bound", unnamed.primaryMaterialId);
+if (unnamed.instances.some((i) => i.catalogId.startsWith("popsicle"))) {
+  failWeekend("unnamed eiffel built from popsicle");
+}
+
+console.log("WEEKEND STOCK HONESTY OK", {
+  eiffelPieces: eiffel.instances.length,
+  eiffelH: eiffel.overall.height,
+  eiffelStock: eiffel.primaryMaterialId,
+  hyphenH: hyphen.overall.height,
+  archPieces: arch.instances.length,
+  archStock: arch.primaryMaterialId,
+  archBom: archPlan.bom.map((b) => b.name),
+  bridgePieces: bridge.instances.length,
+  bridgeStock: bridge.primaryMaterialId,
+  bridgeBom: bridgePlan.bom.map((b) => b.name),
+  unnamed: unnamed.primaryMaterialId,
 });

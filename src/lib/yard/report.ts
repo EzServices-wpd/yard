@@ -9,6 +9,7 @@ import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { nestCutList } from "./nesting";
 import { honestPlan, wantsRackAffordance } from "./honesty";
+import { honestWeekendPlan } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -495,16 +496,19 @@ export function buildPlan(project: YardProject): BuildPlan {
       0,
     );
   }
-  return packPlan(
+  return honestWeekendPlan(
     project,
-    issues,
-    `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
-    [],
-    bom,
-    uniqueSteps(project),
-    pieces,
-    cost,
-    whole ? "whole" : "cut",
+    packPlan(
+      project,
+      issues,
+      `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
+      [],
+      bom,
+      uniqueSteps(project),
+      pieces,
+      cost,
+      whole ? "whole" : "cut",
+    ),
   );
 }
 

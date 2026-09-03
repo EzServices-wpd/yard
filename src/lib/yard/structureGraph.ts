@@ -168,7 +168,7 @@ export function graphToInstances(
     const rot = rotationForDirection(a, b, cylindrical);
     instances.push({
       id,
-      catalogId: graph.materialId,
+      catalogId: item.id,
       position: [m.x, m.y, m.z],
       rotation: rot,
       cutLength: whole ? undefined : cut,
