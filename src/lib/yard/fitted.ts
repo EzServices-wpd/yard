@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
-import { detectHouseFamily, identityTitleStem, isBunkBed, isKitchenBase, isKitchenUpper, isLoftBed, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { detectHouseFamily, identityTitleStem, isBunkBed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -185,6 +185,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 48
               : /nightstand|bedside/.test(lower)
                 ? 20
+                : isLaundryFoldDown(lower)
+                  ? 48
                 : isIroningCabinet(lower)
                   ? 16
                 : isMedicineCabinet(lower)
@@ -303,8 +305,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 36
               : /crate/.test(lower)
                 ? 30
+                : isLaundryFoldDown(lower)
+                  ? 36
                 : isIroningCabinet(lower)
                   ? 48
+                : isRadiatorCover(lower)
+                  ? 30
                 : isMedicineCabinet(lower)
                   ? 24
                 : isOverToilet(lower)
@@ -347,8 +353,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? width
                 : /headboard/.test(lower)
                   ? 4
-                  : isIroningCabinet(lower)
+                  : isLaundryFoldDown(lower) || isFoldDown(lower) || isIroningCabinet(lower)
                     ? 6
+                  : isRadiatorCover(lower)
+                    ? 10
                   : isMedicineCabinet(lower)
                     ? 4
                   : isOverToilet(lower)
@@ -445,7 +453,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? Math.max(2, Math.min(5, Math.round((height - P) / 6)))
               : /crate/.test(lower)
                 ? 0
-                : isIroningCabinet(lower)
+                : isLaundryFoldDown(lower) || isFoldDown(lower) || isIroningCabinet(lower)
+                  ? 0
+                : isRadiatorCover(lower)
                   ? 0
                 : isMedicineCabinet(lower)
                   ? 2
@@ -482,6 +492,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /door/.test(lower) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
+    isLaundryFoldDown(lower) ||
+    isFoldDown(lower) ||
     isMedicineCabinet(lower) ||
     program === "closet" ||
     program === "pantry" ||
@@ -696,6 +708,74 @@ function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffor
   };
 }
 
+
+function buildRadiatorCover(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const innerW = W - P * 2;
+  const panels: Panel[] = [];
+  // Open-backed cover: uprights + top shelf + bottom rail + front grille slats.
+  // Heat needs a path — no full back panel and no door.
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("top", "Top shelf", x0 + P, H - P, 0, innerW, P, D));
+  panels.push(panel("rail", "Bottom rail", x0 + P, 0, D - P, innerW, 3.5, P));
+  const slatN = Math.max(5, Math.min(11, Math.round(innerW / 3.5)));
+  const gap = innerW / slatN;
+  const slatW = Math.max(1.25, Math.min(2, gap * 0.45));
+  for (let i = 0; i < slatN; i++) {
+    const x = x0 + P + gap * i + (gap - slatW) / 2;
+    panels.push(
+      panel("rail", `Grille slat ${i + 1}`, x, 3.5, D - P, slatW, Math.max(8, H - P - 3.5), P),
+    );
+  }
+  const name = `Radiator cover ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Open-backed radiator cover with a top shelf and ${slatN} front grille slats — not a closed cabinet. ¾" plywood.`,
+      "Leave air space around the radiator. Do not trap heat against a sealed back. Guidance only — confirm clearances for your radiator.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "floor-carcase",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const W = u.width;
@@ -731,9 +811,15 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     ? spec.name.match(/upper/i)
       ? spec.name
       : `Upper cabinet ${W}" × ${H}" × ${D}"`
-    : spec.name.match(/cabinet|ironing|medicine/i)
+    : isLaundryFoldDown(lowerPrompt) || (fold && /laundry/.test(lowerPrompt))
+      ? (spec.name.match(/laundry/i) ? spec.name : `Laundry fold-down ${W}" × ${H}" × ${D}"`)
+    : isIroningCabinet(lowerPrompt)
+      ? (spec.name.match(/ironing/i) ? spec.name : `Ironing cabinet ${W}" × ${H}" × ${D}"`)
+    : spec.name.match(/cabinet|ironing|medicine|laundry|fold/i)
       ? spec.name
-      : `Wall cabinet ${W}" × ${H}" × ${D}"`;
+      : fold
+        ? `Fold-down cabinet ${W}" × ${H}" × ${D}"`
+        : `Wall cabinet ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
     name,
@@ -744,9 +830,11 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Wall-mounted cabinet — not a floor box. ¾" plywood.`,
+      fold && /laundry/i.test(name)
+        ? `${name}. Wall-mounted laundry fold-down — a shallow cabinet with a hinged fold surface inside, not a freestanding folding table and not a floor box. ¾" plywood.`
+        : `${name}. Wall-mounted cabinet — not a floor box. ¾" plywood.`,
       fold
-        ? "The board stores upright and hinges down. Hang the carcase on studs through the back."
+        ? "The board stores upright and hinges down on a piano hinge. A support leg kicks out to the floor. Hang the carcase on studs through the back."
         : "Hang the carcase on studs through the back. Concealed hinges on the door. Glue the shelves; do not pin them.",
     ],
     historic: false,
@@ -1323,6 +1411,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildShoeRack(spec, prompt, affordances);
   }
 
+  if (isRadiatorCover(prompt) || (identityTitleStem(prompt.toLowerCase()) === "Radiator cover")) {
+    return buildRadiatorCover(spec, prompt, affordances);
+  }
+
   if (spec.program === "bench" || family === "seat") {
     const innerW = W - P * 2;
     const cubbyN =
@@ -1350,10 +1442,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("rail", "Peg rail", x0, H, 0, W, pegH, P));
     }
     const mudroom = /mudroom/i.test(prompt);
+    const windowSeat = /window seat/i.test(prompt);
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
     const stackH = H + pegH;
     const name = coatBench
       ? `Coat bench ${W}" × ${stackH}" × ${D}"`
+      : windowSeat
+        ? `Window seat ${W}" × ${H}" × ${D}"`
       : mudroom
         ? `Mudroom bench ${W}" × ${H}" × ${D}"`
         : `Bench ${W}" × ${H}" × ${D}"`;
@@ -1369,10 +1464,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
+          : windowSeat
+            ? `${name}. Sittable window seat with ${cubbyN} open bays under the lid line — not a hollow storage box. ¾" plywood.`
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
         `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
+          : windowSeat
+            ? "Set it under the sill. Sit-test before you finish. Guidance only — confirm the seat height for the window."
           : "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
       ],
       historic: false,

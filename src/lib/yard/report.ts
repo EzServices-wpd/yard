@@ -139,6 +139,12 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const ironing =
     /ironing/i.test(project.name) ||
     /ironing/.test((project.prompt ?? "").toLowerCase());
+  const foldDownBoard = project.panels.some((p) => /fold-down board|ironing board/i.test(p.name));
+  const foldDown =
+    foldDownBoard ||
+    project.fitted?.affordances?.includes("fold-down-board") ||
+    /fold-down|fold down/i.test(project.name) ||
+    /fold[- ]?down|drop[- ]?down/.test((project.prompt ?? "").toLowerCase());
   const medicine =
     /medicine/i.test(project.name) ||
     /medicine/.test((project.prompt ?? "").toLowerCase());
@@ -243,23 +249,35 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: "Glue to the outside of the door so the cabinet mirrors when closed. Order or cut close to the door size.",
     });
   }
-  if (ironing) {
+  if (foldDown || ironing) {
     bom.push({
       name: "Piano hinge",
       quantity: 1,
       unit: "pc",
       searchQuery: "1-1/2 inch x 48 inch piano hinge continuous",
       estimatedCost: 14.98,
-      notes: "Continuous hinge along the bottom edge of the ironing board so it folds down.",
+      notes: ironing
+        ? "Continuous hinge along the bottom edge of the ironing board so it folds down."
+        : "Continuous hinge along the bottom edge of the fold-down board so it folds down.",
     });
     bom.push({
-      name: "Ironing board cover",
+      name: "Support-leg hinge",
       quantity: 1,
       unit: "pc",
-      searchQuery: "tabletop ironing board cover pad",
-      estimatedCost: 12.99,
-      notes: "Heat-resistant pad and cover for the plywood board. Staple or clip it on.",
+      searchQuery: "narrow utility hinge 1-1/2 inch",
+      estimatedCost: 3.48,
+      notes: "Short hinge so the support leg kicks out to the floor when the board is down.",
     });
+    if (ironing) {
+      bom.push({
+        name: "Ironing board cover",
+        quantity: 1,
+        unit: "pc",
+        searchQuery: "tabletop ironing board cover pad",
+        estimatedCost: 12.99,
+        notes: "Heat-resistant pad and cover for the plywood board. Staple or clip it on.",
+      });
+    }
   }
   const hangingRods = project.panels.filter(
     (panel) => /hanging rod/i.test(panel.name),
@@ -285,6 +303,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     !nightstand &&
     !floating &&
     !ironing &&
+    !foldDown &&
     !spice &&
     !wine &&
     !wantsRackAffordance(project.prompt ?? "") &&
@@ -330,8 +349,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
           : floating
             ? "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
-          : ironing
-            ? "4-6 screws through the plywood back into studs. A loaded ironing board will rip it off drywall anchors. Guidance only — confirm wall type."
+          : ironing || foldDown
+            ? "4-6 screws through the plywood back into studs. A person leaning on the fold-down board will rip it off drywall anchors. Guidance only — confirm wall type."
           : medicine
             ? "4 screws through the plywood back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
           : overToilet

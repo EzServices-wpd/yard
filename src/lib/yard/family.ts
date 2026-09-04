@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -83,6 +83,19 @@ function isOverToilet(lower: string) {
 
 function isIroning(lower: string) {
   return /ironing/.test(lower);
+}
+
+/** Explicit fold-down / drop-down — not "folding table". */
+export function isFoldDown(lower: string) {
+  return /fold[- ]?down|drop[- ]?down/.test(lower);
+}
+
+export function isLaundryFoldDown(lower: string) {
+  return /laundry/.test(lower) && isFoldDown(lower);
+}
+
+export function isRadiatorCover(lower: string) {
+  return /radiator/.test(lower);
 }
 
 function isMedicine(lower: string) {
@@ -153,6 +166,9 @@ export function identityTitleStem(lower: string): string | null {
   if (isKitchenUpper(lower)) return "Upper cabinet";
   if (isLoftBed(lower)) return "Loft bed";
   if (isBunkBed(lower)) return "Bunk bed";
+  if (isLaundryFoldDown(lower)) return "Laundry fold-down";
+  if (/window seat/.test(lower)) return "Window seat";
+  if (isRadiatorCover(lower)) return "Radiator cover";
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
@@ -203,6 +219,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   // Coat + bench is a floor seat with a peg rail — not a wall-only coat rack.
   const coatBench = /coat/.test(lower) && /bench/.test(lower);
 
+  const fold = isIroning(lower) || isFoldDown(lower);
+
   const wallLang =
     !coatBench &&
     (/wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|on the wall|wall\b.{0,24}\bcabinet\b/.test(
@@ -213,6 +231,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isWineRack(lower) ||
       isMedicine(lower) ||
       isIroning(lower) ||
+      fold ||
       (/coat/.test(lower) && /rack|tree|peg/.test(lower)) ||
       /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
       /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
@@ -231,11 +250,11 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower));
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
-  const fold = isIroning(lower) || /fold[- ]?down|drop[- ]?down/.test(lower);
   const door =
     /door/.test(lower) ||
     isMedicine(lower) ||
     isIroning(lower) ||
+    fold ||
     /crate/.test(lower) ||
     (/cabinet/.test(lower) && !isOverToilet(lower) && !/spice|wine/.test(lower)) ||
     /closet|pantry|wardrobe/.test(lower);
@@ -247,6 +266,10 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (mount === "straddle" || isOverToilet(lower)) family = "straddle";
   else if (isBunkBed(lower) || isLoftBed(lower)) family = "bunk";
   else if (/headboard/.test(lower)) family = "slab";
+  // Fold-down is a hung board in a shallow cabinet — not a freestanding table,
+  // even if someone said "fold-down table". "Laundry folding table" stays table
+  // because isFoldDown requires fold-down / drop-down, not "folding".
+  else if (fold) family = "hung-cabinet";
   else if (program === "table") family = "table";
   else if (program === "bench" || (sit && !/vanity|desk/.test(lower))) family = "seat";
   else if (mount === "wall") family = opening === "open" ? "hung-open" : "hung-cabinet";

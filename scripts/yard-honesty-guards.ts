@@ -761,6 +761,85 @@ if (loftPlan.instructions.some((s) => /two sleep platforms|lower first, then upp
   failHonesty("loft steps still sell twin bunk language", loftPlan.instructions.map((s) => s.title));
 }
 
+// Height-10: laundry fold-down reuses hung fold-down-board; folding table stays table.
+// Window seat + radiator cover are honest house canaries (not noun special piles).
+const laundryFoldPrompt = "laundry fold-down 48 wide 36 high 6 deep";
+const laundryFoldHit = detectHouseFamily(laundryFoldPrompt);
+if (
+  !laundryFoldHit ||
+  laundryFoldHit.family !== "hung-cabinet" ||
+  laundryFoldHit.mount !== "wall" ||
+  laundryFoldHit.opening !== "fold-down" ||
+  !laundryFoldHit.affordances.includes("fold-down-board")
+) {
+  failHonesty("laundry fold-down family", laundryFoldHit);
+}
+const laundryFold = generateFromPrompt(laundryFoldPrompt);
+if (!/^Laundry fold-down/i.test(laundryFold.name)) failHonesty("laundry fold-down title", laundryFold.name);
+if (!nearInch(laundryFold.overall.width, 48) || !nearInch(laundryFold.overall.height, 36) || !nearInch(laundryFold.overall.depth, 6)) {
+  failHonesty("laundry fold-down overall", laundryFold.overall);
+}
+if (laundryFold.assumptions.installMode !== "wall") failHonesty("laundry fold-down mount", laundryFold.assumptions);
+if (!laundryFold.panels.some((p) => /fold-down board/i.test(p.name))) {
+  failHonesty("laundry fold-down missing board", laundryFold.panels.map((p) => p.name));
+}
+if (!laundryFold.panels.some((p) => /support leg/i.test(p.name))) {
+  failHonesty("laundry fold-down missing support leg", laundryFold.panels.map((p) => p.name));
+}
+if (!laundryFold.panels.some((p) => p.type === "door")) {
+  failHonesty("laundry fold-down missing door", laundryFold.panels.map((p) => p.name));
+}
+const laundryFoldPlan = buildPlan(laundryFold);
+if (!laundryFoldPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
+  failHonesty("laundry fold-down missing piano hinge", laundryFoldPlan.bom.map((b) => b.name));
+}
+if (laundryFoldPlan.bom.some((b) => /ironing board cover/i.test(b.name))) {
+  failHonesty("laundry fold-down sold ironing cover", laundryFoldPlan.bom.map((b) => b.name));
+}
+if (!laundryFoldPlan.instructions.some((s) => /piano-hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("laundry fold-down steps missing hinge", laundryFoldPlan.instructions.map((s) => s.title));
+}
+if (!inspectHonesty(laundryFold, laundryFoldPlan).ok) {
+  failHonesty("laundry fold-down inspect", inspectHonesty(laundryFold, laundryFoldPlan).issues);
+}
+// Freestanding laundry folding TABLE must stay the table freeze — not steal fold-down.
+if (detectHouseFamily("laundry folding table 48 wide 36 high 24 deep")?.family !== "table") {
+  failHonesty("laundry folding table lost table family", detectHouseFamily("laundry folding table 48 wide 36 high 24 deep"));
+}
+const laundryTableStill = generateFromPrompt("laundry folding table 48 wide 36 high 24 deep");
+if (laundryTableStill.panels.some((p) => /fold-down board/i.test(p.name))) {
+  failHonesty("laundry folding table grew fold-down board", laundryTableStill.panels.map((p) => p.name));
+}
+
+const windowSeat = generateFromPrompt("window seat 60 wide 18 high 20 deep");
+if (!/^Window seat/i.test(windowSeat.name)) failHonesty("window seat title", windowSeat.name);
+if (!nearInch(windowSeat.overall.width, 60) || !nearInch(windowSeat.overall.height, 18) || !nearInch(windowSeat.overall.depth, 20)) {
+  failHonesty("window seat overall", windowSeat.overall);
+}
+if (!windowSeat.panels.some((p) => /cubby/i.test(p.name))) failHonesty("window seat missing cubbies", windowSeat.panels.map((p) => p.name));
+const windowSeatPlan = buildPlan(windowSeat);
+if (!inspectHonesty(windowSeat, windowSeatPlan).ok) failHonesty("window seat inspect", inspectHonesty(windowSeat, windowSeatPlan).issues);
+
+const radiator = generateFromPrompt("radiator cover 36 wide 30 high 10 deep");
+if (!/^Radiator cover/i.test(radiator.name)) failHonesty("radiator cover title", radiator.name);
+if (!nearInch(radiator.overall.width, 36) || !nearInch(radiator.overall.height, 30) || !nearInch(radiator.overall.depth, 10)) {
+  failHonesty("radiator cover overall", radiator.overall);
+}
+if (radiator.panels.some((p) => p.type === "door" || p.type === "back")) {
+  failHonesty("radiator cover sealed like a cabinet", radiator.panels.map((p) => p.name));
+}
+if (radiator.panels.filter((p) => /grille/i.test(p.name)).length < 5) {
+  failHonesty("radiator cover missing grille slats", radiator.panels.map((p) => p.name));
+}
+const radiatorPlan = buildPlan(radiator);
+if (!inspectHonesty(radiator, radiatorPlan).ok) failHonesty("radiator cover inspect", inspectHonesty(radiator, radiatorPlan).issues);
+
+console.log("HEIGHT10 FOLD + CANARIES OK", {
+  laundryFold: { name: laundryFold.name, overall: laundryFold.overall, panels: laundryFold.panels.map((p) => p.name) },
+  windowSeat: { name: windowSeat.name, overall: windowSeat.overall },
+  radiator: { name: radiator.name, grille: radiator.panels.filter((p) => /grille/i.test(p.name)).length },
+});
+
 
 const bunkPrompt = "twin bunk bed";
 const bunkHit = detectHouseFamily(bunkPrompt);

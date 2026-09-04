@@ -311,19 +311,31 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
-  const ironingCabinet =
+  const foldDownCabinet =
+    project.fitted?.affordances?.includes("fold-down-board") ||
     /ironing/i.test(project.name) ||
-    /ironing/.test((project.prompt ?? "").toLowerCase());
-  if (ironingCabinet) {
+    /ironing/.test((project.prompt ?? "").toLowerCase()) ||
+    /fold-down|fold down/i.test(project.name) ||
+    /fold[- ]?down|drop[- ]?down/.test((project.prompt ?? "").toLowerCase()) ||
+    panels.some((p) => /fold-down board|ironing board/i.test(p.name));
+  if (foldDownCabinet) {
     const door = doors[0];
-    const board = panels.find((p) => /ironing board/i.test(p.name));
+    const board = panels.find((p) => /fold-down board|ironing board/i.test(p.name));
     const leg = panels.find((p) => /support leg/i.test(p.name));
+    const ironing = /ironing/i.test(project.name) || /ironing/.test((project.prompt ?? "").toLowerCase());
+    const laundry = /laundry/i.test(project.name) || /laundry/.test((project.prompt ?? "").toLowerCase());
+    const label = ironing ? "ironing" : laundry ? "laundry fold-down" : "fold-down";
+    const hangHint = ironing
+      ? "Typical bottom of the cabinet sits about 32–36\" off the floor so the board comes down at ironing height."
+      : laundry
+        ? "Typical bottom of the cabinet sits about 36–40\" off the floor so the board comes down at folding height."
+        : "Typical bottom of the cabinet sits about 32–40\" off the floor so the board comes down at work height.";
     return [
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted ironing cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom of the cabinet sits about 32–36" off the floor so the board comes down at ironing height. ${panels.length} parts on this list.`,
-        tips: "This is a fold-down ironing board in a shallow wall cabinet, not a storage box. If a number disagrees with the cut list, trust the cut list.",
+        description: `${project.name}. Wall-mounted ${label} cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. ${hangHint} ${panels.length} parts on this list.`,
+        tips: `This is a fold-down board in a shallow wall cabinet, not a freestanding folding table and not a storage box. If a number disagrees with the cut list, trust the cut list.`,
         partsUsed: ["*"],
       },
       {
@@ -349,16 +361,20 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Piano-hinge the ironing board and the support leg",
-        description: `${board ? cutLine(board) + "." : "Ironing board."} ${leg ? cutLine(leg) + "." : ""} Screw a piano hinge (a long continuous hinge) along the bottom edge of the board, into the front of the bottom panel, so the board stores upright and folds down out of the cabinet. A second short hinge on the support leg, onto the underside of the board, so the leg kicks out to the floor when the board is down.`,
-        tips: "Open the door first. The board must clear the door. Staple or clip the ironing-board cover on before you hang it if that is easier on the bench.",
-        partsUsed: names(panels.filter((p) => /ironing board|support leg/i.test(p.name))),
+        title: "Piano-hinge the fold-down board and the support leg",
+        description: `${board ? cutLine(board) + "." : "Fold-down board."} ${leg ? cutLine(leg) + "." : ""} Screw a piano hinge (a long continuous hinge) along the bottom edge of the board, into the front of the bottom panel, so the board stores upright and folds down out of the cabinet. A second short hinge on the support leg, onto the underside of the board, so the leg kicks out to the floor when the board is down.`,
+        tips: ironing
+          ? "Open the door first. The board must clear the door. Staple or clip the ironing-board cover on before you hang it if that is easier on the bench."
+          : "Open the door first. The board must clear the door. The support leg carries lean load — do not skip it.",
+        partsUsed: names(panels.filter((p) => /fold-down board|ironing board|support leg/i.test(p.name))),
       },
       {
         step: 6,
         title: "Hang it on studs",
-        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A person leaning on an ironing board will rip this off drywall anchors. Cover the board. Close the door.`,
-        tips: "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can iron at.",
+        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A person leaning on the board will rip this off drywall anchors. ${ironing ? "Cover the board. " : ""}Close the door.`,
+        tips: ironing
+          ? "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can iron at."
+          : "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can work at.",
         partsUsed: names(backs),
       },
     ];
@@ -415,6 +431,52 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+
+  const radiatorCover =
+    /radiator cover/i.test(project.name) ||
+    /radiator/.test((project.prompt ?? "").toLowerCase());
+  if (radiatorCover) {
+    const tops = panels.filter((p) => /top/i.test(p.name) || p.type === "top");
+    const grilles = panels.filter((p) => /grille/i.test(p.name));
+    const bottomRails = panels.filter((p) => /bottom rail/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. Freestanding open-backed radiator cover ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with a top shelf and front grille slats. Mark the rectangle and check clearance around the radiator. ${panels.length} parts on this list.`,
+        tips: "This is an open cover with grille slats, not a sealed cabinet. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face — especially Top shelf and each Grille slat.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the uprights and top shelf",
+        description: `${uprights.map(cutLine).join("; ")}. ${tops.map(cutLine).join("; ") || "Top shelf."}. Glue and #8 × 1¼" screws: top into both uprights. Predrill near the ends so the ply does not split.`,
+        tips: "Check both diagonals. Leave the back open so heat can escape against the wall.",
+        partsUsed: names([...uprights, ...tops]),
+      },
+      {
+        step: 4,
+        title: "Add the bottom rail and grille slats",
+        description: `${bottomRails.map(cutLine).join("; ") || "Bottom rail."}. ${grilles.map(cutLine).join("; ") || "Grille slats."}. Screw the bottom rail between the uprights at the front. Space the grille slats evenly and screw each into the top shelf and bottom rail.`,
+        tips: "Gaps between slats let heat out. Do not sheet the front solid.",
+        partsUsed: names([...bottomRails, ...grilles]),
+      },
+      {
+        step: 5,
+        title: "Set it over the radiator",
+        description: `Slide the cover over the radiator with air space on all sides. It should not touch hot pipes. Level the top shelf.`,
+        tips: "Guidance only — confirm clearances for your radiator and finish before you leave it in place.",
+        partsUsed: ["*"],
+      },
+    ];
+  }
 
   const mudroomBench =
     /mudroom bench|^bench\b/i.test(project.name) ||

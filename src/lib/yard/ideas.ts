@@ -71,6 +71,15 @@ export const IDEAS: Idea[] = [
     blurb: "Open both sides, counter, toekick. Not a cabinet with a back.",
   },
   {
+    id: "radiator",
+    group: "house",
+    section: "Sit and work",
+    label: "Radiator cover",
+    size: "36 × 30 × 10",
+    prompt: "radiator cover 36 wide 30 high 10 deep",
+    blurb: "Open-backed cover with top shelf and grille slats.",
+  },
+  {
     id: "bench",
     group: "house",
     section: "Sit and work",
@@ -114,6 +123,15 @@ export const IDEAS: Idea[] = [
     size: "48 × 36 × 24",
     prompt: "laundry folding table 48 wide 36 high 24 deep",
     blurb: "Plywood top, four legs, perimeter rails. Height is 36.",
+  },
+  {
+    id: "windowseat",
+    group: "house",
+    section: "Sit and work",
+    label: "Window seat",
+    size: "60 × 18 × 20",
+    prompt: "window seat 60 wide 18 high 20 deep",
+    blurb: "Sittable seat over open bays. Cubbies carry the span.",
   },
   {
     id: "round",
@@ -213,6 +231,15 @@ export const IDEAS: Idea[] = [
     size: "16 × 48 × 6",
     prompt: "wall mounted ironing board cabinet 48 high 16 wide 6 deep",
     blurb: "Fold-down board, overlay door, support leg.",
+  },
+  {
+    id: "laundryfold",
+    group: "house",
+    section: "Hang on the wall",
+    label: "Laundry fold-down",
+    size: "48 × 36 × 6",
+    prompt: "laundry fold-down 48 wide 36 high 6 deep",
+    blurb: "Hung fold surface — same affordance as ironing, not a floor table.",
   },
   {
     id: "hood",
