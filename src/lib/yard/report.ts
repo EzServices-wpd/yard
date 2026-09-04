@@ -130,10 +130,12 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const nightstand =
     /nightstand|bedside/i.test(project.name) ||
     /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+  const hasCleats = project.panels.some((p) => /cleat/i.test(p.name));
   const floating =
-    (/floating|wall-?mounted/i.test(project.name) ||
-      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
-    /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
+    hasCleats ||
+    ((/floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
+      /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
+      /shel/i.test(`${project.name} ${project.prompt ?? ""}`));
   const ironing =
     /ironing/i.test(project.name) ||
     /ironing/.test((project.prompt ?? "").toLowerCase());
@@ -356,8 +358,9 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
   const floatingIssue =
-    (/floating|wall-?mounted/i.test(project.name) ||
-      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
+    (project.panels.some((p) => /cleat/i.test(p.name)) ||
+      /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
+      /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
   if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({

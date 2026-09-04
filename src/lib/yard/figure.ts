@@ -78,9 +78,13 @@ function bipedStrokes(H: number, raised: boolean): FigureStroke[] {
     bentLeg("leg", pt(-hx, 0, -hz), pt(-hx, hip, -hz), 0.08),
     bentLeg("leg", pt(hx, 0, hz), pt(hx, hip, hz), -0.08),
     ...hipRect(hx, hip, hz),
-    hoop("ring", 0, hip + H * 0.08, hx * 1.15, hz * 1.2, 6),
-    hoop("ring", 0, H * 0.6, hx * 1.05, hz * 1.1, 6),
-    stroke("support", [pt(0, hip, 0), pt(0, H * 0.6, 0), pt(0, shoulder, 0), pt(0, H * 0.88, 0)]),
+    hoop("ring", 0, hip + H * 0.08, hx * 1.15, hz * 1.2, 8),
+    hoop("ring", 0, H * 0.54, hx * 1.1, hz * 1.15, 8),
+    hoop("ring", 0, H * 0.6, hx * 1.05, hz * 1.1, 8),
+    stroke("support", [pt(0, hip, 0), pt(0, H * 0.54, 0), pt(0, H * 0.6, 0), pt(0, shoulder, 0), pt(0, H * 0.88, 0)]),
+    stroke("rail", [pt(-hx * 1.05, H * 0.54, -hz), pt(hx * 1.05, H * 0.54, hz)]),
+    stroke("brace", [pt(-hx, hip, -hz), pt(hx, H * 0.54, hz)]),
+    stroke("brace", [pt(hx, hip, hz), pt(-hx, H * 0.54, -hz)]),
     hoop("ring", 0, shoulder, hx * 1.25, hz * 1.15, 6),
     hoop("tip", 0, H * 0.94, hx * 0.7, hz * 0.7, 6),
     stroke("tip", [pt(0, H * 0.88, 0), pt(0, H, 0)]),
@@ -190,27 +194,55 @@ function quadrupedStrokes(H: number, L: number): FigureStroke[] {
   const z = H * 0.08;
   const hipX = L * 0.28;
   const shX = -L * 0.22;
+  const midX = (hipX + shX) / 2;
+  const knee = hip * 0.48;
+  // Denser craft armature: more ribs + belly rails + cross ties so popsicle
+  // densify reads as an animal, not four sticks and a hoop — still one connected wire.
   return [
     bentLeg("leg", pt(hipX, 0, -z), pt(hipX, hip, -z), 0.12),
     bentLeg("leg", pt(hipX, 0, z), pt(hipX, hip, z), -0.12),
     bentLeg("leg", pt(shX, 0, -z), pt(shX, hip, -z), 0.12),
     bentLeg("leg", pt(shX, 0, z), pt(shX, hip, z), -0.12),
+    // Knee spreader + hock rails — lateral ribs on the legs.
+    stroke("rail", [pt(hipX, knee, -z), pt(hipX, knee, z)]),
+    stroke("rail", [pt(shX, knee, -z), pt(shX, knee, z)]),
+    stroke("rail", [pt(hipX, knee, -z), pt(shX, knee, -z)]),
+    stroke("rail", [pt(hipX, knee, z), pt(shX, knee, z)]),
+    // Hip deck + belly stringers (paired for stick densify).
     stroke("rail", [pt(hipX, hip, -z), pt(hipX, hip, z), pt(shX, hip, z), pt(shX, hip, -z), pt(hipX, hip, -z)]),
-    hoop("ring", hipX, hip, L * 0.06, z * 1.1, 6),
-    hoop("ring", 0, hip + H * 0.05, L * 0.08, z * 1.2, 6),
-    hoop("ring", shX, hip, L * 0.055, z, 6),
-    stroke("support", [pt(hipX, hip, 0), pt(0, hip + H * 0.06, 0), pt(shX, hip, 0)]),
+    stroke("support", [pt(hipX, hip - H * 0.02, -z * 0.55), pt(midX, hip - H * 0.04, -z * 0.7), pt(shX, hip - H * 0.02, -z * 0.55)]),
+    stroke("support", [pt(hipX, hip - H * 0.02, z * 0.55), pt(midX, hip - H * 0.04, z * 0.7), pt(shX, hip - H * 0.02, z * 0.55)]),
+    stroke("support", [pt(hipX, hip, 0), pt(midX, hip + H * 0.04, 0), pt(shX, hip, 0)]),
+    stroke("support", [pt(hipX, hip + H * 0.02, -z * 0.35), pt(midX, hip + H * 0.08, 0), pt(shX, hip + H * 0.02, z * 0.35)]),
+    // Rib hoops along the torso (hip → mid → chest → withers).
+    hoop("ring", hipX, hip, L * 0.06, z * 1.1, 8),
+    hoop("ring", hipX * 0.55, hip + H * 0.03, L * 0.07, z * 1.15, 8),
+    hoop("ring", midX, hip + H * 0.06, L * 0.085, z * 1.25, 8),
+    hoop("ring", shX * 0.55, hip + H * 0.04, L * 0.07, z * 1.15, 8),
+    hoop("ring", shX, hip, L * 0.055, z * 1.05, 8),
+    // Cross braces on the chest / loin so faces densify with whole sticks.
+    stroke("brace", [pt(hipX, hip, -z), pt(midX, hip + H * 0.06, z)]),
+    stroke("brace", [pt(hipX, hip, z), pt(midX, hip + H * 0.06, -z)]),
+    stroke("brace", [pt(shX, hip, -z), pt(midX, hip + H * 0.06, z)]),
+    stroke("brace", [pt(shX, hip, z), pt(midX, hip + H * 0.06, -z)]),
+    // Neck chain with intermediate stations + collar ring.
     stroke("support", [
       pt(shX, hip, 0),
-      pt(shX - L * 0.05, H * 0.62, 0),
-      pt(shX - L * 0.08, H * 0.76, 0),
-      pt(shX - L * 0.04, H * 0.9, 0),
+      pt(shX - L * 0.03, H * 0.56, 0),
+      pt(shX - L * 0.055, H * 0.66, 0),
+      pt(shX - L * 0.075, H * 0.76, 0),
+      pt(shX - L * 0.05, H * 0.86, 0),
+      pt(shX - L * 0.02, H * 0.92, 0),
     ]),
-    hoop("tip", shX - L * 0.02, H * 0.92, L * 0.04, z * 0.7, 5),
-    stroke("tip", [pt(shX - L * 0.04, H * 0.9, 0), pt(shX + L * 0.1, H * 0.93, 0)]),
-    stroke("tip", [pt(shX - L * 0.02, H * 0.96, -z * 0.5), pt(shX - L * 0.02, H, -z * 0.5)]),
-    stroke("tip", [pt(shX - L * 0.02, H * 0.96, z * 0.5), pt(shX - L * 0.02, H, z * 0.5)]),
-    stroke("brace", [pt(hipX, hip, 0), pt(hipX + L * 0.16, H * 0.42, 0), pt(hipX + L * 0.26, H * 0.34, 0)]),
+    hoop("ring", shX - L * 0.04, H * 0.7, L * 0.035, z * 0.85, 6),
+    hoop("tip", shX - L * 0.02, H * 0.92, L * 0.045, z * 0.75, 6),
+    stroke("tip", [pt(shX - L * 0.04, H * 0.9, 0), pt(shX + L * 0.12, H * 0.93, 0), pt(shX + L * 0.16, H * 0.91, 0)]),
+    stroke("tip", [pt(shX - L * 0.02, H * 0.96, -z * 0.55), pt(shX - L * 0.02, H, -z * 0.55)]),
+    stroke("tip", [pt(shX - L * 0.02, H * 0.96, z * 0.55), pt(shX - L * 0.02, H, z * 0.55)]),
+    // Tail with an extra mid vertebra + lateral flare.
+    stroke("brace", [pt(hipX, hip, 0), pt(hipX + L * 0.1, H * 0.44, 0), pt(hipX + L * 0.18, H * 0.38, 0), pt(hipX + L * 0.28, H * 0.32, 0)]),
+    stroke("brace", [pt(hipX + L * 0.12, H * 0.42, -z * 0.35), pt(hipX + L * 0.22, H * 0.34, 0)]),
+    stroke("brace", [pt(hipX + L * 0.12, H * 0.42, z * 0.35), pt(hipX + L * 0.22, H * 0.34, 0)]),
   ];
 }
 

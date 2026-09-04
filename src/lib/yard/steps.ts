@@ -583,8 +583,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const floatingShelves =
-    ((/floating|wall-?mounted/i.test(project.name) ||
-      /floating|wall-?mounted/.test((project.prompt ?? "").toLowerCase())) &&
+    ((project.panels.some((p) => /cleat/i.test(p.name)) ||
+      /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
+      /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
       /shel/i.test(`${project.name} ${project.prompt ?? ""}`) &&
       !uprights.length);
   if (floatingShelves) {

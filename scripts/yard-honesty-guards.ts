@@ -434,6 +434,17 @@ if (Math.abs(novelTower.overall.height - 37.4) > 2.5 && Math.abs(novelTower.over
 if (novelTower.instances.length < 80) {
   failWeekend("novel tower is a sparse taper, not lattice density", novelTower.instances.length);
 }
+// Non-Eiffel mast: base face well under Eiffel-ratio (~0.39 H → ~14" at 36").
+if (novelTower.overall.width > 12.5) {
+  failWeekend("novel tower still Eiffel-wide", novelTower.overall);
+}
+const jumboTower = generateFromPrompt("4 foot tower from jumbo craft sticks");
+if (jumboTower.kind !== "lattice" || jumboTower.primaryMaterialId !== "popsicle-jumbo") {
+  failWeekend("jumbo tower", { kind: jumboTower.kind, stock: jumboTower.primaryMaterialId });
+}
+if (jumboTower.instances.length < 200) failWeekend("jumbo tower too sparse", jumboTower.instances.length);
+if (jumboTower.overall.width > 16) failWeekend("jumbo tower still Eiffel-wide", jumboTower.overall);
+if (jumboTower.instances.some((i) => i.cutLength != null)) failWeekend("jumbo tower cut sticks");
 if (novelTower.instances.some((i) => i.cutLength != null)) {
   failWeekend("novel tower cut popsicle sticks");
 }
@@ -474,9 +485,19 @@ if (dogFig.kind !== "figure" || dogFig.primaryMaterialId !== "popsicle-standard"
   failWeekend("dog family", { kind: dogFig.kind, stock: dogFig.primaryMaterialId });
 }
 if (dogFig.name !== "Dog") failWeekend("dog name drifted", dogFig.name);
+if (dogFig.instances.length < 160) failWeekend("dog armature too sparse", dogFig.instances.length);
+if (dogFig.instances.some((i) => i.cutLength != null)) failWeekend("dog cut popsicle sticks");
+const dogPlan = buildPlan(dogFig);
+if (dogPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("dog buy list has wood screws", dogPlan.bom.map((b) => b.name));
+}
+if (!dogPlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("dog buy list missing glue", dogPlan.bom.map((b) => b.name));
+}
 
 const animalFig = generateFromPrompt("animal from popsicle sticks");
 if (animalFig.name !== "Animal") failWeekend("animal name drifted", animalFig.name);
+if (animalFig.instances.length < 160) failWeekend("animal armature too sparse", animalFig.instances.length);
 
 const craftBox = generateFromPrompt("box from popsicle sticks");
 if (craftBox.kind !== "frame" || craftBox.primaryMaterialId !== "popsicle-standard") {
@@ -593,6 +614,25 @@ if (!closetRodPlan.cutList.some((c) => /hanging rod/i.test(c.name))) {
 const jarPlan = buildPlan(jarShelf);
 if (!hasRackAffordance(jarShelf)) {
   failHonesty("jar wall shelf missing lips", jarShelf.panels.map((p) => p.name));
+}
+
+const wallShelves = generateFromPrompt("wall shelves 36 wide 10 deep");
+if (!wallShelves.panels.some((p) => /cleat/i.test(p.name))) {
+  failHonesty("wall shelves missing cleats", wallShelves.panels.map((p) => p.name));
+}
+if (!nearInch(wallShelves.overall.depth, 10)) failHonesty("wall shelves depth", wallShelves.overall);
+const wallShelvesPlan = buildPlan(wallShelves);
+if (wallShelvesPlan.bom.some((b) => /5\s*mm|shelf pin/i.test(b.name))) {
+  failHonesty("wall shelves sold shelf pins", wallShelvesPlan.bom.map((b) => b.name));
+}
+if (!/wall shelves/i.test(wallShelves.name) && !/floating/i.test(wallShelves.name)) {
+  failHonesty("wall shelves title", wallShelves.name);
+}
+
+const coatBench = generateFromPrompt("coat bench 48 wide");
+if (!/coat bench/i.test(coatBench.name)) failHonesty("coat bench title", coatBench.name);
+if (!coatBench.panels.some((p) => /peg/i.test(p.name))) {
+  failHonesty("coat bench missing peg rail", coatBench.panels.map((p) => p.name));
 }
 if (jarPlan.cutList.some((c) => /^Rail$/i.test(c.name))) {
   failHonesty("jar lips collapsed to Rail", jarPlan.cutList.map((c) => c.name));

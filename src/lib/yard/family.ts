@@ -46,7 +46,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -158,7 +158,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     isWineRack(lower) ||
     isMedicine(lower) ||
     isIroning(lower) ||
-    (/coat/.test(lower) && /rack/.test(lower)) ||
+    (/coat/.test(lower) && /rack|tree|peg/.test(lower)) ||
+    /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
     /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
     (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
     (wantsJars(lower) && /shelf|rack|ledge/.test(lower)) ||
@@ -227,8 +228,20 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   ) {
     add("drawers");
   }
-  if ((/coat/.test(lower) && /rack|hook|peg/.test(lower)) || /hook|peg rail/.test(lower)) add("hooks");
-  if (/floating/.test(lower) && /shel/.test(lower)) add("cleats");
+  if (
+    (/coat/.test(lower) && /rack|hook|peg|bench|tree/.test(lower)) ||
+    /hook|peg rail/.test(lower) ||
+    /hall\s*tree|entry\s*tree/.test(lower) ||
+    (/coat/.test(lower) && /bench/.test(lower))
+  ) {
+    add("hooks");
+  }
+  if (
+    (/floating/.test(lower) && /shel/.test(lower)) ||
+    (/wall/.test(lower) && /shel(?:f|ves)\b/.test(lower) && !/cabinet|jar|spice|wine|bottle/.test(lower))
+  ) {
+    add("cleats");
+  }
 
   return { family, mount, use, opening, affordances, program };
 }

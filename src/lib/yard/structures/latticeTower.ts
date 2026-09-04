@@ -72,6 +72,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   const fat = dens.fat;
   // Popsicle / craft-stick Eiffel at 3 ft used to emit ~790 members and freeze the bench.
   // Keep four arches, four piers, one shaft — drop the extra web so the page can finish.
+  // Generic lattice shares the craft cap (no freeze) but uses a non-Eiffel profile + denser face lace.
   const simple = fat || (stock <= 6.5 && thick < 0.5);
 
   const platforms = eiffel ? eiffelPlatformTs() : [0, 0.33, 0.66, 1];
@@ -92,9 +93,23 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   const joinBrace: JoinMethod =
     joinPrimary === "solvent" ? "solvent" : joinPrimary === "screw" ? "screw" : "glue";
 
+  // Non-Eiffel towers: mild mast taper (not published Eiffel stations) so jumbo densify
+  // does not read as a broken Eiffel clone. Eiffel keeps the real profile.
+  const halfAt = eiffel
+    ? (t: number) => eiffelHalfAt(t, H)
+    : (t: number) => {
+        const u = Math.min(1, Math.max(0, t));
+        // Obelisk mast — base ~0.24 H face, tip ~0.06 H. Not Eiffel splay (0.39→0.01).
+        // Ease^1.6 pulls the shaft in sooner so craft densify stays under freeze.
+        const base = Math.max(H * 0.12, dens.bay * 1.5);
+        const tip = Math.max(H * 0.03, dens.faceStep * 0.8);
+        const ease = Math.pow(u, 1.6);
+        return base + (tip - base) * ease;
+      };
+
   const loft = buildSquareLoft({
     height: H,
-    halfAt: (t) => eiffelHalfAt(t, H),
+    halfAt,
     ts,
     item: opts.item,
     hoopAt: hoopSchedule(
@@ -106,8 +121,9 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     join: joinPrimary,
     braceJoin: joinBrace,
     pierChords: eiffel ? Math.max(dens.chords ?? 0, simple ? 2 : 4) : dens.chords,
-    maxFaceDivs: simple ? 6 : eiffel ? 12 : 10,
-    bothDiagonals: (t) => !simple && t >= t1 - 0.02,
+    // Non-Eiffel craft keeps the simple cap; one extra hoop band densifies without Eiffel arches.
+    maxFaceDivs: simple ? (eiffel ? 6 : 5) : eiffel ? 12 : 10,
+    bothDiagonals: (t) => !simple && (eiffel ? t >= t1 - 0.02 : true),
   });
 
   const nodes: StructureNode[] = [...loft.nodes];
@@ -374,19 +390,26 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     for (let c = 0; c < 4; c++) addEdge(createId(`finial-${c}`), last[c], tipId, "leg", true);
   }
 
-  const baseW = eiffelHalfAt(0, H) * 2;
+  const baseW = halfAt(0) * 2;
   const slenderness = H / Math.max(baseW, 1);
   const name =
     opts.name ??
     (eiffel ? `Eiffel frame · ${H.toFixed(0)}" high` : `Lattice tower · ${H.toFixed(0)}" high`);
 
-  const assumptions = [
-    `Scale: ${H.toFixed(0)}" overall. Profile from published stations (125·72·41·17·11·4 m faces on a 324 m tower).`,
-    `Four piers to the first platform, then a single shaft. Base arches fill the lower third — that is the signature, not decoration.`,
-    `${ts.length - 1} stories · bay ≈ ${dens.bay.toFixed(1)}" (driven by ${opts.item.name} @ ${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
-    `Primary join: ${joinPrimary}. Warren lacing is the face above the first deck — a bare frame will rack.`,
-    `Slenderness H/B ≈ ${slenderness.toFixed(1)}. Arches + first deck take the splay.`,
-  ];
+  const assumptions = eiffel
+    ? [
+        `Scale: ${H.toFixed(0)}" overall. Profile from published stations (125·72·41·17·11·4 m faces on a 324 m tower).`,
+        `Four piers to the first platform, then a single shaft. Base arches fill the lower third — that is the signature, not decoration.`,
+        `${ts.length - 1} stories · bay ≈ ${dens.bay.toFixed(1)}" (driven by ${opts.item.name} @ ${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
+        `Primary join: ${joinPrimary}. Warren lacing is the face above the first deck — a bare frame will rack.`,
+        `Slenderness H/B ≈ ${slenderness.toFixed(1)}. Arches + first deck take the splay.`,
+      ]
+    : [
+        `Scale: ${H.toFixed(0)}" overall. Mild mast taper — not an Eiffel station profile.`,
+        `Four corner chords + Warren / X face lace densified at ${opts.item.name} bay ≈ ${dens.bay.toFixed(1)}" (${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
+        `${ts.length - 1} stories · hoops on the stock pitch. Primary join: ${joinPrimary}.`,
+        `Slenderness H/B ≈ ${slenderness.toFixed(1)}. A bare frame will rack — keep the face lace.`,
+      ];
 
   return {
     id: createId("graph"),
@@ -399,7 +422,9 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     notes: [
       name,
       `${nodes.length} nodes · ${edges.length} members before stock cuts`,
-      "Piers and arches first. First deck next. Shaft lacing last. The frame will fail without it.",
+      eiffel
+        ? "Piers and arches first. First deck next. Shaft lacing last. The frame will fail without it."
+        : "Corner chords first. Story hoops next. Face lace last — densified at the named stock.",
     ],
     structureClass: eiffel ? "eiffel" : "lattice_tower",
   };

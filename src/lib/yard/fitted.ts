@@ -609,7 +609,7 @@ function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffor
     }
   }
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-  const kind = lips ? "Jar rack" : rails ? "Bottle rack" : "Wall rack";
+  const kind = lips ? "Jar rack" : rails ? "Bottle rack" : /shel/.test(prompt.toLowerCase()) ? "Wall shelf" : "Wall rack";
   const name = spec.name.match(/rack|shelf|shelves/i) ? spec.name : `${kind} ${W}" × ${H}" × ${D}"`;
   const lipNote = lips
     ? "Jar lips on every shelf so jars cannot slide off."
@@ -1208,34 +1208,50 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT),
       );
     }
+    const wantHooks = affordances.includes("hooks");
+    const pegH = wantHooks ? Math.max(10, Math.min(18, Math.round(H * 0.7))) : 0;
+    if (wantHooks) {
+      // Coat + bench / entry tree: peg rail rises above the seat on the back plane.
+      panels.push(panel("rail", "Peg rail", x0, H, 0, W, pegH, P));
+    }
     const mudroom = /mudroom/i.test(prompt);
-    const name = mudroom
-      ? `Mudroom bench ${W}" × ${H}" × ${D}"`
-      : `Bench ${W}" × ${H}" × ${D}"`;
+    const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
+    const stackH = H + pegH;
+    const name = coatBench
+      ? `Coat bench ${W}" × ${stackH}" × ${D}"`
+      : mudroom
+        ? `Mudroom bench ${W}" × ${H}" × ${D}"`
+        : `Bench ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: H, depth: D },
+      overall: { width: W, height: stackH, depth: D },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
+        wantHooks
+          ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
+          : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
         `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
-        "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
+        wantHooks
+          ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
+          : "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
       ],
       historic: false,
-      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      opening: { ...spec.opening, width: W, height: stackH, depth: D, kind: "room" },
       fitted: {
         ...spec,
         name,
         program: "bench",
+        family: "seat",
+        affordances,
         unit: {
           ...u,
           width: W,
-          height: H,
+          height: stackH,
           depth: D,
           doors: false,
           cubbies: cubbyN,
@@ -1285,8 +1301,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  const coatRack = /coat/.test(prompt.toLowerCase()) && /rack/.test(prompt.toLowerCase()) && !/shoe/.test(prompt.toLowerCase());
-  if (coatRack) {
+  const coatLower = prompt.toLowerCase();
+  const coatRack =
+    !/shoe/.test(coatLower) &&
+    ((/coat/.test(coatLower) && /rack|tree|peg/.test(coatLower)) || /hall\s*tree|entry\s*tree/.test(coatLower));
+  // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
+  if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
     // Honor typed depth/height (min clamp only for absurd values). Old path forced 6" deep + 5.5" rail.
     const shelfD = Math.max(3, Math.min(D, 12));
     const standing = H >= 36;
@@ -1466,7 +1486,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  const floating = /floating|wall-?mounted/.test(prompt.toLowerCase()) && /shel/.test(prompt.toLowerCase());
+  const lowerPrompt = prompt.toLowerCase();
+  // Plain wall shelves (not jar/spice/wine racks, not cabinets) sit on cleats — same honesty as floating.
+  const wallShelfCleats =
+    /wall/.test(lowerPrompt) &&
+    /shel(?:f|ves)\b/.test(lowerPrompt) &&
+    !/cabinet|jar|spice|wine|bottle|rack for/.test(lowerPrompt);
+  const floating =
+    ((/floating|wall-?mounted/.test(lowerPrompt) || wallShelfCleats) && /shel/.test(lowerPrompt));
   if (floating) {
     const n = Math.max(1, Math.min(8, u.shelfCount ?? 3));
     const gap = 10;
@@ -1483,7 +1510,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, P, W, P, Df));
     }
     const stackH = n * (cleatH + P) + Math.max(0, n - 1) * gap;
-    const name = `Shelves ${W}" × ${stackH}" × ${Df}"`;
+    const name = /floating/.test(lowerPrompt)
+      ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
+      : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
     return {
       id: createId("proj"),
       name,
