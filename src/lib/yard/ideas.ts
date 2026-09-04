@@ -98,6 +98,15 @@ export const IDEAS: Idea[] = [
     blurb: "One slab. Not a box.",
   },
   {
+    id: "bunk",
+    group: "house",
+    section: "Sit and work",
+    label: "Bunk bed",
+    size: "twin · ~65 high",
+    prompt: "twin bunk bed",
+    blurb: "Two sleep platforms on a frame. Not a hollow box.",
+  },
+  {
     id: "laundry",
     group: "house",
     section: "Sit and work",

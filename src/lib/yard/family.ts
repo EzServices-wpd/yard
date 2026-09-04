@@ -21,6 +21,7 @@ export type HouseFamily =
   | "hung-cabinet"
   | "seat"
   | "slab"
+  | "bunk"
   | "straddle";
 
 export type HouseAffordance =
@@ -33,7 +34,8 @@ export type HouseAffordance =
   | "mirror"
   | "drawers"
   | "hooks"
-  | "cleats";
+  | "cleats"
+  | "sleep-platforms";
 
 export type HouseHit = {
   family: HouseFamily;
@@ -46,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -65,7 +67,7 @@ function isNotHouse(lower: string) {
     return true;
   }
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
-  if (/ladder|stairs|staircase/.test(lower)) return true;
+  if (/ladder|stairs|staircase/.test(lower) && !isBunkBed(lower)) return true;
   if (/birdhouse/.test(lower)) return true;
   if (/planter|raised (garden )?bed|garden box/.test(lower)) return true;
   if (/bridge|span|viaduct|overpass|trestle/.test(lower)) return true;
@@ -127,6 +129,12 @@ export function isKitchenBase(lower: string) {
     /cabinet/.test(lower) &&
     !/island|hood|medicine|ironing|wall\s+cabinet|spice|wine|over[- ]?(the[- ]?)?toilet/.test(lower)
   );
+}
+
+/** Twin/full/queen bunk — two sleep platforms on a frame, not a hollow box. */
+export function isBunkBed(lower: string) {
+  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower)) return false;
+  return /\bbunk\b|bunk\s*beds?|bunkbeds?/.test(lower);
 }
 
 /** Keep TV / media console identity — never a naked "Media". */
@@ -209,12 +217,13 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     /crate/.test(lower) ||
     (/cabinet/.test(lower) && !isOverToilet(lower) && !/spice|wine/.test(lower)) ||
     /closet|pantry|wardrobe/.test(lower);
-  const opening: HouseOpening = fold ? "fold-down" : door ? "door" : "open";
+  const opening: HouseOpening = isBunkBed(lower) ? "open" : fold ? "fold-down" : door ? "door" : "open";
 
   const program = programFromNoun(lower);
 
   let family: HouseFamily;
   if (mount === "straddle" || isOverToilet(lower)) family = "straddle";
+  else if (isBunkBed(lower)) family = "bunk";
   else if (/headboard/.test(lower)) family = "slab";
   else if (program === "table") family = "table";
   else if (program === "bench" || (sit && !/vanity|desk/.test(lower))) family = "seat";
@@ -267,6 +276,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   ) {
     add("cleats");
   }
+  if (family === "bunk" || isBunkBed(lower)) add("sleep-platforms");
 
   return { family, mount, use, opening, affordances, program };
 }

@@ -706,6 +706,41 @@ if (upperCab.fitted?.unit.upperStart != null) failHonesty("upper cabinet wrongly
 const upperPlan = buildPlan(upperCab);
 if (!inspectHonesty(upperCab, upperPlan).ok) failHonesty("upper cabinet inspect", inspectHonesty(upperCab, upperPlan).issues);
 
+
+const bunkPrompt = "twin bunk bed";
+const bunkHit = detectHouseFamily(bunkPrompt);
+if (!bunkHit || bunkHit.family !== "bunk" || !bunkHit.affordances.includes("sleep-platforms") || bunkHit.opening !== "open") {
+  failHonesty("bunk bed family", bunkHit);
+}
+const bunk = generateFromPrompt(bunkPrompt);
+if (!/^Bunk bed/i.test(bunk.name)) failHonesty("bunk title", bunk.name);
+if (!nearInch(bunk.overall.width, 42)) failHonesty("bunk twin width ~42", bunk.overall);
+if (!nearInch(bunk.overall.depth, 75)) failHonesty("bunk twin depth ~75", bunk.overall);
+if (!nearInch(bunk.overall.height, 65)) failHonesty("bunk height ~65", bunk.overall);
+const bunkDecks = bunk.panels.filter((p) => p.type === "deck");
+if (bunkDecks.length < 2) failHonesty("bunk needs two sleep decks", bunk.panels.map((p) => p.name));
+if (bunk.panels.filter((p) => /post/i.test(p.name) || p.type === "upright").length < 4) {
+  failHonesty("bunk needs four posts", bunk.panels.map((p) => p.name));
+}
+if (bunk.panels.some((p) => p.type === "door" || p.type === "kick")) {
+  failHonesty("bunk grew door/toekick carcase parts", bunk.panels.map((p) => `${p.type}:${p.name}`));
+}
+if (bunk.assumptions.installMode !== "freestanding") failHonesty("bunk mount", bunk.assumptions);
+const bunkPlan = buildPlan(bunk);
+if (!inspectHonesty(bunk, bunkPlan).ok) failHonesty("bunk inspect", inspectHonesty(bunk, bunkPlan).issues);
+if (!bunkPlan.instructions.some((s) => /sleep platform|two sleep|upper bunk|lower/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("bunk steps missing sleep platforms", bunkPlan.instructions.map((s) => s.title));
+}
+
+const bunkLadder = generateFromPrompt("bunk bed with ladder");
+if (!/^Bunk bed/i.test(bunkLadder.name) || bunkLadder.fitted?.family !== "bunk") {
+  failHonesty("bunk with ladder should stay bunk family", { name: bunkLadder.name, family: bunkLadder.fitted?.family });
+}
+if (bunkLadder.panels.filter((p) => p.type === "deck").length < 2) {
+  failHonesty("bunk with ladder lost sleep decks", bunkLadder.panels.map((p) => p.name));
+}
+
+
 const coatBenchPrompt = "coat rack with bench 48 wide";
 const coatBenchHit = detectHouseFamily(coatBenchPrompt);
 if (!coatBenchHit || coatBenchHit.family !== "seat" || !coatBenchHit.affordances.includes("hooks")) {

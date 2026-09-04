@@ -218,6 +218,60 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const bunk =
+    /bunk/i.test(project.name) ||
+    /\bbunk\b/.test((project.prompt ?? "").toLowerCase()) ||
+    project.fitted?.family === "bunk";
+  if (bunk) {
+    const decks = panels.filter((p) => p.type === "deck");
+    const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
+    const rails = of("rail");
+    return [
+      {
+        step: 1,
+        title: "Confirm the sleep size — do not cut yet",
+        description: `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${panels.length} parts on this list.`,
+        tips: "A bunk is two decks on a frame — not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the four posts",
+        description: `${posts.map(cutLine).join("; ")}. Set the posts plumb on the footprint. Temporary braces keep them from racking until the decks go on.`,
+        tips: "Check both diagonals on the floor rectangle before you commit.",
+        partsUsed: names(posts),
+      },
+      {
+        step: 4,
+        title: "Set the two sleep platforms",
+        description: `${decks.map(cutLine).join("; ")}. Screw each deck into the posts — lower first, then upper. The decks are the bunks. Glue the joints too.`,
+        tips: "Predrill near the ends so the ply does not split. A person will sleep on these — square them.",
+        partsUsed: names(decks.length ? decks : panels),
+      },
+      {
+        step: 5,
+        title: "Add the upper guard rails",
+        description: `${rails.map(cutLine).join("; ") || "Guard rails."}. Screw the rails to the posts above the upper deck so the mattress cannot slide off the long sides or the ends.`,
+        tips: "Typical rail sits about 5\" above the upper deck. Guidance only — confirm your mattress thickness.",
+        partsUsed: names(rails.length ? rails : panels),
+      },
+      {
+        step: 6,
+        title: "Level it and add a ladder",
+        description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the upper bunk (buy one, or build from the leftover strip).`,
+        tips: "Guidance only — person load is heuristic, not stamped engineering. Anchor to studs if the frame can tip.",
+        partsUsed: names(posts),
+      },
+    ];
+  }
+
   const headboard =
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
