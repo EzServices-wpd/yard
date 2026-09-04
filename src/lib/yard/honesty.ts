@@ -145,7 +145,7 @@ export function wantsRackAffordance(prompt: string) {
   return rackIntent(prompt) != null;
 }
 
-/** Shelves that are glued / screwed (shoe cubbies, jar/wine racks, media open shelves) — never sell adjustable shelf pins. */
+/** Shelves that are glued / screwed (shoe cubbies, jar/wine racks, media open shelves, hung cabinets with doors) — never sell adjustable shelf pins. */
 export function wantsFixedGlueShelves(project: YardProject): boolean {
   const prompt = project.prompt ?? "";
   const lower = prompt.toLowerCase();
@@ -154,6 +154,15 @@ export function wantsFixedGlueShelves(project: YardProject): boolean {
   // TV / media open consoles: dado/screw shelves, not pin-shelf bookcases.
   if (project.fitted?.program === "media") return true;
   if (mediaIdentityLabel(lower)) return true;
+  // Wall hung cabinet with a door — fixed interior shelves, not "do not glue" pin language.
+  // Bookcases stay pin-adjustable unless notes/affordances say otherwise.
+  if (project.fitted?.family === "hung-cabinet") {
+    const doors =
+      project.fitted.affordances?.includes("door") ||
+      !!project.fitted.unit?.doors ||
+      project.panels.some((p) => p.type === "door");
+    if (doors) return true;
+  }
   if (project.panels.some((p) => /shoe shelf|cubby divider|jar lip|bottle rail/i.test(p.name))) return true;
   if (project.notes.some((n) => /not bookcase pin shelves|do not pin them|glue the shelves/i.test(n))) return true;
   if (wantsShoes(lower)) return true;

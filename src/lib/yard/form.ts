@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, figureIdentityLabel, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -116,6 +116,9 @@ const HITS: Hit[] = [
   { re: /dinosaur|t-?rex|raptor|dino/, kind: "figure", name: "Dinosaur", build: dinoOps },
   { re: /charizard|dragon|wyvern|godzilla|kaiju/, kind: "figure", name: "Wyvern", build: () => [] },
   { re: /giraffe/, kind: "figure", name: "Giraffe", build: giraffeOps },
+  { re: /\bdogs?\b|puppy|puppies/, kind: "figure", name: "Dog", build: animalOps },
+  { re: /\bcats?\b|kitten/, kind: "figure", name: "Cat", build: animalOps },
+  { re: /\bhorses?\b|pony|ponies/, kind: "figure", name: "Horse", build: animalOps },
   { re: /horse|\bdog\b|\bcat\b|animal|creature/, kind: "figure", name: "Animal", build: animalOps },
   { re: /person|human|man|woman|figure|statue/, kind: "figure", name: "Figure", build: figureOps },
   { re: /guitar|violin|ukulele/, kind: "custom", name: "Guitar", build: guitarOps },
@@ -149,12 +152,14 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
               width: size.width,
             })
           : undefined;
+      const figLabel = hit.kind === "figure" ? figureIdentityLabel(hay) : null;
+      const name = figLabel ?? hit.name;
       return {
-        name: hit.name,
+        name,
         kind: hit.kind,
         historic: hit.historic,
         notes: [
-          `${hit.name} · stock mapped onto the form, not a hull.`,
+          `${name} · stock mapped onto the form, not a hull.`,
           hit.historic
             ? "Published / historic proportions, scaled to the size you asked for."
             : "Parametric form. Frame first, then brace. Support if it is slender.",

@@ -2,6 +2,7 @@
 
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
+import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
 import { shopPlural, fmtSheetCut, cutListName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
@@ -954,13 +955,24 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   if (shelves.length) {
-    steps.push({
-      step: n++,
-      title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
-      description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
-      tips: "A pegboard jig or a 32mm shelf-pin jig beats measuring every hole twice.",
-      partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
-    });
+    const fixedGlue = wantsFixedGlueShelves(project);
+    steps.push(
+      fixedGlue
+        ? {
+            step: n++,
+            title: `Glue ${shelves.length} fixed shel${shelves.length === 1 ? "f" : "ves"}`,
+            description: `${shelves.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws through the uprights into each shelf. Square every bay. These shelves are fixed — no pins.`,
+            tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out.",
+            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
+          }
+        : {
+            step: n++,
+            title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
+            description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
+            tips: "A pegboard jig or a 32mm shelf-pin jig beats measuring every hole twice.",
+            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
+          },
+    );
   }
 
   const hangingRods = rails.filter((p) => /hanging rod/i.test(p.name));

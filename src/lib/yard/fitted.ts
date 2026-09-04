@@ -705,7 +705,7 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
       `${name}. Wall-mounted cabinet — not a floor box. ¾" plywood.`,
       fold
         ? "The board stores upright and hinges down. Hang the carcase on studs through the back."
-        : "Hang the carcase on studs through the back. Concealed hinges on the door.",
+        : "Hang the carcase on studs through the back. Concealed hinges on the door. Glue the shelves; do not pin them.",
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },

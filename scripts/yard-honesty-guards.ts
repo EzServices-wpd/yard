@@ -1,5 +1,6 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
+import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
 import { detectHouseFamily } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
@@ -466,6 +467,16 @@ const dino = generateFromPrompt("dinosaur from popsicle sticks");
 if (dino.kind !== "figure" || dino.primaryMaterialId !== "popsicle-standard") {
   failWeekend("dino family", { kind: dino.kind, stock: dino.primaryMaterialId });
 }
+if (dino.name !== "Dinosaur") failWeekend("dino name", dino.name);
+
+const dogFig = generateFromPrompt("dog from popsicle sticks");
+if (dogFig.kind !== "figure" || dogFig.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("dog family", { kind: dogFig.kind, stock: dogFig.primaryMaterialId });
+}
+if (dogFig.name !== "Dog") failWeekend("dog name drifted", dogFig.name);
+
+const animalFig = generateFromPrompt("animal from popsicle sticks");
+if (animalFig.name !== "Animal") failWeekend("animal name drifted", animalFig.name);
 
 const craftBox = generateFromPrompt("box from popsicle sticks");
 if (craftBox.kind !== "frame" || craftBox.primaryMaterialId !== "popsicle-standard") {
@@ -611,6 +622,29 @@ if (tvPlan.bom.some((b) => /shelf pin/i.test(b.name))) {
   failHonesty("TV/media open shelves still buy shelf pins", tvPlan.bom.map((b) => b.name));
 }
 if (!wantsFixedGlueShelves(tv)) failHonesty("TV console should want fixed/glued shelves");
+
+const wallCab = generateFromPrompt("wall cabinet 24 wide 30 high 12 deep");
+if (!/^Wall cabinet/i.test(wallCab.name)) failHonesty("wall cabinet title drifted", wallCab.name);
+if (measureKindFromProject(wallCab) !== "wall_cabinet") {
+  failHonesty("wall cabinet measure kind not Wall cabinet", measureKindFromProject(wallCab));
+}
+const wallCabPlan = buildPlan(wallCab);
+if (wallCabPlan.bom.some((b) => /shelf pin/i.test(b.name))) {
+  failHonesty("hung wall cabinet still buys shelf pins", wallCabPlan.bom.map((b) => b.name));
+}
+if (wallCabPlan.instructions.some((s) => /do not glue the shelves/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("hung wall cabinet still sells do-not-glue pin language", wallCabPlan.instructions.map((s) => s.title));
+}
+if (!wantsFixedGlueShelves(wallCab)) failHonesty("wall cabinet should want fixed/glued shelves");
+
+const bookMeasure = generateFromPrompt("bookshelf 36 wide 72 high 12 deep");
+if (measureKindFromProject(bookMeasure) !== "bookcase") {
+  failHonesty("bookcase measure kind not Bookcase", measureKindFromProject(bookMeasure));
+}
+const bookPlan = buildPlan(bookMeasure);
+if (!bookPlan.bom.some((b) => /shelf pin/i.test(b.name))) {
+  failHonesty("adjustable bookcase lost shelf pins", bookPlan.bom.map((b) => b.name));
+}
 
 const linenPrompt = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
 if (!linen.fitted) failHonesty("linen fitted missing");

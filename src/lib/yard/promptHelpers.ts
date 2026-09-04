@@ -4,6 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
+import { figureIdentityLabel } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -262,9 +263,15 @@ export function toProject(
     ladder: "Ladder",
     table: "Table",
   };
+  // Figure prompts keep Dog / Dinosaur / Animal — never naked "Figure" when the noun is known.
+  const figLabel = kind === "figure" ? figureIdentityLabel(prompt) : null;
+  const name =
+    kind === "figure"
+      ? figLabel ?? extra.name ?? names.figure ?? "Figure"
+      : extra.name ?? names[kind] ?? `${item.name} ${kind}`;
   return {
     id: createId("proj"),
-    name: extra.name ?? names[kind] ?? `${item.name} ${kind}`,
+    name,
     prompt,
     kind,
     overall: {

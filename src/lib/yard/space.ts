@@ -71,7 +71,10 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
   if (program === "closet" || program === "vanity" || program === "wardrobe" || program === "pantry") {
     return "closet_niche";
   }
-  if (family === "hung-open" || family === "hung-cabinet" || program === "bookcase") return "shelving_alcove";
+  // Bookcase / wall cabinet keep their own labels — never leftover "Shelving niche".
+  if (program === "bookcase") return "bookcase";
+  if (family === "hung-cabinet" || /\bwall cabinet\b|hung cabinet/.test(blob)) return "wall_cabinet";
+  if (family === "hung-open") return "shelving_alcove";
   return "general_volume";
 }
 

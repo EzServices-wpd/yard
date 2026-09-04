@@ -31,6 +31,31 @@ export type WeekendHit = {
 const FIGURE_NOUN =
   /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern|yoda|batman|spiderman|iron man|hulk/;
 
+/** Keep dog / dinosaur / animal titles — never naked Figure drift (like TV console identity). */
+export function figureIdentityLabel(lower: string): string | null {
+  const hay = lower.toLowerCase();
+  if (!FIGURE_NOUN.test(hay) && !/\banimals?\b|creature/.test(hay)) return null;
+  if (/statue of liberty|\bliberty\b/.test(hay)) return "Liberty";
+  if (/giraffe/.test(hay)) return "Giraffe";
+  if (/dinosaur|t-?rex|raptor|dino/.test(hay)) return "Dinosaur";
+  if (/charizard|dragon|wyvern|godzilla|kaiju/.test(hay)) return "Wyvern";
+  if (/robot|android/.test(hay)) return "Robot";
+  if (/\bdogs?\b|puppy|puppies/.test(hay)) return "Dog";
+  if (/\bcats?\b|kitten/.test(hay)) return "Cat";
+  if (/\bhorses?\b|pony|ponies/.test(hay)) return "Horse";
+  if (/person|human|\bman\b|\bwoman\b|statue|stick\s*figure|\bfigure\b/.test(hay)) return "Figure";
+  if (/\banimals?\b|creature/.test(hay)) return "Animal";
+  const named = hay.match(
+    /\b(bird|eagle|unicorn|elephant|lion|bear|wolf|fox|deer|cow|pig|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|ape|gorilla|troll|ogre|alien|pokemon|pokémon|sonic|mario|pikachu|yoda|batman|spiderman|hulk)\b/,
+  );
+  if (named) {
+    const w = named[1];
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+  return "Animal";
+}
+
+
 const LATTICE_NOUN =
   /lattice|space\s*frame|geodesic|pylon|\btower\b|spire|skyscraper|\bcolumn\b|\bstack\b|\bmast\b|lookout/;
 
@@ -131,15 +156,7 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
   }
 
   if (FIGURE_NOUN.test(hay)) {
-    const name = /dinosaur|t-?rex|raptor|dino/.test(hay)
-      ? "Dinosaur"
-      : /charizard|dragon|wyvern|godzilla|kaiju/.test(hay)
-        ? "Wyvern"
-        : /robot|android/.test(hay)
-          ? "Robot"
-          : /person|human|\bman\b|\bwoman\b|statue|figure/.test(hay)
-            ? "Figure"
-            : "Animal";
+    const name = figureIdentityLabel(hay) ?? "Animal";
     return { family: "figure", kind: "figure", name };
   }
 
