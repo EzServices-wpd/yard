@@ -113,7 +113,8 @@ export function frameOps(s: Size3): FormOp[] {
 
 /**
  * Catapult / trebuchet as a weekend frame — not a noun .ts file.
- * Base rails, twin uprights, cross axle, throwing arm.
+ * Base rails, twin A-frame uprights, cross axle, bracing courses, throwing arm.
+ * Tip lands at typed H so densify honors N-foot closer than a 0.92 taper.
  */
 export function catapultFrameOps(s: Size3): FormOp[] {
   const H = Math.max(s.height, 12);
@@ -123,72 +124,80 @@ export function catapultFrameOps(s: Size3): FormOp[] {
   const x1 = W / 2;
   const z0 = -D / 2;
   const z1 = D / 2;
+  const xl = x0 * 0.35;
+  const xr = x1 * 0.35;
+  const zf = z0 * 0.15;
+  const zb = z1 * 0.15;
   const axleY = H * 0.55;
-  const postH = H * 0.62;
-  return [
-    // Base rectangle
+  const postH = H * 0.72;
+  const midY = H * 0.32;
+  const ops: FormOp[] = [
+    // Base rectangle + mid rails (whole sticks densify along each run)
     { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z0 }] },
     { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
     { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z1 }, { x: x0, y: 0, z: z1 }] },
     { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z1 }, { x: x0, y: 0, z: z0 }] },
-    // Twin uprights (A-ish) on each side
-    { op: "column", x: x0 * 0.35, z: z0 * 0.15, y0: 0, y1: postH, role: "leg" },
-    { op: "column", x: x1 * 0.35, z: z0 * 0.15, y0: 0, y1: postH, role: "leg" },
-    { op: "column", x: x0 * 0.35, z: z1 * 0.15, y0: 0, y1: postH, role: "leg" },
-    { op: "column", x: x1 * 0.35, z: z1 * 0.15, y0: 0, y1: postH, role: "leg" },
-    // Axle / cross bar at pivot height
-    {
-      op: "poly",
-      role: "rail",
-      points: [
-        { x: x0 * 0.35, y: axleY, z: 0 },
-        { x: x1 * 0.35, y: axleY, z: 0 },
-      ],
-    },
-    // Side braces
-    {
-      op: "poly",
-      role: "brace",
-      points: [
-        { x: x0 * 0.35, y: 0, z: z0 * 0.15 },
-        { x: x0 * 0.35, y: axleY, z: 0 },
-      ],
-    },
-    {
-      op: "poly",
-      role: "brace",
-      points: [
-        { x: x1 * 0.35, y: 0, z: z0 * 0.15 },
-        { x: x1 * 0.35, y: axleY, z: 0 },
-      ],
-    },
-    {
-      op: "poly",
-      role: "brace",
-      points: [
-        { x: x0 * 0.35, y: 0, z: z1 * 0.15 },
-        { x: x0 * 0.35, y: axleY, z: 0 },
-      ],
-    },
-    {
-      op: "poly",
-      role: "brace",
-      points: [
-        { x: x1 * 0.35, y: 0, z: z1 * 0.15 },
-        { x: x1 * 0.35, y: axleY, z: 0 },
-      ],
-    },
-    // Throwing arm — long stick from rear base over the axle to the tip
+    { op: "poly", role: "rail", points: [{ x: xl, y: 0, z: z0 }, { x: xl, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: xr, y: 0, z: z0 }, { x: xr, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: 0 }, { x: x1, y: 0, z: 0 }] },
+    // Base X braces
+    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
+    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: z0 }, { x: x0, y: 0, z: z1 }] },
+    // Twin uprights (A-ish) on each side — taller so envelope reaches typed H
+    { op: "column", x: xl, z: zf, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: xr, z: zf, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: xl, z: zb, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: xr, z: zb, y0: 0, y1: postH, role: "leg" },
+    // Mid course + axle + crown ties (more members for thin craft densify)
+    { op: "poly", role: "rail", points: [{ x: xl, y: midY, z: zf }, { x: xr, y: midY, z: zf }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: midY, z: zb }, { x: xr, y: midY, z: zb }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: midY, z: zf }, { x: xl, y: midY, z: zb }] },
+    { op: "poly", role: "rail", points: [{ x: xr, y: midY, z: zf }, { x: xr, y: midY, z: zb }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: axleY, z: 0 }, { x: xr, y: axleY, z: 0 }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: axleY, z: zf }, { x: xl, y: axleY, z: zb }] },
+    { op: "poly", role: "rail", points: [{ x: xr, y: axleY, z: zf }, { x: xr, y: axleY, z: zb }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: postH, z: zf }, { x: xr, y: postH, z: zf }] },
+    { op: "poly", role: "rail", points: [{ x: xl, y: postH, z: zb }, { x: xr, y: postH, z: zb }] },
+    // Side A-frame braces + face diagonals
+    { op: "poly", role: "brace", points: [{ x: xl, y: 0, z: zf }, { x: xl, y: axleY, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: xr, y: 0, z: zf }, { x: xr, y: axleY, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: xl, y: 0, z: zb }, { x: xl, y: axleY, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: xr, y: 0, z: zb }, { x: xr, y: axleY, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: xl, y: 0, z: zf }, { x: xr, y: midY, z: zf }] },
+    { op: "poly", role: "brace", points: [{ x: xr, y: 0, z: zf }, { x: xl, y: midY, z: zf }] },
+    { op: "poly", role: "brace", points: [{ x: xl, y: 0, z: zb }, { x: xr, y: midY, z: zb }] },
+    { op: "poly", role: "brace", points: [{ x: xr, y: 0, z: zb }, { x: xl, y: midY, z: zb }] },
+    { op: "poly", role: "brace", points: [{ x: xl, y: midY, z: zf }, { x: xl, y: postH, z: zb }] },
+    { op: "poly", role: "brace", points: [{ x: xr, y: midY, z: zf }, { x: xr, y: postH, z: zb }] },
+    // Throwing arm — rear base over the axle to the typed tip height
     {
       op: "poly",
       role: "leg",
       points: [
-        { x: 0, y: H * 0.08, z: z1 * 0.85 },
+        { x: 0, y: H * 0.06, z: z1 * 0.85 },
         { x: 0, y: axleY, z: 0 },
-        { x: 0, y: H * 0.92, z: z0 * 0.95 },
+        { x: 0, y: H, z: z0 * 0.95 },
+      ],
+    },
+    // Arm cradle / pocket at the tip — short cross members
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: xl * 0.35, y: H * 0.92, z: z0 * 0.7 },
+        { x: xr * 0.35, y: H * 0.92, z: z0 * 0.7 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: 0, y: H * 0.85, z: z0 * 0.55 },
+        { x: 0, y: H, z: z0 * 0.95 },
       ],
     },
   ];
+  return ops;
 }
 
 export function towerOps(s: Size3): FormOp[] {

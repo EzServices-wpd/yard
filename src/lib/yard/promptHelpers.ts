@@ -222,11 +222,29 @@ export function toProject(
       zs.push(i.position.z);
     }
   }
-  const stockW = toPrimitive(item).width || 1;
+  const prim = toPrimitive(item);
+  const stockW = prim.width || 1;
   const pad = Math.max(0.5, stockW * 0.55);
-  let width = Math.max(8, (Math.max(...xs, 0) - Math.min(...xs, 0) || 0) + pad * 2);
-  let height = Math.max(8, (Math.max(...ys, 0) - Math.min(...ys, 0) || 0) + pad);
-  let depth = Math.max(8, (Math.max(...zs, 0) - Math.min(...zs, 0) || 0) + pad * 2);
+  const spanX = Math.max(...xs, 0) - Math.min(...xs, 0) || 0;
+  const spanY = Math.max(...ys, 0) - Math.min(...ys, 0) || 0;
+  const spanZ = Math.max(...zs, 0) - Math.min(...zs, 0) || 0;
+  let width = Math.max(8, spanX + pad * 2);
+  let height = Math.max(8, spanY + pad);
+  let depth = Math.max(8, spanZ + pad * 2);
+  // Weekend frame / ladder with typed N-foot: honor typed height when the wire
+  // already lands on it (skip stock-face pad that pushed ladders to ~74" / catapults short).
+  // Leave Eiffel / lattice / arch / bridge pad math alone — freeze chips.
+  if ((kind === "frame" || kind === "ladder") && hasExplicitSize(prompt)) {
+    const typedH = parseSize(prompt.toLowerCase()).height;
+    if (typedH && Math.abs(spanY - typedH) <= 1.25) {
+      height = typedH;
+    } else if (kind === "frame" || kind === "ladder") {
+      // Thinner face pad only on frames — 2x4 width was the ladder inflate.
+      const padH = Math.max(0.35, Math.min(stockW, prim.height || prim.thickness || stockW) * 0.55);
+      height = Math.max(8, spanY + padH);
+      if (typedH && Math.abs(spanY - typedH) <= 1.25) height = typedH;
+    }
+  }
   if (kind === "eiffel") {
     const publishedBase = height * (125 / 324);
     width = Math.max(width, publishedBase);

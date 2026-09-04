@@ -14,6 +14,7 @@ import {
   nearInch,
   tableBraceIssues,
   typedExtents,
+  wantsFixedGlueShelves,
 } from "../src/lib/yard/honesty";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import {
@@ -478,7 +479,7 @@ if (catapult.kind !== "frame" || catapult.primaryMaterialId !== "popsicle-standa
 }
 if (catapult.name !== "Catapult") failWeekend("catapult name", catapult.name);
 if (catapult.instances.some((i) => i.cutLength != null)) failWeekend("catapult cut popsicle sticks");
-if (catapult.instances.length < 40) failWeekend("catapult too sparse", catapult.instances.length);
+if (catapult.instances.length < 220) failWeekend("catapult too sparse", catapult.instances.length);
 const catapultPlan = buildPlan(catapult);
 if (catapultPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("catapult buy list has wood screws", catapultPlan.bom.map((b) => b.name));
@@ -494,10 +495,15 @@ const catapult2 = generateFromPrompt("2 foot catapult from popsicle sticks");
 if (catapult2.kind !== "frame" || catapult2.primaryMaterialId !== "popsicle-standard") {
   failWeekend("2ft catapult", { kind: catapult2.kind, stock: catapult2.primaryMaterialId });
 }
-if (Math.abs(catapult2.overall.height - 24) > 8) {
+if (Math.abs(catapult2.overall.height - 24) > 2.5) {
   failWeekend("2ft catapult height drifted", catapult2.overall);
 }
 if (catapult2.instances.some((i) => i.cutLength != null)) failWeekend("2ft catapult cut popsicle");
+if (catapult2.instances.length < 220) {
+  failWeekend("2ft catapult still sparse", catapult2.instances.length);
+}
+const catapult2Inspect = inspectWeekendHonesty(catapult2, buildPlan(catapult2));
+if (!catapult2Inspect.ok) failWeekend("2ft catapult inspect", catapult2Inspect.issues);
 
 const ladder = generateFromPrompt("ladder from 2x4");
 if (ladder.kind !== "frame" || ladder.primaryMaterialId !== "lumber-2x4-8") {
@@ -519,7 +525,7 @@ const ladder6 = generateFromPrompt("6 foot ladder from 2x4");
 if (ladder6.kind !== "frame" || ladder6.primaryMaterialId !== "lumber-2x4-8") {
   failWeekend("6ft ladder", { kind: ladder6.kind, stock: ladder6.primaryMaterialId });
 }
-if (Math.abs(ladder6.overall.height - 72) > 8) {
+if (Math.abs(ladder6.overall.height - 72) > 2.5) {
   failWeekend("6ft ladder height drifted", ladder6.overall);
 }
 const ladder6Plan = buildPlan(ladder6);
@@ -551,7 +557,7 @@ console.log("WEEKEND STRUCTURE FAMILIES OK", {
   spaceFrame: { kind: spaceFrame.kind, pieces: spaceFrame.instances.length },
   dino: dino.kind,
   box: craftBox.kind,
-  catapult: { kind: catapult.kind, name: catapult.name, pieces: catapult.instances.length, h: catapult2.overall.height },
+  catapult: { kind: catapult.kind, name: catapult.name, pieces: catapult.instances.length, h: catapult2.overall.height, h2pieces: catapult2.instances.length },
   ladder: { kind: ladder.kind, name: ladder.name, stock: ladder.primaryMaterialId, h6: ladder6.overall.height, join: ladder.joinMethod },
   bamboo: { kind: bambooBridge.kind, pieces: bambooBridge.instances.length, stock: bambooBridge.primaryMaterialId },
 });
@@ -600,6 +606,11 @@ const tvPrompt = "TV console 70 wide 30 tall 16 deep";
 const tv = generateFromPrompt(tvPrompt);
 if (!/^TV console/i.test(tv.name)) failHonesty("TV console title drifted to naked Media", tv.name);
 if (tv.panels.some((p) => p.type === "door")) failHonesty("TV console grew doors", tv.panels.map((p) => p.name));
+const tvPlan = buildPlan(tv);
+if (tvPlan.bom.some((b) => /shelf pin/i.test(b.name))) {
+  failHonesty("TV/media open shelves still buy shelf pins", tvPlan.bom.map((b) => b.name));
+}
+if (!wantsFixedGlueShelves(tv)) failHonesty("TV console should want fixed/glued shelves");
 
 const linenPrompt = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
 if (!linen.fitted) failHonesty("linen fitted missing");

@@ -1692,12 +1692,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     `Unit ${u.width}" W × ${u.depth}" D × ${u.height}" H. ¾" plywood. Front reads straight.`,
     hasKnee
       ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
+      : spec.program === "media"
+        ? [
+            bayN >= 2
+              ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
+              : "Open front. TV sits on top. No leftover doors.",
+            shelves
+              ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
+              : "Glue the shelves; do not pin them.",
+          ].join(" ")
       : shelves
         ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
-        : spec.program === "media"
-        ? bayN >= 2
-          ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
-          : "Open front. TV sits on top. No leftover doors."
         : "Solid carcase.",
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."

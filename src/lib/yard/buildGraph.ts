@@ -273,7 +273,10 @@ export function buildFormGraph(
   for (const op of recipe.ops) apply(op);
 
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
-  if (!openKind && !memberBuilt && verticals.length >= 2) {
+  // Thin craft weekend frames also get face X-braces between uprights — densify at stock
+  // pitch without a per-noun .ts (catapult / box / scaffold share this path).
+  const thinFrameLace = kind === "frame" && !policy.fat;
+  if (!openKind && (!memberBuilt || thinFrameLace) && verticals.length >= 2) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const xs = nodes.map((n) => n.position.x);
     const ys = nodes.map((n) => n.position.y);
@@ -364,13 +367,15 @@ export function buildFormGraph(
     g = densifyTriangles(
       g,
       kind,
-      Math.max(policy.bay * 1.8, policy.faceStep * 2.5),
-      fig ? 12 : kind === "frame" ? 36 : 28,
+      // Frames: slightly longer chords so A-frame faces fill with whole-stick braces.
+      Math.max(policy.bay * (kind === "frame" ? 2.4 : 1.8), policy.faceStep * (kind === "frame" ? 3.2 : 2.5)),
+      fig ? 12 : kind === "frame" ? 96 : 28,
     );
   }
   if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && !(kind === "frame" && policy.fat)) {
     const topo = pruneTopology(g, kind, {
-      aggressiveness: fig ? 0.1 : kind === "frame" ? 0.12 : keepWire ? 0.15 : 0.32,
+      // Keep frame braces — sparse A-frames were pruning densify away.
+      aggressiveness: fig ? 0.1 : kind === "frame" ? 0.05 : keepWire ? 0.15 : 0.32,
     });
     g = {
       ...topo.graph,
