@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { mediaIdentityLabel, wantsShoes } from "@/lib/yard/family";
+import { identityTitleStem } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -108,8 +108,10 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     }
   }
 
-  const mediaLabel = mediaIdentityLabel(lower);
-  const label = /coffee/.test(lower) && /table/.test(lower)
+  const identity = identityTitleStem(lower);
+  const label = identity
+    ? identity
+    : /coffee/.test(lower) && /table/.test(lower)
     ? "Coffee table"
     : /mudroom/.test(lower) && /bench/.test(lower)
     ? "Mudroom bench"
@@ -119,10 +121,6 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     ? "Wine rack"
     : /coat/.test(lower) && /rack/.test(lower)
     ? "Coat rack"
-    : wantsShoes(lower)
-    ? "Shoe rack"
-    : mediaLabel
-    ? mediaLabel
     : /dresser/.test(lower)
       ? "Dresser"
       : /nightstand|bedside/.test(lower)
@@ -142,11 +140,10 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidDeep &&
     !saidWide &&
     !saidRound &&
+    !identity &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !(/spice/.test(lower) && /rack/.test(lower)) &&
     !(/wine/.test(lower) && /rack/.test(lower)) &&
-    !wantsShoes(lower) &&
-    !mediaLabel &&
     !(/mudroom/.test(lower) && /bench/.test(lower)) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&

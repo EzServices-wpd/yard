@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
-import { detectHouseFamily, isBunkBed, isKitchenBase, isKitchenUpper, mediaIdentityLabel, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { detectHouseFamily, identityTitleStem, isBunkBed, isKitchenBase, isKitchenUpper, isLoftBed, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -58,7 +58,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -72,10 +72,10 @@ export function looksLikeFitted(prompt: string) {
   if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower)) {
     return false;
   }
-  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower)) return false;
+  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -195,7 +195,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 24
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
-                : isBunkBed(lower)
+                : isBunkBed(lower) || isLoftBed(lower)
                   ? /queen/.test(lower)
                     ? 62
                     : /full|double/.test(lower)
@@ -323,7 +323,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 34.5
                     : isKitchenUpper(lower)
                       ? 30
-                    : isBunkBed(lower)
+                    : isBunkBed(lower) || isLoftBed(lower)
                       ? 65
                     : /shelf/.test(lower)
                       ? 18
@@ -363,7 +363,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 24
                     : isKitchenUpper(lower)
                       ? 12
-                    : isBunkBed(lower)
+                    : isBunkBed(lower) || isLoftBed(lower)
                       ? /queen/.test(lower)
                         ? 80
                         : 75
@@ -489,7 +489,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && height >= 54) ||
     !!house?.affordances.includes("door");
   const doorsFinal =
-    isBunkBed(lower) || (program === "media" && !/door/.test(lower)) ? false : doors;
+    isBunkBed(lower) || isLoftBed(lower) || (program === "media" && !/door/.test(lower)) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
@@ -535,7 +535,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     table: "Table",
   };
 
-  const mediaLabel = mediaIdentityLabel(lower);
+  const identityStem = identityTitleStem(lower);
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
@@ -559,16 +559,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         ? "Coat bench"
                       : /coat/.test(lower) && /rack/.test(lower)
                         ? "Coat rack"
-                        : isShoeStorage(lower)
-                          ? "Shoe rack"
-                          : isKitchenBase(lower)
-                            ? "Base cabinet"
-                          : isKitchenUpper(lower)
-                            ? "Upper cabinet"
-                          : isBunkBed(lower)
-                            ? "Bunk bed"
-                          : mediaLabel
-                            ? mediaLabel
+                        : identityStem
+                            ? identityStem
                             : /headboard/.test(lower)
                               ? "Headboard"
                               : /crate/.test(lower)
@@ -734,7 +726,14 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     panels.push(panel("deck", "Support leg", x0 + P + (innerW - 1.5) / 2, P, D - P * 3, 1.5, legLen, P));
   }
   panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
-  const name = spec.name.match(/cabinet|ironing|medicine/i) ? spec.name : `Wall cabinet ${W}" × ${H}" × ${D}"`;
+  const lowerPrompt = prompt.toLowerCase();
+  const name = isKitchenUpper(lowerPrompt)
+    ? spec.name.match(/upper/i)
+      ? spec.name
+      : `Upper cabinet ${W}" × ${H}" × ${D}"`
+    : spec.name.match(/cabinet|ironing|medicine/i)
+      ? spec.name
+      : `Wall cabinet ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
     name,
@@ -874,7 +873,9 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
   const D = u.depth;
   const x0 = -W / 2;
   const post = Math.max(P, 1.5);
+  const loft = isLoftBed(prompt.toLowerCase());
   // Twin bunk: lower deck ~12", upper ~H-16" (guard room above mattress).
+  // Loft: one elevated deck only — open floor under for desk/storage (not a second bunk).
   const lowerY = Math.min(14, Math.max(10, Math.round(H * 0.18)));
   const upperY = Math.min(H - 14, Math.max(lowerY + 28, Math.round(H * 0.72)));
   const guardH = 5;
@@ -886,17 +887,23 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
   panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, H, post));
   panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
   panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
-  // Two sleep platforms (slabs on the frame) — not a hollow carcase.
-  panels.push(panel("deck", "Lower bunk", x0 + post, lowerY, post, innerW, P, innerD));
-  panels.push(panel("deck", "Upper bunk", x0 + post, upperY, post, innerW, P, innerD));
-  // Guard rails on the upper bunk long sides.
+  if (!loft) {
+    panels.push(panel("deck", "Lower bunk", x0 + post, lowerY, post, innerW, P, innerD));
+  }
+  panels.push(panel("deck", loft ? "Loft deck" : "Upper bunk", x0 + post, upperY, post, innerW, P, innerD));
+  // Guard rails on the elevated deck long sides.
   panels.push(panel("rail", "Upper left rail", x0 + post, upperY + P, post, innerW, guardH, P));
   panels.push(panel("rail", "Upper right rail", x0 + post, upperY + P, D - post - P, innerW, guardH, P));
-  // Head/foot rails keep the upper mattress from sliding.
   panels.push(panel("rail", "Upper head rail", x0 + post, upperY + P, post, P, guardH, innerD));
   panels.push(panel("rail", "Upper foot rail", x0 + W - post - P, upperY + P, post, P, guardH, innerD));
 
-  const name = spec.name.match(/bunk/i) ? spec.name : `Bunk bed ${W}" × ${H}" × ${D}"`;
+  const name = loft
+    ? spec.name.match(/loft/i)
+      ? spec.name
+      : `Loft bed ${W}" × ${H}" × ${D}"`
+    : spec.name.match(/bunk/i)
+      ? spec.name
+      : `Bunk bed ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
     name,
@@ -907,8 +914,10 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Two sleep platforms on a post frame — lower at ~${lowerY}", upper at ~${upperY}". Not a hollow box.`,
-      `¾" plywood posts and decks. Upper guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
+      loft
+        ? `${name}. One elevated sleep platform on a post frame at ~${upperY}" — open floor under. Not a hollow box, not a twin bunk.`
+        : `${name}. Two sleep platforms on a post frame — lower at ~${lowerY}", upper at ~${upperY}". Not a hollow box.`,
+      `¾" plywood posts and decks. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
       "Guidance only — person load is heuristic, not stamped engineering. Confirm mattress size before you cut.",
     ],
     historic: false,
@@ -981,7 +990,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildTable(spec, prompt);
   }
 
-  if (family === "bunk" || isBunkBed(prompt.toLowerCase()) || affordances.includes("sleep-platforms")) {
+  if (family === "bunk" || isBunkBed(prompt.toLowerCase()) || isLoftBed(prompt.toLowerCase()) || affordances.includes("sleep-platforms")) {
     return buildBunkBed(spec, prompt, affordances);
   }
 
@@ -1877,19 +1886,25 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
   ];
 
+  const name =
+    kitchenBase && !/base|kitchen/i.test(spec.name)
+      ? `Base cabinet ${W}" × ${H}" × ${D}"`
+      : spec.name;
+  const notesNamed = notes.map((n, i) => (i === 0 ? n.replace(spec.name, name) : n));
+
   return {
     id: createId("proj"),
-    name: spec.name,
+    name,
     prompt,
     kind: "closet",
     overall: { width: W, height: H, depth: D },
     instances: [],
     panels,
     primaryMaterialId: PLY,
-    notes,
+    notes: notesNamed,
     historic: false,
     opening: spec.opening,
-    fitted: spec,
+    fitted: { ...spec, name },
     assumptions: {
       load: spec.program === "bookcase" || spec.program === "pantry" ? "heavy" : "medium",
       units: "inches",

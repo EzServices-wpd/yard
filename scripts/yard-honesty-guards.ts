@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { detectHouseFamily } from "../src/lib/yard/family";
+import { detectHouseFamily, identityTitleStem } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -705,6 +705,61 @@ if (upperCab.assumptions.installMode !== "wall") failHonesty("upper cabinet moun
 if (upperCab.fitted?.unit.upperStart != null) failHonesty("upper cabinet wrongly set vanity upperStart", upperCab.fitted?.unit);
 const upperPlan = buildPlan(upperCab);
 if (!inspectHonesty(upperCab, upperPlan).ok) failHonesty("upper cabinet inspect", inspectHonesty(upperCab, upperPlan).issues);
+
+
+// Typed-wide kitchen must keep Base/Upper cabinet — never naked "Storage" from program label.
+for (const [prompt, stem] of [
+  ["kitchen base cabinet 36 wide", "Base cabinet"],
+  ["kitchen upper cabinet 30 wide", "Upper cabinet"],
+  ["twin bunk bed", "Bunk bed"],
+  ["twin loft bed", "Loft bed"],
+] as const) {
+  if (identityTitleStem(prompt) !== stem) failHonesty(`identityTitleStem(${prompt})`, identityTitleStem(prompt));
+}
+const storageWiped = generateFromPrompt("kitchen base cabinet 36 wide");
+if (!/^Base cabinet/i.test(storageWiped.name)) failHonesty("36-wide base title", storageWiped.name);
+const wipedSpec = {
+  ...storageWiped.fitted!,
+  name: `Storage ${storageWiped.overall.width}" × ${storageWiped.overall.height}" × ${storageWiped.overall.depth}"`,
+};
+const recovered = buildFitted(wipedSpec, "kitchen base cabinet 36 wide");
+if (!/^Base cabinet/i.test(recovered.name)) failHonesty("Storage wipe recovery for kitchen base", recovered.name);
+const upperWiped = generateFromPrompt("kitchen upper cabinet 30 wide");
+const upperRecovered = buildFitted(
+  {
+    ...upperWiped.fitted!,
+    name: `Storage ${upperWiped.overall.width}" × ${upperWiped.overall.height}" × ${upperWiped.overall.depth}"`,
+  },
+  "kitchen upper cabinet 30 wide",
+);
+if (!/^Upper cabinet/i.test(upperRecovered.name)) failHonesty("Storage wipe recovery for kitchen upper", upperRecovered.name);
+
+const loftPrompt = "twin loft bed";
+const loftHit = detectHouseFamily(loftPrompt);
+if (!loftHit || loftHit.family !== "bunk" || !loftHit.affordances.includes("sleep-platforms")) {
+  failHonesty("loft bed family", loftHit);
+}
+const loft = generateFromPrompt(loftPrompt);
+if (!/^Loft bed/i.test(loft.name)) failHonesty("loft title", loft.name);
+if (!nearInch(loft.overall.width, 42)) failHonesty("loft twin width ~42", loft.overall);
+if (!nearInch(loft.overall.depth, 75)) failHonesty("loft twin depth ~75", loft.overall);
+if (!nearInch(loft.overall.height, 65)) failHonesty("loft height ~65", loft.overall);
+const loftDecks = loft.panels.filter((p) => p.type === "deck");
+if (loftDecks.length !== 1) failHonesty("loft needs exactly one sleep deck", loft.panels.map((p) => p.name));
+if (loft.panels.filter((p) => /post/i.test(p.name) || p.type === "upright").length < 4) {
+  failHonesty("loft needs four posts", loft.panels.map((p) => p.name));
+}
+if (loft.panels.some((p) => p.type === "door" || p.type === "kick")) {
+  failHonesty("loft grew door/toekick carcase parts", loft.panels.map((p) => `${p.type}:${p.name}`));
+}
+const loftPlan = buildPlan(loft);
+if (!inspectHonesty(loft, loftPlan).ok) failHonesty("loft inspect", inspectHonesty(loft, loftPlan).issues);
+if (!loftPlan.instructions.some((s) => /loft|elevated|sleep platform/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("loft steps missing elevated platform", loftPlan.instructions.map((s) => s.title));
+}
+if (loftPlan.instructions.some((s) => /two sleep platforms|lower first, then upper/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("loft steps still sell twin bunk language", loftPlan.instructions.map((s) => s.title));
+}
 
 
 const bunkPrompt = "twin bunk bed";

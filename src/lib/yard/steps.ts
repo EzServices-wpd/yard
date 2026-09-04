@@ -219,19 +219,24 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const bunk =
-    /bunk/i.test(project.name) ||
-    /\bbunk\b/.test((project.prompt ?? "").toLowerCase()) ||
+    /bunk|loft bed/i.test(project.name) ||
+    /\b(?:bunk|loft\s*bed)\b/.test((project.prompt ?? "").toLowerCase()) ||
     project.fitted?.family === "bunk";
   if (bunk) {
     const decks = panels.filter((p) => p.type === "deck");
+    const loft = decks.length === 1 || /loft/i.test(project.name) || /\bloft\s*bed\b/.test((project.prompt ?? "").toLowerCase());
     const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
     const rails = of("rail");
     return [
       {
         step: 1,
         title: "Confirm the sleep size — do not cut yet",
-        description: `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${panels.length} parts on this list.`,
-        tips: "A bunk is two decks on a frame — not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
+        description: loft
+          ? `${project.name}. One elevated sleep platform on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the deck to your mattress (twin is usually ~38×75). ${panels.length} parts on this list.`
+          : `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${panels.length} parts on this list.`,
+        tips: loft
+          ? "A loft is one elevated deck on a frame — open floor under, not a hollow closet box. If a number disagrees with the cut list, trust the cut list."
+          : "A bunk is two decks on a frame — not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
       {
@@ -250,8 +255,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 4,
-        title: "Set the two sleep platforms",
-        description: `${decks.map(cutLine).join("; ")}. Screw each deck into the posts — lower first, then upper. The decks are the bunks. Glue the joints too.`,
+        title: loft ? "Set the loft sleep platform" : "Set the two sleep platforms",
+        description: loft
+          ? `${decks.map(cutLine).join("; ")}. Screw the elevated deck into the posts. Leave the floor open under it. Glue the joints too.`
+          : `${decks.map(cutLine).join("; ")}. Screw each deck into the posts — lower first, then upper. The decks are the bunks. Glue the joints too.`,
         tips: "Predrill near the ends so the ply does not split. A person will sleep on these — square them.",
         partsUsed: names(decks.length ? decks : panels),
       },
@@ -265,7 +272,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: "Level it and add a ladder",
-        description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the upper bunk (buy one, or build from the leftover strip).`,
+        description: loft
+          ? `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the loft deck (buy one, or build from the leftover strip).`
+          : `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the upper bunk (buy one, or build from the leftover strip).`,
         tips: "Guidance only — person load is heuristic, not stamped engineering. Anchor to studs if the frame can tip.",
         partsUsed: names(posts),
       },
