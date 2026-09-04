@@ -584,6 +584,23 @@ if (!jarPlan.cutList.some((c) => /jar lip/i.test(c.name))) {
   failHonesty("jar cut list missing Jar lip", jarPlan.cutList.map((c) => c.name));
 }
 
+
+const shoePrompt = "shoe rack 36 wide 24 high 12 deep";
+const shoe = generateFromPrompt(shoePrompt);
+if (!shoe.panels.some((p) => /shoe shelf/i.test(p.name))) failHonesty("shoe missing Shoe shelf", shoe.panels.map((p) => p.name));
+if (!shoe.panels.some((p) => /cubby divider/i.test(p.name))) failHonesty("shoe missing Cubby divider", shoe.panels.map((p) => p.name));
+if (shoe.panels.some((p) => /pin shelf/i.test(p.name))) failHonesty("shoe grew pin shelves", shoe.panels.map((p) => p.name));
+const shoePlan = buildPlan(shoe);
+if (shoePlan.bom.some((b) => /shelf pin/i.test(b.name))) {
+  failHonesty("shoe cubbies still buy shelf pins", shoePlan.bom.map((b) => b.name));
+}
+if (!/^Shoe rack/i.test(shoe.name)) failHonesty("shoe title drifted", shoe.name);
+
+const tvPrompt = "TV console 70 wide 30 tall 16 deep";
+const tv = generateFromPrompt(tvPrompt);
+if (!/^TV console/i.test(tv.name)) failHonesty("TV console title drifted to naked Media", tv.name);
+if (tv.panels.some((p) => p.type === "door")) failHonesty("TV console grew doors", tv.panels.map((p) => p.name));
+
 const linenPrompt = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
 if (!linen.fitted) failHonesty("linen fitted missing");
 const refitSpec = {

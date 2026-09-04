@@ -9,7 +9,7 @@ import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims } from "./shopPlural";
 import { nestCutList } from "./nesting";
-import { honestPlan, wantsRackAffordance } from "./honesty";
+import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { honestWeekendPlan } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -275,7 +275,19 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
-  if (shelfCount > 0 && !coatRack && !island && !nightstand && !floating && !ironing && !spice && !wine && !wantsRackAffordance(project.prompt ?? "")) {
+  // Shoe cubbies / jar lips / bottle rails are glued and screwed — never pin-shelf bookcases.
+  if (
+    shelfCount > 0 &&
+    !coatRack &&
+    !island &&
+    !nightstand &&
+    !floating &&
+    !ironing &&
+    !spice &&
+    !wine &&
+    !wantsRackAffordance(project.prompt ?? "") &&
+    !wantsFixedGlueShelves(project)
+  ) {
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({

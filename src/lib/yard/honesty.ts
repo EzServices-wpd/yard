@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily } from "./family";
+import { detectHouseFamily, wantsShoes } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -144,6 +144,19 @@ export function rackIntent(prompt: string): "spice" | "wine" | "jar" | "bottle" 
 export function wantsRackAffordance(prompt: string) {
   return rackIntent(prompt) != null;
 }
+
+/** Shelves that are glued / screwed (shoe cubbies, jar/wine racks) — never sell adjustable shelf pins. */
+export function wantsFixedGlueShelves(project: YardProject): boolean {
+  const prompt = project.prompt ?? "";
+  const lower = prompt.toLowerCase();
+  if (wantsRackAffordance(prompt)) return true;
+  if (project.fitted?.affordances?.includes("cubbies")) return true;
+  if (project.panels.some((p) => /shoe shelf|cubby divider|jar lip|bottle rail/i.test(p.name))) return true;
+  if (project.notes.some((n) => /not bookcase pin shelves|do not pin them|glue the shelves/i.test(n))) return true;
+  if (wantsShoes(lower)) return true;
+  return false;
+}
+
 
 export function hasRackAffordance(project: YardProject) {
   return project.panels.some(
@@ -373,6 +386,12 @@ export function inspectHonesty(project: YardProject, plan?: BuildPlan | null): H
       });
     }
   }
+  if (wantsFixedGlueShelves(project) && plan?.bom.some((b) => /shelf pin/i.test(b.name))) {
+    issues.push({
+      guard: "rack",
+      message: "Fixed/glued shelves (shoe cubbies or rack lips) still sell shelf pins.",
+    });
+  }
 
   issues.push(...tableBraceIssues(project));
 
@@ -587,7 +606,8 @@ function scrubFloorLanguage(text: string) {
 export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
   const wall = isWallHung(project);
   const rack = rackIntent(project.prompt ?? "") != null;
-  if (!wall && !rack) return plan;
+  const fixedShelves = wantsFixedGlueShelves(project);
+  if (!wall && !rack && !fixedShelves) return plan;
   const instructions = plan.instructions.map((s) => {
     if (!wall) return s;
     const blob = `${s.title} ${s.description} ${s.tips ?? ""}`;
@@ -599,6 +619,6 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
       tips: s.tips ? scrubFloorLanguage(s.tips) : s.tips,
     };
   });
-  const bom = rack ? plan.bom.filter((b) => !/shelf pin/i.test(b.name)) : plan.bom;
+  const bom = rack || fixedShelves ? plan.bom.filter((b) => !/shelf pin/i.test(b.name)) : plan.bom;
   return { ...plan, instructions, bom };
 }
