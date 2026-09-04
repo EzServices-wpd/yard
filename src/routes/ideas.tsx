@@ -56,7 +56,7 @@ function IdeasPage() {
                 <>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Weekend</p>
                   <h2 className="mt-2 font-display text-3xl leading-tight tracking-tight text-ink sm:text-4xl">
-                    From popsicle / PVC / straw.
+                    From popsicle / PVC / 2×4 / jumbo.
                   </h2>
                   <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">
                     Same bench as the house. Named stock. The size you typed.

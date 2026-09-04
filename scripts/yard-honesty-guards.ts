@@ -677,6 +677,60 @@ if (wallCabPlan.instructions.some((s) => /do not glue the shelves/i.test(`${s.ti
 }
 if (!wantsFixedGlueShelves(wallCab)) failHonesty("wall cabinet should want fixed/glued shelves");
 
+const baseCabPrompt = "kitchen base cabinet 24 wide";
+const baseHit = detectHouseFamily(baseCabPrompt);
+if (!baseHit || baseHit.family !== "floor-carcase" || baseHit.mount !== "floor" || baseHit.opening !== "door") {
+  failHonesty("kitchen base family", baseHit);
+}
+const baseCab = generateFromPrompt(baseCabPrompt);
+if (!/^Base cabinet/i.test(baseCab.name)) failHonesty("base cabinet title", baseCab.name);
+if (!nearInch(baseCab.overall.height, 34.5)) failHonesty("base cabinet default height ~34.5", baseCab.overall);
+if (!nearInch(baseCab.overall.depth, 24)) failHonesty("base cabinet default depth ~24", baseCab.overall);
+if (!baseCab.panels.some((p) => p.type === "kick")) failHonesty("base cabinet missing toekick", baseCab.panels.map((p) => p.name));
+if (!baseCab.panels.some((p) => p.type === "door")) failHonesty("base cabinet missing door", baseCab.panels.map((p) => p.name));
+const basePlan = buildPlan(baseCab);
+if (!inspectHonesty(baseCab, basePlan).ok) failHonesty("base cabinet inspect", inspectHonesty(baseCab, basePlan).issues);
+
+const upperCabPrompt = "kitchen upper cabinet 30 wide";
+const upperHit = detectHouseFamily(upperCabPrompt);
+if (!upperHit || upperHit.family !== "hung-cabinet" || upperHit.mount !== "wall" || upperHit.opening !== "door") {
+  failHonesty("kitchen upper family", upperHit);
+}
+const upperCab = generateFromPrompt(upperCabPrompt);
+if (!/^Upper cabinet/i.test(upperCab.name)) failHonesty("upper cabinet title", upperCab.name);
+if (!nearInch(upperCab.overall.height, 30)) failHonesty("upper cabinet default height ~30", upperCab.overall);
+if (!nearInch(upperCab.overall.depth, 12)) failHonesty("upper cabinet default depth ~12", upperCab.overall);
+if (upperCab.panels.some((p) => p.type === "kick")) failHonesty("upper cabinet grew a toekick", upperCab.panels.map((p) => p.name));
+if (upperCab.assumptions.installMode !== "wall") failHonesty("upper cabinet mount", upperCab.assumptions);
+if (upperCab.fitted?.unit.upperStart != null) failHonesty("upper cabinet wrongly set vanity upperStart", upperCab.fitted?.unit);
+const upperPlan = buildPlan(upperCab);
+if (!inspectHonesty(upperCab, upperPlan).ok) failHonesty("upper cabinet inspect", inspectHonesty(upperCab, upperPlan).issues);
+
+const coatBenchPrompt = "coat rack with bench 48 wide";
+const coatBenchHit = detectHouseFamily(coatBenchPrompt);
+if (!coatBenchHit || coatBenchHit.family !== "seat" || !coatBenchHit.affordances.includes("hooks")) {
+  failHonesty("coat rack with bench family", coatBenchHit);
+}
+const coatBenchWide = generateFromPrompt(coatBenchPrompt);
+if (!/coat bench/i.test(coatBenchWide.name)) failHonesty("coat rack with bench title", coatBenchWide.name);
+if (!nearInch(coatBenchWide.overall.depth, 16)) failHonesty("coat rack with bench should sit ~16 deep", coatBenchWide.overall);
+if (!coatBenchWide.panels.some((p) => /peg/i.test(p.name))) {
+  failHonesty("coat rack with bench missing peg rail", coatBenchWide.panels.map((p) => p.name));
+}
+if (coatBenchWide.assumptions.installMode === "wall") {
+  failHonesty("coat rack with bench forced wall-hung", coatBenchWide.assumptions);
+}
+
+const jumboLattice = generateFromPrompt("4 foot lattice tower from jumbo craft sticks");
+if (jumboLattice.kind !== "lattice" || jumboLattice.primaryMaterialId !== "popsicle-jumbo") {
+  failWeekend("jumbo lattice tower", { kind: jumboLattice.kind, stock: jumboLattice.primaryMaterialId });
+}
+if (jumboLattice.instances.some((i) => i.catalogId !== "popsicle-jumbo")) failWeekend("jumbo lattice foreign members");
+const jumboBare = generateFromPrompt("jumbo lattice tower");
+if (jumboBare.primaryMaterialId !== "popsicle-jumbo") {
+  failWeekend("bare jumbo lattice tower stock", jumboBare.primaryMaterialId);
+}
+
 const bookMeasure = generateFromPrompt("bookshelf 36 wide 72 high 12 deep");
 if (measureKindFromProject(bookMeasure) !== "bookcase") {
   failHonesty("bookcase measure kind not Bookcase", measureKindFromProject(bookMeasure));

@@ -152,7 +152,7 @@ export function isWireStock(item: CatalogItem | undefined | null): boolean {
 export function detectMaterial(prompt: string): CatalogItem {
   const lower = prompt.toLowerCase();
   const phrases: [RegExp, string][] = [
-    [/jumbo (craft|popsicle)|jumbo stick/, "popsicle-jumbo"],
+    [/jumbo (craft|popsicle)|jumbo stick|(?:lattice|tower).{0,24}jumbo|jumbo.{0,24}(?:lattice|tower)/, "popsicle-jumbo"],
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],

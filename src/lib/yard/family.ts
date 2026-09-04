@@ -109,6 +109,26 @@ export function wantsShoes(lower: string) {
   return /rack|store|storage|cubb|organizer/.test(lower);
 }
 
+/** Kitchen upper → wall hung cabinet (not a floor box). */
+export function isKitchenUpper(lower: string) {
+  if (/base\s+cabinet|lower\s+cabinet|floor[- ]?cabinet/.test(lower)) return false;
+  return /(?:kitchen\s+)?upper\s+cabinet|upper\s+(?:kitchen\s+)?cabinet/.test(lower);
+}
+
+/** Kitchen base / lower → floor carcase with door(s) + toekick (~34.5). */
+export function isKitchenBase(lower: string) {
+  if (isKitchenUpper(lower)) return false;
+  if (/(?:kitchen\s+)?base\s+cabinet|base\s+(?:kitchen\s+)?cabinet|(?:kitchen\s+)?lower\s+cabinet|lower\s+(?:kitchen\s+)?cabinet/.test(lower)) {
+    return true;
+  }
+  // Bare "kitchen cabinet" leans base — island/hood/wall stay out.
+  return (
+    /kitchen/.test(lower) &&
+    /cabinet/.test(lower) &&
+    !/island|hood|medicine|ironing|wall\s+cabinet|spice|wine|over[- ]?(the[- ]?)?toilet/.test(lower)
+  );
+}
+
 /** Keep TV / media console identity — never a naked "Media". */
 export function mediaIdentityLabel(lower: string): string | null {
   if (!/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment/.test(lower)) return null;
@@ -150,20 +170,25 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     return null;
   }
 
+  // Coat + bench is a floor seat with a peg rail — not a wall-only coat rack.
+  const coatBench = /coat/.test(lower) && /bench/.test(lower);
+
   const wallLang =
-    /wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|on the wall/.test(
+    !coatBench &&
+    (/wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|on the wall|wall\b.{0,24}\bcabinet\b/.test(
       lower,
     ) ||
-    isSpiceRack(lower) ||
-    isWineRack(lower) ||
-    isMedicine(lower) ||
-    isIroning(lower) ||
-    (/coat/.test(lower) && /rack|tree|peg/.test(lower)) ||
-    /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
-    /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
-    (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
-    (wantsJars(lower) && /shelf|rack|ledge/.test(lower)) ||
-    (wantsBottles(lower) && /shelf|rack/.test(lower));
+      isKitchenUpper(lower) ||
+      isSpiceRack(lower) ||
+      isWineRack(lower) ||
+      isMedicine(lower) ||
+      isIroning(lower) ||
+      (/coat/.test(lower) && /rack|tree|peg/.test(lower)) ||
+      /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
+      /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
+      (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
+      (wantsJars(lower) && /shelf|rack|ledge/.test(lower)) ||
+      (wantsBottles(lower) && /shelf|rack/.test(lower)));
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
 

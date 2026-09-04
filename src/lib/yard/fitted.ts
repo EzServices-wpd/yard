@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
-import { detectHouseFamily, mediaIdentityLabel, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { detectHouseFamily, isKitchenBase, isKitchenUpper, mediaIdentityLabel, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -313,6 +313,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 24
                   : isShoeStorage(lower)
                     ? 18
+                    : isKitchenBase(lower)
+                      ? 34.5
+                    : isKitchenUpper(lower)
+                      ? 30
                     : /shelf/.test(lower)
                       ? 18
                   : program === "storage"
@@ -341,10 +345,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 4
                   : isOverToilet(lower)
                     ? 9
+                  : /coat/.test(lower) && /bench/.test(lower)
+                    ? 16
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
                     : /range\s*hood|\bhood\b/.test(lower)
                       ? 18
+                    : isKitchenBase(lower)
+                      ? 24
+                    : isKitchenUpper(lower)
+                      ? 12
                     : /dresser/.test(lower)
                       ? 18
                       : /crate/.test(lower)
@@ -354,6 +364,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         : isSpiceRack(lower)
                           ? 4
                         : isWineRack(lower)
+                          ? 12
+                        : house?.family === "hung-cabinet"
                           ? 12
                         : /shelf|rack/.test(lower)
                           ? 12
@@ -392,7 +404,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
     : program === "vanity" || program === "desk"
       ? Math.min(24, Math.max(18, width * 0.4))
       : undefined;
-  const upperStart = /upper/.test(lower) ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54) : program === "vanity" && height >= 72 ? 54 : undefined;
+  // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
+  const upperStart =
+    /upper/.test(lower) && !isKitchenUpper(lower) && !/upper\s+cabinet/.test(lower)
+      ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54)
+      : program === "vanity" && height >= 72
+        ? 54
+        : undefined;
   const linen = /linen|towel/.test(lower);
   const rod =
     /rod|hang|rail/.test(lower) ||
@@ -425,6 +443,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 3
                 : isWineRack(lower)
                   ? Math.max(3, Math.min(10, Math.round((height - P) / 4.5)))
+                : isKitchenBase(lower) || isKitchenUpper(lower)
+                  ? 1
                 : (/shelf/.test(lower) && !/coat/.test(lower))
                 ? 3
                 : /nightstand|bedside/.test(lower)
@@ -520,10 +540,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? "Spice rack"
                     : isWineRack(lower)
                       ? "Wine rack"
+                      : /coat/.test(lower) && /bench/.test(lower)
+                        ? "Coat bench"
                       : /coat/.test(lower) && /rack/.test(lower)
                         ? "Coat rack"
                         : isShoeStorage(lower)
                           ? "Shoe rack"
+                          : isKitchenBase(lower)
+                            ? "Base cabinet"
+                          : isKitchenUpper(lower)
+                            ? "Upper cabinet"
                           : mediaLabel
                             ? mediaLabel
                             : /headboard/.test(lower)
@@ -1604,7 +1630,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
   panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
   panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
-  if (spec.program === "media") {
+  const kitchenBase =
+    isKitchenBase(prompt.toLowerCase()) ||
+    (family === "floor-carcase" &&
+      !!u.doors &&
+      /(?:base\s+cabinet|kitchen\s+cabinet)/.test(prompt.toLowerCase()));
+  if (spec.program === "media" || kitchenBase) {
     panels.push(panel("kick", "Toekick", x0 + P, 0, D - 3.5, W - P * 2, 3.5, P));
   }
 
@@ -1729,6 +1760,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
             shelves
               ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
               : "Glue the shelves; do not pin them.",
+          ].join(" ")
+      : kitchenBase
+        ? [
+            `Kitchen base cabinet — floor carcase with door${u.doors ? "(s)" : ""}, 3½" toekick, counter height ~${H}".`,
+            shelves
+              ? `${shelves} fixed shelf line${shelves === 1 ? "" : "s"} inside. Glue and screw; do not pin them.`
+              : "Solid carcase with door(s).",
           ].join(" ")
       : shelves
         ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`

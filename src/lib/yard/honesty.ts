@@ -180,10 +180,13 @@ const WALL_LANG =
   /wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating\s+shel|spice|wine|coat rack|medicine|ironing|range\s*hood|(?:^|[^a-z])hood(?:[^a-z]|$)/i;
 
 export function isWallHung(project: YardProject) {
-  if (project.assumptions.installMode === "wall") return true;
   const hit = detectHouseFamily(project.prompt ?? "");
+  // Coat rack + bench is a floor seat — never force wall from the words "coat rack".
+  if (hit?.family === "seat") return false;
+  if (project.assumptions.installMode === "wall") return true;
   if (hit?.mount === "wall" || hit?.family === "hung-open" || hit?.family === "hung-cabinet") return true;
   const blob = `${project.prompt ?? ""} ${project.name ?? ""}`;
+  if (/coat/.test(blob.toLowerCase()) && /bench/.test(blob.toLowerCase())) return false;
   if (WALL_LANG.test(blob)) return true;
   return rackIntent(project.prompt ?? "") != null;
 }
