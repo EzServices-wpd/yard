@@ -103,6 +103,25 @@ function wantsBottles(lower: string) {
   return /wine|bottle/.test(lower);
 }
 
+/** Shoe storage intent — rack, cubbies, or store — not a bare "shoe". */
+export function wantsShoes(lower: string) {
+  if (!/\bshoes?\b|\bboots?\b/.test(lower)) return false;
+  return /rack|store|storage|cubb|organizer/.test(lower);
+}
+
+/** Keep TV / media console identity — never a naked "Media". */
+export function mediaIdentityLabel(lower: string): string | null {
+  if (!/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment/.test(lower)) return null;
+  if (/entertainment\s*cent(?:er|re)/.test(lower)) return "Entertainment center";
+  if (/\btv\b/.test(lower) && /console/.test(lower)) return "TV console";
+  if (/media\s*console/.test(lower)) return "Media console";
+  if (/sideboard/.test(lower)) return "Sideboard";
+  if (/credenza/.test(lower)) return "Credenza";
+  if (/\btv\b/.test(lower)) return "TV console";
+  if (/console/.test(lower)) return "Media console";
+  return "Media console";
+}
+
 function programFromNoun(lower: string): FittedProgram {
   if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicine(lower) || isOverToilet(lower) || isSpiceRack(lower) || isWineRack(lower)) return "storage";
@@ -184,6 +203,13 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (wantsBottles(lower) || isWineRack(lower)) add("bottle-rails");
   if (fold || isIroning(lower)) add("fold-down-board");
   if (program === "bench" || /cubb/.test(lower) || (sit && family === "seat")) add("cubbies");
+  // Floor shoe storage → cubbies / open bays (not bookcase pin shelves).
+  if (wantsShoes(lower) && (family === "floor-carcase" || family === "seat" || /rack|cubb/.test(lower))) {
+    add("cubbies");
+  }
+  // Hung-open + jars/bottles already flagged above; keep lips/rails on novel wall shelves.
+  if (family === "hung-open" && wantsJars(lower)) add("jar-lips");
+  if (family === "hung-open" && wantsBottles(lower)) add("bottle-rails");
   if (opening === "door" || door) add("door");
   if (
     /rod|hang/.test(lower) ||

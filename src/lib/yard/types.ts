@@ -359,7 +359,7 @@ export type BuildPlan = {
   };
 };
 
-export type SpaceKind = "closet_niche" | "window_rough_opening" | "desk" | "media" | "table" | "bench" | "shelving_alcove" | "general_volume";
+export type SpaceKind = "closet_niche" | "window_rough_opening" | "desk" | "media" | "table" | "bench" | "shoe_rack" | "shelving_alcove" | "general_volume";
 
 export type WindowStyle = "double_hung" | "casement" | "slider" | "picture" | "awning";
 

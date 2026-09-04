@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
-import { detectHouseFamily, type HouseAffordance, type HouseFamily } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -36,6 +36,10 @@ function isSpiceRack(text: string) {
 function isWineRack(text: string) {
   const lower = text.toLowerCase();
   return /wine/.test(lower) && /rack/.test(lower);
+}
+
+function isShoeStorage(text: string) {
+  return wantsShoes(text.toLowerCase());
 }
 
 function isOverToilet(text: string) {
@@ -307,7 +311,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 6
                   : /range\s*hood|\bhood\b/.test(lower)
                     ? 24
-                  : /shoe/.test(lower) && /rack/.test(lower)
+                  : isShoeStorage(lower)
                     ? 18
                     : /shelf/.test(lower)
                       ? 18
@@ -407,8 +411,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 4
           : program === "media"
             ? 2
-            : /shoe/.test(lower) && /rack/.test(lower)
-              ? 3
+            : isShoeStorage(lower)
+              ? Math.max(2, Math.min(5, Math.round((height - P) / 6)))
               : /crate/.test(lower)
                 ? 0
                 : isIroningCabinet(lower)
@@ -434,7 +438,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? cubbiesSaid
       : program === "bench"
         ? Math.max(2, Math.min(4, Math.round(width / 16)))
-        : NaN;
+        : isShoeStorage(lower)
+          ? Math.max(2, Math.min(8, Math.round(width / 6)))
+          : house?.affordances?.includes("cubbies") && house.family === "floor-carcase" && wantsShoes(lower)
+            ? Math.max(2, Math.min(8, Math.round(width / 6)))
+            : NaN;
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
     /door/.test(lower) ||
@@ -486,15 +494,61 @@ export function parseBrief(prompt: string): FittedSpec | null {
     wardrobe: "Wardrobe",
     desk: "Desk",
     bookcase: "Bookcase",
-    media: "Media unit",
+    media: "Media console",
     bench: "Bench",
     storage: "Storage unit",
     table: "Table",
   };
 
+  const mediaLabel = mediaIdentityLabel(lower);
+  const titleStem =
+    /coffee/.test(lower) && /table/.test(lower)
+      ? "Coffee table"
+      : /mudroom/.test(lower) && /bench/.test(lower)
+        ? "Mudroom bench"
+        : /dresser/.test(lower)
+          ? "Dresser"
+          : /nightstand|bedside/.test(lower)
+            ? "Nightstand"
+            : isIroningCabinet(lower)
+              ? "Ironing cabinet"
+              : isMedicineCabinet(lower)
+                ? "Medicine cabinet"
+                : isOverToilet(lower)
+                  ? "Over-toilet"
+                  : isSpiceRack(lower)
+                    ? "Spice rack"
+                    : isWineRack(lower)
+                      ? "Wine rack"
+                      : /coat/.test(lower) && /rack/.test(lower)
+                        ? "Coat rack"
+                        : isShoeStorage(lower)
+                          ? "Shoe rack"
+                          : mediaLabel
+                            ? mediaLabel
+                            : /headboard/.test(lower)
+                              ? "Headboard"
+                              : /crate/.test(lower)
+                                ? "Crate"
+                                : /island/.test(lower)
+                                  ? "Island"
+                                  : /range\s*hood|\bhood\b/.test(lower)
+                                    ? "Range hood"
+                                    : /floating/.test(lower) && /shel/.test(lower)
+                                      ? "Shelves"
+                                      : house?.family === "hung-open" && house.affordances.includes("jar-lips")
+                                        ? "Jar rack"
+                                        : house?.family === "hung-open" && house.affordances.includes("bottle-rails")
+                                          ? "Bottle rack"
+                                          : house?.family === "hung-open"
+                                            ? "Wall rack"
+                                            : house?.family === "hung-cabinet"
+                                              ? "Wall cabinet"
+                                              : names[program];
+
   return {
     program,
-    name: `${/coffee/.test(lower) && /table/.test(lower) ? "Coffee table" : /mudroom/.test(lower) && /bench/.test(lower) ? "Mudroom bench" : /dresser/.test(lower) ? "Dresser" : /nightstand|bedside/.test(lower) ? "Nightstand" : isIroningCabinet(lower) ? "Ironing cabinet" : isMedicineCabinet(lower) ? "Medicine cabinet" : isOverToilet(lower) ? "Over-toilet" : isSpiceRack(lower) ? "Spice rack" : isWineRack(lower) ? "Wine rack" : /coat/.test(lower) && /rack/.test(lower) ? "Coat rack" : /shoe rack/.test(lower) ? "Shoe rack" : /headboard/.test(lower) ? "Headboard" : /crate/.test(lower) ? "Crate" : /island/.test(lower) ? "Island" : /range\s*hood|\bhood\b/.test(lower) ? "Range hood" : /floating/.test(lower) && /shel/.test(lower) ? "Shelves" : house?.family === "hung-open" && house.affordances.includes("jar-lips") ? "Jar rack" : house?.family === "hung-open" && house.affordances.includes("bottle-rails") ? "Bottle rack" : house?.family === "hung-open" ? "Wall rack" : house?.family === "hung-cabinet" ? "Wall cabinet" : names[program]} ${width}" × ${height}" × ${depth}"`,
+    name: `${titleStem} ${width}" × ${height}" × ${depth}"`,
     opening: {
       width,
       height,
@@ -679,6 +733,91 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
       load: "medium",
       units: "inches",
       installMode: "wall",
+      wallType: "wood_stud",
+    },
+  };
+}
+
+
+/** Floor shoe storage: open cubbies / shoe shelves — not bookcase pin shelves. */
+function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const innerW = W - P * 2;
+  const backT = 0.25;
+  // Shelf heights that fit shoes (~5–6" clear). Count includes bottom + upper platforms.
+  const shelfN =
+    u.shelfCount && u.shelfCount >= 2
+      ? Math.max(2, Math.min(6, u.shelfCount))
+      : Math.max(2, Math.min(5, Math.round((H - P) / 6)));
+  // Divider spacing ~4–6" wide open bays.
+  const cubbyN =
+    u.cubbies && u.cubbies >= 2
+      ? Math.max(2, Math.min(10, u.cubbies))
+      : Math.max(2, Math.min(8, Math.round(W / 6)));
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+  for (let i = 0; i < shelfN; i++) {
+    const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+    const label = i === 0 ? "Shoe shelf" : `Shoe shelf ${i + 1}`;
+    panels.push(panel("shelf", label, x0 + P, y, backT, innerW, P, D - backT));
+  }
+  // Cap the top if the last shoe shelf is not already at H-P (shelfN==1 edge case).
+  if (shelfN === 1) {
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  }
+  for (let i = 1; i < cubbyN; i++) {
+    const x = x0 + (W * i) / cubbyN - P / 2;
+    panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
+  }
+  const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+  const name = spec.name.match(/shoe/i) ? spec.name : `Shoe rack ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Open shoe cubbies with ${shelfN} shoe shelf line${shelfN === 1 ? "" : "s"} and ${cubbyN} bays (~${bayW}" wide) — not bookcase pin shelves. ¾" plywood.`,
+      `Glue and screw each cubby divider into the shoe shelves and back. Shelf pitch fits footwear (~5–6" clear). No leftover rails.`,
+      "Level it on the floor. Guidance only — confirm height for your entry.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "floor-carcase",
+      affordances: affordances.includes("cubbies") ? affordances : [...affordances, "cubbies"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: shelfN,
+        cubbies: cubbyN,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: false,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
       wallType: "wood_stud",
     },
   };
@@ -1034,6 +1173,20 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+
+  // Shoe storage on a floor carcase → cubbies / open bays (not pin shelves).
+  // Seat (mudroom) keeps its own cubby bench; hung racks stay hung-open.
+  if (
+    family !== "seat" &&
+    family !== "hung-open" &&
+    family !== "hung-cabinet" &&
+    (isShoeStorage(prompt) ||
+      (family === "floor-carcase" &&
+        affordances.includes("cubbies") &&
+        wantsShoes(prompt.toLowerCase())))
+  ) {
+    return buildShoeRack(spec, prompt, affordances);
+  }
 
   if (spec.program === "bench" || family === "seat") {
     const innerW = W - P * 2;
