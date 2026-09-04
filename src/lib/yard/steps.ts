@@ -218,6 +218,53 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const daybed =
+    /day\s*bed/i.test(project.name) ||
+    /\bday\s*beds?\b/.test((project.prompt ?? "").toLowerCase());
+  if (daybed) {
+    const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
+    const decks = panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
+    const dayRails = panels.filter((p) => /backrest|side rail|apron/i.test(p.name));
+    const sheetCuts = panels.map((p) => `${p.name} ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}".`);
+    return [
+      {
+        step: 1,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. One sleep deck with a backrest — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Sit or sleep; not a bunk stack. ${panels.length} parts on this list.`,
+        tips: "A daybed is one deck you can sit on, with a backrest — not two bunks and not a loft. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the four posts and set the sleep deck",
+        description: `${posts.map(cutLine).join("; ")}. ${decks.map(cutLine).join("; ") || "Sleep deck."}. Screw the deck into the posts at sit/sleep height. Glue the joints too.`,
+        tips: "Square the frame before the backrest goes on.",
+        partsUsed: names([...posts, ...decks]),
+      },
+      {
+        step: 4,
+        title: "Add the backrest, side rails, and front apron",
+        description: `${dayRails.map(cutLine).join("; ") || "Backrest and rails."}. Screw the backrest to the back posts above the deck. Side rails keep a mattress on the platform. Front apron stiffens the open long side.`,
+        tips: "Sit-test the deck before you finish.",
+        partsUsed: names(dayRails.length ? dayRails : panels),
+      },
+      {
+        step: 5,
+        title: "Level it",
+        description: "Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a mattress that fits the deck.",
+        tips: "Guidance only — person load is heuristic, not stamped engineering.",
+        partsUsed: ["*"],
+      },
+    ];
+  }
+
   const bunk =
     /bunk|loft bed/i.test(project.name) ||
     /\b(?:bunk|loft\s*bed)\b/.test((project.prompt ?? "").toLowerCase()) ||

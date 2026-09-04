@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
-import { detectHouseFamily, identityTitleStem, isBunkBed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -58,7 +58,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -75,7 +75,7 @@ export function looksLikeFitted(prompt: string) {
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -94,9 +94,11 @@ export function detectProgram(lower: string): FittedProgram {
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
   if (/nightstand|bedside/.test(lower)) return "storage";
-  if (/\btable\b/.test(lower) && !/work table|console table/.test(lower)) return "table";
+  if (isSofaConsoleTable(lower)) return "table";
+  if (isDaybed(lower)) return "bench";
+  if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
-  if (/\bmudroom\b|window seat/.test(lower)) return "bench";
+  if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
@@ -197,6 +199,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 24
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
+                : isDaybed(lower)
+                  ? 75
+                : isSofaConsoleTable(lower)
+                  ? 48
                 : isBunkBed(lower) || isLoftBed(lower)
                   ? /queen/.test(lower)
                     ? 62
@@ -329,6 +335,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 34.5
                     : isKitchenUpper(lower)
                       ? 30
+                    : isDaybed(lower)
+                      ? 22
+                    : isSofaConsoleTable(lower)
+                      ? 30
                     : isBunkBed(lower) || isLoftBed(lower)
                       ? 65
                     : /shelf/.test(lower)
@@ -349,6 +359,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? 12
             : program === "media"
               ? 16
+              : isSofaConsoleTable(lower)
+                ? 14
               : program === "table"
                 ? width
                 : /headboard/.test(lower)
@@ -371,6 +383,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 24
                     : isKitchenUpper(lower)
                       ? 12
+                    : isDaybed(lower)
+                      ? 39
                     : isBunkBed(lower) || isLoftBed(lower)
                       ? /queen/.test(lower)
                         ? 80
@@ -480,7 +494,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const cubbies =
     Number.isFinite(cubbiesSaid) && cubbiesSaid >= 2
       ? cubbiesSaid
-      : program === "bench"
+      : program === "bench" && !isDaybed(lower)
         ? Math.max(2, Math.min(4, Math.round(width / 16)))
         : isShoeStorage(lower)
           ? Math.max(2, Math.min(8, Math.round(width / 6)))
@@ -501,7 +515,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && height >= 54) ||
     !!house?.affordances.includes("door");
   const doorsFinal =
-    isBunkBed(lower) || isLoftBed(lower) || (program === "media" && !/door/.test(lower)) ? false : doors;
+    isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower) || (program === "media" && !/door/.test(lower)) ? false : doors;
   const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
@@ -954,6 +968,78 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
 }
 
 
+
+function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const post = Math.max(P, 1.5);
+  // Sleep deck sits at sit/sleep height; backrest fills the typed overall height.
+  const deckY = Math.min(Math.max(14, Math.round(H * 0.72)), Math.max(14, H - 6));
+  const backH = Math.max(6, H - deckY - P);
+  const innerW = Math.max(12, W - post * 2);
+  const innerD = Math.max(20, D - post * 2);
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Front left post", x0, 0, D - post, post, deckY + P, post));
+  panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, deckY + P, post));
+  panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
+  panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
+  panels.push(panel("deck", "Sleep deck", x0 + post, deckY, post, innerW, P, innerD));
+  panels.push(panel("rail", "Front apron", x0 + post, Math.max(0, deckY - 3.5), D - post - P, innerW, 3.5, P));
+  panels.push(panel("rail", "Backrest", x0 + post, deckY + P, post, innerW, backH, P));
+  panels.push(panel("rail", "Left side rail", x0 + post, deckY + P, post, P, Math.min(4, backH), innerD));
+  panels.push(panel("rail", "Right side rail", x0 + W - post - P, deckY + P, post, P, Math.min(4, backH), innerD));
+
+  const name = spec.name.match(/day\s*bed/i) ? spec.name : `Daybed ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. One sleep deck at ~${deckY}" with a backrest — sit or sleep. Not a bunk stack, not a loft, not a hollow box.`,
+      `¾" plywood posts and deck. Side rails keep a mattress on the platform. Guidance only — confirm twin/full mattress size before you cut.`,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances: affordances.includes("sleep-platforms")
+        ? affordances
+        : [...affordances, "sleep-platforms"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        cubbies: undefined,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "heavy",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "person",
+    },
+  };
+}
+
 function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const W = u.width;
@@ -1078,7 +1164,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildTable(spec, prompt);
   }
 
-  if (family === "bunk" || isBunkBed(prompt.toLowerCase()) || isLoftBed(prompt.toLowerCase()) || affordances.includes("sleep-platforms")) {
+  if (isDaybed(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Daybed") {
+    return buildDaybed(spec, prompt, affordances);
+  }
+
+  if (
+    family === "bunk" ||
+    isBunkBed(prompt.toLowerCase()) ||
+    isLoftBed(prompt.toLowerCase()) ||
+    (affordances.includes("sleep-platforms") && !isDaybed(prompt.toLowerCase()))
+  ) {
     return buildBunkBed(spec, prompt, affordances);
   }
 
@@ -1415,7 +1510,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildRadiatorCover(spec, prompt, affordances);
   }
 
-  if (spec.program === "bench" || family === "seat") {
+  if ((spec.program === "bench" || family === "seat") && !isDaybed(prompt.toLowerCase())) {
     const innerW = W - P * 2;
     const cubbyN =
       u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));

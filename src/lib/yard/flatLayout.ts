@@ -61,8 +61,12 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
       /\b(car|house|tree|star|rocket|heart|dog|boat|plane|flower|fish|person|kid|child|dinosaur|dino|castle|fort|monogram|butterfly|cat|frame|ladder|arrow)\b/.test(
         lower,
       ));
+  // Bamboo / craft picture frame is a stick-native flat frame — not a densified 3D scaffold box.
+  const craftPictureFrame =
+    /(?:picture|photo)\s*frame|craft\s*frame/.test(lower) &&
+    /bamboo|skewer|popsicle|craft\s*stick|jumbo/.test(lower);
 
-  if (!flatCue) return null;
+  if (!flatCue && !craftPictureFrame) return null;
 
   let paper: PaperSize = "letter";
   if (/8\s*[x×]\s*10|8x10/.test(lower)) paper = "8x10";
@@ -70,13 +74,14 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
   else if (/\ba4\b/.test(lower)) paper = "a4";
   else if (/\bletter\b/.test(lower)) paper = "letter";
 
-  let label = "Frame";
+  let label = craftPictureFrame ? "Picture frame" : "Frame";
   for (const s of SUBJECTS) {
     if (s.re.test(lower)) {
-      label = s.label;
+      label = craftPictureFrame && s.id === "frame" ? "Picture frame" : s.label;
       break;
     }
   }
+  if (craftPictureFrame) label = "Picture frame";
 
   return { paper, subject: label, isFlat: true };
 }
@@ -95,26 +100,44 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
           ? "Letter landscape"
           : "Letter";
 
+  const pictureFrame = /picture|photo/.test(prompt.toLowerCase()) || /picture frame/i.test(intent.subject);
+  const edgesKey = /frame/i.test(intent.subject) ? "frame" : intent.subject;
+  // Rebuild with edge key so "Picture frame" still uses the double-rectangle stick map.
+  const edgeInstances =
+    edgesKey !== intent.subject
+      ? segmentInstances(stickEdges(edgesKey), paper.w, paper.h, item)
+      : instances;
+  const useInstances = edgeInstances.length ? edgeInstances : instances;
+  const useStats = edgeInstances.length ? analyzePieces(edgeInstances, item) : stats;
+
   return {
     id: createId("proj"),
-    name: `${intent.subject} on ${paperLabel}`,
+    name: pictureFrame ? "Picture frame" : `${intent.subject} on ${paperLabel}`,
     prompt,
     kind: "figure" as StructureKind,
-    overall: { width: paper.w, height: paper.h, depth: Math.max(0.5, toPrimitive(item).height || 0.2) },
-    instances: withHome(instances),
+    overall: {
+      width: pictureFrame ? Math.min(paper.w, Math.max(8, toPrimitive(item).length || 4.5)) : paper.w,
+      height: pictureFrame ? Math.min(paper.h, Math.max(10, (toPrimitive(item).length || 4.5) * 1.2)) : paper.h,
+      depth: Math.max(0.5, toPrimitive(item).height || 0.2),
+    },
+    instances: withHome(useInstances),
     panels: [],
     primaryMaterialId: item.id,
     joinMethod: item.preferredJoins?.[0],
     notes: [
-      `2D stick layout · ${paperLabel} paper · ${intent.subject.toLowerCase()} in ${item.name}.`,
-      `${instances.length} whole sticks — no cutting. Glue ends where sticks meet.`,
-      stats.components <= 1
-        ? `Connected outline · ${stats.joints} glue joints`
-        : `Outline · ${stats.joints} glue joints · ${stats.components} clusters`,
-      "Print the 2D map → lay full sticks on the lines → glue ends → optional Convert to 3D.",
+      pictureFrame
+        ? `Picture frame · whole ${item.name} sticks — flat craft frame, not a 3D scaffold box.`
+        : `2D stick layout · ${paperLabel} paper · ${intent.subject.toLowerCase()} in ${item.name}.`,
+      `${useInstances.length} whole sticks — no cutting. Glue ends where sticks meet.`,
+      useStats.components <= 1
+        ? `Connected outline · ${useStats.joints} glue joints`
+        : `Outline · ${useStats.joints} glue joints · ${useStats.components} clusters`,
+      pictureFrame
+        ? "Lay whole sticks on the rectangle lines and glue the corners — do not densify into a tower or box frame."
+        : "Print the 2D map → lay full sticks on the lines → glue ends → optional Convert to 3D.",
     ],
     historic: false,
-    buildStats: stats,
+    buildStats: useStats,
     assumptions: {
       load: "light",
       use: "toy",

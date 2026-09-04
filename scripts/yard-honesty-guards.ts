@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { detectHouseFamily, identityTitleStem } from "../src/lib/yard/family";
+import { detectHouseFamily, identityTitleStem, isDaybed, isSofaConsoleTable } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -834,11 +834,136 @@ if (radiator.panels.filter((p) => /grille/i.test(p.name)).length < 5) {
 const radiatorPlan = buildPlan(radiator);
 if (!inspectHonesty(radiator, radiatorPlan).ok) failHonesty("radiator cover inspect", inspectHonesty(radiator, radiatorPlan).issues);
 
+
 console.log("HEIGHT10 FOLD + CANARIES OK", {
   laundryFold: { name: laundryFold.name, overall: laundryFold.overall, panels: laundryFold.panels.map((p) => p.name) },
   windowSeat: { name: windowSeat.name, overall: windowSeat.overall },
   radiator: { name: radiator.name, grille: radiator.panels.filter((p) => /grille/i.test(p.name)).length },
 });
+
+// Height-11: sofa/entry console table identity + daybed sleep+seat + bamboo craft frame honesty.
+for (const [prompt, stem] of [
+  ["sofa table 48 wide 30 high 14 deep", "Sofa table"],
+  ["console table 48 wide 30 high 14 deep", "Console table"],
+  ["entry console 48 wide 30 high 14 deep", "Entry console"],
+  ["daybed 75 wide 22 high 39 deep", "Daybed"],
+] as const) {
+  if (identityTitleStem(prompt) !== stem) failHonesty(`identityTitleStem(${prompt})`, identityTitleStem(prompt));
+}
+
+const sofaPrompt = "sofa table 48 wide 30 high 14 deep";
+const sofaHit = detectHouseFamily(sofaPrompt);
+if (!sofaHit || sofaHit.family !== "table" || !isSofaConsoleTable(sofaPrompt)) {
+  failHonesty("sofa table family", sofaHit);
+}
+const sofa = generateFromPrompt(sofaPrompt);
+if (!/^Sofa table/i.test(sofa.name)) failHonesty("sofa table title", sofa.name);
+if (!nearInch(sofa.overall.width, 48) || !nearInch(sofa.overall.height, 30) || !nearInch(sofa.overall.depth, 14)) {
+  failHonesty("sofa table overall", sofa.overall);
+}
+if (sofa.panels.filter((p) => /leg/i.test(p.name)).length < 4) failHonesty("sofa table missing legs", sofa.panels.map((p) => p.name));
+if (sofa.panels.filter((p) => /apron/i.test(p.name)).length < 4) failHonesty("sofa table missing aprons", sofa.panels.map((p) => p.name));
+if (sofa.panels.some((p) => p.type === "kick" || p.type === "door" || /bay/i.test(p.name))) {
+  failHonesty("sofa table grew media carcase parts", sofa.panels.map((p) => p.name));
+}
+const sofaPlan = buildPlan(sofa);
+if (!inspectHonesty(sofa, sofaPlan).ok) failHonesty("sofa table inspect", inspectHonesty(sofa, sofaPlan).issues);
+
+const entry = generateFromPrompt("entry console 48 wide 30 high 14 deep");
+if (!/^Entry console/i.test(entry.name)) failHonesty("entry console title", entry.name);
+if (detectHouseFamily("entry console 48 wide 30 high 14 deep")?.family !== "table") {
+  failHonesty("entry console lost table family", detectHouseFamily("entry console 48 wide 30 high 14 deep"));
+}
+// TV console must still be media — not stolen by console-table rule.
+const tvStill = generateFromPrompt("TV console 70 wide 30 tall 16 deep");
+if (!/^TV console/i.test(tvStill.name)) failHonesty("TV console title regression", tvStill.name);
+if (detectHouseFamily("TV console 70 wide 30 tall 16 deep")?.family === "table") {
+  failHonesty("TV console wrongly became table", detectHouseFamily("TV console 70 wide 30 tall 16 deep"));
+}
+
+const dayPrompt = "daybed 75 wide 22 high 39 deep";
+const dayHit = detectHouseFamily(dayPrompt);
+if (
+  !dayHit ||
+  dayHit.family !== "seat" ||
+  !dayHit.affordances.includes("sleep-platforms") ||
+  !isDaybed(dayPrompt)
+) {
+  failHonesty("daybed family", dayHit);
+}
+const daybed = generateFromPrompt(dayPrompt);
+if (!/^Daybed/i.test(daybed.name)) failHonesty("daybed title", daybed.name);
+if (!nearInch(daybed.overall.width, 75) || !nearInch(daybed.overall.height, 22) || !nearInch(daybed.overall.depth, 39)) {
+  failHonesty("daybed overall", daybed.overall);
+}
+const dayDecks = daybed.panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
+if (dayDecks.length !== 1) failHonesty("daybed needs exactly one sleep deck", daybed.panels.map((p) => p.name));
+if (!daybed.panels.some((p) => /backrest/i.test(p.name))) failHonesty("daybed missing backrest", daybed.panels.map((p) => p.name));
+if (daybed.panels.some((p) => p.type === "door" || p.type === "kick")) {
+  failHonesty("daybed grew door/toekick", daybed.panels.map((p) => `${p.type}:${p.name}`));
+}
+if (daybed.assumptions.installMode !== "freestanding") failHonesty("daybed mount", daybed.assumptions);
+const dayPlan = buildPlan(daybed);
+if (!inspectHonesty(daybed, dayPlan).ok) failHonesty("daybed inspect", inspectHonesty(daybed, dayPlan).issues);
+if (!dayPlan.instructions.some((s) => /sleep deck|backrest|daybed/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("daybed steps missing sleep deck language", dayPlan.instructions.map((s) => s.title));
+}
+if (dayPlan.instructions.some((s) => /two sleep platforms|lower first, then upper|loft sleep/i.test(`${s.title} ${s.description}`))) {
+  failHonesty("daybed steps stole bunk/loft language", dayPlan.instructions.map((s) => s.title));
+}
+// Protect bunk/loft freezes against daybed sleep-platforms routing.
+const bunkStill = generateFromPrompt("twin bunk bed");
+if (!/^Bunk bed/i.test(bunkStill.name) || bunkStill.panels.filter((p) => p.type === "deck").length < 2) {
+  failHonesty("bunk freeze after daybed", { name: bunkStill.name, decks: bunkStill.panels.filter((p) => p.type === "deck").length });
+}
+const loftStill = generateFromPrompt("twin loft bed");
+if (!/^Loft bed/i.test(loftStill.name) || loftStill.panels.filter((p) => p.type === "deck").length !== 1) {
+  failHonesty("loft freeze after daybed", { name: loftStill.name, decks: loftStill.panels.filter((p) => p.type === "deck").length });
+}
+
+const bambooFramePrompt = "picture frame from bamboo skewers";
+const bambooFrame = generateFromPrompt(bambooFramePrompt);
+if (!/^Picture frame/i.test(bambooFrame.name)) failWeekend("bamboo picture frame title", bambooFrame.name);
+if (bambooFrame.kind === "frame" && (bambooFrame.overall?.depth ?? 0) > 8) {
+  failWeekend("bamboo picture frame still densified 3D scaffold", bambooFrame.overall);
+}
+if (bambooFrame.primaryMaterialId !== "bamboo-skewer-12") {
+  failWeekend("bamboo picture frame stock", bambooFrame.primaryMaterialId);
+}
+if (bambooFrame.instances.length < 6 || bambooFrame.instances.length > 28) {
+  failWeekend("bamboo picture frame piece count", bambooFrame.instances.length);
+}
+if (bambooFrame.instances.some((i) => i.cutLength != null)) {
+  failWeekend("bamboo picture frame cut skewers");
+}
+if (bambooFrame.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
+  failWeekend("bamboo picture frame foreign members");
+}
+const bambooFramePlan = buildPlan(bambooFrame);
+if (bambooFramePlan.partsKind !== "whole") failWeekend("bamboo picture frame plan not whole", bambooFramePlan.partsKind);
+if (bambooFramePlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("bamboo picture frame buy list has wood screws", bambooFramePlan.bom.map((b) => b.name));
+}
+if (!bambooFramePlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("bamboo picture frame buy list missing glue", bambooFramePlan.bom.map((b) => b.name));
+}
+// Eiffel freeze still intact (no template steal into picture frame path).
+const eiffelStill = generateFromPrompt("3 foot Eiffel Tower from popsicle sticks");
+if (eiffelStill.kind !== "eiffel" || Math.abs(eiffelStill.overall.height - 37.4) > 2.5) {
+  failWeekend("eiffel freeze after bamboo frame", { kind: eiffelStill.kind, h: eiffelStill.overall.height });
+}
+
+console.log("HEIGHT11 CANARIES OK", {
+  sofa: { name: sofa.name, overall: sofa.overall },
+  entry: { name: entry.name, overall: entry.overall },
+  daybed: { name: daybed.name, overall: daybed.overall, decks: dayDecks.length },
+  bambooFrame: { name: bambooFrame.name, pieces: bambooFrame.instances.length, stock: bambooFrame.primaryMaterialId, depth: bambooFrame.overall.depth },
+  tvStill: tvStill.name,
+  bunkStill: bunkStill.name,
+  loftStill: loftStill.name,
+  eiffelH: eiffelStill.overall.height,
+});
+
 
 
 const bunkPrompt = "twin bunk bed";

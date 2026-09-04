@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -97,6 +97,11 @@ export function isLaundryFoldDown(lower: string) {
 export function isRadiatorCover(lower: string) {
   return /radiator/.test(lower);
 }
+/** Sofa / entry / console table — shallow table, not a TV media carcase. */
+export function isSofaConsoleTable(lower: string) {
+  return /sofa\s*table|console\s*table|entry\s*console/.test(lower);
+}
+
 
 function isMedicine(lower: string) {
   return /medicine/.test(lower);
@@ -156,6 +161,12 @@ export function isLoftBed(lower: string) {
   if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower)) return false;
   return /\bloft\s*beds?\b/.test(lower);
 }
+/** Daybed — one sleep deck you can sit on; not a bunk/loft stack. */
+export function isDaybed(lower: string) {
+  if (isBunkBed(lower) || isLoftBed(lower)) return false;
+  return /\bday\s*beds?\b/.test(lower);
+}
+
 
 /**
  * Stable display stem from family detectors — used by parse + house-brief merge
@@ -169,6 +180,12 @@ export function identityTitleStem(lower: string): string | null {
   if (isLaundryFoldDown(lower)) return "Laundry fold-down";
   if (/window seat/.test(lower)) return "Window seat";
   if (isRadiatorCover(lower)) return "Radiator cover";
+  if (isDaybed(lower)) return "Daybed";
+  if (isSofaConsoleTable(lower)) {
+    if (/sofa\s*table/.test(lower)) return "Sofa table";
+    if (/entry\s*console/.test(lower)) return "Entry console";
+    return "Console table";
+  }
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
@@ -177,6 +194,8 @@ export function identityTitleStem(lower: string): string | null {
 
 /** Keep TV / media console identity — never a naked "Media". */
 export function mediaIdentityLabel(lower: string): string | null {
+  // Sofa / entry / console tables are tables — never steal Media console identity.
+  if (isSofaConsoleTable(lower)) return null;
   if (!/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment/.test(lower)) return null;
   if (/entertainment\s*cent(?:er|re)/.test(lower)) return "Entertainment center";
   if (/\btv\b/.test(lower) && /console/.test(lower)) return "TV console";
@@ -196,9 +215,11 @@ function programFromNoun(lower: string): FittedProgram {
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
   if (/nightstand|bedside/.test(lower)) return "storage";
-  if (/\btable\b/.test(lower) && !/work table|console table/.test(lower)) return "table";
+  if (isSofaConsoleTable(lower)) return "table";
+  if (isDaybed(lower)) return "bench";
+  if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
-  if (/\bmudroom\b|window seat/.test(lower)) return "bench";
+  if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower) && !/workbench/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
@@ -241,10 +262,12 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
 
-  const sit = (/\bbench\b|window seat|mudroom|\bseat\b/.test(lower) && !/workbench/.test(lower));
+  const sit =
+    isDaybed(lower) ||
+    ((/\bbench\b|window seat|mudroom|\bseat\b/.test(lower) && !/workbench/.test(lower)));
   const work =
     (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
-      !/console table|bedside table|night table/.test(lower));
+      !/console table|sofa table|entry console|bedside table|night table/.test(lower));
   const hangUse =
     (/coat/.test(lower) && /rack|hook|peg/.test(lower)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower));
@@ -265,6 +288,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   let family: HouseFamily;
   if (mount === "straddle" || isOverToilet(lower)) family = "straddle";
   else if (isBunkBed(lower) || isLoftBed(lower)) family = "bunk";
+  else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower)) family = "slab";
   // Fold-down is a hung board in a shallow cabinet — not a freestanding table,
   // even if someone said "fold-down table". "Laundry folding table" stays table
@@ -282,7 +306,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (wantsJars(lower) || isSpiceRack(lower)) add("jar-lips");
   if (wantsBottles(lower) || isWineRack(lower)) add("bottle-rails");
   if (fold || isIroning(lower)) add("fold-down-board");
-  if (program === "bench" || /cubb/.test(lower) || (sit && family === "seat")) add("cubbies");
+  if (!isDaybed(lower) && (program === "bench" || /cubb/.test(lower) || (sit && family === "seat"))) add("cubbies");
   // Floor shoe storage → cubbies / open bays (not bookcase pin shelves).
   if (wantsShoes(lower) && (family === "floor-carcase" || family === "seat" || /rack|cubb/.test(lower))) {
     add("cubbies");
@@ -321,7 +345,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   ) {
     add("cleats");
   }
-  if (family === "bunk" || isBunkBed(lower) || isLoftBed(lower)) add("sleep-platforms");
+  if (family === "bunk" || isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower)) add("sleep-platforms");
 
   return { family, mount, use, opening, affordances, program };
 }

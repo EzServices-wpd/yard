@@ -134,6 +134,24 @@ export const IDEAS: Idea[] = [
     blurb: "Sittable seat over open bays. Cubbies carry the span.",
   },
   {
+    id: "sofatable",
+    group: "house",
+    section: "Sit and work",
+    label: "Sofa table",
+    size: "48 × 30 × 14",
+    prompt: "sofa table 48 wide 30 high 14 deep",
+    blurb: "Shallow table behind the sofa — not a TV media console.",
+  },
+  {
+    id: "daybed",
+    group: "house",
+    section: "Sit and work",
+    label: "Daybed",
+    size: "75 × 22 × 39",
+    prompt: "daybed 75 wide 22 high 39 deep",
+    blurb: "One sleep deck with a backrest. Sit or sleep — not a bunk stack.",
+  },
+  {
     id: "round",
     group: "house",
     section: "Sit and work",
@@ -391,6 +409,16 @@ export const IDEAS: Idea[] = [
     prompt: "4 foot bridge from plastic drinking straws",
     blurb: "Single stock, Warren truss, densified deck. Drinking straws — not a lumber aisle.",
     stock: "from drinking straws",
+  },
+  {
+    id: "bambooframe",
+    group: "weekend",
+    section: "Weekend",
+    label: "Bamboo picture frame",
+    size: "craft frame",
+    prompt: "picture frame from bamboo skewers",
+    blurb: "Whole skewers on a flat rectangle. Glue corners — not a 3D scaffold box.",
+    stock: "from bamboo skewers",
   },
 ];
 
