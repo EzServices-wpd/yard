@@ -138,7 +138,9 @@ export function buildFormGraph(
         ring(0);
         ring(4);
         for (let i = 0; i < 4; i++) addEdge(ids[i], ids[i + 4], "leg", true);
-        if (!memberBuilt) {
+        // Fat lumber frames stay member-built (cut list). Thin craft stock gets face braces
+        // so a named-stock weekend frame densifies at catalog pitch, not a hollow cube.
+        if (!memberBuilt || (kind === "frame" && !policy.fat)) {
           for (let i = 0; i < 4; i++) addEdge(ids[i], ids[4 + ((i + 1) % 4)], "brace", false, braceJoin);
         }
         return;
@@ -239,7 +241,10 @@ export function buildFormGraph(
       case "poly": {
         if (op.points.length < 2) return;
         const portal = recipe.kind === "arch";
-        const pts = policy.fat || portal || memberBuilt ? op.points : resampleStroke(op.points, policy.bay);
+        // Fat lumber / arch portal / ladder-like frames keep intentional members.
+        // Thin craft weekend frames + figures densify the stroke at stock bay.
+        const keepMembers = policy.fat || portal || (memberBuilt && kind !== "frame" && kind !== "figure");
+        const pts = keepMembers ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
         return;
@@ -339,6 +344,7 @@ export function buildFormGraph(
   const finished = finishGraph(raw, item, kind, !!opts.includeSpine, opts.grain ?? 1);
   const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
   let g = finished.graph;
+  // Arch / bridge / Eiffel stay intentional wires. Thin weekend frames densify at stock pitch.
   const keepWire =
     kind === "arch" ||
     kind === "bridge" ||
@@ -352,19 +358,19 @@ export function buildFormGraph(
     kind === "custom" ||
     kind === "furniture" ||
     kind === "ladder" ||
-    kind === "frame" ||
+    (kind === "frame" && policy.fat) ||
     kind === "figure";
   if (!keepWire) {
     g = densifyTriangles(
       g,
       kind,
       Math.max(policy.bay * 1.8, policy.faceStep * 2.5),
-      fig ? 12 : 28,
+      fig ? 12 : kind === "frame" ? 36 : 28,
     );
   }
-  if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && kind !== "frame") {
+  if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && !(kind === "frame" && policy.fat)) {
     const topo = pruneTopology(g, kind, {
-      aggressiveness: fig ? 0.1 : keepWire ? 0.15 : 0.32,
+      aggressiveness: fig ? 0.1 : kind === "frame" ? 0.12 : keepWire ? 0.15 : 0.32,
     });
     g = {
       ...topo.graph,

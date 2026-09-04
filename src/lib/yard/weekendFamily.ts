@@ -38,7 +38,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|easel|scaffold/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|easel|scaffold|\bladder\b/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -55,7 +55,8 @@ function isNotWeekend(lower: string) {
   if (detectHouseFamily(lower)) return true;
   if (isWindowPrompt(lower)) return true;
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
-  if (/ladder|stairs|staircase/.test(lower)) return true;
+  // Ladder is a weekend frame (lumber cut-list or craft sticks). Stairs stay out.
+  if (/stairs|staircase/.test(lower)) return true;
   if (/birdhouse/.test(lower)) return true;
   if (/planter|raised (garden )?bed|garden box/.test(lower)) return true;
   if (HISTORIC_SPECIAL.test(lower)) return true;
@@ -117,7 +118,16 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
   }
 
   if (FRAME_NOUN.test(hay)) {
-    return { family: "frame", kind: "frame", name: "Frame" };
+    const name = /catapult|trebuchet/.test(hay)
+      ? "Catapult"
+      : /\bladder\b/.test(hay)
+        ? "Ladder"
+        : /easel/.test(hay)
+          ? "Easel"
+          : /scaffold/.test(hay)
+            ? "Scaffold"
+            : "Frame";
+    return { family: "frame", kind: "frame", name };
   }
 
   if (FIGURE_NOUN.test(hay)) {

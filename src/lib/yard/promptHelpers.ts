@@ -85,10 +85,13 @@ function isLumberPair(a: number, b: number, c?: number): boolean {
 
 export function hasExplicitSize(prompt: string): boolean {
   const lower = prompt.toLowerCase();
+  const dim = stripLumberStock(lower);
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
-  if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(stripLumberStock(lower))) return true;
-  const pair = stripLumberStock(lower).match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
+  // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
+  if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim)) return true;
+  const pair = dim.match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]))) return true;
   return false;
 }
@@ -106,7 +109,8 @@ export function defaultSizeFor(
     const span = parseFloat(ftLen[1]) * 12;
     return { width: span, height: 30, depth: Math.max(size.depth, 24) };
   }
-  if (explicit && kind === "ladder" && ftLen && !/wide|deep/.test(lower)) {
+  const ladderLike = kind === "ladder" || (kind === "frame" && /\bladder\b/.test(lower));
+  if (explicit && ladderLike && ftLen && !/wide|deep/.test(lower)) {
     return { width: 18, depth: 6, height: parseFloat(ftLen[1]) * 12 };
   }
   if (explicit) return size;
@@ -118,7 +122,7 @@ export function defaultSizeFor(
     if (/\bbed\b/.test(lower)) return { width: 80, depth: 54, height: 18 };
     return { width: 36, depth: 18, height: 30 };
   }
-  if (kind === "ladder") return { width: 18, depth: 6, height: 96 };
+  if (ladderLike) return { width: 18, depth: 6, height: 96 };
   if (/birdhouse/.test(lower)) return { width: 8, depth: 8, height: 12 };
   if (kind === "castle") return { width: 24, depth: 24, height: 20 };
   if (kind === "house") return { width: 24, depth: 18, height: 22 };

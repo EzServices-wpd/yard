@@ -34,6 +34,7 @@ import {
   archOps,
   ladderOps,
   frameOps,
+  catapultFrameOps,
   chairOps,
   tableOps,
   bedOps,
@@ -91,7 +92,7 @@ const HITS: Hit[] = [
   { re: /castle|fort|keep|battlement|turret/, kind: "castle", name: "Castle", build: castleOps },
   { re: /bridge|span/, kind: "bridge", name: "Bridge", build: bridgeOps },
   { re: /birdhouse/, kind: "house", name: "Birdhouse", build: houseOps },
-  { re: /ladder|stairs|staircase/, kind: "ladder", name: "Ladder", build: ladderOps },
+  { re: /stairs|staircase/, kind: "ladder", name: "Stairs", build: ladderOps },
   { re: /planter|raised (garden )?bed|garden box/, kind: "furniture", name: "Planter", build: benchOps },
   { re: /ramp|half-?pipe/, kind: "custom", name: "Ramp", build: frameOps },
   { re: /cabin|shed|hut|cottage|barn|(?<!opera )house/, kind: "house", name: "House", build: houseOps },
@@ -222,11 +223,24 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       ops: named ? goldenGateOps(fitSuspension(size, prompt)) : bridgeOps(size),
     };
   }
+  const lower = prompt.toLowerCase();
+  const frameOpsFor =
+    /\bladder\b/.test(lower)
+      ? ladderOps(size)
+      : /catapult|trebuchet/.test(lower)
+        ? catapultFrameOps(size)
+        : frameOps(size);
   return {
     name: hit.name,
     kind: "frame",
-    notes: ["Simple frame in the named craft stock."],
-    ops: frameOps(size),
+    notes: [
+      /\bladder\b/.test(lower)
+        ? "Ladder frame · rails + rungs at the named stock (cut list OK for lumber)."
+        : /catapult|trebuchet/.test(lower)
+          ? "Catapult frame · base, uprights, throwing arm — densified at the named stock."
+          : "Simple frame in the named craft stock.",
+    ],
+    ops: frameOpsFor,
   };
 }
 

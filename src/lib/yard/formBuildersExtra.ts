@@ -111,6 +111,86 @@ export function frameOps(s: Size3): FormOp[] {
   return [{ op: "box", x: 0, y: s.height / 2, z: 0, w: s.width, h: s.height, d: s.depth, role: "leg" }];
 }
 
+/**
+ * Catapult / trebuchet as a weekend frame — not a noun .ts file.
+ * Base rails, twin uprights, cross axle, throwing arm.
+ */
+export function catapultFrameOps(s: Size3): FormOp[] {
+  const H = Math.max(s.height, 12);
+  const W = Math.max(s.width, Math.min(H * 1.15, 48), 14);
+  const D = Math.max(s.depth, Math.min(H * 0.7, 36), 10);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -D / 2;
+  const z1 = D / 2;
+  const axleY = H * 0.55;
+  const postH = H * 0.62;
+  return [
+    // Base rectangle
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z0 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z1 }, { x: x0, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z1 }, { x: x0, y: 0, z: z0 }] },
+    // Twin uprights (A-ish) on each side
+    { op: "column", x: x0 * 0.35, z: z0 * 0.15, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: x1 * 0.35, z: z0 * 0.15, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: x0 * 0.35, z: z1 * 0.15, y0: 0, y1: postH, role: "leg" },
+    { op: "column", x: x1 * 0.35, z: z1 * 0.15, y0: 0, y1: postH, role: "leg" },
+    // Axle / cross bar at pivot height
+    {
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: x0 * 0.35, y: axleY, z: 0 },
+        { x: x1 * 0.35, y: axleY, z: 0 },
+      ],
+    },
+    // Side braces
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: x0 * 0.35, y: 0, z: z0 * 0.15 },
+        { x: x0 * 0.35, y: axleY, z: 0 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: x1 * 0.35, y: 0, z: z0 * 0.15 },
+        { x: x1 * 0.35, y: axleY, z: 0 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: x0 * 0.35, y: 0, z: z1 * 0.15 },
+        { x: x0 * 0.35, y: axleY, z: 0 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: x1 * 0.35, y: 0, z: z1 * 0.15 },
+        { x: x1 * 0.35, y: axleY, z: 0 },
+      ],
+    },
+    // Throwing arm — long stick from rear base over the axle to the tip
+    {
+      op: "poly",
+      role: "leg",
+      points: [
+        { x: 0, y: H * 0.08, z: z1 * 0.85 },
+        { x: 0, y: axleY, z: 0 },
+        { x: 0, y: H * 0.92, z: z0 * 0.95 },
+      ],
+    },
+  ];
+}
+
 export function towerOps(s: Size3): FormOp[] {
   return [taper(0, s.height, s.width * 0.45, s.width * 0.18, 6, "leg")];
 }

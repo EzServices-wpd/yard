@@ -399,7 +399,11 @@ expectWeekend("bridge from straws", "truss", { override: "bridge" });
 expectWeekend("dinosaur from popsicle sticks", "figure", { kind: "figure" });
 expectWeekend("giraffe from popsicle sticks", "figure");
 expectWeekend("box from popsicle sticks", "frame", { kind: "frame" });
-expectWeekend("catapult from popsicle sticks", "frame");
+expectWeekend("catapult from popsicle sticks", "frame", { kind: "frame" });
+expectWeekend("2 foot catapult from popsicle sticks", "frame", { kind: "frame" });
+expectWeekend("ladder from 2x4", "frame", { kind: "frame" });
+expectWeekend("6 foot ladder from 2x4", "frame", { kind: "frame" });
+expectWeekend("bridge from bamboo skewers", "truss", { override: "bridge", kind: "bridge" });
 
 if (detectWeekendFamily("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep")) {
   failWeekend("linen should not be a weekend family");
@@ -467,6 +471,79 @@ if (craftBox.kind !== "frame" || craftBox.primaryMaterialId !== "popsicle-standa
   failWeekend("craft box family", { kind: craftBox.kind, stock: craftBox.primaryMaterialId });
 }
 
+
+const catapult = generateFromPrompt("catapult from popsicle sticks");
+if (catapult.kind !== "frame" || catapult.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("catapult family/stock", { kind: catapult.kind, stock: catapult.primaryMaterialId });
+}
+if (catapult.name !== "Catapult") failWeekend("catapult name", catapult.name);
+if (catapult.instances.some((i) => i.cutLength != null)) failWeekend("catapult cut popsicle sticks");
+if (catapult.instances.length < 40) failWeekend("catapult too sparse", catapult.instances.length);
+const catapultPlan = buildPlan(catapult);
+if (catapultPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
+  failWeekend("catapult buy list has wood screws", catapultPlan.bom.map((b) => b.name));
+}
+if (!catapultPlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("catapult buy list missing glue", catapultPlan.bom.map((b) => b.name));
+}
+if (catapultPlan.partsKind !== "whole") failWeekend("catapult plan not whole", catapultPlan.partsKind);
+const catapultInspect = inspectWeekendHonesty(catapult, catapultPlan);
+if (!catapultInspect.ok) failWeekend("catapult inspect", catapultInspect.issues);
+
+const catapult2 = generateFromPrompt("2 foot catapult from popsicle sticks");
+if (catapult2.kind !== "frame" || catapult2.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("2ft catapult", { kind: catapult2.kind, stock: catapult2.primaryMaterialId });
+}
+if (Math.abs(catapult2.overall.height - 24) > 8) {
+  failWeekend("2ft catapult height drifted", catapult2.overall);
+}
+if (catapult2.instances.some((i) => i.cutLength != null)) failWeekend("2ft catapult cut popsicle");
+
+const ladder = generateFromPrompt("ladder from 2x4");
+if (ladder.kind !== "frame" || ladder.primaryMaterialId !== "lumber-2x4-8") {
+  failWeekend("ladder family/stock", { kind: ladder.kind, stock: ladder.primaryMaterialId, family: detectWeekendFamily("ladder from 2x4") });
+}
+if (ladder.name !== "Ladder") failWeekend("ladder name", ladder.name);
+const ladderPlan = buildPlan(ladder);
+if (ladderPlan.partsKind === "whole") failWeekend("ladder lumber should allow cut list", ladderPlan.partsKind);
+if (!ladderPlan.bom.some((b) => /screw/i.test(b.name))) {
+  failWeekend("ladder buy list missing screws", ladderPlan.bom.map((b) => b.name));
+}
+if (ladder.joinMethod && ladder.joinMethod !== "screw" && !["screw", "nail", "glue"].includes(ladder.joinMethod)) {
+  failWeekend("ladder join", ladder.joinMethod);
+}
+const ladderInspect = inspectWeekendHonesty(ladder, ladderPlan);
+if (!ladderInspect.ok) failWeekend("ladder inspect", ladderInspect.issues);
+
+const ladder6 = generateFromPrompt("6 foot ladder from 2x4");
+if (ladder6.kind !== "frame" || ladder6.primaryMaterialId !== "lumber-2x4-8") {
+  failWeekend("6ft ladder", { kind: ladder6.kind, stock: ladder6.primaryMaterialId });
+}
+if (Math.abs(ladder6.overall.height - 72) > 8) {
+  failWeekend("6ft ladder height drifted", ladder6.overall);
+}
+const ladder6Plan = buildPlan(ladder6);
+const ladder6Inspect = inspectWeekendHonesty(ladder6, ladder6Plan);
+if (!ladder6Inspect.ok) failWeekend("6ft ladder inspect", ladder6Inspect.issues);
+
+const bambooBridge = generateFromPrompt("bridge from bamboo skewers");
+if (bambooBridge.kind !== "bridge" || bambooBridge.primaryMaterialId !== "bamboo-skewer-12") {
+  failWeekend("bamboo bridge", { kind: bambooBridge.kind, stock: bambooBridge.primaryMaterialId });
+}
+if (bambooBridge.instances.length < 80) {
+  failWeekend("bamboo bridge not densified at skewer", bambooBridge.instances.length);
+}
+if (bambooBridge.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
+  failWeekend("bamboo bridge foreign members");
+}
+const bambooPlan = buildPlan(bambooBridge);
+if (bambooPlan.partsKind !== "whole") failWeekend("bamboo bridge plan not whole", bambooPlan.partsKind);
+if (!bambooPlan.bom.some((b) => /glue/i.test(b.name))) {
+  failWeekend("bamboo bridge missing glue", bambooPlan.bom.map((b) => b.name));
+}
+const bambooInspect = inspectWeekendHonesty(bambooBridge, bambooPlan);
+if (!bambooInspect.ok) failWeekend("bamboo bridge inspect", bambooInspect.issues);
+
 console.log("WEEKEND STRUCTURE FAMILIES OK", {
   eiffel: { family: detectWeekendFamily("3 foot Eiffel Tower from popsicle sticks")?.family, override: "eiffel", kind: eiffel.kind },
   novelTower: { kind: novelTower.kind, h: novelTower.overall.height, pieces: novelTower.instances.length, stock: novelTower.primaryMaterialId },
@@ -474,6 +551,9 @@ console.log("WEEKEND STRUCTURE FAMILIES OK", {
   spaceFrame: { kind: spaceFrame.kind, pieces: spaceFrame.instances.length },
   dino: dino.kind,
   box: craftBox.kind,
+  catapult: { kind: catapult.kind, name: catapult.name, pieces: catapult.instances.length, h: catapult2.overall.height },
+  ladder: { kind: ladder.kind, name: ladder.name, stock: ladder.primaryMaterialId, h6: ladder6.overall.height, join: ladder.joinMethod },
+  bamboo: { kind: bambooBridge.kind, pieces: bambooBridge.instances.length, stock: bambooBridge.primaryMaterialId },
 });
 
 const coat = generateFromPrompt("coat rack 36 wide 6 high 8 deep");
