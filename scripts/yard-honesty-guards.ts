@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { detectHouseFamily, identityTitleStem, isDaybed, isSofaConsoleTable } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isDaybed, isSofaConsoleTable } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -737,6 +737,66 @@ const upperRecovered = buildFitted(
   "kitchen upper cabinet 30 wide",
 );
 if (!/^Upper cabinet/i.test(upperRecovered.name)) failHonesty("Storage wipe recovery for kitchen upper", upperRecovered.name);
+
+// Climb/step stool identity survives plywood densify + stolen Bench fittedOverride.
+for (const [prompt, stem] of [
+  ['weekend craft: step-up stool — one climb step, 8" rise × 10" run, holds a kid standing to reach a shelf', "Step stool"],
+  ["step-up stool one climb step 8 inch rise x 10 inch run", "Step stool"],
+  ["one climb step 8 rise × 10 run holds a kid standing", "Step stool"],
+] as const) {
+  if (identityTitleStem(prompt.toLowerCase()) !== stem) {
+    failHonesty(`identityTitleStem climb(${prompt})`, identityTitleStem(prompt.toLowerCase()));
+  }
+  if (climbIdentityLabel(prompt.toLowerCase()) !== stem) {
+    failHonesty(`climbIdentityLabel(${prompt})`, climbIdentityLabel(prompt.toLowerCase()));
+  }
+}
+// Linen + climb step-shelf stays Closet — not Step stool. Bare benches stay Bench.
+if (climbIdentityLabel("house: linen 31.5×78×16 with one climb step-shelf (weight-bearing mid height) to reach the top".toLowerCase())) {
+  failHonesty("linen climb step-shelf must not claim Step stool identity");
+}
+if (climbIdentityLabel("mudroom bench 48 wide".toLowerCase())) {
+  failHonesty("mudroom bench must not claim climb identity");
+}
+if (climbIdentityLabel("bench 48 wide")) {
+  failHonesty("bare bench claimed climb stem");
+}
+const climbPrompt =
+  'weekend craft: step-up stool — one climb step, 8" rise × 10" run, holds a kid standing to reach a shelf';
+const climbProj = generateFromPrompt(climbPrompt);
+if (!/^Step stool/i.test(climbProj.name)) failHonesty("climb step-up title", climbProj.name);
+if (climbProj.fitted?.program === "bench") failHonesty("climb step-up became fitted Bench", climbProj.fitted);
+const climbPlan = buildPlan(climbProj);
+const climbBlob = [
+  climbProj.name,
+  ...(climbProj.notes || []),
+  ...climbPlan.instructions.map((s) => `${s.title} ${s.description}`),
+].join("\n");
+if (!/weight-bearing|climb (?:step|tread)|8[^\n]{0,16}rise|rise[^\n]{0,16}8/i.test(climbBlob)) {
+  failHonesty("climb language missing on step-up stool", climbBlob.slice(0, 400));
+}
+// Stolen Bench fittedOverride must not wipe climb identity (house-brief / Measure flake).
+const stolenBench = {
+  program: "bench" as const,
+  name: 'Bench 16" × 8" × 10"',
+  opening: { width: 16, height: 8, depth: 10, kind: "room" as const },
+  unit: { width: 16, height: 8, depth: 10, doors: false, centered: true },
+};
+const climbRecovered = generateFromPrompt(climbPrompt, "plywood-3-4-4x8", undefined, {
+  fittedOverride: stolenBench,
+});
+if (!/^Step stool/i.test(climbRecovered.name)) {
+  failHonesty("climb title after stolen Bench densify", climbRecovered.name);
+}
+if (climbRecovered.fitted?.program === "bench") {
+  failHonesty("climb still fitted Bench after densify", climbRecovered.fitted);
+}
+const realBench = generateFromPrompt("mudroom bench 48 wide");
+if (!/bench/i.test(realBench.name)) failHonesty("mudroom bench title broke", realBench.name);
+const linenClimb = generateFromPrompt(
+  "house: linen 31.5×78×16 with one climb step-shelf (weight-bearing mid height) to reach the top; freeze dims stay green",
+);
+if (!/Closet|Linen/i.test(linenClimb.name)) failHonesty("linen+climb title", linenClimb.name);
 
 const loftPrompt = "twin loft bed";
 const loftHit = detectHouseFamily(loftPrompt);

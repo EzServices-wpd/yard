@@ -11,7 +11,9 @@ import { toPrimitive } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { defaultGhostFlags } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
+import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize } from "./space";
+import { detectWeekendMech } from "./weekendFamily";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
@@ -405,6 +407,19 @@ export const useYard = create<YardState>((set, get) => ({
       return;
     }
     if (project.fitted) {
+      // Stolen Bench fitted on a climb/step stool — rebuild weekend form, keep Measure size.
+      if (climbIdentityLabel((project.prompt || prompt).toLowerCase())) {
+        const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
+          sizeOverride: {
+            width: widthIn,
+            height: heightIn,
+            depth: depth ?? project.fitted.unit.depth,
+          },
+          joinMethod: project.joinMethod,
+        });
+        if (built) get().commit(built);
+        return;
+      }
       const spec = {
         ...project.fitted,
         opening: {
@@ -459,6 +474,26 @@ export const useYard = create<YardState>((set, get) => ({
         },
         prompt,
       );
+      if (built) get().commit(built);
+      return;
+    }
+    // Weekend climb / launcher / media-hold — Measure refits size, never closet→Bench.
+    const weekendMech = detectWeekendMech(project.prompt || prompt);
+    if (
+      climbIdentityLabel((project.prompt || prompt).toLowerCase()) ||
+      weekendMech === "climb" ||
+      weekendMech === "launcher" ||
+      weekendMech === "media-hold"
+    ) {
+      const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
+        sizeOverride: {
+          width: widthIn,
+          height: heightIn,
+          depth: depth ?? project.overall.depth,
+        },
+        joinMethod: project.joinMethod,
+        includeSpine: project.supportOffer?.included,
+      });
       if (built) get().commit(built);
       return;
     }

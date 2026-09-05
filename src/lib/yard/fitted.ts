@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -65,8 +65,12 @@ export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
   if (looksLikePocket(prompt)) return true;
   if (isOverToilet(lower)) return true;
-  if (detectWeekendMech(prompt)) return false;
-  if (/step-?up|climb\s+step|rise\s*[×xby]\s*.*run|weight-bearing\s+climb/.test(lower)) return false;
+  // Climb-primary stools / launcher / media-hold are craft — not fitted.
+  // Linen/closet with a climb step-shelf still fitted (climbIdentityLabel null).
+  if (climbIdentityLabel(lower)) return false;
+  const weekendMech = detectWeekendMech(prompt);
+  if (weekendMech === "launcher" || weekendMech === "media-hold") return false;
+  if (weekendMech === "climb" && !detectHouseFamily(prompt)) return false;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
   const dimText = lower

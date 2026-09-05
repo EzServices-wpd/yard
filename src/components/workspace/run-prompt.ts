@@ -4,10 +4,11 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { identityTitleStem } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
+import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
@@ -15,14 +16,26 @@ const HOUSE_HINT =
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;
+  const lower = prompt.toLowerCase();
+  // Climb/step stools: "reach a shelf" must not house-steal into Bench after densify.
+  if (climbIdentityLabel(lower)) return false;
+  // Launcher / media-hold weekend mechs stay craft — linen+climb step-shelf still house via family.
+  const mech = detectWeekendMech(prompt);
+  if (mech && !looksLikeFitted(prompt) && !detectHouseFamily(prompt)) return false;
   if (looksLikeFitted(prompt)) return true;
   return HOUSE_HINT.test(prompt);
 }
 
 /** Numbers and form the user actually said beat the house-brief few-shot. */
 function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: FittedSpec): FittedSpec {
-  if (!parsed) return brief;
   const lower = prompt.toLowerCase();
+  if (!parsed) {
+    // Identity stems still win when local parse missed (climb/shoe/kitchen).
+    const identity = identityTitleStem(lower);
+    if (!identity) return brief;
+    const { width, height, depth } = brief.unit;
+    return { ...brief, name: `${identity} ${width}" × ${height}" × ${depth}"` };
+  }
   const saidWide = /wide|width/.test(lower);
   const saidDeep = /deep|depth/.test(lower);
   const saidTall = /tall|high|height/.test(lower);

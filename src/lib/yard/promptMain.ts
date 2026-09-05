@@ -6,7 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { detectHouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily } from "./family";
 import { climbRiseRun, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -80,7 +80,9 @@ export function generateFromPrompt(
   const scale = opts.scale ?? "full";
   const grain = scale === "weekend" ? 1.85 : 1;
 
-  if (opts.fittedOverride) {
+  // Climb/step stool identity beats a stolen Bench fittedOverride from house-brief / Measure.
+  // Linen/closet with climb step-shelf still accepts fitted (climbIdentityLabel is null).
+  if (opts.fittedOverride && !climbIdentityLabel(lower)) {
     return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit);
   }
 
@@ -88,10 +90,14 @@ export function generateFromPrompt(
     const unit = pickWindow(prompt, size.width, size.height);
     return buildWindowProject(unit, prompt);
   }
-  const climbCue = /step-?up|climb\s+step|rise\s*[×xby]\s*.*run|weight-bearing\s+climb/.test(lower);
+  const climbPrimary = !!climbIdentityLabel(lower);
+  const weekendMech = detectWeekendMech(prompt);
+  // Launcher / media-hold stay craft. Climb-primary stools stay craft.
+  // House carcase + climb step-shelf (linen) still fitted via detectHouseFamily.
   if (
-    !detectWeekendMech(prompt) &&
-    !climbCue &&
+    !climbPrimary &&
+    weekendMech !== "launcher" &&
+    weekendMech !== "media-hold" &&
     (kindHint === "closet" || looksLikeFitted(prompt) || detectHouseFamily(prompt))
   ) {
     const brief = parseBrief(prompt);

@@ -177,6 +177,34 @@ export function isDaybed(lower: string) {
 
 
 /**
+ * Climb / step-up stool identity — survives house-brief merge and Measure/stock densify.
+ * Closet/linen with a climb step-shelf stays Closet (not Step stool). Bare benches stay Bench.
+ */
+export function climbIdentityLabel(lower: string): string | null {
+  // House carcase + mid climb step-shelf is an add-on — keep Closet / linen / desk titles.
+  if (
+    /linen|closet|wardrobe|pantry|bookcase|\bdesk\b|\bvanity\b|cabinet|mudroom|nightstand|dresser|alcove|built-?in|sideboard|credenza/.test(
+      lower,
+    )
+  ) {
+    return null;
+  }
+  // Real benches stay Bench — only climb/step stools claim this stem.
+  if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|step\s*stool/.test(lower)) return null;
+  if (
+    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing/.test(
+      lower,
+    )
+  ) {
+    return null;
+  }
+  if (/step-?up|stool/.test(lower)) return "Step stool";
+  if (/step-?shelf/.test(lower)) return "Step shelf";
+  if (/\bladder\b/.test(lower)) return "Ladder";
+  return "Step stool";
+}
+
+/**
  * Stable display stem from family detectors — used by parse + house-brief merge
  * so typed width cannot wipe "Base cabinet" down to naked "Storage".
  */
@@ -197,6 +225,9 @@ export function identityTitleStem(lower: string): string | null {
   // Desk / vanity work surfaces win over a trailing "media shelf" add-on.
   if (/\bdesk\b|workbench|work table/.test(lower)) return "Desk";
   if (/\bvanity\b/.test(lower)) return "Vanity";
+  // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
+  const climb = climbIdentityLabel(lower);
+  if (climb) return climb;
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
