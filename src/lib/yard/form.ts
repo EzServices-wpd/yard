@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, figureIdentityLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -34,6 +34,7 @@ import {
   archOps,
   ladderOps,
   frameOps,
+  launcherFrameOps,
   catapultFrameOps,
   chairOps,
   tableOps,
@@ -229,22 +230,31 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
     };
   }
   const lower = prompt.toLowerCase();
+  const mech = detectWeekendMech(lower) ?? detectWeekendMech(prompt);
   const frameOpsFor =
-    /\bladder\b/.test(lower)
+    mech === "climb"
       ? ladderOps(size)
-      : /catapult|trebuchet/.test(lower)
-        ? catapultFrameOps(size)
+      : mech === "launcher"
+        ? launcherFrameOps(size)
         : frameOps(size);
+  const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
+  const notes =
+    mech === "climb"
+      ? ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
+      : mech === "launcher"
+        ? [
+            `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
+            "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
+          ]
+        : mech === "media-hold"
+          ? [
+              `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,
+            ]
+          : ["Simple frame in the named craft stock."];
   return {
     name: hit.name,
-    kind: "frame",
-    notes: [
-      /\bladder\b/.test(lower)
-        ? "Ladder frame · rails + rungs at the named stock (cut list OK for lumber)."
-        : /catapult|trebuchet/.test(lower)
-          ? "Catapult frame · base, uprights, throwing arm — densified at the named stock."
-          : "Simple frame in the named craft stock.",
-    ],
+    kind,
+    notes,
     ops: frameOpsFor,
   };
 }

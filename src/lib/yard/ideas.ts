@@ -10,7 +10,7 @@ export type Idea = {
   size: string;
   prompt: string;
   blurb: string;
-  /** Named stock for weekend cards — not a photo. */
+  /** Named stock for weekend cards (text, not a photo thumb). */
   stock?: string;
 };
 
@@ -68,7 +68,7 @@ export const IDEAS: Idea[] = [
     label: "Kitchen island",
     size: "60 × 36 × 36",
     prompt: "kitchen island 60x36x36",
-    blurb: "Open both sides, counter, toekick. Not a cabinet with a back.",
+    blurb: "Open both sides, counter, and toekick — walk-around island.",
   },
   {
     id: "radiator",
@@ -95,7 +95,7 @@ export const IDEAS: Idea[] = [
     label: "Coat rack with bench",
     size: "48 × 18 × 16",
     prompt: "coat rack with bench 48 wide",
-    blurb: "Cubby bench plus a peg rail. Entry combo, not a hollow box.",
+    blurb: "Cubby bench plus a peg rail — entry seating with hang space.",
   },
   {
     id: "headboard",
@@ -104,7 +104,7 @@ export const IDEAS: Idea[] = [
     label: "Headboard",
     size: "60 wide",
     prompt: "headboard 60 wide",
-    blurb: "One slab. Not a box.",
+    blurb: "One slab hung on studs.",
   },
   {
     id: "bunk",
@@ -113,7 +113,7 @@ export const IDEAS: Idea[] = [
     label: "Bunk bed",
     size: "twin · ~65 high",
     prompt: "twin bunk bed",
-    blurb: "Two sleep platforms on a frame. Not a hollow box.",
+    blurb: "Two sleep platforms on a post frame with guard rails.",
   },
   {
     id: "laundry",
@@ -140,7 +140,7 @@ export const IDEAS: Idea[] = [
     label: "Sofa table",
     size: "48 × 30 × 14",
     prompt: "sofa table 48 wide 30 high 14 deep",
-    blurb: "Shallow table behind the sofa — not a TV media console.",
+    blurb: "Shallow table behind the sofa for lamps and books.",
   },
   {
     id: "daybed",
@@ -149,7 +149,7 @@ export const IDEAS: Idea[] = [
     label: "Daybed",
     size: "75 × 22 × 39",
     prompt: "daybed 75 wide 22 high 39 deep",
-    blurb: "One sleep deck with a backrest. Sit or sleep — not a bunk stack.",
+    blurb: "One sleep deck with a backrest — sit or sleep.",
   },
   {
     id: "round",
@@ -167,7 +167,7 @@ export const IDEAS: Idea[] = [
     label: "Coffee table",
     size: "48″ round × 18 high",
     prompt: "coffee table 48 round",
-    blurb: "Coffee height, not dining height.",
+    blurb: "Coffee height with a round top and three legs.",
   },
   {
     id: "shelves",
@@ -185,7 +185,7 @@ export const IDEAS: Idea[] = [
     label: "Wall shelf for jars",
     size: "24 × 18 × 4",
     prompt: "wall shelf for jars 24 wide",
-    blurb: "Hung-open rack with jar lips. Not a floor box.",
+    blurb: "Hung-open rack with jar lips on every shelf.",
   },
   {
     id: "wallcab",
@@ -230,7 +230,7 @@ export const IDEAS: Idea[] = [
     label: "Wine rack",
     size: "24 × 36 × 12",
     prompt: "wine rack 24 wide 36 high 12 deep",
-    blurb: "Bottle rails so they don’t roll. Lags into studs.",
+    blurb: "Bottle rails so bottles stay put. Lags into studs.",
   },
   {
     id: "medicine",
@@ -239,7 +239,7 @@ export const IDEAS: Idea[] = [
     label: "Medicine cabinet",
     size: "16 × 24 × 4",
     prompt: "bathroom medicine cabinet 16 wide 24 high 4 deep",
-    blurb: "Hung mirrored box. Not a floor vanity.",
+    blurb: "Hung mirrored box for the bathroom wall.",
   },
   {
     id: "ironing",
@@ -257,7 +257,7 @@ export const IDEAS: Idea[] = [
     label: "Laundry fold-down",
     size: "48 × 36 × 6",
     prompt: "laundry fold-down 48 wide 36 high 6 deep",
-    blurb: "Hung fold surface — same affordance as ironing, not a floor table.",
+    blurb: "Hung fold surface with a support leg — same affordance as ironing.",
   },
   {
     id: "hood",
@@ -266,7 +266,7 @@ export const IDEAS: Idea[] = [
     label: "Range hood",
     size: "30 × 24 × 18",
     prompt: "30 inch range hood",
-    blurb: "Plywood canopy and chimney. Not a wire skeleton.",
+    blurb: "Plywood canopy and chimney for above the range.",
   },
   {
     id: "tv",
@@ -293,7 +293,7 @@ export const IDEAS: Idea[] = [
     label: "Shoe rack with cubbies",
     size: "36 × 18 × 12",
     prompt: "shoe rack with cubbies",
-    blurb: "Open shoe bays — not bookcase pin shelves.",
+    blurb: "Open shoe bays with fixed shelves and cubby dividers.",
   },
   {
     id: "pantry",
@@ -311,7 +311,7 @@ export const IDEAS: Idea[] = [
     label: "Dresser",
     size: "60 × 36 × 18",
     prompt: "dresser 60 wide",
-    blurb: "Drawers on slides. Not table legs.",
+    blurb: "Drawers on slides in a floor carcase.",
   },
   {
     id: "nightstand",
@@ -320,7 +320,7 @@ export const IDEAS: Idea[] = [
     label: "Nightstand",
     size: "18 × 24 × 16",
     prompt: "nightstand 18 wide",
-    blurb: "One drawer and an open shelf. Bedside, not a mini dresser.",
+    blurb: "One drawer and an open shelf for the bedside.",
   },
   {
     id: "overtoilet",
@@ -338,7 +338,7 @@ export const IDEAS: Idea[] = [
     label: "Dog crate",
     size: "36 × 30 × 24",
     prompt: "dog crate 36 wide",
-    blurb: "Wooden kennel with a hinged door. Not a bookcase.",
+    blurb: "Wooden kennel with a hinged door and latch.",
   },
   {
     id: "eiffel",
@@ -357,7 +357,7 @@ export const IDEAS: Idea[] = [
     label: "Popsicle catapult",
     size: "~2 ft",
     prompt: "catapult from popsicle sticks",
-    blurb: "A-frame, axle, throwing arm. Whole sticks, glue — not screws.",
+    blurb: "A-frame, axle pivot, throwing arm, and payload cup. Whole sticks, glue.",
     stock: "from popsicle sticks",
   },
   {
@@ -367,7 +367,7 @@ export const IDEAS: Idea[] = [
     label: "Popsicle dog",
     size: "craft figure",
     prompt: "dog from popsicle sticks",
-    blurb: "Dense armature. Still a dog — not a naked figure.",
+    blurb: "Dense armature that still reads as a dog.",
     stock: "from popsicle sticks",
   },
   {
@@ -407,7 +407,7 @@ export const IDEAS: Idea[] = [
     label: "Straw Warren bridge",
     size: "4 ft",
     prompt: "4 foot bridge from plastic drinking straws",
-    blurb: "Single stock, Warren truss, densified deck. Drinking straws — not a lumber aisle.",
+    blurb: "Single stock, Warren truss, densified deck from drinking straws.",
     stock: "from drinking straws",
   },
   {
@@ -417,7 +417,7 @@ export const IDEAS: Idea[] = [
     label: "Bamboo picture frame",
     size: "craft frame",
     prompt: "picture frame from bamboo skewers",
-    blurb: "Whole skewers on a flat rectangle. Glue corners — not a 3D scaffold box.",
+    blurb: "Whole skewers on a flat rectangle with mat opening and same-stock backing behind the rabbet.",
     stock: "from bamboo skewers",
   },
 ];

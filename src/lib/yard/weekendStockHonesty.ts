@@ -7,12 +7,13 @@
  * Unnamed stock stays the wire-frame placeholder. Never silent popsicle.
  */
 import { getCatalogItem } from "./catalog";
+import { detectWeekendMech } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
 import { binderBom, binderKind, effectiveJoin, memberSpan } from "./joints";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock } from "./promptHelpers";
 import type { BuildPlan, CatalogItem, CutLine, JoinMethod, YardInstance, YardProject } from "./types";
 
-export type WeekendGuard = "stock" | "whole" | "join" | "size";
+export type WeekendGuard = "stock" | "whole" | "join" | "size" | "anatomy";
 
 export type WeekendIssue = {
   guard: WeekendGuard;
@@ -36,7 +37,8 @@ export function isWeekendProject(project: YardProject): boolean {
     project.kind === "arch" ||
     project.kind === "bridge" ||
     project.kind === "figure" ||
-    project.kind === "frame"
+    project.kind === "frame" ||
+    project.kind === "ladder"
   );
 }
 
@@ -212,6 +214,56 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (bits.length) {
         issues.push({ guard: "size", message: `Weekend envelope: ${bits.join(", ")}` });
       }
+    }
+  }
+
+
+  // Universal mechanism anatomy — densify must not erase launcher / climb / media-hold.
+  const mech = detectWeekendMech(prompt);
+  if (mech === "launcher" && project.instances.length) {
+    const roles = new Map<string, number>();
+    for (const i of project.instances) {
+      const k = i.role || "?";
+      roles.set(k, (roles.get(k) || 0) + 1);
+    }
+    const hasPivot = (roles.get("support") || 0) + (roles.get("deck") || 0) > 0;
+    const blob = [...(project.notes || []), ...(plan?.instructions.map((s) => `${s.title} ${s.description}`) || [])].join("\n");
+    const talks = /axle|pivot|throwing arm|payload|cup|spoon|bucket/i.test(blob);
+    if (!hasPivot) {
+      issues.push({
+        guard: "anatomy",
+        message: "Launcher missing pivot/arm/payload members (support/deck roles) after densify.",
+      });
+    }
+    if (!talks && !hasPivot) {
+      issues.push({
+        guard: "anatomy",
+        message: "Launcher steps/notes must name axle, throwing arm, or payload.",
+      });
+    }
+  }
+  if (mech === "media-hold") {
+    const blob = [...(project.notes || []), ...(plan?.instructions.map((s) => `${s.title} ${s.description}`) || [])].join("\n");
+    const hasBack = /backing|back bar|rabbet|mat opening|slip the (picture|photo)/i.test(blob);
+    if (!hasBack) {
+      issues.push({
+        guard: "anatomy",
+        message: "Media-hold needs a rabbet/backing path so flat media stays put.",
+      });
+    }
+  }
+  if (mech === "climb" || project.kind === "ladder") {
+    const legs = project.instances.filter((i) => i.role === "leg").length;
+    const rungs = project.instances.filter((i) => i.role === "rail").length;
+    if (project.instances.length && legs < 2) {
+      issues.push({ guard: "anatomy", message: "Climb needs ≥2 side rails." });
+    }
+    if (project.instances.length && rungs < 3) {
+      issues.push({ guard: "anatomy", message: "Climb needs ≥3 rungs." });
+    }
+    const blob = [...(project.notes || []), ...(plan?.instructions.map((s) => `${s.title} ${s.description}`) || [])].join("\n");
+    if (project.instances.length && !/rung/i.test(blob)) {
+      issues.push({ guard: "anatomy", message: "Climb steps must use rung language." });
     }
   }
 

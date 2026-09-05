@@ -45,7 +45,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
 
   if (OPENING.test(hay) && !/stained/.test(hay) && !/window seat/.test(hay))
     return { anatomy: "opening", kind: "opening" };
-  if (/\bladder\b/.test(hay)) return { anatomy: "carcase", kind: "frame", named: "Ladder" };
+  if (/\bladder\b/.test(hay)) return { anatomy: "carcase", kind: "ladder", named: "Ladder" };
   if (/stairs|staircase/.test(hay)) return { anatomy: "carcase", kind: "ladder" };
   if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };
   if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };

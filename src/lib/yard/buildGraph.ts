@@ -42,6 +42,10 @@ export function buildFormGraph(
   const braceJoin: JoinMethod = join === "solvent" ? "solvent" : join === "screw" ? "screw" : "glue";
   const kind = opts.kind ?? recipe.kind;
   const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";
+  // Launcher / mechanism recipes: densify may lace faces, but seed base+pivot+arm+payload stay on the wire.
+  const anatomyKeep = recipe.ops.some(
+    (op) => "role" in op && (op.role === "support" || op.role === "deck" || op.role === "base"),
+  );
 
   if (kind === "pyramid") {
     return buildPyramidForm(recipe, item, materialId, opts);
@@ -243,7 +247,8 @@ export function buildFormGraph(
         const portal = recipe.kind === "arch";
         // Fat lumber / arch portal / ladder-like frames keep intentional members.
         // Thin craft weekend frames + figures densify the stroke at stock bay.
-        const keepMembers = policy.fat || portal || (memberBuilt && kind !== "frame" && kind !== "figure");
+        const keepMembers =
+          policy.fat || portal || anatomyKeep || (memberBuilt && kind !== "frame" && kind !== "figure");
         const pts = keepMembers ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);

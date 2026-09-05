@@ -70,16 +70,21 @@ export function stickEdges(subject: string): StickEdge[] {
     return pts.map((p, i) => ({ a: p, b: pts[(i + 1) % 10] }));
   }
 
-  if (s === "frame" || s === "shape") {
+  if (s === "frame" || s === "shape" || s === "picture frame") {
     return [
+      // Outer rectangle
       e(0.12, 0.12, 0.88, 0.12),
       e(0.88, 0.12, 0.88, 0.88),
       e(0.88, 0.88, 0.12, 0.88),
       e(0.12, 0.88, 0.12, 0.12),
+      // Inner mat opening
       e(0.22, 0.22, 0.78, 0.22),
       e(0.78, 0.22, 0.78, 0.78),
       e(0.78, 0.78, 0.22, 0.78),
       e(0.22, 0.78, 0.22, 0.22),
+      // Same-stock backing bars behind the rabbet (retain flat media)
+      e(0.28, 0.32, 0.72, 0.32),
+      e(0.28, 0.68, 0.72, 0.68),
     ];
   }
 

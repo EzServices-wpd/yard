@@ -15,7 +15,7 @@ import {
 } from "./structureGraph";
 import { componentsOf, dist, graphEnvelope, segmentCrossesOpening } from "./connect";
 
-const FRAME_ROLES = new Set(["leg", "base", "platform", "tip", "ring"]);
+const FRAME_ROLES = new Set(["leg", "base", "platform", "tip", "ring", "deck", "support"]);
 const PRUNABLE = new Set(["brace", "support"]);
 
 function nodeMap(graph: StructureGraph): Map<string, StructureNode> {

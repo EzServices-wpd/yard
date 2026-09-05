@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { detectWeekendMech } from "./weekendFamily";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -21,7 +22,7 @@ function list(panels: Panel[]) {
 
 function joinHold(item?: CatalogItem | null) {
   const join = (item?.preferredJoins && item.preferredJoins[0]) || "glue";
-  if (join === "glue") return { join, hold: "Wood glue. Hold 30–60 seconds. Wipe squeeze-out. It will not take load until tomorrow." };
+  if (join === "glue") return { join, hold: "Wood glue. Hold 30–60 seconds. Wipe squeeze-out. Overnight before any load." };
   if (join === "tape") return { join, hold: "Masking or packing tape. Wrap both faces." };
   if (join === "zip") return { join, hold: "Zip ties or twist ties. Cinch, then trim." };
   if (join === "screw") return { join, hold: "Predrill. #8 screws, plus a drop of glue in the joint if a person will sit or stand on it." };
@@ -83,22 +84,50 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   const { hold } = joinHold(item);
   const steps: AssemblyStep[] = [];
   let s = 1;
+  const mediaHold =
+    detectWeekendMech(project.prompt ?? "") === "media-hold" ||
+    /picture|photo/i.test(subject) ||
+    /picture frame/i.test(project.name);
 
   steps.push({
     step: s++,
     title: `Print the ${subject} map`,
-    description: `Download the 2D stock map (SVG) and print it on ${paper} paper at 100% scale. Do not “fit to page.” You will lay full ${name} on these lines.`,
-    tips: "The map is a gluing diagram, not a cutting diagram.",
+    description: `Download the 2D stock map (SVG) and print it on ${paper} paper at 100% scale. Keep the printer at 100% — the map is a gluing diagram.`,
+    tips: "Lay full sticks on the printed lines.",
     partsUsed: ["*"],
   });
 
   steps.push({
     step: s++,
     title: `Count out ${n} whole ${name}`,
-    description: `${n} full pieces from the pack. Do not cut any of them. Open the glue.`,
+    description: `${n} full pieces from the pack. Leave every stick whole. Open the glue.`,
     tips: "A pack and a bottle of glue is the whole kit.",
     partsUsed: ["*"],
   });
+
+  if (mediaHold) {
+    steps.push({
+      step: s++,
+      title: "Glue the outer rectangle and mat opening",
+      description: `Lay whole ${name} on the outer rectangle, then the inner mat opening. Corners meet with a small glue bead. ${hold}`,
+      tips: "The mat opening is the window the picture shows through.",
+      partsUsed: ["rail"],
+    });
+    steps.push({
+      step: s++,
+      title: "Glue same-stock backing behind the rabbet",
+      description: `Place backing bars of the same ${name} behind the inner rectangle so they form a rabbet shelf. Slip the picture into the mat opening — the backing retains it.`,
+      tips: "Same pack, same stick — one stock only.",
+      partsUsed: ["rail"],
+    });
+    steps.push({
+      step: s++,
+      title: "Let it dry flat",
+      description: `Leave the picture frame on the paper until the glue skins. Then peel carefully or lift the whole sheet.`,
+      tips: "Overnight is safest for wood glue.",
+    });
+    return steps;
+  }
 
   steps.push({
     step: s++,
@@ -120,7 +149,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     step: s++,
     title: "Fill the remaining lines",
     description: `Keep placing full sticks on every printed segment. Overlaps at corners and crossings are intentional.`,
-    tips: "If a stick is short of a joint, shift it — do not cut. The map is approximate for hand work.",
+    tips: "If a stick is short of a joint, shift it along the line. The map is approximate for hand work.",
     partsUsed: ["rail"],
   });
 
@@ -1383,11 +1412,22 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
 }
 
 function roleScript(project: YardProject): { role: string; title: string; why: string; extra?: string }[] {
-  if (project.kind === "ladder") {
+  const mech = detectWeekendMech(project.prompt ?? "");
+  if (project.kind === "ladder" || mech === "climb") {
     return [
       { role: "leg", title: "Cut and mark the two rails", why: "Both rails the same length." },
       { role: "rail", title: "Screw the rungs", why: "Level every rung. Predrill." },
       { role: "brace", title: "Add any remaining stretchers", why: "They keep the rails from walking apart." },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
+  if (mech === "launcher") {
+    return [
+      { role: "rail", title: "Glue the base rails", why: "The base carries the A-frame and the axle pivot." },
+      { role: "leg", title: "Stand the A-frame uprights", why: "Twin uprights hold the axle." },
+      { role: "support", title: "Seat the axle pivot and throwing arm", why: "Axle is the pivot. The throwing arm swings over it." },
+      { role: "deck", title: "Fit the payload cup at the arm tip", why: "Payload sits in the cup on the throw path." },
+      { role: "brace", title: "Brace the A-frame faces", why: "Braces kill racking — leave the arm free to swing." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }

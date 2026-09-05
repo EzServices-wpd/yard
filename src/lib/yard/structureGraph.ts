@@ -13,7 +13,7 @@ export interface StructureNode {
   id: string;
   position: Vec3;
   /** Optional semantic role for instructions */
-  role?: "base" | "leg" | "brace" | "ring" | "platform" | "tip" | "splice" | "rail" | "support" | "skin";
+  role?: "base" | "leg" | "brace" | "ring" | "platform" | "tip" | "splice" | "rail" | "support" | "deck" | "skin";
 }
 
 export interface StructureEdge {

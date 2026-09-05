@@ -126,14 +126,14 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
     joinMethod: item.preferredJoins?.[0],
     notes: [
       pictureFrame
-        ? `Picture frame · whole ${item.name} sticks — flat craft frame, not a 3D scaffold box.`
+        ? `Picture frame · whole ${item.name} sticks — outer rectangle, mat opening, and same-stock backing behind the rabbet.`
         : `2D stick layout · ${paperLabel} paper · ${intent.subject.toLowerCase()} in ${item.name}.`,
-      `${useInstances.length} whole sticks — no cutting. Glue ends where sticks meet.`,
+      `${useInstances.length} whole sticks from the pack. Glue ends where sticks meet.`,
       useStats.components <= 1
         ? `Connected outline · ${useStats.joints} glue joints`
         : `Outline · ${useStats.joints} glue joints · ${useStats.components} clusters`,
       pictureFrame
-        ? "Lay whole sticks on the rectangle lines and glue the corners — do not densify into a tower or box frame."
+        ? "Glue the mat opening, then glue backing bars of the same stock so you can slip the picture into the rabbet."
         : "Print the 2D map → lay full sticks on the lines → glue ends → optional Convert to 3D.",
     ],
     historic: false,

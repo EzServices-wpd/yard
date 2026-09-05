@@ -28,6 +28,25 @@ export type WeekendHit = {
   name: string;
 };
 
+/** Universal weekend mechanism classes — densify / steps / honesty key off these. */
+export type WeekendMech = "launcher" | "media-hold" | "climb";
+
+const LAUNCHER_NOUN =
+  /\b(catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot)\b/;
+const MEDIA_HOLD_NOUN =
+  /(?:picture|photo|poster|art)\s*frame|\bcraft\s*frame\b|\beasel\b/;
+const CLIMB_NOUN = /\bladder\b/;
+
+/** Mechanism class for any matching family — not a noun .ts file. */
+export function detectWeekendMech(prompt: string): WeekendMech | null {
+  const hay = looksHay(prompt);
+  if (LAUNCHER_NOUN.test(hay)) return "launcher";
+  if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
+  if (CLIMB_NOUN.test(hay)) return "climb";
+  return null;
+}
+
+
 const FIGURE_NOUN =
   /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern|yoda|batman|spiderman|iron man|hulk/;
 
@@ -63,7 +82,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|easel|scaffold|\bladder\b/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -143,12 +162,19 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
   }
 
   if (FRAME_NOUN.test(hay)) {
-    const name = /catapult|trebuchet/.test(hay)
-      ? "Catapult"
-      : /\bladder\b/.test(hay)
-        ? "Ladder"
-        : /easel/.test(hay)
-          ? "Easel"
+    const mech = detectWeekendMech(hay);
+    if (mech === "climb") {
+      return { family: "frame", kind: "ladder", name: "Ladder" };
+    }
+    const name =
+      mech === "launcher"
+        ? /trebuchet/.test(hay)
+          ? "Trebuchet"
+          : "Catapult"
+        : mech === "media-hold"
+          ? /easel/.test(hay)
+            ? "Easel"
+            : "Picture frame"
           : /scaffold/.test(hay)
             ? "Scaffold"
             : "Frame";

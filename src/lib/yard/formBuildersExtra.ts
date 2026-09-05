@@ -112,11 +112,11 @@ export function frameOps(s: Size3): FormOp[] {
 }
 
 /**
- * Catapult / trebuchet as a weekend frame — not a noun .ts file.
- * Base rails, twin A-frame uprights, cross axle, bracing courses, throwing arm.
- * Tip lands at typed H so densify honors N-foot closer than a 0.92 taper.
+ * Launcher class (catapult / trebuchet / ballista / …) — one recipe, not a noun .ts.
+ * Densify may lace faces, but must KEEP base + pivot/axle + throwing arm + payload path
+ * as distinct roles (support / deck). Tip lands at typed H.
  */
-export function catapultFrameOps(s: Size3): FormOp[] {
+export function launcherFrameOps(s: Size3): FormOp[] {
   const H = Math.max(s.height, 12);
   const W = Math.max(s.width, Math.min(H * 1.15, 48), 14);
   const D = Math.max(s.depth, Math.min(H * 0.7, 36), 10);
@@ -153,9 +153,10 @@ export function catapultFrameOps(s: Size3): FormOp[] {
     { op: "poly", role: "rail", points: [{ x: xl, y: midY, z: zb }, { x: xr, y: midY, z: zb }] },
     { op: "poly", role: "rail", points: [{ x: xl, y: midY, z: zf }, { x: xl, y: midY, z: zb }] },
     { op: "poly", role: "rail", points: [{ x: xr, y: midY, z: zf }, { x: xr, y: midY, z: zb }] },
-    { op: "poly", role: "rail", points: [{ x: xl, y: axleY, z: 0 }, { x: xr, y: axleY, z: 0 }] },
-    { op: "poly", role: "rail", points: [{ x: xl, y: axleY, z: zf }, { x: xl, y: axleY, z: zb }] },
-    { op: "poly", role: "rail", points: [{ x: xr, y: axleY, z: zf }, { x: xr, y: axleY, z: zb }] },
+    // Pivot / axle — support role survives densify lace
+    { op: "poly", role: "support", points: [{ x: xl, y: axleY, z: 0 }, { x: xr, y: axleY, z: 0 }] },
+    { op: "poly", role: "support", points: [{ x: xl, y: axleY, z: zf }, { x: xl, y: axleY, z: zb }] },
+    { op: "poly", role: "support", points: [{ x: xr, y: axleY, z: zf }, { x: xr, y: axleY, z: zb }] },
     { op: "poly", role: "rail", points: [{ x: xl, y: postH, z: zf }, { x: xr, y: postH, z: zf }] },
     { op: "poly", role: "rail", points: [{ x: xl, y: postH, z: zb }, { x: xr, y: postH, z: zb }] },
     // Side A-frame braces + face diagonals
@@ -169,20 +170,20 @@ export function catapultFrameOps(s: Size3): FormOp[] {
     { op: "poly", role: "brace", points: [{ x: xr, y: 0, z: zb }, { x: xl, y: midY, z: zb }] },
     { op: "poly", role: "brace", points: [{ x: xl, y: midY, z: zf }, { x: xl, y: postH, z: zb }] },
     { op: "poly", role: "brace", points: [{ x: xr, y: midY, z: zf }, { x: xr, y: postH, z: zb }] },
-    // Throwing arm — rear base over the axle to the typed tip height
+    // Throwing arm — rear base over the axle to the typed tip (support = arm path)
     {
       op: "poly",
-      role: "leg",
+      role: "support",
       points: [
         { x: 0, y: H * 0.06, z: z1 * 0.85 },
         { x: 0, y: axleY, z: 0 },
         { x: 0, y: H, z: z0 * 0.95 },
       ],
     },
-    // Arm cradle / pocket at the tip — short cross members
+    // Payload cup / pocket at the tip — deck role marks the throw path
     {
       op: "poly",
-      role: "brace",
+      role: "deck",
       points: [
         { x: xl * 0.35, y: H * 0.92, z: z0 * 0.7 },
         { x: xr * 0.35, y: H * 0.92, z: z0 * 0.7 },
@@ -190,7 +191,7 @@ export function catapultFrameOps(s: Size3): FormOp[] {
     },
     {
       op: "poly",
-      role: "brace",
+      role: "deck",
       points: [
         { x: 0, y: H * 0.85, z: z0 * 0.55 },
         { x: 0, y: H, z: z0 * 0.95 },
@@ -199,6 +200,9 @@ export function catapultFrameOps(s: Size3): FormOp[] {
   ];
   return ops;
 }
+
+/** @deprecated name — use launcherFrameOps */
+export const catapultFrameOps = launcherFrameOps;
 
 export function towerOps(s: Size3): FormOp[] {
   return [taper(0, s.height, s.width * 0.45, s.width * 0.18, 6, "leg")];
