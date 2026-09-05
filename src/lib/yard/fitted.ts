@@ -1951,7 +1951,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const kneeR = knee / 2;
     const leftW = kneeL - x0;
     const rightW = x0 + W - kneeR;
-    const boxH = Math.min(counterY, H);
+    // Typed / unit height is the TOP of the work surface (same contract as island + table).
+    // Never stack the slab on top of H — that made desk envelope H+1.5 (30.5 vs typed 29).
+    const counterT = 1.5;
+    const workTop = Math.min(counterY, H);
+    const boxH = Math.max(3.5 + 4, workTop - counterT);
     panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
     panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
@@ -1964,7 +1968,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("drawer", `Left drawer ${i + 1}`, x0 + P, y, 0.15, leftW - P - 0.1, dh - 0.12, D - 0.3));
       panels.push(panel("drawer", `Right drawer ${i + 1}`, kneeR + P, y, 0.15, rightW - P - 0.1, dh - 0.12, D - 0.3));
     }
-    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
+    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, counterT, D));
     if (u.mirror && spec.program === "vanity") {
       const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - boxH - 3);
       panels.push(panel("mirror", "Mirror", kneeL, boxH + 2, 0.4, knee, mh, 0.2));

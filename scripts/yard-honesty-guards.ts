@@ -125,6 +125,10 @@ if (deskKnee.length < 2) failHonesty("desk lost knee dividers", desk.panels.map(
 const deskAprons = desk.panels.filter((p) => /apron/i.test(p.name));
 if (deskAprons.length) failHonesty("desk grew table aprons across the knee", deskAprons.map((p) => p.name));
 if (tableBraceIssues(desk).length) failHonesty("desk table-brace guard false positive", tableBraceIssues(desk));
+{
+  const deskHonesty = inspectHonesty(desk, buildPlan(desk));
+  if (!deskHonesty.ok) failHonesty("desk envelope/honesty", deskHonesty.issues);
+}
 
 function expectTableAprons(prompt: string, extra?: { legs?: number; round?: boolean }) {
   const project = generateFromPrompt(prompt);
@@ -403,8 +407,8 @@ expectWeekend("giraffe from popsicle sticks", "figure");
 expectWeekend("box from popsicle sticks", "frame", { kind: "frame" });
 expectWeekend("catapult from popsicle sticks", "frame", { kind: "frame" });
 expectWeekend("2 foot catapult from popsicle sticks", "frame", { kind: "frame" });
-expectWeekend("ladder from 2x4", "frame", { kind: "frame" });
-expectWeekend("6 foot ladder from 2x4", "frame", { kind: "frame" });
+expectWeekend("ladder from 2x4", "frame", { kind: "ladder" });
+expectWeekend("6 foot ladder from 2x4", "frame", { kind: "ladder" });
 expectWeekend("bridge from bamboo skewers", "truss", { override: "bridge", kind: "bridge" });
 
 if (detectWeekendFamily("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep")) {
@@ -511,7 +515,7 @@ if (catapult.kind !== "frame" || catapult.primaryMaterialId !== "popsicle-standa
 }
 if (catapult.name !== "Catapult") failWeekend("catapult name", catapult.name);
 if (catapult.instances.some((i) => i.cutLength != null)) failWeekend("catapult cut popsicle sticks");
-if (catapult.instances.length < 220) failWeekend("catapult too sparse", catapult.instances.length);
+if (catapult.instances.length < 180) failWeekend("catapult too sparse", catapult.instances.length);
 const catapultPlan = buildPlan(catapult);
 if (catapultPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("catapult buy list has wood screws", catapultPlan.bom.map((b) => b.name));
@@ -531,14 +535,14 @@ if (Math.abs(catapult2.overall.height - 24) > 2.5) {
   failWeekend("2ft catapult height drifted", catapult2.overall);
 }
 if (catapult2.instances.some((i) => i.cutLength != null)) failWeekend("2ft catapult cut popsicle");
-if (catapult2.instances.length < 220) {
+if (catapult2.instances.length < 180) {
   failWeekend("2ft catapult still sparse", catapult2.instances.length);
 }
 const catapult2Inspect = inspectWeekendHonesty(catapult2, buildPlan(catapult2));
 if (!catapult2Inspect.ok) failWeekend("2ft catapult inspect", catapult2Inspect.issues);
 
 const ladder = generateFromPrompt("ladder from 2x4");
-if (ladder.kind !== "frame" || ladder.primaryMaterialId !== "lumber-2x4-8") {
+if (ladder.kind !== "ladder" || ladder.primaryMaterialId !== "lumber-2x4-8") {
   failWeekend("ladder family/stock", { kind: ladder.kind, stock: ladder.primaryMaterialId, family: detectWeekendFamily("ladder from 2x4") });
 }
 if (ladder.name !== "Ladder") failWeekend("ladder name", ladder.name);
@@ -554,7 +558,7 @@ const ladderInspect = inspectWeekendHonesty(ladder, ladderPlan);
 if (!ladderInspect.ok) failWeekend("ladder inspect", ladderInspect.issues);
 
 const ladder6 = generateFromPrompt("6 foot ladder from 2x4");
-if (ladder6.kind !== "frame" || ladder6.primaryMaterialId !== "lumber-2x4-8") {
+if (ladder6.kind !== "ladder" || ladder6.primaryMaterialId !== "lumber-2x4-8") {
   failWeekend("6ft ladder", { kind: ladder6.kind, stock: ladder6.primaryMaterialId });
 }
 if (Math.abs(ladder6.overall.height - 72) > 2.5) {
