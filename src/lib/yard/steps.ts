@@ -388,6 +388,38 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return steps0;
   }
 
+  const climbStool =
+    (/step stool|step-up|climb step/i.test(project.name) ||
+      /step-?up|climb\s+step|rise.*run/.test((project.prompt ?? "").toLowerCase())) &&
+    detectWeekendMech(project.prompt ?? "") === "climb";
+  if (climbStool && uprights.length && !project.instances.length) {
+    const rr = climbRiseRun(project.prompt ?? "");
+    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : 'typed rise × run';
+    return [
+      {
+        step: 1,
+        title: "Cut the weight-bearing climb step",
+        description: `${tool.how} ${sheetCuts.join(" ")} One climb step at ${riseRun}. Weight-bearing human step — not a vehicle incline.`,
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 2,
+        title: "Stand the legs and seat the tread",
+        description: `Assemble the frame so the tread carries a standing kid at ${riseRun}.`,
+        tips: "Square the tread before the braces.",
+        partsUsed: names(uprights),
+      },
+      {
+        step: 3,
+        title: "Brace the step frame",
+        description: `Braces keep the ${riseRun} tread from racking.`,
+        tips: "Guidance only.",
+        partsUsed: names(panels),
+      },
+    ];
+  }
+
   const daybed =
     /day\s*bed/i.test(project.name) ||
     /\bday\s*beds?\b/.test((project.prompt ?? "").toLowerCase());

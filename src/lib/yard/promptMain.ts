@@ -7,7 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { detectHouseFamily } from "./family";
-import { detectWeekendFamily, detectWeekendMech, weekendUsesLatticeGraph } from "./weekendFamily";
+import { climbRiseRun, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
@@ -195,6 +195,12 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     notes.unshift(`Tabletop scale — about ${box.height.toFixed(0)}" high. Weekend / Full on the bench grow it.`);
   } else if (scale === "weekend") {
     notes.unshift("Weekend density — coarser than Full, still the same form.");
+  }
+  const prompt = project.prompt ?? "";
+  if (detectWeekendMech(prompt) === "climb" && isClimbSingleStep(prompt)) {
+    const rr = climbRiseRun(prompt);
+    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+    notes.unshift(`Weight-bearing climb step at ${riseRun} — not a vehicle incline.`);
   }
   let next = notes === project.notes ? project : { ...project, notes };
   if (next.instances.length === 0 && next.panels.length === 0) {
