@@ -31,19 +31,87 @@ export type WeekendHit = {
 /** Universal weekend mechanism classes — densify / steps / honesty key off these. */
 export type WeekendMech = "launcher" | "media-hold" | "climb";
 
+/** Catapult-class + free-projectile ramp / soft-launch (vehicle incline ≠ climb). */
 const LAUNCHER_NOUN =
-  /\b(catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot)\b/;
+  /\b(catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot)\b|soft-?launch|free\s+projectile|leaves the ramp|(?:paper\s*)?plane.{0,48}\bramp\b|\bramp\b.{0,48}(?:plane|projectile|launch|leaves)/;
+
+/** Picture/easel OR a real device lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*frame|\bcraft\s*frame\b|\beasel\b/;
-const CLIMB_NOUN = /\bladder\b/;
+  /(?:picture|photo|poster|art)\s*frame|\bcraft\s*frame\b|\beasel\b|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book)\s*stand|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device)|recipe\s+video/;
+
+/** Weight-bearing human step (rise/run). Never vehicle incline alone. */
+const CLIMB_HUMAN =
+  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*"?\s*)?rise\s*[×xby]\s*(?:\d+\s*"?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing/;
+
+/** Vehicle incline / craft ramp for a free projectile — launcher, not climb. */
+function isVehicleIncline(hay: string): boolean {
+  if (CLIMB_HUMAN.test(hay)) return false;
+  return (
+    /\bramp\b|\bincline\b|soft-?launch|projectile|leaves the ramp/.test(hay) ||
+    (/(?:paper\s*)?plane/.test(hay) && /\bramp\b|launch/.test(hay))
+  );
+}
+
+function isHumanClimb(hay: string): boolean {
+  return CLIMB_HUMAN.test(hay);
+}
 
 /** Mechanism class for any matching family — not a noun .ts file. */
 export function detectWeekendMech(prompt: string): WeekendMech | null {
   const hay = looksHay(prompt);
-  if (LAUNCHER_NOUN.test(hay)) return "launcher";
+  // Climb = weight-bearing human step (rise/run). Do not overload with vehicle incline.
+  if (isHumanClimb(hay)) return "climb";
+  if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
   if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
-  if (CLIMB_NOUN.test(hay)) return "climb";
   return null;
+}
+
+/** Tip angle in degrees when the prompt names one (media-hold stands). */
+export function mediaHoldTipDeg(prompt: string): number | null {
+  const hay = looksHay(prompt);
+  const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*°/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*deg(?:rees)?/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*tip/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 && n < 90 ? n : null;
+}
+
+/** Rise × run inches for a climb step when typed. */
+export function climbRiseRun(prompt: string): { rise: number; run: number } | null {
+  const hay = looksHay(prompt).replace(/″/g, '"');
+  const m = hay.match(
+    /(\d+(?:\.\d+)?)\s*"?\s*rise\s*[×xby]\s*(\d+(?:\.\d+)?)\s*"?\s*run/i,
+  );
+  if (!m) return null;
+  return { rise: parseFloat(m[1]), run: parseFloat(m[2]) };
+}
+
+/** Ramp length in inches when the prompt names one (launcher ramp). */
+export function launcherRampLengthIn(prompt: string): number | null {
+  const hay = looksHay(prompt).replace(/″/g, '"');
+  const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:popsicle\s+)?ramp/) ||
+    hay.match(/ramp[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function isMediaDeviceStand(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return /phone|tablet|device|lean\s*stand|recipe\s+video|real\s+phone/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+}
+
+export function isLauncherRamp(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return isVehicleIncline(hay) || (/\bramp\b/.test(hay) && !isHumanClimb(hay));
+}
+
+export function isClimbSingleStep(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return /step-?up|climb\s+step|step-?shelf|one\s+climb\s+step|rise\s*[×xby]/.test(hay) && !/\bladder\b/.test(hay);
 }
 
 
@@ -82,7 +150,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|phone\s*(?:lean\s*)?stand|lean\s*stand|step-?up|step-?shelf|climb\s+step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -98,7 +166,11 @@ function isWindowPrompt(lower: string) {
 function isNotWeekend(lower: string) {
   if (detectHouseFamily(lower)) return true;
   if (isWindowPrompt(lower)) return true;
-  if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
+  // Step-up / climb stools are weekend climb — not house chairs.
+  if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) {
+    if (/step-?up|climb\s+step|rise\s*[×xby]/.test(lower)) return false;
+    return true;
+  }
   // Ladder is a weekend frame (lumber cut-list or craft sticks). Stairs stay out.
   if (/stairs|staircase/.test(lower)) return true;
   if (/birdhouse/.test(lower)) return true;
@@ -161,24 +233,41 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
     return { family: "arch", kind: "arch", name: "Arch" };
   }
 
-  if (FRAME_NOUN.test(hay)) {
+  // Mechanism classes win even when the noun is "stand" / "stool" / "ramp".
+  {
     const mech = detectWeekendMech(hay);
-    if (mech === "climb") {
-      return { family: "frame", kind: "ladder", name: "Ladder" };
-    }
-    const name =
-      mech === "launcher"
-        ? /trebuchet/.test(hay)
-          ? "Trebuchet"
-          : "Catapult"
-        : mech === "media-hold"
-          ? /easel/.test(hay)
+    if (mech || FRAME_NOUN.test(hay)) {
+      if (mech === "climb") {
+        const name = /step-?up|stool/.test(hay)
+          ? "Step stool"
+          : /step-?shelf/.test(hay)
+            ? "Step shelf"
+            : "Ladder";
+        return { family: "frame", kind: "ladder", name };
+      }
+      if (mech === "launcher" || (FRAME_NOUN.test(hay) && detectWeekendMech(hay) === "launcher")) {
+        const name = isLauncherRamp(hay)
+          ? "Launch ramp"
+          : /trebuchet/.test(hay)
+            ? "Trebuchet"
+            : "Catapult";
+        return { family: "frame", kind: "frame", name };
+      }
+      if (mech === "media-hold") {
+        const name = isMediaDeviceStand(hay)
+          ? /phone/.test(hay)
+            ? "Phone stand"
+            : "Device stand"
+          : /easel/.test(hay)
             ? "Easel"
-            : "Picture frame"
-          : /scaffold/.test(hay)
-            ? "Scaffold"
-            : "Frame";
-    return { family: "frame", kind: "frame", name };
+            : "Picture frame";
+        return { family: "frame", kind: "frame", name };
+      }
+      if (FRAME_NOUN.test(hay)) {
+        const name = /scaffold/.test(hay) ? "Scaffold" : "Frame";
+        return { family: "frame", kind: "frame", name };
+      }
+    }
   }
 
   if (FIGURE_NOUN.test(hay)) {

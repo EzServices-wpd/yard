@@ -67,7 +67,15 @@ function isNotHouse(lower: string) {
     return true;
   }
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
-  if (/ladder|stairs|staircase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return true;
+  // Climb step-shelf on a linen/closet stays house — not a free ladder eject.
+  if (
+    /ladder|stairs|staircase/.test(lower) &&
+    !isBunkBed(lower) &&
+    !isLoftBed(lower) &&
+    !(HOUSE_NOUN.test(lower) && /step-?shelf|climb\s+step/.test(lower))
+  ) {
+    return true;
+  }
   if (/birdhouse/.test(lower)) return true;
   if (/planter|raised (garden )?bed|garden box/.test(lower)) return true;
   if (/bridge|span|viaduct|overpass|trestle/.test(lower)) return true;
@@ -253,7 +261,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isMedicine(lower) ||
       isIroning(lower) ||
       fold ||
-      (/coat/.test(lower) && /rack|tree|peg/.test(lower)) ||
+      (/coat/.test(lower) && /rack|rail|tree|peg|hook/.test(lower)) ||
       /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
       /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
       (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
@@ -269,18 +277,18 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
       !/console table|sofa table|entry console|bedside table|night table/.test(lower));
   const hangUse =
-    (/coat/.test(lower) && /rack|hook|peg/.test(lower)) ||
+    (/coat/.test(lower) && /rack|rail|hook|peg/.test(lower)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower));
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
   const door =
-    /door/.test(lower) ||
+    (/door/.test(lower) && !/door\s*portal|doorway|door opening/.test(lower)) ||
     isMedicine(lower) ||
     isIroning(lower) ||
     fold ||
     /crate/.test(lower) ||
     (/cabinet/.test(lower) && !isOverToilet(lower) && !/spice|wine/.test(lower)) ||
-    /closet|pantry|wardrobe/.test(lower);
+    (/closet|pantry|wardrobe/.test(lower) && !/coat/.test(lower));
   const opening: HouseOpening = isBunkBed(lower) ? "open" : fold ? "fold-down" : door ? "door" : "open";
 
   const program = programFromNoun(lower);
@@ -332,8 +340,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     add("drawers");
   }
   if (
-    (/coat/.test(lower) && /rack|hook|peg|bench|tree/.test(lower)) ||
-    /hook|peg rail/.test(lower) ||
+    (/coat/.test(lower) && /rack|rail|hook|peg|bench|tree/.test(lower)) ||
+    /hook|peg rail|coat\s*rail/.test(lower) ||
     /hall\s*tree|entry\s*tree/.test(lower) ||
     (/coat/.test(lower) && /bench/.test(lower))
   ) {

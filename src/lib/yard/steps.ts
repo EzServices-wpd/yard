@@ -1,6 +1,14 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
-import { detectWeekendMech } from "./weekendFamily";
+import {
+  climbRiseRun,
+  detectWeekendMech,
+  isClimbSingleStep,
+  isLauncherRamp,
+  isMediaDeviceStand,
+  launcherRampLengthIn,
+  mediaHoldTipDeg,
+} from "./weekendFamily";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -84,10 +92,13 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   const { hold } = joinHold(item);
   const steps: AssemblyStep[] = [];
   let s = 1;
+  const prompt = project.prompt ?? "";
   const mediaHold =
-    detectWeekendMech(project.prompt ?? "") === "media-hold" ||
+    detectWeekendMech(prompt) === "media-hold" ||
     /picture|photo/i.test(subject) ||
     /picture frame/i.test(project.name);
+  const deviceStand = mediaHold && isMediaDeviceStand(prompt);
+  const tipDeg = mediaHoldTipDeg(prompt);
 
   steps.push({
     step: s++,
@@ -104,6 +115,31 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     tips: "A pack and a bottle of glue is the whole kit.",
     partsUsed: ["*"],
   });
+
+  if (mediaHold && deviceStand) {
+    const tipTalk = tipDeg != null ? `${tipDeg}° tip` : "the typed tip angle";
+    steps.push({
+      step: s++,
+      title: "Glue the base and lean back",
+      description: `Build the stand so it binds a real device envelope at ${tipTalk} — never a flat decal. Base on the paper, lean back on the printed angle. ${hold}`,
+      tips: "Dry-fit a real phone or tablet before the glue skins.",
+      partsUsed: ["rail", "support"],
+    });
+    steps.push({
+      step: s++,
+      title: "Add the front lip that retains the device",
+      description: `Glue the front lip so a real phone sits in the envelope at ${tipTalk}. The device leans; it is not a printed sticker face.`,
+      tips: "Same pack, same stick — one stock only.",
+      partsUsed: ["deck"],
+    });
+    steps.push({
+      step: s++,
+      title: "Let it dry, then seat the real device",
+      description: `Leave the stand on the paper until the glue skins. Seat a real phone at ${tipTalk} for the recipe video — never a decal.`,
+      tips: "Overnight is safest for wood glue.",
+    });
+    return steps;
+  }
 
   if (mediaHold) {
     steps.push({
@@ -208,13 +244,37 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const steps: AssemblyStep[] = [];
   let n = 1;
 
+  const coatPrompt = (project.prompt ?? "").toLowerCase();
   const coatRack =
     /coat/i.test(project.name) ||
-    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()) && !/shoe/.test((project.prompt ?? "").toLowerCase()));
+    (/coat/.test(coatPrompt) && /rack|rail|hook|peg|tree/.test(coatPrompt) && !/shoe/.test(coatPrompt));
   if (coatRack && !uprights.length) {
-    const hooks = Math.max(3, Math.min(8, Math.round(W / 6)));
+    const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
+    const hooks = hookSaid
+      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+      : Math.max(3, Math.min(8, Math.round(W / 6)));
     const rail = backs[0] ?? panels[0];
     const shelf = of("top")[0];
+    const portal =
+      /door\s*portal|portal|doorway|door opening/.test(coatPrompt) ||
+      /portal/i.test(project.name);
+    const openingH = project.opening?.height ?? project.overall.height;
+    const mountFromOpening = Math.round(Math.min(60, Math.max(48, openingH * 0.7)));
+    const hangStep = portal
+      ? {
+          step: 4,
+          title: "Mount height from the opening — keep swing clear",
+          description: `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
+          tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
+          partsUsed: names(backs.length ? backs : panels),
+        }
+      : {
+          step: 4,
+          title: "Hang it on studs",
+          description: `Find two studs. Predrill the rail. Drive 3" structural screws through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
+          tips: "Guidance only — hit a stud. Confirm the wall.",
+          partsUsed: names(backs.length ? backs : panels),
+        };
     return [
       {
         step: 1,
@@ -234,16 +294,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 3,
         title: `Screw ${hooks} coat hooks`,
         description: `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
-        tips: "A cheap 6-pack of wall coat hooks is the whole hardware kit besides screws.",
+        tips: "A cheap hook pack is the whole hardware kit besides screws.",
         partsUsed: names(backs.length ? backs : panels),
       },
-      {
-        step: 4,
-        title: "Hang it on studs",
-        description: `Find two studs. Predrill the rail. Drive 3" structural screws through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
-        tips: "Guidance only — hit a stud. Confirm the wall.",
-        partsUsed: names(backs.length ? backs : panels),
-      },
+      hangStep,
     ];
   }
 
@@ -1412,8 +1466,24 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
 }
 
 function roleScript(project: YardProject): { role: string; title: string; why: string; extra?: string }[] {
-  const mech = detectWeekendMech(project.prompt ?? "");
+  const prompt = project.prompt ?? "";
+  const mech = detectWeekendMech(prompt);
   if (project.kind === "ladder" || mech === "climb") {
+    if (isClimbSingleStep(prompt)) {
+      const rr = climbRiseRun(prompt);
+      const riseRun =
+        rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+      return [
+        { role: "leg", title: "Cut the four legs", why: "Legs carry a standing kid — weight-bearing." },
+        {
+          role: "rail",
+          title: "Seat the single climb tread",
+          why: `One weight-bearing step at ${riseRun}. Not a vehicle incline.`,
+        },
+        { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
+        { role: "member", title: "Place remaining members", why: "No floating pieces." },
+      ];
+    }
     return [
       { role: "leg", title: "Cut and mark the two rails", why: "Both rails the same length." },
       { role: "rail", title: "Screw the rungs", why: "Level every rung. Predrill." },
@@ -1422,6 +1492,25 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     ];
   }
   if (mech === "launcher") {
+    if (isLauncherRamp(prompt)) {
+      const rampLen = launcherRampLengthIn(prompt);
+      const lenTalk = rampLen != null ? `${rampLen}" ramp` : "typed ramp length";
+      return [
+        { role: "rail", title: "Glue the base runners", why: `Base sets the ${lenTalk} footprint.` },
+        {
+          role: "support",
+          title: "Set the incline rails",
+          why: `Ramp length ${rampLen != null ? rampLen + '"' : "as typed"} — state it clearly on the bench.`,
+        },
+        {
+          role: "deck",
+          title: "Lay the ramp deck — leave the free end open",
+          why: "Free projectile leaves the ramp; do not glue the plane on.",
+        },
+        { role: "brace", title: "Brace the incline", why: "Braces kill racking — leave the leave-end clear." },
+        { role: "member", title: "Place remaining members", why: "No floating pieces." },
+      ];
+    }
     return [
       { role: "rail", title: "Glue the base rails", why: "The base carries the A-frame and the axle pivot." },
       { role: "leg", title: "Stand the A-frame uprights", why: "Twin uprights hold the axle." },

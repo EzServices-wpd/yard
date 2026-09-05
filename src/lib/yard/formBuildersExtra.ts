@@ -204,6 +204,158 @@ export function launcherFrameOps(s: Size3): FormOp[] {
 /** @deprecated name — use launcherFrameOps */
 export const catapultFrameOps = launcherFrameOps;
 
+/**
+ * Soft-launch / free-projectile ramp — incline deck with a clear leave end.
+ * Ramp length follows typed size (or override). Projectile is NOT part of the build.
+ */
+export function rampLauncherOps(s: Size3, rampLenIn?: number | null): FormOp[] {
+  const L = Math.max(rampLenIn ?? s.width ?? s.depth ?? 12, 8);
+  const W = Math.max(Math.min(s.width || 6, L * 0.55), 3);
+  const rise = Math.max(Math.min(s.height || L * 0.35, L * 0.6), 2);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -L / 2;
+  const z1 = L / 2;
+  return [
+    // Base runners
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z0 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z1 }, { x: x1, y: 0, z: z1 }] },
+    // Inclined deck — support survives densify; leave tip at z0 is free exit
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x0, y: 0, z: z1 },
+        { x: x0, y: rise, z: z0 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x1, y: 0, z: z1 },
+        { x: x1, y: rise, z: z0 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0, y: rise * 0.08, z: z1 * 0.92 },
+        { x: x1, y: rise * 0.08, z: z1 * 0.92 },
+        { x: x1, y: rise, z: z0 },
+        { x: x0, y: rise, z: z0 },
+      ],
+    },
+    // Free-leave lip at the low end (deck) — projectile leaves; do not glue it on
+    {
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0 * 0.7, y: rise * 0.04, z: z1 },
+        { x: x1 * 0.7, y: rise * 0.04, z: z1 },
+      ],
+    },
+    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: 0 }, { x: x0, y: rise * 0.55, z: z0 * 0.2 }] },
+    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: 0 }, { x: x1, y: rise * 0.55, z: z0 * 0.2 }] },
+  ];
+}
+
+/**
+ * Media-hold device stand — real phone/tablet envelope + tip angle, never a decal.
+ */
+export function mediaHoldStandOps(s: Size3, tipDeg?: number | null): FormOp[] {
+  const tip = tipDeg ?? 15;
+  const rad = (tip * Math.PI) / 180;
+  const H = Math.max(s.height || 6, 4);
+  const W = Math.max(Math.min(s.width || 4, 8), 2.5);
+  const D = Math.max(s.depth || H * Math.sin(rad) + 2, 3);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const lean = H * Math.cos(rad);
+  const baseZ = D / 2;
+  return [
+    // Base footprint
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: -baseZ }, { x: x1, y: 0, z: -baseZ }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: baseZ }, { x: x1, y: 0, z: baseZ }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: -baseZ }, { x: x0, y: 0, z: baseZ }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: -baseZ }, { x: x1, y: 0, z: baseZ }] },
+    // Lean back at tip angle — support = device plane
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x0, y: 0.15, z: baseZ * 0.35 },
+        { x: x0, y: lean, z: -baseZ * 0.55 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x1, y: 0.15, z: baseZ * 0.35 },
+        { x: x1, y: lean, z: -baseZ * 0.55 },
+      ],
+    },
+    {
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0, y: lean * 0.15, z: baseZ * 0.25 },
+        { x: x1, y: lean * 0.15, z: baseZ * 0.25 },
+        { x: x1, y: lean, z: -baseZ * 0.55 },
+        { x: x0, y: lean, z: -baseZ * 0.55 },
+      ],
+    },
+    // Front lip retains the real device — not a printed decal
+    {
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0, y: 0.2, z: baseZ * 0.4 },
+        { x: x1, y: 0.2, z: baseZ * 0.4 },
+      ],
+    },
+    { op: "poly", role: "brace", points: [{ x: 0, y: 0, z: -baseZ }, { x: 0, y: lean * 0.7, z: -baseZ * 0.2 }] },
+  ];
+}
+
+/**
+ * One weight-bearing climb step — rise × run tread (stool / step-shelf), not a multi-rung ladder.
+ */
+export function climbStepOps(s: Size3, riseIn?: number | null, runIn?: number | null): FormOp[] {
+  const rise = Math.max(riseIn ?? Math.min(s.height || 8, 12), 4);
+  const run = Math.max(runIn ?? Math.min(s.depth || 10, 14), 6);
+  const W = Math.max(Math.min(s.width || 14, 22), 10);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -run / 2;
+  const z1 = run / 2;
+  return [
+    { op: "column", x: x0, z: z0, y0: 0, y1: rise, role: "leg" },
+    { op: "column", x: x1, z: z0, y0: 0, y1: rise, role: "leg" },
+    { op: "column", x: x0, z: z1, y0: 0, y1: rise, role: "leg" },
+    { op: "column", x: x1, z: z1, y0: 0, y1: rise, role: "leg" },
+    // Single tread — rail role reads as the step in climb honesty
+    {
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: x0, y: rise, z: z0 },
+        { x: x1, y: rise, z: z0 },
+        { x: x1, y: rise, z: z1 },
+        { x: x0, y: rise, z: z1 },
+      ],
+    },
+    { op: "poly", role: "brace", points: [{ x: x0, y: rise * 0.4, z: z0 }, { x: x1, y: rise * 0.4, z: z0 }] },
+    { op: "poly", role: "brace", points: [{ x: x0, y: rise * 0.4, z: z1 }, { x: x1, y: rise * 0.4, z: z1 }] },
+    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: rise, z: z1 }] },
+    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: rise, z: z1 }] },
+  ];
+}
+
 export function towerOps(s: Size3): FormOp[] {
   return [taper(0, s.height, s.width * 0.45, s.width * 0.18, 6, "leg")];
 }

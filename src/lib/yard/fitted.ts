@@ -325,8 +325,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 24
                 : isWineRack(lower)
                   ? 36
-                : /coat/.test(lower) && /rack/.test(lower)
-                  ? 6
+                : /coat/.test(lower) && /rack|rail|hook|peg/.test(lower)
+                  ? /portal|door/.test(lower)
+                    ? 6
+                    : 6
                   : /range\s*hood|\bhood\b/.test(lower)
                     ? 24
                   : isShoeStorage(lower)
@@ -483,8 +485,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 1
                 : isBunkBed(lower)
                   ? 0
-                : (/shelf/.test(lower) && !/coat/.test(lower))
+                : (/shelf/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
                 ? 3
+                : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
+                  ? 0
                 : /nightstand|bedside/.test(lower)
                   ? 1
                   : 0,
@@ -503,13 +507,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
             : NaN;
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
-    /door/.test(lower) ||
+    (/door/.test(lower) && !/door\s*portal|doorway|door opening/.test(lower)) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
     isLaundryFoldDown(lower) ||
     isFoldDown(lower) ||
     isMedicineCabinet(lower) ||
-    program === "closet" ||
+    (program === "closet" && !/coat/.test(lower)) ||
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54) ||
@@ -583,8 +587,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? "Wine rack"
                       : /coat/.test(lower) && /bench/.test(lower)
                         ? "Coat bench"
-                      : /coat/.test(lower) && /rack/.test(lower)
-                        ? "Coat rack"
+                      : /coat/.test(lower) && /rack|rail|hook|peg|tree/.test(lower)
+                        ? /rail/.test(lower)
+                          ? "Coat rail"
+                          : "Coat rack"
                         : identityStem
                             ? identityStem
                             : /headboard/.test(lower)
@@ -1633,38 +1639,81 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const coatLower = prompt.toLowerCase();
   const coatRack =
     !/shoe/.test(coatLower) &&
-    ((/coat/.test(coatLower) && /rack|tree|peg/.test(coatLower)) || /hall\s*tree|entry\s*tree/.test(coatLower));
+    ((/coat/.test(coatLower) && /rack|rail|tree|peg|hook/.test(coatLower)) ||
+      /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
-    // Honor typed depth/height (min clamp only for absurd values). Old path forced 6" deep + 5.5" rail.
-    const shelfD = Math.max(3, Math.min(D, 12));
-    const standing = H >= 36;
-    const railH = standing
-      ? Math.max(24, H - P)
-      : Math.max(4, Math.min(H - P, 24));
-    panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, W, railH, P));
-    panels.push(panel("top", "Hat shelf", x0, railH, 0, W, P, shelfD));
+    const portal = /door\s*portal|portal|doorway|door opening/.test(coatLower);
+    // Portal dims (e.g. 32×80) are the opening envelope — rail mounts inside, clear swing.
+    const portalW = portal ? W : W;
+    const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
+    const portalH = portal
+      ? Math.max(H, portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H)
+      : H;
+    const shelfD = Math.max(3, Math.min(D, portal ? 4 : 12));
+    const standing = !portal && H >= 36;
+    const railH = portal
+      ? Math.max(4, Math.min(6, shelfD + 2))
+      : standing
+        ? Math.max(24, H - P)
+        : Math.max(4, Math.min(H - P, 24));
+    panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, portalW, railH, P));
+    panels.push(panel("top", "Hat shelf", x0, railH, 0, portalW, P, shelfD));
     const stackH = railH + P;
-    const hooks = Math.max(3, Math.min(8, Math.round(W / 6)));
+    const hookSaid = coatLower.match(/(\d+)\s*hooks?/);
+    const hooks = hookSaid
+      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+      : Math.max(3, Math.min(8, Math.round(portalW / 6)));
+    const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
+    const label = /rail/.test(coatLower) ? "Coat rail" : "Coat rack";
+    const notes = portal
+      ? [
+          `${label} in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
+          `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
+          `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs. Guidance only.`,
+        ]
+      : [
+          standing
+            ? `Wall-mounted coat board: ${portalW}" × ${stackH}" with an ${shelfD}" hat shelf. ¾" plywood.`
+            : `Wall-mounted ${label.toLowerCase()}: ${portalW}" peg rail (${railH}") with an ${shelfD}" hat shelf. ¾" plywood.`,
+          `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
+          "Guidance only — not a cubby. No leftover shelves. Size follows what you typed.",
+        ];
     return {
       id: createId("proj"),
-      name: `Coat rack ${W}" × ${stackH}" × ${shelfD}"`,
+      name: portal
+        ? `${label} ${portalW}" portal · ${hooks} hooks`
+        : `${label} ${portalW}" × ${stackH}" × ${shelfD}"`,
       prompt,
       kind: "closet",
-      overall: { width: W, height: stackH, depth: shelfD },
+      overall: { width: portalW, height: portal ? portalH : stackH, depth: shelfD },
       instances: [],
       panels,
       primaryMaterialId: PLY,
-      notes: [
-        standing
-          ? `Wall-mounted coat board: ${W}" × ${stackH}" with an ${shelfD}" hat shelf. ¾" plywood.`
-          : `Wall-mounted coat rack: ${W}" peg rail (${railH}") with an ${shelfD}" hat shelf. ¾" plywood.`,
-        `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
-        "Guidance only — not a cubby. No leftover shelves. Size follows what you typed.",
-      ],
+      notes,
       historic: false,
-      opening: { ...spec.opening, width: W, height: stackH, depth: shelfD },
-      fitted: { ...spec, unit: { ...u, height: stackH, depth: shelfD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Coat rack ${W}" × ${stackH}" × ${shelfD}"` },
+      opening: {
+        ...spec.opening,
+        width: portalW,
+        height: portal ? portalH : stackH,
+        depth: shelfD,
+        kind: portal ? "alcove" : spec.opening.kind,
+      },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: portalW,
+          height: portal ? portalH : stackH,
+          depth: shelfD,
+          doors: false,
+          shelfCount: 0,
+          drawersPerBank: undefined,
+        },
+        name: portal
+          ? `${label} ${portalW}" portal · ${hooks} hooks`
+          : `${label} ${portalW}" × ${stackH}" × ${shelfD}"`,
+      },
       assumptions: {
         load: "medium",
         units: "inches",
@@ -1951,11 +2000,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const kneeR = knee / 2;
     const leftW = kneeL - x0;
     const rightW = x0 + W - kneeR;
-    // Typed / unit height is the TOP of the work surface (same contract as island + table).
-    // Never stack the slab on top of H — that made desk envelope H+1.5 (30.5 vs typed 29).
-    const counterT = 1.5;
-    const workTop = Math.min(counterY, H);
-    const boxH = Math.max(3.5 + 4, workTop - counterT);
+    const boxH = Math.min(counterY, H);
     panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
     panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
@@ -1968,7 +2013,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("drawer", `Left drawer ${i + 1}`, x0 + P, y, 0.15, leftW - P - 0.1, dh - 0.12, D - 0.3));
       panels.push(panel("drawer", `Right drawer ${i + 1}`, kneeR + P, y, 0.15, rightW - P - 0.1, dh - 0.12, D - 0.3));
     }
-    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, counterT, D));
+    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
     if (u.mirror && spec.program === "vanity") {
       const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - boxH - 3);
       panels.push(panel("mirror", "Mirror", kneeL, boxH + 2, 0.4, knee, mh, 0.2));
@@ -2010,6 +2055,18 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, 0.1, W - P * 2, P, D - 0.2));
       }
     }
+  }
+
+  // Linen / closet climb step-shelf — weight-bearing mid tread; freeze envelope stays typed.
+  const climbStepShelf =
+    (spec.program === "closet" || /linen/.test(prompt.toLowerCase())) &&
+    /step-?shelf|climb\s+step|weight-bearing/.test(prompt.toLowerCase());
+  if (climbStepShelf) {
+    const midY = Math.round(H * 0.45);
+    const treadD = Math.min(D + 4, Math.max(D, 10));
+    const treadW = W - P * 2;
+    panels.push(panel("shelf", "Climb step-shelf", x0 + P, midY, 0.1, treadW, P, treadD - 0.2));
+    panels.push(panel("rail", "Step nosing", x0 + P, midY + P, treadD - P - 0.2, treadW, 1.25, P));
   }
 
   if (rodY != null) {
@@ -2058,7 +2115,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     `${spec.name}. ${alcove ? "Fitted to the opening." : "Freestanding carcase — still square, still a cut list."}`,
     `Unit ${u.width}" W × ${u.depth}" D × ${u.height}" H. ¾" plywood. Front reads straight.`,
     hasKnee
-      ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
+      ? deskMediaBehind
+        ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear stays open — media shelf behind holds a laptop upright without eating the knee.`
+        : `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
       : spec.program === "media"
         ? [
             bayN >= 2
@@ -2068,16 +2127,18 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
               : "Glue the shelves; do not pin them.",
           ].join(" ")
-      : kitchenBase
-        ? [
-            `Kitchen base cabinet — floor carcase with door${u.doors ? "(s)" : ""}, 3½" toekick, counter height ~${H}".`,
-            shelves
-              ? `${shelves} fixed shelf line${shelves === 1 ? "" : "s"} inside. Glue and screw; do not pin them.`
-              : "Solid carcase with door(s).",
-          ].join(" ")
-      : shelves
-        ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
-        : "Solid carcase.",
+        : kitchenBase
+          ? [
+              `Kitchen base cabinet — floor carcase with door${u.doors ? "(s)" : ""}, 3½" toekick, counter height ~${H}".`,
+              shelves
+                ? `${shelves} fixed shelf line${shelves === 1 ? "" : "s"} inside. Glue and screw; do not pin them.`
+                : "Solid carcase with door(s).",
+            ].join(" ")
+          : climbStepShelf
+            ? `One weight-bearing climb step-shelf at mid height to reach the top — freeze dims stay ${W}" × ${H}" × ${D}".`
+          : shelves
+            ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
+            : "Solid carcase.",
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
       : "Level it. Add a back (already on the bench) so it cannot rack.",

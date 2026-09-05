@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbSingleStep, isLauncherRamp, isMediaDeviceStand, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -35,6 +35,9 @@ import {
   ladderOps,
   frameOps,
   launcherFrameOps,
+  rampLauncherOps,
+  mediaHoldStandOps,
+  climbStepOps,
   catapultFrameOps,
   chairOps,
   tableOps,
@@ -137,6 +140,11 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
   const hay = looks ? `${looks[1]} ${lower}` : lower;
+  // Universal weekend mechs beat noun HITS (plane/ramp/stool) so climb ≠ vehicle incline.
+  const weekendMech = detectWeekendFamily(prompt);
+  if (weekendMech && detectWeekendMech(prompt)) {
+    return recipeFromWeekend(weekendMech, prompt, size);
+  }
   for (const hit of HITS) {
     if (hit.re.test(hay)) {
       const sized = hit.fit ? hit.fit(size, prompt) : size;
@@ -231,25 +239,52 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   }
   const lower = prompt.toLowerCase();
   const mech = detectWeekendMech(lower) ?? detectWeekendMech(prompt);
+  const rampLen = launcherRampLengthIn(prompt);
+  const tip = mediaHoldTipDeg(prompt);
+  const rr = climbRiseRun(prompt);
   const frameOpsFor =
     mech === "climb"
-      ? ladderOps(size)
+      ? isClimbSingleStep(prompt)
+        ? climbStepOps(size, rr?.rise, rr?.run)
+        : ladderOps(size)
       : mech === "launcher"
-        ? launcherFrameOps(size)
-        : frameOps(size);
+        ? isLauncherRamp(prompt)
+          ? rampLauncherOps(size, rampLen)
+          : launcherFrameOps(size)
+        : mech === "media-hold" && isMediaDeviceStand(prompt)
+          ? mediaHoldStandOps(size, tip)
+          : frameOps(size);
   const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
   const notes =
     mech === "climb"
-      ? ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
-      : mech === "launcher"
+      ? isClimbSingleStep(prompt)
         ? [
-            `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
-            "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
+            `${hit.name} · one weight-bearing climb step` +
+              (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
+              ` — not a vehicle incline.`,
           ]
-        : mech === "media-hold"
+        : ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
+      : mech === "launcher"
+        ? isLauncherRamp(prompt)
           ? [
-              `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,
+              `${hit.name} · ramp` +
+                (rampLen != null ? ` length ${rampLen}"` : "") +
+                ` — free projectile leaves the ramp (not glued on).`,
             ]
+          : [
+              `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
+              "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
+            ]
+        : mech === "media-hold"
+          ? isMediaDeviceStand(prompt)
+            ? [
+                `${hit.name} · binds a real device envelope` +
+                  (tip != null ? ` at ${tip}° tip` : "") +
+                  ` — never a flat decal.`,
+              ]
+            : [
+                `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,
+              ]
           : ["Simple frame in the named craft stock."];
   return {
     name: hit.name,
