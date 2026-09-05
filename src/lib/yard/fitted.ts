@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
+import { detectWeekendMech } from "./weekendFamily";
 import { detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
@@ -64,6 +65,7 @@ export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
   if (looksLikePocket(prompt)) return true;
   if (isOverToilet(lower)) return true;
+  if (detectWeekendMech(prompt)) return false;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
   const dimText = lower
@@ -2024,6 +2026,32 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     for (let i = 0; i < n; i++) {
       panels.push(panel("drawer", `Drawer ${i + 1}`, x0 + P + 0.5, 3.5 + i * dh, 0.15, W - P * 2 - 1, dh - 0.12, D - 0.3));
     }
+  }
+
+  // Media shelf behind a desk: ABOVE/behind the top — never eats knee clear.
+  const deskMediaBehind =
+    spec.program === "desk" &&
+    hasKnee &&
+    /media\s*shelf|shelf behind|laptop|upright/.test(prompt.toLowerCase());
+  if (deskMediaBehind) {
+    const laptopM = prompt.match(/(\d+(?:\.\d+)?)\s*"?\s*laptop/i);
+    const laptopH = laptopM ? parseFloat(laptopM[1]) : 13;
+    const behindD = Math.max(8, Math.min(12, Math.round(laptopH * 0.7)));
+    panels.push(
+      panel("shelf", "Media shelf behind", x0 + P, counterY + 1.5, -behindD, W - P * 2, P, behindD),
+    );
+    panels.push(
+      panel(
+        "rail",
+        "Laptop upright stop",
+        x0 + P,
+        counterY + 1.5 + P,
+        -behindD,
+        W - P * 2,
+        Math.min(2, Math.max(1, laptopH * 0.12)),
+        P,
+      ),
+    );
   }
 
   const shelfZone0 = hasKnee ? (u.upperStart ?? counterY + 2) : P;

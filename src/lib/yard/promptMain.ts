@@ -7,7 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { detectHouseFamily } from "./family";
-import { detectWeekendFamily, weekendUsesLatticeGraph } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
@@ -88,7 +88,10 @@ export function generateFromPrompt(
     const unit = pickWindow(prompt, size.width, size.height);
     return buildWindowProject(unit, prompt);
   }
-  if (kindHint === "closet" || looksLikeFitted(prompt) || detectHouseFamily(prompt)) {
+  if (
+    !detectWeekendMech(prompt) &&
+    (kindHint === "closet" || looksLikeFitted(prompt) || detectHouseFamily(prompt))
+  ) {
     const brief = parseBrief(prompt);
     if (brief) return honestHouse(buildFitted(brief, prompt), prompt);
     const pocket = parsePocket(prompt);

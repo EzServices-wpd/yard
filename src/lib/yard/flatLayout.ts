@@ -12,6 +12,7 @@ import { withHome } from "./assembly";
 import { analyzePieces } from "./connect";
 import { stickEdges, segmentInstances } from "./stickFrames";
 import type { FlatPlane, PaperSize } from "./flat";
+import { detectWeekendMech, isMediaDeviceStand } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 const PAPER_IN: Record<PaperSize, { w: number; h: number }> = {
@@ -52,6 +53,16 @@ const SUBJECTS: { re: RegExp; id: string; label: string }[] = [
 
 export function detectFlatPrompt(prompt: string): FlatIntent | null {
   const lower = prompt.toLowerCase();
+  // Mechanism classes are 3D — never a paper silhouette (paper plane on a launch ramp ≠ 2D plane).
+  const mech = detectWeekendMech(prompt);
+  if (
+    mech === "launcher" ||
+    mech === "climb" ||
+    (mech === "media-hold" && isMediaDeviceStand(prompt)) ||
+    (/\bpaper\s*plane\b/.test(lower) && /\bramp\b|soft-?launch|leaves the ramp/.test(lower))
+  ) {
+    return null;
+  }
   const flatCue =
     /\b(2d|2-d|two[\s-]?dimensional|flat\s+(map|layout|print|design)|on\s+paper|printable|print\s+out|coloring|paper\s+craft|paper\s+with|on\s+an?\s+sheet)\b/.test(
       lower,

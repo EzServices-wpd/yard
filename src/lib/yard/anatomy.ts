@@ -6,7 +6,7 @@
 
 import type { StructureKind } from "./types";
 import { detectHouseFamily } from "./family";
-import { detectWeekendFamily } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
@@ -50,7 +50,8 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };
   if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };
   if (detectHouseFamily(hay)) return { anatomy: "fitted", kind: "closet" };
-  if (FITTED.test(hay)) return { anatomy: "fitted", kind: "closet" };
+  // Weekend mechs (climb step / launcher ramp / device stand) must not be stolen by "shelf" FITTED.
+  if (!detectWeekendMech(hay) && FITTED.test(hay)) return { anatomy: "fitted", kind: "closet" };
 
   if (/eiffel/.test(hay)) return { anatomy: "loft", kind: "eiffel", named: "Eiffel" };
   if (/taj|mahal/.test(hay)) return { anatomy: "shell", kind: "taj", named: "Taj Mahal" };

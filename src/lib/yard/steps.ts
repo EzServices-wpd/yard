@@ -141,6 +141,58 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     return steps;
   }
 
+  const mech = detectWeekendMech(prompt);
+  if (mech === "launcher" && isLauncherRamp(prompt)) {
+    const rampLen = launcherRampLengthIn(prompt);
+    const lenTalk = rampLen != null ? `${rampLen}" ramp` : "typed ramp length";
+    steps.push({
+      step: s++,
+      title: `Glue the ${lenTalk} incline`,
+      description: `Lay whole ${name} on the ramp runners and incline. State the ramp length clearly (${lenTalk}). ${hold}`,
+      tips: "The deck is an incline — not a flat silhouette.",
+      partsUsed: ["rail", "support"],
+    });
+    steps.push({
+      step: s++,
+      title: "Leave the free end open — projectile leaves the ramp",
+      description: `Finish the leave-end lip. The free projectile leaves the ramp; do not glue the paper plane onto the deck.`,
+      tips: "Soft-launch only — the plane flies free.",
+      partsUsed: ["deck"],
+    });
+    steps.push({
+      step: s++,
+      title: "Let it dry flat",
+      description: `Leave the launch ramp on the paper until the glue skins. Then peel carefully.`,
+      tips: "Overnight is safest for wood glue.",
+    });
+    return steps;
+  }
+  if (mech === "climb" && isClimbSingleStep(prompt)) {
+    const rr = climbRiseRun(prompt);
+    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+    steps.push({
+      step: s++,
+      title: "Glue the weight-bearing climb step",
+      description: `Build one climb step at ${riseRun}. Legs and tread only — a weight-bearing human step, not a vehicle incline. ${hold}`,
+      tips: "A standing kid loads the tread — square it.",
+      partsUsed: ["leg", "rail"],
+    });
+    steps.push({
+      step: s++,
+      title: "Brace the step frame",
+      description: `Add braces so the ${riseRun} tread cannot rack.`,
+      tips: "Same pack, same stick — one stock only.",
+      partsUsed: ["brace"],
+    });
+    steps.push({
+      step: s++,
+      title: "Let it dry flat",
+      description: `Leave the step on the paper until the glue skins. Then peel carefully.`,
+      tips: "Overnight is safest for wood glue.",
+    });
+    return steps;
+  }
+
   if (mediaHold) {
     steps.push({
       step: s++,
@@ -299,6 +351,41 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       hangStep,
     ];
+  }
+
+    if (panels.some((p) => /Climb step-shelf/i.test(p.name)) && uprights.length) {
+    const tread = panels.find((p) => /Climb step-shelf/i.test(p.name));
+    const steps0: AssemblyStep[] = [];
+    let n0 = 1;
+    steps0.push({
+      step: n0++,
+      title: "Cut the carcase and climb step-shelf",
+      description: `${tool.how} ${sheetCuts.join(" ")} Include the weight-bearing climb step-shelf at mid height. Freeze envelope stays ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}".`,
+      tips: tool.tip,
+      partsUsed: names(panels),
+    });
+    steps0.push({
+      step: n0++,
+      title: "Stand the carcase (the main box)",
+      description: `Glue and screw uprights, back, bottom, and top. Keep ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}" square.`,
+      tips: "Predrill near the ends so the ply does not split.",
+      partsUsed: names(uprights),
+    });
+    steps0.push({
+      step: n0++,
+      title: "Seat the weight-bearing climb step-shelf",
+      description: `${tread ? cutLine(tread) : "Climb step-shelf"}. Mid-height tread to reach the top — weight-bearing, not a pin shelf. Screw through the uprights into the tread.`,
+      tips: "Confirm freeze dims stay green before you cut.",
+      partsUsed: names(panels.filter((p) => /Climb step-shelf|Step nosing|Shelf/i.test(p.name))),
+    });
+    steps0.push({
+      step: n0++,
+      title: "Hang the door and finish",
+      description: `Hang any door so it clears the climb step-shelf. Guidance only.`,
+      tips: "Confirm the opening.",
+      partsUsed: names(panels),
+    });
+    return steps0;
   }
 
   const daybed =
@@ -1517,6 +1604,25 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "support", title: "Seat the axle pivot and throwing arm", why: "Axle is the pivot. The throwing arm swings over it." },
       { role: "deck", title: "Fit the payload cup at the arm tip", why: "Payload sits in the cup on the throw path." },
       { role: "brace", title: "Brace the A-frame faces", why: "Braces kill racking — leave the arm free to swing." },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
+  if (mech === "media-hold" && isMediaDeviceStand(prompt)) {
+    const tip = mediaHoldTipDeg(prompt);
+    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    return [
+      { role: "rail", title: "Glue the base footprint", why: "Base carries the lean stand." },
+      {
+        role: "support",
+        title: `Set the lean back at ${tipTalk}`,
+        why: `Binds a real device envelope at ${tipTalk} — never a flat decal.`,
+      },
+      {
+        role: "deck",
+        title: "Add the front lip that retains the device",
+        why: "A real phone sits in the envelope; not a printed sticker face.",
+      },
+      { role: "brace", title: "Brace the stand", why: "Keep the tip angle true under the phone." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
