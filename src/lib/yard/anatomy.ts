@@ -51,7 +51,13 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };
   if (detectHouseFamily(hay)) return { anatomy: "fitted", kind: "closet" };
   // Weekend mechs (climb step / launcher ramp / device stand) must not be stolen by "shelf" FITTED.
-  if (!detectWeekendMech(hay) && FITTED.test(hay)) return { anatomy: "fitted", kind: "closet" };
+  if (
+    !detectWeekendMech(hay) &&
+    !/step-?up|climb\s+step|rise\s*[×xby]\s*.*run/.test(hay) &&
+    FITTED.test(hay)
+  ) {
+    return { anatomy: "fitted", kind: "closet" };
+  }
 
   if (/eiffel/.test(hay)) return { anatomy: "loft", kind: "eiffel", named: "Eiffel" };
   if (/taj|mahal/.test(hay)) return { anatomy: "shell", kind: "taj", named: "Taj Mahal" };

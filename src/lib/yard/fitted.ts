@@ -66,6 +66,7 @@ export function looksLikeFitted(prompt: string) {
   if (looksLikePocket(prompt)) return true;
   if (isOverToilet(lower)) return true;
   if (detectWeekendMech(prompt)) return false;
+  if (/step-?up|climb\s+step|rise\s*[×xby]\s*.*run|weight-bearing\s+climb/.test(lower)) return false;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
   const dimText = lower

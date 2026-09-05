@@ -88,8 +88,10 @@ export function generateFromPrompt(
     const unit = pickWindow(prompt, size.width, size.height);
     return buildWindowProject(unit, prompt);
   }
+  const climbCue = /step-?up|climb\s+step|rise\s*[×xby]\s*.*run|weight-bearing\s+climb/.test(lower);
   if (
     !detectWeekendMech(prompt) &&
+    !climbCue &&
     (kindHint === "closet" || looksLikeFitted(prompt) || detectHouseFamily(prompt))
   ) {
     const brief = parseBrief(prompt);

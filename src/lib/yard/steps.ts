@@ -1231,10 +1231,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const cubby = dividers.filter((p) => /cubby/i.test(p.name));
     const rest = dividers.filter((p) => !/knee|cubby/i.test(p.name));
     if (knee.length) {
+      const kneeClear = u?.kneeW ?? pocket?.unit.kneeW ?? 22;
       steps.push({
         step: n++,
-        title: "Set the knee dividers",
-        description: `${knee.map(cutLine).join("; ")}. They land ${u?.kneeW ?? pocket?.unit.kneeW ?? 22}" apart, centered. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the chair space.`,
+        title: `Keep ${kneeClear}" knee clear — set the knee dividers`,
+        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the chair space.`,
         tips: "Hang drawer slides on these faces before the last divider goes in — you can still get a screwdriver in.",
         partsUsed: names(knee),
       });
@@ -1264,6 +1265,18 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
       description: `${counters.map(cutLine).join("; ")}. Glue and screw down into the uprights and the knee dividers. Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
       partsUsed: names(counters),
+    });
+  }
+
+  const mediaBehind = panels.filter((p) => /media shelf behind|laptop upright/i.test(p.name));
+  if (mediaBehind.length && program === "desk") {
+    const kneeClear = u?.kneeW ?? 24;
+    steps.push({
+      step: n++,
+      title: "Add the media shelf behind — do not eat the knee",
+      description: `${mediaBehind.map(cutLine).join("; ")}. Media shelf behind holds a laptop upright without eating the knee. Keep ${kneeClear}" knee clear under the desktop — the shelf sits behind the back edge, not in the chair bay.`,
+      tips: "Dry-fit a 13" laptop upright on the shelf before you screw it off.",
+      partsUsed: names(mediaBehind),
     });
   }
 
