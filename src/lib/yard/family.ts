@@ -194,6 +194,9 @@ export function identityTitleStem(lower: string): string | null {
     if (/entry\s*console/.test(lower)) return "Entry console";
     return "Console table";
   }
+  // Desk / vanity work surfaces win over a trailing "media shelf" add-on.
+  if (/\bdesk\b|workbench|work table/.test(lower)) return "Desk";
+  if (/\bvanity\b/.test(lower)) return "Vanity";
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
@@ -204,6 +207,8 @@ export function identityTitleStem(lower: string): string | null {
 export function mediaIdentityLabel(lower: string): string | null {
   // Sofa / entry / console tables are tables — never steal Media console identity.
   if (isSofaConsoleTable(lower)) return null;
+  // Desk with a media shelf behind stays a desk (knee clear), not a media console.
+  if (/\bdesk\b|workbench|\bvanity\b/.test(lower)) return null;
   if (!/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment/.test(lower)) return null;
   if (/entertainment\s*cent(?:er|re)/.test(lower)) return "Entertainment center";
   if (/\btv\b/.test(lower) && /console/.test(lower)) return "TV console";
