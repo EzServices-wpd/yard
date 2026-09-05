@@ -82,7 +82,7 @@ export function mediaHoldTipDeg(prompt: string): number | null {
 export function climbRiseRun(prompt: string): { rise: number; run: number } | null {
   const hay = looksHay(prompt).replace(/″/g, '"');
   const m = hay.match(
-    /(\d+(?:\.\d+)?)\s*"?\s*rise\s*[×xby]\s*(\d+(?:\.\d+)?)\s*"?\s*run/i,
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*rise\s*[×xby]\s*(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*run/i,
   );
   if (!m) return null;
   return { rise: parseFloat(m[1]), run: parseFloat(m[2]) };
@@ -238,11 +238,14 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
     const mech = detectWeekendMech(hay);
     if (mech || FRAME_NOUN.test(hay)) {
       if (mech === "climb") {
-        const name = /step-?up|stool/.test(hay)
+        const rr = climbRiseRun(hay);
+        const base = /step-?up|stool/.test(hay)
           ? "Step stool"
           : /step-?shelf/.test(hay)
             ? "Step shelf"
             : "Ladder";
+        const name =
+          rr != null ? `${base} ${rr.rise}" rise × ${rr.run}" run` : base;
         return { family: "frame", kind: "ladder", name };
       }
       if (mech === "launcher" || (FRAME_NOUN.test(hay) && detectWeekendMech(hay) === "launcher")) {
