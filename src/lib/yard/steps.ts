@@ -1275,7 +1275,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       step: n++,
       title: "Add the media shelf behind — do not eat the knee",
       description: `${mediaBehind.map(cutLine).join("; ")}. Media shelf behind holds a laptop upright without eating the knee. Keep ${kneeClear}" knee clear under the desktop — the shelf sits behind the back edge, not in the chair bay.`,
-      tips: "Dry-fit a 13" laptop upright on the shelf before you screw it off.",
+      tips: "Dry-fit a 13-inch laptop upright on the shelf before you screw it off.",
       partsUsed: names(mediaBehind),
     });
   }
