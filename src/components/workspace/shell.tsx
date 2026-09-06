@@ -600,8 +600,15 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     : workMode === "look"
                       ? (() => {
                           const mech = detectWeekendMech(project.prompt ?? "");
-                          // Launcher / media-hold / climb: dims are the envelope, not Orbit chrome.
-                          return mech === "launcher" || mech === "media-hold" || mech === "climb" ? "" : " · Orbit";
+                          // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
+                          return (
+                            mech === "launcher" ||
+                            mech === "media-hold" ||
+                            mech === "climb" ||
+                            mech === "pot-hold"
+                          )
+                            ? ""
+                            : " · Orbit";
                         })()
                       : workMode === "walk"
                         ? " · On the road"
