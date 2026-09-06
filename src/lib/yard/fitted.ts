@@ -574,7 +574,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
       }
     : undefined;
 
+  // BATCH6_OPENING_FIT_FINAL: keep braced so minify cannot comma-fold into neighboring ifs.
+  if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {
+    const axisLabeledAll =
+      /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
+    if (!axisLabeledAll) {
+      width = Number(trip.w);
+      height = Number(trip.h);
+      depth = Number(trip.d);
+    }
+  }
+
   const unit: FittedUnit = {
+
     width,
     depth,
     height,
@@ -657,6 +669,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                               : names[program];
 
   const roundTitle = program === "table" && (isRound || Number.isFinite(diameter));
+  if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {
+    const axisLabeledAll =
+      /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
+    if (!axisLabeledAll) {
+      width = Number(trip.w);
+      height = Number(trip.h);
+      depth = Number(trip.d);
+      unit.width = width;
+      unit.height = height;
+      unit.depth = depth;
+    }
+  }
+
   const displayName = roundTitle
     ? `Round ${titleStem} ${width}" × ${height}"`
     : `${titleStem} ${width}" × ${height}" × ${depth}"`;
