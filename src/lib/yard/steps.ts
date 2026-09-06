@@ -312,11 +312,18 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /shoe/.test(coatPrompt) &&
     /rail|rack/.test(coatPrompt) &&
     (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /portal/i.test(project.name));
+  const towelPortalRail =
+    /towel/.test(coatPrompt) &&
+    /rail|bar|rack/.test(coatPrompt) &&
+    (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /towel\s*rail|portal/i.test(project.name));
   const coatRack =
     /coat/i.test(project.name) ||
-    ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) && !/shoe/.test(coatPrompt));
-  if ((coatRack || shoePortalRail) && !uprights.length) {
+    ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) &&
+      !/shoe/.test(coatPrompt) &&
+      !/towel/.test(coatPrompt));
+  if ((coatRack || shoePortalRail || towelPortalRail) && !uprights.length) {
     const shoe = shoePortalRail || /shoe/i.test(project.name);
+    const towel = !shoe && (towelPortalRail || /towel\s*rail/i.test(project.name));
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
     const hooks = shoe

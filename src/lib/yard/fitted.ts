@@ -221,6 +221,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 : 36);
   }
 
+  // Window seat: "60×18 opening, 18\" seat height" → W×D from opening pair, H from seat height.
+  if (/window seat/.test(lower) && /opening/.test(lower) && trip.w && trip.h && !trip.d) {
+    width = trip.w;
+    if (!Number.isFinite(depth)) depth = trip.h;
+    // height already from "seat height" pick when present; else keep trip/fallback later
+  }
+
   const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
   // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
   // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
@@ -243,16 +250,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
 
   // Fitted to a named opening: unlabeled triples are W×H×D (opening), not furniture W×D×H.
-  if (
-    /fitted\s+to|\bopening\b|\balcove\b|\bniche\b/.test(lower) &&
-    trip.w &&
-    trip.h &&
-    trip.d &&
-    !/wide|width|deep|depth|tall|high|height/.test(lower)
-  ) {
-    width = trip.w;
-    height = trip.h;
-    depth = trip.d;
+  const openingFit =
+    /fitted\s+to/.test(lower) ||
+    (/\bopening\b/.test(lower) && /fitted|bookcase|bookshelf|closet|alcove|niche|built-?in/.test(lower));
+  if (openingFit && trip.w && trip.h && trip.d) {
+    const labeledAll =
+      /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
+    if (!labeledAll) {
+      width = trip.w;
+      height = trip.h;
+      depth = trip.d;
+    }
   }
 
   if (program === "table" && (isRound || Number.isFinite(diameter))) {
@@ -428,6 +436,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         : /shelf|rack/.test(lower)
                           ? 12
                           : 16);
+  }
+
+  // Opening-fit W×H×D must win over furniture defaults (e.g. bookcase depth 12).
+  if (openingFit && trip.w && trip.h && trip.d) {
+    const labeledAll =
+      /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
+    if (!labeledAll) {
+      width = trip.w;
+      height = trip.h;
+      depth = trip.d;
+    }
   }
 
   const typedDepth = /deep|depth/.test(lower);
