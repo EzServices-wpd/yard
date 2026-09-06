@@ -199,16 +199,16 @@ export function climbIdentityLabel(lower: string): string | null {
     return null;
   }
   // Real benches stay Bench — only climb/step stools claim this stem.
-  if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step/.test(lower)) return null;
+  if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|three-?\s*step/.test(lower)) return null;
   const climbHay = lower.replace(/[″″]/g, '"').replace(/[–—]/g, "-");
   if (
-    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
+    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
       climbHay,
     )
   ) {
     return null;
   }
-  if (/step-?up|stool|two-?\s*step|climb\s+stool|each\s+step/.test(climbHay)) return "Step stool";
+  if (/step-?up|stool|two-?\s*step|three-?\s*step|climb\s+stool|each\s+step/.test(climbHay)) return "Step stool";
   if (/step-?shelf/.test(lower)) return "Step shelf";
   if (/\bladder\b/.test(lower)) return "Ladder";
   return "Step stool";
@@ -239,6 +239,13 @@ export function identityTitleStem(lower: string): string | null {
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
   if (isShoePortalRail(lower)) return "Shoe rail";
+  // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
+  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && /door\s*portal|portal|doorway|door opening/.test(lower)) {
+    return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
+  }
+  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) {
+    return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
+  }
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
@@ -308,7 +315,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isMedicine(lower) ||
       isIroning(lower) ||
       fold ||
-      (/coat/.test(lower) && /rack|rail|tree|peg|hook/.test(lower)) ||
+      (/coat/.test(lower) && /rack|rail|rod|tree|peg|hook/.test(lower)) ||
       /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
       /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
       (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
@@ -324,7 +331,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
       !/console table|sofa table|entry console|bedside table|night table/.test(lower));
   const hangUse =
-    (/coat/.test(lower) && /rack|rail|hook|peg/.test(lower)) ||
+    (/coat/.test(lower) && /rack|rail|rod|hook|peg/.test(lower)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower));
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
@@ -387,8 +394,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     add("drawers");
   }
   if (
-    (/coat/.test(lower) && /rack|rail|hook|peg|bench|tree/.test(lower)) ||
-    /hook|peg rail|coat\s*rail/.test(lower) ||
+    (/coat/.test(lower) && /rack|rail|rod|hook|peg|bench|tree/.test(lower)) ||
+    /hook|peg rail|coat\s*rail|coat\s*rod/.test(lower) ||
     /hall\s*tree|entry\s*tree/.test(lower) ||
     (/coat/.test(lower) && /bench/.test(lower))
   ) {

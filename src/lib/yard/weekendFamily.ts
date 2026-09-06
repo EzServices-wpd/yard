@@ -37,7 +37,7 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book|photo)\s*stand|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook|print|photo|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book|photo|music\s*sheet|sheet\s*music)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook|print|photo|sheet|music\s*sheet|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print|recipe\s+video|\d+\s*°\s*tip/;
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
 const CLIMB_HUMAN =
@@ -103,7 +103,7 @@ export function launcherRampLengthIn(prompt: string): number | null {
 
 export function isMediaDeviceStand(prompt: string): boolean {
   const hay = looksHay(prompt);
-  return /phone|tablet|device|lean\s*stand|recipe\s+video|real\s+phone/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+  return /phone|tablet|device|lean\s*stand|tablet\s*lean|recipe\s+video|real\s+phone|music\s*sheet|sheet\s*music/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
 }
 
 /**
@@ -122,11 +122,11 @@ export function wantsMediaTipHold(prompt: string): boolean {
     return false;
   }
   if (isMediaDeviceStand(prompt)) return true;
-  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|open\s+book|(?:book)\s*stand/.test(hay)) return true;
-  if (/holds?\s+a\s+real\s+(?:print|photo|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
+  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|open\s+book|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
+  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
     return true;
   }
-  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|music/.test(hay)) return true;
   return false;
 }
 
@@ -146,13 +146,21 @@ function softLaunchHay(hay: string): boolean {
 export function climbStepCount(prompt: string): number {
   const hay = looksHay(prompt);
   if (/\bladder\b/.test(hay) && !/step-?up|step\s*stool|climb\s+stool|rise\s*[×xby]/.test(hay)) return 0;
+  // Word counts before "top tread" / "each step" defaults — three-step + top tread must stay 3.
+  if (/three-?\s*step|\b3\s*-?\s*steps?\b/.test(hay)) return 3;
+  if (/four-?\s*step|\b4\s*-?\s*steps?\b/.test(hay)) return 4;
   const numbered = hay.match(/(\d+)\s*-?\s*steps?(?:\s+climb|\s+stool|\b)/);
   if (numbered) {
     const n = parseInt(numbered[1], 10);
     if (Number.isFinite(n) && n >= 1 && n <= 8) return n;
   }
-  if (/two-?\s*step|each\s+step|top\s+tread|second\s+(?:step|tread)/.test(hay)) return 2;
-  if (/three-?\s*step/.test(hay)) return 3;
+  if (/two-?\s*step|second\s+(?:step|tread)/.test(hay)) return 2;
+  // "each step" / "top tread" alone imply multi-step only when two-step cues exist; else 2.
+  if (/each\s+step|top\s+tread/.test(hay) && /two|2\s*-?\s*step|second/.test(hay)) return 2;
+  if (/each\s+step|top\s+tread/.test(hay) && !/one\s+climb\s+step|single\s+step|step-?up\b/.test(hay)) {
+    // Multi-step climb stool with rise×run but no explicit count — prefer 2 only when not three+.
+    if (!/three|four|\b[3-8]\s*-?\s*step/.test(hay)) return 2;
+  }
   if (/step-?up|climb\s+step|climb\s+stool|step\s*stool|step-?shelf|one\s+climb\s+step|rise\s*[×xby]|holds?\s+a\s+kid\s+standing|kid\s+stands/.test(hay)) {
     return 1;
   }
@@ -166,6 +174,7 @@ export function mediaHoldHeldLabel(prompt: string): string {
     return "open book";
   }
   if (/\beasel\b/.test(hay) && /book|cookbook|recipe/.test(hay)) return "open book";
+  if (/music\s*sheet|sheet\s*music|holds?\s+a\s+real\s+sheet/.test(hay)) return "music sheet";
   if (/print|photo|picture|5\s*[×x]\s*7/.test(hay) && !/phone|tablet/.test(hay)) return "print";
   if (/phone/.test(hay)) return "phone";
   if (/tablet|device/.test(hay)) return "device";
@@ -222,7 +231,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|step-?up|step\s*stool|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|music\s*sheet|sheet\s*music|step-?up|step\s*stool|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -316,7 +325,7 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
       if (mech === "climb") {
         const rr = climbRiseRun(hay);
         const steps = climbStepCount(hay);
-        const base = /step-?up|stool|climb\s+stool|two-?\s*step|each\s+step/.test(hay)
+        const base = /step-?up|stool|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step/.test(hay)
           ? "Step stool"
           : /step-?shelf/.test(hay)
             ? "Step shelf"
@@ -350,13 +359,17 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
             ? "Cookbook easel"
             : /\beasel\b/.test(hay)
               ? "Easel"
-              : /phone/.test(hay)
-                ? "Phone stand"
-                : /print|photo\s+lean|lean\s*frame/.test(hay)
-                  ? "Photo lean"
-                  : /book/.test(hay)
-                    ? "Book stand"
-                    : "Device stand"
+              : /music\s*sheet|sheet\s*music/.test(hay)
+                ? "Music sheet stand"
+                : /tablet/.test(hay)
+                  ? "Tablet lean"
+                  : /phone/.test(hay)
+                    ? "Phone stand"
+                    : /print|photo\s+lean|lean\s*frame/.test(hay)
+                      ? "Photo lean"
+                      : /book/.test(hay)
+                        ? "Book stand"
+                        : "Device stand"
           : /easel/.test(hay)
             ? "Easel"
             : "Picture frame";

@@ -310,7 +310,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /portal/i.test(project.name));
   const coatRack =
     /coat/i.test(project.name) ||
-    (/coat/.test(coatPrompt) && /rack|rail|hook|peg|tree/.test(coatPrompt) && !/shoe/.test(coatPrompt));
+    ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) && !/shoe/.test(coatPrompt));
   if ((coatRack || shoePortalRail) && !uprights.length) {
     const shoe = shoePortalRail || /shoe/i.test(project.name);
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
@@ -338,7 +338,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           title: "Mount height from the opening — keep swing clear",
           description: shoe
             ? `Mount height from the opening: set the shoe rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
-            : `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
+            : /rod/.test(coatPrompt)
+              ? `Mount height from the opening: set the coat rod ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal, spanning full width. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the coats.`
+              : `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
         }
@@ -368,7 +370,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: shoe ? `Mark ${hooks} pairs on the rail` : `Screw ${hooks} coat hooks`,
+        title: shoe ? `Mark ${hooks} pairs on the rail` : /rod/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} coat hooks`,
         description: shoe
           ? `Mark ${hooks} pairs along the rail, about 8–9" on center. Pegs or dividers hold each pair. Keep clear swing past the footwear.`
           : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,

@@ -158,7 +158,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const trip = triple(t);
   const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
   const isRound = /round|circular|diameter|\bdia\b/.test(lower);
-  const diameter = pick(t, /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, NaN);
+  const diameterRaw = pick(t, /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, NaN);
+  const diameterTail = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)/i, NaN);
+  const diameter = Number.isFinite(diameterRaw) ? diameterRaw : diameterTail;
   const legs = Math.max(
     3,
     Math.min(4, Math.round(pick(t, /(\d+)\s*(?:-?\s*)legs?/i, program === "table" ? (isRound ? 3 : 4) : 4))),
@@ -594,10 +596,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? "Wine rack"
                       : /coat/.test(lower) && /bench/.test(lower)
                         ? "Coat bench"
-                      : /coat/.test(lower) && /rack|rail|hook|peg|tree/.test(lower)
-                        ? /rail/.test(lower)
-                          ? "Coat rail"
-                          : "Coat rack"
+                      : /coat/.test(lower) && /rack|rail|rod|hook|peg|tree/.test(lower)
+                        ? /rod/.test(lower)
+                          ? "Coat rod"
+                          : /rail/.test(lower)
+                            ? "Coat rail"
+                            : "Coat rack"
                         : identityStem
                             ? identityStem
                             : /headboard/.test(lower)
@@ -620,9 +624,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                               ? "Wall cabinet"
                                               : names[program];
 
+  const roundTitle = program === "table" && (isRound || Number.isFinite(diameter));
+  const displayName = roundTitle
+    ? `Round ${titleStem} ${width}" × ${height}"`
+    : `${titleStem} ${width}" × ${height}" × ${depth}"`;
+
   return {
     program,
-    name: `${titleStem} ${width}" × ${height}" × ${depth}"`,
+    name: displayName,
     opening: {
       width,
       height,
@@ -1708,7 +1717,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const coatLower = prompt.toLowerCase();
   const coatRack =
     !/shoe/.test(coatLower) &&
-    ((/coat/.test(coatLower) && /rack|rail|tree|peg|hook/.test(coatLower)) ||
+    ((/coat/.test(coatLower) && /rack|rail|rod|tree|peg|hook/.test(coatLower)) ||
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
@@ -1734,9 +1743,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
       : Math.max(3, Math.min(8, Math.round(portalW / 6)));
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
-    const label = /rail/.test(coatLower) ? "Coat rail" : "Coat rack";
+    const label = /rod/.test(coatLower) ? "Coat rod" : /rail/.test(coatLower) ? "Coat rail" : "Coat rack";
     const notes = portal
-      ? [
+      ? /rod/.test(coatLower)
+        ? [
+            `${label} spanning a ${portalW}" × ${portalH}" door portal full width — clear swing. ¾" plywood / rod.`,
+            `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
+            `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal span, not a shelving niche.`,
+          ]
+        : [
           `${label} in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
           `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
           `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs. Guidance only.`,
@@ -1751,7 +1766,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return {
       id: createId("proj"),
       name: portal
-        ? `${label} ${portalW}" portal · ${hooks} hooks`
+        ? /rod/.test(coatLower)
+          ? `${label} ${portalW}" portal · full width`
+          : `${label} ${portalW}" portal · ${hooks} hooks`
         : `${label} ${portalW}" × ${stackH}" × ${shelfD}"`,
       prompt,
       kind: "closet",

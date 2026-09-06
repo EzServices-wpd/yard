@@ -4,7 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn } from "./weekendFamily";
+import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -82,6 +82,27 @@ export function parseSize(lower: string): { height: number; width: number; depth
         if (depth >= width) depth = long;
         else width = long;
       }
+    }
+  }
+
+
+  // Media-hold tip stand: typed device/sheet size binds the envelope (e.g. 11" tablet landscape).
+  if (detectWeekendMech(lower) === "media-hold" && wantsMediaTipHold(lower)) {
+    const device =
+      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|sheet|print|photo)/) ||
+      dimText.match(/(?:tablet|ipad|device|phone|sheet|print|photo)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
+    if (device) {
+      const span = Math.max(parseFloat(device[1]), 4);
+      const tip = mediaHoldTipDeg(lower) ?? 15;
+      const rad = (tip * Math.PI) / 180;
+      if (/landscape/.test(dimText)) {
+        width = span;
+        height = Math.max(4, Math.min(span * 0.75, span));
+      } else {
+        height = span;
+        width = Math.max(4, Math.min(span * 0.75, span));
+      }
+      depth = Math.max(3, span * Math.sin(rad) + 2);
     }
   }
 
