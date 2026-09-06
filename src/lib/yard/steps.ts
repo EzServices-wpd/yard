@@ -354,9 +354,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return [
       {
         step: 1,
-        title: shoe ? "Cut the shoe rail" : "Cut the peg rail and hat shelf",
-        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
-        tips: tool.tip,
+        title: shoe ? "Cut the shoe rail" : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
+        description: portal
+          ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
+          : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
+        tips: portal ? "Mount height from the opening — keep clear swing." : tool.tip,
         partsUsed: names(panels),
       },
       {
@@ -1574,6 +1576,20 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const rampLen = launcherRampLengthIn(p);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
       return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; marble leaves free.`;
+    }
+    if (detectWeekendMech(p) === "media-hold" && wantsMediaTipHold(p)) {
+      const tip = mediaHoldTipDeg(p);
+      const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+      const held = mediaHoldHeldLabel(p);
+      return ` Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`;
+    }
+    if (detectWeekendMech(p) === "climb" && isClimbStepStool(p)) {
+      const rr = climbRiseRun(p);
+      const n = Math.max(1, climbStepCount(p));
+      const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+      return n >= 2
+        ? ` ${n} weight-bearing human steps (each ${riseRun}) — kid stands on the top tread; not a vehicle incline.`
+        : ` Weight-bearing climb step at ${riseRun} — not a vehicle incline.`;
     }
     return "";
   })();

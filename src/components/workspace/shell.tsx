@@ -598,9 +598,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   : wire
                     ? " · Skeleton only — pick a real material to densify"
                     : workMode === "look"
-                      ? detectWeekendMech(project.prompt ?? "") === "launcher"
-                        ? ""
-                        : " · Orbit"
+                      ? (() => {
+                          const mech = detectWeekendMech(project.prompt ?? "");
+                          // Launcher / media-hold / climb: dims are the envelope, not Orbit chrome.
+                          return mech === "launcher" || mech === "media-hold" || mech === "climb" ? "" : " · Orbit";
+                        })()
                       : workMode === "walk"
                         ? " · On the road"
                         : workMode === "build"
