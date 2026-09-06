@@ -353,7 +353,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
   if (mech === "pot-hold" || wantsPotHold(prompt)) {
     const dia = potHoldDiameterIn(prompt);
     const hold =
-      /plant stand|pot stand|real (?:\d+\"?)?\s*pot|pot envelope|upright/i.test(blobAll) ||
+      /plant stand|pot stand|figurine stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|upright/i.test(blobAll) ||
       /holds? (?:a )?real/i.test(blobAll);
     const roles = new Map<string, number>();
     for (const i of project.instances) {
@@ -371,7 +371,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (project.instances.length && !hasStand) {
       issues.push({
         guard: "anatomy",
-        message: "Plant / pot stand needs legs + deck/ring after densify.",
+        message: "Plant / pot / figurine stand needs legs + deck/ring after densify.",
       });
     }
     if (dia != null && !new RegExp(String(dia)).test(blobAll)) {

@@ -32,6 +32,9 @@ export function cutListName(name: string, type?: string): string {
   if (/hanging rod/i.test(name)) return "Hanging rod";
   if (/jar lip/i.test(name)) return "Jar lip";
   if (/bottle rail/i.test(name)) return "Bottle rail";
+  if (/shoe peg/i.test(name)) return "Shoe peg";
+  if (/shoe rail/i.test(name)) return "Shoe rail";
+  if (/towel rail/i.test(name)) return "Towel rail";
   if (/peg rail/i.test(name)) return "Peg rail";
   if (/hat shelf/i.test(name)) return "Hat shelf";
   if (/toekick|toe[- ]?kick/i.test(name) || type === "kick") return "Toekick";

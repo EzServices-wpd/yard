@@ -330,12 +330,38 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const shelf = of("top")[0];
     const portal =
       shoe ||
+      towel ||
       /door\s*portal|portal|doorway|door opening/.test(coatPrompt) ||
       /portal/i.test(project.name);
     const openingH = project.opening?.height ?? project.overall.height;
     const mountFromOpening = shoe
       ? Math.round(Math.min(18, Math.max(6, openingH * 0.12)))
-      : Math.round(Math.min(60, Math.max(48, openingH * 0.7)));
+      : Math.round(Math.min(60, Math.max(48, openingH * (towel ? 0.55 : 0.7))));
+    if (towel) {
+      return [
+        {
+          step: 1,
+          title: "Cut the towel rail",
+          description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`,
+          tips: "Mount height from the opening — keep clear swing.",
+          partsUsed: names(panels),
+        },
+        {
+          step: 2,
+          title: "Dry-fit the rail in the portal",
+          description: `${rail ? cutLine(rail) : "Towel rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`,
+          tips: "Portal envelope is the opening — keep clear swing.",
+          partsUsed: names(panels),
+        },
+        {
+          step: 3,
+          title: "Mount height from the opening — keep swing clear",
+          description: `Mount height from the opening: set the towel rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the towels.`,
+          tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
+          partsUsed: names(panels),
+        },
+      ];
+    }
     const hangStep = portal
       ? {
           step: 4,

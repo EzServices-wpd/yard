@@ -294,11 +294,17 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? [
               `${hit.name} · upright pot envelope` +
                 (potDia != null && potH != null
-                  ? ` for a real ${potDia}" diameter × ${potH}" tall pot`
-                  : potDia != null
-                    ? ` for a real ${potDia}" pot`
-                    : " for a real pot") +
-                ` — densify keeps the whole stand at the named stock; pot sits upright, not a Tree silhouette.`,
+                    ? /figurine/.test(prompt.toLowerCase())
+                      ? ` for a real figurine ${potDia}" × ${potDia}" base × ${potH}" tall upright`
+                      : ` for a real ${potDia}" diameter × ${potH}" tall pot`
+                    : potDia != null
+                      ? /figurine/.test(prompt.toLowerCase())
+                        ? ` for a real figurine ~${potDia}" base`
+                        : ` for a real ${potDia}" pot`
+                      : /figurine/.test(prompt.toLowerCase())
+                        ? " for a real figurine"
+                        : " for a real pot") +
+                ` — densify keeps the whole stand at the named stock; ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}, not a Tree silhouette.`,
             ]
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)

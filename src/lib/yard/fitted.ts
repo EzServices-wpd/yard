@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isShoePortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -59,7 +59,7 @@ function pick(text: string, re: RegExp, fallback: number) {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|range\s*hood|kitchen\s*hood|\bhood\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -82,7 +82,7 @@ export function looksLikeFitted(prompt: string) {
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|range\s*hood|\bhood\b/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|\bhood\b/.test(lower)) {
     return true;
   }
   return nums >= 2;
@@ -167,7 +167,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   );
 
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
-  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height)/i, NaN);
   let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
 
   if (!Number.isFinite(width) && trip.w) width = trip.w;
@@ -240,6 +240,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
     width = trip.w;
     depth = trip.h;
     unlabeledWd = true;
+  }
+
+  // Fitted to a named opening: unlabeled triples are W×H×D (opening), not furniture W×D×H.
+  if (
+    /fitted\s+to|\bopening\b|\balcove\b|\bniche\b/.test(lower) &&
+    trip.w &&
+    trip.h &&
+    trip.d &&
+    !/wide|width|deep|depth|tall|high|height/.test(lower)
+  ) {
+    width = trip.w;
+    height = trip.h;
+    depth = trip.d;
   }
 
   if (program === "table" && (isRound || Number.isFinite(diameter))) {
@@ -1514,6 +1527,64 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
+  // Towel rail in a door portal — clear swing; not a shelving niche / linen closet.
+  if (isTowelPortalRail(prompt.toLowerCase())) {
+    const towelLower = prompt.toLowerCase();
+    const portalW = W;
+    const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
+    const portalH = Math.max(
+      H,
+      portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H,
+    );
+    const railD = Math.max(2.5, Math.min(D > 1 && D < 10 ? D : 3.5, 4));
+    const railH = Math.max(3.5, Math.min(5, railD + 1));
+    panels.push(panel("back", "Towel rail", x0, 0, 0, portalW, railH, P));
+    const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.55)));
+    const notes = [
+      `Towel rail in a ${portalW}" × ${portalH}" door portal — clear swing. ¾" plywood.`,
+      `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
+      `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+    ];
+    return {
+      id: createId("proj"),
+      name: `Towel rail ${portalW}" portal`,
+      prompt,
+      kind: "closet",
+      overall: { width: portalW, height: portalH, depth: railD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes,
+      historic: false,
+      opening: {
+        ...spec.opening,
+        width: portalW,
+        height: portalH,
+        depth: railD,
+        kind: "alcove",
+      },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: portalW,
+          height: portalH,
+          depth: railD,
+          doors: false,
+          shelfCount: 0,
+          drawersPerBank: undefined,
+        },
+        name: `Towel rail ${portalW}" portal`,
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   // Shoe rail in a door portal — pairs on a rail, clear swing; not a shelving niche.
   // Pegs are cut plywood (one per pair) so steps never invent hardware missing from the cut list.
   if (isShoePortalRail(prompt.toLowerCase())) {
@@ -1654,13 +1725,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
           : windowSeat
-            ? `${name}. Sittable window seat with ${cubbyN} open bays under the lid line — not a hollow storage box. ¾" plywood.`
+            ? `${name}. Sittable window seat at ${H}" seat height with ${cubbyN} open bays under the lid line — weight-bearing seat, not a hollow storage box. ¾" plywood.`
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
         `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
           : windowSeat
-            ? "Set it under the sill. Sit-test before you finish. Guidance only — confirm the seat height for the window."
+            ? `Set it under the sill at ${H}" seat height. Sit-test before you finish — dividers carry sit load. Guidance only — confirm the ${H}" seat height for the window.`
           : "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
       ],
       historic: false,

@@ -40,7 +40,7 @@ const MEDIA_HOLD_NOUN =
   /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
 /** Plant / pot stand that holds a real pot upright — envelope + densify, not a Tree silhouette. */
 const POT_HOLD_NOUN =
-  /plant\s*stand|pot\s*stand|holds?\s+a\s+real\s+.{0,24}\bpot\b|\bpot\b.{0,32}upright|upright.{0,24}\bpot\b/;
+  /plant\s*stand|pot\s*stand|figurine\s*stand|holds?\s+a\s+real\s+.{0,24}\b(?:pot|figurine)\b|\b(?:pot|figurine)\b.{0,32}upright|upright.{0,24}\b(?:pot|figurine)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)/;
 
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
@@ -147,9 +147,16 @@ export function wantsPotHold(prompt: string): boolean {
 /** Pot diameter inches when typed (plant / pot stand envelope). */
 export function potHoldDiameterIn(prompt: string): number | null {
   const hay = looksHay(prompt);
+  // Figurine / stand footprint: "2×2 base" → envelope base size.
+  const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
+  if (basePair) {
+    const a = parseFloat(basePair[1]);
+    const b = parseFloat(basePair[2]);
+    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) return Math.max(a, b);
+  }
   const m =
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
-    hay.match(/(?:pot|planter)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
+    hay.match(/(?:pot|planter|figurine)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
     hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
     hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot)?/);
@@ -163,8 +170,9 @@ export function potHoldHeightIn(prompt: string): number | null {
   const hay = looksHay(prompt);
   const m =
     hay.match(/diameter\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high|height)?/) ||
+    hay.match(/base\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high|height)?/) ||
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/) ||
-    hay.match(/(?:pot|planter)[^\d]{0,40}(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
+    hay.match(/(?:pot|planter|figurine)[^\d]{0,40}(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 && n < 48 ? n : null;
@@ -424,7 +432,11 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         return { family: "frame", kind: "frame", name };
       }
       if (mech === "pot-hold") {
-        return { family: "frame", kind: "frame", name: "Plant stand" };
+        return {
+          family: "frame",
+          kind: "frame",
+          name: /figurine/.test(hay) ? "Figurine stand" : "Plant stand",
+        };
       }
       if (mech === "media-hold") {
         const name = wantsMediaTipHold(hay)
@@ -441,7 +453,9 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
                     : /tablet/.test(hay)
                     ? "Tablet lean"
                     : /phone/.test(hay)
-                      ? "Phone stand"
+                      ? /lean|charg/.test(hay)
+                        ? "Phone lean"
+                        : "Phone stand"
                       : /print|photo\s+lean|lean\s*frame/.test(hay)
                         ? "Photo lean"
                         : /book/.test(hay)

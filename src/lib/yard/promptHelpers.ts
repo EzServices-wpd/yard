@@ -91,11 +91,20 @@ export function parseSize(lower: string): { height: number; width: number; depth
   // Media-hold tip stand: typed device/sheet/card/laptop size binds the envelope (e.g. 11" tablet, 13" open laptop, 4×6 card).
   if (detectWeekendMech(lower) === "media-hold" && wantsMediaTipHold(lower)) {
     const cardPair = dimText.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/);
+    const tallM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
+    const wideM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:wide|width)\b/);
     const device =
       dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)/) ||
       dimText.match(/(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
       dimText.match(/open\s+(\d+(?:\.\d+)?)\s*"?\s*laptop/);
-    if (cardPair) {
+    // Phone / lean: honor labeled tall × wide (e.g. 6" tall × 3" wide at 20° tip).
+    if (tallM && wideM && /phone|charging\s*lean|(?:phone|tablet).{0,24}lean|lean.{0,24}phone/.test(dimText)) {
+      const tip = mediaHoldTipDeg(lower) ?? 15;
+      const rad = (tip * Math.PI) / 180;
+      height = parseFloat(tallM[1]);
+      width = parseFloat(wideM[1]);
+      depth = Math.max(3, height * Math.sin(rad) + 1.5);
+    } else if (cardPair) {
       const a = parseFloat(cardPair[1]);
       const b = parseFloat(cardPair[2]);
       // Recipe / photo cards read W×H of the face (4×6 → 6 wide × 4 tall landscape face).

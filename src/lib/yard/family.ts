@@ -146,6 +146,15 @@ export function isShoePortalRail(lower: string) {
   );
 }
 
+/** Towel rail in a door portal — clear swing; not a shelving niche. */
+export function isTowelPortalRail(lower: string) {
+  return (
+    /\btowels?\b/.test(lower) &&
+    /rail|bar|rack/.test(lower) &&
+    /door\s*portal|portal|doorway|door opening/.test(lower)
+  );
+}
+
 /** Kitchen upper → wall hung cabinet (not a floor box). */
 export function isKitchenUpper(lower: string) {
   if (/base\s+cabinet|lower\s+cabinet|floor[- ]?cabinet/.test(lower)) return false;
@@ -239,6 +248,7 @@ export function identityTitleStem(lower: string): string | null {
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
   if (isShoePortalRail(lower)) return "Shoe rail";
+  if (isTowelPortalRail(lower)) return "Towel rail";
   // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && /door\s*portal|portal|doorway|door opening/.test(lower)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
