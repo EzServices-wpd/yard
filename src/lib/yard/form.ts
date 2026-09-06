@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbSingleStep, isLauncherRamp, isMediaDeviceStand, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbSingleStep, isLauncherRamp, isMediaDeviceStand, wantsMediaTipHold, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -251,7 +251,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
         ? isLauncherRamp(prompt)
           ? rampLauncherOps(size, rampLen)
           : launcherFrameOps(size)
-        : mech === "media-hold" && isMediaDeviceStand(prompt)
+        : mech === "media-hold" && wantsMediaTipHold(prompt)
           ? mediaHoldStandOps(size, tip)
           : frameOps(size);
   const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
@@ -276,11 +276,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
               "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
             ]
         : mech === "media-hold"
-          ? isMediaDeviceStand(prompt)
+          ? wantsMediaTipHold(prompt)
             ? [
-                `${hit.name} · binds a real device envelope` +
+                `${hit.name} · tipped lean` +
                   (tip != null ? ` at ${tip}° tip` : "") +
-                  ` — never a flat decal.`,
+                  ` with a front lip — holds a real book or device, never a flat decal.`,
               ]
             : [
                 `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,

@@ -35,9 +35,9 @@ export type WeekendMech = "launcher" | "media-hold" | "climb";
 const LAUNCHER_NOUN =
   /\b(catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot)\b|soft-?launch|free\s+projectile|leaves the ramp|(?:paper\s*)?plane.{0,48}\bramp\b|\bramp\b.{0,48}(?:plane|projectile|launch|leaves)/;
 
-/** Picture/easel OR a real device lean-stand that binds tip angle + envelope. */
+/** Picture/easel/cookbook OR a real device lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*frame|\bcraft\s*frame\b|\beasel\b|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book)\s*stand|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device)|recipe\s+video/;
+  /(?:picture|photo|poster|art)\s*frame|\bcraft\s*frame\b|\beasel\b|cookbook|recipe\s+book|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book)\s*stand|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook)|recipe\s+video/;
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
 const CLIMB_HUMAN =
@@ -102,6 +102,22 @@ export function launcherRampLengthIn(prompt: string): number | null {
 export function isMediaDeviceStand(prompt: string): boolean {
   const hay = looksHay(prompt);
   return /phone|tablet|device|lean\s*stand|recipe\s+video|real\s+phone/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+}
+
+/**
+ * Tip-angled lean that holds a real book/device/print — same envelope anatomy
+ * as a phone stand (lip + tipped back), not a flat picture-frame rabbet.
+ * Universal: any media-hold that names tip / open book / easel / cookbook.
+ */
+export function wantsMediaTipHold(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  if (/(?:picture|photo|poster|art)\s*frame/.test(hay) && mediaHoldTipDeg(prompt) == null && !/easel|lean|tip|open\s+book/.test(hay)) {
+    return false;
+  }
+  if (isMediaDeviceStand(prompt)) return true;
+  if (/\beasel\b|cookbook|recipe\s+book|open\s+book|(?:book)\s*stand/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture/.test(hay)) return true;
+  return false;
 }
 
 export function isLauncherRamp(prompt: string): boolean {
@@ -257,10 +273,16 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         return { family: "frame", kind: "frame", name };
       }
       if (mech === "media-hold") {
-        const name = isMediaDeviceStand(hay)
-          ? /phone/.test(hay)
-            ? "Phone stand"
-            : "Device stand"
+        const name = wantsMediaTipHold(hay)
+          ? /cookbook|recipe\s+book/.test(hay) || (/\beasel\b/.test(hay) && /book/.test(hay))
+            ? "Cookbook easel"
+            : /\beasel\b/.test(hay)
+              ? "Easel"
+              : /phone/.test(hay)
+                ? "Phone stand"
+                : /book/.test(hay)
+                  ? "Book stand"
+                  : "Device stand"
           : /easel/.test(hay)
             ? "Easel"
             : "Picture frame";

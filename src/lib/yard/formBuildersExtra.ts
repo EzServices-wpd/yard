@@ -264,14 +264,13 @@ export function rampLauncherOps(s: Size3, rampLenIn?: number | null): FormOp[] {
 }
 
 /**
- * Media-hold device stand — real phone/tablet envelope + tip angle, never a decal.
+ * Media-hold tip stand — real phone/tablet/book envelope + tip angle + lip, never a decal.
  */
 export function mediaHoldStandOps(s: Size3, tipDeg?: number | null): FormOp[] {
   const tip = tipDeg ?? 15;
   const rad = (tip * Math.PI) / 180;
   const H = Math.max(s.height || 6, 4);
-  const W = Math.max(Math.min(s.width || 4, 8), 2.5);
-  const D = Math.max(s.depth || H * Math.sin(rad) + 2, 3);
+    const W = Math.max(Math.min(s.width || 4, 16), 2.5); const D = Math.max(s.depth || H * Math.sin(rad) + 2, 3);
   const x0 = -W / 2;
   const x1 = W / 2;
   const lean = H * Math.cos(rad);

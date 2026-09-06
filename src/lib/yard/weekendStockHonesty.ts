@@ -13,6 +13,7 @@ import {
   isClimbSingleStep,
   isLauncherRamp,
   isMediaDeviceStand,
+  wantsMediaTipHold,
   launcherRampLengthIn,
   mediaHoldTipDeg,
 } from "./weekendFamily";
@@ -281,21 +282,34 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     }
   }
   if (mech === "media-hold") {
-    if (isMediaDeviceStand(prompt)) {
+    if (wantsMediaTipHold(prompt)) {
       const tip = mediaHoldTipDeg(prompt);
       const tipOk =
         tip == null ||
         blobAll.includes(`${tip}°`) ||
         blobAll.includes(`${tip} deg`) ||
-        new RegExp(`${tip}\\s*°|tip(?:\s+angle)?\\s*${tip}`, "i").test(blobAll);
-      const device =
-        /real (?:phone|tablet|device)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real/i.test(blobAll) ||
-        /phone|tablet|device/i.test(blobAll);
+        new RegExp(`${tip}\s*°|tip(?:\s+angle)?\s*${tip}`, "i").test(blobAll);
+      const hold =
+        /real (?:phone|tablet|device|book|cookbook)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand/i.test(
+          blobAll,
+        ) || /phone|tablet|device|book|cookbook|easel|lip/i.test(blobAll);
+      const tipRoles = new Map<string, number>();
+      for (const i of project.instances) {
+        const k = i.role || "?";
+        tipRoles.set(k, (tipRoles.get(k) || 0) + 1);
+      }
+      const hasLean = (tipRoles.get("support") || 0) + (tipRoles.get("deck") || 0) > 0;
       const notDecal = !/decal|flat print|sticker face/i.test(blobAll) || /never a (?:flat )?decal|not a decal/i.test(blobAll);
-      if (!device) {
+      if (!hold) {
         issues.push({
           guard: "anatomy",
-          message: "Media-hold stand must bind a real device envelope (not a decal).",
+          message: "Media-hold tip stand must bind a real book/device envelope (not a decal).",
+        });
+      }
+      if (project.instances.length && !hasLean) {
+        issues.push({
+          guard: "anatomy",
+          message: "Media-hold tip stand needs lean back + lip (support/deck roles) after densify.",
         });
       }
       if (tip != null && !tipOk) {
@@ -307,7 +321,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (!notDecal && /decal/i.test(blobAll)) {
         issues.push({
           guard: "anatomy",
-          message: "Media-hold must not treat the device as a decal.",
+          message: "Media-hold must not treat the held media as a decal.",
         });
       }
     } else {
