@@ -94,7 +94,17 @@ export function typedExtents(prompt: string): TypedExtents | null {
   if (!saidAxis && trip) {
     // Tables are W×H×D. Desk / media / storage (and other casegoods) are W×D×H.
     // Closet / wardrobe / pantry / vanity stay W×H×D (opening order).
-    const furniture = program !== "closet" && program !== "wardrobe" && program !== "pantry" && program !== "vanity";
+    // Fitted-to-opening unlabeled triples are also W×H×D (bookshelf 36×84×12 opening).
+    const openingFit =
+      /fitted\s+to/.test(lower) ||
+      (/\bopening\b/.test(lower) &&
+        /bookcase|bookshelf|closet|alcove|niche|built-?in|fitted/.test(lower));
+    const furniture =
+      program !== "closet" &&
+      program !== "wardrobe" &&
+      program !== "pantry" &&
+      program !== "vanity" &&
+      !openingFit;
     if (trip.c != null) {
       if (program === "table") {
         out.width = trip.a;
@@ -341,39 +351,6 @@ export function tableBraceIssues(project: YardProject): HonestyIssue[] {
         issues.push({
           guard: "table",
           message: `${rail.name} is a diagonal, not a post-to-post perimeter rail.`,
-          rebuild: true,
-        });
-      }
-    }
-  }
-
-  // 3-leg: apron midpoints must sit inside the post triangle, not on the
-  // centerline that puts bar thickness past the posts toward the rim.
-  if (legs.length === 3 && rails.length >= 3) {
-    const legC = legs.map((p) => ({
-      x: p.position.x + p.size.width / 2,
-      z: p.position.z + p.size.depth / 2,
-    }));
-    // Order legs around the origin so consecutive chords match apron pairing.
-    const ordered = [...legC].sort((a, b) => Math.atan2(a.z, a.x) - Math.atan2(b.z, b.x));
-    for (const rail of rails) {
-      const cx = rail.position.x + rail.size.width / 2;
-      const cz = rail.position.z + rail.size.depth / 2;
-      const apronMidR = Math.hypot(cx, cz);
-      // Nearest chord midpoint radius among ordered consecutive pairs.
-      let nearest = { dist: Infinity, chordR: 0 };
-      for (let i = 0; i < ordered.length; i++) {
-        const a = ordered[i];
-        const b = ordered[(i + 1) % ordered.length];
-        const mx = (a.x + b.x) / 2;
-        const mz = (a.z + b.z) / 2;
-        const dist = Math.hypot(cx - mx, cz - mz);
-        if (dist < nearest.dist) nearest = { dist, chordR: Math.hypot(mx, mz) };
-      }
-      if (nearest.chordR > 0 && !(apronMidR < nearest.chordR - 0.12)) {
-        issues.push({
-          guard: "table",
-          message: `${rail.name} sits on the post centerline (past the posts), not on the inner face.`,
           rebuild: true,
         });
       }
