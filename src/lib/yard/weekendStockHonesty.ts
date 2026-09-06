@@ -260,7 +260,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         issues.push({
           guard: "anatomy",
           message:
-            "Launcher ramp needs a continuous trough channel (side guides + floor ties as support/deck) after densify.",
+            "Launcher ramp needs a continuous trough channel (side guides + floor ties as support/deck) after densify; typed marble leaves free.",
         });
       }
       if (!leaves) {
@@ -325,7 +325,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (project.instances.length && !hasLean) {
         issues.push({
           guard: "anatomy",
-          message: "Media-hold tip stand needs lean back + lip (support/deck roles) after densify.",
+          message: "Media-hold tip stand needs lean back + lip (support/deck roles) after densify; open laptop / device envelope + tip when typed.",
         });
       }
       if (tip != null && !tipOk) {
@@ -365,7 +365,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (!hold) {
       issues.push({
         guard: "anatomy",
-        message: "Plant / pot stand must bind a real pot envelope (upright).",
+        message: "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
       });
     }
     if (project.instances.length && !hasStand) {
@@ -400,7 +400,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (project.instances.length && !riseRunTalk) {
         issues.push({
           guard: "anatomy",
-          message: "Climb step must use rise/run (weight-bearing human step) language.",
+          message: "Climb step must use rise/run (weight-bearing human step) language; densify from named stock; kid stands on the tread.",
         });
       }
       const nSteps = Math.max(1, climbStepCount(prompt));

@@ -4,7 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -68,9 +68,11 @@ export function parseSize(lower: string): { height: number; width: number; depth
   // Soft-launch / marble trough: typed run length is the envelope long axis.
   if (isLauncherRamp(lower)) {
     const rampLen = launcherRampLengthIn(lower);
+    const marbleDia = marbleDiameterIn(lower);
     if (rampLen != null) {
       const long = Math.max(rampLen, 8);
-      const short = Math.max(3, Math.min(long * 0.55, 10));
+      // Channel clear must leave the typed marble free — short axis ≥ marble + guides.
+      const short = Math.max(3, marbleDia != null ? marbleDia * 4 + 1.5 : 0, Math.min(long * 0.55, 10));
       const rise = Math.max(2, Math.min(long * 0.45, 12));
       // Prefer depth as the run when width still defaulted.
       if (width === 24 && depth === 24 && height === 24) {
@@ -86,12 +88,13 @@ export function parseSize(lower: string): { height: number; width: number; depth
   }
 
 
-  // Media-hold tip stand: typed device/sheet/card size binds the envelope (e.g. 11" tablet, 4×6 card).
+  // Media-hold tip stand: typed device/sheet/card/laptop size binds the envelope (e.g. 11" tablet, 13" open laptop, 4×6 card).
   if (detectWeekendMech(lower) === "media-hold" && wantsMediaTipHold(lower)) {
     const cardPair = dimText.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/);
     const device =
-      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|sheet|print|photo|card)/) ||
-      dimText.match(/(?:tablet|ipad|device|phone|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
+      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)/) ||
+      dimText.match(/(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
+      dimText.match(/open\s+(\d+(?:\.\d+)?)\s*"?\s*laptop/);
     if (cardPair) {
       const a = parseFloat(cardPair[1]);
       const b = parseFloat(cardPair[2]);
@@ -105,9 +108,10 @@ export function parseSize(lower: string): { height: number; width: number; depth
       const span = Math.max(parseFloat(device[1]), 4);
       const tip = mediaHoldTipDeg(lower) ?? 15;
       const rad = (tip * Math.PI) / 180;
-      if (/landscape/.test(dimText)) {
+      // Open laptop is landscape envelope; phones/tablets stay portrait unless marked landscape.
+      if (/landscape|open\s+laptop|laptop/.test(dimText)) {
         width = span;
-        height = Math.max(4, Math.min(span * 0.75, span));
+        height = Math.max(4, Math.min(span * 0.65, span));
       } else {
         height = span;
         width = Math.max(4, Math.min(span * 0.75, span));
@@ -116,14 +120,18 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  // Plant / pot stand: typed pot diameter binds the upright envelope.
+  // Plant / pot stand: typed pot diameter × tall binds the upright pot envelope (stand slightly larger).
   if (detectWeekendMech(lower) === "pot-hold" || wantsPotHold(lower)) {
     const dia = potHoldDiameterIn(lower);
-    if (dia != null) {
-      const span = Math.max(dia + 1.5, 4);
+    const potH = potHoldHeightIn(lower);
+    if (dia != null || potH != null) {
+      const d = dia ?? potH ?? 4;
+      const h = potH ?? Math.max(d * 1.0, 4);
+      // Envelope for the pot itself is dia × tall; stand clears ~¾" around.
+      const span = Math.max(d + 1.5, d, 4);
       width = span;
       depth = span;
-      height = Math.max(dia * 1.1, span * 0.85);
+      height = Math.max(h + 1.25, h, span * 0.85);
     }
   }
 
@@ -178,7 +186,14 @@ export function hasExplicitSize(prompt: string): boolean {
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:pot|planter)\b/.test(dim)) return true;
+  if (/(?:pot|planter)[^\d]{0,16}\d+(?:\.\d+)?\s*["″]?\s*diameter/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″]?\s*diameter/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″]?\s*(?:tall|high)\b/.test(dim) && /(?:pot|planter|stand)/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″]?\s*(?:laptop|tablet|phone|device)\b/.test(dim)) return true;
+  if (/open\s+\d+(?:\.\d+)?\s*["″]?\s*laptop/.test(dim)) return true;
+  if (/\d+\s*°|\d+\s*deg(?:rees)?|\d+\s*tip/.test(dim) && /lean|stand|hold|laptop|easel/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:card|print|photo|sheet)\b/.test(dim)) return true;
+  if (/[⅝⅜⅞¼½¾]|\d+\s*\/\s*\d+\s*["″]?\s*marble/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim)) return true;
   const pair = dim.match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]))) return true;
@@ -324,8 +339,15 @@ export function toProject(
   // already lands on it (skip stock-face pad that pushed ladders to ~74" / catapults short).
   // Leave Eiffel / lattice / arch / bridge pad math alone — freeze chips.
   if ((kind === "frame" || kind === "ladder") && hasExplicitSize(prompt)) {
-    const typedH = parseSize(prompt.toLowerCase()).height;
-    if (typedH && Math.abs(spanY - typedH) <= 1.25) {
+    const typed = parseSize(prompt.toLowerCase());
+    const typedH = typed.height;
+    const mech = detectWeekendMech(prompt);
+    // Pot-hold / media-hold: honor typed envelope (pot dia×tall / open laptop+tip), not min-8 pad inflate.
+    if (mech === "pot-hold" || mech === "media-hold") {
+      width = typed.width;
+      height = typed.height;
+      depth = typed.depth;
+    } else if (typedH && Math.abs(spanY - typedH) <= 1.25) {
       height = typedH;
     } else if (kind === "frame" || kind === "ladder") {
       // Thinner face pad only on frames — 2x4 width was the ladder inflate.

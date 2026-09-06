@@ -11,6 +11,8 @@ import {
   wantsMediaTipHold,
   wantsPotHold,
   potHoldDiameterIn,
+  potHoldHeightIn,
+  marbleDiameterIn,
   launcherRampLengthIn,
   mediaHoldTipDeg,
   mediaHoldHeldLabel,
@@ -1577,11 +1579,24 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     if (detectWeekendMech(p) === "launcher" && isLauncherRamp(p)) {
       const rampLen = launcherRampLengthIn(p);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
-      return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; marble leaves free.`;
+      const md = marbleDiameterIn(p);
+      const marbleTalk =
+        md == null
+          ? "marble leaves free"
+          : md < 1
+            ? `a ${Math.round(md * 8)}/8" marble leaves free`
+            : `a ${md}" marble leaves free`;
+      return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; ${marbleTalk}.`;
     }
     if (detectWeekendMech(p) === "pot-hold" || wantsPotHold(p)) {
       const dia = potHoldDiameterIn(p);
-      const potTalk = dia != null ? `${dia}" pot` : "typed pot";
+      const potH = potHoldHeightIn(p);
+      const potTalk =
+        dia != null && potH != null
+          ? `${dia}" diameter × ${potH}" tall pot`
+          : dia != null
+            ? `${dia}" pot`
+            : "typed pot";
       return ` Upright plant stand for a real ${potTalk} — densify keeps the whole stand at the named stock.`;
     }
     if (detectWeekendMech(p) === "media-hold" && wantsMediaTipHold(p)) {
@@ -1595,8 +1610,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const n = Math.max(1, climbStepCount(p));
       const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
       return n >= 2
-        ? ` ${n} weight-bearing human steps (each ${riseRun}) — kid stands on the top tread; not a vehicle incline.`
-        : ` Weight-bearing climb step at ${riseRun} — not a vehicle incline.`;
+        ? ` ${n} weight-bearing human steps (each ${riseRun}) — kid stands on the top tread; densify from named stock; not a vehicle incline.`
+        : ` Weight-bearing climb step at ${riseRun} — kid stands on the tread; densify from named stock; not a vehicle incline.`;
     }
     return "";
   })();
@@ -1689,8 +1704,8 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
           title: n >= 2 ? `Seat the ${n} climb treads` : "Seat the single climb tread",
           why:
             n >= 2
-              ? `${n} weight-bearing human steps (each ${riseRun}). Kid stands on the top tread. Not a vehicle incline.`
-              : `One weight-bearing step at ${riseRun}. Not a vehicle incline.`,
+              ? `${n} weight-bearing human steps (each ${riseRun}). Kid stands on the top tread. Densify from named stock. Not a vehicle incline.`
+              : `One weight-bearing step at ${riseRun}. Kid stands on the tread. Densify from named stock. Not a vehicle incline.`,
         },
         { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },
@@ -1707,17 +1722,24 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     if (isLauncherRamp(prompt)) {
       const rampLen = launcherRampLengthIn(prompt);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
+      const md = marbleDiameterIn(prompt);
+      const marbleTalk =
+        md == null
+          ? "marble leaves free"
+          : md < 1
+            ? `a ${Math.round(md * 8)}/8" marble leaves free`
+            : `a ${md}" marble leaves free`;
       return [
         { role: "rail", title: "Glue the base runners", why: `Base sets the ${lenTalk} footprint.` },
         {
           role: "support",
           title: "Set the trough side guides",
-          why: `Side guides make the U-channel walls along the ${rampLen != null ? rampLen + '"' : "typed"} run — state the length clearly.`,
+          why: `Side guides make the U-channel walls along the ${rampLen != null ? rampLen + '"' : "typed"} run — state the length clearly` + (md != null ? `; clear for the typed marble` : "") + `.`,
         },
         {
           role: "deck",
           title: "Lay the trough floor ties — leave the free end open",
-          why: "Floor ties + guides = continuous trough channel. Free projectile leaves the ramp; marble leaves free — do not glue the projectile on.",
+          why: `Floor ties + guides = continuous trough channel. Free projectile leaves the ramp; ${marbleTalk} — do not glue the projectile on.`,
         },
         { role: "brace", title: "Brace the incline", why: "Braces kill racking — leave the leave-end clear." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },

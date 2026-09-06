@@ -47,18 +47,26 @@ export function looksLikePocket(prompt: string) {
 export function parsePocket(prompt: string): PocketSpec | null {
   if (!looksLikePocket(prompt)) return null;
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
+  const lower = t.toLowerCase();
+  // "original trapezoid" / original pocket vanity freezes Ezra's bathroom survey — do not invent new flares.
+  const freezeOriginal =
+    /original/.test(lower) && /(?:trapezoid|pocket|vanity)/.test(lower) && (lower.match(/\d+(?:\.\d+)?/g) ?? []).length < 4;
+  if (freezeOriginal) {
+    // Fall through with empty measure text so defaults below stay the original survey.
+  }
 
-  const backWidth = pick(t, /back wall[:\s]+(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide/i, 38.5));
-  const leftDepth = pick(t, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26);
-  const rightDepth = pick(t, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5);
-  const height = pick(t, /(?:all walls|walls)[:\s]+(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high/i, 102));
+  const measure = freezeOriginal ? "" : t;
+  const backWidth = pick(measure, /back wall[:\s]+(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide/i, 38.5));
+  const leftDepth = pick(measure, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26);
+  const rightDepth = pick(measure, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5);
+  const height = pick(measure, /(?:all walls|walls)[:\s]+(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high/i, 102));
 
-  const station = pick(t, /at (\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:perpendicular )?from the back/i, 20);
-  const leftOfCL = pick(t, /left of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 25);
-  const rightOfCL = pick(t, /right of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 21);
+  const station = pick(measure, /at (\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:perpendicular )?from the back/i, 20);
+  const leftOfCL = pick(measure, /left of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 25);
+  const rightOfCL = pick(measure, /right of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 21);
 
-  let leftAngleDeg = pick(t, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
-  let rightAngleDeg = pick(t, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
+  let leftAngleDeg = pick(measure, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
+  let rightAngleDeg = pick(measure, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   if (!Number.isFinite(leftAngleDeg)) {
     leftAngleDeg = (Math.atan((leftOfCL - backWidth / 2) / station) * 180) / Math.PI;
   }
@@ -66,12 +74,12 @@ export function parsePocket(prompt: string): PocketSpec | null {
     rightAngleDeg = (Math.atan((rightOfCL - backWidth / 2) / station) * 180) / Math.PI;
   }
 
-  const unitW = pick(t, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
-  const unitD = pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i, 17);
-  const unitH = pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high(?! from)/i, height);
-  const vanityH = pick(t, /counter(?:[^\d]{0,16})(\d+(?:\.\d+)?)/i, 34);
-  const kneeW = pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(t, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22));
-  const upperStart = pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, pick(t, /starting at (\d+(?:\.\d+)?)/i, 54));
+  const unitW = pick(measure, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
+  const unitD = pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i, 17);
+  const unitH = pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high(?! from)/i, height);
+  const vanityH = pick(measure, /counter(?:[^\d]{0,16})(\d+(?:\.\d+)?)/i, 34);
+  const kneeW = pick(measure, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22));
+  const upperStart = pick(measure, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, pick(measure, /starting at (\d+(?:\.\d+)?)/i, 54));
 
   const walls: PocketWalls = {
     backWidth,

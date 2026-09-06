@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -245,6 +245,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const rr = climbRiseRun(prompt);
   const climbSteps = climbStepCount(prompt);
   const potDia = potHoldDiameterIn(prompt);
+  const potH = potHoldHeightIn(prompt);
+  const marbleDia = marbleDiameterIn(prompt);
   const frameOpsFor =
     mech === "climb"
       ? isClimbStepStool(prompt)
@@ -259,6 +261,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           : mech === "media-hold" && wantsMediaTipHold(prompt)
             ? mediaHoldStandOps(size, tip)
             : frameOps(size);
+  void marbleDia;
+  void potH;
   const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
   const held = mediaHoldHeldLabel(prompt);
   const notes =
@@ -271,7 +275,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 ` — kid stands on the top tread; not a vehicle incline.`
               : `${hit.name} · one weight-bearing climb step` +
                 (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-                ` — not a vehicle incline.`,
+                ` — kid stands on the tread; densify from named stock; not a vehicle incline.`,
           ]
         : ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
       : mech === "launcher"
@@ -279,6 +283,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? [
               `${hit.name} · trough channel` +
                 (rampLen != null ? ` length ${rampLen}"` : "") +
+                (marbleDia != null ? ` for a ${marbleDia < 1 ? `${Math.round(marbleDia * 8)}/8"` : `${marbleDia}"`} marble` : "") +
                 ` — side guides + floor ties; free projectile leaves the ramp; marble leaves free (not glued on).`,
             ]
           : [
@@ -288,7 +293,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
               `${hit.name} · upright pot envelope` +
-                (potDia != null ? ` for a real ${potDia}" pot` : " for a real pot") +
+                (potDia != null && potH != null
+                  ? ` for a real ${potDia}" diameter × ${potH}" tall pot`
+                  : potDia != null
+                    ? ` for a real ${potDia}" pot`
+                    : " for a real pot") +
                 ` — densify keeps the whole stand at the named stock; pot sits upright, not a Tree silhouette.`,
             ]
         : mech === "media-hold"

@@ -37,7 +37,7 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book|photo|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
 /** Plant / pot stand that holds a real pot upright — envelope + densify, not a Tree silhouette. */
 const POT_HOLD_NOUN =
   /plant\s*stand|pot\s*stand|holds?\s+a\s+real\s+.{0,24}\bpot\b|\bpot\b.{0,32}upright|upright.{0,24}\bpot\b/;
@@ -45,7 +45,7 @@ const POT_HOLD_NOUN =
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
 const CLIMB_HUMAN =
-  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|each\s+step|top\s+tread|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*(?:[×xby]|and)\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
+  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|step\s*stool|one-?\s*step|two-?\s*step|each\s+step|top\s+tread|the\s+tread|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*(?:[×xby]|and)\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
 
 /** Vehicle incline / craft ramp for a free projectile — launcher, not climb. */
 function isVehicleIncline(hay: string): boolean {
@@ -112,7 +112,7 @@ export function launcherRampLengthIn(prompt: string): number | null {
 
 export function isMediaDeviceStand(prompt: string): boolean {
   const hay = looksHay(prompt);
-  return /phone|tablet|device|lean\s*stand|tablet\s*lean|recipe\s+video|recipe[- ]?card|real\s+phone|music\s*sheet|sheet\s*music|\bcard\b/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+  return /phone|tablet|device|laptop|lean\s*stand|tablet\s*lean|laptop\s*lean|recipe\s+video|recipe[- ]?card|real\s+phone|music\s*sheet|sheet\s*music|\bcard\b/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
 }
 
 /**
@@ -131,11 +131,11 @@ export function wantsMediaTipHold(prompt: string): boolean {
     return false;
   }
   if (isMediaDeviceStand(prompt)) return true;
-  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
+  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|open\s+laptop|laptop\s*lean|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
   if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
     return true;
   }
-  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|music|card|recipe/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|laptop|music|card|recipe/.test(hay)) return true;
   return false;
 }
 
@@ -148,12 +148,51 @@ export function wantsPotHold(prompt: string): boolean {
 export function potHoldDiameterIn(prompt: string): number | null {
   const hay = looksHay(prompt);
   const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
+    hay.match(/(?:pot|planter)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
     hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
     hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot)?/);
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Pot height inches when typed (e.g. 4" diameter × 4" tall). */
+export function potHoldHeightIn(prompt: string): number | null {
+  const hay = looksHay(prompt);
+  const m =
+    hay.match(/diameter\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high|height)?/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/) ||
+    hay.match(/(?:pot|planter)[^\d]{0,40}(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 && n < 48 ? n : null;
+}
+
+/** Marble / free-projectile diameter inches (⅝ → 0.625). */
+export function marbleDiameterIn(prompt: string): number | null {
+  const hay = looksHay(prompt)
+    .replace(/⅝/g, "5/8")
+    .replace(/⅜/g, "3/8")
+    .replace(/⅞/g, "7/8")
+    .replace(/¼/g, "1/4")
+    .replace(/½/g, "1/2")
+    .replace(/¾/g, "3/4");
+  const frac =
+    hay.match(/(\d+)\s*\/\s*(\d+)\s*"?\s*marble/) ||
+    hay.match(/a\s+(\d+)\s*\/\s*(\d+)\s*"?\s*marble/);
+  if (frac) {
+    const a = parseFloat(frac[1]);
+    const b = parseFloat(frac[2]);
+    if (b > 0 && Number.isFinite(a)) return a / b;
+  }
+  const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*marble/) ||
+    hay.match(/marble[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 && n < 4 ? n : null;
 }
 
 export function isLauncherRamp(prompt: string): boolean {
@@ -180,14 +219,17 @@ export function climbStepCount(prompt: string): number {
     const n = parseInt(numbered[1], 10);
     if (Number.isFinite(n) && n >= 1 && n <= 8) return n;
   }
+  if (/one-?\s*step|single\s+step|one\s+climb\s+step|step-?up\b/.test(hay) && !/two-?\s*step|three-?\s*step|\b[2-8]\s*-?\s*steps?\b/.test(hay)) {
+    return 1;
+  }
   if (/two-?\s*step|second\s+(?:step|tread)/.test(hay)) return 2;
   // "each step" / "top tread" alone imply multi-step only when two-step cues exist; else 2.
   if (/each\s+step|top\s+tread/.test(hay) && /two|2\s*-?\s*step|second/.test(hay)) return 2;
-  if (/each\s+step|top\s+tread/.test(hay) && !/one\s+climb\s+step|single\s+step|step-?up\b/.test(hay)) {
+  if (/each\s+step|top\s+tread/.test(hay) && !/one\s+climb\s+step|single\s+step|one-?\s*step|step-?up\b/.test(hay)) {
     // Multi-step climb stool with rise×run but no explicit count — prefer 2 only when not three+.
     if (!/three|four|\b[3-8]\s*-?\s*step/.test(hay)) return 2;
   }
-  if (/step-?up|climb\s+step|climb\s+stool|step\s*stool|step-?shelf|one\s+climb\s+step|rise\s*[×xby]|holds?\s+a\s+kid\s+standing|kid\s+stands/.test(hay)) {
+  if (/step-?up|climb\s+step|climb\s+stool|step\s*stool|step-?shelf|one\s+climb\s+step|one-?\s*step|rise\s*[×xby]|holds?\s+a\s+kid\s+standing|kid\s+stands|the\s+tread/.test(hay)) {
     return 1;
   }
   return 0;
@@ -203,6 +245,7 @@ export function mediaHoldHeldLabel(prompt: string): string {
   if (/music\s*sheet|sheet\s*music|holds?\s+a\s+real\s+sheet/.test(hay)) return "music sheet";
   if (/recipe[- ]?card|\bcard\b|4\s*[×x]\s*6/.test(hay) && !/phone|tablet/.test(hay)) return "recipe card";
   if (/print|photo|picture|5\s*[×x]\s*7/.test(hay) && !/phone|tablet/.test(hay)) return "print";
+  if (/laptop|open\s+laptop/.test(hay)) return "open laptop";
   if (/phone/.test(hay)) return "phone";
   if (/tablet|device/.test(hay)) return "device";
   if (/book/.test(hay)) return "open book";
@@ -258,7 +301,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|step-?up|step\s*stool|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -352,7 +395,7 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
       if (mech === "climb") {
         const rr = climbRiseRun(hay);
         const steps = climbStepCount(hay);
-        const base = /step-?up|stool|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step/.test(hay)
+        const base = /step-?up|stool|climb\s+stool|one-?\s*step|two-?\s*step|three-?\s*step|each\s+step|the\s+tread/.test(hay)
           ? "Step stool"
           : /step-?shelf/.test(hay)
             ? "Step shelf"
@@ -393,7 +436,9 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
                 ? "Recipe card lean"
                 : /music\s*sheet|sheet\s*music/.test(hay)
                   ? "Music sheet stand"
-                  : /tablet/.test(hay)
+                  : /laptop/.test(hay)
+                    ? "Laptop lean"
+                    : /tablet/.test(hay)
                     ? "Tablet lean"
                     : /phone/.test(hay)
                       ? "Phone stand"
