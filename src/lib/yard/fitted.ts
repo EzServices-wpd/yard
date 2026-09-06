@@ -1229,6 +1229,29 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const u = spec.unit;
+  // BATCH6: bookshelf/bookcase fitted to W×H×D opening — honor opening order on the carcase.
+  {
+    const pl = prompt.toLowerCase();
+    const openingFitBuild =
+      (/bookcase|bookshelf/.test(pl) && (/fitted\s+to/.test(pl) || /\bopening\b/.test(pl)));
+    if (openingFitBuild) {
+      const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
+      const m = t.match(
+        /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by)\s*(\d+(?:\.\d+)?))?/i,
+      );
+      if (m && m[3]) {
+        u.width = parseFloat(m[1]);
+        u.height = parseFloat(m[2]);
+        u.depth = parseFloat(m[3]);
+        if (spec.opening) {
+          spec.opening.width = u.width;
+          spec.opening.height = u.height;
+          spec.opening.depth = u.depth;
+        }
+        spec.name = `Bookcase ${u.width}" × ${u.height}" × ${u.depth}"`;
+      }
+    }
+  }
   const W = u.width;
   const H = u.height;
   const D = u.depth;
