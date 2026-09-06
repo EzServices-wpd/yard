@@ -77,7 +77,7 @@ function isNotHouse(lower: string) {
     return true;
   }
   if (/birdhouse/.test(lower)) return true;
-  if (/planter|raised (garden )?bed|garden box/.test(lower)) return true;
+  if (/planter|raised (garden )?bed|garden box/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return true;
   if (/bridge|span|viaduct|overpass|trestle/.test(lower)) return true;
   return false;
 }
@@ -169,13 +169,13 @@ export function isKitchenBase(lower: string) {
 /** Twin/full/queen bunk — two sleep platforms on a frame, not a hollow box. */
 export function isBunkBed(lower: string) {
   if (isLoftBed(lower)) return false;
-  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower)) return false;
+  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return false;
   return /\bbunk\b|bunk\s*beds?|bunkbeds?/.test(lower);
 }
 
 /** Elevated single sleep platform on posts — bunk family, one deck. */
 export function isLoftBed(lower: string) {
-  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower)) return false;
+  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return false;
   return /\bloft\s*beds?\b/.test(lower);
 }
 /** Daybed — one sleep deck you can sit on; not a bunk/loft stack. */
@@ -202,7 +202,7 @@ export function climbIdentityLabel(lower: string): string | null {
   if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|three-?\s*step/.test(lower)) return null;
   const climbHay = lower.replace(/[″″]/g, '"').replace(/[–—]/g, "-");
   if (
-    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
+    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*(?:[×xby]|and)\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
       climbHay,
     )
   ) {

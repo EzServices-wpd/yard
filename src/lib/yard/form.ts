@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -38,6 +38,7 @@ import {
   rampLauncherOps,
   mediaHoldStandOps,
   climbStepOps,
+  plantStandOps,
   catapultFrameOps,
   chairOps,
   tableOps,
@@ -116,7 +117,7 @@ const HITS: Hit[] = [
   { re: /bike|bicycle/, kind: "vehicle", name: "Bicycle", build: bikeOps },
   { re: /boat|ship|canoe|sailboat|yacht/, kind: "vessel", name: "Boat", build: boatOps },
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
-  { re: /tree|cactus|plant/, kind: "plant", name: "Tree", build: treeOps },
+  { re: /tree|cactus|plant(?!\s*stand)/, kind: "plant", name: "Tree", build: treeOps },
   { re: /dinosaur|t-?rex|raptor|dino/, kind: "figure", name: "Dinosaur", build: dinoOps },
   { re: /charizard|dragon|wyvern|godzilla|kaiju/, kind: "figure", name: "Wyvern", build: () => [] },
   { re: /giraffe/, kind: "figure", name: "Giraffe", build: giraffeOps },
@@ -243,6 +244,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const tip = mediaHoldTipDeg(prompt);
   const rr = climbRiseRun(prompt);
   const climbSteps = climbStepCount(prompt);
+  const potDia = potHoldDiameterIn(prompt);
   const frameOpsFor =
     mech === "climb"
       ? isClimbStepStool(prompt)
@@ -252,9 +254,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
         ? isLauncherRamp(prompt)
           ? rampLauncherOps(size, rampLen)
           : launcherFrameOps(size)
-        : mech === "media-hold" && wantsMediaTipHold(prompt)
-          ? mediaHoldStandOps(size, tip)
-          : frameOps(size);
+        : mech === "pot-hold" || wantsPotHold(prompt)
+          ? plantStandOps(size, potDia)
+          : mech === "media-hold" && wantsMediaTipHold(prompt)
+            ? mediaHoldStandOps(size, tip)
+            : frameOps(size);
   const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
   const held = mediaHoldHeldLabel(prompt);
   const notes =
@@ -280,6 +284,12 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           : [
               `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
               "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
+            ]
+        : mech === "pot-hold" || wantsPotHold(prompt)
+          ? [
+              `${hit.name} · upright pot envelope` +
+                (potDia != null ? ` for a real ${potDia}" pot` : " for a real pot") +
+                ` — densify keeps the whole stand at the named stock; pot sits upright, not a Tree silhouette.`,
             ]
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)

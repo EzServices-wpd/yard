@@ -16,6 +16,8 @@ import {
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
+  wantsPotHold,
+  potHoldDiameterIn,
   launcherRampLengthIn,
   mediaHoldTipDeg,
 } from "./weekendFamily";
@@ -229,7 +231,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
   }
 
 
-  // Universal mechanism anatomy — densify must not erase launcher / climb / media-hold.
+  // Universal mechanism anatomy — densify must not erase launcher / climb / media-hold / pot-hold.
   const mech = detectWeekendMech(prompt);
   const blobAll = [...(project.notes || []), ...(plan?.instructions.map((s) => `${s.title} ${s.description}`) || [])].join("\n");
   if (mech === "launcher" && project.instances.length) {
@@ -304,7 +306,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         blobAll.includes(`${tip} deg`) ||
         new RegExp(`${tip}\s*°|tip(?:\s+angle)?\s*${tip}`, "i").test(blobAll);
       const hold =
-        /real (?:phone|tablet|device|book|cookbook|print|photo)|(?:5\s*[×x]\s*7)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand/i.test(
+        /real (?:phone|tablet|device|book|cookbook|print|photo|card)|(?:4\s*[×x]\s*6)|(?:5\s*[×x]\s*7)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand|recipe card/i.test(
           blobAll,
         ) || /phone|tablet|device|book|cookbook|easel|lip/i.test(blobAll);
       const tipRoles = new Map<string, number>();
@@ -346,6 +348,37 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
           message: "Media-hold needs a rabbet/backing path so flat media stays put.",
         });
       }
+    }
+  }
+  if (mech === "pot-hold" || wantsPotHold(prompt)) {
+    const dia = potHoldDiameterIn(prompt);
+    const hold =
+      /plant stand|pot stand|real (?:\d+\"?)?\s*pot|pot envelope|upright/i.test(blobAll) ||
+      /holds? (?:a )?real/i.test(blobAll);
+    const roles = new Map<string, number>();
+    for (const i of project.instances) {
+      const k = i.role || "?";
+      roles.set(k, (roles.get(k) || 0) + 1);
+    }
+    const hasStand =
+      (roles.get("leg") || 0) + (roles.get("deck") || 0) + (roles.get("ring") || 0) + (roles.get("support") || 0) > 0;
+    if (!hold) {
+      issues.push({
+        guard: "anatomy",
+        message: "Plant / pot stand must bind a real pot envelope (upright).",
+      });
+    }
+    if (project.instances.length && !hasStand) {
+      issues.push({
+        guard: "anatomy",
+        message: "Plant / pot stand needs legs + deck/ring after densify.",
+      });
+    }
+    if (dia != null && !new RegExp(String(dia)).test(blobAll)) {
+      issues.push({
+        guard: "anatomy",
+        message: `Plant / pot stand must state the ${dia}" pot envelope.`,
+      });
     }
   }
   if (mech === "climb" || project.kind === "ladder") {

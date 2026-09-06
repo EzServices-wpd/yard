@@ -329,6 +329,51 @@ export function rampLauncherOps(s: Size3, rampLenIn?: number | null): FormOp[] {
 /**
  * Media-hold tip stand — real phone/tablet/book envelope + tip angle + lip, never a decal.
  */
+
+/**
+ * Plant / pot stand — upright pot envelope (ring + legs + deck), densify keeps whole sticks.
+ */
+export function plantStandOps(s: Size3, potDia?: number | null): FormOp[] {
+  const dia = Math.max(potDia ?? Math.min(s.width || 5, s.depth || 5) - 1.5, 3);
+  const span = Math.max(s.width || dia + 1.5, dia + 1.25);
+  const H = Math.max(s.height || dia * 1.1, dia * 0.9);
+  const D = Math.max(s.depth || span, span * 0.9);
+  const x0 = -span / 2;
+  const x1 = span / 2;
+  const z0 = -D / 2;
+  const z1 = D / 2;
+  const ringY = H * 0.72;
+  const deckY = H * 0.55;
+  return [
+    // Four legs
+    { op: "column", x: x0 * 0.85, z: z0 * 0.85, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x1 * 0.85, z: z0 * 0.85, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x0 * 0.85, z: z1 * 0.85, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x1 * 0.85, z: z1 * 0.85, y0: 0, y1: H, role: "leg" },
+    // Lower brace ring / rails
+    { op: "poly", role: "rail", points: [{ x: x0 * 0.85, y: H * 0.22, z: z0 * 0.85 }, { x: x1 * 0.85, y: H * 0.22, z: z0 * 0.85 }] },
+    { op: "poly", role: "rail", points: [{ x: x0 * 0.85, y: H * 0.22, z: z1 * 0.85 }, { x: x1 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
+    { op: "poly", role: "rail", points: [{ x: x0 * 0.85, y: H * 0.22, z: z0 * 0.85 }, { x: x0 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
+    { op: "poly", role: "rail", points: [{ x: x1 * 0.85, y: H * 0.22, z: z0 * 0.85 }, { x: x1 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
+    // Pot deck
+    {
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0 * 0.55, y: deckY, z: z0 * 0.55 },
+        { x: x1 * 0.55, y: deckY, z: z0 * 0.55 },
+        { x: x1 * 0.55, y: deckY, z: z1 * 0.55 },
+        { x: x0 * 0.55, y: deckY, z: z1 * 0.55 },
+      ],
+    },
+    // Pot ring / collar — holds a real pot upright
+    { op: "ring", y: ringY, rx: dia / 2, n: 10, role: "ring" },
+    { op: "poly", role: "support", points: [{ x: x0 * 0.85, y: deckY, z: 0 }, { x: -dia / 2, y: ringY, z: 0 }] },
+    { op: "poly", role: "support", points: [{ x: x1 * 0.85, y: deckY, z: 0 }, { x: dia / 2, y: ringY, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: 0, y: 0, z: z0 * 0.85 }, { x: 0, y: deckY, z: 0 }] },
+  ];
+}
+
 export function mediaHoldStandOps(s: Size3, tipDeg?: number | null): FormOp[] {
   const tip = tipDeg ?? 15;
   const rad = (tip * Math.PI) / 180;

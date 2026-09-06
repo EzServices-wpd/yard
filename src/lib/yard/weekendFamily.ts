@@ -29,7 +29,7 @@ export type WeekendHit = {
 };
 
 /** Universal weekend mechanism classes — densify / steps / honesty key off these. */
-export type WeekendMech = "launcher" | "media-hold" | "climb";
+export type WeekendMech = "launcher" | "media-hold" | "climb" | "pot-hold";
 
 /** Catapult-class + free-projectile ramp / soft-launch / marble trough (vehicle incline ≠ climb). */
 const LAUNCHER_NOUN =
@@ -37,11 +37,15 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book|photo|music\s*sheet|sheet\s*music)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook|print|photo|sheet|music\s*sheet|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|(?:tablet|device|book|photo|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+book|\bphone\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+real\s+(?:phone|tablet|device|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
+/** Plant / pot stand that holds a real pot upright — envelope + densify, not a Tree silhouette. */
+const POT_HOLD_NOUN =
+  /plant\s*stand|pot\s*stand|holds?\s+a\s+real\s+.{0,24}\bpot\b|\bpot\b.{0,32}upright|upright.{0,24}\bpot\b/;
+
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
 const CLIMB_HUMAN =
-  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|each\s+step|top\s+tread|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*[×xby]\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
+  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|each\s+step|top\s+tread|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*(?:[×xby]|and)\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
 
 /** Vehicle incline / craft ramp for a free projectile — launcher, not climb. */
 function isVehicleIncline(hay: string): boolean {
@@ -63,6 +67,7 @@ export function detectWeekendMech(prompt: string): WeekendMech | null {
   // Climb = weight-bearing human step (rise/run). Do not overload with vehicle incline.
   if (isHumanClimb(hay)) return "climb";
   if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
+  if (POT_HOLD_NOUN.test(hay)) return "pot-hold";
   if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
   return null;
 }
@@ -84,7 +89,7 @@ export function climbRiseRun(prompt: string): { rise: number; run: number } | nu
   const hay = looksHay(prompt);
   // Accept "7 rise × 9 run", "7 rise by 9 run", and natural "7 inch rise 9 inch run".
   const m = hay.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*rise\s*(?:(?:[×x]|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*run/i,
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*rise\s*(?:(?:[×x]|by|and)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*run/i,
   );
   if (!m) return null;
   const rise = parseFloat(m[1]);
@@ -107,7 +112,7 @@ export function launcherRampLengthIn(prompt: string): number | null {
 
 export function isMediaDeviceStand(prompt: string): boolean {
   const hay = looksHay(prompt);
-  return /phone|tablet|device|lean\s*stand|tablet\s*lean|recipe\s+video|real\s+phone|music\s*sheet|sheet\s*music/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+  return /phone|tablet|device|lean\s*stand|tablet\s*lean|recipe\s+video|recipe[- ]?card|real\s+phone|music\s*sheet|sheet\s*music|\bcard\b/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
 }
 
 /**
@@ -126,12 +131,29 @@ export function wantsMediaTipHold(prompt: string): boolean {
     return false;
   }
   if (isMediaDeviceStand(prompt)) return true;
-  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|open\s+book|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
-  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|5\s*[×x]\s*7)|(?:real\s+)?(?:5\s*[×x]\s*7\s*)?print/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
+  if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
+  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
     return true;
   }
-  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|music/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|music|card|recipe/.test(hay)) return true;
   return false;
+}
+
+export function wantsPotHold(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return POT_HOLD_NOUN.test(hay);
+}
+
+/** Pot diameter inches when typed (plant / pot stand envelope). */
+export function potHoldDiameterIn(prompt: string): number | null {
+  const hay = looksHay(prompt);
+  const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
+    hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot)?/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export function isLauncherRamp(prompt: string): boolean {
@@ -179,6 +201,7 @@ export function mediaHoldHeldLabel(prompt: string): string {
   }
   if (/\beasel\b/.test(hay) && /book|cookbook|recipe/.test(hay)) return "open book";
   if (/music\s*sheet|sheet\s*music|holds?\s+a\s+real\s+sheet/.test(hay)) return "music sheet";
+  if (/recipe[- ]?card|\bcard\b|4\s*[×x]\s*6/.test(hay) && !/phone|tablet/.test(hay)) return "recipe card";
   if (/print|photo|picture|5\s*[×x]\s*7/.test(hay) && !/phone|tablet/.test(hay)) return "print";
   if (/phone/.test(hay)) return "phone";
   if (/tablet|device/.test(hay)) return "device";
@@ -235,7 +258,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|music\s*sheet|sheet\s*music|step-?up|step\s*stool|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|step-?up|step\s*stool|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -259,7 +282,7 @@ function isNotWeekend(lower: string) {
   // Ladder is a weekend frame (lumber cut-list or craft sticks). Stairs stay out.
   if (/stairs|staircase/.test(lower)) return true;
   if (/birdhouse/.test(lower)) return true;
-  if (/planter|raised (garden )?bed|garden box/.test(lower)) return true;
+  if (/planter|raised (garden )?bed|garden box/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return true;
   if (HISTORIC_SPECIAL.test(lower)) return true;
   return false;
 }
@@ -357,23 +380,28 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
             : "Catapult";
         return { family: "frame", kind: "frame", name };
       }
+      if (mech === "pot-hold") {
+        return { family: "frame", kind: "frame", name: "Plant stand" };
+      }
       if (mech === "media-hold") {
         const name = wantsMediaTipHold(hay)
           ? /cookbook|recipe\s+book/.test(hay) || (/\beasel\b/.test(hay) && /book/.test(hay))
             ? "Cookbook easel"
             : /\beasel\b/.test(hay)
               ? "Easel"
-              : /music\s*sheet|sheet\s*music/.test(hay)
-                ? "Music sheet stand"
-                : /tablet/.test(hay)
-                  ? "Tablet lean"
-                  : /phone/.test(hay)
-                    ? "Phone stand"
-                    : /print|photo\s+lean|lean\s*frame/.test(hay)
-                      ? "Photo lean"
-                      : /book/.test(hay)
-                        ? "Book stand"
-                        : "Device stand"
+              : /recipe[- ]?card|\bcard\b/.test(hay)
+                ? "Recipe card lean"
+                : /music\s*sheet|sheet\s*music/.test(hay)
+                  ? "Music sheet stand"
+                  : /tablet/.test(hay)
+                    ? "Tablet lean"
+                    : /phone/.test(hay)
+                      ? "Phone stand"
+                      : /print|photo\s+lean|lean\s*frame/.test(hay)
+                        ? "Photo lean"
+                        : /book/.test(hay)
+                          ? "Book stand"
+                          : "Device stand"
           : /easel/.test(hay)
             ? "Easel"
             : "Picture frame";

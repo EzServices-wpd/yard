@@ -9,6 +9,8 @@ import {
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
+  wantsPotHold,
+  potHoldDiameterIn,
   launcherRampLengthIn,
   mediaHoldTipDeg,
   mediaHoldHeldLabel,
@@ -1576,6 +1578,11 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const rampLen = launcherRampLengthIn(p);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
       return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; marble leaves free.`;
+    }
+    if (detectWeekendMech(p) === "pot-hold" || wantsPotHold(p)) {
+      const dia = potHoldDiameterIn(p);
+      const potTalk = dia != null ? `${dia}" pot` : "typed pot";
+      return ` Upright plant stand for a real ${potTalk} — densify keeps the whole stand at the named stock.`;
     }
     if (detectWeekendMech(p) === "media-hold" && wantsMediaTipHold(p)) {
       const tip = mediaHoldTipDeg(p);

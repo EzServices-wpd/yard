@@ -4,7 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -86,12 +86,22 @@ export function parseSize(lower: string): { height: number; width: number; depth
   }
 
 
-  // Media-hold tip stand: typed device/sheet size binds the envelope (e.g. 11" tablet landscape).
+  // Media-hold tip stand: typed device/sheet/card size binds the envelope (e.g. 11" tablet, 4×6 card).
   if (detectWeekendMech(lower) === "media-hold" && wantsMediaTipHold(lower)) {
+    const cardPair = dimText.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/);
     const device =
-      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|sheet|print|photo)/) ||
-      dimText.match(/(?:tablet|ipad|device|phone|sheet|print|photo)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
-    if (device) {
+      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|sheet|print|photo|card)/) ||
+      dimText.match(/(?:tablet|ipad|device|phone|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/);
+    if (cardPair) {
+      const a = parseFloat(cardPair[1]);
+      const b = parseFloat(cardPair[2]);
+      // Recipe / photo cards read W×H of the face (4×6 → 6 wide × 4 tall landscape face).
+      width = Math.max(a, b);
+      height = Math.min(a, b);
+      const tip = mediaHoldTipDeg(lower) ?? 15;
+      const rad = (tip * Math.PI) / 180;
+      depth = Math.max(3, height * Math.sin(rad) + 2);
+    } else if (device) {
       const span = Math.max(parseFloat(device[1]), 4);
       const tip = mediaHoldTipDeg(lower) ?? 15;
       const rad = (tip * Math.PI) / 180;
@@ -103,6 +113,17 @@ export function parseSize(lower: string): { height: number; width: number; depth
         width = Math.max(4, Math.min(span * 0.75, span));
       }
       depth = Math.max(3, span * Math.sin(rad) + 2);
+    }
+  }
+
+  // Plant / pot stand: typed pot diameter binds the upright envelope.
+  if (detectWeekendMech(lower) === "pot-hold" || wantsPotHold(lower)) {
+    const dia = potHoldDiameterIn(lower);
+    if (dia != null) {
+      const span = Math.max(dia + 1.5, 4);
+      width = span;
+      depth = span;
+      height = Math.max(dia * 1.1, span * 0.85);
     }
   }
 
@@ -123,10 +144,21 @@ export function parseSize(lower: string): { height: number; width: number; depth
 
 export function stripLumberStock(s: string): string {
   // Only eat lumber nominals (2x4, 2x4x8). Do not delete 36x48 windows / 60x30 desks.
-  return s.replace(
+  // Protect photo/print/card sizes (4x6 card, 5x7 print) — those are media envelopes, not lumber.
+  const held: string[] = [];
+  const masked = s.replace(
+    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/gi,
+    (m) => {
+      const key = `__CARDSIZE${held.length}__`;
+      held.push(m);
+      return key;
+    },
+  );
+  const stripped = masked.replace(
     /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
     " ",
   );
+  return stripped.replace(/__CARDSIZE(\d+)__/g, (_, i) => held[Number(i)] ?? " ");
 }
 
 function isLumberPair(a: number, b: number, c?: number): boolean {
@@ -145,6 +177,8 @@ export function hasExplicitSize(prompt: string): boolean {
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″]?\s*(?:pot|planter)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:card|print|photo|sheet)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim)) return true;
   const pair = dim.match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]))) return true;
