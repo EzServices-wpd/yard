@@ -152,22 +152,22 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
     steps.push({
       step: s++,
-      title: `Glue the ${lenTalk} incline`,
-      description: `Lay whole ${name} on the ramp runners and incline. State the run/ramp length clearly (${lenTalk}). ${hold}`,
-      tips: "The deck is an incline — not a flat silhouette.",
-      partsUsed: ["rail", "support"],
+      title: `Glue the ${lenTalk} trough channel`,
+      description: `Lay whole ${name} as two side guides and floor ties so the trough is a continuous U-channel along the ${lenTalk}. State the run length clearly. ${hold}`,
+      tips: "Side guides + floor ties — a marble must roll, not fall through.",
+      partsUsed: ["rail", "support", "deck"],
     });
     steps.push({
       step: s++,
       title: "Leave the free end open — projectile leaves the ramp",
-      description: `Finish the leave-end lip. The free projectile leaves the ramp; marble leaves free — do not glue the projectile onto the deck.`,
+      description: `Finish the leave-end lip. The free projectile leaves the trough; marble leaves free — do not glue the projectile onto the deck.`,
       tips: "Soft-launch only — the projectile leaves free.",
       partsUsed: ["deck"],
     });
     steps.push({
       step: s++,
       title: "Let it dry flat",
-      description: `Leave the launch ramp on the paper until the glue skins. Then peel carefully.`,
+      description: `Leave the trough on the paper until the glue skins. Then peel carefully.`,
       tips: "Overnight is safest for wood glue.",
     });
     return steps;
@@ -1571,7 +1571,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     if (detectWeekendMech(p) === "launcher" && isLauncherRamp(p)) {
       const rampLen = launcherRampLengthIn(p);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
-      return ` Soft-launch ${lenTalk} — free projectile leaves the ramp; marble leaves free.`;
+      return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; marble leaves free.`;
     }
     return "";
   })();
@@ -1686,13 +1686,13 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
         { role: "rail", title: "Glue the base runners", why: `Base sets the ${lenTalk} footprint.` },
         {
           role: "support",
-          title: "Set the incline rails",
-          why: `Run/ramp length ${rampLen != null ? rampLen + '"' : "as typed"} — state it clearly on the bench.`,
+          title: "Set the trough side guides",
+          why: `Side guides make the U-channel walls along the ${rampLen != null ? rampLen + '"' : "typed"} run — state the length clearly.`,
         },
         {
           role: "deck",
-          title: "Lay the ramp deck — leave the free end open",
-          why: "Free projectile leaves the ramp; marble leaves free — do not glue the projectile on.",
+          title: "Lay the trough floor ties — leave the free end open",
+          why: "Floor ties + guides = continuous trough channel. Free projectile leaves the ramp; marble leaves free — do not glue the projectile on.",
         },
         { role: "brace", title: "Brace the incline", why: "Braces kill racking — leave the leave-end clear." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },

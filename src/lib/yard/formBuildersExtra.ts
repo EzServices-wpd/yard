@@ -209,58 +209,121 @@ export const catapultFrameOps = launcherFrameOps;
  * Ramp length follows typed size (or override). Projectile is NOT part of the build.
  */
 export function rampLauncherOps(s: Size3, rampLenIn?: number | null): FormOp[] {
+  // Universal soft-launch anatomy: continuous U-channel (two side guides + floor ties)
+  // so a marble / free projectile can roll the typed run and leave the open end.
   const L = Math.max(rampLenIn ?? s.width ?? s.depth ?? 12, 8);
-  const W = Math.max(Math.min(s.width || 6, L * 0.55), 3);
-  const rise = Math.max(Math.min(s.height || L * 0.35, L * 0.6), 2);
+  const W = Math.max(Math.min(s.width || 6, L * 0.45), 2.4);
+  const rise = Math.max(Math.min(s.height || L * 0.35, L * 0.55), 2);
+  const wall = Math.max(Math.min(W * 0.35, 0.85), 0.45);
   const x0 = -W / 2;
   const x1 = W / 2;
-  const z0 = -L / 2;
-  const z1 = L / 2;
-  return [
+  const z0 = -L / 2; // high / start
+  const z1 = L / 2; // low / leave end
+  const deckY = (t: number) => rise * (0.06 + 0.9 * (1 - t)); // t=0 at high (z0), t=1 at low (z1)
+  const zAt = (t: number) => z0 + (z1 - z0) * t;
+  const ops: FormOp[] = [
     // Base runners
     { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: 0, z: z1 }] },
     { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
     { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z0 }] },
     { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z1 }, { x: x1, y: 0, z: z1 }] },
-    // Inclined deck — support survives densify; leave tip at z0 is free exit
+    // Trough side guides — raised walls along the incline (survive densify as support)
     {
       op: "poly",
       role: "support",
       points: [
-        { x: x0, y: 0, z: z1 },
-        { x: x0, y: rise, z: z0 },
+        { x: x0, y: deckY(1) + wall, z: z1 },
+        { x: x0, y: deckY(0) + wall, z: z0 },
       ],
     },
     {
       op: "poly",
       role: "support",
       points: [
-        { x: x1, y: 0, z: z1 },
-        { x: x1, y: rise, z: z0 },
+        { x: x1, y: deckY(1) + wall, z: z1 },
+        { x: x1, y: deckY(0) + wall, z: z0 },
+      ],
+    },
+    // Side wall risers at a few stations so densify keeps a U, not a wire silhouette
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x0, y: deckY(0.15), z: zAt(0.15) },
+        { x: x0, y: deckY(0.15) + wall, z: zAt(0.15) },
       ],
     },
     {
       op: "poly",
-      role: "deck",
+      role: "support",
       points: [
-        { x: x0, y: rise * 0.08, z: z1 * 0.92 },
-        { x: x1, y: rise * 0.08, z: z1 * 0.92 },
-        { x: x1, y: rise, z: z0 },
-        { x: x0, y: rise, z: z0 },
+        { x: x1, y: deckY(0.15), z: zAt(0.15) },
+        { x: x1, y: deckY(0.15) + wall, z: zAt(0.15) },
       ],
     },
-    // Free-leave lip at the low end (deck) — projectile leaves; do not glue it on
     {
       op: "poly",
-      role: "deck",
+      role: "support",
       points: [
-        { x: x0 * 0.7, y: rise * 0.04, z: z1 },
-        { x: x1 * 0.7, y: rise * 0.04, z: z1 },
+        { x: x0, y: deckY(0.55), z: zAt(0.55) },
+        { x: x0, y: deckY(0.55) + wall, z: zAt(0.55) },
       ],
     },
-    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: 0 }, { x: x0, y: rise * 0.55, z: z0 * 0.2 }] },
-    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: 0 }, { x: x1, y: rise * 0.55, z: z0 * 0.2 }] },
+    {
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x1, y: deckY(0.55), z: zAt(0.55) },
+        { x: x1, y: deckY(0.55) + wall, z: zAt(0.55) },
+      ],
+    },
   ];
+  // Continuous trough floor — cross-ties between the guides along the run
+  const ties = Math.max(4, Math.min(8, Math.round(L / 1.6)));
+  for (let i = 0; i <= ties; i++) {
+    const t = i / ties;
+    // Stop short of the leave lip so the free end stays open
+    if (t > 0.92) continue;
+    const y = deckY(t);
+    const z = zAt(t);
+    ops.push({
+      op: "poly",
+      role: "deck",
+      points: [
+        { x: x0, y, z },
+        { x: x1, y, z },
+      ],
+    });
+  }
+  // Twin longitudinal floor chords so the marble has a continuous path, not only ties
+  ops.push({
+    op: "poly",
+    role: "deck",
+    points: [
+      { x: x0 * 0.35, y: deckY(0.92), z: zAt(0.92) },
+      { x: x0 * 0.35, y: deckY(0.05), z: zAt(0.05) },
+    ],
+  });
+  ops.push({
+    op: "poly",
+    role: "deck",
+    points: [
+      { x: x1 * 0.35, y: deckY(0.92), z: zAt(0.92) },
+      { x: x1 * 0.35, y: deckY(0.05), z: zAt(0.05) },
+    ],
+  });
+  // Free-leave lip at the low end — projectile leaves; do not glue it on
+  ops.push({
+    op: "poly",
+    role: "deck",
+    points: [
+      { x: x0 * 0.55, y: deckY(1), z: z1 },
+      { x: x1 * 0.55, y: deckY(1), z: z1 },
+    ],
+  });
+  ops.push({ op: "poly", role: "brace", points: [{ x: x0, y: 0, z: 0 }, { x: x0, y: rise * 0.55, z: z0 * 0.15 }] });
+  ops.push({ op: "poly", role: "brace", points: [{ x: x1, y: 0, z: 0 }, { x: x1, y: rise * 0.55, z: z0 * 0.15 }] });
+  return ops;
 }
 
 /**

@@ -273,9 +273,9 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       : mech === "launcher"
         ? isLauncherRamp(prompt)
           ? [
-              `${hit.name} · ramp` +
+              `${hit.name} · trough channel` +
                 (rampLen != null ? ` length ${rampLen}"` : "") +
-                ` — free projectile leaves the ramp; marble leaves free (not glued on).`,
+                ` — side guides + floor ties; free projectile leaves the ramp; marble leaves free (not glued on).`,
             ]
           : [
               `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,

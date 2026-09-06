@@ -242,6 +242,10 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (isLauncherRamp(prompt)) {
       const rampLen = launcherRampLengthIn(prompt);
       const leaves = /leaves the ramp|free projectile|soft-?launch|leave(?:s)? free/i.test(blobAll);
+      const channelTalk =
+        /trough|channel|side guide|guide rail|U-?channel|floor tie|cross-?tie/i.test(blobAll);
+      const deckN = roles.get("deck") || 0;
+      const supportN = roles.get("support") || 0;
       const lengthSaid =
         rampLen == null ||
         new RegExp(
@@ -250,16 +254,23 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         ).test(blobAll) ||
         (project.overall.width >= rampLen - 1 && project.overall.width <= rampLen + 1) ||
         (project.overall.depth >= rampLen - 1 && project.overall.depth <= rampLen + 1);
-      if (!hasPivot) {
+      if (!hasPivot || deckN < 3 || supportN < 2) {
         issues.push({
           guard: "anatomy",
-          message: "Launcher ramp missing incline deck (support/deck roles) after densify.",
+          message:
+            "Launcher ramp needs a continuous trough channel (side guides + floor ties as support/deck) after densify.",
         });
       }
       if (!leaves) {
         issues.push({
           guard: "anatomy",
           message: "Launcher ramp must say the free projectile leaves the ramp.",
+        });
+      }
+      if (!channelTalk) {
+        issues.push({
+          guard: "anatomy",
+          message: "Launcher ramp steps/notes must name the trough channel (side guides + floor).",
         });
       }
       if (rampLen != null && !lengthSaid) {

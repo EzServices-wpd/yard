@@ -337,7 +337,7 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
       if (mech === "launcher" || (FRAME_NOUN.test(hay) && detectWeekendMech(hay) === "launcher")) {
         const name = isLauncherRamp(hay)
           ? /marble|trough/.test(hay)
-            ? "Launch ramp"
+            ? "Marble trough"
             : "Launch ramp"
           : /trebuchet/.test(hay)
             ? "Trebuchet"
