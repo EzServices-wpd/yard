@@ -26,6 +26,7 @@ import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { isLockedForm } from "@/lib/yard/form";
+import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
@@ -597,7 +598,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   : wire
                     ? " · Skeleton only — pick a real material to densify"
                     : workMode === "look"
-                      ? " · Orbit"
+                      ? detectWeekendMech(project.prompt ?? "") === "launcher"
+                        ? ""
+                        : " · Orbit"
                       : workMode === "walk"
                         ? " · On the road"
                         : workMode === "build"

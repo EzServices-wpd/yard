@@ -11,6 +11,8 @@ import {
   climbRiseRun,
   detectWeekendMech,
   isClimbSingleStep,
+  isClimbStepStool,
+  climbStepCount,
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
@@ -242,9 +244,10 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       const leaves = /leaves the ramp|free projectile|soft-?launch|leave(?:s)? free/i.test(blobAll);
       const lengthSaid =
         rampLen == null ||
-        new RegExp(`ramp[^\\n]{0,40}${rampLen}|${rampLen}[^\\n]{0,12}(?:\"|in)?[^\\n]{0,12}ramp`, "i").test(
-          blobAll,
-        ) ||
+        new RegExp(
+          `(?:ramp|run|trough|length)[^\n]{0,40}${rampLen}|${rampLen}[^\n]{0,16}(?:\"|"|in)?[^\n]{0,16}(?:ramp|run|trough|length)`,
+          "i",
+        ).test(blobAll) ||
         (project.overall.width >= rampLen - 1 && project.overall.width <= rampLen + 1) ||
         (project.overall.depth >= rampLen - 1 && project.overall.depth <= rampLen + 1);
       if (!hasPivot) {
@@ -290,7 +293,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         blobAll.includes(`${tip} deg`) ||
         new RegExp(`${tip}\s*°|tip(?:\s+angle)?\s*${tip}`, "i").test(blobAll);
       const hold =
-        /real (?:phone|tablet|device|book|cookbook)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand/i.test(
+        /real (?:phone|tablet|device|book|cookbook|print|photo)|(?:5\s*[×x]\s*7)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand/i.test(
           blobAll,
         ) || /phone|tablet|device|book|cookbook|easel|lip/i.test(blobAll);
       const tipRoles = new Map<string, number>();
@@ -337,7 +340,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
   if (mech === "climb" || project.kind === "ladder") {
     const legs = project.instances.filter((i) => i.role === "leg").length;
     const rungs = project.instances.filter((i) => i.role === "rail").length;
-    if (isClimbSingleStep(prompt)) {
+    if (isClimbStepStool(prompt)) {
       const rr = climbRiseRun(prompt);
       if (project.instances.length && legs < 2) {
         issues.push({ guard: "anatomy", message: "Climb step needs ≥2 legs." });
@@ -354,6 +357,17 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         issues.push({
           guard: "anatomy",
           message: "Climb step must use rise/run (weight-bearing human step) language.",
+        });
+      }
+      const nSteps = Math.max(1, climbStepCount(prompt));
+      if (
+        nSteps >= 2 &&
+        project.instances.length &&
+        !/two[\s-]?step|each step|2\s+steps|top tread|second (?:step|tread)|human steps/i.test(blobAll)
+      ) {
+        issues.push({
+          guard: "anatomy",
+          message: "Two-step climb must name two human steps / top tread.",
         });
       }
     } else {

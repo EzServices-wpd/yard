@@ -2,13 +2,16 @@
 
 import {
   climbRiseRun,
+  climbStepCount,
   detectWeekendMech,
   isClimbSingleStep,
+  isClimbStepStool,
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
   launcherRampLengthIn,
   mediaHoldTipDeg,
+  mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -119,7 +122,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
 
   if (mediaHold && tipHold) {
     const tipTalk = tipDeg != null ? `${tipDeg}° tip` : "the typed tip angle";
-    const held = /cookbook|book|easel/i.test(prompt) ? "open book" : "phone or tablet";
+    const held = mediaHoldHeldLabel(prompt);
     steps.push({
       step: s++,
       title: "Glue the base and lean back",
@@ -146,19 +149,19 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   const mech = detectWeekendMech(prompt);
   if (mech === "launcher" && isLauncherRamp(prompt)) {
     const rampLen = launcherRampLengthIn(prompt);
-    const lenTalk = rampLen != null ? `${rampLen}" ramp` : "typed ramp length";
+    const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
     steps.push({
       step: s++,
       title: `Glue the ${lenTalk} incline`,
-      description: `Lay whole ${name} on the ramp runners and incline. State the ramp length clearly (${lenTalk}). ${hold}`,
+      description: `Lay whole ${name} on the ramp runners and incline. State the run/ramp length clearly (${lenTalk}). ${hold}`,
       tips: "The deck is an incline — not a flat silhouette.",
       partsUsed: ["rail", "support"],
     });
     steps.push({
       step: s++,
       title: "Leave the free end open — projectile leaves the ramp",
-      description: `Finish the leave-end lip. The free projectile leaves the ramp; do not glue the paper plane onto the deck.`,
-      tips: "Soft-launch only — the plane flies free.",
+      description: `Finish the leave-end lip. The free projectile leaves the ramp; marble leaves free — do not glue the projectile onto the deck.`,
+      tips: "Soft-launch only — the projectile leaves free.",
       partsUsed: ["deck"],
     });
     steps.push({
@@ -169,20 +172,22 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     });
     return steps;
   }
-  if (mech === "climb" && isClimbSingleStep(prompt)) {
+  if (mech === "climb" && isClimbStepStool(prompt)) {
     const rr = climbRiseRun(prompt);
+    const n = Math.max(1, climbStepCount(prompt));
     const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+    const stepTalk = n >= 2 ? `${n} human steps (each ${riseRun})` : `one climb step at ${riseRun}`;
     steps.push({
       step: s++,
-      title: "Glue the weight-bearing climb step",
-      description: `Build one climb step at ${riseRun}. Legs and tread only — a weight-bearing human step, not a vehicle incline. ${hold}`,
+      title: n >= 2 ? `Glue the ${n} weight-bearing climb steps` : "Glue the weight-bearing climb step",
+      description: `Build ${stepTalk}. Legs and treads only — weight-bearing human steps, not a vehicle incline. ${n >= 2 ? "Kid stands on the top tread. " : ""}${hold}`,
       tips: "A standing kid loads the tread — square it.",
       partsUsed: ["leg", "rail"],
     });
     steps.push({
       step: s++,
       title: "Brace the step frame",
-      description: `Add braces so the ${riseRun} tread cannot rack.`,
+      description: `Add braces so the ${riseRun} tread${n >= 2 ? "s" : ""} cannot rack.`,
       tips: "Same pack, same stick — one stock only.",
       partsUsed: ["brace"],
     });
@@ -299,26 +304,41 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   let n = 1;
 
   const coatPrompt = (project.prompt ?? "").toLowerCase();
+  const shoePortalRail =
+    /shoe/.test(coatPrompt) &&
+    /rail|rack/.test(coatPrompt) &&
+    (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /portal/i.test(project.name));
   const coatRack =
     /coat/i.test(project.name) ||
     (/coat/.test(coatPrompt) && /rack|rail|hook|peg|tree/.test(coatPrompt) && !/shoe/.test(coatPrompt));
-  if (coatRack && !uprights.length) {
+  if ((coatRack || shoePortalRail) && !uprights.length) {
+    const shoe = shoePortalRail || /shoe/i.test(project.name);
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
-    const hooks = hookSaid
-      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
-      : Math.max(3, Math.min(8, Math.round(W / 6)));
+    const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
+    const hooks = shoe
+      ? pairSaid
+        ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
+        : Math.max(2, Math.min(8, Math.round(W / 9)))
+      : hookSaid
+        ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+        : Math.max(3, Math.min(8, Math.round(W / 6)));
     const rail = backs[0] ?? panels[0];
     const shelf = of("top")[0];
     const portal =
+      shoe ||
       /door\s*portal|portal|doorway|door opening/.test(coatPrompt) ||
       /portal/i.test(project.name);
     const openingH = project.opening?.height ?? project.overall.height;
-    const mountFromOpening = Math.round(Math.min(60, Math.max(48, openingH * 0.7)));
+    const mountFromOpening = shoe
+      ? Math.round(Math.min(18, Math.max(6, openingH * 0.12)))
+      : Math.round(Math.min(60, Math.max(48, openingH * 0.7)));
     const hangStep = portal
       ? {
           step: 4,
           title: "Mount height from the opening — keep swing clear",
-          description: `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
+          description: shoe
+            ? `Mount height from the opening: set the shoe rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
+            : `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
         }
@@ -332,23 +352,27 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return [
       {
         step: 1,
-        title: "Cut the peg rail and hat shelf",
-        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
+        title: shoe ? "Cut the shoe rail" : "Cut the peg rail and hat shelf",
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: tool.tip,
         partsUsed: names(panels),
       },
       {
         step: 2,
-        title: "Glue the hat shelf on the rail",
-        description: `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
-        tips: "Predrill so the ply does not split. Wipe squeeze-out.",
+        title: shoe ? "Dry-fit the rail in the portal" : "Glue the hat shelf on the rail",
+        description: shoe
+          ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`
+          : `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
+        tips: shoe ? "Portal envelope is the opening — keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
         partsUsed: names(panels),
       },
       {
         step: 3,
-        title: `Screw ${hooks} coat hooks`,
-        description: `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
-        tips: "A cheap hook pack is the whole hardware kit besides screws.",
+        title: shoe ? `Mark ${hooks} pairs on the rail` : `Screw ${hooks} coat hooks`,
+        description: shoe
+          ? `Mark ${hooks} pairs along the rail, about 8–9" on center. Pegs or dividers hold each pair. Keep clear swing past the footwear.`
+          : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
+        tips: shoe ? "Four pairs means four stations — count them on the rail." : "A cheap hook pack is the whole hardware kit besides screws.",
         partsUsed: names(backs.length ? backs : panels),
       },
       hangStep,
@@ -391,7 +415,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const climbStool =
-    (/step stool|step-up|climb step/i.test(project.name) ||
+    (/step stool|step-up|climb step|climb stool|two-step/i.test(project.name) ||
       /step-?up|climb\s+step|rise.*run/.test((project.prompt ?? "").toLowerCase())) &&
     detectWeekendMech(project.prompt ?? "") === "climb";
   if (climbStool && uprights.length && !project.instances.length) {
@@ -1577,15 +1601,31 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   }
 
   const order = roleScript(project);
+  let sawLeave = false;
   for (const spec of order) {
     const listI = byRole.get(spec.role);
     if (!listI?.length) continue;
+    if (/leaves the ramp|leaves free|free projectile/i.test(spec.why)) sawLeave = true;
     steps.push({
       step: n++,
       title: `${spec.title} — ${listI.length} ${spec.role}${listI.length === 1 ? "" : "s"}`,
       description: `${listI.length} ${spec.role} members. ${hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
       partsUsed: [spec.role],
       tips: spec.why,
+    });
+  }
+  if (
+    detectWeekendMech(project.prompt ?? "") === "launcher" &&
+    isLauncherRamp(project.prompt ?? "") &&
+    !sawLeave
+  ) {
+    const rampLen = launcherRampLengthIn(project.prompt ?? "");
+    const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
+    steps.push({
+      step: n++,
+      title: "Leave the free end open — projectile leaves the ramp",
+      description: `State the ${lenTalk} clearly. Free projectile leaves the ramp; marble leaves free — do not glue the projectile onto the deck.`,
+      tips: "Soft-launch only — the projectile leaves free.",
     });
   }
 
@@ -1603,16 +1643,20 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
   const prompt = project.prompt ?? "";
   const mech = detectWeekendMech(prompt);
   if (project.kind === "ladder" || mech === "climb") {
-    if (isClimbSingleStep(prompt)) {
+    if (isClimbStepStool(prompt)) {
       const rr = climbRiseRun(prompt);
+      const n = Math.max(1, climbStepCount(prompt));
       const riseRun =
         rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
       return [
-        { role: "leg", title: "Cut the four legs", why: "Legs carry a standing kid — weight-bearing." },
+        { role: "leg", title: "Cut the legs", why: "Legs carry a standing kid — weight-bearing." },
         {
           role: "rail",
-          title: "Seat the single climb tread",
-          why: `One weight-bearing step at ${riseRun}. Not a vehicle incline.`,
+          title: n >= 2 ? `Seat the ${n} climb treads` : "Seat the single climb tread",
+          why:
+            n >= 2
+              ? `${n} weight-bearing human steps (each ${riseRun}). Kid stands on the top tread. Not a vehicle incline.`
+              : `One weight-bearing step at ${riseRun}. Not a vehicle incline.`,
         },
         { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },
@@ -1628,18 +1672,18 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
   if (mech === "launcher") {
     if (isLauncherRamp(prompt)) {
       const rampLen = launcherRampLengthIn(prompt);
-      const lenTalk = rampLen != null ? `${rampLen}" ramp` : "typed ramp length";
+      const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
       return [
         { role: "rail", title: "Glue the base runners", why: `Base sets the ${lenTalk} footprint.` },
         {
           role: "support",
           title: "Set the incline rails",
-          why: `Ramp length ${rampLen != null ? rampLen + '"' : "as typed"} — state it clearly on the bench.`,
+          why: `Run/ramp length ${rampLen != null ? rampLen + '"' : "as typed"} — state it clearly on the bench.`,
         },
         {
           role: "deck",
           title: "Lay the ramp deck — leave the free end open",
-          why: "Free projectile leaves the ramp; do not glue the plane on.",
+          why: "Free projectile leaves the ramp; marble leaves free — do not glue the projectile on.",
         },
         { role: "brace", title: "Brace the incline", why: "Braces kill racking — leave the leave-end clear." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },
@@ -1657,7 +1701,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
   if (mech === "media-hold" && wantsMediaTipHold(prompt)) {
     const tip = mediaHoldTipDeg(prompt);
     const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
-    const held = /cookbook|book|easel/i.test(prompt) ? "open book" : "phone or tablet";
+    const held = mediaHoldHeldLabel(prompt);
     return [
       { role: "rail", title: "Glue the base footprint", why: "Base carries the lean stand." },
       {

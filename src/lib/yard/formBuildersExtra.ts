@@ -322,37 +322,75 @@ export function mediaHoldStandOps(s: Size3, tipDeg?: number | null): FormOp[] {
 }
 
 /**
- * One weight-bearing climb step — rise × run tread (stool / step-shelf), not a multi-rung ladder.
+ * Weight-bearing climb step(s) — rise × run tread (stool / step-shelf), not a multi-rung ladder.
+ * steps≥2 stacks human treads (each rise × run); kid stands on the top tread.
  */
-export function climbStepOps(s: Size3, riseIn?: number | null, runIn?: number | null): FormOp[] {
-  const rise = Math.max(riseIn ?? Math.min(s.height || 8, 12), 4);
+export function climbStepOps(
+  s: Size3,
+  riseIn?: number | null,
+  runIn?: number | null,
+  stepCount: number = 1,
+): FormOp[] {
+  const n = Math.max(1, Math.min(6, Math.round(stepCount || 1)));
+  const rise = Math.max(riseIn ?? Math.min((s.height || 8) / n, 12), 4);
   const run = Math.max(runIn ?? Math.min(s.depth || 10, 14), 6);
   const W = Math.max(Math.min(s.width || 14, 22), 10);
+  const totalRun = run * n;
+  const totalRise = rise * n;
   const x0 = -W / 2;
   const x1 = W / 2;
-  const z0 = -run / 2;
-  const z1 = run / 2;
-  return [
-    { op: "column", x: x0, z: z0, y0: 0, y1: rise, role: "leg" },
-    { op: "column", x: x1, z: z0, y0: 0, y1: rise, role: "leg" },
-    { op: "column", x: x0, z: z1, y0: 0, y1: rise, role: "leg" },
-    { op: "column", x: x1, z: z1, y0: 0, y1: rise, role: "leg" },
-    // Single tread — rail role reads as the step in climb honesty
-    {
+  const zFront = -totalRun / 2;
+  const ops: FormOp[] = [];
+  // Outer legs to full height
+  ops.push({ op: "column", x: x0, z: zFront, y0: 0, y1: totalRise, role: "leg" });
+  ops.push({ op: "column", x: x1, z: zFront, y0: 0, y1: totalRise, role: "leg" });
+  ops.push({ op: "column", x: x0, z: zFront + totalRun, y0: 0, y1: rise, role: "leg" });
+  ops.push({ op: "column", x: x1, z: zFront + totalRun, y0: 0, y1: rise, role: "leg" });
+  for (let i = 0; i < n; i++) {
+    const y = rise * (i + 1);
+    const z0 = zFront + run * (n - 1 - i);
+    const z1 = z0 + run;
+    // Mid posts under upper treads
+    if (i > 0) {
+      ops.push({ op: "column", x: x0, z: z1, y0: 0, y1: y, role: "leg" });
+      ops.push({ op: "column", x: x1, z: z1, y0: 0, y1: y, role: "leg" });
+    }
+    ops.push({
       op: "poly",
       role: "rail",
       points: [
-        { x: x0, y: rise, z: z0 },
-        { x: x1, y: rise, z: z0 },
-        { x: x1, y: rise, z: z1 },
-        { x: x0, y: rise, z: z1 },
+        { x: x0, y, z: z0 },
+        { x: x1, y, z: z0 },
+        { x: x1, y, z: z1 },
+        { x: x0, y, z: z1 },
       ],
-    },
-    { op: "poly", role: "brace", points: [{ x: x0, y: rise * 0.4, z: z0 }, { x: x1, y: rise * 0.4, z: z0 }] },
-    { op: "poly", role: "brace", points: [{ x: x0, y: rise * 0.4, z: z1 }, { x: x1, y: rise * 0.4, z: z1 }] },
-    { op: "poly", role: "brace", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: rise, z: z1 }] },
-    { op: "poly", role: "brace", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: rise, z: z1 }] },
-  ];
+    });
+    ops.push({
+      op: "poly",
+      role: "brace",
+      points: [
+        { x: x0, y: y * 0.45, z: z0 },
+        { x: x1, y: y * 0.45, z: z0 },
+      ],
+    });
+  }
+  ops.push({
+    op: "poly",
+    role: "brace",
+    points: [
+      { x: x0, y: 0, z: zFront + totalRun },
+      { x: x0, y: totalRise, z: zFront },
+    ],
+  });
+  ops.push({
+    op: "poly",
+    role: "brace",
+    points: [
+      { x: x1, y: 0, z: zFront + totalRun },
+      { x: x1, y: totalRise, z: zFront },
+    ],
+  });
+  return ops;
 }
 
 export function towerOps(s: Size3): FormOp[] {

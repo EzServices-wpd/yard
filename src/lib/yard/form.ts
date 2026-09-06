@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbSingleStep, isLauncherRamp, isMediaDeviceStand, wantsMediaTipHold, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import {
   houseOps,
   wallOps,
@@ -242,10 +242,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const rampLen = launcherRampLengthIn(prompt);
   const tip = mediaHoldTipDeg(prompt);
   const rr = climbRiseRun(prompt);
+  const climbSteps = climbStepCount(prompt);
   const frameOpsFor =
     mech === "climb"
-      ? isClimbSingleStep(prompt)
-        ? climbStepOps(size, rr?.rise, rr?.run)
+      ? isClimbStepStool(prompt)
+        ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps))
         : ladderOps(size)
       : mech === "launcher"
         ? isLauncherRamp(prompt)
@@ -255,13 +256,18 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? mediaHoldStandOps(size, tip)
           : frameOps(size);
   const kind = mech === "climb" || hit.kind === "ladder" ? ("ladder" as const) : ("frame" as const);
+  const held = mediaHoldHeldLabel(prompt);
   const notes =
     mech === "climb"
-      ? isClimbSingleStep(prompt)
+      ? isClimbStepStool(prompt)
         ? [
-            `${hit.name} · one weight-bearing climb step` +
-              (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-              ` — not a vehicle incline.`,
+            climbSteps >= 2
+              ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
+                (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
+                ` — kid stands on the top tread; not a vehicle incline.`
+              : `${hit.name} · one weight-bearing climb step` +
+                (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
+                ` — not a vehicle incline.`,
           ]
         : ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
       : mech === "launcher"
@@ -269,7 +275,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? [
               `${hit.name} · ramp` +
                 (rampLen != null ? ` length ${rampLen}"` : "") +
-                ` — free projectile leaves the ramp (not glued on).`,
+                ` — free projectile leaves the ramp; marble leaves free (not glued on).`,
             ]
           : [
               `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
@@ -280,7 +286,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             ? [
                 `${hit.name} · tipped lean` +
                   (tip != null ? ` at ${tip}° tip` : "") +
-                  ` with a front lip — holds a real book or device, never a flat decal.`,
+                  ` with a front lip — holds a real ${held}, never a flat decal.`,
               ]
             : [
                 `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,

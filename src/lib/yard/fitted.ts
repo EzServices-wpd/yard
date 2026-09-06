@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isShoePortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -1504,6 +1504,68 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+
+  // Shoe rail in a door portal — pairs on a rail, clear swing; not a shelving niche.
+  if (isShoePortalRail(prompt.toLowerCase())) {
+    const shoeLower = prompt.toLowerCase();
+    const portalW = W;
+    const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
+    const portalH = Math.max(
+      H,
+      portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H,
+    );
+    const shelfD = Math.max(3, Math.min(D, 4));
+    const railH = Math.max(4, Math.min(6, shelfD + 2));
+    panels.push(panel("back", "Shoe rail", x0, 0, 0, portalW, railH, P));
+    const pairSaid = shoeLower.match(/(\d+)\s*pairs?/);
+    const pairs = pairSaid
+      ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
+      : Math.max(2, Math.min(8, Math.round(portalW / 9)));
+    const mountFromOpening = Math.round(Math.min(18, Math.max(6, portalH * 0.12)));
+    const notes = [
+      `Shoe rail in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs on a ${railH}" rail. ¾" plywood.`,
+      `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the footwear.`,
+      `Mark ${pairs} pairs about 8–9" on center. Hit studs. Guidance only — portal not a shelving niche.`,
+    ];
+    return {
+      id: createId("proj"),
+      name: `Shoe rail ${portalW}" portal · ${pairs} pairs`,
+      prompt,
+      kind: "closet",
+      overall: { width: portalW, height: portalH, depth: shelfD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes,
+      historic: false,
+      opening: {
+        ...spec.opening,
+        width: portalW,
+        height: portalH,
+        depth: shelfD,
+        kind: "alcove",
+      },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: portalW,
+          height: portalH,
+          depth: shelfD,
+          doors: false,
+          shelfCount: 0,
+          drawersPerBank: undefined,
+        },
+        program: "storage",
+      },
+      assumptions: {
+        load: "light",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
 
   // Shoe storage on a floor carcase → cubbies / open bays (not pin shelves).
   // Seat (mudroom) keeps its own cubby bench; hung racks stay hung-open.

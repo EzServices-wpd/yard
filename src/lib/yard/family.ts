@@ -134,7 +134,16 @@ function wantsBottles(lower: string) {
 /** Shoe storage intent — rack, cubbies, or store — not a bare "shoe". */
 export function wantsShoes(lower: string) {
   if (!/\bshoes?\b|\bboots?\b/.test(lower)) return false;
-  return /rack|store|storage|cubb|organizer/.test(lower);
+  return /rack|rail|store|storage|cubb|organizer/.test(lower);
+}
+
+/** Shoe rail in a door portal — pairs on a rail, not a shelving niche. */
+export function isShoePortalRail(lower: string) {
+  return (
+    /\bshoes?\b/.test(lower) &&
+    /rail|rack/.test(lower) &&
+    /door\s*portal|portal|doorway|door opening/.test(lower)
+  );
 }
 
 /** Kitchen upper → wall hung cabinet (not a floor box). */
@@ -190,15 +199,16 @@ export function climbIdentityLabel(lower: string): string | null {
     return null;
   }
   // Real benches stay Bench — only climb/step stools claim this stem.
-  if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|step\s*stool/.test(lower)) return null;
+  if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step/.test(lower)) return null;
+  const climbHay = lower.replace(/[″″]/g, '"').replace(/[–—]/g, "-");
   if (
-    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing/.test(
-      lower,
+    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*[×xby]\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
+      climbHay,
     )
   ) {
     return null;
   }
-  if (/step-?up|stool/.test(lower)) return "Step stool";
+  if (/step-?up|stool|two-?\s*step|climb\s+stool|each\s+step/.test(climbHay)) return "Step stool";
   if (/step-?shelf/.test(lower)) return "Step shelf";
   if (/\bladder\b/.test(lower)) return "Ladder";
   return "Step stool";
@@ -228,6 +238,7 @@ export function identityTitleStem(lower: string): string | null {
   // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
+  if (isShoePortalRail(lower)) return "Shoe rail";
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
