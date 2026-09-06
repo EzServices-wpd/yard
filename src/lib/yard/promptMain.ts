@@ -7,7 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { climbIdentityLabel, detectHouseFamily } from "./family";
-import { climbRiseRun, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, weekendUsesLatticeGraph } from "./weekendFamily";
+import { climbRiseRun, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, mediaHoldTipDeg, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
@@ -207,6 +207,14 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     const rr = climbRiseRun(prompt);
     const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
     notes.unshift(`Weight-bearing climb step at ${riseRun} — not a vehicle incline.`);
+  }
+  if (wantsMediaTipHold(prompt)) {
+    const tip = mediaHoldTipDeg(prompt);
+    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const held = /cookbook|book|easel/i.test(prompt) ? "open book" : "phone or tablet";
+    notes.unshift(
+      `Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`,
+    );
   }
   let next = notes === project.notes ? project : { ...project, notes };
   if (next.instances.length === 0 && next.panels.length === 0) {

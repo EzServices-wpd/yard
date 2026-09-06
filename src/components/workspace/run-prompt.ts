@@ -8,7 +8,7 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem } from "@/lib/
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
-import { detectWeekendMech } from "@/lib/yard/weekendFamily";
+import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
@@ -242,7 +242,12 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     const hint = await hintSubject({ data: { prompt } });
-    if (hint.summary && hint.summary !== hint.subject) {
+    if (
+      hint.summary &&
+      hint.summary !== hint.subject &&
+      !wantsMediaTipHold(prompt) &&
+      !detectWeekendMech(prompt)
+    ) {
       const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
       generate(prompt, namedStock, form);
       makePlan();
@@ -257,7 +262,13 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     });
     const after = useYard.getState().project;
     const locked =
-      isLockedForm(after.kind) || after.kind === "closet" || after.kind === "opening" || !!after.flat;
+      isLockedForm(after.kind) ||
+      after.kind === "closet" ||
+      after.kind === "opening" ||
+      !!after.flat ||
+      // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.
+      wantsMediaTipHold(prompt) ||
+      !!detectWeekendMech(prompt);
     // Named stock from the prompt binds like CatalogPanel. Unnamed stays wire-frame —
     // LLM must not silently pick popsicle.
     if (interp.ok && interp.form && !locked) {

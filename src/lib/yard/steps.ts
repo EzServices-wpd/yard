@@ -6,6 +6,7 @@ import {
   isClimbSingleStep,
   isLauncherRamp,
   isMediaDeviceStand,
+  wantsMediaTipHold,
   launcherRampLengthIn,
   mediaHoldTipDeg,
 } from "./weekendFamily";
@@ -97,7 +98,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     detectWeekendMech(prompt) === "media-hold" ||
     /picture|photo/i.test(subject) ||
     /picture frame/i.test(project.name);
-  const deviceStand = mediaHold && isMediaDeviceStand(prompt);
+  const tipHold = mediaHold && wantsMediaTipHold(prompt);
   const tipDeg = mediaHoldTipDeg(prompt);
 
   steps.push({
@@ -116,26 +117,27 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     partsUsed: ["*"],
   });
 
-  if (mediaHold && deviceStand) {
+  if (mediaHold && tipHold) {
     const tipTalk = tipDeg != null ? `${tipDeg}° tip` : "the typed tip angle";
+    const held = /cookbook|book|easel/i.test(prompt) ? "open book" : "phone or tablet";
     steps.push({
       step: s++,
       title: "Glue the base and lean back",
-      description: `Build the stand so it binds a real device envelope at ${tipTalk} — never a flat decal. Base on the paper, lean back on the printed angle. ${hold}`,
-      tips: "Dry-fit a real phone or tablet before the glue skins.",
+      description: `Build the tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal. Base on the paper, lean back on the printed angle. ${hold}`,
+      tips: `Dry-fit a real ${held} before the glue skins.`,
       partsUsed: ["rail", "support"],
     });
     steps.push({
       step: s++,
-      title: "Add the front lip that retains the device",
-      description: `Glue the front lip so a real phone sits in the envelope at ${tipTalk}. The device leans; it is not a printed sticker face.`,
+      title: "Add the front lip that retains the media",
+      description: `Glue the front lip so a real ${held} sits in the envelope at ${tipTalk}. The media leans; it is not a printed sticker face.`,
       tips: "Same pack, same stick — one stock only.",
       partsUsed: ["deck"],
     });
     steps.push({
       step: s++,
-      title: "Let it dry, then seat the real device",
-      description: `Leave the stand on the paper until the glue skins. Seat a real phone at ${tipTalk} for the recipe video — never a decal.`,
+      title: "Let it dry, then seat the real media",
+      description: `Leave the stand on the paper until the glue skins. Seat a real ${held} at ${tipTalk} — never a decal.`,
       tips: "Overnight is safest for wood glue.",
     });
     return steps;
@@ -1652,22 +1654,23 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
-  if (mech === "media-hold" && isMediaDeviceStand(prompt)) {
+  if (mech === "media-hold" && wantsMediaTipHold(prompt)) {
     const tip = mediaHoldTipDeg(prompt);
     const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const held = /cookbook|book|easel/i.test(prompt) ? "open book" : "phone or tablet";
     return [
       { role: "rail", title: "Glue the base footprint", why: "Base carries the lean stand." },
       {
         role: "support",
         title: `Set the lean back at ${tipTalk}`,
-        why: `Binds a real device envelope at ${tipTalk} — never a flat decal.`,
+        why: `Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`,
       },
       {
         role: "deck",
-        title: "Add the front lip that retains the device",
-        why: "A real phone sits in the envelope; not a printed sticker face.",
+        title: "Add the front lip that retains the media",
+        why: `A real ${held} sits in the envelope; not a printed sticker face.`,
       },
-      { role: "brace", title: "Brace the stand", why: "Keep the tip angle true under the phone." },
+      { role: "brace", title: "Brace the stand", why: `Keep the tip angle true under the ${held}.` },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
