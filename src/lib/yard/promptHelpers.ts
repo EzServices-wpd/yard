@@ -4,7 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold } from "./weekendFamily";
+import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -103,6 +103,18 @@ export function parseSize(lower: string): { height: number; width: number; depth
         width = Math.max(4, Math.min(span * 0.75, span));
       }
       depth = Math.max(3, span * Math.sin(rad) + 2);
+    }
+  }
+
+  // Climb / step stool: typed rise × run binds total envelope (steps × each tread).
+  // Natural "7 inch rise 9 inch run" must not leave height stuck on the first inch token.
+  if (detectWeekendMech(lower) === "climb") {
+    const rr = climbRiseRun(lower);
+    const steps = Math.max(1, climbStepCount(lower) || 1);
+    if (rr != null) {
+      height = rr.rise * steps;
+      depth = rr.run * steps;
+      if (width === 24) width = Math.max(12, Math.min(18, rr.run + 6));
     }
   }
 

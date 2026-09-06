@@ -82,11 +82,15 @@ export function mediaHoldTipDeg(prompt: string): number | null {
 /** Rise × run inches for a climb step when typed. */
 export function climbRiseRun(prompt: string): { rise: number; run: number } | null {
   const hay = looksHay(prompt);
+  // Accept "7 rise × 9 run", "7 rise by 9 run", and natural "7 inch rise 9 inch run".
   const m = hay.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*rise\s*[×xby]\s*(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*run/i,
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*rise\s*(?:(?:[×x]|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*run/i,
   );
   if (!m) return null;
-  return { rise: parseFloat(m[1]), run: parseFloat(m[2]) };
+  const rise = parseFloat(m[1]);
+  const run = parseFloat(m[2]);
+  if (!Number.isFinite(rise) || !Number.isFinite(run) || rise <= 0 || run <= 0) return null;
+  return { rise, run };
 }
 
 /** Ramp length in inches when the prompt names one (launcher ramp). */
