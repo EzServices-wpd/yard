@@ -358,9 +358,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return [
       {
         step: 1,
-        title: shoe ? "Cut the shoe rail" : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
+        title: shoe ? "Cut the shoe rail and pegs" : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
         description: portal
-          ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
+          ? shoe
+            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
+            : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
           : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: portal ? "Mount height from the opening — keep clear swing." : tool.tip,
         partsUsed: names(panels),
@@ -369,19 +371,19 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 2,
         title: shoe ? "Dry-fit the rail in the portal" : "Glue the hat shelf on the rail",
         description: shoe
-          ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`
+          ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche. Leave shoe pegs off until the rail is marked.`
           : `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
-        tips: shoe ? "Portal envelope is the opening — keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
+        tips: shoe ? "Portal envelope is the opening — peg length is the typed depth; keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
         partsUsed: names(panels),
       },
       {
         step: 3,
-        title: shoe ? `Mark ${hooks} pairs on the rail` : /rod/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} coat hooks`,
+        title: shoe ? `Screw ${hooks} shoe pegs` : /rod/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} coat hooks`,
         description: shoe
-          ? `Mark ${hooks} pairs along the rail, about 8–9" on center. Pegs or dividers hold each pair. Keep clear swing past the footwear.`
+          ? `Mark ${hooks} stations along the rail, about 8–9" on center. Glue and #8 × 1¼" screws through each Shoe peg into the rail — one cut peg per pair from the cut list. Pegs project into the portal; keep clear swing past the footwear.`
           : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
-        tips: shoe ? "Four pairs means four stations — count them on the rail." : "A cheap hook pack is the whole hardware kit besides screws.",
-        partsUsed: names(backs.length ? backs : panels),
+        tips: shoe ? "Count the Shoe peg pieces on the cut list — one per pair." : "A cheap hook pack is the whole hardware kit besides screws.",
+        partsUsed: names(panels),
       },
       hangStep,
     ];

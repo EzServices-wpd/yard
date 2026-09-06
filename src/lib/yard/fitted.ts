@@ -1515,6 +1515,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
 
   // Shoe rail in a door portal — pairs on a rail, clear swing; not a shelving niche.
+  // Pegs are cut plywood (one per pair) so steps never invent hardware missing from the cut list.
   if (isShoePortalRail(prompt.toLowerCase())) {
     const shoeLower = prompt.toLowerCase();
     const portalW = W;
@@ -1523,25 +1524,34 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       H,
       portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H,
     );
-    const shelfD = Math.max(3, Math.min(D, 4));
-    const railH = Math.max(4, Math.min(6, shelfD + 2));
+    // Typed D is how far pegs may stick into the portal (clear swing). Cap at 4".
+    const pegLen = Math.max(3, Math.min(D, 4));
+    // Rail face height stays on the wall plane — keep it ≤ pegLen so cut dims honor the typed depth envelope.
+    const railH = Math.max(3.5, Math.min(pegLen, 5));
     panels.push(panel("back", "Shoe rail", x0, 0, 0, portalW, railH, P));
     const pairSaid = shoeLower.match(/(\d+)\s*pairs?/);
     const pairs = pairSaid
       ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
       : Math.max(2, Math.min(8, Math.round(portalW / 9)));
+    const pegFace = Math.max(1.5, Math.min(2.25, Math.round(railH * 0.45 * 8) / 8));
+    for (let i = 0; i < pairs; i++) {
+      const x = x0 + (portalW * (i + 1)) / (pairs + 1) - P / 2;
+      panels.push(
+        panel("divider", `Shoe peg ${i + 1}`, x, (railH - pegFace) / 2, P, P, pegFace, pegLen),
+      );
+    }
     const mountFromOpening = Math.round(Math.min(18, Math.max(6, portalH * 0.12)));
     const notes = [
-      `Shoe rail in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs on a ${railH}" rail. ¾" plywood.`,
+      `Shoe rail in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs on ${pairs} × ${pegLen}" plywood pegs. ¾" plywood.`,
       `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the footwear.`,
-      `Mark ${pairs} pairs about 8–9" on center. Hit studs. Guidance only — portal not a shelving niche.`,
+      `Screw each shoe peg into the rail about 8–9" on center. Hit studs. Guidance only — portal not a shelving niche.`,
     ];
     return {
       id: createId("proj"),
       name: `Shoe rail ${portalW}" portal · ${pairs} pairs`,
       prompt,
       kind: "closet",
-      overall: { width: portalW, height: portalH, depth: shelfD },
+      overall: { width: portalW, height: portalH, depth: pegLen },
       instances: [],
       panels,
       primaryMaterialId: PLY,
@@ -1551,7 +1561,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ...spec.opening,
         width: portalW,
         height: portalH,
-        depth: shelfD,
+        depth: pegLen,
         kind: "alcove",
       },
       fitted: {
@@ -1560,7 +1570,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ...u,
           width: portalW,
           height: portalH,
-          depth: shelfD,
+          depth: pegLen,
           doors: false,
           shelfCount: 0,
           drawersPerBank: undefined,
