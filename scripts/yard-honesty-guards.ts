@@ -152,6 +152,30 @@ const laundryTable = expectTableAprons("laundry folding table 48 wide 36 high 24
 const round3 = expectTableAprons("40 inch round 3-leg table", { legs: 3, round: true });
 const coffee = expectTableAprons("coffee table 48 round", { legs: 3, round: true });
 const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
+
+// 3-leg aprons must sit inside the post triangle (inset), not on the centerline past the posts.
+{
+  const legs = round3.panels.filter((p) => p.type === "upright" && /^leg\b/i.test(p.name));
+  const rails = round3.panels.filter((p) => p.type === "rail" || /^apron\b/i.test(p.name));
+  const legC = legs.map((p) => ({
+    x: p.position.x + p.size.width / 2,
+    z: p.position.z + p.size.depth / 2,
+  }));
+  for (let i = 0; i < rails.length; i++) {
+    const a = legC[i];
+    const b = legC[(i + 1) % legC.length];
+    const chordMidR = Math.hypot((a.x + b.x) / 2, (a.z + b.z) / 2);
+    const r = rails[i];
+    const apronMidR = Math.hypot(r.position.x + r.size.width / 2, r.position.z + r.size.depth / 2);
+    if (!(apronMidR < chordMidR - 0.15)) {
+      failHonesty(`round3 ${r.name} not inset inside posts`, { apronMidR, chordMidR });
+    }
+  }
+  const coffeeApron = coffee.panels.find((p) => /apron/i.test(p.name));
+  if (!coffeeApron || coffeeApron.size.height > 2.6) {
+    failHonesty("coffee apron too deep for short table", coffeeApron?.size);
+  }
+}
 void laundryTable;
 void round3;
 void coffee;

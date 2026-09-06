@@ -6,6 +6,8 @@
  * - never a diagonal of the top AABB (the old 55.25" yaw-blind lie)
  * - never a stretcher floating mid-span off the 2x2s
  * - never longer than the inner span (nothing past the posts or the top)
+ * - 3-leg chords inset toward the centroid so apron bulk stays inside the
+ *   post triangle — a centerline chord reads as bars past the posts
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
@@ -49,7 +51,8 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const round = u.shape === "round";
   const legW = 1.5;
   const topT = P;
-  const apronH = 3.5;
+  // Short coffee/side tables: a 3.5" apron eats the silhouette. Cap by height.
+  const apronH = Math.min(3.5, Math.max(2.25, Math.round(H * 0.14 * 8) / 8));
   const apronT = P;
   const legH = H - topT;
 
@@ -102,10 +105,20 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   //   Round 4-leg lands on an axis-aligned square because of the 45° spin.
   //   The old circular pairing walked x-then-z so two "aprons" were diagonals
   //   (~43.5" on a 48×24 top) and yaw-blind plan bounds read 55.25".
-  // 3-leg: chords between consecutive posts. Stay ON the chord — a radial
-  //   inset toward origin floats a triangle that never meets a 2x2. Length is
-  //   the inner span so each end terminates at a post, not past it.
+  // 3-leg: chords between consecutive posts, inset toward the centroid so the
+  //   apron body sits on the INNER side of the post-to-post line (same rule as
+  //   4-leg inner faces). A centerline chord puts half the apron thickness
+  //   outside the posts and reads as bars past the legs. Length uses the
+  //   square half-extent along the chord so ends meet posts, not past them.
+  //   Do NOT deep-inset toward origin — that floats a triangle off the 2x2s.
   const apronY = H - topT - apronH;
+  const half = legW / 2;
+  const squareHalfAlong = (ux: number, uz: number) => {
+    const cands: number[] = [];
+    if (Math.abs(ux) > 1e-9) cands.push(half / Math.abs(ux));
+    if (Math.abs(uz) > 1e-9) cands.push(half / Math.abs(uz));
+    return cands.length ? Math.min(...cands) : half;
+  };
   if (legN === 4 && centers.length === 4) {
     const lx = Math.min(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const rx = Math.max(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
@@ -132,18 +145,32 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       const dx = b.x - a.x;
       const dz = b.z - a.z;
       const span = Math.hypot(dx, dz);
+      const ux = dx / span;
+      const uz = dz / span;
       const yaw = Math.atan2(dz, dx);
       const midX = (a.x + b.x) / 2;
       const midZ = (a.z + b.z) / 2;
-      // Inner span along the chord: ends at the posts, not through/past them.
-      const length = Math.max(4, span - legW);
+      // Inward normal (toward origin / triangle centroid).
+      let nx = -uz;
+      let nz = ux;
+      if (nx * -midX + nz * -midZ < 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      // Outer face of apron on the post-to-post centerline → body inside the posts.
+      const inset = apronT / 2;
+      const cx = midX + nx * inset;
+      const cz = midZ + nz * inset;
+      const tA = squareHalfAlong(ux, uz);
+      const tB = squareHalfAlong(ux, uz);
+      const length = Math.max(4, span - tA - tB);
       panels.push(
         panel(
           "rail",
           `Apron ${i + 1}`,
-          midX - length / 2,
+          cx - length / 2,
           apronY,
-          midZ - apronT / 2,
+          cz - apronT / 2,
           length,
           apronH,
           apronT,
