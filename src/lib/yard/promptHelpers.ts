@@ -4,7 +4,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel } from "./weekendFamily";
+import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -14,7 +14,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
 
   const isBridge = /bridge|span|viaduct|overpass|trestle|golden gate|brooklyn/.test(lower);
   const isArch = /arch|arbor|arbour|pergola|gateway|portal/.test(lower);
-  const dimText = stripLumberStock(lower);
+  const dimText = stripLumberStock(lower).replace(/[″″]/g, '"').replace(/[–—]/g, "-");
 
   const ftTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|foot|feet)\s*(?:tall|high|height|tower)\b/);
   const inTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:in|inch|inches)\s*(?:tall|high)\b/);
@@ -65,6 +65,26 @@ export function parseSize(lower: string): { height: number; width: number; depth
     depth = 18;
   }
 
+  // Soft-launch / marble trough: typed run length is the envelope long axis.
+  if (isLauncherRamp(lower)) {
+    const rampLen = launcherRampLengthIn(lower);
+    if (rampLen != null) {
+      const long = Math.max(rampLen, 8);
+      const short = Math.max(3, Math.min(long * 0.55, 10));
+      const rise = Math.max(2, Math.min(long * 0.45, 12));
+      // Prefer depth as the run when width still defaulted.
+      if (width === 24 && depth === 24 && height === 24) {
+        depth = long;
+        width = short;
+        height = rise;
+      } else {
+        // Keep typed axes; force the longest horizontal to the run length.
+        if (depth >= width) depth = long;
+        else width = long;
+      }
+    }
+  }
+
   return { height, width, depth };
 }
 
@@ -91,6 +111,7 @@ export function hasExplicitSize(prompt: string): boolean {
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim)) return true;
   const pair = dim.match(/(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/);
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]))) return true;

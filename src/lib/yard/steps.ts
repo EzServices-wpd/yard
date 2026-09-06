@@ -1566,10 +1566,19 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   const marked = project.instances.filter((i) => i.cutLength);
   const whole = !!item && isWholeStock(item) && marked.length === 0;
 
+  const mechNote = (() => {
+    const p = project.prompt ?? "";
+    if (detectWeekendMech(p) === "launcher" && isLauncherRamp(p)) {
+      const rampLen = launcherRampLengthIn(p);
+      const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
+      return ` Soft-launch ${lenTalk} — free projectile leaves the ramp; marble leaves free.`;
+    }
+    return "";
+  })();
   steps.push({
     step: n++,
     title: whole ? `Read this ${project.name} before you glue` : `Read this ${project.name} before you cut`,
-    description: `${cutSummary(project.instances, item?.name ?? "stock")} Envelope about ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".`,
+    description: `${cutSummary(project.instances, item?.name ?? "stock")} Envelope about ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".${mechNote}`,
     tips: whole
       ? "Trust the stick list — full pieces, no cuts."
       : "Trust the cut list.",
