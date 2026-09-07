@@ -1292,6 +1292,20 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       tips: "The walls are the trapezoid. The unit is a rectangle. Do not rack the box to follow the flare.",
       partsUsed: ["*"],
     });
+  } else if (shoePortalCubbies) {
+    const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
+    const pairs = pairSaid
+      ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
+      : Math.max(2, Math.min(8, Math.round(W / 9)));
+    const openingH = project.opening?.height ?? project.overall.height;
+    const mountFromOpening = Math.round(Math.min(18, Math.max(4, openingH * 0.08)));
+    steps.push({
+      step: n++,
+      title: "Mount height from the opening — keep swing clear",
+      description: `Mount height from the opening: set the shoe cubbies ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — ${pairs} pairs, clear swing. PDF states mount height from the opening. Unit ${round(W)}" wide × ${round(D)}" deep. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the footwear.`,
+      tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
+      partsUsed: ["*"],
+    });
   } else {
     steps.push({
       step: n++,
@@ -1622,12 +1636,15 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const rampLen = launcherRampLengthIn(p);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
       const md = marbleDiameterIn(p);
+      const plane = /(?:paper\s*)?plane/.test(String(p).toLowerCase());
       const marbleTalk =
-        md == null
-          ? "marble leaves free"
-          : md < 1
-            ? `a ${Math.round(md * 8)}/8" marble leaves free`
-            : `a ${md}" marble leaves free`;
+        plane
+          ? "paper plane leaves free"
+          : md == null
+            ? "marble leaves free"
+            : md < 1
+              ? `a ${Math.round(md * 8)}/8" marble leaves free`
+              : `a ${md}" marble leaves free`;
       return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; ${marbleTalk}.`;
     }
     if (detectWeekendMech(p) === "pot-hold" || wantsPotHold(p)) {
@@ -1667,11 +1684,19 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     partsUsed: ["*"],
   });
 
+  const launcherRamp =
+    detectWeekendMech(project.prompt ?? "") === "launcher" &&
+    isLauncherRamp(project.prompt ?? "");
+  const planePrompt = /(?:paper\s*)?plane/.test((project.prompt ?? "").toLowerCase());
   steps.push({
     step: n++,
     title: "Lay out the footprint on the bench",
-    description: `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways.`,
-    tips: "A crooked base cannot be fixed later.",
+    description: launcherRamp
+      ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Soft-launch ${launcherRampLengthIn(project.prompt ?? "") ?? ""}" run — free projectile leaves the ramp; ${planePrompt ? "paper plane leaves free" : "marble leaves free"}.`
+      : `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways.`,
+    tips: launcherRamp
+      ? "Soft-launch only — the projectile leaves free."
+      : "A crooked base cannot be fixed later.",
   });
 
   if (whole) {
@@ -1707,17 +1732,22 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   }
   if (
     detectWeekendMech(project.prompt ?? "") === "launcher" &&
-    isLauncherRamp(project.prompt ?? "") &&
-    !sawLeave
+    isLauncherRamp(project.prompt ?? "")
   ) {
     const rampLen = launcherRampLengthIn(project.prompt ?? "");
     const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
-    steps.push({
-      step: n++,
-      title: "Leave the free end open — projectile leaves the ramp",
-      description: `State the ${lenTalk} clearly. Free projectile leaves the ramp; marble leaves free — do not glue the projectile onto the deck.`,
-      tips: "Soft-launch only — the projectile leaves free.",
-    });
+    const plane = /(?:paper\s*)?plane/.test((project.prompt ?? "").toLowerCase());
+    const leaveTalk = plane
+      ? "paper plane leaves free"
+      : "marble leaves free";
+    if (!sawLeave) {
+      steps.push({
+        step: n++,
+        title: "Leave the free end open — projectile leaves the ramp",
+        description: `State the ${lenTalk} clearly. Free projectile leaves the ramp; ${leaveTalk} — do not glue the projectile onto the deck.`,
+        tips: "Soft-launch only — the projectile leaves free.",
+      });
+    }
   }
 
   steps.push({
@@ -1765,12 +1795,15 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       const rampLen = launcherRampLengthIn(prompt);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
       const md = marbleDiameterIn(prompt);
+      const plane = /(?:paper\s*)?plane/.test(prompt.toLowerCase());
       const marbleTalk =
-        md == null
-          ? "marble leaves free"
-          : md < 1
-            ? `a ${Math.round(md * 8)}/8" marble leaves free`
-            : `a ${md}" marble leaves free`;
+        plane
+          ? "paper plane leaves free"
+          : md == null
+            ? "marble leaves free"
+            : md < 1
+              ? `a ${Math.round(md * 8)}/8" marble leaves free`
+              : `a ${md}" marble leaves free`;
       return [
         { role: "rail", title: "Glue the base runners", why: `Base sets the ${lenTalk} footprint.` },
         {
@@ -1810,7 +1843,9 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       {
         role: "deck",
         title: "Add the front lip that retains the media",
-        why: `A real ${held} sits in the envelope; not a printed sticker face.`,
+        why: /8\s*[×x]\s*10/.test(prompt)
+          ? `A real 8×10 ${held} sits in the envelope at ${tipTalk}; not a printed sticker face.`
+          : `A real ${held} sits in the envelope; not a printed sticker face.`,
       },
       { role: "brace", title: "Brace the stand", why: `Keep the tip angle true under the ${held}.` },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },

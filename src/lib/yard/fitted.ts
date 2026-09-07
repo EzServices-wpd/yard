@@ -122,6 +122,9 @@ function triple(text: string): { w?: number; h?: number; d?: number } {
 }
 
 export function parseBrief(prompt: string): FittedSpec | null {
+  const craftLower = prompt.toLowerCase();
+  if (/(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(craftLower)) return null;
+  if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
   if (!looksLikeFitted(prompt)) return null;
   const pocket = parsePocket(prompt);
   if (pocket) {

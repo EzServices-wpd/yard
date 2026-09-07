@@ -226,8 +226,9 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     const tip = mediaHoldTipDeg(prompt);
     const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
     const held = mediaHoldHeldLabel(prompt);
+    const printTalk = /8\s*[×x]\s*10/.test(prompt) ? "8×10 " : "";
     notes.unshift(
-      `Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`,
+      `Tipped lean at ${tipTalk} with a front lip — holds a real ${printTalk}${held}, never a flat decal.`,
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };

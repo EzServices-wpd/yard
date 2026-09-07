@@ -61,8 +61,9 @@ function isNotHouse(lower: string) {
   if (isWindowPrompt(lower)) return true;
   if (/eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/.test(lower)) return true;
   if (
-    /popsicle|craft stick|toothpick|paper towel|lego|mailing tube/.test(lower) &&
-    !HOUSE_NOUN.test(lower)
+    /popsicle|craft stick|toothpick|paper towel|lego|mailing tube|cedar/.test(lower) &&
+    (!HOUSE_NOUN.test(lower) ||
+      /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower))
   ) {
     return true;
   }
@@ -325,6 +326,14 @@ function programFromNoun(lower: string): FittedProgram {
 export function detectHouseFamily(prompt: string): HouseHit | null {
   const lower = prompt.toLowerCase();
   if (isNotHouse(lower)) return null;
+  // Weekend craft tip-hold / soft-launch — never a house ledge or portal noun.
+  if (
+    /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower) ||
+    (/\bledge\b/.test(lower) && /(?:print|tip|lean|popsicle|craft|weekend)/.test(lower)) ||
+    (/soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower) && /weekend|craft|popsicle|cedar|marble/.test(lower))
+  ) {
+    return null;
+  }
   if (!HOUSE_NOUN.test(lower) && !wantsJars(lower) && !wantsBottles(lower) && !isOverToilet(lower)) {
     return null;
   }

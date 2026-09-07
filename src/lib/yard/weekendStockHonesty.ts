@@ -334,6 +334,12 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
           message: `Media-hold must state the ${tip}° tip angle.`,
         });
       }
+      if (/8\s*[×x]\s*10/.test(prompt) && !/8\s*[×x]\s*10|8"\s*×\s*10"/.test(blobAll)) {
+        issues.push({
+          guard: "anatomy",
+          message: "Media-hold must densify the typed 8×10 print envelope.",
+        });
+      }
       if (!notDecal && /decal/i.test(blobAll)) {
         issues.push({
           guard: "anatomy",

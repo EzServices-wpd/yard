@@ -21,7 +21,8 @@ function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (climbIdentityLabel(lower)) return false;
   // Launcher / media-hold weekend mechs stay craft — linen+climb step-shelf still house via family.
   const mech = detectWeekendMech(prompt);
-  if (mech && !looksLikeFitted(prompt) && !detectHouseFamily(prompt)) return false;
+  // Universal weekend mechs stay craft even when a house noun overlaps (ledge, ramp, plane).
+  if (mech || wantsMediaTipHold(prompt)) return false;
   if (looksLikeFitted(prompt)) return true;
   return HOUSE_HINT.test(prompt);
 }
@@ -184,7 +185,12 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
   const makePlan = useYard.getState().makePlan;
   const revealBench = useYard.getState().revealBench;
 
-  const parsed = parseBrief(prompt);
+  const weekendMech = detectWeekendMech(prompt);
+  const tipHold = wantsMediaTipHold(prompt);
+  const parsed =
+    weekendMech || tipHold
+      ? null
+      : parseBrief(prompt);
   generate(prompt, undefined, undefined, {
     fresh: opts.fresh,
     fittedOverride: parsed ?? undefined,
