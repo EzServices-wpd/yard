@@ -633,6 +633,7 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
   const rack = rackIntent(project.prompt ?? "") != null;
   const fixedShelves = wantsFixedGlueShelves(project);
   const spliced = plan.cutList.filter((c) => / · /.test(c.name));
+  const spliceFamilies = new Set(spliced.map((c) => c.name.replace(/\s·\s.*$/, "").trim()));
   let instructions = plan.instructions;
   if (wall || rack || fixedShelves) {
     instructions = instructions.map((s) => {
@@ -647,23 +648,57 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
       };
     });
   }
+  // Replace cut-claim lines for spliced families with the honest cut-list segments.
+  if (spliceFamilies.size) {
+    instructions = instructions.map((s) => ({
+      ...s,
+      description: scrubSplicedCutClaims(s.description, plan.cutList, spliceFamilies),
+      tips: s.tips ? scrubSplicedCutClaims(s.tips, plan.cutList, spliceFamilies) : s.tips,
+    }));
+  }
   if (spliced.length) {
-    const names = [...new Set(spliced.map((c) => c.name.replace(/\s·\s.*$/, "")))].slice(0, 6);
-    const joinStep = {
-      id: "sheet-splice-join",
-      title: "Join sheet splices before assembly",
-      description:
-        `These faces are taller or wider than a 4×8 sheet, so the cut list splits them into segments that fit: ${names.join(", ")}. ` +
-        "Butt the matching edges, glue, and screw (or biscuit) from the waste face so the finished face reads as one panel. Sand the joint flush, then build as usual.",
-      tips: "A stranger cannot cut a 120\" upright from a 96\" sheet — the splice is the honest cut.",
-    };
+    const names = [...spliceFamilies].slice(0, 6);
     const already = instructions.some((s) => /join sheet splices/i.test(s.title));
     if (!already) {
+      const joinStep = {
+        step: 0,
+        title: "Join sheet splices before assembly",
+        description:
+          `These faces do not fit one sheet, so the cut list splits them into segments: ${names.join(", ")}. ` +
+          "Butt the matching edges, glue, and screw (or biscuit) from the waste face so the finished face reads as one panel. Sand the joint flush, then build as usual.",
+        tips: 'A stranger cannot cut a panel larger than the sheet — the splice is the honest cut.',
+      };
       const cutIdx = instructions.findIndex((s) => /cut the|cut list|circular saw/i.test(`${s.title} ${s.description}`));
       const at = cutIdx >= 0 ? cutIdx + 1 : Math.min(1, instructions.length);
       instructions = [...instructions.slice(0, at), joinStep, ...instructions.slice(at)];
     }
   }
+  // Always renumber so inserted steps never show "undefined".
+  instructions = instructions.map((s, i) => ({ ...s, step: i + 1 }));
   const bom = rack || fixedShelves ? plan.bom.filter((b) => !/shelf pin/i.test(b.name)) : plan.bom;
   return { ...plan, instructions, bom };
+}
+
+/** Swap oversize "Name — L × W × T" cut claims for spliced cut-list lines a stranger can saw. */
+function scrubSplicedCutClaims(text: string, cutList: BuildPlan["cutList"], families: Set<string>): string {
+  return text.replace(
+    /([A-Za-z][A-Za-z0-9 .\/-]{0,40}?)\s*—\s*(\d+(?:\.\d+)?)\s*×\s*(\d+(?:\.\d+)?)\s*×\s*(\d+(?:\.\d+)?)"/g,
+    (all, name: string, a: string, b: string, c: string) => {
+      const family = String(name)
+        .replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "")
+        .trim();
+      const hit = [...families].find(
+        (f) => f.toLowerCase() === family.toLowerCase() || f.toLowerCase() === String(name).trim().toLowerCase(),
+      );
+      if (!hit) return all;
+      const dims = [Number(a), Number(b), Number(c)].sort((x, y) => y - x);
+      // Only rewrite when the claimed face cannot fit a 4×10 (120×48).
+      if (dims[0] <= 120 + 1e-6 && dims[1] <= 48 + 1e-6) return all;
+      const segs = cutList.filter((c) => c.name === hit || c.name.startsWith(`${hit} ·`));
+      if (!segs.length) return all;
+      return segs
+        .map((c) => `${c.name} — ${c.lengthIn} × ${c.widthIn} × ${c.thicknessIn}"`)
+        .join("; ");
+    },
+  );
 }

@@ -8,7 +8,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims } from "./shopPlural";
-import { nestCutList, spliceCutListToSheet } from "./nesting";
+import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { honestWeekendPlan } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
@@ -75,28 +75,49 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
   );
   const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
-  const nest = structural.length ? nestCutList(structural) : null;
-  const sheets = Math.max(
-    isTable && structural.length === 0 ? 0 : 1,
-    nest?.totalSheets ?? nest?.sheets.length ?? (structural.length ? 1 : 0),
-  );
+  const sheet10 = getCatalogItem("plywood-3-4-4x10");
+  const structuralNestable = structural.filter((c) => Math.min(c.lengthIn, c.widthIn) > 2);
+  const on8 = structuralNestable.filter((c) => fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+  const on10 = structuralNestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+  const nest8 = on8.length ? nestParts(cutListToNestParts(on8), SHEET_4X8) : null;
+  const nest10 = on10.length ? nestParts(cutListToNestParts(on10), SHEET_4X10) : null;
+  // Fallback when nothing nestable but structural exists (e.g. only thick sticks filtered out)
+  const sheets8 = nest8?.totalSheets ?? nest8?.sheets.length ?? 0;
+  const sheets10 = nest10?.totalSheets ?? nest10?.sheets.length ?? 0;
+  const unplaced = [...(nest8?.unplaced ?? []), ...(nest10?.unplaced ?? [])];
+  const sheetsFallback =
+    isTable && structural.length === 0
+      ? 0
+      : structural.length && sheets8 + sheets10 === 0
+        ? 1
+        : 0;
 
   const bom: BuildPlan["bom"] = [];
-  if (sheets > 0) {
+  if (sheets8 + sheetsFallback > 0) {
+    const n = sheets8 + sheetsFallback;
     bom.push({
       name: sheet?.name ?? '3/4" plywood 4x8',
-      quantity: sheets,
-      unit: sheets === 1 ? "sheet" : "sheets",
-      catalogId: sheet?.id,
+      quantity: n,
+      unit: n === 1 ? "sheet" : "sheets",
+      catalogId: sheet?.id ?? "plywood-3-4-4x8",
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
-      estimatedCost: (sheet?.unitCostUsd ?? 38.43) * sheets,
-      notes: nest
-        ? `From nest · ${sheets} sheet${sheets === 1 ? "" : "s"} · 1/8" kerf included.${
-            cuts.some((c) => / · /.test(c.name))
-              ? " Tall faces are cut as splice segments that fit a 4×8 — butt-join before assembly."
-              : ""
-          }${nest.unplaced.length ? ` ${nest.unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`
-        : "Kerf-aware nest.",
+      estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
+      notes: `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
+        cuts.some((c) => / · /.test(c.name))
+          ? " Some faces are splice segments — butt-join before assembly."
+          : ""
+      }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`,
+    });
+  }
+  if (sheets10 > 0) {
+    bom.push({
+      name: sheet10?.name ?? '3/4" plywood 4x10',
+      quantity: sheets10,
+      unit: sheets10 === 1 ? "sheet" : "sheets",
+      catalogId: sheet10?.id ?? "plywood-3-4-4x10",
+      searchQuery: sheet10?.searchQuery ?? '3/4" x 4x10 sanded plywood',
+      estimatedCost: (sheet10?.unitCostUsd ?? 72) * sheets10,
+      notes: `From nest · ${sheets10} sheet${sheets10 === 1 ? "" : "s"} · 1/8" kerf · full-height faces that do not fit a 4×8.`,
     });
   }
   if (legCuts.length) {
@@ -114,21 +135,38 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
-    const thinNest = nestCutList(
-      thinBacks.map((c) => ({ ...c, thicknessIn: Math.max(c.thicknessIn ?? 0.25, 0.5) })),
-    );
-    const thinSheets = Math.max(1, thinNest?.totalSheets ?? thinNest?.sheets.length ?? 1);
+    // Promote thickness so nestCutList accepts them; nest on 4×8 and 4×10 as needed.
+    const asNestable = thinBacks.map((c) => ({ ...c, thicknessIn: Math.max(c.thicknessIn ?? 0.25, 0.5) }));
+    const thin8 = asNestable.filter((c) => fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+    const thin10 = asNestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+    const nestThin8 = thin8.length ? nestParts(cutListToNestParts(thin8), SHEET_4X8) : null;
+    const nestThin10 = thin10.length ? nestParts(cutListToNestParts(thin10), SHEET_4X10) : null;
+    const t8 = nestThin8?.totalSheets ?? 0;
+    const t10 = nestThin10?.totalSheets ?? 0;
     const spliceNote = thinBacks.some((c) => / · /.test(c.name))
       ? " Splice segments butt-join into the finished back before you hang it."
       : "";
-    bom.push({
-      name: '1/4" plywood 4x8 (backer)',
-      quantity: thinSheets,
-      unit: thinSheets === 1 ? "sheet" : "sheets",
-      searchQuery: "1/4 inch sanded plywood 4x8",
-      estimatedCost: 24.98 * thinSheets,
-      notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,
-    });
+    if (t8 > 0 || (t8 + t10 === 0)) {
+      const n = Math.max(1, t8);
+      bom.push({
+        name: '1/4" plywood 4x8 (backer)',
+        quantity: n,
+        unit: n === 1 ? "sheet" : "sheets",
+        searchQuery: "1/4 inch sanded plywood 4x8",
+        estimatedCost: 24.98 * n,
+        notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,
+      });
+    }
+    if (t10 > 0) {
+      bom.push({
+        name: '1/4" plywood 4x10 (backer)',
+        quantity: t10,
+        unit: t10 === 1 ? "sheet" : "sheets",
+        searchQuery: "1/4 inch sanded plywood 4x10",
+        estimatedCost: 34.98 * t10,
+        notes: `${thin10.reduce((s, c) => s + c.quantity, 0)} tall thin back panel${thin10.length === 1 ? "" : "s"} on 4×10 — not nested on the 3/4" sheets.${spliceNote}`,
+      });
+    }
   }
   const headboard =
     /headboard/i.test(project.name) ||

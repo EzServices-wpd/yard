@@ -58,6 +58,7 @@ interface FreeRect {
 }
 
 const DEFAULT_SHEET = { width: 96, height: 48 }; // 4x8 ft plywood (long side first)
+const SHEET_10 = { width: 120, height: 48 }; // 4x10 ft plywood
 const KERF = 0.125; // 1/8" blade kerf
 /** Structural sheet goods only. Thin backs (< 1/2") buy separately. */
 const MIN_NEST_THICKNESS = 0.5;
@@ -350,14 +351,30 @@ export function splitFaceToSheet(
   return out;
 }
 
-/** Expand cut lines so every sheet face nests on 4×8; sticks unchanged. */
+/**
+ * Keep faces that fit 4×8 or 4×10 whole (buy the matching sheet).
+ * Only splice when a face exceeds 4×10 — then split to fit 4×10 (or 4×8 if smaller).
+ * Sticks (narrow face ≤ 2") unchanged.
+ */
 export function spliceCutListToSheet(cutList: CutLine[]): CutLine[] {
   const out: CutLine[] = [];
   for (const c of cutList) {
-    const segs = splitFaceToSheet(c.lengthIn, c.widthIn);
-    if (segs.length === 1 && !segs[0].part) {
+    if (Math.min(c.lengthIn, c.widthIn) <= 2) {
       out.push(c);
       continue;
+    }
+    if (fitsOnSheet(c.lengthIn, c.widthIn, DEFAULT_SHEET) || fitsOnSheet(c.lengthIn, c.widthIn, SHEET_10)) {
+      out.push(c);
+      continue;
+    }
+    // Prefer segments on 4×10 (taller stock); fall back to 4×8 splits.
+    let segs = splitFaceToSheet(c.lengthIn, c.widthIn, SHEET_10);
+    if (segs.length <= 1 && !segs[0]?.part) {
+      segs = splitFaceToSheet(c.lengthIn, c.widthIn, DEFAULT_SHEET);
+    }
+    // If 4×10 still leaves one oversize piece, force 4×8 split.
+    if (segs.some((s) => !fitsOnSheet(s.lengthIn, s.widthIn, SHEET_10))) {
+      segs = splitFaceToSheet(c.lengthIn, c.widthIn, DEFAULT_SHEET);
     }
     for (const seg of segs) {
       out.push({
@@ -431,4 +448,5 @@ export function nestCutList(cutList: CutLine[]): NestResult | null {
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;
+export const SHEET_4X10 = SHEET_10;
 export const BLADE_KERF = KERF;
