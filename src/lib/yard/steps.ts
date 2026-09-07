@@ -1688,14 +1688,24 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     detectWeekendMech(project.prompt ?? "") === "launcher" &&
     isLauncherRamp(project.prompt ?? "");
   const planePrompt = /(?:paper\s*)?plane/.test((project.prompt ?? "").toLowerCase());
+  const mediaTip =
+    detectWeekendMech(project.prompt ?? "") === "media-hold" &&
+    wantsMediaTipHold(project.prompt ?? "");
+  const tipDegFoot = mediaTip ? mediaHoldTipDeg(project.prompt ?? "") : null;
+  const tipTalkFoot = tipDegFoot != null ? `${tipDegFoot}° tip` : "typed tip";
+  const eightByTenFoot = /8\s*[×x]\s*10/.test(project.prompt ?? "");
   steps.push({
     step: n++,
     title: "Lay out the footprint on the bench",
     description: launcherRamp
       ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Soft-launch ${launcherRampLengthIn(project.prompt ?? "") ?? ""}" run — free projectile leaves the ramp; ${planePrompt ? "paper plane leaves free" : "marble leaves free"}.`
+      : mediaTip
+        ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Picture ledge densify: ${eightByTenFoot ? "8×10 print" : "typed print"} upright at ${tipTalkFoot} with a front lip.`
       : `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways.`,
     tips: launcherRamp
       ? "Soft-launch only — the projectile leaves free."
+      : mediaTip
+        ? `Keep the ${tipTalkFoot} true under the print.`
       : "A crooked base cannot be fixed later.",
   });
 
@@ -1746,6 +1756,30 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
         title: "Leave the free end open — projectile leaves the ramp",
         description: `State the ${lenTalk} clearly. Free projectile leaves the ramp; ${leaveTalk} — do not glue the projectile onto the deck.`,
         tips: "Soft-launch only — the projectile leaves free.",
+      });
+    }
+  }
+
+  const tipPrompt = project.prompt ?? "";
+  if (detectWeekendMech(tipPrompt) === "media-hold" && wantsMediaTipHold(tipPrompt)) {
+    const tip = mediaHoldTipDeg(tipPrompt);
+    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const held = mediaHoldHeldLabel(tipPrompt);
+    const eightByTen = /8\s*[×x]\s*10/.test(tipPrompt);
+    const sawTip =
+      steps.some((st) => /\d+\s*°|tip/i.test(`${st.title} ${st.description}`)) ||
+      tip == null;
+    const sawPrint = steps.some((st) => /8\s*[×x]\s*10|8×10/.test(`${st.title} ${st.description}`));
+    if (!sawTip || (eightByTen && !sawPrint)) {
+      steps.push({
+        step: n++,
+        title: eightByTen
+          ? `Set the lean back at ${tipTalk} for an 8×10 print`
+          : `Set the lean back at ${tipTalk}`,
+        description: eightByTen
+          ? `Tipped lean at ${tipTalk} with a front lip — holds a real 8×10 ${held} upright, never a flat decal.`
+          : `Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`,
+        tips: `Dry-fit a real ${held} at ${tipTalk} before the glue skins.`,
       });
     }
   }
