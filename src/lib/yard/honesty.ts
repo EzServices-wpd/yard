@@ -673,6 +673,23 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
       instructions = [...instructions.slice(0, at), joinStep, ...instructions.slice(at)];
     }
   }
+  // If the buy list includes 4×10, cut steps must not say everything comes from 4×8.
+  const buys10 = plan.bom.some((b) => /4\s*[×x]\s*10/i.test(b.name) || b.catalogId === "plywood-3-4-4x10");
+  if (buys10) {
+    instructions = instructions.map((s) => ({
+      ...s,
+      title: /cut the/i.test(s.title)
+        ? s.title.replace(/4\s*[×x]\s*8/gi, "sheet goods").replace(/Plywood sheet goods/i, "plywood")
+        : s.title,
+      description: s.description
+        .replace(/3\/4"\s*Plywood\s*4\s*[×x]\s*8/gi, '3/4" plywood — use 4×10 for full-height faces and 4×8 for the rest (see buy list)')
+        .replace(/take this cut list to the lumber aisle and have them cut the sheets/gi,
+          "take this cut list to the lumber aisle — full-height faces need 4×10 sheets, smaller faces fit 4×8"),
+      tips: s.tips
+        ? s.tips.replace(/4\s*[×x]\s*8(?!0)/gi, "the buy-list sheet size")
+        : s.tips,
+    }));
+  }
   // Always renumber so inserted steps never show "undefined".
   instructions = instructions.map((s, i) => ({ ...s, step: i + 1 }));
   const bom = rack || fixedShelves ? plan.bom.filter((b) => !/shelf pin/i.test(b.name)) : plan.bom;

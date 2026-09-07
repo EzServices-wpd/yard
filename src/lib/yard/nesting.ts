@@ -63,9 +63,6 @@ const KERF = 0.125; // 1/8" blade kerf
 /** Structural sheet goods only. Thin backs (< 1/2") buy separately. */
 const MIN_NEST_THICKNESS = 0.5;
 
-function expandWithKerf(w: number, h: number) {
-  return { width: w + KERF, height: h + KERF };
-}
 
 function fits(rect: FreeRect, w: number, h: number) {
   return w <= rect.width + 1e-6 && h <= rect.height + 1e-6;
@@ -154,12 +151,15 @@ function packSheet(
     } | null = null;
 
     for (const cand of candidates) {
-      const { width: needW, height: needH } = expandWithKerf(cand.w, cand.h);
+      // Part must fit the free rect; kerf is taken from the remnant, not beyond the sheet edge.
+      // (A 120" face on a 120" 4×10 is one factory-edge rip — kerf must not reject it.)
       for (let i = 0; i < free.length; i++) {
-        if (!fits(free[i], needW, needH)) continue;
-        const s = scoreBSSF(free[i], needW, needH);
+        if (!fits(free[i], cand.w, cand.h)) continue;
+        const consumeW = Math.min(cand.w + KERF, free[i].width);
+        const consumeH = Math.min(cand.h + KERF, free[i].height);
+        const s = scoreBSSF(free[i], consumeW, consumeH);
         if (!best || s < best.score) {
-          best = { rectIdx: i, score: s, w: needW, h: needH, rotated: cand.rotated };
+          best = { rectIdx: i, score: s, w: consumeW, h: consumeH, rotated: cand.rotated };
         }
       }
     }
@@ -185,7 +185,7 @@ function packSheet(
       material: part.material,
     });
 
-    // Remove used rect and add splits
+    // Remove used rect and add splits (consume includes kerf when remnant remains)
     free.splice(best.rectIdx, 1);
     free.push(...splitFreeRect(rect, rect.x, rect.y, best.w, best.h));
     free = pruneFreeList(free);
