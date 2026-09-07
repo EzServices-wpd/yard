@@ -8,7 +8,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims } from "./shopPlural";
-import { nestCutList } from "./nesting";
+import { nestCutList, spliceCutListToSheet } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { honestWeekendPlan } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
@@ -63,7 +63,7 @@ function closetCuts(project: YardProject): CutLine[] {
       material: item?.name ?? p.materialId,
     });
   }
-  return stampLabels([...grouped.values()]);
+  return stampLabels(spliceCutListToSheet([...grouped.values()]));
 }
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
@@ -91,7 +91,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * sheets,
       notes: nest
-        ? `From nest · ${sheets} sheet${sheets === 1 ? "" : "s"} · 1/8" kerf included.`
+        ? `From nest · ${sheets} sheet${sheets === 1 ? "" : "s"} · 1/8" kerf included.${
+            cuts.some((c) => / · /.test(c.name))
+              ? " Tall faces are cut as splice segments that fit a 4×8 — butt-join before assembly."
+              : ""
+          }${nest.unplaced.length ? ` ${nest.unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`
         : "Kerf-aware nest.",
     });
   }
@@ -110,13 +114,20 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
+    const thinNest = nestCutList(
+      thinBacks.map((c) => ({ ...c, thicknessIn: Math.max(c.thicknessIn ?? 0.25, 0.5) })),
+    );
+    const thinSheets = Math.max(1, thinNest?.totalSheets ?? thinNest?.sheets.length ?? 1);
+    const spliceNote = thinBacks.some((c) => / · /.test(c.name))
+      ? " Splice segments butt-join into the finished back before you hang it."
+      : "";
     bom.push({
       name: '1/4" plywood 4x8 (backer)',
-      quantity: 1,
-      unit: "sheet",
+      quantity: thinSheets,
+      unit: thinSheets === 1 ? "sheet" : "sheets",
       searchQuery: "1/4 inch sanded plywood 4x8",
-      estimatedCost: 24.98,
-      notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.`,
+      estimatedCost: 24.98 * thinSheets,
+      notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,
     });
   }
   const headboard =
@@ -479,7 +490,7 @@ export function buildPlan(project: YardProject): BuildPlan {
       ...closetIssues(project),
       ...loadIssues(project),
     ];
-    const pieces = project.panels.length;
+    const pieces = cutList.reduce((s, c) => s + c.quantity, 0);
     return honestPlan(
       project,
       packPlan(

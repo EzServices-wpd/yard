@@ -632,18 +632,38 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
   const wall = isWallHung(project);
   const rack = rackIntent(project.prompt ?? "") != null;
   const fixedShelves = wantsFixedGlueShelves(project);
-  if (!wall && !rack && !fixedShelves) return plan;
-  const instructions = plan.instructions.map((s) => {
-    if (!wall) return s;
-    const blob = `${s.title} ${s.description} ${s.tips ?? ""}`;
-    if (!hasFloorBoxLie(blob)) return s;
-    return {
-      ...s,
-      title: s.title.replace(/Confirm the footprint/i, "Confirm the hang"),
-      description: scrubFloorLanguage(s.description),
-      tips: s.tips ? scrubFloorLanguage(s.tips) : s.tips,
+  const spliced = plan.cutList.filter((c) => / · /.test(c.name));
+  let instructions = plan.instructions;
+  if (wall || rack || fixedShelves) {
+    instructions = instructions.map((s) => {
+      if (!wall) return s;
+      const blob = `${s.title} ${s.description} ${s.tips ?? ""}`;
+      if (!hasFloorBoxLie(blob)) return s;
+      return {
+        ...s,
+        title: s.title.replace(/Confirm the footprint/i, "Confirm the hang"),
+        description: scrubFloorLanguage(s.description),
+        tips: s.tips ? scrubFloorLanguage(s.tips) : s.tips,
+      };
+    });
+  }
+  if (spliced.length) {
+    const names = [...new Set(spliced.map((c) => c.name.replace(/\s·\s.*$/, "")))].slice(0, 6);
+    const joinStep = {
+      id: "sheet-splice-join",
+      title: "Join sheet splices before assembly",
+      description:
+        `These faces are taller or wider than a 4×8 sheet, so the cut list splits them into segments that fit: ${names.join(", ")}. ` +
+        "Butt the matching edges, glue, and screw (or biscuit) from the waste face so the finished face reads as one panel. Sand the joint flush, then build as usual.",
+      tips: "A stranger cannot cut a 120\" upright from a 96\" sheet — the splice is the honest cut.",
     };
-  });
+    const already = instructions.some((s) => /join sheet splices/i.test(s.title));
+    if (!already) {
+      const cutIdx = instructions.findIndex((s) => /cut the|cut list|circular saw/i.test(`${s.title} ${s.description}`));
+      const at = cutIdx >= 0 ? cutIdx + 1 : Math.min(1, instructions.length);
+      instructions = [...instructions.slice(0, at), joinStep, ...instructions.slice(at)];
+    }
+  }
   const bom = rack || fixedShelves ? plan.bom.filter((b) => !/shelf pin/i.test(b.name)) : plan.bom;
   return { ...plan, instructions, bom };
 }

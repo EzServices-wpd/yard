@@ -252,6 +252,126 @@ export function nestParts(
   };
 }
 
+
+/** True when both face edges fit a sheet in either rotation. */
+export function fitsOnSheet(
+  lengthIn: number,
+  widthIn: number,
+  sheet: { width: number; height: number } = DEFAULT_SHEET
+): boolean {
+  const a = Math.max(lengthIn, widthIn);
+  const b = Math.min(lengthIn, widthIn);
+  const sLong = Math.max(sheet.width, sheet.height);
+  const sShort = Math.min(sheet.width, sheet.height);
+  return a <= sLong + 1e-6 && b <= sShort + 1e-6;
+}
+
+function round8(n: number) {
+  return Math.round(n * 8) / 8;
+}
+
+function spliceLabels(nx: number, ny: number): string[] {
+  const labels: string[] = [];
+  if (nx === 1 && ny === 1) return [""];
+  if (ny === 1 && nx === 2) return ["lower", "upper"];
+  if (nx === 1 && ny === 2) return ["left", "right"];
+  if (ny === 1) {
+    for (let i = 0; i < nx; i++) labels.push(`${i + 1}/${nx}`);
+    return labels;
+  }
+  if (nx === 1) {
+    for (let j = 0; j < ny; j++) labels.push(`${j + 1}/${ny}`);
+    return labels;
+  }
+  const rowName = (i: number) => (nx === 2 ? (i === 0 ? "lower" : "upper") : `${i + 1}/${nx}`);
+  const colName = (j: number) => (ny === 2 ? (j === 0 ? "left" : "right") : `${j + 1}/${ny}`);
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) labels.push(`${rowName(i)}-${colName(j)}`);
+  }
+  return labels;
+}
+
+/**
+ * Split one face rectangle into segments that each nest on the sheet (default 4×8).
+ * Used so cut/buy lists never ask a stranger to cut a 120" panel from a 96" sheet.
+ * Stick stock (narrow face ≤ 2") is left alone.
+ */
+export function splitFaceToSheet(
+  lengthIn: number,
+  widthIn: number,
+  sheet: { width: number; height: number } = DEFAULT_SHEET
+): { lengthIn: number; widthIn: number; part: string }[] {
+  const L = round8(lengthIn);
+  const W = round8(widthIn);
+  if (Math.min(L, W) <= 2) return [{ lengthIn: L, widthIn: W, part: "" }];
+  if (fitsOnSheet(L, W, sheet)) return [{ lengthIn: L, widthIn: W, part: "" }];
+
+  type Cand = { nx: number; ny: number; x: number; y: number; count: number };
+  const cands: Cand[] = [];
+  for (const [x, y] of [
+    [L, W],
+    [W, L],
+  ] as const) {
+    for (let nx = 1; nx <= 8; nx++) {
+      for (let ny = 1; ny <= 8; ny++) {
+        if (nx * ny === 1) continue;
+        const px = x / nx;
+        const py = y / ny;
+        if (fitsOnSheet(px, py, sheet)) {
+          cands.push({ nx, ny, x, y, count: nx * ny });
+        }
+      }
+    }
+  }
+  if (cands.length === 0) {
+    // Last resort: chop the long edge to sheet long, short edge to sheet short.
+    const sLong = Math.max(sheet.width, sheet.height);
+    const sShort = Math.min(sheet.width, sheet.height);
+    const a = Math.max(L, W);
+    const b = Math.min(L, W);
+    const nx = Math.max(1, Math.ceil(a / sLong - 1e-9));
+    const ny = Math.max(1, Math.ceil(b / sShort - 1e-9));
+    cands.push({ nx, ny, x: a, y: b, count: nx * ny });
+  }
+  cands.sort((a, b) => a.count - b.count || a.nx + a.ny - (b.nx + b.ny));
+  const best = cands[0];
+  const labels = spliceLabels(best.nx, best.ny);
+  const out: { lengthIn: number; widthIn: number; part: string }[] = [];
+  let li = 0;
+  for (let i = 0; i < best.nx; i++) {
+    for (let j = 0; j < best.ny; j++) {
+      const px = round8(best.x / best.nx);
+      const py = round8(best.y / best.ny);
+      const lengthIn = Math.max(px, py);
+      const widthIn = Math.min(px, py);
+      out.push({ lengthIn, widthIn, part: labels[li++] ?? `${i + 1}-${j + 1}` });
+    }
+  }
+  return out;
+}
+
+/** Expand cut lines so every sheet face nests on 4×8; sticks unchanged. */
+export function spliceCutListToSheet(cutList: CutLine[]): CutLine[] {
+  const out: CutLine[] = [];
+  for (const c of cutList) {
+    const segs = splitFaceToSheet(c.lengthIn, c.widthIn);
+    if (segs.length === 1 && !segs[0].part) {
+      out.push(c);
+      continue;
+    }
+    for (const seg of segs) {
+      out.push({
+        ...c,
+        id: `${c.id || c.label || c.name}|${seg.part || "splice"}`,
+        name: seg.part ? `${c.name} · ${seg.part}` : c.name,
+        lengthIn: seg.lengthIn,
+        widthIn: seg.widthIn,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Expand a cut list into individual NestPart instances for sheet packing.
  * Only non-whole sheet/board parts (house ply). Crafts with whole=true are skipped.
