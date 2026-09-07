@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -105,6 +105,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
+  if (isMudroomCubbyWall(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
@@ -169,6 +170,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height)/i, NaN);
   let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
+  // Headboard / slab wall-fit: "60\" wall span" is the typed width.
+  if (!Number.isFinite(width)) {
+    width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*wall\s*span/i, NaN);
+  }
+  if (!Number.isFinite(width)) {
+    width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*span/i, NaN);
+  }
 
   if (!Number.isFinite(width) && trip.w) width = trip.w;
 
@@ -622,6 +630,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
+      : isMudroomCubbyWall(lower)
+        ? "Mudroom cubbies"
       : /mudroom/.test(lower) && /bench/.test(lower)
         ? "Mudroom bench"
         : /dresser/.test(lower)
@@ -999,7 +1009,9 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
     panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
   }
   const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
-  const name = spec.name.match(/shoe/i) ? spec.name : `Shoe rack ${W}" × ${H}" × ${D}"`;
+  const name = spec.name.match(/shoe|mudroom|cubb/i)
+    ? spec.name
+    : `Shoe rack ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
     name,
@@ -1652,6 +1664,91 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  // Shoe cubbies in a door portal — open bays + shelves, clear swing; not a shoe rail / niche.
+  if (isShoePortalCubbies(prompt.toLowerCase())) {
+    const shoeLower = prompt.toLowerCase();
+    const portalW = W;
+    const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
+    const portalH = Math.max(
+      H,
+      portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H,
+    );
+    // Shallow into the portal so the door keeps clear swing.
+    const cubbyD = Math.max(8, Math.min(D > 4 ? D : 12, 14));
+    const pairSaid = shoeLower.match(/(\d+)\s*pairs?/);
+    const pairs = pairSaid
+      ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
+      : Math.max(2, Math.min(8, Math.round(portalW / 9)));
+    const cubbyN = pairs;
+    const backT = 0.25;
+    const shelfN = Math.max(2, Math.min(4, Math.round((Math.min(portalH * 0.35, 28) - P) / 6)));
+    const boxH = Math.max(14, Math.min(portalH * 0.4, shelfN * 6 + P));
+    const innerW = portalW - P * 2;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, boxH, cubbyD));
+    panels.push(panel("upright", "Right upright", x0 + portalW - P, 0, 0, P, boxH, cubbyD));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, boxH, backT));
+    for (let i = 0; i < shelfN; i++) {
+      const y = i === 0 ? 0 : (boxH - P) * (i / (shelfN - 1 || 1));
+      const label = i === 0 ? "Shoe shelf" : `Shoe shelf ${i + 1}`;
+      panels.push(panel("shelf", label, x0 + P, Math.min(y, boxH - P), backT, innerW, P, cubbyD - backT));
+    }
+    if (shelfN === 1) {
+      panels.push(panel("top", "Top", x0 + P, boxH - P, backT, innerW, P, cubbyD - backT));
+    }
+    for (let i = 1; i < cubbyN; i++) {
+      const x = x0 + (portalW * i) / cubbyN - P / 2;
+      panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, boxH - 2 * P, cubbyD - backT));
+    }
+    const mountFromOpening = Math.round(Math.min(18, Math.max(4, portalH * 0.08)));
+    const bayW = Math.round(((portalW - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+    const notes = [
+      `Shoe cubbies in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs / ${cubbyN} bays (~${bayW}" wide), clear swing. ¾" plywood.`,
+      `Mount height from the opening: ${mountFromOpening}" up from the finished floor (bottom of the cubby box). Keep clear swing so the door clears the footwear.`,
+      `Glue and screw each cubby divider into the shoe shelves and back. Hit studs. Guidance only — portal cubbies, not a shelving niche.`,
+    ];
+    return {
+      id: createId("proj"),
+      name: `Shoe cubbies ${portalW}" portal · ${pairs} pairs`,
+      prompt,
+      kind: "closet",
+      overall: { width: portalW, height: portalH, depth: cubbyD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes,
+      historic: false,
+      opening: {
+        ...spec.opening,
+        width: portalW,
+        height: portalH,
+        depth: cubbyD,
+        kind: "alcove",
+      },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: portalW,
+          height: portalH,
+          depth: cubbyD,
+          doors: false,
+          shelfCount: shelfN,
+          cubbies: cubbyN,
+          drawersPerBank: undefined,
+        },
+        program: "storage",
+        name: `Shoe cubbies ${portalW}" portal · ${pairs} pairs`,
+        affordances: affordances.includes("cubbies") ? affordances : [...affordances, "cubbies"],
+      },
+      assumptions: {
+        load: "light",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   // Shoe rail in a door portal — pairs on a rail, clear swing; not a shelving niche.
   // Pegs are cut plywood (one per pair) so steps never invent hardware missing from the cut list.
   if (isShoePortalRail(prompt.toLowerCase())) {
@@ -1722,6 +1819,24 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         wallType: "wood_stud",
       },
     };
+  }
+
+  // Mudroom cubby wall fitted to an opening — floor carcase cubbies, not a sit bench.
+  if (isMudroomCubbyWall(prompt.toLowerCase())) {
+    const mudSpec = {
+      ...spec,
+      program: "storage" as const,
+      name: spec.name.match(/mudroom|cubb/i) ? spec.name : `Mudroom cubbies ${W}" × ${H}" × ${D}"`,
+      unit: {
+        ...u,
+        doors: false,
+        shelfCount: u.shelfCount && u.shelfCount >= 2 ? u.shelfCount : Math.max(3, Math.min(6, Math.round((H - P) / 12))),
+        cubbies: u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(3, Math.min(6, Math.round(W / 12))),
+        drawersPerBank: undefined,
+      },
+      affordances: affordances.includes("cubbies") ? affordances : [...affordances, "cubbies"],
+    };
+    return buildShoeRack(mudSpec, prompt, mudSpec.affordances);
   }
 
   // Shoe storage on a floor carcase → cubbies / open bays (not pin shelves).
@@ -1837,9 +1952,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const slabD = P;
     const slabH = Math.max(14, H);
     panels.push(panel("back", "Headboard", x0, 0, 0, W, slabH, slabD));
+    const wallFit = /wall\s*span|fitted to a/.test(prompt.toLowerCase());
     return {
       id: createId("proj"),
-      name: `Headboard ${W}" × ${slabH}" × ${slabD}"`,
+      name: `Headboard ${W}" × ${slabH}"`,
       prompt,
       kind: "closet",
       overall: { width: W, height: slabH, depth: slabD },
@@ -1847,12 +1963,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `One ${W}" × ${slabH}" headboard from ¾" plywood. No box — it sits behind the mattress.`,
+        wallFit
+          ? `One ${W}" × ${slabH}" headboard fitted to the ${W}" wall span — ${slabH}" tall from ¾" plywood. No box — it sits behind the mattress.`
+          : `One ${W}" × ${slabH}" headboard from ¾" plywood. No box — it sits behind the mattress.`,
         "Hang on a french cleat or lag into studs. Guidance only.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: slabH, depth: slabD },
-      fitted: { ...spec, unit: { ...u, height: slabH, depth: slabD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Headboard ${W}" × ${slabH}" × ${slabD}"` },
+      fitted: { ...spec, unit: { ...u, width: W, height: slabH, depth: slabD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Headboard ${W}" × ${slabH}"` },
       assumptions: {
         load: "medium",
         units: "inches",

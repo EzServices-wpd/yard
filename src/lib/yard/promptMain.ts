@@ -207,7 +207,9 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     const rampLen = launcherRampLengthIn(prompt);
     const lenTalk = rampLen != null ? `${rampLen}" run` : "typed run length";
     notes.unshift(
-      `Soft-launch trough channel ${lenTalk} — side guides + floor ties; free projectile leaves the ramp; marble leaves free (not glued on).`,
+      /(?:paper\s*)?plane/.test(prompt.toLowerCase())
+        ? `Soft-launch plane ramp ${lenTalk} — side guides + floor ties; paper plane leaves free (not glued on).`
+        : `Soft-launch trough channel ${lenTalk} — side guides + floor ties; free projectile leaves the ramp; marble leaves free (not glued on).`,
     );
   }
   if (detectWeekendMech(prompt) === "climb" && isClimbStepStool(prompt)) {

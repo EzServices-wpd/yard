@@ -312,6 +312,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /shoe/.test(coatPrompt) &&
     /rail|rack/.test(coatPrompt) &&
     (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /portal/i.test(project.name));
+  const shoePortalCubbies =
+    /shoe/.test(coatPrompt) &&
+    /cubb/.test(coatPrompt) &&
+    (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /Shoe cubbies|portal/i.test(project.name));
   const towelPortalRail =
     /towel/.test(coatPrompt) &&
     /rail|bar|rack/.test(coatPrompt) &&
@@ -321,8 +325,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) &&
       !/shoe/.test(coatPrompt) &&
       !/towel/.test(coatPrompt));
-  if ((coatRack || shoePortalRail || towelPortalRail) && !uprights.length) {
-    const shoe = shoePortalRail || /shoe/i.test(project.name);
+  if ((coatRack || shoePortalRail || shoePortalCubbies || towelPortalRail) && !uprights.length) {
+    const shoe = shoePortalRail || shoePortalCubbies || /shoe/i.test(project.name);
+    const shoeCubbies = shoePortalCubbies || /Shoe cubbies|cubb/i.test(project.name);
     const towel = !shoe && (towelPortalRail || /towel\s*rail/i.test(project.name));
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
@@ -374,7 +379,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           step: 4,
           title: "Mount height from the opening — keep swing clear",
           description: shoe
-            ? `Mount height from the opening: set the shoe rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
+            ? `Mount height from the opening: set the ${shoeCubbies ? "shoe cubbies" : "shoe rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
             : /rod/.test(coatPrompt)
               ? `Mount height from the opening: set the coat rod ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal, spanning full width. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the coats.`
               : `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
@@ -391,10 +396,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return [
       {
         step: 1,
-        title: shoe ? "Cut the shoe rail and pegs" : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
+        title: shoe ? (shoeCubbies ? "Cut the shoe cubby parts" : "Cut the shoe rail and pegs") : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
         description: portal
           ? shoe
-            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
+            ? shoeCubbies
+            ? `${tool.how} ${sheetCuts.join(" ")} Cut Shoe shelf and Cubby divider parts for ${hooks} pairs — portal cubbies, clear swing. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
+            : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
           : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: portal ? "Mount height from the opening — keep clear swing." : tool.tip,

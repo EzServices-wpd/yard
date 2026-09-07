@@ -284,7 +284,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
               `${hit.name} · trough channel` +
                 (rampLen != null ? ` length ${rampLen}"` : "") +
                 (marbleDia != null ? ` for a ${marbleDia < 1 ? `${Math.round(marbleDia * 8)}/8"` : `${marbleDia}"`} marble` : "") +
-                ` — side guides + floor ties; free projectile leaves the ramp; marble leaves free (not glued on).`,
+                ` — side guides + floor ties; free projectile leaves the ramp; paper plane / marble leaves free (not glued on).`,
             ]
           : [
               `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,

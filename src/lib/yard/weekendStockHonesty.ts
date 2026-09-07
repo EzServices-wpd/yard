@@ -306,7 +306,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         blobAll.includes(`${tip} deg`) ||
         new RegExp(`${tip}\s*°|tip(?:\s+angle)?\s*${tip}`, "i").test(blobAll);
       const hold =
-        /real (?:phone|tablet|device|book|cookbook|print|photo|card)|(?:4\s*[×x]\s*6)|(?:5\s*[×x]\s*7)|device envelope|phone(?:\s+lean)?\s+stand|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand|recipe card/i.test(
+        /real (?:phone|tablet|device|book|cookbook|print|photo|card)|(?:4\s*[×x]\s*6)|(?:5\s*[×x]\s*7)|(?:8\s*[×x]\s*10)|device envelope|phone(?:\s+lean)?\s+stand|picture ledge|holds? (?:a )?real|tipped lean|front lip|open book|cookbook easel|book stand|recipe card/i.test(
           blobAll,
         ) || /phone|tablet|device|book|cookbook|easel|lip/i.test(blobAll);
       const tipRoles = new Map<string, number>();

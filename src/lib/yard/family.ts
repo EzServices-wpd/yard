@@ -142,8 +142,25 @@ export function isShoePortalRail(lower: string) {
   return (
     /\bshoes?\b/.test(lower) &&
     /rail|rack/.test(lower) &&
+    !/cubb/.test(lower) &&
     /door\s*portal|portal|doorway|door opening/.test(lower)
   );
+}
+
+/** Shoe cubbies in a door portal — bays + shelves, clear swing; not a shoe rail. */
+export function isShoePortalCubbies(lower: string) {
+  return (
+    /\bshoes?\b/.test(lower) &&
+    /cubb/.test(lower) &&
+    /door\s*portal|portal|doorway|door opening/.test(lower)
+  );
+}
+
+/** Mudroom cubby wall / cubby carcase fitted to an opening — not a sit bench. */
+export function isMudroomCubbyWall(lower: string) {
+  if (!/\bmudroom\b/.test(lower)) return false;
+  if (/\bbench\b|\bseat\b|window seat/.test(lower)) return false;
+  return /cubb/.test(lower) && /wall|opening|alcove|fitted|carcase|unit/.test(lower);
 }
 
 /** Towel rail in a door portal — clear swing; not a shelving niche. */
@@ -247,8 +264,10 @@ export function identityTitleStem(lower: string): string | null {
   // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
+  if (isShoePortalCubbies(lower)) return "Shoe cubbies";
   if (isShoePortalRail(lower)) return "Shoe rail";
   if (isTowelPortalRail(lower)) return "Towel rail";
+  if (isMudroomCubbyWall(lower)) return "Mudroom cubbies";
   // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && /door\s*portal|portal|doorway|door opening/.test(lower)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
@@ -291,6 +310,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
+  if (isMudroomCubbyWall(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower) && !/workbench/.test(lower)) return "bench";
@@ -336,7 +356,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const sit =
     isDaybed(lower) ||
-    ((/\bbench\b|window seat|mudroom|\bseat\b/.test(lower) && !/workbench/.test(lower)));
+    ((/\bbench\b|window seat|mudroom|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isMudroomCubbyWall(lower)));
   const work =
     (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
       !/console table|sofa table|entry console|bedside table|night table/.test(lower));

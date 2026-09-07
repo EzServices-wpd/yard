@@ -12,7 +12,7 @@ import { withHome } from "./assembly";
 import { analyzePieces } from "./connect";
 import { stickEdges, segmentInstances } from "./stickFrames";
 import type { FlatPlane, PaperSize } from "./flat";
-import { detectWeekendMech, isMediaDeviceStand } from "./weekendFamily";
+import { detectWeekendMech, isMediaDeviceStand, wantsMediaTipHold } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 const PAPER_IN: Record<PaperSize, { w: number; h: number }> = {
@@ -58,7 +58,8 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
   if (
     mech === "launcher" ||
     mech === "climb" ||
-    (mech === "media-hold" && isMediaDeviceStand(prompt)) ||
+    (mech === "media-hold" && (isMediaDeviceStand(prompt) || wantsMediaTipHold(prompt))) ||
+    (/picture\s*ledge|(?:photo|art)\s*ledge/.test(lower) && /tip|lean|hold|print|upright/.test(lower)) ||
     (/\bpaper\s*plane\b/.test(lower) && /\bramp\b|soft-?launch|leaves the ramp/.test(lower))
   ) {
     return null;

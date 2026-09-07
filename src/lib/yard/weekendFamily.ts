@@ -37,7 +37,7 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
 /** Plant / pot stand that holds a real pot upright — envelope + densify, not a Tree silhouette. */
 const POT_HOLD_NOUN =
   /plant\s*stand|pot\s*stand|figurine\s*stand|holds?\s+a\s+real\s+.{0,24}\b(?:pot|figurine)\b|\b(?:pot|figurine)\b.{0,32}upright|upright.{0,24}\b(?:pot|figurine)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)/;
@@ -132,10 +132,11 @@ export function wantsMediaTipHold(prompt: string): boolean {
   }
   if (isMediaDeviceStand(prompt)) return true;
   if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|open\s+laptop|laptop\s*lean|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
-  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*)?(?:print|card)/.test(hay) && /lean|tip|frame|stand|hold/.test(hay)) {
+  if (/picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b/.test(hay) && /print|photo|tip|lean|hold|upright/.test(hay)) return true;
+  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:print|card)/.test(hay) && /lean|tip|frame|stand|hold|ledge/.test(hay)) {
     return true;
   }
-  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|book|cookbook|photo|picture|print|sheet|tablet|laptop|music|card|recipe/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|ledge|book|cookbook|photo|picture|print|sheet|tablet|laptop|music|card|recipe/.test(hay)) return true;
   return false;
 }
 
@@ -252,7 +253,7 @@ export function mediaHoldHeldLabel(prompt: string): string {
   if (/\beasel\b/.test(hay) && /book|cookbook|recipe/.test(hay)) return "open book";
   if (/music\s*sheet|sheet\s*music|holds?\s+a\s+real\s+sheet/.test(hay)) return "music sheet";
   if (/recipe[- ]?card|\bcard\b|4\s*[×x]\s*6/.test(hay) && !/phone|tablet/.test(hay)) return "recipe card";
-  if (/print|photo|picture|5\s*[×x]\s*7/.test(hay) && !/phone|tablet/.test(hay)) return "print";
+  if (/print|photo|picture|5\s*[×x]\s*7|8\s*[×x]\s*10/.test(hay) && !/phone|tablet/.test(hay)) return "print";
   if (/laptop|open\s+laptop/.test(hay)) return "open laptop";
   if (/phone/.test(hay)) return "phone";
   if (/tablet|device/.test(hay)) return "device";
@@ -309,7 +310,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -425,7 +426,9 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         const name = isLauncherRamp(hay)
           ? /marble|trough/.test(hay)
             ? "Marble trough"
-            : "Launch ramp"
+            : /(?:paper\s*)?plane/.test(hay)
+              ? "Plane ramp"
+              : "Launch ramp"
           : /trebuchet/.test(hay)
             ? "Trebuchet"
             : "Catapult";
@@ -456,7 +459,9 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
                       ? /lean|charg/.test(hay)
                         ? "Phone lean"
                         : "Phone stand"
-                      : /print|photo\s+lean|lean\s*frame/.test(hay)
+                      : /picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b/.test(hay)
+                        ? "Picture ledge"
+                        : /print|photo\s+lean|lean\s*frame/.test(hay)
                         ? "Photo lean"
                         : /book/.test(hay)
                           ? "Book stand"

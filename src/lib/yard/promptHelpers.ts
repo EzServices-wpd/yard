@@ -90,7 +90,9 @@ export function parseSize(lower: string): { height: number; width: number; depth
 
   // Media-hold tip stand: typed device/sheet/card/laptop size binds the envelope (e.g. 11" tablet, 13" open laptop, 4×6 card).
   if (detectWeekendMech(lower) === "media-hold" && wantsMediaTipHold(lower)) {
-    const cardPair = dimText.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/);
+    const cardPair =
+      dimText.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:card|print|photo|sheet)\b/) ||
+      dimText.match(/\b(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\b(?=[^\n]{0,24}(?:print|photo|card|sheet|ledge))/);
     const tallM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
     const wideM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:wide|width)\b/);
     const device =
@@ -268,6 +270,7 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],
+    [/cedar/, "lumber-1x4-8"],
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
