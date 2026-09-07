@@ -1662,7 +1662,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const tip = mediaHoldTipDeg(p);
       const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
       const held = mediaHoldHeldLabel(p);
-      return ` Tipped lean at ${tipTalk} with a front lip — holds a real ${held}, never a flat decal.`;
+      const printTalk = /8\s*[×x]\s*10/.test(p) ? "8×10 " : "";
+      return ` Tipped lean at ${tipTalk} with a front lip — holds a real ${printTalk}${held} upright, never a flat decal.`;
     }
     if (detectWeekendMech(p) === "climb" && isClimbStepStool(p)) {
       const rr = climbRiseRun(p);
