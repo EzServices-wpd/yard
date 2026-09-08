@@ -8,6 +8,7 @@
  * - never longer than the inner span (nothing past the posts or the top)
  * - 3-leg chords inset toward the centroid so apron bulk stays inside the
  *   post triangle — a centerline chord reads as bars past the posts
+ * - yaw is Three.js Y-up (atan2(-dz, dx)) so chords render post-to-post, not a radial Y
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
@@ -147,7 +148,10 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       const span = Math.hypot(dx, dz);
       const ux = dx / span;
       const uz = dz / span;
-      const yaw = Math.atan2(dz, dx);
+      // Three.js Y-up: local +X maps to (cos θ, −sin θ) in XZ. Use atan2(-dz, dx)
+      // so the board's long axis follows the chord — atan2(dz, dx) made 45° chords
+      // render as radials (short center Y with gaps to the posts).
+      const yaw = Math.atan2(-dz, dx);
       const midX = (a.x + b.x) / 2;
       const midZ = (a.z + b.z) / 2;
       // Inward normal (toward origin / triangle centroid).

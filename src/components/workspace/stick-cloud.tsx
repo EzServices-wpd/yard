@@ -72,6 +72,7 @@ export function PanelMesh({
   const yaw = panel.yaw ?? 0;
 
   let groupPos: [number, number, number] = [cx * explode, cy, cz * explode];
+  // panel.yaw is Three.js Y-up radians (see tableFitted / panelWorldCorners).
   let groupRot: [number, number, number] = [0, yaw, 0];
   let meshPos: [number, number, number] = [0, 0, 0];
 

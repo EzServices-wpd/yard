@@ -196,7 +196,7 @@ export function WorkspaceCanvas() {
           useShadows={useShadows}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
-        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} maxPolarAngle={Math.PI * 0.495} target={[0, 6, 0]} />
+        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />

@@ -183,7 +183,20 @@ const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
     if (Math.abs(r.yaw ?? 0) < 0.05) {
       failHonesty(`round3 ${r.name} missing chord yaw`, r.yaw);
     }
+    // Three.js R_y long axis must be a chord, not a radial spoke (center Y).
+    const yaw = r.yaw ?? 0;
+    const ax = Math.cos(yaw);
+    const az = -Math.sin(yaw);
+    const rcx = r.position.x + r.size.width / 2;
+    const rcz = r.position.z + r.size.depth / 2;
+    const rn = Math.hypot(rcx, rcz) || 1;
+    const radialDot = Math.abs((ax * -rcx + az * -rcz) / rn);
+    if (radialDot > 0.7) {
+      failHonesty(`round3 ${r.name} radial toward center (not post-to-post)`, { radialDot, yaw });
+    }
   }
+  const braceIssues = tableBraceIssues(round3);
+  if (braceIssues.length) failHonesty("round3 tableBraceIssues", braceIssues);
 }
 void laundryTable;
 void round3;

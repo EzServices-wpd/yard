@@ -355,6 +355,25 @@ export function tableBraceIssues(project: YardProject): HonestyIssue[] {
         });
       }
     }
+    if (legs.length === 3 && Math.abs(rail.yaw ?? 0) > 0.05) {
+      // Chord must not read as a radial spoke (center Y). Long axis follows yaw
+      // under Three.js R_y: (cos θ, −sin θ). Radial from rail center toward origin
+      // should be ~orthogonal to that axis.
+      const yaw = rail.yaw ?? 0;
+      const ax = Math.cos(yaw);
+      const az = -Math.sin(yaw);
+      const rcx = rail.position.x + rail.size.width / 2;
+      const rcz = rail.position.z + rail.size.depth / 2;
+      const rn = Math.hypot(rcx, rcz) || 1;
+      const radialDot = Math.abs((ax * -rcx + az * -rcz) / rn);
+      if (radialDot > 0.7) {
+        issues.push({
+          guard: "table",
+          message: `${rail.name} is radial toward the center, not a post-to-post chord.`,
+          rebuild: true,
+        });
+      }
+    }
   }
 
   return issues;

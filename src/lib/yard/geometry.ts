@@ -217,10 +217,11 @@ export function panelWorldCorners(panel: Panel): { x: number; y: number; z: numb
   const cz = z + d / 2;
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
+  // Three.js R_y(yaw): x' = x c + z s, z' = −x s + z c (must match PanelMesh).
   return locals.map(([px, py, pz]) => {
     const dx = px - cx;
     const dz = pz - cz;
-    return { x: cx + dx * c - dz * s, y: py, z: cz + dx * s + dz * c };
+    return { x: cx + dx * c + dz * s, y: py, z: cz - dx * s + dz * c };
   });
 }
 
