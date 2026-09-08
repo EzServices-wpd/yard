@@ -157,11 +157,13 @@ export function isShoePortalCubbies(lower: string) {
   );
 }
 
-/** Mudroom cubby wall / cubby carcase fitted to an opening — not a sit bench. */
+/** Mudroom cubbies / cubby wall / cubby carcase — not a sit bench.
+ * Strangers type "mudroom cubbies 48 wide 72 high 16 deep" without saying wall/alcove.
+ * Explicit bench/seat/window seat still keep the seat family. */
 export function isMudroomCubbyWall(lower: string) {
   if (!/\bmudroom\b/.test(lower)) return false;
   if (/\bbench\b|\bseat\b|window seat/.test(lower)) return false;
-  return /cubb/.test(lower) && /wall|opening|alcove|fitted|carcase|unit/.test(lower);
+  return /cubb/.test(lower);
 }
 
 /** Towel rail in a door portal — clear swing; not a shelving niche. */
