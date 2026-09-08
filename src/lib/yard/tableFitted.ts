@@ -158,12 +158,17 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         nz = -nz;
       }
       // Outer face of apron on the post-to-post centerline → body inside the posts.
+      // Bite 1/8" into each 2x2 so the joint reads as "ends into the posts" from
+      // under the top (a butt at the AABB face looks like a floating bar).
       const inset = apronT / 2;
       const cx = midX + nx * inset;
       const cz = midZ + nz * inset;
-      const tA = squareHalfAlong(ux, uz);
-      const tB = squareHalfAlong(ux, uz);
+      const bite = 0.125;
+      const tA = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
+      const tB = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
       const length = Math.max(4, span - tA - tB);
+      // Size is length × apronH × apronT (vertical apron). Yaw about Y through
+      // the panel center — never lay the board flat under the top.
       panels.push(
         panel(
           "rail",

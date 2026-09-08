@@ -175,6 +175,15 @@ const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
   if (!coffeeApron || coffeeApron.size.height > 2.6) {
     failHonesty("coffee apron too deep for short table", coffeeApron?.size);
   }
+  // Aprons must stand on edge (height > thickness), never laid flat under the top.
+  for (const r of rails) {
+    if (!(r.size.height > r.size.depth + 0.5)) {
+      failHonesty(`round3 ${r.name} laid flat under top`, r.size);
+    }
+    if (Math.abs(r.yaw ?? 0) < 0.05) {
+      failHonesty(`round3 ${r.name} missing chord yaw`, r.yaw);
+    }
+  }
 }
 void laundryTable;
 void round3;

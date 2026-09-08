@@ -196,7 +196,7 @@ export function WorkspaceCanvas() {
           useShadows={useShadows}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
-        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
+        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} maxPolarAngle={Math.PI * 0.495} target={[0, 6, 0]} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
@@ -261,18 +261,18 @@ function CameraRig({
         : eiffel
           ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]
           : table
-            ? [focus.x + dist * 0.62, fy + dist * 0.54, focus.z + dist * 0.62]
+            ? [focus.x + dist * 0.78, fy + dist * 0.28, focus.z + dist * 0.78]
             : fitted
               ? [focus.x + dist * 0.55, h * 0.42, focus.z + dist * 1.18]
               : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
       front: [
         focus.x,
-        table ? fy + dist * 0.12 : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
-        focus.z + dist * (isFlat ? 1.05 : table ? 1.05 : eiffel ? 1.05 : 1.28),
+        table ? Math.max(h * 0.22, fy * 0.55) : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
+        focus.z + dist * (isFlat ? 1.05 : table ? 1.12 : eiffel ? 1.05 : 1.28),
       ],
       side: [
         focus.x + dist * (isFlat ? 1.05 : table ? 1.05 : eiffel ? 1.05 : 1.28),
-        table ? fy + dist * 0.12 : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
+        table ? Math.max(h * 0.22, fy * 0.55) : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
         focus.z,
       ],
       top: [focus.x, fy + fit * (isFlat ? 1.15 : table ? 1.05 : 1.35), focus.z + 0.01],

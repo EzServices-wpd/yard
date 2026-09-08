@@ -142,7 +142,11 @@ export function PanelMesh({
             depthWrite={opacity > 0.5}
           />
         </mesh>
-        {!glass && opacity > 0.4 && !isRoundTop && !isPost && <EdgeBand w={w} h={h} d={d} />}
+        {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
+            scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}
+        {!glass && opacity > 0.4 && !isRoundTop && !isPost && panel.type !== "rail" && !(panel.yaw) && (
+          <EdgeBand w={w} h={h} d={d} />
+        )}
         {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
         {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
         {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
