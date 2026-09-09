@@ -371,6 +371,7 @@ export function toProject(
   if ((kind === "frame" || kind === "ladder") && hasExplicitSize(prompt)) {
     const typed = parseSize(prompt.toLowerCase());
     const typedH = typed.height;
+    const typedW = typed.width;
     const mech = detectWeekendMech(prompt);
     // Pot-hold / media-hold: honor typed envelope (pot dia×tall / open laptop+tip), not min-8 pad inflate.
     if (mech === "pot-hold" || mech === "media-hold") {
@@ -384,6 +385,19 @@ export function toProject(
       const padH = Math.max(0.35, Math.min(stockW, prim.height || prim.thickness || stockW) * 0.55);
       height = Math.max(8, spanY + padH);
       if (typedH && Math.abs(spanY - typedH) <= 1.25) height = typedH;
+    }
+    // Typed width: same pad-skip as height (24" towel ladder was HUD 25" from pad*2).
+    // Open ladder with untyped depth: keep lean ~6, not Math.max(8, …) inflate.
+    if (mech !== "pot-hold" && mech !== "media-hold") {
+      const dim = stripLumberStock(prompt.toLowerCase());
+      const widthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:wide|width)\b/.test(dim);
+      const depthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:deep|depth)\b/.test(dim);
+      if (widthTyped && typedW && Math.abs(spanX - typedW) <= 1.25) {
+        width = typedW;
+      }
+      if (kind === "ladder" && !depthTyped && spanZ < 1.25) {
+        depth = 6;
+      }
     }
   }
   if (kind === "eiffel") {
