@@ -408,7 +408,11 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
           ? "Step stool"
           : /step-?shelf/.test(hay)
             ? "Step shelf"
-            : "Ladder";
+            : /towel/.test(hay)
+              ? "Towel ladder"
+              : /blanket|quilt/.test(hay)
+                ? "Blanket ladder"
+                : "Ladder";
         const stepTalk =
           steps >= 2 ? `${steps}-step` : rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "";
         const name =

@@ -86,8 +86,9 @@ export function archOps(s: Size3): FormOp[] {
 }
 
 export function ladderOps(s: Size3): FormOp[] {
+  // Honor typed envelope — do not silently clamp a 24″ towel ladder down to 22″.
   const H = Math.max(s.height, 36);
-  const w = Math.max(14, Math.min(s.width, 22));
+  const w = Math.max(12, s.width);
   const rungs = Math.max(5, Math.round(H / 12));
   const ops: FormOp[] = [
     { op: "column", x: -w / 2, z: 0, y0: 0, y1: H, role: "leg" },

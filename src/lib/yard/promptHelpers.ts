@@ -193,6 +193,8 @@ export function hasExplicitSize(prompt: string): boolean {
   const dim = stripLumberStock(lower);
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
+  // Bare labeled dims — same cues parseSize already honors ("24 wide", "72 high", "16 deep").
+  if (/\d+(?:\.\d+)?\s*(?:wide|width|tall|high|height|deep|depth)\b/.test(dim)) return true;
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
@@ -227,6 +229,22 @@ export function defaultSizeFor(
   const ladderLike = kind === "ladder" || (kind === "frame" && /\bladder\b/.test(lower));
   if (explicit && ladderLike && ftLen && !/wide|deep/.test(lower)) {
     return { width: 18, depth: 6, height: parseFloat(ftLen[1]) * 12 };
+  }
+  // Ladder / towel ladder: honor typed W×H; keep lean depth ~6 when depth was not typed
+  // (parseSize defaults depth to 24, which is a fat lie for an open ladder).
+  if (explicit && ladderLike) {
+    const dim = stripLumberStock(lower);
+    const widthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:wide|width)\b/.test(dim);
+    const depthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:deep|depth)\b/.test(dim);
+    const heightTyped =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:tall|high|height)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim) ||
+      !!ftLen;
+    return {
+      width: widthTyped ? size.width : 18,
+      height: heightTyped ? size.height : 96,
+      depth: depthTyped ? size.depth : 6,
+    };
   }
   if (explicit) return size;
   if (kind === "furniture" || /chair|stool/.test(lower)) {
