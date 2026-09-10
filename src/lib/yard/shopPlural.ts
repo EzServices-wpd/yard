@@ -47,6 +47,7 @@ export function cutListName(name: string, type?: string): string {
   if (/^apron\b/i.test(name) || (type === "rail" && /apron/i.test(name))) return "Apron";
   if (/^leg\b/i.test(name)) return "Leg";
   if (/cut round/i.test(name)) return name;
+  if (/cut oval/i.test(name)) return name;
   if (type === "upright") return "Upright";
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";

@@ -337,7 +337,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Table plan axes (universal): height must not steal a plan dim; long×wide×tall is L×planW×H.
   // "oval coffee 42 long × 24 wide × 18 tall" → W42 × H18 × D24.
   // "square dining 36 × 36 × 30 tall" → W36 × H30 × D36 (third is height, not depth).
-  // Unlabeled table triples stay W×H×D (laundry folding 48x36x24) — do not rewrite those.
+  // Oval/square bare triples (42×24×18 / 36×36×30) are also L×planW×H — strangers type that.
+  // Rect tables (laundry folding 48x36x24) stay unlabeled W×H×D.
   if (program === "table" && !isRound && !Number.isFinite(diameter)) {
     const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
     const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
@@ -350,6 +351,26 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
     if (Number.isFinite(labeledTall)) height = labeledTall;
     if (Number.isFinite(labeledDeep)) depth = labeledDeep;
+
+    // Bare oval/square triples: typed order is long×wide×tall (plan L×plan W×H), not laundry W×H×D.
+    // "oval coffee table 42×24×18" → W42 × H18 × D24; "square dining 36×36×30" → W=D=36 H=30.
+    if (
+      (isOval || isSquareTop) &&
+      trip.w &&
+      trip.h &&
+      trip.d &&
+      !/(?:wide|width|deep|depth|tall|high|height|long|length)/.test(lower)
+    ) {
+      if (isSquareTop && Math.abs(trip.w - trip.h) < 0.05) {
+        width = trip.w;
+        depth = trip.w;
+        height = trip.d;
+      } else {
+        width = trip.w;
+        depth = trip.h;
+        height = trip.d;
+      }
+    }
 
     // Triple + labeled height matching one slot → remaining two are plan W×D in typed order.
     if (trip.w && trip.h && trip.d && Number.isFinite(height)) {
