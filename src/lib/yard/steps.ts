@@ -23,7 +23,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
-import { shopPlural, fmtSheetCut, cutListName } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName, sheetCutDims } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 
 function dim(p: Panel) {
@@ -556,8 +556,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -608,8 +608,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -663,8 +663,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} ${slab ? cutLine(slab) + "." : ""} Label the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item, slab ? cutLine(slab) + "." : ""),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -707,8 +707,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -762,8 +762,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -816,8 +816,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face — especially Top shelf and each Grille slat.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item, '— especially Top shelf and each Grille slat.'),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -866,8 +866,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face — especially Seat, Shoe shelf, Front apron, and each Cubby divider.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item, '— especially Seat, Shoe shelf, Front apron, and each Cubby divider.'),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -910,8 +910,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -954,8 +954,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -1001,8 +1001,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           step: 2,
-          title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-          description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+          title: sheetCutTitle(panels, item),
+          description: sheetCutDescription(panels, item),
           tips: tool.tip,
           partsUsed: names(panels),
         },
@@ -1046,8 +1046,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -1131,8 +1131,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -1179,8 +1179,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -1230,8 +1230,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: ["*"],
       },
@@ -1284,8 +1284,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: `Cut the ${item?.name ?? '3/4" plywood'}`,
-        description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
         tips: tool.tip,
         partsUsed: ["*"],
       },
@@ -1370,8 +1370,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
   steps.push({
     step: n++,
-    title: `Cut the ${item?.name ?? "3/4\" plywood"}`,
-    description: `${tool.how} ${sheetCuts.join(" ")} Label every piece on the waste face before you move the stack.`,
+    title: sheetCutTitle(panels, item),
+    description: sheetCutDescription(panels, item),
     tips: tool.tip,
     partsUsed: ["*"],
   });
@@ -1542,6 +1542,91 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   });
 
   return steps;
+}
+
+
+/**
+ * Cut-stock groups — same honesty as Buy (report.ts): thin sheet faces
+ * (<0.5") cut from 1/4" backer, not the primary 3/4" sheet title.
+ */
+function cutStockGroups(
+  panels: Panel[],
+  fallbackItem?: CatalogItem | null,
+): { label: string; panels: Panel[]; tool: { how: string; tip: string } }[] {
+  const thin: Panel[] = [];
+  const byKey = new Map<
+    string,
+    { label: string; panels: Panel[]; tool: { how: string; tip: string } }
+  >();
+
+  for (const p of panels) {
+    const item = getCatalogItem(p.materialId);
+    const t = sheetCutDims(p.size.width, p.size.height, p.size.depth).thicknessIn;
+    const isSheet =
+      item?.formFactor === "sheet" ||
+      item?.category === "sheet_goods" ||
+      /plywood/i.test(p.materialId ?? "") ||
+      /plywood/i.test(item?.name ?? "");
+
+    if (isSheet && t < 0.5) {
+      thin.push(p);
+      continue;
+    }
+
+    const key = p.materialId || "primary";
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.panels.push(p);
+      continue;
+    }
+    const cat = item ?? fallbackItem;
+    byKey.set(key, {
+      label: cat?.name ?? '3/4" plywood',
+      panels: [p],
+      tool: cutHow(cat),
+    });
+  }
+
+  const groups = [...byKey.values()];
+  if (thin.length) {
+    groups.push({
+      label: '1/4" plywood (backer)',
+      panels: thin,
+      tool: cutHow(fallbackItem ?? getCatalogItem("plywood-3-4-4x8")),
+    });
+  }
+  if (!groups.length && panels.length) {
+    groups.push({
+      label: fallbackItem?.name ?? '3/4" plywood',
+      panels,
+      tool: cutHow(fallbackItem),
+    });
+  }
+  return groups;
+}
+
+function sheetCutTitle(panels: Panel[], fallbackItem?: CatalogItem | null): string {
+  const groups = cutStockGroups(panels, fallbackItem);
+  if (!groups.length) return `Cut the ${fallbackItem?.name ?? '3/4" plywood'}`;
+  if (groups.length === 1) return `Cut the ${groups[0].label}`;
+  return `Cut the ${groups.map((g) => g.label).join(" and ")}`;
+}
+
+function sheetCutDescription(
+  panels: Panel[],
+  fallbackItem?: CatalogItem | null,
+  especially = "",
+): string {
+  const groups = cutStockGroups(panels, fallbackItem);
+  const how = (groups[0]?.tool ?? cutHow(fallbackItem)).how;
+  if (groups.length <= 1) {
+    const cuts = groupSheetCuts(groups[0]?.panels ?? panels).join(" ");
+    return `${how} ${cuts} Label every piece on the waste face before you move the stack.${especially ? ` ${especially}` : ""}`;
+  }
+  const bodies = groups
+    .map((g) => `From the ${g.label}: ${groupSheetCuts(g.panels).join(" ")}`)
+    .join(" ");
+  return `${how} ${bodies} Label every piece on the waste face before you move the stack.${especially ? ` ${especially}` : ""}`;
 }
 
 function groupSheetCuts(panels: Panel[]): string[] {
