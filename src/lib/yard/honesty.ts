@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily, mediaIdentityLabel, wantsShoes } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -77,22 +77,36 @@ export function typedExtents(prompt: string): TypedExtents | null {
   }
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
   const lower = t.toLowerCase();
-  const width = pickLabeled(t, /wide|width/);
+  const labeledWide = pickLabeled(t, /wide|width/);
+  const labeledLong = pickLabeled(t, /long|length/);
   const height = pickLabeled(t, /tall|high|height/);
   const depth = pickLabeled(t, /deep|depth/);
-  const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
+  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
   const trip = unlabeledTriple(t);
   const program = detectProgram(lower);
+
+  // Long×wide is plan length×plan-width (not laundry height in the middle).
+  let width = labeledWide;
+  let depthOut = depth;
+  if (labeledLong != null) {
+    width = labeledLong;
+    if (labeledWide != null) depthOut = labeledWide;
+  }
 
   const out: TypedExtents = {
     width,
     height,
-    depth,
-    labeled: { width: width != null, height: height != null, depth: depth != null },
+    depth: depthOut,
+    labeled: {
+      width: width != null,
+      height: height != null,
+      depth: depthOut != null,
+    },
   };
 
   if (!saidAxis && trip) {
-    // Tables are W×H×D. Desk / media / storage (and other casegoods) are W×D×H.
+    // Rect tables stay W×H×D (laundry folding 48x36x24). Desk/media/storage are W×D×H.
+    // Oval/square bare triples are long×wide×tall → plan W×D×H (display W×H×D).
     // Closet / wardrobe / pantry / vanity stay W×H×D (opening order).
     // Fitted-to-opening unlabeled triples are also W×H×D (bookshelf 36×84×12 opening).
     const openingFit =
@@ -107,9 +121,22 @@ export function typedExtents(prompt: string): TypedExtents | null {
       !openingFit;
     if (trip.c != null) {
       if (program === "table") {
-        out.width = trip.a;
-        out.height = trip.b;
-        out.depth = trip.c;
+        const shape = tableTopShape(lower);
+        if (shape === "oval" || shape === "square") {
+          if (shape === "square" && Math.abs(trip.a - trip.b) < 0.05) {
+            out.width = trip.a;
+            out.depth = trip.a;
+            out.height = trip.c;
+          } else {
+            out.width = trip.a;
+            out.depth = trip.b;
+            out.height = trip.c;
+          }
+        } else {
+          out.width = trip.a;
+          out.height = trip.b;
+          out.depth = trip.c;
+        }
       } else if (furniture) {
         out.width = trip.a;
         out.depth = trip.b;
@@ -128,6 +155,38 @@ export function typedExtents(prompt: string): TypedExtents | null {
       out.width = trip.a;
       out.height = trip.b;
       out.labeled = { width: true, height: true, depth: false };
+    }
+  }
+
+  // Square/oval + labeled tall on a bare-looking triple: remaining slots are plan W×D.
+  // "square dining 36 × 36 × 30 tall" → W=D=36 H=30 (matches parseBrief).
+  if (
+    saidAxis &&
+    trip &&
+    trip.c != null &&
+    program === "table" &&
+    out.height != null &&
+    (tableTopShape(lower) === "oval" || tableTopShape(lower) === "square")
+  ) {
+    const shape = tableTopShape(lower);
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.05;
+    const slots = [trip.a, trip.b, trip.c];
+    const heightHits = slots
+      .map((n, i) => (near(n, out.height!) ? i : -1))
+      .filter((i) => i >= 0);
+    const hi = heightHits.length ? heightHits[heightHits.length - 1] : -1;
+    if (hi >= 0) {
+      const plan = slots.filter((_, i) => i !== hi);
+      if (plan.length === 2) {
+        if (shape === "square" && Math.abs(plan[0] - plan[1]) < 0.05) {
+          out.width = plan[0];
+          out.depth = plan[0];
+        } else {
+          out.width = plan[0];
+          out.depth = plan[1];
+        }
+        out.labeled = { width: true, height: true, depth: true };
+      }
     }
   }
 
