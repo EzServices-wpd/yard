@@ -79,6 +79,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   }
   if (parsed.unit.bays && !unit.bays) unit.bays = parsed.unit.bays;
   if (parsed.unit.kneeW && !unit.kneeW) unit.kneeW = parsed.unit.kneeW;
+  // Spoken/typed drawer count from local parse overrides brief defaults (desk pencil, etc.).
+  if (parsed.unit.drawersPerBank != null) unit.drawersPerBank = parsed.unit.drawersPerBank;
 
   let program = brief.program;
   if (parsed.program === "table" || parsed.program === "media") program = parsed.program;
@@ -149,11 +151,15 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     ? "Wine rack"
     : /coat/.test(lower) && /rack/.test(lower)
     ? "Coat rack"
-    : /dresser/.test(lower)
-      ? "Dresser"
-      : /nightstand|bedside/.test(lower)
-        ? "Nightstand"
-        : /island/.test(lower)
+    : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
+      ? "File cabinet"
+      : /\bchest\b/.test(lower) && !/medicine/.test(lower)
+        ? "Chest"
+        : /dresser/.test(lower)
+          ? "Dresser"
+          : /nightstand|bedside/.test(lower)
+            ? "Nightstand"
+            : /island/.test(lower)
           ? "Island"
           : /headboard/.test(lower)
             ? "Headboard"
@@ -185,6 +191,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !sitBenchTitleStem(lower) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&
+    !(/\bchest\b/.test(lower) && !/medicine/.test(lower)) &&
+    !/file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower) &&
     !(/coffee/.test(lower) && /table/.test(lower)) &&
     !/range\s*hood|\bhood\b/.test(lower) &&
     !/crate/.test(lower);

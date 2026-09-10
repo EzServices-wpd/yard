@@ -56,6 +56,36 @@ function pick(text: string, re: RegExp, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Spoken/typed drawer count — digits or words; overrides family defaults (nightstand=1, bank=3). */
+function spokenDrawerCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*-?\s*drawers?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 12) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    single: 1,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|single)\s+(?:pencil\s+)?drawers?\b/);
+  if (word) return words[word[1]];
+  // "a pencil drawer" / bare pencil drawer → one front
+  if (/\bpencil\s+drawers?\b/.test(lower)) return 1;
+  if (/\bwith\s+a\s+drawers?\b/.test(lower)) return 1;
+  return null;
+}
+
+
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
@@ -576,7 +606,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
           : house?.affordances?.includes("cubbies") && house.family === "floor-carcase" && wantsShoes(lower)
             ? Math.max(2, Math.min(8, Math.round(width / 6)))
             : NaN;
-  const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
+  const drawers =
+    /drawer/.test(lower) ||
+    program === "vanity" ||
+    program === "desk" ||
+    /nightstand|bedside|dresser|hutch|\bchest\b|file\s*cabinet|filing/.test(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -631,7 +665,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     upperStart,
     shelfCount: shelfCount || undefined,
     cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
-    drawersPerBank: drawers ? (/nightstand|bedside/.test(lower) ? 1 : 3) : undefined,
+    drawersPerBank: drawers
+      ? spokenDrawerCount(lower) ?? (/nightstand|bedside/.test(lower) ? 1 : 3)
+      : undefined,
     doors: doorsFinal,
     mirror,
     rod,
@@ -667,11 +703,15 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Mudroom cubbies"
       : sitStem
         ? sitStem
-        : /dresser/.test(lower)
-          ? "Dresser"
-          : /nightstand|bedside/.test(lower)
-            ? "Nightstand"
-            : isIroningCabinet(lower)
+        : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
+          ? "File cabinet"
+          : /\bchest\b/.test(lower) && !/medicine/.test(lower)
+            ? "Chest"
+            : /dresser/.test(lower)
+              ? "Dresser"
+              : /nightstand|bedside/.test(lower)
+                ? "Nightstand"
+                : isIroningCabinet(lower)
               ? "Ironing cabinet"
               : isMedicineCabinet(lower)
                 ? "Medicine cabinet"
@@ -2413,7 +2453,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
-  if (nightstand) {
+  // Multi-drawer nightstand (spoken "two drawers") uses the general bank path below.
+  if (nightstand && (u.drawersPerBank == null || u.drawersPerBank <= 1)) {
     const drawerH = Math.min(6.5, Math.max(4.5, Math.round(H * 0.28 * 8) / 8));
     const shelfY = Math.max(P + 6, H - P - drawerH - P);
     const drawerY = shelfY + P;
@@ -2504,15 +2545,32 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
     panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
     panels.push(panel("kick", "Right toekick", kneeR + P, 0, D - P, rightW - P, 3.5, P));
-    const n = u.drawersPerBank ?? 3;
+    // Spoken/typed total drawer count drives fronts (pencil=1 → one wing). Else legacy 3/bank.
+    const spokenTotal = spokenDrawerCount(prompt);
+    const leftCounts: number[] = [];
+    const rightCounts: number[] = [];
+    if (spokenTotal != null) {
+      const nL = Math.ceil(spokenTotal / 2);
+      const nR = Math.floor(spokenTotal / 2);
+      for (let i = 0; i < nL; i++) leftCounts.push(i);
+      for (let i = 0; i < nR; i++) rightCounts.push(i);
+    } else {
+      const n = u.drawersPerBank ?? 3;
+      for (let i = 0; i < n; i++) {
+        leftCounts.push(i);
+        rightCounts.push(i);
+      }
+    }
     const span = boxH - 3.5;
-    const dh = span / n;
-    for (let i = 0; i < n; i++) {
+    const nL = Math.max(1, leftCounts.length);
+    const nR = Math.max(1, rightCounts.length);
+    for (let i = 0; i < leftCounts.length; i++) {
+      const dh = span / nL;
       const y = 3.5 + i * dh;
       pushDrawerWithFront(
         panels,
-        `Left drawer ${i + 1}`,
-        `Left drawer front ${i + 1}`,
+        leftCounts.length === 1 ? "Drawer" : `Left drawer ${i + 1}`,
+        leftCounts.length === 1 && rightCounts.length === 0 ? "Drawer front" : `Left drawer front ${i + 1}`,
         x0 + P,
         y,
         0.15,
@@ -2521,6 +2579,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         D - 0.3,
         leftW - P - 0.05,
       );
+    }
+    for (let i = 0; i < rightCounts.length; i++) {
+      const dh = span / nR;
+      const y = 3.5 + i * dh;
       pushDrawerWithFront(
         panels,
         `Right drawer ${i + 1}`,

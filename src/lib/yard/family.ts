@@ -377,6 +377,11 @@ export function identityTitleStem(lower: string): string | null {
   // Desk / vanity work surfaces win over a trailing "media shelf" add-on.
   if (/\bdesk\b|workbench|work table/.test(lower)) return "Desk";
   if (/\bvanity\b/.test(lower)) return "Vanity";
+  // Chest / File cabinet — never naked Storage unit (medicine chest stays Medicine cabinet via hung path).
+  if (/file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)) return "File cabinet";
+  if (/\bchest\b/.test(lower) && !/medicine/.test(lower)) return "Chest";
+  if (/\bdresser\b/.test(lower)) return "Dresser";
+  if (/nightstand|bedside/.test(lower)) return "Nightstand";
   // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
