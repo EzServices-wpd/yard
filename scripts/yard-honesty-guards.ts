@@ -1306,8 +1306,11 @@ if (!dresserPlan.cutList.some((c) => /drawer front/i.test(c.name))) {
 
 // Freezes still green under soft-trust
 const linenFreeze = generateFromPrompt("31.5 inch linen closet 78 tall 16 deep");
-if (!/closet/i.test(linenFreeze.name) || Math.abs(linenFreeze.overall.width - 31.5) > 0.1) {
+if (!/Linen|Closet/i.test(linenFreeze.name) || Math.abs(linenFreeze.overall.width - 31.5) > 0.1) {
   failHonesty("linen freeze broken by soft-trust", { name: linenFreeze.name, overall: linenFreeze.overall });
+}
+if (identityTitleStem("house: linen closet 31.5×78×16") !== "Linen") {
+  failHonesty("linen identityTitleStem", identityTitleStem("house: linen closet 31.5×78×16"));
 }
 const mudCubby = generateFromPrompt("mudroom cubbies 48 wide 72 tall 16 deep");
 if (!/^Mudroom cubbies/i.test(mudCubby.name) || mudCubby.fitted?.program !== "storage") {

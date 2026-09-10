@@ -37,7 +37,7 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
     brief: {
       program: "closet",
-      name: 'Closet 31.5" × 78" × 16"',
+      name: 'Linen 31.5" × 78" × 16"',
       opening: { width: 31.5, height: 78, depth: 16, kind: "alcove" },
       unit: { width: 31.5, depth: 16, height: 78, shelfCount: 4, doors: true, centered: true },
     },

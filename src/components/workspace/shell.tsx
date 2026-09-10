@@ -23,6 +23,7 @@ import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { namedStockDisplayName } from "@/lib/yard/weekendStockHonesty";
+import { honestNestSheetStockName } from "@/lib/yard/report";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
@@ -146,6 +147,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const material = getCatalogItem(project.primaryMaterialId);
   const stockLabel = namedStockDisplayName(project.prompt ?? "", material);
+  // Sheet-chip honesty: nest/Buy 4×10 must surface on the HUD chip (not stuck primary 4×8).
+  const nestSheetLabel = honestNestSheetStockName(project, plan);
   const wire = isWireStock(material);
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const pieceCount = project.instances.length + project.panels.length;
@@ -586,9 +589,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               <p>
                 {wire
                   ? "Choose stock · open Stock panel"
-                  : stockLabel !== "stock"
-                    ? stockLabel
-                    : material?.name ?? "No stock"}
+                  : nestSheetLabel
+                    ? nestSheetLabel
+                    : stockLabel !== "stock"
+                      ? stockLabel
+                      : material?.name ?? "No stock"}
                 {pieceCount
                   ? paperCraft
                     ? ` · ${pieceCount} whole sticks · glue ends`

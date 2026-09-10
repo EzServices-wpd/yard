@@ -433,6 +433,8 @@ export function identityTitleStem(lower: string): string | null {
   if (wantsShoes(lower)) return "Shoe rack";
   const media = mediaIdentityLabel(lower);
   if (media) return media;
+  // Linen closet keeps Linen stem — never bare Closet (Entry bench pattern).
+  if (/\blinen\b/.test(lower)) return "Linen";
   return null;
 }
 

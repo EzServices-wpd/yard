@@ -498,6 +498,40 @@ function packPlan(
   };
 }
 
+/**
+ * HUD/bench chip stock name from nest / Buy — not the hardcoded primary 4×8.
+ * When Buy nests any 3/4" 4×10 sheets, chip must say 4×10 (sheet-chip honesty).
+ * Returns null for crafts / when nest is 4×8-only so callers keep primary label.
+ */
+export function honestNestSheetStockName(
+  project: YardProject,
+  plan?: BuildPlan | null,
+): string | null {
+  const name10 = getCatalogItem("plywood-3-4-4x10")?.name ?? '3/4" Plywood 4×10';
+  if (plan?.bom?.length) {
+    const has10 = plan.bom.some(
+      (b) =>
+        b.catalogId === "plywood-3-4-4x10" ||
+        /3\/4"?\s*Plywood\s*4\s*[×x]\s*10/i.test(b.name),
+    );
+    if (has10) return name10;
+    return null;
+  }
+  if (!(project.kind === "closet" || project.fitted || project.panels.length > 0)) {
+    return null;
+  }
+  const cuts = closetCuts(project);
+  const structural = cuts.filter(
+    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
+  );
+  const nestable = structural.filter((c) => Math.min(c.lengthIn, c.widthIn) > 2);
+  const on10 = nestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+  if (!on10.length) return null;
+  const nest10 = nestParts(cutListToNestParts(on10), SHEET_4X10);
+  const sheets10 = nest10?.totalSheets ?? nest10?.sheets.length ?? 0;
+  return sheets10 > 0 ? name10 : null;
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
   if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
