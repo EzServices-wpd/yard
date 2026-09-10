@@ -10,6 +10,8 @@ import {
   isMediaDeviceStand,
   wantsMediaTipHold,
   wantsPotHold,
+  isFigurineHold,
+  figureHoldEnvelopeTalk,
   potHoldDiameterIn,
   potHoldHeightIn,
   marbleDiameterIn,
@@ -18,7 +20,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle } from "./family";
+import { isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, towelPortalWantsHooks } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -390,29 +392,44 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       ? Math.round(Math.min(18, Math.max(6, openingH * 0.12)))
       : Math.round(Math.min(60, Math.max(48, openingH * (towel ? 0.55 : 0.7))));
     if (towel) {
-      return [
-        {
-          step: 1,
-          title: "Cut the towel rail",
-          description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`,
-          tips: "Mount height from the opening — keep clear swing.",
-          partsUsed: names(panels),
-        },
-        {
-          step: 2,
-          title: "Dry-fit the rail in the portal",
-          description: `${rail ? cutLine(rail) : "Towel rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`,
-          tips: "Portal envelope is the opening — keep clear swing.",
-          partsUsed: names(panels),
-        },
-        {
-          step: 3,
-          title: "Mount height from the opening — keep swing clear",
-          description: `Mount height from the opening: set the towel rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the towels.`,
-          tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
-          partsUsed: names(panels),
-        },
-      ];
+      const withHooks = towelPortalWantsHooks(coatPrompt) || /hook/i.test(project.name || "");
+      const towelCut = withHooks ? "Towel + hook rail" : "Towel rail";
+      const cutStep = {
+        step: 1,
+        title: withHooks ? "Cut the towel + hook rail" : "Cut the towel rail",
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.${withHooks ? ` · ${hooks} hooks densify on the rail.` : ""}`,
+        tips: "Mount height from the opening — keep clear swing.",
+        partsUsed: names(panels),
+      };
+      const dryStep = {
+        step: 2,
+        title: "Dry-fit the rail in the portal",
+        description: `${rail ? cutLine(rail) : towelCut}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`,
+        tips: "Portal envelope is the opening — keep clear swing.",
+        partsUsed: names(panels),
+      };
+      const mountStep = {
+        step: withHooks ? 4 : 3,
+        title: "Mount height from the opening — keep swing clear",
+        description: `Mount height from the opening: set the towel rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the towels.`,
+        tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
+        partsUsed: names(panels),
+      };
+      if (withHooks) {
+        return [
+          cutStep,
+          dryStep,
+          {
+            step: 3,
+            title: `Screw ${hooks} hooks`,
+            description: `Mark ${hooks} holes on the towel rail, about 6" on center, 1½" up from the bottom edge. Screw ${hooks} hooks into the rail — towels hang on the rail, coats/keys on the hooks. BOTH towel rail + hooks densify.`,
+            tips: "A cheap hook pack is the whole hardware kit besides screws.",
+            partsUsed: names(panels),
+          },
+          mountStep,
+        ];
+      }
+      return [cutStep, dryStep, mountStep];
     }
     const hangStep = portal
       ? {
@@ -1781,6 +1798,10 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       return ` Soft-launch ${lenTalk} trough channel (side guides + floor ties) — free projectile leaves the ramp; ${marbleTalk}.`;
     }
     if (detectWeekendMech(p) === "pot-hold" || wantsPotHold(p)) {
+      // Figurine hold: figure envelope (2×2 base × 3 tall) — never pot-diameter bleed.
+      if (isFigurineHold(p)) {
+        return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)} — densify keeps the figure envelope (not pot diameter).`;
+      }
       const dia = potHoldDiameterIn(p);
       const potH = potHoldHeightIn(p);
       const potTalk =

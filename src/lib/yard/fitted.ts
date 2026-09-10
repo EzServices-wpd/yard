@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -1887,8 +1887,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   // Towel rail in a door portal — clear swing; not a shelving niche / linen closet.
+  // When hooks/pegs are also typed, densify BOTH towel rail + hooks (universal towel+hook class).
   if (isTowelPortalRail(prompt.toLowerCase())) {
     const towelLower = prompt.toLowerCase();
+    const withHooks = towelPortalWantsHooks(towelLower);
     const portalW = W;
     const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
     const portalH = Math.max(
@@ -1897,16 +1899,30 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     );
     const railD = Math.max(2.5, Math.min(D > 1 && D < 10 ? D : 3.5, 4));
     const railH = Math.max(3.5, Math.min(5, railD + 1));
-    panels.push(panel("back", "Towel rail", x0, 0, 0, portalW, railH, P));
+    // Cut identity: towel rail always; hooks densify via notes/steps (not towel-only path).
+    panels.push(panel("back", withHooks ? "Towel + hook rail" : "Towel rail", x0, 0, 0, portalW, railH, P));
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.55)));
-    const notes = [
-      `Towel rail in a ${portalW}" × ${portalH}" door portal — clear swing. ¾" plywood.`,
-      `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
-      `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
-    ];
+    const hookSaid = towelLower.match(/(\d+)\s*hooks?/);
+    const hooks = hookSaid
+      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+      : Math.max(3, Math.min(8, Math.round(portalW / 6)));
+    const notes = withHooks
+      ? [
+          `Towel + hook rail in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on the towel rail. Clear swing. ¾" plywood.`,
+          `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
+          `Screw ${hooks} hooks into the rail, about 6" on center. Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+        ]
+      : [
+          `Towel rail in a ${portalW}" × ${portalH}" door portal — clear swing. ¾" plywood.`,
+          `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
+          `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+        ];
+    const title = withHooks
+      ? `Towel + hook rail ${portalW}" portal · ${hooks} hooks`
+      : `Towel rail ${portalW}" portal`;
     return {
       id: createId("proj"),
-      name: `Towel rail ${portalW}" portal`,
+      name: title,
       prompt,
       kind: "closet",
       overall: { width: portalW, height: portalH, depth: railD },
@@ -1933,7 +1949,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           shelfCount: 0,
           drawersPerBank: undefined,
         },
-        name: `Towel rail ${portalW}" portal`,
+        name: title,
       },
       assumptions: {
         load: "medium",
@@ -2894,7 +2910,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const name = mediaStem
     ? `${mediaStem} ${W}" × ${H}" × ${D}"`
     : kitchenBase && !/base|kitchen/i.test(spec.name)
-      ? `Base cabinet ${W}" × ${H}" × ${D}"`
+      ? `${/kitchen/.test(promptLower) ? "Kitchen base" : "Base cabinet"} ${W}" × ${H}" × ${D}"`
       : (() => {
           const cleaned = spec.name
             .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")

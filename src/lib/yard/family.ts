@@ -202,6 +202,14 @@ export function isTowelPortalRail(lower: string) {
   );
 }
 
+/**
+ * Towel portal that also densifies hooks/pegs — BOTH towel rail + hooks
+ * (not towel-only path winning). Coat/key/over-door stay on portal hook-rail.
+ */
+export function towelPortalWantsHooks(lower: string) {
+  return isTowelPortalRail(lower) && /\bhooks?\b|\bpegs?\b/.test(lower);
+}
+
 /** Door portal / doorway / door opening envelope (fitted hang — not a garden arch). */
 export function isDoorPortal(lower: string) {
   if (/door\s*portal|portal|doorway|door opening/.test(lower)) return true;
@@ -382,7 +390,8 @@ export function sitBenchTitleStem(lower: string): string | null {
  * so typed width cannot wipe "Base cabinet" down to naked "Storage".
  */
 export function identityTitleStem(lower: string): string | null {
-  if (isKitchenBase(lower)) return "Base cabinet";
+  // Kitchen-typed base keeps "Kitchen base" stem (not bare Base cabinet only).
+  if (isKitchenBase(lower)) return /kitchen/.test(lower) ? "Kitchen base" : "Base cabinet";
   if (isKitchenUpper(lower)) return "Upper cabinet";
   if (isLoftBed(lower)) return "Loft bed";
   if (isBunkBed(lower)) return "Bunk bed";
@@ -410,7 +419,7 @@ export function identityTitleStem(lower: string): string | null {
   if (climb) return climb;
   if (isShoePortalCubbies(lower)) return "Shoe cubbies";
   if (isShoePortalRail(lower)) return "Shoe rail";
-  if (isTowelPortalRail(lower)) return "Towel rail";
+  if (isTowelPortalRail(lower)) return towelPortalWantsHooks(lower) ? "Towel + hook rail" : "Towel rail";
   if (isPortalSpanShelf(lower)) return portalSpanShelfTitle(lower);
   if (isPortalHookRail(lower)) return portalHookRailTitle(lower);
   if (isMudroomCubbyWall(lower)) return "Mudroom cubbies";

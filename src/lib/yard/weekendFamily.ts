@@ -179,6 +179,35 @@ export function potHoldHeightIn(prompt: string): number | null {
   return Number.isFinite(n) && n > 0 && n < 48 ? n : null;
 }
 
+/**
+ * Figurine / figure hold (same pot-hold mech class) — figure envelope, not pot diameter.
+ * Universal: figurine / figure words bind footprint talk away from pot-bleed copy.
+ */
+export function isFigurineHold(prompt: string): boolean {
+  return /\bfigurines?\b/.test(looksHay(prompt));
+}
+
+/**
+ * Figure envelope talk for densify notes — prefers "2×2 base × 3 tall figurine"
+ * over pot-diameter bleed language.
+ */
+export function figureHoldEnvelopeTalk(prompt: string): string {
+  const hay = looksHay(prompt);
+  const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
+  const tall = potHoldHeightIn(prompt);
+  if (basePair) {
+    const a = basePair[1];
+    const b = basePair[2];
+    if (tall != null) return `${a}″×${b}″ base × ${tall}″ tall figurine`;
+    return `${a}″×${b}″ base figurine`;
+  }
+  const dia = potHoldDiameterIn(prompt);
+  if (dia != null && tall != null) return `${dia}″ × ${dia}″ base × ${tall}″ tall figurine`;
+  if (dia != null) return `${dia}″ × ${dia}″ base figurine`;
+  if (tall != null) return `${tall}″ tall figurine`;
+  return "typed figurine";
+}
+
 /** Marble / free-projectile diameter inches (⅝ → 0.625). */
 export function marbleDiameterIn(prompt: string): number | null {
   const hay = looksHay(prompt)
