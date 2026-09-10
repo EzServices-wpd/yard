@@ -1257,7 +1257,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: `Set the counter at ${round(H)}"`,
-        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Glue and screw down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
+        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Cut list has two ¾" Counter plies — glue them face-to-face (laminate) so the finished top is 1½" thick, then glue and screw the stack down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
         partsUsed: names(counters.length ? counters : of("top")),
       },
       {
@@ -1427,7 +1427,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
-      description: `${counters.map(cutLine).join("; ")}. Glue and screw down into the uprights and the knee dividers. Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
+      description: `${counters.map(cutLine).join("; ")}. ${
+        (counters[0]?.size.height ?? 0) > 0.8
+          ? "Cut list has two ¾" plies — glue them face-to-face (laminate) so the finished work surface is 1½" thick, then glue and screw the stack down into the uprights and the knee dividers."
+          : "Glue and screw down into the uprights and the knee dividers."
+      } Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
       partsUsed: names(counters),
     });
   }

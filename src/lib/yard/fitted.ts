@@ -2347,7 +2347,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood, 1½" counter, 3½" toekick.`,
+        `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`,
         "Bottom shelf and one middle shelf are glued in. Not a closet. Not a dining table.",
         "Guidance only — level it on the floor. Confirm the real kitchen.",
       ],

@@ -42,6 +42,7 @@ function effortLabel(project: YardProject, pieces: number): string {
 }
 
 function closetCuts(project: YardProject): CutLine[] {
+  const STOCK_T = 0.75;
   const grouped = new Map<string, CutLine>();
   for (const p of project.panels) {
     const item = getCatalogItem(p.materialId);
@@ -49,17 +50,36 @@ function closetCuts(project: YardProject): CutLine[] {
     const d = Math.round(p.size.depth * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
     const family = partFamily(p.name, p.type);
-    const key = `${p.materialId}|${family}|${w}|${d}|${h}`;
+    let dims = sheetCutDims(w, h, d);
+    let qty = 1;
+    const isPly =
+      /plywood/i.test(p.materialId ?? "") ||
+      /plywood/i.test(item?.name ?? "");
+    // Class pack: sheet goods thicker than stock are laminated plies (island/desk
+    // 1½" counters), not a magic thick board the lumber aisle does not sell.
+    if (
+      isPly &&
+      dims.thicknessIn > STOCK_T + 0.05 &&
+      dims.thicknessIn <= 2.05 &&
+      !/^leg$/i.test(family)
+    ) {
+      const plies = Math.max(2, Math.round(dims.thicknessIn / STOCK_T));
+      dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
+      qty = plies;
+    }
+    const key = `${p.materialId}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
     const existing = grouped.get(key);
     if (existing) {
-      existing.quantity += 1;
+      existing.quantity += qty;
       continue;
     }
     grouped.set(key, {
       id: key,
       name: family,
-      quantity: 1,
-      ...sheetCutDims(w, h, d),
+      quantity: qty,
+      lengthIn: dims.lengthIn,
+      widthIn: dims.widthIn,
+      thicknessIn: dims.thicknessIn,
       material: item?.name ?? p.materialId,
     });
   }
