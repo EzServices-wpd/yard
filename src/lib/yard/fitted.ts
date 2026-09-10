@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -147,8 +147,9 @@ export function detectProgram(lower: string): FittedProgram {
 }
 
 function triple(text: string): { w?: number; h?: number; d?: number } {
+  // Optional axis words between numbers so "42 long × 24 wide × 18 tall" still triples.
   const m = text.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length|wide|width|deep|depth|tall|high|height)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:long|length|wide|width|deep|depth|tall|high|height)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
   );
   if (!m) return {};
   return { w: parseFloat(m[1]), h: parseFloat(m[2]), d: m[3] ? parseFloat(m[3]) : undefined };
@@ -194,7 +195,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const house = detectHouseFamily(lower);
   const trip = triple(t);
   const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
-  const isRound = /round|circular|diameter|\bdia\b/.test(lower);
+  const topShape: TableTopShape | null = program === "table" ? tableTopShape(lower) : null;
+  const isRound = topShape === "round" || (program === "table" && /round|circular|diameter|\bdia\b/.test(lower) && topShape !== "oval");
+  const isOval = topShape === "oval";
+  const isSquareTop = topShape === "square";
   const diameterRaw = pick(t, /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, NaN);
   const diameterTail = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)/i, NaN);
   const diameter = Number.isFinite(diameterRaw) ? diameterRaw : diameterTail;
@@ -206,6 +210,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height)/i, NaN);
   let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
+  // Table plan length — "42 long × 24 wide" is length × plan-width, not a dropped axis.
+  const labeledLong = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length)\b/i, NaN);
   // Headboard / slab wall-fit: "60\" wall span" is the typed width.
   if (!Number.isFinite(width)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*wall\s*span/i, NaN);
@@ -282,7 +288,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     // height already from "seat height" / tall|high|height pick when present
   }
 
-  const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
+  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
   // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
   // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
   // not a 24" coffee height with a 36" deep top.
@@ -325,6 +331,79 @@ export function parseBrief(prompt: string): FittedSpec | null {
     depth = dia;
     if (!Number.isFinite(height)) {
       height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
+    }
+  }
+
+  // Table plan axes (universal): height must not steal a plan dim; long×wide×tall is L×planW×H.
+  // "oval coffee 42 long × 24 wide × 18 tall" → W42 × H18 × D24.
+  // "square dining 36 × 36 × 30 tall" → W36 × H30 × D36 (third is height, not depth).
+  // Unlabeled table triples stay W×H×D (laundry folding 48x36x24) — do not rewrite those.
+  if (program === "table" && !isRound && !Number.isFinite(diameter)) {
+    const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
+    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+    const labeledDeep = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
+    if (Number.isFinite(labeledLong)) {
+      width = labeledLong;
+      if (Number.isFinite(labeledWide)) depth = labeledWide;
+    } else if (Number.isFinite(labeledWide)) {
+      width = labeledWide;
+    }
+    if (Number.isFinite(labeledTall)) height = labeledTall;
+    if (Number.isFinite(labeledDeep)) depth = labeledDeep;
+
+    // Triple + labeled height matching one slot → remaining two are plan W×D in typed order.
+    if (trip.w && trip.h && trip.d && Number.isFinite(height)) {
+      const near = (a: number, b: number) => Math.abs(a - b) < 0.05;
+      const slots: Array<{ key: "w" | "h" | "d"; n: number }> = [
+        { key: "w", n: trip.w },
+        { key: "h", n: trip.h },
+        { key: "d", n: trip.d },
+      ];
+      const heightHits = slots.filter((s) => near(s.n, height));
+      // Prefer the last matching slot when duplicates (square 36×36×30 tall → height is the 30).
+      const heightSlot = heightHits.length ? heightHits[heightHits.length - 1] : null;
+      if (heightSlot && (Number.isFinite(labeledTall) || /\d[^\d]{0,12}(?:tall|high|height)/i.test(t))) {
+        const plan = slots.filter((s) => s.key !== heightSlot.key).map((s) => s.n);
+        if (plan.length === 2) {
+          if (!Number.isFinite(labeledLong) && !Number.isFinite(labeledWide)) width = plan[0];
+          if (!Number.isFinite(labeledDeep) && !(Number.isFinite(labeledLong) && Number.isFinite(labeledWide))) {
+            depth = plan[1];
+          }
+        }
+      }
+    }
+
+    if (isSquareTop) {
+      // Square top: force plan W=D from the larger honest plan dim (or the equal pair).
+      if (Number.isFinite(width) && Number.isFinite(depth) && Math.abs(width - depth) > 0.05) {
+        // Only collapse when one axis was clearly the stolen height twin.
+        if (Number.isFinite(height) && (Math.abs(width - height) < 0.05 || Math.abs(depth - height) < 0.05)) {
+          const other = Math.abs(width - height) < 0.05 ? depth : width;
+          width = other;
+          depth = other;
+        }
+      } else if (Number.isFinite(width) && !Number.isFinite(depth)) {
+        depth = width;
+      } else if (Number.isFinite(depth) && !Number.isFinite(width)) {
+        width = depth;
+      } else if (trip.w && trip.h && !trip.d) {
+        width = trip.w;
+        depth = trip.h;
+      }
+      if (Number.isFinite(width) && Number.isFinite(depth)) {
+        // Equalize to typed square when both plan dims present and close, or force equal from first.
+        if (Math.abs(width - depth) < 0.05) {
+          /* already square */
+        } else if (trip.w && trip.h && Math.abs(trip.w - trip.h) < 0.05) {
+          width = trip.w;
+          depth = trip.w;
+        }
+      }
+    }
+
+    if (isOval && Number.isFinite(labeledLong) && Number.isFinite(labeledWide)) {
+      width = labeledLong;
+      depth = labeledWide;
     }
   }
 
@@ -673,7 +752,15 @@ export function parseBrief(prompt: string): FittedSpec | null {
     rod,
     centered: true,
     legs: program === "table" ? legs : undefined,
-    shape: program === "table" ? (isRound || Number.isFinite(diameter) ? "round" : "rect") : undefined,
+    shape: program === "table"
+      ? isOval
+        ? "oval"
+        : isRound || Number.isFinite(diameter)
+          ? "round"
+          : isSquareTop
+            ? "square"
+            : "rect"
+      : undefined,
     bays,
   };
 
@@ -749,7 +836,6 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                               ? "Wall cabinet"
                                               : names[program];
 
-  const roundTitle = program === "table" && (isRound || Number.isFinite(diameter));
   if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {
     const axisLabeledAll =
       /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
@@ -769,9 +855,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
     unit.depth = depth;
   }
 
-  const displayName = roundTitle
-    ? `Round ${titleStem} ${width}" × ${height}"`
-    : `${titleStem} ${width}" × ${height}" × ${depth}"`;
+  const tableShape: TableTopShape | null =
+    program === "table"
+      ? isOval
+        ? "oval"
+        : isRound || Number.isFinite(diameter)
+          ? "round"
+          : isSquareTop
+            ? "square"
+            : "rect"
+      : null;
+  const shapePrefix = tableShapeTitlePrefix(tableShape === "rect" ? null : tableShape);
+  const displayName =
+    tableShape === "round"
+      ? `${shapePrefix}${titleStem} ${width}" × ${height}"`
+      : `${shapePrefix}${titleStem} ${width}" × ${height}" × ${depth}"`;
 
   return {
     program,

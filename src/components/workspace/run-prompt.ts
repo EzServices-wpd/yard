@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -49,21 +49,26 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   const saidWide = /wide|width/.test(lower);
   const saidDeep = /deep|depth/.test(lower);
   const saidTall = /tall|high|height/.test(lower);
-  const saidRound = /round|circular|diameter|\bdia\b/.test(lower);
+  const saidLong = /\blong\b|\blength\b/.test(lower);
+  const promptShape = tableTopShape(lower);
+  const saidRound = promptShape === "round" || (/round|circular|diameter|\bdia\b/.test(lower) && promptShape !== "oval");
+  const saidOval = promptShape === "oval";
+  const saidSquare = promptShape === "square";
   const saidLegs = /\d+\s*-?\s*legs?/.test(lower);
+  const tableShapeSaid = saidRound || saidOval || saidSquare || saidLong;
 
   const unit = { ...brief.unit };
   const opening = { ...brief.opening };
 
-  if (saidWide || saidRound) {
+  if (saidWide || saidRound || saidOval || saidLong || saidSquare) {
     unit.width = parsed.unit.width;
     opening.width = parsed.opening.width;
   }
-  if (saidDeep || saidRound) {
+  if (saidDeep || saidRound || saidOval || saidLong || saidSquare) {
     unit.depth = parsed.unit.depth;
     opening.depth = parsed.opening.depth;
   }
-  if (saidTall) {
+  if (saidTall || saidOval || saidSquare || saidLong) {
     unit.height = parsed.unit.height;
     opening.height = parsed.opening.height;
   }
@@ -71,6 +76,16 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     unit.shape = parsed.unit.shape ?? "round";
     unit.depth = parsed.unit.depth;
     unit.width = parsed.unit.width;
+  } else if (saidOval) {
+    unit.shape = "oval";
+    unit.width = parsed.unit.width;
+    unit.depth = parsed.unit.depth;
+    unit.height = parsed.unit.height;
+  } else if (saidSquare) {
+    unit.shape = "square";
+    unit.width = parsed.unit.width;
+    unit.depth = parsed.unit.depth;
+    unit.height = parsed.unit.height;
   } else if (parsed.unit.shape && !unit.shape) {
     unit.shape = parsed.unit.shape;
   }
@@ -168,7 +183,16 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
             : /range\s*hood|\bhood\b/.test(lower)
               ? "Range hood"
             : program[0].toUpperCase() + program.slice(1);
-  const name = `${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  const shapePrefix = tableShapeTitlePrefix(
+    unit.shape === "round" || unit.shape === "oval" || unit.shape === "square" ? unit.shape : null,
+  );
+  const name =
+    unit.shape === "round"
+      ? `${shapePrefix}${label} ${unit.width}" × ${unit.height}"`
+      : `${shapePrefix}${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  // Prefer local parseBrief table title when the prompt named a top shape / long axis.
+  const tableLocalName =
+    parsed.program === "table" && tableShapeSaid && parsed.name ? parsed.name : null;
   // AI few-shot sometimes returns naked "Media" / "Media unit" — never keep that over a positive stem.
   const briefNakedMedia = !!brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim());
   // AI few-shot sometimes returns naked "Bench" on a named sit (dining/hall/entry/…) — keep stem.
@@ -183,6 +207,9 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidDeep &&
     !saidWide &&
     !saidRound &&
+    !saidOval &&
+    !saidSquare &&
+    !saidLong &&
     !identity &&
     !mediaLabel &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
@@ -199,7 +226,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   return {
     ...brief,
     program,
-    name: keepBriefName ? brief.name : name,
+    name: keepBriefName ? brief.name : tableLocalName || name,
     opening,
     unit,
     walls: parsed.walls ?? brief.walls,

@@ -19,6 +19,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   const H = u?.height ?? project.overall.height;
   const D = u?.depth ?? project.overall.depth;
   const roundTop = u?.shape === "round";
+  const ovalTop = u?.shape === "oval";
   const legs = panels.filter((p) => /^leg\b/i.test(p.name) || (p.type === "upright" && p.size.width <= 2));
   const aprons = panels.filter((p) => p.type === "rail" || /^apron\b/i.test(p.name));
   const tops = panels.filter((p) => p.type === "top");
@@ -30,7 +31,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: "Confirm the footprint — do not cut yet",
-    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs. Mark the footprint on the floor. Check it is square (or the circle is the size you want).`,
+    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs. Mark the footprint on the floor. Check it is square (or the circle / oval is the size you want).`,
     tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
     partsUsed: ["*"],
   });
@@ -39,7 +40,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: `Cut the ${item?.name ?? '3/4" plywood'} (top + aprons)`,
-    description: `Circular saw and a straightedge. Face up, label the waste face. ${plyBits.map(cutLine).join("; ")}.${roundTop ? ` Cut the top as a ${round(W)}" square blank, then band-saw / jigsaw to a ${round(W)}" diameter circle.` : ""}`,
+    description: `Circular saw and a straightedge. Face up, label the waste face. ${plyBits.map(cutLine).join("; ")}.${roundTop ? ` Cut the top as a ${round(W)}" square blank, then band-saw / jigsaw to a ${round(W)}" diameter circle.` : ovalTop ? ` Cut the top as a ${round(W)}" × ${round(D)}" rectangular blank, then band-saw / jigsaw to an oval ${round(W)}" long × ${round(D)}" wide.` : ""}`,
     tips: "Support the offcut so it does not break out. Iron-on edge banding on the top edge if people will see ply.",
     partsUsed: plyBits.map((p) => p.name),
   });
@@ -68,8 +69,8 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   if (tops.length) {
     steps.push({
       step: n++,
-      title: roundTop ? "Center the round top on the base" : "Set the top on the base",
-      description: `${tops.map(cutLine).join("; ")}. Flip the base right-side up. Center the top on the aprons${roundTop ? " so the overhang is even all around" : " so the overhang is even on all four sides"}. Glue the aprons, then screw up through the aprons into the top (not down through the face).`,
+      title: roundTop ? "Center the round top on the base" : ovalTop ? "Center the oval top on the base" : "Set the top on the base",
+      description: `${tops.map(cutLine).join("; ")}. Flip the base right-side up. Center the top on the aprons${roundTop ? " so the overhang is even all around" : ovalTop ? " so the oval overhang is even on the long and short axes" : " so the overhang is even on all four sides"}. Glue the aprons, then screw up through the aprons into the top (not down through the face).`,
       tips: "Clamp. Wipe squeeze-out. Do not rack the legs while the glue is wet.",
       partsUsed: [...tops, ...aprons, ...legs].map((p) => p.name),
     });

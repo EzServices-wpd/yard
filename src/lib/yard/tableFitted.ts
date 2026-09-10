@@ -1,5 +1,5 @@
 /**
- * Freestanding table — round or rect top, 2x2 legs under the top, aprons inside the legs.
+ * Freestanding table — round / oval / square / rect top, 2x2 legs under the top, aprons inside the legs.
  *
  * Global apron rule (every table this builder emits):
  * - rails sit on the inner faces of the posts, spanning post-to-post
@@ -50,6 +50,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const panels: Panel[] = [];
   const legN = Math.max(3, Math.min(4, u.legs ?? 4));
   const round = u.shape === "round";
+  const oval = u.shape === "oval";
   const legW = 1.5;
   const topT = P;
   // Short coffee/side tables: a 3.5" apron eats the silhouette. Cap by height.
@@ -57,10 +58,15 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const apronT = P;
   const legH = H - topT;
 
+  const topName = round
+    ? `Top (cut round dia ${W}")`
+    : oval
+      ? `Top (cut oval ${W}" × ${D}")`
+      : "Top";
   panels.push(
     panel(
       "top",
-      round ? `Top (cut round dia ${W}")` : "Top",
+      topName,
       x0,
       H - topT,
       z0,
@@ -193,7 +199,9 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     `${spec.name}. Freestanding table — top + ${legN} legs + ${legN} aprons.`,
     round
       ? `Round top: cut a ${W}" square blank, then band-saw / jigsaw to a ${W}" diameter circle. Height ${H}".`
-      : `Top ${W}" × ${D}". Height ${H}".`,
+      : oval
+        ? `Oval top: cut a ${W}" × ${D}" rectangular blank, then band-saw / jigsaw to an oval ${W}" long × ${D}" wide. Height ${H}".`
+        : `Top ${W}" × ${D}". Height ${H}".`,
     `Legs are 1-1/2" square (2x2 actual), ${legN}× — buy 2x2 lumber. Aprons nest on the 3/4" sheet. Legs stay under the top.`,
     "Guidance only — level the top; do not rack the legs.",
   ];

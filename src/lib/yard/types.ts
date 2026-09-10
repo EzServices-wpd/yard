@@ -197,7 +197,7 @@ export type FittedUnit = {
   rod?: boolean;
   centered?: boolean;
   legs?: number;
-  shape?: "rect" | "round";
+  shape?: "rect" | "round" | "oval" | "square";
   bays?: number;
 };
 

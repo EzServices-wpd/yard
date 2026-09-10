@@ -97,6 +97,24 @@ const HOUSE_BRIEF_EXAMPLES: { prompt: string; brief: Record<string, unknown> }[]
     },
   },
   {
+    prompt: "oval coffee table 42 long × 24 wide × 18 tall",
+    brief: {
+      program: "table",
+      name: 'Oval Coffee table 42" × 18" × 24"',
+      opening: { width: 42, height: 18, depth: 24, kind: "room" },
+      unit: { width: 42, depth: 24, height: 18, legs: 4, shape: "oval", doors: false, centered: true },
+    },
+  },
+  {
+    prompt: "square dining table 36 × 36 × 30 tall",
+    brief: {
+      program: "table",
+      name: 'Square Table 36" × 30" × 36"',
+      opening: { width: 36, height: 30, depth: 36, kind: "room" },
+      unit: { width: 36, depth: 36, height: 30, legs: 4, shape: "square", doors: false, centered: true },
+    },
+  },
+  {
     prompt: "closet system for 80 in by 120 in space",
     brief: {
       program: "closet",
@@ -353,8 +371,8 @@ Rules:
 - program must be one of: ${HOUSE_PROGRAMS.join(", ")}.
 - All dimensions in inches. opening and unit share width/height/depth.
 - opening.kind: "alcove" | "room" | "pocket" | "window".
-- unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"), bays (2-6 for wide closet systems).
-- Tables: program "table", legs 3 or 4, shape round when asked; dining height defaults 30. Coffee table: height ~18, not dining 30.
+- unit may include: shelfCount, cubbies, drawersPerBank, doors, mirror, rod, kneeW, counterH, upperStart, legs (3-4 for table), shape ("rect"|"round"|"oval"|"square"), bays (2-6 for wide closet systems).
+- Tables: program "table", legs 3 or 4, shape round / oval / square when asked (not a silent rectangle); dining height defaults 30. Coffee table: height ~18, not dining 30. Oval long×wide×tall is unit W×H×D (length×height×plan-width) with shape "oval" and Oval in the name. Square tops keep W=D; a labeled tall on the last of a triple is height — never steal the depth axis (36×36×30 tall → 36×30×36).
 - TV / media console / entertainment center: program "media", doors false unless doors requested. Keep the typed name (TV console, Media console, …) — not a naked "Media". Honor explicit wide/deep/tall. Default depth 16 and height ~22 only when those were not said. Open front with bay dividers when wide. Not a closet.
 - Closet system / wall of storage: program "closet", two unlabeled numbers both ≥60 are W×H in typed order (80x120 → 80 wide × 120 tall), depth default 24; one small number with a large one is depth with width = the large; height default 84 only when height was not given. Set bays ≈ width/32, rod true, one shelf above the rod (not four shelves through the hanging bay).
 - Nightstand / bedside table: program "storage", ~20 wide × ~24 tall × ~16 deep, one drawer over an open shelf, doors false. Not a 3-drawer mini dresser. Dresser: program "storage", ~36 tall × ~18 deep, three drawers, not a 24" nightstand and not a closet. Dog crate / kennel: program "storage", the animal goes inside, door true, no shelves, default ~36 wide × 30 tall × 24 deep when they only typed a width — not a bookcase and not a wire dog. Shoe rack / shoe storage: program "storage", doors false, open shoe cubbies or shoe shelves sized for footwear (divider spacing ~4–6" or shelf heights that fit shoes) — not bookcase pin shelves. Headboard / floating shelves: program "storage", doors false, shelves if asked. Coat rack: wall-mounted peg rail + hat shelf, about 36×6×8, no cubby shelves, not a 72" hall tree unless they said tall. Kitchen island: program "storage", honor W×D×H, open both sides (no back), counter + toekick, not a closet and not a 4-leg dining table. Range hood: program "storage", honor typed width (30 inch → 30 wide), default ~24 tall × ~18 deep, plywood canopy open on the bottom with a chimney, wall-mounted over the cooktop — never a giraffe, never a wire figure, never a closet. Ironing board cabinet / wall-mounted ironing board: program "storage", honor typed W×H×D (16 wide × 48 high × 6 deep is typical), door true, no shelves — a shallow wall cabinet with a fold-down board inside, not a freestanding storage box and not a closet. Laundry fold-down / fold-down laundry cabinet: same hung-cabinet fold-down-board affordance (not a freestanding laundry folding table), honor typed W×H×D (48 wide × 36 high × 6 deep is typical), piano hinge + support leg, title "Laundry fold-down". Radiator cover: program "storage", floor open-backed cover with top shelf + front grille slats (no door, no full back), honor typed W×H×D (36 wide × 30 high × 10 deep is typical) — not a sealed cabinet. Window seat: program "bench", title "Window seat", same cubby seat family as mudroom bench. Sofa table / console table / entry console: program "table", keep that identity — never Media console (shallow apron table, not a TV carcase). Daybed: program "bench", title "Daybed", one sleep deck + backrest (sleep-platforms on the seat family) — not a bunk stack and not a loft. Medicine cabinet / medicine chest: program "storage", honor typed W×H×D (16 wide × 24 high × 4 deep is typical), door true, two shelves, mirrored door, wall-mounted — not a floor vanity, not a sink, and not a closet just because it said bathroom. Over-the-toilet cabinet / space saver: program "storage", honor typed W×H×D (27 wide × 68 high × 9 deep is typical), doors false, three shelves — a floor étagère that straddles the toilet with an open bottom under the tank shelf, lagged to studs, not a closed floor box and not a vanity. Spice rack: program "storage", honor typed W×H×D (18 wide × 24 high × 4 deep is typical), doors false, three shelves — a wall-hung open rack with a front lip on each shelf so jars cannot slide off, lagged to studs, not a floor box, not a mirrored medicine cabinet, and not a shoe rack. Wine rack: program "storage", honor typed W×H×D (24 wide × 36 high × 12 deep is typical), doors false — a wall-hung open rack with fixed shelves and a 1.5" front rail on each bottle shelf so bottles cannot roll off, lagged to studs, not a floor bookcase, not a spice rack, and not a closet. Mudroom cubbies / mudroom cubby (no bench/seat word): program "storage", floor carcase with open cubby bays and dividers, honor typed W×H×D (often a tall wall unit like 48×72×16) — not a sit bench. Mudroom / entry bench / window seat: program "bench", honor typed W×H×D, doors false, default cubbies ≈ width/16 (3 cubbies at 48" wide) when cubbies were not said — a sittable seat over open shoe bays with dividers and a front apron, not a hollow storage box and not a vanity. Coat rack with bench / coat bench: program "bench", ~48 wide × ~18 high × ~16 deep, cubbies + peg rail (hooks), floor seat — not a wall-only coat rack and not depth 8. Kitchen base cabinet / base cabinet: program "storage", floor-carcase with door(s), default ~34.5 high × ~24 deep, toekick — not an island and not a hung upper. Kitchen upper cabinet / upper cabinet: program "storage", hung-cabinet with door(s), default ~30 high × ~12 deep, wall-mounted — not a floor base and not a vanity upperStart. Bunk bed / twin bunk: program "storage", family bunk with sleep-platforms, default twin ~42 wide × ~75 deep × ~65 high (full ~56, queen ~62×80), two decks on posts with upper guard rails — not a hollow closet and not a single bedOps box. Loft bed / twin loft: same family and defaults, one elevated deck only (open floor under), title "Loft bed" — not two bunks. Kitchen base cabinet title "Base cabinet"; kitchen upper "Upper cabinet" — never "Storage". Never turn a rack, crate, shelf, island, hood, ironing cabinet, medicine cabinet, over-toilet cabinet, spice rack, wine rack, or mudroom bench into a closet, a vanity, or a wire animal. A bare "bench 48 wide" is the same seat family (default ~18 high × 16 deep, cubbies), not a hollow box.
@@ -419,7 +437,7 @@ ${examples}`,
           rod: typeof u.rod === "boolean" ? u.rod : undefined,
           centered: true as const,
           legs: typeof u.legs === "number" ? Math.max(3, Math.min(4, Math.round(u.legs))) : undefined,
-          shape: u.shape === "round" || u.shape === "rect" ? u.shape : undefined,
+          shape: u.shape === "round" || u.shape === "rect" || u.shape === "oval" || u.shape === "square" ? u.shape : undefined,
           bays: typeof u.bays === "number" ? Math.max(2, Math.min(6, Math.round(u.bays))) : undefined,
         },
       };

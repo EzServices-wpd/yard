@@ -115,6 +115,29 @@ export function isSofaConsoleTable(lower: string) {
   return /sofa\s*table|console\s*table|entry\s*console/.test(lower);
 }
 
+/**
+ * Table top footprint shape from the prompt — universal, not a noun list.
+ * Oval beats round (elliptical tops are not discs). Square is plan W=D.
+ * Null when no shape word; callers default freestanding tables to rect.
+ */
+export type TableTopShape = "round" | "oval" | "square" | "rect";
+
+export function tableTopShape(lower: string): TableTopShape | null {
+  if (/\boval\b|elliptical|\bellipse\b/.test(lower)) return "oval";
+  if (/round|circular|diameter|\bdia\b/.test(lower)) return "round";
+  if (/\bsquare\b/.test(lower)) return "square";
+  if (/\brect(?:angle)?\b|\brectangular\b/.test(lower)) return "rect";
+  return null;
+}
+
+/** Title prefix stamped for shaped tops (Round / Oval / Square). */
+export function tableShapeTitlePrefix(shape: TableTopShape | null | undefined): string {
+  if (shape === "round") return "Round ";
+  if (shape === "oval") return "Oval ";
+  if (shape === "square") return "Square ";
+  return "";
+}
+
 
 function isMedicine(lower: string) {
   return /medicine/.test(lower);
