@@ -612,12 +612,23 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
 
   const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
   let bom = plan.bom.filter((b) => !joinForbidden(item, b.name));
-  // Densify catalog row stays lumber-1x4; Buy/cut labels keep spoken cedar/popsicle identity.
-  bom = bom.map((b) =>
-    b.catalogId === item.id || (b.name && b.name.toLowerCase() === item.name.toLowerCase())
-      ? { ...b, name: stockLabel }
-      : b,
-  );
+  // Densify catalog row stays lumber-1x4; Buy/cut/marketplace labels keep spoken cedar/popsicle identity.
+  // Chip may say Cedar 1×4 — offer rows must not leave bare "1×4 Board" beside it.
+  bom = bom.map((b) => {
+    const matches =
+      b.catalogId === item.id || (b.name && b.name.toLowerCase() === item.name.toLowerCase());
+    if (!matches) return b;
+    const offers = b.offers?.map((o) => {
+      if (!o.title) return o;
+      const bare =
+        o.title === item.name ||
+        o.title.toLowerCase() === item.name.toLowerCase() ||
+        (/board|stud/i.test(item.name) &&
+          /^\d+\s*[×x]\s*\d+(\s*Board)?(\s*\([^)]*\))?$/i.test(o.title.trim()));
+      return bare && stockLabel !== item.name ? { ...o, title: stockLabel } : o;
+    });
+    return { ...b, name: stockLabel, ...(offers ? { offers } : {}) };
+  });
   const binders = binderBom(item, project.instances, project.joinMethod);
   for (const line of binders) {
     if (!bom.some((b) => b.name === line.name)) bom = [...bom, line];

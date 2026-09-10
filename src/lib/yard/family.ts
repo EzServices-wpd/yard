@@ -254,6 +254,9 @@ export function identityTitleStem(lower: string): string | null {
   if (isBunkBed(lower)) return "Bunk bed";
   if (isLaundryFoldDown(lower)) return "Laundry fold-down";
   if (/window seat/.test(lower)) return "Window seat";
+  // Entry / mudroom sit benches — never naked "Bench" when the prompt named the room.
+  if (/entry/.test(lower) && /bench/.test(lower)) return "Entry bench";
+  if (/mudroom/.test(lower) && /bench/.test(lower)) return "Mudroom bench";
   if (isRadiatorCover(lower)) return "Radiator cover";
   if (isDaybed(lower)) return "Daybed";
   if (isSofaConsoleTable(lower)) {

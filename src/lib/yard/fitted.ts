@@ -637,6 +637,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Mudroom cubbies"
       : /mudroom/.test(lower) && /bench/.test(lower)
         ? "Mudroom bench"
+        : /entry/.test(lower) && /bench/.test(lower)
+          ? "Entry bench"
         : /dresser/.test(lower)
           ? "Dresser"
           : /nightstand|bedside/.test(lower)
@@ -1905,6 +1907,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("rail", "Peg rail", x0, H, 0, W, pegH, P));
     }
     const mudroom = /mudroom/i.test(prompt);
+    const entryBench = /entry/i.test(prompt) && /bench/i.test(prompt);
     const windowSeat = /window seat/i.test(prompt);
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
     const stackH = H + pegH;
@@ -1914,6 +1917,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? `Window seat ${W}" × ${H}" × ${D}"`
       : mudroom
         ? `Mudroom bench ${W}" × ${H}" × ${D}"`
+      : entryBench
+        ? `Entry bench ${W}" × ${H}" × ${D}"`
         : `Bench ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -2601,8 +2606,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           const cleaned = spec.name
             .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
             .trim();
-          // Scrub leftover naked Media from an older brief.
-          const stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
+          // Scrub leftover naked Media / naked Bench (entry) from an older brief.
+          let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
+          if (/^Bench$/i.test(stem) && /entry/.test(promptLower) && /bench/.test(promptLower)) {
+            stem = "Entry bench";
+          }
+          if (/^Bench$/i.test(stem) && /mudroom/.test(promptLower) && /bench/.test(promptLower)) {
+            stem = "Mudroom bench";
+          }
           return `${stem} ${W}" × ${H}" × ${D}"`;
         })();
   const notesNamed = notes.map((n, i) => (i === 0 ? n.replace(spec.name, name) : n));
