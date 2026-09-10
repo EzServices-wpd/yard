@@ -232,11 +232,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 : 36);
   }
 
-  // Window seat: "60×18 opening, 18\" seat height" → W×D from opening pair, H from seat height.
-  if (/window seat/.test(lower) && /opening/.test(lower) && trip.w && trip.h && !trip.d) {
+  // Seat/fitted envelope: typed W×D opening + seat H — opening depth must survive.
+  // "entry bench fitted to a 60×20 opening, 18\" seat height" → 60×18×20 (not 60×18×16).
+  // "banquette seat fitted to a 72×24 opening, 18\" seat height" → 72×18×24.
+  // "window seat … 60×18 opening, 18\" seat height" → 60×18×18.
+  // saidAxis is true when "seat height" appears, so the unlabeled W×D branch below
+  // does not fire — without this, opening D collapses to the default ~16" case depth.
+  // Dresser/carcase keep labeled deep/height axes; this only applies to bench/seat pairs.
+  const seatOpeningWd =
+    program === "bench" &&
+    Boolean(trip.w && trip.h && !trip.d) &&
+    (/\bopening\b/.test(lower) || /fitted\s+to/.test(lower));
+  if (seatOpeningWd) {
     width = trip.w;
     if (!Number.isFinite(depth)) depth = trip.h;
-    // height already from "seat height" pick when present; else keep trip/fallback later
+    // height already from "seat height" / tall|high|height pick when present
   }
 
   const saidAxis = /wide|width|deep|depth|tall|high|height/.test(lower);
@@ -596,6 +606,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
   }
 
+  // BATCH10_SEAT_OPENING_WD: seat/fitted W×D opening — honor typed opening D (not default 16).
+  if (typeof seatOpeningWd !== "undefined" && seatOpeningWd) {
+    width = Number(trip.w);
+    depth = Number(trip.h);
+  }
+
   const unit: FittedUnit = {
 
     width,
@@ -697,6 +713,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
       unit.height = height;
       unit.depth = depth;
     }
+  }
+  if (typeof seatOpeningWd !== "undefined" && seatOpeningWd) {
+    width = Number(trip.w);
+    depth = Number(trip.h);
+    unit.width = width;
+    unit.depth = depth;
   }
 
   const displayName = roundTitle
