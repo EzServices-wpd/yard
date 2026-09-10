@@ -61,6 +61,41 @@ export function namedStockFromPrompt(prompt: string): CatalogItem | null {
   return item;
 }
 
+/**
+ * Densify may map cedar/popsicle/… onto a lumber size catalog row, but labels/steps
+ * keep the spoken stock identity (cedar densify must not hide as bare "1×4 Board").
+ */
+export function namedStockDisplayName(prompt: string, item: CatalogItem | undefined | null): string {
+  if (!item) return "stock";
+  const lower = (prompt || "").toLowerCase();
+  const aliases = item.aliases ?? [];
+  const spoken = aliases.find((a) => {
+    const al = a.toLowerCase();
+    if (al.length < 3) return false;
+    if (!lower.includes(al)) return false;
+    // Skip pure size codes ("1x4", "one by four") — keep species / craft nouns.
+    if (/^\d+\s*[x×]\s*\d+/.test(al)) return false;
+    if (/^(one|two|three|four)\s+by\s+/.test(al)) return false;
+    if (/^(pvc|stud|table leg)$/i.test(al)) return false;
+    return true;
+  });
+  if (!spoken) return item.name;
+  const species = spoken
+    .split(/\s+/)[0]
+    .replace(/^[a-z]/, (c) => c.toUpperCase());
+  // Catalog name is a bare lumber size / board — prefer "Cedar 1×4".
+  const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/i, "×");
+  if (size && (/board|stud/i.test(item.name) || /^\d+\s*[×x]\s*\d+/i.test(item.name))) {
+    // Avoid "Cedar Cedar" if species already equals size talk.
+    if (species.toLowerCase() === "cedar" || species.toLowerCase() === "pine") {
+      return `${species} ${size}`;
+    }
+  }
+  // If the spoken alias is already the catalog title (popsicle…), keep catalog name.
+  if (item.name.toLowerCase().includes(spoken.toLowerCase().split(/\s+/)[0])) return item.name;
+  return `${species} · ${item.name}`;
+}
+
 /** True when generateFromPrompt (no CatalogPanel override) bound the prompt's stock. */
 export function promptBoundStock(project: YardProject): boolean {
   const named = namedStockFromPrompt(project.prompt ?? "");
@@ -159,12 +194,19 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     }
     if (plan) {
       const primaryHit = plan.bom.some(
-        (b) => b.catalogId === stock.id || (b.name && b.name.toLowerCase() === stock.name.toLowerCase()),
+        (b) => {
+          const label = namedStockDisplayName(prompt, stock).toLowerCase();
+          return (
+            b.catalogId === stock.id ||
+            (b.name &&
+              (b.name.toLowerCase() === stock.name.toLowerCase() || b.name.toLowerCase() === label))
+          );
+        },
       );
       if (project.instances.length > 0 && !primaryHit) {
         issues.push({
           guard: "stock",
-          message: `Buy list does not sell ${stock.name}.`,
+          message: `Buy list does not sell ${namedStockDisplayName(prompt, stock)}.`,
         });
       }
       for (const b of plan.bom) {
@@ -462,11 +504,11 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     const drifted = instances.some((i) => i.catalogId !== item.id);
     if (drifted) {
       instances = instances.map((i) => (i.catalogId === item.id ? i : { ...i, catalogId: item.id }));
-      notes.push(`Honesty: every member is ${item.name}.`);
+      notes.push(`Honesty: every member is ${namedStockDisplayName(project.prompt ?? "", item)}.`);
     }
     if (isWholeStock(item) && instances.some((i) => i.cutLength != null)) {
       instances = instances.map((i) => (i.cutLength == null ? i : { ...i, cutLength: undefined }));
-      notes.push(`Honesty: ${item.name} used whole. Do not cut.`);
+      notes.push(`Honesty: ${namedStockDisplayName(project.prompt ?? "", item)} used whole. Do not cut.`);
     }
   }
 
@@ -504,19 +546,20 @@ export function weekendCutLines(project: YardProject): CutLine[] {
   const stockLen = item.dims.length ?? 0;
   const width = item.dims.width ?? item.dims.diameter ?? 0;
   const thick = item.dims.thickness ?? item.dims.height ?? item.dims.diameter ?? 0;
+  const label = namedStockDisplayName(project.prompt ?? "", item);
   const whole = isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
   if (whole) {
     return [
       {
         id: item.id,
-        name: item.name,
+        name: label,
         quantity: project.instances.length,
         lengthIn: stockLen,
         widthIn: width,
         thicknessIn: thick,
-        material: item.name,
+        material: label,
         whole: true,
-        notes: `Full ${item.name}s from the pack. Glue. Do not cut.`,
+        notes: `Full ${label}s from the pack. Glue. Do not cut.`,
       },
     ];
   }
@@ -531,6 +574,8 @@ export function weekendCutLines(project: YardProject): CutLine[] {
       existing.quantity += 1;
       continue;
     }
+    const rowItem = getCatalogItem(inst.catalogId) ?? item;
+    const rowLabel = namedStockDisplayName(project.prompt ?? "", rowItem);
     grouped.set(key, {
       id: key,
       name: family,
@@ -538,7 +583,7 @@ export function weekendCutLines(project: YardProject): CutLine[] {
       lengthIn: len,
       widthIn: width,
       thicknessIn: thick,
-      material: getCatalogItem(inst.catalogId)?.name ?? item.name,
+      material: rowLabel,
       whole: false,
     });
   }
@@ -565,7 +610,14 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
   const item = itemOf(project);
   if (!item || isWireStock(item)) return plan;
 
+  const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
   let bom = plan.bom.filter((b) => !joinForbidden(item, b.name));
+  // Densify catalog row stays lumber-1x4; Buy/cut labels keep spoken cedar/popsicle identity.
+  bom = bom.map((b) =>
+    b.catalogId === item.id || (b.name && b.name.toLowerCase() === item.name.toLowerCase())
+      ? { ...b, name: stockLabel }
+      : b,
+  );
   const binders = binderBom(item, project.instances, project.joinMethod);
   for (const line of binders) {
     if (!bom.some((b) => b.name === line.name)) bom = [...bom, line];
@@ -577,6 +629,13 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
     cutList = stampWeekendCuts(weekendCutLines(project)).slice(0, 2);
   } else if (!cutList.length) {
     cutList = stampWeekendCuts(weekendCutLines(project));
+  } else {
+    // Refresh material labels on existing cut lines when densify hid the spoken stock.
+    cutList = cutList.map((c) =>
+      c.material && c.material.toLowerCase() === item.name.toLowerCase()
+        ? { ...c, material: stockLabel, name: c.whole ? stockLabel : c.name }
+        : c,
+    );
   }
 
   return {

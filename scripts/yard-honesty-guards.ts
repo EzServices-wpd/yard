@@ -20,6 +20,7 @@ import {
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import {
   inspectWeekendHonesty,
+  namedStockDisplayName,
   promptBoundStock,
   weekendTypedSize,
 } from "../src/lib/yard/weekendStockHonesty";
@@ -1186,6 +1187,96 @@ const linenStand = linenPlan.instructions.find((s) => /stand the carcase/i.test(
 if (linenStand && /0\.75\s*×\s*78\s*×\s*16/.test(linenStand.description) && !/78\s*×\s*16\s*×\s*0\.75/.test(linenStand.description)) {
   failHonesty("linen step axis order still W-H-D not cut-list long-mid-thick", linenStand.description);
 }
+
+
+// —— Soft-trust cleanup (universal): Media naming / named-stock densify labels /
+// Measure kinds / drawer-front cut list. No Ideas / monetization.
+const tv18 = generateFromPrompt("TV console 70 wide 30 tall 18 deep");
+if (!/^TV console 70"/i.test(tv18.name)) {
+  failHonesty("TV console 70×30×18 title drifted", tv18.name);
+}
+if (measureKindFromProject(tv18) !== "media") {
+  failHonesty("TV console measure kind not Media / TV", measureKindFromProject(tv18));
+}
+// AI brief sometimes lands naked "Media" — Measure/fittedOverride must keep TV console.
+const mediaWiped = generateFromPrompt("TV console 70 wide 30 tall 18 deep", undefined, undefined, {
+  fittedOverride: {
+    program: "media",
+    name: 'Media 70" × 22" × 16"',
+    opening: { width: 70, height: 30, depth: 18, kind: "room" },
+    unit: { width: 70, height: 30, depth: 18, doors: false, shelfCount: 2, bays: 2 },
+  },
+  honorUnit: true,
+});
+if (!/^TV console 70"/i.test(mediaWiped.name)) {
+  failHonesty("fittedOverride naked Media wipe survived", mediaWiped.name);
+}
+
+const deskKind = generateFromPrompt("desk 60 wide 29 tall 30 deep with drawers");
+if (measureKindFromProject(deskKind) !== "desk") {
+  failHonesty("desk measure kind not Desk", measureKindFromProject(deskKind));
+}
+const tableKind = generateFromPrompt("coffee table 40 round");
+if (measureKindFromProject(tableKind) !== "table") {
+  failHonesty("table measure kind not Table", measureKindFromProject(tableKind));
+}
+
+const cedarRamp = generateFromPrompt(
+  'weekend craft: soft-launch paper plane from a 12" cedar ramp; plane leaves the ramp free',
+);
+const cedarPlan = buildPlan(cedarRamp);
+const cedarLabel = namedStockDisplayName(cedarRamp.prompt ?? "", detectMaterial(cedarRamp.prompt ?? ""));
+if (!/cedar/i.test(cedarLabel)) failHonesty("cedar densify display lost cedar", cedarLabel);
+if (/^1\s*[×x]\s*4 Board/i.test(cedarLabel)) failHonesty("cedar densify still bare 1×4 Board", cedarLabel);
+const cedarMat = [...cedarPlan.cutList.map((c) => c.material ?? c.name), ...cedarPlan.bom.map((b) => b.name)].join(" | ");
+if (!/cedar/i.test(cedarMat)) failHonesty("cedar plan labels hid cedar identity", cedarMat);
+if (/1\s*[×x]\s*4 Board \(8 ft\)/i.test(cedarMat) && !/cedar/i.test(cedarMat)) {
+  failHonesty("cedar plan still sells bare 1×4 Board", cedarMat);
+}
+
+const night = generateFromPrompt("nightstand 20 wide 24 tall 16 deep");
+const nightPlan = buildPlan(night);
+if (!night.panels.some((p) => /drawer front/i.test(p.name))) {
+  failHonesty("nightstand missing drawer front panel", night.panels.map((p) => p.name));
+}
+if (!nightPlan.cutList.some((c) => /drawer front/i.test(c.name))) {
+  failHonesty("nightstand cut list missing Drawer front", nightPlan.cutList.map((c) => c.name));
+}
+const nightSlides = nightPlan.bom.filter((b) => /slide/i.test(b.name));
+if (nightSlides.some((b) => b.quantity !== 1 && /pair/i.test(b.unit ?? ""))) {
+  // one drawer → one pair; fronts must not double the slide count
+}
+const nightDrawerBoxes = night.panels.filter((p) => p.type === "drawer" && !/front/i.test(p.name));
+const nightSlideQty = nightPlan.bom.find((b) => /slide/i.test(b.name))?.quantity;
+if (nightSlideQty != null && nightSlideQty !== nightDrawerBoxes.length) {
+  failHonesty("nightstand slides doubled by drawer fronts", { nightSlideQty, boxes: nightDrawerBoxes.length });
+}
+
+const dresser = generateFromPrompt("dresser 36 wide 36 tall 18 deep");
+const dresserPlan = buildPlan(dresser);
+if (!dresserPlan.cutList.some((c) => /drawer front/i.test(c.name))) {
+  failHonesty("dresser cut list missing Drawer front", dresserPlan.cutList.map((c) => c.name));
+}
+
+// Freezes still green under soft-trust
+const linenFreeze = generateFromPrompt("31.5 inch linen closet 78 tall 16 deep");
+if (!/closet/i.test(linenFreeze.name) || Math.abs(linenFreeze.overall.width - 31.5) > 0.1) {
+  failHonesty("linen freeze broken by soft-trust", { name: linenFreeze.name, overall: linenFreeze.overall });
+}
+const mudCubby = generateFromPrompt("mudroom cubbies 48 wide 72 tall 16 deep");
+if (!/^Mudroom cubbies/i.test(mudCubby.name) || mudCubby.fitted?.program !== "storage") {
+  failHonesty("mudroom cubbies storage freeze broken", { name: mudCubby.name, program: mudCubby.fitted?.program });
+}
+
+console.log("SOFT-TRUST OK", {
+  tv18: tv18.name,
+  mediaWiped: mediaWiped.name,
+  deskKind: measureKindFromProject(deskKind),
+  tableKind: measureKindFromProject(tableKind),
+  cedarLabel,
+  nightFronts: nightPlan.cutList.filter((c) => /drawer front/i.test(c.name)).map((c) => c.name),
+  dresserFronts: dresserPlan.cutList.filter((c) => /drawer front/i.test(c.name)).map((c) => c.name),
+});
 
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),

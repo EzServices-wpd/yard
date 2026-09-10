@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -31,9 +31,18 @@ function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
 function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: FittedSpec): FittedSpec {
   const lower = prompt.toLowerCase();
   if (!parsed) {
-    // Identity stems still win when local parse missed (climb/shoe/kitchen).
-    const identity = identityTitleStem(lower);
-    if (!identity) return brief;
+    // Identity stems still win when local parse missed (climb/shoe/kitchen/media).
+    const identity =
+      identityTitleStem(lower) ||
+      (brief.program === "media" ? mediaIdentityLabel(lower) || "Media console" : null);
+    if (!identity) {
+      // Scrub naked "Media" / "Media unit" even when no better stem is known.
+      if (brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim())) {
+        const { width, height, depth } = brief.unit;
+        return { ...brief, name: `Media console ${width}" × ${height}" × ${depth}"` };
+      }
+      return brief;
+    }
     const { width, height, depth } = brief.unit;
     return { ...brief, name: `${identity} ${width}" × ${height}" × ${depth}"` };
   }
@@ -123,8 +132,12 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   }
 
   const identity = identityTitleStem(lower);
+  // TV / media console stay positive product names — never capitalize program → naked "Media".
+  const mediaLabel = program === "media" ? mediaIdentityLabel(lower) || "Media console" : null;
   const label = identity
     ? identity
+    : mediaLabel
+    ? mediaLabel
     : /coffee/.test(lower) && /table/.test(lower)
     ? "Coffee table"
     : /mudroom/.test(lower) && /bench/.test(lower)
@@ -149,12 +162,16 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
               ? "Range hood"
             : program[0].toUpperCase() + program.slice(1);
   const name = `${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
+  // AI few-shot sometimes returns naked "Media" / "Media unit" — never keep that over a positive stem.
+  const briefNakedMedia = !!brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim());
   const keepBriefName =
     brief.name &&
+    !briefNakedMedia &&
     !saidDeep &&
     !saidWide &&
     !saidRound &&
     !identity &&
+    !mediaLabel &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&
     !(/spice/.test(lower) && /rack/.test(lower)) &&
     !(/wine/.test(lower) && /rack/.test(lower)) &&

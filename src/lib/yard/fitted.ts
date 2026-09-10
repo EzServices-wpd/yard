@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -735,6 +735,24 @@ function panel(
     size: { width: w, height: h, depth: d },
     materialId: PLY,
   };
+}
+
+/** Drawer box + its own cut-list front (not a hinged door — no cabinet-hinge BOM). */
+function pushDrawerWithFront(
+  panels: Panel[],
+  boxName: string,
+  frontName: string,
+  x: number,
+  y: number,
+  z: number,
+  boxW: number,
+  boxH: number,
+  boxD: number,
+  frontW: number,
+) {
+  panels.push(panel("drawer", boxName, x, y, z, boxW, boxH, boxD));
+  // Face people see — thin ply at the front of the bay; own cut-list line.
+  panels.push(panel("rail", frontName, x + (boxW - frontW) / 2, y, z + Math.max(0, boxD - P), frontW, boxH, P));
 }
 
 
@@ -2288,8 +2306,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
     panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
     panels.push(panel("shelf", "Shelf", x0 + P, shelfY, 0.1, W - P * 2, P, D - 0.2));
-    panels.push(
-      panel("drawer", "Drawer", x0 + P + 0.5, drawerY, 0.15, W - P * 2 - 1, drawerH - 0.12, D - 0.3),
+    pushDrawerWithFront(
+      panels,
+      "Drawer",
+      "Drawer front",
+      x0 + P + 0.5,
+      drawerY,
+      0.15,
+      W - P * 2 - 1,
+      drawerH - 0.12,
+      D - 0.3,
+      W - P * 2 - 0.25,
     );
     const name = `Nightstand ${W}" × ${H}" × ${D}"`;
     return {
@@ -2365,8 +2392,30 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const dh = span / n;
     for (let i = 0; i < n; i++) {
       const y = 3.5 + i * dh;
-      panels.push(panel("drawer", `Left drawer ${i + 1}`, x0 + P, y, 0.15, leftW - P - 0.1, dh - 0.12, D - 0.3));
-      panels.push(panel("drawer", `Right drawer ${i + 1}`, kneeR + P, y, 0.15, rightW - P - 0.1, dh - 0.12, D - 0.3));
+      pushDrawerWithFront(
+        panels,
+        `Left drawer ${i + 1}`,
+        `Left drawer front ${i + 1}`,
+        x0 + P,
+        y,
+        0.15,
+        leftW - P - 0.1,
+        dh - 0.12,
+        D - 0.3,
+        leftW - P - 0.05,
+      );
+      pushDrawerWithFront(
+        panels,
+        `Right drawer ${i + 1}`,
+        `Right drawer front ${i + 1}`,
+        kneeR + P,
+        y,
+        0.15,
+        rightW - P - 0.1,
+        dh - 0.12,
+        D - 0.3,
+        rightW - P - 0.05,
+      );
     }
     panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
     if (u.mirror && spec.program === "vanity") {
@@ -2377,7 +2426,18 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const n = u.drawersPerBank;
     const dh = (H - 4) / n;
     for (let i = 0; i < n; i++) {
-      panels.push(panel("drawer", `Drawer ${i + 1}`, x0 + P + 0.5, 3.5 + i * dh, 0.15, W - P * 2 - 1, dh - 0.12, D - 0.3));
+      pushDrawerWithFront(
+        panels,
+        `Drawer ${i + 1}`,
+        n === 1 ? "Drawer front" : `Drawer front ${i + 1}`,
+        x0 + P + 0.5,
+        3.5 + i * dh,
+        0.15,
+        W - P * 2 - 1,
+        dh - 0.12,
+        D - 0.3,
+        W - P * 2 - 0.25,
+      );
     }
   }
 
@@ -2526,10 +2586,25 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
   ];
 
-  const name =
-    kitchenBase && !/base|kitchen/i.test(spec.name)
+  // Keep TV / Media console identity through Measure dim merges — never naked "Media",
+  // and always stamp live W×H×D onto the title.
+  const promptLower = prompt.toLowerCase();
+  const mediaStem =
+    spec.program === "media"
+      ? identityTitleStem(promptLower) || mediaIdentityLabel(promptLower) || "Media console"
+      : identityTitleStem(promptLower);
+  const name = mediaStem
+    ? `${mediaStem} ${W}" × ${H}" × ${D}"`
+    : kitchenBase && !/base|kitchen/i.test(spec.name)
       ? `Base cabinet ${W}" × ${H}" × ${D}"`
-      : spec.name;
+      : (() => {
+          const cleaned = spec.name
+            .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
+            .trim();
+          // Scrub leftover naked Media from an older brief.
+          const stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
+          return `${stem} ${W}" × ${H}" × ${D}"`;
+        })();
   const notesNamed = notes.map((n, i) => (i === 0 ? n.replace(spec.name, name) : n));
 
   return {

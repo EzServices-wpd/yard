@@ -54,6 +54,7 @@ export function cutListName(name: string, type?: string): string {
   if (type === "top") return "Top";
   if (type === "bottom") return "Bottom";
   if (type === "back") return "Back";
+  if (/drawer front/i.test(name)) return "Drawer front";
   if (type === "door") return "Door";
   if (type === "drawer") return "Drawer box";
   if (type === "rail") {

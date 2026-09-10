@@ -222,7 +222,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         : `${joinScrews} screws estimated at joints.`,
     });
   }
-  const drawers = project.panels.filter((panel) => panel.type === "drawer");
+  // Drawer fronts are typed as rail with "Drawer front" names — slides count boxes only.
+  const drawers = project.panels.filter(
+    (panel) => panel.type === "drawer" && !/drawer front/i.test(panel.name),
+  );
   if (drawers.length) {
     const carcaseD =
       project.pocket?.unit.depth ?? project.fitted?.unit.depth ?? project.overall.depth;

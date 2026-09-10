@@ -17,6 +17,7 @@ import {
   mediaHoldTipDeg,
   mediaHoldHeldLabel,
 } from "./weekendFamily";
+import { namedStockDisplayName } from "./weekendStockHonesty";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -86,7 +87,7 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
 
 function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   const item = getCatalogItem(project.primaryMaterialId);
-  const name = item?.name ?? "craft sticks";
+  const name = namedStockDisplayName(project.prompt ?? "", item);
   const subject = project.flat?.subject ?? project.name;
   const paper =
     project.flat?.paper === "8x10"
@@ -1535,6 +1536,7 @@ function midY(i: YardInstance) {
 
 function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
   const item = getCatalogItem(project.primaryMaterialId);
+  const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
   const { hold } = joinHold(item);
   const H = Math.max(project.overall.height, 1);
   const y1 = (57 / 324) * H;
@@ -1575,7 +1577,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
   if (whole) {
     steps.push({
       step: n++,
-      title: `Do not cut — ${item?.name ?? "stock"}s stay whole`,
+      title: `Do not cut — ${stockLabel}s stay whole`,
       description: `${project.instances.length} full pieces from the pack. Glue them as they come. The bench is a gluing diagram.`,
       partsUsed: ["*"],
     });
@@ -1616,6 +1618,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (project.kind === "eiffel") return uniqueEiffelSteps(project);
   const item = getCatalogItem(project.primaryMaterialId);
+  const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
   const { hold } = joinHold(item);
   const tool = cutHow(item);
   const byRole = new Map<string, YardInstance[]>();
@@ -1678,7 +1681,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: whole ? `Read this ${project.name} before you glue` : `Read this ${project.name} before you cut`,
-    description: `${cutSummary(project.instances, item?.name ?? "stock")} Envelope about ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".${mechNote}`,
+    description: `${cutSummary(project.instances, stockLabel)} Envelope about ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".${mechNote}`,
     tips: whole
       ? "Trust the stick list — full pieces, no cuts."
       : "Trust the cut list.",
@@ -1713,7 +1716,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (whole) {
     steps.push({
       step: n++,
-      title: `Do not cut — ${item?.name ?? "stock"}s stay whole`,
+      title: `Do not cut — ${stockLabel}s stay whole`,
       description: `${project.instances.length} full pieces from the pack. Glue them as they come.`,
       tips: "A pack and a bottle of glue is the whole kit.",
       partsUsed: ["*"],

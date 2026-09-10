@@ -59,22 +59,34 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
   if (project.pocket) return "closet_niche";
   const opening = project.fitted?.opening.kind;
   if (opening === "window") return "window_rough_opening";
-  if (opening === "alcove" || opening === "pocket") return "closet_niche";
+  // Program / family first — alcove opening must not wipe Desk / Table / Media into Closet.
   const program = project.fitted?.program as FittedProgram | undefined;
   const family = project.fitted?.family as HouseFamily | undefined;
   const blob = `${project.name ?? ""} ${project.prompt ?? ""} ${project.fitted?.name ?? ""}`.toLowerCase();
-  if (program === "desk") return "desk";
+  if (program === "desk" || /\bdesk\b|workbench/.test(blob)) return "desk";
   if (program === "media" || /\btv\b|media console|entertainment\s*cent/.test(blob)) return "media";
-  if (program === "table" || family === "table") return "table";
+  if (program === "table" || family === "table" || (/\btable\b/.test(blob) && !/work table/.test(blob))) return "table";
   if (program === "bench" || family === "seat") return "bench";
   if (wantsShoes(blob) || /shoe rack/.test(blob)) return "shoe_rack";
-  if (program === "closet" || program === "vanity" || program === "wardrobe" || program === "pantry") {
-    return "closet_niche";
-  }
   // Bookcase / wall cabinet keep their own labels — never leftover "Shelving niche".
   if (program === "bookcase") return "bookcase";
   if (family === "hung-cabinet" || /\bwall cabinet\b|hung cabinet/.test(blob)) return "wall_cabinet";
   if (family === "hung-open") return "shelving_alcove";
+  if (program === "closet" || program === "vanity" || program === "wardrobe" || program === "pantry") {
+    return "closet_niche";
+  }
+  // Known storage carcases (mudroom cubbies, dresser, crate…) — Closet / alcove, not General volume.
+  if (
+    program === "storage" &&
+    (/mudroom|cubb|dresser|nightstand|bedside|crate|linen|alcove|closet|radiator|ironing|medicine|spice|wine/.test(blob) ||
+      family === "floor-carcase" ||
+      family === "straddle" ||
+      family === "slab" ||
+      family === "bunk")
+  ) {
+    return "closet_niche";
+  }
+  if (opening === "alcove" || opening === "pocket") return "closet_niche";
   return "general_volume";
 }
 
