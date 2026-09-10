@@ -1429,7 +1429,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
       description: `${counters.map(cutLine).join("; ")}. ${
         (counters[0]?.size.height ?? 0) > 0.8
-          ? "Cut list has two ¾" plies — glue them face-to-face (laminate) so the finished work surface is 1½" thick, then glue and screw the stack down into the uprights and the knee dividers."
+          ? "Cut list has two ¾\" plies — glue them face-to-face (laminate) so the finished work surface is 1½\" thick, then glue and screw the stack down into the uprights and the knee dividers."
           : "Glue and screw down into the uprights and the knee dividers."
       } Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
       partsUsed: names(counters),
