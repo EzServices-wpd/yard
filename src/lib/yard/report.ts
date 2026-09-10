@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { honestWeekendPlan } from "./weekendStockHonesty";
+import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -575,7 +575,7 @@ export function buildPlan(project: YardProject): BuildPlan {
     packPlan(
       project,
       issues,
-      `${pieces} pieces of ${item?.name ?? "stock"} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
+      `${pieces} pieces of ${namedStockDisplayName(project.prompt ?? "", item)} · ${effortLabel(project, pieces)} · ~$${cost.toFixed(2)}`,
       [],
       bom,
       uniqueSteps(project),
