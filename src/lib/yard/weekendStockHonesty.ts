@@ -24,6 +24,11 @@ import {
 import { isWholeStock } from "./geometry";
 import { binderBom, binderKind, effectiveJoin, memberSpan } from "./joints";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock } from "./promptHelpers";
+import {
+  CATALOG_LUMBER_BIND,
+  densifyLabelForPrompt,
+  isNamedLumberSpeciesId,
+} from "./namedLumberSpecies";
 import type { BuildPlan, CatalogItem, CutLine, JoinMethod, YardInstance, YardProject } from "./types";
 
 export type WeekendGuard = "stock" | "whole" | "join" | "size" | "anatomy";
@@ -61,34 +66,18 @@ export function namedStockFromPrompt(prompt: string): CatalogItem | null {
   return item;
 }
 
-/** Softwood + hardwood names densified onto a lumber size row (Cedar/Maple/Walnut 1×4, …). */
-const NAMED_LUMBER_SPECIES = new Set([
-  "cedar",
-  "pine",
-  "balsa",
-  "fir",
-  "spruce",
-  "hemlock",
-  "redwood",
-  "cypress",
-  "maple",
-  "walnut",
-  "oak",
-  "cherry",
-  "birch",
-  "poplar",
-  "mahogany",
-  "teak",
-  "basswood",
-  "alder",
-]);
-
 /**
- * Densify may map cedar/pine/balsa/maple/walnut/redwood/popsicle/… onto a lumber size catalog row,
- * but labels/steps keep the spoken stock identity (maple densify must not hide as bare "1×4 Board").
+ * Densify may map cedar/pine/balsa/maple/walnut/redwood/oak/cherry/… onto a lumber size catalog row,
+ * but labels/steps keep the spoken stock identity (oak densify must not hide as bare "1×4 Board").
+ * Species allowlist + densifyLabel come from NAMED_LUMBER_SPECIES pack (single source).
  */
 export function namedStockDisplayName(prompt: string, item: CatalogItem | undefined | null): string {
   if (!item) return "stock";
+  // Lumber size row: prefer pack densifyLabel ("Oak 1×4") over bare catalog name / first-token alias.
+  if (item.id === CATALOG_LUMBER_BIND || (/board|stud/i.test(item.name) && item.category === "lumber")) {
+    const packLabel = densifyLabelForPrompt(prompt);
+    if (packLabel) return packLabel;
+  }
   const lower = (prompt || "").toLowerCase();
   const aliases = item.aliases ?? [];
   const spoken = aliases.find((a) => {
@@ -108,8 +97,7 @@ export function namedStockDisplayName(prompt: string, item: CatalogItem | undefi
   // Catalog name is a bare lumber size / board — prefer "Cedar 1×4".
   const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/i, "×");
   if (size && (/board|stud/i.test(item.name) || /^\d+\s*[×x]\s*\d+/i.test(item.name))) {
-    // Avoid "Cedar Cedar" if species already equals size talk.
-    if (NAMED_LUMBER_SPECIES.has(species.toLowerCase())) {
+    if (isNamedLumberSpeciesId(species)) {
       return `${species} ${size}`;
     }
   }

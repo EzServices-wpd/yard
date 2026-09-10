@@ -1,5 +1,6 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
+import { namedLumberDetectPhrases, promptNamesNamedLumber } from "./namedLumberSpecies";
 import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
@@ -288,17 +289,11 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],
+    // Bamboo skewer wins when "skewer" / kebab stick spoken — before bare bamboo → lumber.
+    [/\bskewer\b|bamboo stick|kebab stick/, "bamboo-skewer-12"],
     // Named softwood/hardwood densify onto lumber-1x4 (spoken identity kept by namedStockDisplayName).
-    [/cedar/, "lumber-1x4-8"],
-    [/\bpine\b/, "lumber-1x4-8"],
-    [/\bbalsa\b/, "lumber-1x4-8"],
-    [/\bmaple\b/, "lumber-1x4-8"],
-    [/\bwalnut\b/, "lumber-1x4-8"],
-    [/\bredwood\b/, "lumber-1x4-8"],
-    [/\boak\b/, "lumber-1x4-8"],
-    [/\bcherry\b/, "lumber-1x4-8"],
-    [/\bbirch\b/, "lumber-1x4-8"],
-    [/\bpoplar\b/, "lumber-1x4-8"],
+    // Derived from NAMED_LUMBER_SPECIES pack — longest alias first (douglas fir / red oak before fir / oak).
+    ...namedLumberDetectPhrases(),
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
@@ -307,7 +302,6 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bdowel\b/, "dowel-1-4-36"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
-    [/bamboo|skewer/, "bamboo-skewer-12"],
     [/paper.?towel/, "paper-towel-roll"],
   ];
   for (const [re, id] of phrases) {
@@ -480,9 +474,11 @@ export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolea
 }
 
 export function followOnNamesStock(prompt: string): boolean {
-  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar|\bpine\b|\bbalsa\b|\bmaple\b|\bwalnut\b|\bredwood\b|\boak\b|\bcherry\b|\bbirch\b|\bpoplar\b/.test(
-    prompt.toLowerCase(),
-  );
+  const lower = prompt.toLowerCase();
+  if (/popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|\bskewer\b/.test(lower)) {
+    return true;
+  }
+  return promptNamesNamedLumber(lower);
 }
 
 export function applyFollowOnSize(

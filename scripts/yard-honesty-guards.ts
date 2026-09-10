@@ -1234,6 +1234,52 @@ if (/1\s*[×x]\s*4 Board \(8 ft\)/i.test(cedarMat) && !/cedar/i.test(cedarMat)) 
   failHonesty("cedar plan still sells bare 1×4 Board", cedarMat);
 }
 
+// Named-lumber class pack: oak/cherry/birch (+ siblings) densify Buy as Species 1×4, never Wire / bare board.
+function expectNamedLumberBuy(prompt: string, species: string) {
+  const item = detectMaterial(prompt);
+  if (item.id !== "lumber-1x4-8") failHonesty(`detectMaterial(${prompt}) → ${item.id}`, item.id);
+  if (!hasExplicitStock(prompt)) failHonesty(`hasExplicitStock false for ${species}`, prompt);
+  const label = namedStockDisplayName(prompt, item);
+  const re = new RegExp(species, "i");
+  if (!re.test(label)) failHonesty(`${species} densify display lost species`, label);
+  if (/wire frame/i.test(label) || /^1\s*[×x]\s*4 Board/i.test(label)) {
+    failHonesty(`${species} densify still Wire/bare board`, label);
+  }
+  const project = generateFromPrompt(prompt);
+  if (project.primaryMaterialId !== "lumber-1x4-8") {
+    failHonesty(`${species} primaryMaterialId`, project.primaryMaterialId);
+  }
+  const plan = buildPlan(project);
+  const buy = [...plan.cutList.map((c) => c.material ?? c.name), ...plan.bom.map((b) => b.name)].join(" | ");
+  if (!re.test(buy)) failHonesty(`${species} Buy/cut hid species`, buy);
+  if (/Wire frame/i.test(buy)) failHonesty(`${species} Buy still Wire frame`, buy);
+  return label;
+}
+const oakLabel = expectNamedLumberBuy(
+  'weekend craft: soft-launch a 5/8" marble on a 12" oak trough; marble leaves free',
+  "oak",
+);
+const cherryLabel = expectNamedLumberBuy(
+  "weekend craft: cherry phone lean 6x3 at 20° tip hold",
+  "cherry",
+);
+const birchLabel = expectNamedLumberBuy(
+  'weekend craft: birch plant stand for a 5" pot',
+  "birch",
+);
+expectNamedLumberBuy("ash 1x4 towel ladder 24 wide 72 tall", "ash");
+expectNamedLumberBuy("teak outdoor side table", "teak");
+expectNamedLumberBuy("maple soft-launch marble trough", "maple");
+expectNamedLumberBuy("walnut plant stand", "walnut");
+expectNamedLumberBuy("redwood two-step stool", "redwood");
+expectNamedLumberBuy("pine board shelf ladder", "pine");
+expectNamedLumberBuy("balsa stick tower", "balsa");
+// Bamboo skewer stays skewer; bare bamboo board densifies to lumber class pack.
+if (detectMaterial("bamboo skewer warren bridge").id !== "bamboo-skewer-12") {
+  failHonesty("bamboo skewer lost skewer bind", detectMaterial("bamboo skewer warren bridge").id);
+}
+expectNamedLumberBuy("bamboo board shelf", "bamboo");
+
 const night = generateFromPrompt("nightstand 20 wide 24 tall 16 deep");
 const nightPlan = buildPlan(night);
 if (!night.panels.some((p) => /drawer front/i.test(p.name))) {
@@ -1274,6 +1320,9 @@ console.log("SOFT-TRUST OK", {
   deskKind: measureKindFromProject(deskKind),
   tableKind: measureKindFromProject(tableKind),
   cedarLabel,
+  oakLabel,
+  cherryLabel,
+  birchLabel,
   nightFronts: nightPlan.cutList.filter((c) => /drawer front/i.test(c.name)).map((c) => c.name),
   dresserFronts: dresserPlan.cutList.filter((c) => /drawer front/i.test(c.name)).map((c) => c.name),
 });
