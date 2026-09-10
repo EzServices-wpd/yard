@@ -148,7 +148,7 @@ export function isShoePortalRail(lower: string) {
     /\bshoes?\b/.test(lower) &&
     /rail|rack/.test(lower) &&
     !/cubb/.test(lower) &&
-    /door\s*portal|portal|doorway|door opening/.test(lower)
+    isDoorPortal(lower)
   );
 }
 
@@ -157,7 +157,7 @@ export function isShoePortalCubbies(lower: string) {
   return (
     /\bshoes?\b/.test(lower) &&
     /cubb/.test(lower) &&
-    /door\s*portal|portal|doorway|door opening/.test(lower)
+    isDoorPortal(lower)
   );
 }
 
@@ -175,13 +175,31 @@ export function isTowelPortalRail(lower: string) {
   return (
     /\btowels?\b/.test(lower) &&
     /rail|bar|rack/.test(lower) &&
-    /door\s*portal|portal|doorway|door opening/.test(lower)
+    isDoorPortal(lower)
   );
 }
 
 /** Door portal / doorway / door opening envelope (fitted hang — not a garden arch). */
 export function isDoorPortal(lower: string) {
-  return /door\s*portal|portal|doorway|door opening/.test(lower);
+  if (/door\s*portal|portal|doorway|door opening/.test(lower)) return true;
+  // Bare "door" + hang/swing language — not a cabinet / crate door panel.
+  if (
+    /\bdoor\b/.test(lower) &&
+    /clear\s*swing|over[- ]?door|above\s+(?:the\s+)?swing|swing\s+clear|(?:hook|peg|rail|rack|mount)/.test(
+      lower,
+    ) &&
+    !/cabinet|closet|vanity|cupboard|crate|soft-?close|hinge\s*door|door\s*front|drawer/.test(lower)
+  ) {
+    return true;
+  }
+  // Clear swing / over-door without naming portal — still a door envelope for hung fittings.
+  if (
+    /clear\s*swing|over[- ]?door|above\s+(?:the\s+)?swing|swing\s+clear/.test(lower) &&
+    /(?:hook|peg|rail|rack|shel(?:f|ves)|mount|coat|towel|shoe)/.test(lower)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -194,6 +212,8 @@ export function isPortalHookRail(lower: string) {
   if (isShoePortalRail(lower) || isShoePortalCubbies(lower) || isTowelPortalRail(lower)) return false;
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) return true;
   if (/hook|peg/.test(lower) && /rail|rack|board/.test(lower)) return true;
+  // Hooks/pegs densify in a door portal even without the word "rail".
+  if (/hooks?|pegs?/.test(lower) && /clear\s*swing|mount|over[- ]?door/.test(lower)) return true;
   // Untaught "* rail" fitted in a portal with clear swing / mount / hooks densify.
   if (
     /\brail\b/.test(lower) &&
@@ -342,7 +362,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isPortalHookRail(lower)) return portalHookRailTitle(lower);
   if (isMudroomCubbyWall(lower)) return "Mudroom cubbies";
   // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
-  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && /door\s*portal|portal|doorway|door opening/.test(lower)) {
+  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && isDoorPortal(lower)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
   }
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) {
@@ -464,7 +484,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
   const door =
-    (/door/.test(lower) && !/door\s*portal|doorway|door opening/.test(lower)) ||
+    (/door/.test(lower) && !isDoorPortal(lower)) ||
     isMedicine(lower) ||
     isIroning(lower) ||
     fold ||

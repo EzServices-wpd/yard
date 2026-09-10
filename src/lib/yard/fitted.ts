@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -578,7 +578,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
             : NaN;
   const drawers = /drawer/.test(lower) || program === "vanity" || program === "desk" || /nightstand|bedside|dresser|hutch/.test(lower);
   const doors =
-    (/door/.test(lower) && !/door\s*portal|doorway|door opening/.test(lower)) ||
+    (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
     isLaundryFoldDown(lower) ||
@@ -2122,7 +2122,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
-    const portal = portalHook || /door\s*portal|portal|doorway|door opening/.test(coatLower);
+    const portal = portalHook || isDoorPortal(coatLower);
     // Portal dims (e.g. 32×80) are the opening envelope — rail mounts inside, clear swing.
     const portalW = W;
     const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
