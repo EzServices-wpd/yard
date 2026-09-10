@@ -328,6 +328,33 @@ export function climbIdentityLabel(lower: string): string | null {
 }
 
 /**
+ * Named sit identity — room/context qualifier + bench (or banquette / window seat)
+ * must never collapse to naked "Bench". workbench stays on the desk path; bare
+ * "bench" stays the program noun. Dining/Hall hold like Entry/Mudroom.
+ */
+const SIT_BENCH_ROOM = "dining|hall|entry|mudroom|coat|porch|patio|garden|boot|piano";
+
+export function sitBenchTitleStem(lower: string): string | null {
+  if (/window\s*seat/.test(lower)) return "Window seat";
+  if (/banquette/.test(lower)) return "Banquette";
+  if (/workbench/.test(lower)) return null;
+  if (!/\bbench\b/.test(lower)) return null;
+  // Prefer adjacent "<room> bench" (dining bench, hall bench, entry bench, …).
+  const adj = lower.match(new RegExp(`\\b(${SIT_BENCH_ROOM})\\s+bench\\b`));
+  if (adj) {
+    const w = adj[1];
+    return w.charAt(0).toUpperCase() + w.slice(1) + " bench";
+  }
+  // Looser: room word anywhere + bench (legacy "entry … bench" / mudroom prompts).
+  const loose = lower.match(new RegExp(`\\b(${SIT_BENCH_ROOM})\\b`));
+  if (loose) {
+    const w = loose[1];
+    return w.charAt(0).toUpperCase() + w.slice(1) + " bench";
+  }
+  return null;
+}
+
+/**
  * Stable display stem from family detectors — used by parse + house-brief merge
  * so typed width cannot wipe "Base cabinet" down to naked "Storage".
  */
@@ -337,11 +364,9 @@ export function identityTitleStem(lower: string): string | null {
   if (isLoftBed(lower)) return "Loft bed";
   if (isBunkBed(lower)) return "Bunk bed";
   if (isLaundryFoldDown(lower)) return "Laundry fold-down";
-  if (/window seat/.test(lower)) return "Window seat";
-  // Banquette / entry / mudroom sit benches — never naked "Bench" when the prompt named the seat.
-  if (/banquette/.test(lower)) return "Banquette";
-  if (/entry/.test(lower) && /bench/.test(lower)) return "Entry bench";
-  if (/mudroom/.test(lower) && /bench/.test(lower)) return "Mudroom bench";
+  // Sit family: Window seat / Banquette / Dining·Hall·Entry·Mudroom·Coat bench — never naked Bench.
+  const sitStem = sitBenchTitleStem(lower);
+  if (sitStem) return sitStem;
   if (isRadiatorCover(lower)) return "Radiator cover";
   if (isDaybed(lower)) return "Daybed";
   if (isSofaConsoleTable(lower)) {

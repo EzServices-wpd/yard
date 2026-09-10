@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -655,6 +655,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   };
 
   const identityStem = identityTitleStem(lower);
+  const sitStem = sitBenchTitleStem(lower);
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
@@ -664,12 +665,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? portalHookRailTitle(lower)
       : isMudroomCubbyWall(lower)
         ? "Mudroom cubbies"
-      : /mudroom/.test(lower) && /bench/.test(lower)
-        ? "Mudroom bench"
-        : /banquette/.test(lower)
-          ? "Banquette"
-        : /entry/.test(lower) && /bench/.test(lower)
-          ? "Entry bench"
+      : sitStem
+        ? sitStem
         : /dresser/.test(lower)
           ? "Dresser"
           : /nightstand|bedside/.test(lower)
@@ -684,8 +681,6 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? "Spice rack"
                     : isWineRack(lower)
                       ? "Wine rack"
-                      : /coat/.test(lower) && /bench/.test(lower)
-                        ? "Coat bench"
                       : /coat/.test(lower) && /rack|rail|rod|hook|peg|tree/.test(lower)
                         ? /rod/.test(lower)
                           ? "Coat rod"
@@ -2009,22 +2004,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       // Coat + bench / entry tree: peg rail rises above the seat on the back plane.
       panels.push(panel("rail", "Peg rail", x0, H, 0, W, pegH, P));
     }
-    const mudroom = /mudroom/i.test(prompt);
-    const entryBench = /entry/i.test(prompt) && /bench/i.test(prompt);
-    const banquette = /banquette/i.test(prompt);
-    const windowSeat = /window seat/i.test(prompt);
+    const sitTitle = sitBenchTitleStem(prompt.toLowerCase());
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
     const stackH = H + pegH;
+    // Coat + peg rail uses stacked height; other named sits keep seat H.
     const name = coatBench
       ? `Coat bench ${W}" × ${stackH}" × ${D}"`
-      : windowSeat
-        ? `Window seat ${W}" × ${H}" × ${D}"`
-      : banquette
-        ? `Banquette ${W}" × ${H}" × ${D}"`
-      : mudroom
-        ? `Mudroom bench ${W}" × ${H}" × ${D}"`
-      : entryBench
-        ? `Entry bench ${W}" × ${H}" × ${D}"`
+      : sitTitle
+        ? `${sitTitle} ${W}" × ${H}" × ${D}"`
         : `Bench ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -2038,13 +2025,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
-          : windowSeat
+          : sitTitle === "Window seat"
             ? `${name}. Sittable window seat at ${H}" seat height with ${cubbyN} open bays under the lid line — weight-bearing seat, not a hollow storage box. ¾" plywood.`
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
         `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
-          : windowSeat
+          : sitTitle === "Window seat"
             ? `Set it under the sill at ${H}" seat height. Sit-test before you finish — dividers carry sit load. Guidance only — confirm the ${H}" seat height for the window.`
           : "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
       ],
@@ -2731,16 +2718,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           const cleaned = spec.name
             .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
             .trim();
-          // Scrub leftover naked Media / naked Bench (entry) from an older brief.
+          // Scrub leftover naked Media / naked Bench (named sit) from an older brief.
           let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
-          if (/^Bench$/i.test(stem) && /banquette/.test(promptLower)) {
-            stem = "Banquette";
-          }
-          if (/^Bench$/i.test(stem) && /entry/.test(promptLower) && /bench/.test(promptLower)) {
-            stem = "Entry bench";
-          }
-          if (/^Bench$/i.test(stem) && /mudroom/.test(promptLower) && /bench/.test(promptLower)) {
-            stem = "Mudroom bench";
+          const sitScrub = sitBenchTitleStem(promptLower);
+          if (/^Bench$/i.test(stem) && sitScrub) {
+            stem = sitScrub;
           }
           return `${stem} ${W}" × ${H}" × ${D}"`;
         })();
