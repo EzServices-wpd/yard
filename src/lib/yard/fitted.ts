@@ -637,6 +637,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Mudroom cubbies"
       : /mudroom/.test(lower) && /bench/.test(lower)
         ? "Mudroom bench"
+        : /banquette/.test(lower)
+          ? "Banquette"
         : /entry/.test(lower) && /bench/.test(lower)
           ? "Entry bench"
         : /dresser/.test(lower)
@@ -1908,6 +1910,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
     const mudroom = /mudroom/i.test(prompt);
     const entryBench = /entry/i.test(prompt) && /bench/i.test(prompt);
+    const banquette = /banquette/i.test(prompt);
     const windowSeat = /window seat/i.test(prompt);
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
     const stackH = H + pegH;
@@ -1915,6 +1918,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? `Coat bench ${W}" × ${stackH}" × ${D}"`
       : windowSeat
         ? `Window seat ${W}" × ${H}" × ${D}"`
+      : banquette
+        ? `Banquette ${W}" × ${H}" × ${D}"`
       : mudroom
         ? `Mudroom bench ${W}" × ${H}" × ${D}"`
       : entryBench
@@ -2608,6 +2613,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
             .trim();
           // Scrub leftover naked Media / naked Bench (entry) from an older brief.
           let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
+          if (/^Bench$/i.test(stem) && /banquette/.test(promptLower)) {
+            stem = "Banquette";
+          }
           if (/^Bench$/i.test(stem) && /entry/.test(promptLower) && /bench/.test(promptLower)) {
             stem = "Entry bench";
           }

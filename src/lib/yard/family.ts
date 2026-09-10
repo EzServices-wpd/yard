@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -162,7 +162,7 @@ export function isShoePortalCubbies(lower: string) {
  * Explicit bench/seat/window seat still keep the seat family. */
 export function isMudroomCubbyWall(lower: string) {
   if (!/\bmudroom\b/.test(lower)) return false;
-  if (/\bbench\b|\bseat\b|window seat/.test(lower)) return false;
+  if (/\bbench\b|\bseat\b|window seat|banquette/.test(lower)) return false;
   return /cubb/.test(lower);
 }
 
@@ -254,7 +254,8 @@ export function identityTitleStem(lower: string): string | null {
   if (isBunkBed(lower)) return "Bunk bed";
   if (isLaundryFoldDown(lower)) return "Laundry fold-down";
   if (/window seat/.test(lower)) return "Window seat";
-  // Entry / mudroom sit benches — never naked "Bench" when the prompt named the room.
+  // Banquette / entry / mudroom sit benches — never naked "Bench" when the prompt named the seat.
+  if (/banquette/.test(lower)) return "Banquette";
   if (/entry/.test(lower) && /bench/.test(lower)) return "Entry bench";
   if (/mudroom/.test(lower) && /bench/.test(lower)) return "Mudroom bench";
   if (isRadiatorCover(lower)) return "Radiator cover";
@@ -317,7 +318,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
   if (isMudroomCubbyWall(lower)) return "storage";
-  if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
+  if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower) && !/workbench/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
@@ -370,7 +371,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const sit =
     isDaybed(lower) ||
-    ((/\bbench\b|window seat|mudroom|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isMudroomCubbyWall(lower)));
+    ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isMudroomCubbyWall(lower)));
   const work =
     (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
       !/console table|sofa table|entry console|bedside table|night table/.test(lower));

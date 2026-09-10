@@ -142,6 +142,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     ? "Coffee table"
     : /mudroom/.test(lower) && /bench/.test(lower)
     ? "Mudroom bench"
+    : /banquette/.test(lower)
+    ? "Banquette"
     : /entry/.test(lower) && /bench/.test(lower)
     ? "Entry bench"
     : /spice/.test(lower) && /rack/.test(lower)
@@ -166,12 +168,11 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   const name = `${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   // AI few-shot sometimes returns naked "Media" / "Media unit" — never keep that over a positive stem.
   const briefNakedMedia = !!brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim());
-  // AI few-shot sometimes returns naked "Bench" on an entry prompt — keep Entry bench.
+  // AI few-shot sometimes returns naked "Bench" on entry / banquette — keep identity stem.
   const briefNakedBench =
     !!brief.name &&
     /^Bench(\s|\d|$)/i.test(brief.name.trim()) &&
-    /entry/.test(lower) &&
-    /bench/.test(lower);
+    ((/entry/.test(lower) && /bench/.test(lower)) || /banquette/.test(lower));
   const keepBriefName =
     brief.name &&
     !briefNakedMedia &&
@@ -186,6 +187,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !(/wine/.test(lower) && /rack/.test(lower)) &&
     !(/mudroom/.test(lower) && /bench/.test(lower)) &&
     !(/entry/.test(lower) && /bench/.test(lower)) &&
+    !/banquette/.test(lower) &&
     !/dresser/.test(lower) &&
     !/nightstand|bedside/.test(lower) &&
     !(/coffee/.test(lower) && /table/.test(lower)) &&

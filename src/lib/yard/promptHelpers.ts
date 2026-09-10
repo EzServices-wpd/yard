@@ -288,9 +288,17 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],
+    // Named softwood/hardwood densify onto lumber-1x4 (spoken identity kept by namedStockDisplayName).
     [/cedar/, "lumber-1x4-8"],
     [/\bpine\b/, "lumber-1x4-8"],
     [/\bbalsa\b/, "lumber-1x4-8"],
+    [/\bmaple\b/, "lumber-1x4-8"],
+    [/\bwalnut\b/, "lumber-1x4-8"],
+    [/\bredwood\b/, "lumber-1x4-8"],
+    [/\boak\b/, "lumber-1x4-8"],
+    [/\bcherry\b/, "lumber-1x4-8"],
+    [/\bbirch\b/, "lumber-1x4-8"],
+    [/\bpoplar\b/, "lumber-1x4-8"],
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
@@ -472,7 +480,7 @@ export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolea
 }
 
 export function followOnNamesStock(prompt: string): boolean {
-  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar|\bpine\b|\bbalsa\b/.test(
+  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar|\bpine\b|\bbalsa\b|\bmaple\b|\bwalnut\b|\bredwood\b|\boak\b|\bcherry\b|\bbirch\b|\bpoplar\b/.test(
     prompt.toLowerCase(),
   );
 }
