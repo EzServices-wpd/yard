@@ -18,6 +18,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
+import { isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -321,15 +322,53 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /towel/.test(coatPrompt) &&
     /rail|bar|rack/.test(coatPrompt) &&
     (/door\s*portal|portal|doorway|door opening/.test(coatPrompt) || /towel\s*rail|portal/i.test(project.name));
+  const portalSpanShelf =
+    isPortalSpanShelf(coatPrompt) || /Over-door shelf/i.test(project.name || "");
+  const portalHookRail = isPortalHookRail(coatPrompt) || (/portal/i.test(project.name) && /rail|hooks/i.test(project.name) && !/towel|shoe|coat rod/i.test(project.name));
   const coatRack =
     /coat/i.test(project.name) ||
+    portalHookRail ||
     ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) &&
       !/shoe/.test(coatPrompt) &&
       !/towel/.test(coatPrompt));
-  if ((coatRack || shoePortalRail || shoePortalCubbies || towelPortalRail) && !uprights.length) {
+  // Over-door / above-swing shallow shelf — portal span class (cleat + shelf, may have uprights? no — rail+shelf only).
+  if (portalSpanShelf && !uprights.length) {
+    const rail = backs[0] ?? of("rail")[0] ?? panels[0];
+    const shelf = of("shelf")[0] ?? of("top")[0];
+    const openingH = project.opening?.height ?? project.overall.height;
+    const mountFromOpening = Math.round(Math.min(openingH - 6, Math.max(72, openingH * 0.9)));
+    const label = portalSpanShelfTitle(coatPrompt);
+    return [
+      {
+        step: 1,
+        title: "Cut the over-door shelf and cleat",
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — shallow shelf above the swing, clear swing below. PDF states mount height from the opening.`,
+        tips: "Mount height from the opening — keep clear swing below.",
+        partsUsed: names(panels),
+      },
+      {
+        step: 2,
+        title: "Dry-fit the shelf above the swing",
+        description: `${shelf ? cutLine(shelf) : "Over-door shelf"} on the ${rail ? rail.name : "cleat"}. Dry-fit spanning the ${Math.round(project.opening?.width ?? W)}" door portal above the swing. This is a portal span shelf, not a shelving niche.`,
+        tips: "Portal envelope is the opening — keep clear swing below.",
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Mount height from the opening — keep swing clear",
+        description: `Mount height from the opening: set the ${label.toLowerCase()} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — above the swing, clear swing below. Predrill. Drive 3" structural screws into studs through the cleat. Keep clear swing below so the door opens under the shelf.`,
+        tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
+        partsUsed: names(panels),
+      },
+    ];
+  }
+  if ((coatRack || shoePortalRail || shoePortalCubbies || towelPortalRail || portalHookRail) && !uprights.length) {
     const shoe = shoePortalRail || shoePortalCubbies || /shoe/i.test(project.name);
     const shoeCubbies = shoePortalCubbies || /Shoe cubbies|cubb/i.test(project.name);
     const towel = !shoe && (towelPortalRail || /towel\s*rail/i.test(project.name));
+    const hookRailLabel = portalHookRail && !/coat/i.test(project.name) && !/coat/.test(coatPrompt)
+      ? portalHookRailTitle(coatPrompt)
+      : null;
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
     const hooks = shoe
@@ -381,9 +420,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           title: "Mount height from the opening — keep swing clear",
           description: shoe
             ? `Mount height from the opening: set the ${shoeCubbies ? "shoe cubbies" : "shoe rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
-            : /rod/.test(coatPrompt)
+            : /rod/.test(coatPrompt) && /coat/.test(coatPrompt)
               ? `Mount height from the opening: set the coat rod ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal, spanning full width. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the coats.`
-              : `Mount height from the opening: set the rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks without hitting coats.`,
+              : `Mount height from the opening: set the ${hookRailLabel ? hookRailLabel.toLowerCase() : "rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks.`,
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
         }
@@ -397,7 +436,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return [
       {
         step: 1,
-        title: shoe ? (shoeCubbies ? "Cut the shoe cubby parts" : "Cut the shoe rail and pegs") : /rod/.test(coatPrompt) ? "Cut the coat rod span" : "Cut the peg rail and hat shelf",
+        title: shoe ? (shoeCubbies ? "Cut the shoe cubby parts" : "Cut the shoe rail and pegs") : /rod/.test(coatPrompt) && /coat/.test(coatPrompt) ? "Cut the coat rod span" : hookRailLabel ? `Cut the ${hookRailLabel.toLowerCase()}` : "Cut the peg rail and hat shelf",
         description: portal
           ? shoe
             ? shoeCubbies
@@ -410,16 +449,18 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: shoe ? "Dry-fit the rail in the portal" : "Glue the hat shelf on the rail",
+        title: shoe ? "Dry-fit the rail in the portal" : portal && !shelf ? "Dry-fit the rail in the portal" : "Glue the hat shelf on the rail",
         description: shoe
           ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche. Leave shoe pegs off until the rail is marked.`
+          : portal && !shelf
+            ? `${rail ? cutLine(rail) : hookRailLabel || "Peg rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`
           : `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
-        tips: shoe ? "Portal envelope is the opening — peg length is the typed depth; keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
+        tips: shoe ? "Portal envelope is the opening — peg length is the typed depth; keep clear swing." : portal && !shelf ? "Portal envelope is the opening — keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
         partsUsed: names(panels),
       },
       {
         step: 3,
-        title: shoe ? `Screw ${hooks} shoe pegs` : /rod/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} coat hooks`,
+        title: shoe ? `Screw ${hooks} shoe pegs` : /rod/.test(coatPrompt) && /coat/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} hooks`,
         description: shoe
           ? `Mark ${hooks} stations along the rail, about 8–9" on center. Glue and #8 × 1¼" screws through each Shoe peg into the rail — one cut peg per pair from the cut list. Pegs project into the portal; keep clear swing past the footwear.`
           : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,

@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, wantsShoes, type HouseAffordance, type HouseFamily } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -81,6 +81,9 @@ export function looksLikeFitted(prompt: string) {
   }
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
+  if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
+    return true;
+  }
   if (!BUILDER.test(lower)) return false;
   if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|\bhood\b/.test(lower)) {
     return true;
@@ -376,10 +379,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 24
                 : isWineRack(lower)
                   ? 36
-                : /coat/.test(lower) && /rack|rail|hook|peg/.test(lower)
-                  ? /portal|door/.test(lower)
-                    ? 6
-                    : 6
+                : isPortalHookRail(lower) || (/coat/.test(lower) && /rack|rail|hook|peg/.test(lower))
+                  ? 6
+                  : isPortalSpanShelf(lower)
+                    ? (trip.h && trip.h >= 60 ? trip.h : 80)
                   : /range\s*hood|\bhood\b/.test(lower)
                     ? 24
                   : isShoeStorage(lower)
@@ -448,6 +451,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         ? 24
                       : /floating/.test(lower) && /shel/.test(lower)
                         ? 8
+                        : isPortalSpanShelf(lower)
+                          ? 4
+                        : isPortalHookRail(lower) || isTowelPortalRail(lower)
+                          ? 4
                         : isSpiceRack(lower)
                           ? 4
                         : isWineRack(lower)
@@ -547,6 +554,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 1
                 : isBunkBed(lower)
                   ? 0
+                : isPortalSpanShelf(lower)
+                  ? 1
                 : (/shelf/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
                 ? 3
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
@@ -649,6 +658,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
+      : isPortalSpanShelf(lower)
+        ? portalSpanShelfTitle(lower)
+      : isPortalHookRail(lower)
+        ? portalHookRailTitle(lower)
       : isMudroomCubbyWall(lower)
         ? "Mudroom cubbies"
       : /mudroom/.test(lower) && /bench/.test(lower)
@@ -1653,6 +1666,72 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
+  // Shallow shelf spanning a door portal above the swing — clear swing below; not a floor carcase.
+  if (isPortalSpanShelf(prompt.toLowerCase())) {
+    const spanLower = prompt.toLowerCase();
+    const portalW = W;
+    const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
+    const portalH = Math.max(
+      H,
+      portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H,
+    );
+    // Shallow into the portal so the door keeps clear swing below.
+    const shelfD = Math.max(3, Math.min(D > 1 && D < 10 ? D : 4, 6));
+    const cleatH = Math.max(3, Math.min(3.5, shelfD));
+    panels.push(panel("rail", "Cleat", x0, 0, 0, portalW, cleatH, P));
+    panels.push(panel("shelf", "Over-door shelf", x0, cleatH, 0, portalW, P, shelfD));
+    const stackH = cleatH + P;
+    // Above the swing arc — high on the portal envelope.
+    const mountFromOpening = Math.round(Math.min(portalH - 6, Math.max(72, portalH * 0.9)));
+    const label = portalSpanShelfTitle(spanLower);
+    const notes = [
+      `${label} spanning a ${portalW}" × ${portalH}" door portal above the swing — clear swing below. ¾" plywood.`,
+      `Mount height from the opening: ${mountFromOpening}" up from the finished floor (above the swing arc). Keep clear swing below so the door clears under the shelf.`,
+      `Span the full ${portalW}" portal width. Hit studs through the cleat. Guidance only — portal span shelf, not a shelving niche.`,
+    ];
+    return {
+      id: createId("proj"),
+      name: `${label} ${portalW}" portal`,
+      prompt,
+      kind: "closet",
+      overall: { width: portalW, height: portalH, depth: shelfD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes,
+      historic: false,
+      opening: {
+        ...spec.opening,
+        width: portalW,
+        height: portalH,
+        depth: shelfD,
+        kind: "alcove",
+      },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: portalW,
+          height: portalH,
+          depth: shelfD,
+          doors: false,
+          shelfCount: 1,
+          drawersPerBank: undefined,
+        },
+        program: "storage",
+        family: "hung-open",
+        name: `${label} ${portalW}" portal`,
+        affordances: affordances.includes("cleats") ? affordances : [...affordances, "cleats"],
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   // Towel rail in a door portal — clear swing; not a shelving niche / linen closet.
   if (isTowelPortalRail(prompt.toLowerCase())) {
     const towelLower = prompt.toLowerCase();
@@ -2034,15 +2113,18 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const coatLower = prompt.toLowerCase();
+  const portalHook = isPortalHookRail(coatLower);
   const coatRack =
     !/shoe/.test(coatLower) &&
-    ((/coat/.test(coatLower) && /rack|rail|rod|tree|peg|hook/.test(coatLower)) ||
+    !/towel/.test(coatLower) &&
+    (portalHook ||
+      (/coat/.test(coatLower) && /rack|rail|rod|tree|peg|hook/.test(coatLower)) ||
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
-    const portal = /door\s*portal|portal|doorway|door opening/.test(coatLower);
+    const portal = portalHook || /door\s*portal|portal|doorway|door opening/.test(coatLower);
     // Portal dims (e.g. 32×80) are the opening envelope — rail mounts inside, clear swing.
-    const portalW = portal ? W : W;
+    const portalW = W;
     const portalTriple = prompt.replace(/×/g, "x").match(/(\d+(?:\.\d+)?)\s*(?:x|by)\s*(\d+(?:\.\d+)?)/i);
     const portalH = portal
       ? Math.max(H, portalTriple ? Math.max(parseFloat(portalTriple[1]), parseFloat(portalTriple[2])) : H)
@@ -2055,16 +2137,27 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? Math.max(24, H - P)
         : Math.max(4, Math.min(H - P, 24));
     panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, portalW, railH, P));
-    panels.push(panel("top", "Hat shelf", x0, railH, 0, portalW, P, shelfD));
-    const stackH = railH + P;
+    // Hat shelf is coat/hat language — bare portal hook rails (key rail, …) stay a peg rail only.
+    const wantHatShelf = /coat|hat/.test(coatLower) || (!portalHook && !portal);
+    if (wantHatShelf) {
+      panels.push(panel("top", "Hat shelf", x0, railH, 0, portalW, P, shelfD));
+    }
+    const stackH = wantHatShelf ? railH + P : railH;
     const hookSaid = coatLower.match(/(\d+)\s*hooks?/);
     const hooks = hookSaid
       ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
       : Math.max(3, Math.min(8, Math.round(portalW / 6)));
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
-    const label = /rod/.test(coatLower) ? "Coat rod" : /rail/.test(coatLower) ? "Coat rail" : "Coat rack";
+    const label = portalHook
+      ? portalHookRailTitle(coatLower)
+      : /rod/.test(coatLower)
+        ? "Coat rod"
+        : /rail/.test(coatLower)
+          ? "Coat rail"
+          : "Coat rack";
+    const hangNoun = /coat/.test(coatLower) ? "coats" : /key/.test(coatLower) ? "keys" : "hooks";
     const notes = portal
-      ? /rod/.test(coatLower)
+      ? /rod/.test(coatLower) && /coat/.test(coatLower)
         ? [
             `${label} spanning a ${portalW}" × ${portalH}" door portal full width — clear swing. ¾" plywood / rod.`,
             `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
@@ -2072,8 +2165,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ]
         : [
           `${label} in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
-          `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
-          `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs. Guidance only.`,
+          `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the ${hangNoun}.`,
+          `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — portal rail, not a shelving niche.`,
         ]
       : [
           standing
@@ -2085,7 +2178,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return {
       id: createId("proj"),
       name: portal
-        ? /rod/.test(coatLower)
+        ? /rod/.test(coatLower) && /coat/.test(coatLower)
           ? `${label} ${portalW}" portal · full width`
           : `${label} ${portalW}" portal · ${hooks} hooks`
         : `${label} ${portalW}" × ${stackH}" × ${shelfD}"`,
@@ -2115,9 +2208,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           shelfCount: 0,
           drawersPerBank: undefined,
         },
+        program: "storage",
+        family: "hung-open",
         name: portal
-          ? `${label} ${portalW}" portal · ${hooks} hooks`
+          ? /rod/.test(coatLower) && /coat/.test(coatLower)
+            ? `${label} ${portalW}" portal · full width`
+            : `${label} ${portalW}" portal · ${hooks} hooks`
           : `${label} ${portalW}" × ${stackH}" × ${shelfD}"`,
+        affordances: affordances.includes("hooks") ? affordances : [...affordances, "hooks"],
       },
       assumptions: {
         load: "medium",

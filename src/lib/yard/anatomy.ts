@@ -5,7 +5,7 @@
  */
 
 import type { StructureKind } from "./types";
-import { detectHouseFamily } from "./family";
+import { detectHouseFamily, isDoorPortal, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies } from "./family";
 import { detectWeekendFamily, detectWeekendMech } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
@@ -27,7 +27,7 @@ const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
 const SHELL =
   /dome|capitol|mosque|rotunda|igloo|onion|basilica|stupa|planetarium|opera|pantheon|capitol|observatory|geodesic/;
-const SPAN = /bridge|span|viaduct|overpass|trestle/;
+const SPAN = /bridge|viaduct|overpass|trestle/;
 const CARCASE = /chair|stool|table|desk|bed|bench|box|cube|frame|shelf|crate|cabinet/;
 const FIGURE =
   /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
@@ -75,7 +75,10 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/parthenon/.test(hay)) return { anatomy: "carcase", kind: "custom", named: "Parthenon" };
   if (/stonehenge/.test(hay)) return { anatomy: "carcase", kind: "custom", named: "Stonehenge" };
 
-  if (SPAN.test(hay)) return { anatomy: "span", kind: "bridge" };
+  // "Spanning" a door portal is hung-open house — not a bridge.
+  if (SPAN.test(hay) || (/(?:\bspan\b|spanning)/.test(hay) && !isDoorPortal(hay) && !/wall\s*span/.test(hay))) {
+    return { anatomy: "span", kind: "bridge" };
+  }
   if (SHELL.test(hay)) return { anatomy: "shell", kind: /taj|mosque/.test(hay) ? "taj" : "dome" };
   if (LONGNECK.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck" };
   if (WYVERN.test(hay)) return { anatomy: "figure", kind: "figure", stance: "wyvern" };
@@ -104,7 +107,20 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
   if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay) && !/hutch/.test(hay))
     return { anatomy: "carcase", kind: /castle|fort/.test(hay) ? "castle" : "house" };
-  if (/arch|gateway|portal|arbor|arbour|pergola/.test(hay)) return { anatomy: "span", kind: "arch" };
+  if (/arch|gateway|portal|arbor|arbour|pergola/.test(hay)) {
+    // Door-portal fittings (hook rail / over-door shelf / towel / shoe) are fitted hung-open — not a garden arch.
+    if (
+      isPortalHookRail(hay) ||
+      isPortalSpanShelf(hay) ||
+      isTowelPortalRail(hay) ||
+      isShoePortalRail(hay) ||
+      isShoePortalCubbies(hay) ||
+      (/coat/.test(hay) && /rod|rail|rack|hook|peg/.test(hay) && isDoorPortal(hay))
+    ) {
+      return { anatomy: "fitted", kind: "closet" };
+    }
+    return { anatomy: "span", kind: "arch" };
+  }
   if (/wall|fence|palisade/.test(hay)) return { anatomy: "span", kind: "wall" };
   if (/tree|cactus|plant/.test(hay)) return { anatomy: "figure", kind: "plant", stance: "biped" };
 
