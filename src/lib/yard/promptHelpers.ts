@@ -289,6 +289,8 @@ export function detectMaterial(prompt: string): CatalogItem {
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft stick/, "popsicle-standard"],
     [/cedar/, "lumber-1x4-8"],
+    [/\bpine\b/, "lumber-1x4-8"],
+    [/\bbalsa\b/, "lumber-1x4-8"],
     [/toothpick/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
@@ -470,7 +472,7 @@ export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolea
 }
 
 export function followOnNamesStock(prompt: string): boolean {
-  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar/.test(
+  return /popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|cedar|\bpine\b|\bbalsa\b/.test(
     prompt.toLowerCase(),
   );
 }

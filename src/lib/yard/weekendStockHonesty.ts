@@ -62,7 +62,7 @@ export function namedStockFromPrompt(prompt: string): CatalogItem | null {
 }
 
 /**
- * Densify may map cedar/popsicle/… onto a lumber size catalog row, but labels/steps
+ * Densify may map cedar/pine/balsa/popsicle/… onto a lumber size catalog row, but labels/steps
  * keep the spoken stock identity (cedar densify must not hide as bare "1×4 Board").
  */
 export function namedStockDisplayName(prompt: string, item: CatalogItem | undefined | null): string {
@@ -87,7 +87,7 @@ export function namedStockDisplayName(prompt: string, item: CatalogItem | undefi
   const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/i, "×");
   if (size && (/board|stud/i.test(item.name) || /^\d+\s*[×x]\s*\d+/i.test(item.name))) {
     // Avoid "Cedar Cedar" if species already equals size talk.
-    if (species.toLowerCase() === "cedar" || species.toLowerCase() === "pine") {
+    if (["cedar", "pine", "balsa"].includes(species.toLowerCase())) {
       return `${species} ${size}`;
     }
   }
