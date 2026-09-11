@@ -2962,7 +2962,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
   }
 
-  if (u.doors && spec.program !== "media") {
+  // Media defaults open-front (TV console), but stereo/cabinet prompts that ask for doors keep them.
+  const mediaWantsDoors =
+    spec.program === "media" &&
+    !!u.doors &&
+    (/\bdoors?\b/.test(prompt.toLowerCase()) || isStereoCabinet(prompt.toLowerCase()));
+  if (u.doors && (spec.program !== "media" || mediaWantsDoors)) {
     const doorY = u.upperStart ?? 0;
     const doorH = H - doorY;
     if (bayN >= 2) {

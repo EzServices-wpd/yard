@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -684,8 +684,8 @@ export function enforceHonesty(
   return applyLocalFixes(project);
 }
 
-function scrubFloorLanguage(text: string) {
-  return text
+function scrubFloorLanguage(text: string, prompt?: string) {
+  let out = text
     .replace(
       /Freestanding rectangle\. Mark the footprint on the floor\. Check it is square\./gi,
       "This hangs on the wall — do not mark a footprint on the floor. Find two studs.",
@@ -703,6 +703,17 @@ function scrubFloorLanguage(text: string) {
     )
     .replace(/Shim the feet if the floor is out[^.]*\./gi, "Lag into studs. Do not treat this as a floor box.")
     .replace(/This (\w+) sits on the floor\./gi, "This $1 hangs on the wall.");
+  // Wall media ledge: keep 55" TV stand footprint clear below (open below) in hang copy.
+  if (prompt && isWallMediaLedge(prompt.toLowerCase()) && !/clear below|open below|stand footprint clear/.test(out)) {
+    out = out.replace(
+      /Find two studs\./i,
+      'Find two studs. Keep the TV stand footprint clear below the ledge — open below.',
+    );
+    if (!/clear below|open below/.test(out)) {
+      out = `${out} Keep the TV stand footprint clear below the ledge — open below.`;
+    }
+  }
+  return out;
 }
 
 /** Rewrite a plan that still talks like a floor box or lists shelf pins on a rack. */
@@ -721,8 +732,8 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
       return {
         ...s,
         title: s.title.replace(/Confirm the footprint/i, "Confirm the hang"),
-        description: scrubFloorLanguage(s.description),
-        tips: s.tips ? scrubFloorLanguage(s.tips) : s.tips,
+        description: scrubFloorLanguage(s.description, project.prompt),
+        tips: s.tips ? scrubFloorLanguage(s.tips, project.prompt) : s.tips,
       };
     });
   }
