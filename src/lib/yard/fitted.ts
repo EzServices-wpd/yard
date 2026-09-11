@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isBunkBed, isDaybed, isFoldDown, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isTowelPortalRail, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -89,7 +89,7 @@ function spokenDrawerCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -99,7 +99,11 @@ export function looksLikeFitted(prompt: string) {
   // Linen/closet with a climb step-shelf still fitted (climbIdentityLabel null).
   if (climbIdentityLabel(lower)) return false;
   const weekendMech = detectWeekendMech(prompt);
-  if (weekendMech === "launcher" || weekendMech === "media-hold") return false;
+  // House media ledge / shelf / stereo / AV stay fitted even if craft nouns overlap.
+  if (weekendMech === "launcher") return false;
+  if (weekendMech === "media-hold" && !detectHouseFamily(prompt) && !isHouseMediaCarcase(lower) && !isWallMediaLedge(lower)) {
+    return false;
+  }
   if (weekendMech === "climb" && !detectHouseFamily(prompt)) return false;
   if (MAKER.test(lower) && CRAFT.test(lower)) return false;
   if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
@@ -115,9 +119,10 @@ export function looksLikeFitted(prompt: string) {
     return true;
   }
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|\bhood\b/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
     return true;
   }
+  if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower)) return true;
   return nums >= 2;
 }
 
@@ -613,7 +618,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
 
   let bays: number | undefined;
-  if (
+  // Spoken "three open bays" / "3 bays" — AV tower + media cut-list honesty.
+  const spokenBaysDigit = lower.match(/\b(\d+)\s*(?:open\s+)?bays?\b/);
+  const spokenBaysWord = lower.match(/\b(two|three|four|five|six)\s+(?:open\s+)?bays?\b/);
+  const spokenBayWords: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+  const spokenBays = spokenBaysDigit
+    ? parseInt(spokenBaysDigit[1], 10)
+    : spokenBaysWord
+      ? spokenBayWords[spokenBaysWord[1]]
+      : NaN;
+  if (Number.isFinite(spokenBays) && spokenBays >= 2 && spokenBays <= 8) {
+    // Wide media can take vertical bay dividers; narrow AV towers stack open bays on shelves.
+    if (!(isAvTower(lower) || (program === "media" && width < 36))) {
+      bays = spokenBays;
+    }
+  } else if (
     (isSystem || width >= 84) &&
     (program === "closet" || program === "wardrobe" || program === "pantry" || program === "storage")
   ) {
@@ -663,7 +682,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
         : program === "pantry" || program === "wardrobe"
           ? 4
           : program === "media"
-            ? 2
+            ? isMediaShelf(lower) || wantsSoundbarHold(lower)
+              ? 1
+              : isAvTower(lower) || (Number.isFinite(spokenBays) && spokenBays >= 2)
+                ? // N open bays → N-1 intermediate shelves between bottom and top.
+                  Math.max(1, (Number.isFinite(spokenBays) ? spokenBays : 3) - 1)
+                : 2
             : isShoeStorage(lower)
               ? Math.max(2, Math.min(5, Math.round((height - P) / 6)))
               : /crate/.test(lower)
@@ -949,7 +973,76 @@ function pushDrawerWithFront(
 }
 
 
+/** Hung media ledge — typed W×H×D, wall cleat/stud joins, clear below for TV stand. */
+function buildWallMediaLedge(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = Math.max(u.height, P + 1.5);
+  const D = u.depth;
+  const x0 = -W / 2;
+  const cleatH = Math.min(2.5, Math.max(1.5, H - P));
+  const panels: Panel[] = [];
+  // Ledger / French cleat against the wall; ledge shelf sits on it.
+  panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
+  panels.push(panel("shelf", "Media ledge", x0, cleatH, P, W, P, Math.max(D - P, 2)));
+  // Low front lip so gear cannot slide off — still an open ledge (hung-open).
+  panels.push(panel("rail", "Front lip", x0, cleatH + P, D - P, W, Math.min(1.25, Math.max(0.75, H - cleatH - P)), P));
+  const stem = mediaIdentityLabel(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) || "Media ledge";
+  const name = `${stem} ${W}" × ${H}" × ${D}"`;
+  const clearNote = /55/.test(prompt)
+    ? "Keep the 55" TV stand footprint clear below the ledge — open below, not a floor box."
+    : "Keep the TV stand footprint clear below the ledge — open below, not a floor box.";
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Wall media ledge hung-open on a wall cleat — lags into studs / French cleat joinery; not a weekend picture ledge.`,
+      clearNote,
+      "Mount the cleat to studs; the ledge screws down onto the cleat. Guidance only — confirm the wall type.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "media",
+      family: "hung-open",
+      affordances: affordances.includes("cleats") ? affordances : [...affordances, "cleats"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 1,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: false,
+        bays: undefined,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "wall",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const lower = prompt.toLowerCase();
+  if (isWallMediaLedge(lower) || (/\bmedia\b/.test(lower) && /\bledge\b/.test(lower))) {
+    return buildWallMediaLedge(spec, prompt, affordances);
+  }
   const u = spec.unit;
   const W = u.width;
   const H = u.height;
@@ -974,7 +1067,12 @@ function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffor
   }
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
   const kind = lips ? "Jar rack" : rails ? "Bottle rack" : /shel/.test(prompt.toLowerCase()) ? "Wall shelf" : "Wall rack";
-  const name = spec.name.match(/rack|shelf|shelves/i) ? spec.name : `${kind} ${W}" × ${H}" × ${D}"`;
+  const mediaStem = mediaIdentityLabel(lower) || identityTitleStem(lower);
+  const name = mediaStem
+    ? `${mediaStem} ${W}" × ${H}" × ${D}"`
+    : spec.name.match(/rack|shelf|shelves|ledge/i)
+      ? spec.name
+      : `${kind} ${W}" × ${H}" × ${D}"`;
   const lipNote = lips
     ? "Jar lips on every shelf so jars cannot slide off."
     : rails
@@ -2807,11 +2905,28 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         panels.push(panel("shelf", `Left shelf ${i}`, x0 + P, y, 0.1, bay, P, D - 0.2));
         panels.push(panel("shelf", `Right shelf ${i}`, P / 2, y, 0.1, bay, P, D - 0.2));
       } else {
-        panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, 0.1, W - P * 2, P, D - 0.2));
+        const shelfLabel =
+          spec.program === "media" &&
+          (isAvTower(prompt.toLowerCase()) || /\b(?:\d+|two|three|four)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase()))
+            ? `Bay ${i} shelf`
+            : `Shelf ${i}`;
+        panels.push(panel("shelf", shelfLabel, x0 + P, y, 0.1, W - P * 2, P, D - 0.2));
       }
     }
   }
 
+  // Soundbar hold envelope on media shelf — front lip cradles a real bar, never a flat decal.
+  const promptForMedia = prompt.toLowerCase();
+  if (
+    spec.program === "media" &&
+    (wantsSoundbarHold(promptForMedia) || isMediaShelf(promptForMedia)) &&
+    !hasKnee
+  ) {
+    const lipH = Math.min(2.5, Math.max(1.5, Math.min(4, H * 0.2)));
+    panels.push(
+      panel("rail", "Soundbar front lip", x0 + P, P, D - P, W - P * 2, lipH, P),
+    );
+  }
   // Linen / closet climb step-shelf — weight-bearing mid tread; freeze envelope stays typed.
   const climbStepShelf =
     (spec.program === "closet" || /linen/.test(prompt.toLowerCase())) &&
@@ -2875,12 +2990,20 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         : `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
       : spec.program === "media"
         ? [
-            bayN >= 2
-              ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
-              : "Open front. TV sits on top. No leftover doors.",
-            shelves
-              ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
-              : "Glue the shelves; do not pin them.",
+            wantsSoundbarHold(prompt.toLowerCase()) || isMediaShelf(prompt.toLowerCase())
+              ? `Media shelf / ledge carcase with a real soundbar hold envelope — front lip cradles the bar, never a flat decal.`
+              : isAvTower(prompt.toLowerCase())
+                ? `AV tower floor carcase with three usable open bays matching the cut list. Open front. No leftover doors.`
+                : isStereoCabinet(prompt.toLowerCase())
+                  ? `Stereo cabinet floor carcase${u.doors ? " with doors that earn keep" : ""}.`
+                  : bayN >= 2
+                    ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
+                    : "Open front. TV sits on top. No leftover doors.",
+            isAvTower(prompt.toLowerCase()) || /\b(?:three|3)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase())
+              ? `${Math.max(3, shelves + 1)} usable open bays (stacked). Glue and screw the shelves; do not pin them.`
+              : shelves
+                ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
+                : "Glue the shelves; do not pin them.",
           ].join(" ")
         : kitchenBase
           ? [

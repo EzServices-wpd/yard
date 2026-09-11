@@ -13,7 +13,7 @@
  * stock. Unnamed stock stays the wire-frame placeholder.
  */
 
-import { detectHouseFamily } from "./family";
+import { detectHouseFamily, isAvTower, isHouseMediaCarcase, isWallMediaLedge } from "./family";
 import type { StructureKind } from "./types";
 
 export type WeekendFamily = "lattice" | "arch" | "truss" | "figure" | "frame";
@@ -37,7 +37,7 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:print|card)|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
 /** Plant / pot stand that holds a real pot upright — envelope + densify, not a Tree silhouette. */
 const POT_HOLD_NOUN =
   /plant\s*stand|pot\s*stand|figurine\s*stand|holds?\s+a\s+real\s+.{0,24}\b(?:pot|figurine)\b|\b(?:pot|figurine)\b.{0,32}upright|upright.{0,24}\b(?:pot|figurine)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)/;
@@ -68,6 +68,9 @@ export function detectWeekendMech(prompt: string): WeekendMech | null {
   if (isHumanClimb(hay)) return "climb";
   if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
   if (POT_HOLD_NOUN.test(hay)) return "pot-hold";
+  // House media ledge / shelf / stereo / AV tower stay fitted — never picture-ledge tip-hold.
+  // ("footprint" must not count as print; wall media ledge is hung-open plywood.)
+  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay)) return null;
   if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
   return null;
 }
@@ -122,21 +125,24 @@ export function isMediaDeviceStand(prompt: string): boolean {
  */
 export function wantsMediaTipHold(prompt: string): boolean {
   const hay = looksHay(prompt);
+  // House wall media ledge / media shelf / AV / stereo — never tip-hold picture ledge.
+  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay)) return false;
   // Flat picture frames stay rabbet/backing — tip/lean/easel/print-hold claim tip-hold anatomy.
   if (
     /(?:picture|photo|poster|art)\s*frame/.test(hay) &&
     mediaHoldTipDeg(prompt) == null &&
-    !/easel|lean|tip|open\s+book|holds?\s+a\s+real|print/.test(hay)
+    !/easel|lean|tip|open\s+book|holds?\s+a\s+real|\bprint\b/.test(hay)
   ) {
     return false;
   }
   if (isMediaDeviceStand(prompt)) return true;
   if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|open\s+laptop|laptop\s*lean|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
-  if (/picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b/.test(hay) && /print|photo|tip|lean|hold|upright/.test(hay)) return true;
-  if (/holds?\s+a\s+real\s+(?:print|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:print|card)/.test(hay) && /lean|tip|frame|stand|hold|ledge/.test(hay)) {
+  // Picture/photo/art ledge tip-hold only — bare house "ledge" + hold is not craft.
+  if (/picture\s*ledge|(?:photo|art)\s*ledge/.test(hay) && /(?:\bprint\b|photo|tip|lean|hold|upright)/.test(hay)) return true;
+  if (/holds?\s+a\s+real\s+(?:\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)/.test(hay) && /lean|tip|frame|stand|hold|ledge/.test(hay)) {
     return true;
   }
-  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|ledge|book|cookbook|photo|picture|print|sheet|tablet|laptop|music|card|recipe/.test(hay)) return true;
+  if (mediaHoldTipDeg(prompt) != null && /easel|stand|lean|hold|frame|ledge|book|cookbook|photo|picture|\bprint\b|sheet|tablet|laptop|music|card|recipe/.test(hay)) return true;
   return false;
 }
 
@@ -354,6 +360,7 @@ function isWindowPrompt(lower: string) {
 
 function isNotWeekend(lower: string) {
   if (detectHouseFamily(lower)) return true;
+  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isAvTower(lower)) return true;
   if (isWindowPrompt(lower)) return true;
   // Step-up / climb stools are weekend climb — not house chairs.
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) {
@@ -418,7 +425,8 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
   }
 
   // Space frame before generic "frame".
-  if (LATTICE_NOUN.test(hay) || /eiffel-?class|lattice tower/.test(hay)) {
+  // AV / media component tower is a house floor-carcase — never lattice wire skeleton.
+  if (!isAvTower(hay) && !isHouseMediaCarcase(hay) && (LATTICE_NOUN.test(hay) || /eiffel-?class|lattice tower/.test(hay))) {
     return { family: "lattice", kind: "lattice", name: /space\s*frame/.test(hay) ? "Space frame" : "Lattice tower" };
   }
 

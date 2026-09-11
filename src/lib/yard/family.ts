@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -113,6 +113,50 @@ export function isRadiatorCover(lower: string) {
 /** Sofa / entry / console table — shallow table, not a TV media carcase. */
 export function isSofaConsoleTable(lower: string) {
   return /sofa\s*table|console\s*table|entry\s*console/.test(lower);
+}
+
+/** Wall / media ledge — hung-open house path; never weekend picture-ledge tip-hold. */
+export function isWallMediaLedge(lower: string) {
+  if (/(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower) && !/\bmedia\b|\btv\b|soundbar|stereo/.test(lower)) {
+    return false;
+  }
+  if (/\bmedia\b/.test(lower) && /\bledge\b/.test(lower)) return true;
+  if (/wall/.test(lower) && /\bledge\b/.test(lower) && /media|\btv\b|soundbar|stereo|entertainment|clear below|stand footprint|footprint clear/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/** Media shelf (incl. soundbar hold) — positive shelf/ledge identity, not bare Media console. */
+export function isMediaShelf(lower: string) {
+  if (/\bdesk\b|workbench|\bvanity\b/.test(lower)) return false;
+  if (/media\s*shelf|soundbar\s*shelf/.test(lower)) return true;
+  if (/\bmedia\b/.test(lower) && /\bshelf\b/.test(lower) && !/console|cabinet|tower/.test(lower)) return true;
+  return false;
+}
+
+/** Stereo cabinet / stereo unit — never naked Storage unit. */
+export function isStereoCabinet(lower: string) {
+  return /\bstereo\b/.test(lower);
+}
+
+/** AV / media component tower — floor carcase, never lattice/wire House skeleton. */
+export function isAvTower(lower: string) {
+  return /(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|component\s*tower|av\s*rack/.test(lower);
+}
+
+/** Prompt asks to cradle a real soundbar (envelope + lip, never a decal). */
+export function wantsSoundbarHold(lower: string) {
+  return /sound\s*-?\s*bar|holds?\s+a\s+real\s+soundbar/.test(lower);
+}
+
+/** House media family nouns that must beat weekend craft steals. */
+export function isHouseMediaCarcase(lower: string) {
+  if (isSofaConsoleTable(lower)) return false;
+  if (isWallMediaLedge(lower) || isMediaShelf(lower) || isStereoCabinet(lower) || isAvTower(lower)) return true;
+  if (wantsSoundbarHold(lower) && /shelf|ledge|console|cabinet|media/.test(lower)) return true;
+  if (/\bmedia\b|\btv\b/.test(lower) && /console|cabinet|sideboard|credenza|entertainment/.test(lower)) return true;
+  return false;
 }
 
 /**
@@ -438,21 +482,37 @@ export function identityTitleStem(lower: string): string | null {
   return null;
 }
 
-/** Keep TV / media console identity — never a naked "Media". */
+/** Keep TV / media / stereo / AV / shelf / ledge identity — never naked Media or Storage. */
 export function mediaIdentityLabel(lower: string): string | null {
   // Sofa / entry / console tables are tables — never steal Media console identity.
   if (isSofaConsoleTable(lower)) return null;
   // Desk with a media shelf behind stays a desk (knee clear), not a media console.
   if (/\bdesk\b|workbench|\bvanity\b/.test(lower)) return null;
-  if (!/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment/.test(lower)) return null;
+  // Stereo / AV before generic media — never Storage unit / lattice tower.
+  if (isStereoCabinet(lower)) return "Stereo cabinet";
+  if (isAvTower(lower)) return "AV tower";
+  // Media shelf / ledge beat console — and beat "TV" stolen from "TV stand footprint".
+  if (isWallMediaLedge(lower)) return "Media ledge";
+  if (isMediaShelf(lower) || (wantsSoundbarHold(lower) && /shelf|ledge/.test(lower))) return "Media shelf";
+  if (
+    !/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) &&
+    !isAvTower(lower)
+  ) {
+    return null;
+  }
   if (/entertainment\s*cent(?:er|re)/.test(lower)) return "Entertainment center";
   if (/\btv\b/.test(lower) && /console/.test(lower)) return "TV console";
   if (/media\s*console/.test(lower)) return "Media console";
   if (/sideboard/.test(lower)) return "Sideboard";
   if (/credenza/.test(lower)) return "Credenza";
+  // "55 TV stand footprint clear below" is hold language on a ledge — not a TV console.
+  if (/\btv\b/.test(lower) && /stand\s+footprint|footprint\s+clear|clear below/.test(lower) && !/console/.test(lower)) {
+    return null;
+  }
   if (/\btv\b/.test(lower)) return "TV console";
   if (/console/.test(lower)) return "Media console";
-  return "Media console";
+  if (/\bmedia\b/.test(lower)) return "Media console";
+  return null;
 }
 
 function programFromNoun(lower: string): FittedProgram {
@@ -466,7 +526,15 @@ function programFromNoun(lower: string): FittedProgram {
   if (isSofaConsoleTable(lower)) return "table";
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
-  if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
+  if (
+    /\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||
+    isAvTower(lower) ||
+    isStereoCabinet(lower) ||
+    isWallMediaLedge(lower) ||
+    isMediaShelf(lower)
+  ) {
+    return "media";
+  }
   if (isMudroomCubbyWall(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
@@ -483,9 +551,13 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   const lower = prompt.toLowerCase();
   if (isNotHouse(lower)) return null;
   // Weekend craft tip-hold / soft-launch — never a house ledge or portal noun.
-  if (
+  // House media ledge (wall media + TV stand footprint clear below) stays house:
+  // bare "print" must not match inside "footprint".
+  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower)) {
+    // keep house path
+  } else if (
     /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower) ||
-    (/\bledge\b/.test(lower) && /(?:print|tip|lean|popsicle|craft|weekend)/.test(lower)) ||
+    (/\bledge\b/.test(lower) && /(?:\bprint\b|tip|lean|popsicle|craft|weekend)/.test(lower)) ||
     (/soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower) && /weekend|craft|popsicle|cedar|marble/.test(lower))
   ) {
     return null;
@@ -511,9 +583,10 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const wallLang =
     !coatBench &&
-    (/wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|on the wall|wall\b.{0,24}\bcabinet\b/.test(
+    (/wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|wall.{0,28}(?:media\s*)?ledge|media\s*ledge|on the wall|wall\b.{0,24}\bcabinet\b/.test(
       lower,
     ) ||
+      isWallMediaLedge(lower) ||
       isKitchenUpper(lower) ||
       isSpiceRack(lower) ||
       isWineRack(lower) ||
@@ -617,6 +690,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (
     (/floating/.test(lower) && /shel/.test(lower)) ||
     (/wall/.test(lower) && /shel(?:f|ves)\b/.test(lower) && !/cabinet|jar|spice|wine|bottle/.test(lower)) ||
+    isWallMediaLedge(lower) ||
+    (/\bledge\b/.test(lower) && /\bmedia\b/.test(lower)) ||
     isPortalSpanShelf(lower)
   ) {
     add("cleats");
