@@ -728,13 +728,31 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
     instructions = instructions.map((s) => {
       if (!wall) return s;
       const blob = `${s.title} ${s.description} ${s.tips ?? ""}`;
-      if (!hasFloorBoxLie(blob)) return s;
-      return {
-        ...s,
-        title: s.title.replace(/Confirm the footprint/i, "Confirm the hang"),
-        description: scrubFloorLanguage(s.description, project.prompt),
-        tips: s.tips ? scrubFloorLanguage(s.tips, project.prompt) : s.tips,
-      };
+      let next = s;
+      if (hasFloorBoxLie(blob)) {
+        next = {
+          ...s,
+          title: s.title.replace(/Confirm the footprint/i, "Confirm the hang"),
+          description: scrubFloorLanguage(s.description, project.prompt),
+          tips: s.tips ? scrubFloorLanguage(s.tips, project.prompt) : s.tips,
+        };
+      }
+      // Media ledge hang copy may already be scrubbed (no floor-box lie) — still stamp clear-below.
+      if (isWallMediaLedge((project.prompt ?? "").toLowerCase())) {
+        const d = next.description ?? "";
+        if (!/clear below|open below|stand footprint clear/.test(d)) {
+          next = {
+            ...next,
+            description: /Find two studs\./i.test(d)
+              ? d.replace(
+                  /Find two studs\./i,
+                  "Find two studs. Keep the TV stand footprint clear below the ledge — open below.",
+                )
+              : `${d} Keep the TV stand footprint clear below the ledge — open below.`,
+          };
+        }
+      }
+      return next;
     });
   }
   // Replace cut-claim lines for spliced families with the honest cut-list segments.
