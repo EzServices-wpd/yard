@@ -990,7 +990,7 @@ function buildWallMediaLedge(spec: FittedSpec, prompt: string, affordances: Hous
   const stem = mediaIdentityLabel(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) || "Media ledge";
   const name = `${stem} ${W}" × ${H}" × ${D}"`;
   const clearNote = /55/.test(prompt)
-    ? "Keep the 55" TV stand footprint clear below the ledge — open below, not a floor box."
+    ? "Keep the 55\" TV stand footprint clear below the ledge — open below, not a floor box."
     : "Keep the TV stand footprint clear below the ledge — open below, not a floor box.";
   return {
     id: createId("proj"),
