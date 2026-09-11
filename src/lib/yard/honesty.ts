@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -85,10 +85,13 @@ export function typedExtents(prompt: string): TypedExtents | null {
   const trip = unlabeledTriple(t);
   const program = detectProgram(lower);
 
-  // Long×wide is plan length×plan-width (not laundry height in the middle).
+  // Beds: wide × long × tall → W × D(length) × H. Tables: long×wide is plan length×plan-width.
   let width = labeledWide;
   let depthOut = depth;
-  if (labeledLong != null) {
+  if (isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower) || isBedsideShelf(lower)) {
+    if (labeledWide != null) width = labeledWide;
+    if (labeledLong != null) depthOut = labeledLong;
+  } else if (labeledLong != null) {
     width = labeledLong;
     if (labeledWide != null) depthOut = labeledWide;
   }

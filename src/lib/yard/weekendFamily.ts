@@ -13,7 +13,7 @@
  * stock. Unnamed stock stays the wire-frame placeholder.
  */
 
-import { detectHouseFamily, isAvTower, isHouseMediaCarcase, isWallMediaLedge } from "./family";
+import { detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge } from "./family";
 import type { StructureKind } from "./types";
 
 export type WeekendFamily = "lattice" | "arch" | "truss" | "figure" | "frame";
@@ -68,9 +68,9 @@ export function detectWeekendMech(prompt: string): WeekendMech | null {
   if (isHumanClimb(hay)) return "climb";
   if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
   if (POT_HOLD_NOUN.test(hay)) return "pot-hold";
-  // House media ledge / shelf / stereo / AV tower stay fitted — never picture-ledge tip-hold.
+  // House media ledge / shelf / stereo / AV tower / bedside book shelf / platform bed stay fitted.
   // ("footprint" must not count as print; wall media ledge is hung-open plywood.)
-  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay)) return null;
+  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return null;
   if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
   return null;
 }
@@ -125,8 +125,8 @@ export function isMediaDeviceStand(prompt: string): boolean {
  */
 export function wantsMediaTipHold(prompt: string): boolean {
   const hay = looksHay(prompt);
-  // House wall media ledge / media shelf / AV / stereo — never tip-hold picture ledge.
-  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay)) return false;
+  // House wall media ledge / media shelf / AV / stereo / bedside shelf — never tip-hold picture ledge.
+  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return false;
   // Flat picture frames stay rabbet/backing — tip/lean/easel/print-hold claim tip-hold anatomy.
   if (
     /(?:picture|photo|poster|art)\s*frame/.test(hay) &&
@@ -360,7 +360,7 @@ function isWindowPrompt(lower: string) {
 
 function isNotWeekend(lower: string) {
   if (detectHouseFamily(lower)) return true;
-  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isAvTower(lower)) return true;
+  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isAvTower(lower) || isBedsideShelf(lower) || isPlatformBed(lower)) return true;
   if (isWindowPrompt(lower)) return true;
   // Step-up / climb stools are weekend climb — not house chairs.
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) {

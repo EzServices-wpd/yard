@@ -27,7 +27,7 @@ import {
   bridgeOps,
 } from "./formBuildersCore";
 import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
-import { isAvTower, isHouseMediaCarcase } from "./family";
+import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
   wallOps,
@@ -150,6 +150,9 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   for (const hit of HITS) {
     // AV / media component tower is house floor-carcase — never Lattice tower HITS steal.
     if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower))) continue;
+    // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
+    if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
+    if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
     if (hit.re.test(hay)) {
       const sized = hit.fit ? hit.fit(size, prompt) : size;
       const ops = hit.build(sized);

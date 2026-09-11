@@ -6,7 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isHouseMediaCarcase, isWallMediaLedge } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -94,12 +94,14 @@ export function generateFromPrompt(
   const weekendMech = detectWeekendMech(prompt);
   // Launcher / media-hold stay craft. Climb-primary stools stay craft.
   // House carcase + climb step-shelf (linen) still fitted via detectHouseFamily.
-  // House media ledge / shelf / stereo / AV tower beat weekend picture-ledge / lattice steals.
+  // House media ledge / shelf / stereo / AV tower / platform bed / bedside shelf beat weekend steals.
   const houseMedia =
     !!detectHouseFamily(prompt) ||
     isWallMediaLedge(lower) ||
     isHouseMediaCarcase(lower) ||
-    isAvTower(lower);
+    isAvTower(lower) ||
+    isPlatformBed(lower) ||
+    isBedsideShelf(lower);
   if (
     !climbPrimary &&
     weekendMech !== "launcher" &&

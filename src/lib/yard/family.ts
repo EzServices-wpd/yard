@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -372,6 +372,28 @@ export function isDaybed(lower: string) {
   return /\bday\s*beds?\b/.test(lower);
 }
 
+/** Low platform bed — sleep deck on a low frame; never Yard House wire / craft platform. */
+export function isPlatformBed(lower: string) {
+  if (isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower)) return false;
+  if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return false;
+  return /platform\s*beds?\b/.test(lower) || (/\bplatform\b/.test(lower) && /\bbeds?\b/.test(lower));
+}
+
+/** Prompt asks to cradle a real book upright (envelope + lip, never a decal). */
+export function wantsBookHold(lower: string) {
+  return /holds?\s+a\s+real\s+book|book\s+upright|upright\s+book|book\s+envelope|cradles?\s+(?:a\s+)?book/.test(lower);
+}
+
+/** Bedside shelf — shallow shelf/envelope; never Nightstand drawers, never Picture ledge. */
+export function isBedsideShelf(lower: string) {
+  if (/nightstand/.test(lower) && /drawer/.test(lower)) return false;
+  if (/picture\s*ledge|(?:photo|art)\s*ledge/.test(lower) && !/bedside/.test(lower)) return false;
+  if (/bedside\s*shelf/.test(lower)) return true;
+  if (/bedside/.test(lower) && /\bshelf\b/.test(lower)) return true;
+  if (/bedside/.test(lower) && wantsBookHold(lower) && !/nightstand|drawer|table/.test(lower)) return true;
+  return false;
+}
+
 
 /**
  * Climb / step-up stool identity — survives house-brief merge and Measure/stock densify.
@@ -445,6 +467,8 @@ export function identityTitleStem(lower: string): string | null {
   if (sitStem) return sitStem;
   if (isRadiatorCover(lower)) return "Radiator cover";
   if (isDaybed(lower)) return "Daybed";
+  if (isPlatformBed(lower)) return "Platform bed";
+  if (isBedsideShelf(lower)) return "Bedside shelf";
   if (isSofaConsoleTable(lower)) {
     if (/sofa\s*table/.test(lower)) return "Sofa table";
     if (/entry\s*console/.test(lower)) return "Entry console";
@@ -457,7 +481,8 @@ export function identityTitleStem(lower: string): string | null {
   if (/file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)) return "File cabinet";
   if (/\bchest\b/.test(lower) && !/medicine/.test(lower)) return "Chest";
   if (/\bdresser\b/.test(lower)) return "Dresser";
-  if (/nightstand|bedside/.test(lower)) return "Nightstand";
+  // Nightstand only when not a bedside shelf (shelf / book envelope stays Bedside shelf).
+  if (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))) return "Nightstand";
   // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
@@ -522,8 +547,10 @@ function programFromNoun(lower: string): FittedProgram {
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
-  if (/nightstand|bedside/.test(lower)) return "storage";
+  if (isBedsideShelf(lower)) return "storage";
+  if (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))) return "storage";
   if (isSofaConsoleTable(lower)) return "table";
+  if (isPlatformBed(lower)) return "storage";
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (
@@ -553,7 +580,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   // Weekend craft tip-hold / soft-launch — never a house ledge or portal noun.
   // House media ledge (wall media + TV stand footprint clear below) stays house:
   // bare "print" must not match inside "footprint".
-  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower)) {
+  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isBedsideShelf(lower) || isPlatformBed(lower)) {
     // keep house path
   } else if (
     /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower) ||
@@ -603,7 +630,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isShoePortalRail(lower) ||
       isShoePortalCubbies(lower) ||
       isPortalHookRail(lower) ||
-      isPortalSpanShelf(lower));
+      isPortalSpanShelf(lower) ||
+      isBedsideShelf(lower));
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
 
@@ -635,6 +663,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   let family: HouseFamily;
   if (mount === "straddle" || isOverToilet(lower)) family = "straddle";
   else if (isBunkBed(lower) || isLoftBed(lower)) family = "bunk";
+  else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower)) family = "slab";
   // Fold-down is a hung board in a shallow cabinet — not a freestanding table,
@@ -674,7 +703,9 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     /drawer/.test(lower) ||
     program === "vanity" ||
     program === "desk" ||
-    /nightstand|bedside|dresser|hutch/.test(lower)
+    (/nightstand/.test(lower) && !isBedsideShelf(lower)) ||
+    (/bedside/.test(lower) && !isBedsideShelf(lower)) ||
+    /dresser|hutch/.test(lower)
   ) {
     add("drawers");
   }
@@ -692,11 +723,12 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/wall/.test(lower) && /shel(?:f|ves)\b/.test(lower) && !/cabinet|jar|spice|wine|bottle/.test(lower)) ||
     isWallMediaLedge(lower) ||
     (/\bledge\b/.test(lower) && /\bmedia\b/.test(lower)) ||
-    isPortalSpanShelf(lower)
+    isPortalSpanShelf(lower) ||
+    isBedsideShelf(lower)
   ) {
     add("cleats");
   }
-  if (family === "bunk" || isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower)) add("sleep-platforms");
+  if (family === "bunk" || isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower) || isPlatformBed(lower)) add("sleep-platforms");
 
   return { family, mount, use, opening, affordances, program };
 }

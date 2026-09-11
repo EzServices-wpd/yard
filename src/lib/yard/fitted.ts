@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isPlatformBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -89,7 +89,7 @@ function spokenDrawerCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -101,7 +101,14 @@ export function looksLikeFitted(prompt: string) {
   const weekendMech = detectWeekendMech(prompt);
   // House media ledge / shelf / stereo / AV stay fitted even if craft nouns overlap.
   if (weekendMech === "launcher") return false;
-  if (weekendMech === "media-hold" && !detectHouseFamily(prompt) && !isHouseMediaCarcase(lower) && !isWallMediaLedge(lower)) {
+  if (
+    weekendMech === "media-hold" &&
+    !detectHouseFamily(prompt) &&
+    !isHouseMediaCarcase(lower) &&
+    !isWallMediaLedge(lower) &&
+    !isBedsideShelf(lower) &&
+    !isPlatformBed(lower)
+  ) {
     return false;
   }
   if (weekendMech === "climb" && !detectHouseFamily(prompt)) return false;
@@ -113,16 +120,16 @@ export function looksLikeFitted(prompt: string) {
   if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower)) {
     return false;
   }
-  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower)) return false;
+  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower) && !isPlatformBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
   if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
     return true;
   }
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
     return true;
   }
-  if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower)) return true;
+  if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower) || isPlatformBed(lower) || isBedsideShelf(lower)) return true;
   return nums >= 2;
 }
 
@@ -138,8 +145,10 @@ export function detectProgram(lower: string): FittedProgram {
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
-  if (/nightstand|bedside/.test(lower)) return "storage";
+  if (isBedsideShelf(lower)) return "storage";
+  if (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))) return "storage";
   if (isSofaConsoleTable(lower)) return "table";
+  if (isPlatformBed(lower)) return "storage";
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
@@ -249,8 +258,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
               ? 60
               : program === "bench"
                 ? 48
-              : /nightstand|bedside/.test(lower)
+              : isBedsideShelf(lower)
+                ? 18
+              : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
                 ? 20
+                : isPlatformBed(lower)
+                  ? /queen/.test(lower)
+                    ? 60
+                    : 54
                 : isLaundryFoldDown(lower)
                   ? 48
                 : isIroningCabinet(lower)
@@ -433,6 +448,15 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
   }
 
+  // Platform / bunk / loft beds: wide × long × tall → W × H × D(length). Never drop length.
+  if (isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower)) {
+    const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
+    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+    if (Number.isFinite(labeledWide)) width = labeledWide;
+    if (Number.isFinite(labeledLong)) depth = labeledLong;
+    if (Number.isFinite(labeledTall)) height = labeledTall;
+  }
+
   if (isSystem && trip.w && trip.h && !Number.isFinite(pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN))) {
     const a = trip.w;
     const b = trip.h;
@@ -494,8 +518,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 48
           : /dresser/.test(lower)
             ? 36
-            : /nightstand|bedside/.test(lower)
+            : isBedsideShelf(lower)
+              ? 6
+            : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
               ? 24
+            : isPlatformBed(lower)
+              ? 14
             : /island/.test(lower)
               ? 36
               : /crate/.test(lower)
@@ -576,10 +604,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 12
                     : isDaybed(lower)
                       ? 39
+                    : isPlatformBed(lower)
+                      ? /queen/.test(lower)
+                        ? 80
+                        : 75
                     : isBunkBed(lower) || isLoftBed(lower)
                       ? /queen/.test(lower)
                         ? 80
                         : 75
+                    : isBedsideShelf(lower)
+                      ? 8
                     : /dresser/.test(lower)
                       ? 18
                       : /crate/.test(lower)
@@ -734,7 +768,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /drawer/.test(lower) ||
     program === "vanity" ||
     program === "desk" ||
-    /nightstand|bedside|dresser|hutch|\bchest\b|file\s*cabinet|filing/.test(lower);
+    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|\bchest\b|file\s*cabinet|filing/.test(lower)) && !isBedsideShelf(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -790,7 +824,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     shelfCount: shelfCount || undefined,
     cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
     drawersPerBank: drawers
-      ? spokenDrawerCount(lower) ?? (/nightstand|bedside/.test(lower) ? 1 : 3)
+      ? spokenDrawerCount(lower) ?? (isBedsideShelf(lower) ? undefined : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) ? 1 : 3)
       : undefined,
     doors: doorsFinal,
     mirror,
@@ -841,7 +875,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? "Chest"
             : /dresser/.test(lower)
               ? "Dresser"
-              : /nightstand|bedside/.test(lower)
+              : isBedsideShelf(lower)
+                ? "Bedside shelf"
+              : isPlatformBed(lower)
+                ? "Platform bed"
+              : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
                 ? "Nightstand"
                 : isIroningCabinet(lower)
               ? "Ironing cabinet"
@@ -1038,8 +1076,71 @@ function buildWallMediaLedge(spec: FittedSpec, prompt: string, affordances: Hous
   };
 }
 
+function buildBedsideShelf(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = Math.max(u.height, P + 2);
+  const D = u.depth;
+  const x0 = -W / 2;
+  const cleatH = Math.min(2.5, Math.max(1.5, H - P));
+  const lipH = Math.min(2.5, Math.max(1.5, Math.min(H - cleatH - P, 2.25)));
+  const panels: Panel[] = [];
+  panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
+  panels.push(panel("shelf", "Bedside shelf", x0, cleatH, P, W, P, Math.max(D - P, 2)));
+  // Book envelope — front lip cradles a real book upright, never a flat decal.
+  panels.push(panel("rail", "Book front lip", x0, cleatH + P, D - P, W, lipH, P));
+  panels.push(panel("rail", "Book backstop", x0, cleatH + P, P, W, Math.max(lipH, Math.min(4, H - cleatH - P)), P));
+  const name = `Bedside shelf ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Bedside shelf hung-open on a wall cleat — holds a real book upright in a book envelope with a front lip; never a flat decal, never a Nightstand, never a Picture ledge.`,
+      "Mount the cleat to studs; the shelf screws down onto the cleat. Guidance only — confirm the bedside height.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "hung-open",
+      affordances: affordances.includes("cleats") ? affordances : [...affordances, "cleats"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 1,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: false,
+        bays: undefined,
+      },
+    },
+    assumptions: {
+      load: "light",
+      units: "inches",
+      installMode: "wall",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const lower = prompt.toLowerCase();
+  if (isBedsideShelf(lower)) {
+    return buildBedsideShelf(spec, prompt, affordances);
+  }
   if (isWallMediaLedge(lower) || (/\bmedia\b/.test(lower) && /\bledge\b/.test(lower))) {
     return buildWallMediaLedge(spec, prompt, affordances);
   }
@@ -1443,6 +1544,80 @@ function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAfforda
   };
 }
 
+function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const post = Math.max(P, 1.5);
+  const railH = Math.min(4, Math.max(2.5, H * 0.35));
+  const deckY = Math.max(P, H - P - 0.01);
+  const innerW = Math.max(12, W - post * 2);
+  const innerD = Math.max(24, D - post * 2);
+  const panels: Panel[] = [];
+  // Low corner posts — platform frame (not a House wire skeleton).
+  panels.push(panel("upright", "Front left post", x0, 0, D - post, post, H, post));
+  panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, H, post));
+  panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
+  panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
+  // Sleep deck — mattress sits on this platform.
+  panels.push(panel("deck", "Sleep deck", x0 + post, deckY - P, post, innerW, P, innerD));
+  // Side rails keep a mattress on the platform.
+  panels.push(panel("rail", "Left side rail", x0 + post, deckY, post, P, railH, innerD));
+  panels.push(panel("rail", "Right side rail", x0 + W - post - P, deckY, post, P, railH, innerD));
+  panels.push(panel("rail", "Head rail", x0 + post, deckY, post, innerW, railH, P));
+  panels.push(panel("rail", "Foot rail", x0 + post, deckY, D - post - P, innerW, railH, P));
+  panels.push(panel("rail", "Front apron", x0 + post, Math.max(0, deckY - P - 3.5), D - post - P, innerW, 3.5, P));
+
+  const name = spec.name.match(/platform\s*bed/i) ? spec.name : `Platform bed ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Sleep deck at ~${Math.round(deckY - P)}" — mattress on the platform. Side rails keep a mattress on the sleep surface. Not a hollow box, not a Yard House wire skeleton.`,
+      `¾" plywood posts and sleep deck. Platform sits ~${H}" tall × ${W}" wide × ${D}" long. Guidance only — confirm mattress size before you cut.`,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "bunk",
+      affordances: affordances.includes("sleep-platforms")
+        ? affordances
+        : [...affordances, "sleep-platforms"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        cubbies: undefined,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "heavy",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "person",
+    },
+  };
+}
+
 function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const W = u.width;
@@ -1585,20 +1760,31 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const family: HouseFamily | undefined = spec.family ?? house?.family;
   const affordances: HouseAffordance[] = spec.affordances ?? house?.affordances ?? [];
 
-  const nightstand = /nightstand|bedside/.test(prompt.toLowerCase());
+  const sleepLower = prompt.toLowerCase();
+  const nightstand =
+    (/nightstand/.test(sleepLower) || (/bedside/.test(sleepLower) && !isBedsideShelf(sleepLower))) &&
+    !isBedsideShelf(sleepLower);
   if ((spec.program === "table" || family === "table") && !nightstand) {
     return buildTable(spec, prompt);
   }
 
-  if (isDaybed(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Daybed") {
+  if (isBedsideShelf(sleepLower) || identityTitleStem(sleepLower) === "Bedside shelf") {
+    return buildBedsideShelf(spec, prompt, affordances);
+  }
+
+  if (isDaybed(sleepLower) || identityTitleStem(sleepLower) === "Daybed") {
     return buildDaybed(spec, prompt, affordances);
+  }
+
+  if (isPlatformBed(sleepLower) || identityTitleStem(sleepLower) === "Platform bed") {
+    return buildPlatformBed(spec, prompt, affordances);
   }
 
   if (
     family === "bunk" ||
-    isBunkBed(prompt.toLowerCase()) ||
-    isLoftBed(prompt.toLowerCase()) ||
-    (affordances.includes("sleep-platforms") && !isDaybed(prompt.toLowerCase()))
+    isBunkBed(sleepLower) ||
+    isLoftBed(sleepLower) ||
+    (affordances.includes("sleep-platforms") && !isDaybed(sleepLower) && !isPlatformBed(sleepLower))
   ) {
     return buildBunkBed(spec, prompt, affordances);
   }

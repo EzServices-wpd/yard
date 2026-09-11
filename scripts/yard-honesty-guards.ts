@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isDaybed, isSofaConsoleTable } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isDaybed, isPlatformBed, isSofaConsoleTable } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1031,6 +1031,63 @@ const loftStill = generateFromPrompt("twin loft bed");
 if (!/^Loft bed/i.test(loftStill.name) || loftStill.panels.filter((p) => p.type === "deck").length !== 1) {
   failHonesty("loft freeze after daybed", { name: loftStill.name, decks: loftStill.panels.filter((p) => p.type === "deck").length });
 }
+
+// Batch-22: platform bed identity + W×L×H + sleep deck (never Yard House wire).
+const platformPrompts: Array<[string, number, number, number]> = [
+  ["house: platform bed 60″ wide × 80″ long × 14″ tall", 60, 14, 80],
+  ["house: platform bed 76″ wide × 80″ long × 14″ tall", 76, 14, 80],
+  ["platform bed 60 wide × 80 long × 14 tall", 60, 14, 80],
+];
+for (const [pp, w, h, d] of platformPrompts) {
+  if (!isPlatformBed(pp.toLowerCase())) failHonesty("isPlatformBed miss", pp);
+  if (identityTitleStem(pp.toLowerCase()) !== "Platform bed") failHonesty("platform stem", identityTitleStem(pp.toLowerCase()));
+  const hit = detectHouseFamily(pp);
+  if (!hit || !hit.affordances.includes("sleep-platforms")) failHonesty("platform family/sleep", hit);
+  const proj = generateFromPrompt(pp);
+  if (!/^Platform bed/i.test(proj.name)) failHonesty("platform title", proj.name);
+  if (!nearInch(proj.overall.width, w) || !nearInch(proj.overall.height, h) || !nearInch(proj.overall.depth, d)) {
+    failHonesty("platform overall", { name: proj.name, overall: proj.overall, want: [w, h, d] });
+  }
+  const decks = proj.panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
+  if (decks.length < 1) failHonesty("platform missing sleep deck", proj.panels.map((p) => p.name));
+  const blob = `${proj.name}\n${(proj.notes || []).join("\n")}`;
+  if (!/sleep deck|mattress on the platform|platform sits|side rails keep a mattress/i.test(blob)) {
+    failHonesty("platform sleep language", blob.slice(0, 400));
+  }
+  if (/^House\b/i.test(proj.name) || proj.kind === "house") failHonesty("platform stole House wire", { name: proj.name, kind: proj.kind });
+  const plan = buildPlan(proj);
+  if (!inspectHonesty(proj, plan).ok) failHonesty("platform inspect", inspectHonesty(proj, plan).issues);
+}
+// Protect headboard + nightstand freezes against platform routing.
+const hbFreeze = generateFromPrompt("house: headboard fitted to a 60″ wall span, 48″ tall");
+if (!/^Headboard/i.test(hbFreeze.name)) failHonesty("headboard freeze after platform", hbFreeze.name);
+const nsFreeze = generateFromPrompt("house: nightstand with two drawers 20″ wide × 18″ deep × 24″ tall");
+if (!/^Nightstand/i.test(nsFreeze.name)) failHonesty("nightstand freeze after platform", nsFreeze.name);
+if (!nsFreeze.panels.some((p) => /drawer front/i.test(p.name))) failHonesty("nightstand drawers freeze", nsFreeze.panels.map((p) => p.name));
+
+// Batch-22: bedside shelf book envelope — never Nightstand / Picture ledge steal.
+const bedsidePrompt = "house: bedside shelf 18″ wide × 8″ deep × 6″ tall that holds a real book upright";
+if (!isBedsideShelf(bedsidePrompt.toLowerCase())) failHonesty("isBedsideShelf miss", bedsidePrompt);
+if (identityTitleStem(bedsidePrompt.toLowerCase()) !== "Bedside shelf") {
+  failHonesty("bedside stem", identityTitleStem(bedsidePrompt.toLowerCase()));
+}
+const bedsideHit = detectHouseFamily(bedsidePrompt);
+if (!bedsideHit || bedsideHit.family !== "hung-open") failHonesty("bedside family", bedsideHit);
+const bedside = generateFromPrompt(bedsidePrompt);
+if (!/^Bedside shelf/i.test(bedside.name)) failHonesty("bedside title", bedside.name);
+if (!nearInch(bedside.overall.width, 18) || !nearInch(bedside.overall.height, 6) || !nearInch(bedside.overall.depth, 8)) {
+  failHonesty("bedside overall", bedside.overall);
+}
+const bedsideBlob = `${bedside.name}\n${(bedside.notes || []).join("\n")}\n${bedside.panels.map((p) => p.name).join("\n")}`;
+if (!/book envelope|book upright|holds a real book|front lip/i.test(bedsideBlob)) {
+  failHonesty("bedside book envelope language", bedsideBlob.slice(0, 500));
+}
+if (/Picture ledge/i.test(bedside.name)) failHonesty("bedside Picture ledge steal", bedside.name);
+if (/Nightstand/i.test(bedside.name)) failHonesty("bedside Nightstand steal", bedside.name);
+if (bedside.panels.some((p) => /drawer/i.test(p.name))) failHonesty("bedside grew drawers", bedside.panels.map((p) => p.name));
+if (bedside.assumptions.installMode !== "wall") failHonesty("bedside mount", bedside.assumptions);
+const bedsidePlan = buildPlan(bedside);
+if (!inspectHonesty(bedside, bedsidePlan).ok) failHonesty("bedside inspect", inspectHonesty(bedside, bedsidePlan).issues);
 
 const bambooFramePrompt = "picture frame from bamboo skewers";
 const bambooFrame = generateFromPrompt(bambooFramePrompt);
