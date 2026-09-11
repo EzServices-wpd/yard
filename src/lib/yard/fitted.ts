@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isPlatformBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isPlatformBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -1084,12 +1084,20 @@ function buildBedsideShelf(spec: FittedSpec, prompt: string, affordances: HouseA
   const x0 = -W / 2;
   const cleatH = Math.min(2.5, Math.max(1.5, H - P));
   const lipH = Math.min(2.5, Math.max(1.5, Math.min(H - cleatH - P, 2.25)));
+  const lower = prompt.toLowerCase();
+  // Print / 5×7 upright when typed — else book envelope (batch-22 default).
+  const printHold = wantsPrintHold(lower) && !wantsBookHold(lower);
+  const fiveBySeven = /5\s*[×x]\s*7/.test(lower);
+  const holdNoun = printHold ? (fiveBySeven ? "5×7 print" : "print") : "book";
+  const lipName = printHold ? "Print front lip" : "Book front lip";
+  const backName = printHold ? "Print backstop" : "Book backstop";
+  const envelope = printHold ? "print envelope" : "book envelope";
   const panels: Panel[] = [];
   panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
   panels.push(panel("shelf", "Bedside shelf", x0, cleatH, P, W, P, Math.max(D - P, 2)));
-  // Book envelope — front lip cradles a real book upright, never a flat decal.
-  panels.push(panel("rail", "Book front lip", x0, cleatH + P, D - P, W, lipH, P));
-  panels.push(panel("rail", "Book backstop", x0, cleatH + P, P, W, Math.max(lipH, Math.min(4, H - cleatH - P)), P));
+  // Envelope — front lip cradles a real book/print upright, never a flat decal.
+  panels.push(panel("rail", lipName, x0, cleatH + P, D - P, W, lipH, P));
+  panels.push(panel("rail", backName, x0, cleatH + P, P, W, Math.max(lipH, Math.min(4, H - cleatH - P)), P));
   const name = `Bedside shelf ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
@@ -1101,7 +1109,7 @@ function buildBedsideShelf(spec: FittedSpec, prompt: string, affordances: HouseA
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Bedside shelf hung-open on a wall cleat — holds a real book upright in a book envelope with a front lip; never a flat decal, never a Nightstand, never a Picture ledge.`,
+      `${name}. Bedside shelf hung-open on a wall cleat — holds a real ${holdNoun} upright in a ${envelope} with a front lip; never a flat decal, never a Nightstand, never a Picture ledge.`,
       "Mount the cleat to studs; the shelf screws down onto the cleat. Guidance only — confirm the bedside height.",
     ],
     historic: false,

@@ -20,7 +20,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, towelPortalWantsHooks } from "./family";
+import { isBedsideShelf, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -602,10 +602,64 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  const platformBed =
+    isPlatformBed((project.prompt ?? "").toLowerCase()) ||
+    /platform\s*bed/i.test(project.name);
+  if (platformBed) {
+    const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
+    const decks = panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
+    const platformRails = panels.filter((p) => /side rail|head rail|foot rail|apron/i.test(p.name));
+    return [
+      {
+        step: 1,
+        title: "Confirm the sleep size — do not cut yet",
+        description: `${project.name}. One low sleep deck on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mattress on the platform; match the deck to your mattress. ${panels.length} parts on this list.`,
+        tips: "A platform bed is a low sleep deck on a frame — not a loft, not a bunk stack, not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
+        partsUsed: ["*"],
+      },
+      {
+        step: 2,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(panels, item),
+        tips: tool.tip,
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Stand the four posts",
+        description: `${posts.map(cutLine).join("; ")}. Set the posts plumb on the footprint. Temporary braces keep them from racking until the sleep deck goes on.`,
+        tips: "Check both diagonals on the floor rectangle before you commit.",
+        partsUsed: names(posts),
+      },
+      {
+        step: 4,
+        title: "Set the sleep deck",
+        description: `${decks.map(cutLine).join("; ") || "Sleep deck."}. Screw the sleep deck into the posts at platform height. Mattress sits on this platform. Glue the joints too.`,
+        tips: "Predrill near the ends so the ply does not split. A person will sleep on this — square it.",
+        partsUsed: names(decks.length ? decks : panels),
+      },
+      {
+        step: 5,
+        title: "Add the side rails, head rail, foot rail, and apron",
+        description: `${platformRails.map(cutLine).join("; ") || "Side rails and apron."}. Screw the rails to the posts above the sleep deck so the mattress cannot slide off. Front apron stiffens the open long side.`,
+        tips: "Side rails keep a mattress on the sleep surface. Guidance only — confirm your mattress thickness.",
+        partsUsed: names(platformRails.length ? platformRails : panels),
+      },
+      {
+        step: 6,
+        title: "Level it",
+        description: "Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a mattress that fits the sleep deck. No loft ladder — this platform sits low.",
+        tips: "Guidance only — person load is heuristic, not stamped engineering.",
+        partsUsed: ["*"],
+      },
+    ];
+  }
+
   const bunk =
-    /bunk|loft bed/i.test(project.name) ||
-    /\b(?:bunk|loft\s*bed)\b/.test((project.prompt ?? "").toLowerCase()) ||
-    project.fitted?.family === "bunk";
+    !platformBed &&
+    (/bunk|loft bed/i.test(project.name) ||
+      /\b(?:bunk|loft\s*bed)\b/.test((project.prompt ?? "").toLowerCase()) ||
+      project.fitted?.family === "bunk");
   if (bunk) {
     const decks = panels.filter((p) => p.type === "deck");
     const loft = decks.length === 1 || /loft/i.test(project.name) || /\bloft\s*bed\b/.test((project.prompt ?? "").toLowerCase());
@@ -1100,20 +1154,35 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (floatingShelves) {
     const cleats = rails.filter((p) => /cleat/i.test(p.name));
     const shelfBoards = shelves.length ? shelves : panels.filter((p) => p.type === "shelf");
+    const lips = rails.filter((p) => /front lip|backstop/i.test(p.name));
+    const promptLower = (project.prompt ?? "").toLowerCase();
+    const bedside = isBedsideShelf(promptLower) || /bedside\s*shelf/i.test(project.name);
+    const printHold = bedside && wantsPrintHold(promptLower) && !wantsBookHold(promptLower);
+    const bookHold = bedside && (wantsBookHold(promptLower) || (!printHold && lips.some((p) => /book/i.test(p.name))));
+    const fiveBySeven = /5\s*[×x]\s*7/.test(promptLower);
+    const holdTalk = printHold
+      ? fiveBySeven
+        ? "holds a real 5×7 print upright in a print envelope with a Print front lip and Print backstop"
+        : "holds a real print upright in a print envelope with a Print front lip and Print backstop"
+      : bookHold
+        ? "holds a real book upright in a book envelope with a Book front lip and Book backstop"
+        : null;
     return [
       {
         step: 1,
         title: "Confirm the wall span — do not cut yet",
-        description: `${project.name}. ${shelfBoards.length} floating shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights.`,
+        description: holdTalk
+          ? `${project.name}. Bedside shelf across the ${round(W)}" span — ${holdTalk}; never a flat decal, never a Nightstand, never a Picture ledge. Mark studs. This is not a box — there are no uprights.`
+          : `${project.name}. ${shelfBoards.length} floating shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights.`,
         tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
       {
         step: 2,
         title: `Cut the shelves and wall cleats`,
-        description: `${tool.how} ${sheetCuts.join(" ")} ${shelfBoards.map(cutLine).join("; ")}. ${cleats.map(cutLine).join("; ") || "One wall cleat per shelf (ripped 3/4 strip)."}. Label the waste face.`,
+        description: `${tool.how} ${sheetCuts.join(" ")} ${shelfBoards.map(cutLine).join("; ")}. ${cleats.map(cutLine).join("; ") || "One wall cleat per shelf (ripped 3/4 strip)."}${lips.length ? ` ${lips.map(cutLine).join("; ")}.` : ""} Label the waste face.`,
         tips: tool.tip,
-        partsUsed: names([...shelfBoards, ...cleats]),
+        partsUsed: names([...shelfBoards, ...cleats, ...lips]),
       },
       {
         step: 3,
@@ -1124,10 +1193,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 4,
-        title: "Sit each shelf on its cleat and screw down",
-        description: `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
+        title: holdTalk ? "Sit the shelf on its cleat and add the upright envelope" : "Sit each shelf on its cleat and screw down",
+        description: holdTalk
+          ? `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. ${lips.map(cutLine).join("; ") || (printHold ? "Print front lip and Print backstop." : "Book front lip and Book backstop.")}. Screw the front lip and backstop so a real ${printHold ? (fiveBySeven ? "5×7 print" : "print") : "book"} sits upright — never a flat decal.`
+          : `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
         tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out if you add glue.",
-        partsUsed: names([...shelfBoards, ...cleats]),
+        partsUsed: names([...shelfBoards, ...cleats, ...lips]),
       },
     ];
   }
@@ -1288,8 +1359,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const nightstand =
-    /nightstand|bedside/i.test(project.name) ||
-    /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+    !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
+    !/^Bedside shelf/i.test(project.name) &&
+    (/nightstand|bedside/i.test(project.name) ||
+      /nightstand|bedside/.test((project.prompt ?? "").toLowerCase()));
   if (nightstand) {
     return [
       {

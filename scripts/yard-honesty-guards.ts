@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isDaybed, isPlatformBed, isSofaConsoleTable } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isDaybed, isPlatformBed, isSofaConsoleTable, wantsPrintHold } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1057,6 +1057,17 @@ for (const [pp, w, h, d] of platformPrompts) {
   if (/^House\b/i.test(proj.name) || proj.kind === "house") failHonesty("platform stole House wire", { name: proj.name, kind: proj.kind });
   const plan = buildPlan(proj);
   if (!inspectHonesty(proj, plan).ok) failHonesty("platform inspect", inspectHonesty(proj, plan).issues);
+  const stepBlob = plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n");
+  if (/Set the loft sleep platform|\bloft deck\b|Add a ladder or steps to the loft/i.test(stepBlob)) {
+    failHonesty("platform soft: loft plan language", plan.instructions.map((s) => s.title));
+  }
+  if (!/sleep deck|mattress on the platform|Set the sleep deck/i.test(stepBlob)) {
+    failHonesty("platform soft: missing sleep deck steps", plan.instructions.map((s) => s.title));
+  }
+  const checkMsg = (plan.issues || []).map((i) => i.message).join("\n");
+  if (/—\s*storage\.?/i.test(checkMsg) || /Platform bed[^\n]*—\s*storage/i.test(checkMsg)) {
+    failHonesty("platform soft: — storage. subtitle", checkMsg.slice(0, 300));
+  }
 }
 // Protect headboard + nightstand freezes against platform routing.
 const hbFreeze = generateFromPrompt("house: headboard fitted to a 60″ wall span, 48″ tall");
@@ -1088,6 +1099,50 @@ if (bedside.panels.some((p) => /drawer/i.test(p.name))) failHonesty("bedside gre
 if (bedside.assumptions.installMode !== "wall") failHonesty("bedside mount", bedside.assumptions);
 const bedsidePlan = buildPlan(bedside);
 if (!inspectHonesty(bedside, bedsidePlan).ok) failHonesty("bedside inspect", inspectHonesty(bedside, bedsidePlan).issues);
+{
+  const checkMsg = (bedsidePlan.issues || []).map((i) => i.message).join("\n");
+  if (/—\s*nightstand\.?/i.test(checkMsg)) {
+    failHonesty("bedside soft: — nightstand. subtitle while Bedside shelf", checkMsg.slice(0, 300));
+  }
+}
+
+// Batch-23 soft: bedside 5×7 print upright — Print lip/backstop (not Book-only when print typed).
+const bedsidePrintPrompt =
+  "house: bedside shelf 16″ wide × 6″ deep × 6″ tall that holds a real 5×7 print upright";
+if (!isBedsideShelf(bedsidePrintPrompt.toLowerCase())) failHonesty("isBedsideShelf print miss", bedsidePrintPrompt);
+if (!wantsPrintHold(bedsidePrintPrompt.toLowerCase())) failHonesty("wantsPrintHold miss", bedsidePrintPrompt);
+if (identityTitleStem(bedsidePrintPrompt.toLowerCase()) !== "Bedside shelf") {
+  failHonesty("bedside print stem", identityTitleStem(bedsidePrintPrompt.toLowerCase()));
+}
+const bedsidePrint = generateFromPrompt(bedsidePrintPrompt);
+if (!/^Bedside shelf/i.test(bedsidePrint.name)) failHonesty("bedside print title", bedsidePrint.name);
+if (!nearInch(bedsidePrint.overall.width, 16) || !nearInch(bedsidePrint.overall.height, 6) || !nearInch(bedsidePrint.overall.depth, 6)) {
+  failHonesty("bedside print overall", bedsidePrint.overall);
+}
+const printBlob = `${bedsidePrint.name}\n${(bedsidePrint.notes || []).join("\n")}\n${bedsidePrint.panels.map((p) => p.name).join("\n")}`;
+if (!/Print front lip|Print backstop|5\s*[×x]\s*7|print upright|print envelope/i.test(printBlob)) {
+  failHonesty("bedside print upright language", printBlob.slice(0, 500));
+}
+if (/Book front lip|Book backstop/i.test(printBlob) && !/Print front lip/i.test(printBlob)) {
+  failHonesty("bedside print still Book-only lip", printBlob.slice(0, 500));
+}
+if (/Picture ledge/i.test(bedsidePrint.name) || /Nightstand/i.test(bedsidePrint.name)) {
+  failHonesty("bedside print title steal", bedsidePrint.name);
+}
+const bedsidePrintPlan = buildPlan(bedsidePrint);
+if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
+  failHonesty("bedside print inspect", inspectHonesty(bedsidePrint, bedsidePrintPlan).issues);
+}
+{
+  const stepBlob = bedsidePrintPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/5\s*[×x]\s*7|print upright|Print front lip|print envelope/i.test(stepBlob + "\n" + printBlob)) {
+    failHonesty("bedside print soft: plan language", stepBlob.slice(0, 400));
+  }
+  const checkMsg = (bedsidePrintPlan.issues || []).map((i) => i.message).join("\n");
+  if (/—\s*nightstand\.?/i.test(checkMsg)) {
+    failHonesty("bedside print soft: — nightstand. subtitle", checkMsg.slice(0, 300));
+  }
+}
 
 const bambooFramePrompt = "picture frame from bamboo skewers";
 const bambooFrame = generateFromPrompt(bambooFramePrompt);

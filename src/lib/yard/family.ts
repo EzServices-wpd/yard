@@ -384,6 +384,15 @@ export function wantsBookHold(lower: string) {
   return /holds?\s+a\s+real\s+book|book\s+upright|upright\s+book|book\s+envelope|cradles?\s+(?:a\s+)?book/.test(lower);
 }
 
+/** Prompt asks to cradle a real print / 5×7 upright (envelope + lip, never a decal). */
+export function wantsPrintHold(lower: string) {
+  return (
+    /holds?\s+a\s+real\s+(?:5\s*[×x]\s*7\s+)?print|print\s+upright|upright\s+print|print\s+envelope|5\s*[×x]\s*7\s+print|cradles?\s+(?:a\s+)?print|photo\s+upright|frame\s+upright/.test(
+      lower,
+    )
+  );
+}
+
 /** Bedside shelf — shallow shelf/envelope; never Nightstand drawers, never Picture ledge. */
 export function isBedsideShelf(lower: string) {
   if (/nightstand/.test(lower) && /drawer/.test(lower)) return false;
@@ -391,6 +400,7 @@ export function isBedsideShelf(lower: string) {
   if (/bedside\s*shelf/.test(lower)) return true;
   if (/bedside/.test(lower) && /\bshelf\b/.test(lower)) return true;
   if (/bedside/.test(lower) && wantsBookHold(lower) && !/nightstand|drawer|table/.test(lower)) return true;
+  if (/bedside/.test(lower) && wantsPrintHold(lower) && !/nightstand|drawer|table/.test(lower)) return true;
   return false;
 }
 

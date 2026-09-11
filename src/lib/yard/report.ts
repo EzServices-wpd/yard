@@ -10,6 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
+import { isBedsideShelf, isPlatformBed } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -197,8 +198,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
   const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
-    /nightstand|bedside/i.test(project.name) ||
-    /nightstand|bedside/.test((project.prompt ?? "").toLowerCase());
+    !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
+    !/^Bedside shelf/i.test(project.name) &&
+    (/nightstand/i.test(project.name) ||
+      /nightstand/.test((project.prompt ?? "").toLowerCase()) ||
+      (/bedside/.test((project.prompt ?? "").toLowerCase()) && !isBedsideShelf((project.prompt ?? "").toLowerCase())));
   const hasCleats = project.panels.some((p) => /cleat/i.test(p.name));
   const floating =
     hasCleats ||
@@ -561,6 +565,10 @@ export function buildPlan(project: YardProject): BuildPlan {
         message: `${project.name} — ${
           /headboard/i.test(project.name) || /headboard/.test((project.prompt ?? "").toLowerCase())
             ? "headboard"
+            : isPlatformBed((project.prompt ?? "").toLowerCase()) || /platform\s*bed/i.test(project.name)
+              ? "platform bed"
+            : isBedsideShelf((project.prompt ?? "").toLowerCase()) || /^Bedside shelf/i.test(project.name)
+              ? "bedside shelf"
             : /coat/i.test(project.name)
               ? "coat rack"
               : /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase())
@@ -575,8 +583,11 @@ export function buildPlan(project: YardProject): BuildPlan {
               : /spice/i.test(project.name) ||
                   (/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()))
                 ? "spice rack"
-              : /nightstand|bedside/i.test(project.name) ||
-                  /nightstand|bedside/.test((project.prompt ?? "").toLowerCase())
+              : /nightstand/i.test(project.name) ||
+                  /nightstand/.test((project.prompt ?? "").toLowerCase()) ||
+                  (/bedside/.test((project.prompt ?? "").toLowerCase()) &&
+                    !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
+                    !/^Bedside shelf/i.test(project.name))
                 ? "nightstand"
               : (project.fitted?.program ?? "closet")
         }.`,
