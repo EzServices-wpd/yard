@@ -26,7 +26,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
+import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -2013,6 +2013,17 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       return n >= 2
         ? ` ${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; densify from named stock; not a vehicle incline.`
         : ` Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`;
+    }
+    const pl = p.toLowerCase();
+    if (isPorchSwingFrame(pl)) {
+      return ` Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`;
+    }
+    if (isAdirondackChair(pl)) {
+      const seatM = pl.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
+      const seat = seatM ? seatM[1] || seatM[2] : null;
+      return seat
+        ? ` Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`
+        : ` Adirondack chair — outdoor seat family, never Custom closet.`;
     }
     return "";
   })();
