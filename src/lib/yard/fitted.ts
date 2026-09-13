@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -397,8 +397,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″]|″)?/, NaN);
   }
   if (isPegboard(lower) && (!Number.isFinite(depth) || depth > 4)) depth = 0.75;
-  if ((isToolRail(lower) || isLeashRail(lower)) && (!Number.isFinite(depth) || depth > 8)) depth = 4;
-  if ((isToolRail(lower) || isLeashRail(lower)) && (!Number.isFinite(height) || height > 24)) height = 6;
+  if ((isToolRail(lower) || isLeashRail(lower) || isPegRail(lower)) && (!Number.isFinite(depth) || depth > 8)) depth = 4;
+  if ((isToolRail(lower) || isLeashRail(lower) || isPegRail(lower)) && (!Number.isFinite(height) || height > 24)) height = 6;
   if (isKeyMailShelf(lower)) {
     if (!Number.isFinite(depth) || depth > 12) depth = Number.isFinite(depth) ? depth : 6;
     if (!Number.isFinite(height) || height > 24) height = Number.isFinite(height) ? height : 10;
@@ -850,8 +850,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? spokenBayWords[spokenBaysWord[1]]
       : NaN;
   if (Number.isFinite(spokenBays) && spokenBays >= 2 && spokenBays <= 8) {
-    // Wide media can take vertical bay dividers; narrow AV towers stack open bays on shelves.
-    if (!(isAvTower(lower) || (program === "media" && width < 36))) {
+    // Wide media can take vertical bay dividers; narrow AV towers / filing shelves stack open bays on shelves.
+    if (!(isAvTower(lower) || isFilingShelf(lower) || (program === "media" && width < 36))) {
       bays = spokenBays;
     }
   } else if (
@@ -944,8 +944,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isPortalSpanShelf(lower)
                   ? 1
-                : isToolRail(lower) || isLeashRail(lower) || isKeyMailShelf(lower) || isPegboard(lower)
+                : isToolRail(lower) || isLeashRail(lower) || isPegRail(lower) || isKeyMailShelf(lower) || isPegboard(lower)
                   ? 0
+                : isFilingShelf(lower) && Number.isFinite(spokenBays) && spokenBays >= 2
+                  ? Math.max(1, spokenBays - 1)
+                : isFilingShelf(lower)
+                  ? 3
                 : isLumberRack(lower)
                   ? 0
                 : isButcherCart(lower)
@@ -981,7 +985,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "vanity" ||
     (program === "desk" && !isStandingShopTop(lower)) ||
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
-    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet|filing/.test(lower) || (/\bchest\b/.test(lower) && !isToyChest(lower) && !/hinged\s*lid/.test(lower))) && !isBedsideShelf(lower);
+    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isToyChest(lower) && !/hinged\s*lid/.test(lower))) && !isBedsideShelf(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -1000,6 +1004,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     isDaybed(lower) ||
     isButcherCart(lower) ||
     isOpenKitchenShelving(lower) ||
+    isFilingShelf(lower) ||
+    isPrinterStand(lower) ||
     isKitchenIsland(lower) ||
     isPrepTable(lower) ||
     (program === "media" && !/door/.test(lower))
@@ -1115,6 +1121,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Tool rail"
       : isLeashRail(lower)
         ? "Leash rail"
+      : isPegRail(lower)
+        ? "Peg rail"
+      : isPrinterStand(lower)
+        ? "Printer stand"
+      : isFilingShelf(lower)
+        ? "Filing shelf"
       : isKeyMailShelf(lower)
         ? "Key and mail shelf"
       : isCoatCubbyWall(lower)
@@ -1129,6 +1141,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? openCubbyWallTitle(lower)
       : sitStem
         ? sitStem
+        : isFilingShelf(lower)
+          ? "Filing shelf"
         : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
           ? "File cabinet"
           : /\bchest\b/.test(lower) && !/medicine/.test(lower)
@@ -3230,7 +3244,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const portalHook = isPortalHookRail(coatLower);
   const leashRail = isLeashRail(coatLower);
-  const toolRail = isToolRail(coatLower) || leashRail;
+  const pegRail = isPegRail(coatLower);
+  const toolRail = isToolRail(coatLower) || leashRail || pegRail;
   const coatRack =
     !/shoe/.test(coatLower) &&
     !/towel/.test(coatLower) &&
@@ -3258,13 +3273,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         : Math.max(4, Math.min(H - P, 24));
     panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, portalW, railH, P));
     // Hat shelf is coat/hat language — bare portal hook rails (key rail, …) stay a peg rail only.
-    const wantHatShelf = !toolRail && !leashRail && (/coat|hat/.test(coatLower) || (!portalHook && !portal));
+    const wantHatShelf = !toolRail && !leashRail && !pegRail && (/coat|hat/.test(coatLower) || (!portalHook && !portal));
     if (wantHatShelf) {
       panels.push(panel("top", "Hat shelf", x0, railH, 0, portalW, P, shelfD));
     }
     const stackH = wantHatShelf ? railH + P : railH;
-    const hookSaid = coatLower.match(/(\d+)\s*hooks?/);
-    const hookWord = coatLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/);
+    const hookSaid = coatLower.match(/(\d+)\s*hooks?/) || (pegRail ? coatLower.match(/(\d+)\s*pegs?/) : null);
+    const hookWord =
+      coatLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/) ||
+      (pegRail ? coatLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+pegs?\b/) : null);
     const hookWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
     const hooks = hookSaid
       ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
@@ -3272,8 +3289,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
         : Math.max(3, Math.min(8, Math.round(portalW / 6)));
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
+    const pegNoun = pegRail ? "pegs" : "hooks";
     const label = leashRail
       ? "Leash rail"
+      : pegRail
+      ? "Peg rail"
       : isToolRail(coatLower)
       ? "Tool rail"
       : portalHook
@@ -3300,10 +3320,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? [
             leashRail
               ? `Leash rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`
+              : pegRail
+              ? `Peg rail spanning ${portalW}" — clear wall mount. ${hooks} pegs on a ${railH}" peg rail. ¾" plywood.`
               : `Tool rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
             `Mount height from the opening: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the rail.`,
             leashRail
               ? `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — leash rail, not a Bridge / Tool / key portal steal.`
+              : pegRail
+              ? `Screw ${hooks} pegs into the rail, about 6" on center. Hit studs. Guidance only — peg rail, not a Bridge / Tool / key / leash steal.`
               : `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — tool rail, not a Bridge / coat portal.`,
           ]
         : [
@@ -3316,7 +3340,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return {
       id: createId("proj"),
       name: toolRail
-        ? `${label} ${portalW}" · ${hooks} hooks`
+        ? `${label} ${portalW}" · ${hooks} ${pegNoun}`
         : portal
         ? /rod/.test(coatLower) && /coat/.test(coatLower)
           ? `${label} ${portalW}" portal · full width`
@@ -3877,7 +3901,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           spec.program === "media" &&
           (isAvTower(prompt.toLowerCase()) || /\b(?:\d+|two|three|four)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase()))
             ? `Bay ${i} shelf`
-            : isStandingShopTop(prompt.toLowerCase()) && shelves === 1
+            : isFilingShelf(prompt.toLowerCase())
+              ? `Bay ${i} shelf`
+            : (isStandingShopTop(prompt.toLowerCase()) || isPrinterStand(prompt.toLowerCase())) && shelves === 1
               ? /lower|bottom/.test(prompt.toLowerCase())
                 ? "Bottom shelf"
                 : "Lower shelf"
@@ -3993,6 +4019,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
             ].join(" ")
           : climbStepShelf
             ? `One weight-bearing climb step-shelf at mid height to reach the top — freeze dims stay ${W}" × ${H}" × ${D}".`
+          : isFilingShelf(prompt.toLowerCase())
+            ? (() => {
+                const bayN = Math.max(2, shelves + 1);
+                return `Filing shelf — ${bayN} open bays (stacked), open front, not a drawer File cabinet. ${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`;
+              })()
+          : isPrinterStand(prompt.toLowerCase())
+            ? shelves === 1
+              ? `Printer stand with exactly one lower shelf under the top — not a Storage unit. Honor typed W×D×H.`
+              : shelves
+                ? `Printer stand with ${shelves} shelf line${shelves === 1 ? "" : "s"} — not a Storage unit.`
+                : `Printer stand carcase — not a Storage unit. Shelf only when typed.`
           : shelves
             ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",

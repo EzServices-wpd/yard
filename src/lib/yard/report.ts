@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isLumberRack, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
+import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -619,6 +619,8 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "tool rail"
               : isLeashRail((project.prompt ?? "").toLowerCase()) || /Leash rail/i.test(project.name)
                 ? "leash rail"
+              : isPegRail((project.prompt ?? "").toLowerCase()) || /Peg rail/i.test(project.name)
+                ? "peg rail"
               : isKeyMailShelf((project.prompt ?? "").toLowerCase()) || /Key and mail shelf/i.test(project.name)
                 ? "key and mail shelf"
               : isLumberRack((project.prompt ?? "").toLowerCase()) || /Lumber rack/i.test(project.name)

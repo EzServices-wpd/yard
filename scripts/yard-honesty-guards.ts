@@ -2,8 +2,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { climbStepCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { climbStepCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -2210,6 +2210,100 @@ console.log("SOFT-TRUST OK", {
   if (!/^Desk/i.test(desk.name)) failHonesty("b31 protect desk", desk.name);
   if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("b31 protect desk knee", desk.fitted?.unit);
 }
+
+
+{
+  // Batch 32 office/study FAIL class — Monitor stand / Filing shelf / Printer stand / Peg rail
+  const monPrompt = "weekend craft: oak monitor stand that holds a real 24″ monitor at 4″ rise";
+  if (!isMonitorHold(monPrompt)) failHonesty("b32 isMonitorHold");
+  if (detectWeekendMech(monPrompt) !== "pot-hold") failHonesty("b32 monitor pot-hold mech");
+  const monTalk = monitorEnvelopeTalk(monPrompt);
+  if (!/24/.test(monTalk) || !/4/.test(monTalk)) failHonesty("b32 monitorEnvelopeTalk", monTalk);
+  if (monitorRiseIn(monPrompt) !== 4) failHonesty("b32 monitorRiseIn", monitorRiseIn(monPrompt));
+  const mon = generateFromPrompt(monPrompt);
+  if (!/Monitor stand/i.test(mon.name)) failHonesty("b32 monitor title", mon.name);
+  if (/Storage unit|quadruped|Giraffe|Animal/i.test(mon.name)) failHonesty("b32 monitor figure/Storage steal", mon.name);
+  const monBlob = [mon.name, ...(mon.notes ?? [])].join("\n");
+  if (!/oak|Oak/i.test(monBlob) && !/Oak/i.test(mon.prompt ?? monPrompt)) {
+    // Buy species may land on stock chip; notes must still carry envelope + rise
+  }
+  if (!/24/.test(monBlob) || !/monitor/i.test(monBlob)) failHonesty("b32 monitor 24 envelope", monBlob.slice(0, 500));
+  if (!/4/.test(monBlob) || !/rise/i.test(monBlob)) failHonesty("b32 monitor 4 rise", monBlob.slice(0, 500));
+  if (!/envelope|rise/i.test(monBlob)) failHonesty("b32 monitor densify talk", monBlob.slice(0, 400));
+  if (!/not orbit/i.test(monBlob)) failHonesty("b32 monitor stand hush (no orbit)", monBlob.slice(0, 500));
+
+  const filePrompt = "house: filing shelf 36″ wide × 12″ deep × 48″ tall with four open bays";
+  if (!isFilingShelf(filePrompt.toLowerCase())) failHonesty("b32 isFilingShelf");
+  if (identityTitleStem(filePrompt.toLowerCase()) !== "Filing shelf") {
+    failHonesty("b32 filing stem", identityTitleStem(filePrompt.toLowerCase()) || "");
+  }
+  const filing = generateFromPrompt(filePrompt);
+  if (!/^Filing shelf/i.test(filing.name)) failHonesty("b32 filing title", filing.name);
+  if (/File cabinet|Storage unit|AV tower|Media/i.test(filing.name)) failHonesty("b32 filing steal", filing.name);
+  if (Math.abs(filing.overall.width - 36) > 1.2 || Math.abs(filing.overall.depth - 12) > 1.2 || Math.abs(filing.overall.height - 48) > 1.2) {
+    failHonesty("b32 filing dims 36×12×48", filing.overall);
+  }
+  const fileBlob = [filing.name, ...(filing.notes ?? []), ...filing.panels.map((p) => p.name)].join("\n");
+  if (!/open bay|open bays|Bay \d/i.test(fileBlob)) failHonesty("b32 filing open bays", fileBlob.slice(0, 600));
+  if (filing.panels.some((p) => /Drawer/i.test(p.name))) failHonesty("b32 filing drawer densify", filing.panels.map((p) => p.name));
+
+  const printPrompt = "house: printer stand 24″ wide × 20″ deep × 30″ tall with one lower shelf";
+  if (!isPrinterStand(printPrompt.toLowerCase())) failHonesty("b32 isPrinterStand");
+  if (identityTitleStem(printPrompt.toLowerCase()) !== "Printer stand") {
+    failHonesty("b32 printer stem", identityTitleStem(printPrompt.toLowerCase()) || "");
+  }
+  const printer = generateFromPrompt(printPrompt);
+  if (!/^Printer stand/i.test(printer.name)) failHonesty("b32 printer title", printer.name);
+  if (/Storage unit/i.test(printer.name)) failHonesty("b32 printer Storage steal", printer.name);
+  if (Math.abs(printer.overall.width - 24) > 1.2 || Math.abs(printer.overall.depth - 20) > 1.2 || Math.abs(printer.overall.height - 30) > 1.2) {
+    failHonesty("b32 printer dims 24×20×30", printer.overall);
+  }
+  const printShelves = printer.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name) || /^Bay /i.test(p.name));
+  if (printShelves.length < 1) failHonesty("b32 printer one lower shelf", printer.panels.map((p) => p.name));
+  const printBlob = [printer.name, ...(printer.notes ?? [])].join("\n");
+  if (!/lower shelf|one lower shelf|Bottom shelf|Shelf/i.test(printBlob) && printShelves.length < 1) {
+    failHonesty("b32 printer shelf densify", printBlob.slice(0, 400));
+  }
+
+  const pegPrompt = "house: peg rail spanning 36″ with five pegs, clear wall mount; PDF states mount height";
+  if (!isPegRail(pegPrompt.toLowerCase())) failHonesty("b32 isPegRail");
+  if (isToolRail(pegPrompt.toLowerCase())) failHonesty("b32 peg must not be Tool rail");
+  if (isLeashRail(pegPrompt.toLowerCase())) failHonesty("b32 peg must not be Leash rail");
+  if (identityTitleStem(pegPrompt.toLowerCase()) !== "Peg rail") {
+    failHonesty("b32 peg stem", identityTitleStem(pegPrompt.toLowerCase()) || "");
+  }
+  const peg = generateFromPrompt(pegPrompt);
+  if (!/^Peg rail/i.test(peg.name)) failHonesty("b32 peg title", peg.name);
+  if (/Tool rail|Key rail|Leash rail|Coat rail/i.test(peg.name)) failHonesty("b32 peg steal", peg.name);
+  if (!/5 pegs|five pegs/i.test(peg.name) && !/·\s*5\s*pegs/i.test(peg.name)) {
+    failHonesty("b32 five pegs title", peg.name);
+  }
+  const pegBlob = [peg.name, ...(peg.notes ?? [])].join("\n");
+  if (!/5 pegs|five pegs|Screw 5 pegs/i.test(pegBlob)) failHonesty("b32 five pegs densify", pegBlob.slice(0, 600));
+  if (/6 hooks|Screw 6 hooks/i.test(pegBlob)) failHonesty("b32 peg 6 hooks steal", pegBlob.slice(0, 400));
+  if (!/mount height|PDF states mount height/i.test(pegBlob)) failHonesty("b32 peg PDF mount height", pegBlob.slice(0, 500));
+  if (!/clear wall mount/i.test(pegBlob)) failHonesty("b32 peg clear wall mount", pegBlob.slice(0, 400));
+  if (Math.abs(peg.overall.width - 36) > 1.5) failHonesty("b32 peg span 36", peg.overall);
+
+  // Protect already green
+  const desk = generateFromPrompt("house: writing desk 48″ wide × 24″ deep × 30″ tall with 24″ knee");
+  if (!/Desk/i.test(desk.name)) failHonesty("b32 protect writing desk", desk.name);
+  if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("b32 protect desk knee", desk.fitted?.unit);
+  const books = generateFromPrompt("house: bookshelf fitted to a 30×72×12 opening, five shelves");
+  if (!/Bookcase|Bookshelf/i.test(books.name)) failHonesty("b32 protect bookshelf", books.name);
+  const bare = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
+  if (!/^Workbench/i.test(bare.name)) failHonesty("b32 protect bare WB", bare.name);
+  const bareShelves = bare.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
+  if (bareShelves.length !== 0) failHonesty("b32 protect bare WB no shelf", bareShelves.map((p) => p.name));
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO — freeze green");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("b32 protect Andersen", andersen.name);
+  // Tool rail still tool
+  if (!isToolRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("b32 protect isToolRail");
+  if (isPegRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("b32 tool ≠ peg");
+  const tool = generateFromPrompt("house: tool rail spanning 48″ with six hooks, clear wall mount; PDF states mount height");
+  if (!/^Tool rail/i.test(tool.name)) failHonesty("b32 protect tool rail title", tool.name);
+}
+
 
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),

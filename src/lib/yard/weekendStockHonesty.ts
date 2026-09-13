@@ -20,8 +20,12 @@ import {
   isHamperHold,
   isUmbrellaHold,
   isHoseReelHold,
+  isMonitorHold,
   umbrellaEnvelopeTalk,
   reelEnvelopeTalk,
+  monitorEnvelopeTalk,
+  monitorEnvelopeIn,
+  monitorRiseIn,
   potHoldDiameterIn,
   basketEnvelopeWhd,
   basketEnvelopeTalk,
@@ -419,7 +423,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     const dia = potHoldDiameterIn(prompt);
     const basket = isHamperHold(prompt) ? basketEnvelopeWhd(prompt) : null;
     const hold =
-      /plant stand|pot stand|figurine stand|hamper stand|basket stand|umbrella stand|hose reel|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|umbrella envelope|reel envelope|umbrellas?|hose reel|upright/i.test(
+      /plant stand|pot stand|figurine stand|hamper stand|basket stand|umbrella stand|hose reel|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|umbrella envelope|reel envelope|monitor envelope|umbrellas?|hose reel|monitor|rise|upright/i.test(
         blobAll,
       ) || /holds? (?:a )?real/i.test(blobAll);
     const roles = new Map<string, number>();
@@ -436,6 +440,8 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
           ? "Hose reel stand must bind a real upright reel envelope (diameter when typed)."
           : isUmbrellaHold(prompt)
           ? "Umbrella stand must bind a real upright umbrella envelope (N×N base when typed)."
+          : isMonitorHold(prompt)
+          ? "Monitor stand must bind a real monitor envelope + typed rise (no Orbit chrome)."
           : isHamperHold(prompt)
             ? "Hamper stand must bind a real laundry-basket envelope upright (W×D×H when typed)."
             : "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
@@ -476,6 +482,20 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         issues.push({
           guard: "anatomy",
           message: `Umbrella stand must state the ${talk}.`,
+        });
+      }
+    } else if (isMonitorHold(prompt)) {
+      const talk = monitorEnvelopeTalk(prompt);
+      const env = monitorEnvelopeIn(prompt);
+      const rise = monitorRiseIn(prompt);
+      if (
+        !/monitor/i.test(blobAll) ||
+        (env != null && !new RegExp(String(env)).test(blobAll)) ||
+        (rise != null && !new RegExp(String(rise)).test(blobAll) && !/rise/i.test(blobAll))
+      ) {
+        issues.push({
+          guard: "anatomy",
+          message: `Monitor stand must state the ${talk} (Buy named stock; no Orbit chrome).`,
         });
       }
     } else if (dia != null && !new RegExp(String(dia)).test(blobAll)) {

@@ -5,7 +5,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isHamperHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isHamperHold, isMonitorHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -132,8 +132,18 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  // Plant / pot / hamper stand: typed pot diameter × tall OR basket W×D×H binds the upright envelope.
+  // Plant / pot / hamper / monitor stand: typed envelope binds upright stand (monitor: width + rise).
   if (detectWeekendMech(lower) === "pot-hold" || wantsPotHold(lower)) {
+    if (isMonitorHold(lower)) {
+      const env = monitorEnvelopeIn(lower);
+      const rise = monitorRiseIn(lower);
+      if (env != null) {
+        width = env + 0.4;
+        depth = Math.max(8, Math.min(14, env * 0.45));
+      }
+      if (rise != null) height = rise;
+      else if (env != null) height = Math.max(4, Math.min(8, env * 0.2));
+    } else {
     const basket = isHamperHold(lower) ? basketEnvelopeWhd(lower) : null;
     if (basket) {
       // Stand clears ~1" around the upright basket envelope.
@@ -152,6 +162,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
         depth = span;
         height = Math.max(h + 1.25, h, span * 0.85);
       }
+    }
     }
   }
 

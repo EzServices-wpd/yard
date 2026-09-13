@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -258,6 +258,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const standDia =
     isHamperHold(prompt) && basketEnv
       ? Math.max(basketEnv.w, basketEnv.d)
+      : isMonitorHold(prompt)
+        ? (monitorEnvelopeIn(prompt) ?? potDia)
       : potDia;
   const marbleDia = marbleDiameterIn(prompt);
   const frameOpsFor =
@@ -314,6 +316,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — densify keeps the stand around the upright hose reel (Buy named stock), not a Storage carcase and not orbit-chrome.`
                 : isUmbrellaHold(prompt)
                 ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                : isMonitorHold(prompt)
+                ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — densify keeps the stand under the monitor at the typed rise (Buy named stock), not a Storage carcase and not orbit-chrome.`
                 : isHamperHold(prompt)
                 ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
                 : `${hit.name} · upright pot envelope` +
