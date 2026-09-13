@@ -673,10 +673,17 @@ export function weekendCutLines(project: YardProject): CutLine[] {
     ];
   }
   const grouped = new Map<string, CutLine>();
+  const hay = (project.prompt ?? "").toLowerCase();
+  const ladderRungs =
+    (project.kind === "ladder" || detectWeekendMech(hay) === "climb") &&
+    !isClimbStepStool(project.prompt ?? "") &&
+    (/towel|blanket|quilt|\bladder\b/.test(hay) || project.kind === "ladder");
   for (const inst of project.instances) {
     const lenRaw = inst.cutLength ?? memberSpan(inst.from, inst.to) ?? stockLen;
     const len = Math.round(lenRaw * 8) / 8;
-    const family = (inst.role || "member").replace(/^\w/, (c) => c.toUpperCase());
+    // Towel/blanket ladder climb cut parts: Rung not Rail (role stays rail for anatomy counts).
+    let family = (inst.role || "member").replace(/^\w/, (c) => c.toUpperCase());
+    if (ladderRungs && inst.role === "rail") family = "Rung";
     const key = `${inst.catalogId}|${family}|${len}`;
     const existing = grouped.get(key);
     if (existing) {

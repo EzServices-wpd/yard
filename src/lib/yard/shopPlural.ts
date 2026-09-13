@@ -86,8 +86,12 @@ export function cutListName(name: string, type?: string): string {
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";
   if (type === "counter") return "Counter";
-  // Sit benches keep Seat (not Top); tray densify keeps Boot tray (not Bottom).
-  if (type === "top") return /^seat$/i.test(name.trim()) ? "Seat" : "Top";
+  // Sit benches keep Seat (not Top); hinged-lid chests keep Lid (not Top); tray densify keeps Boot tray (not Bottom).
+  if (type === "top") {
+    if (/^seat$/i.test(name.trim())) return "Seat";
+    if (/^lid$/i.test(name.trim())) return "Lid";
+    return "Top";
+  }
   if (type === "bottom") return /boot tray/i.test(name) ? "Boot tray" : "Bottom";
   if (type === "back") return "Back";
   if (/drawer front/i.test(name)) return "Drawer front";

@@ -15,9 +15,11 @@ import {
   isUmbrellaHold,
   isHoseReelHold,
   isMonitorHold,
+  isFloorLampHold,
   umbrellaEnvelopeTalk,
   reelEnvelopeTalk,
   monitorEnvelopeTalk,
+  lampEnvelopeTalk,
   figureHoldEnvelopeTalk,
   basketEnvelopeTalk,
   potHoldDiameterIn,
@@ -2018,6 +2020,9 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       if (isMonitorHold(p)) {
         return ` Upright monitor stand — ${monitorEnvelopeTalk(p)}; densify keeps the stand under the monitor at the typed rise (not orbit-chrome, not a Storage carcase).`;
       }
+      if (isFloorLampHold(p)) {
+        return ` Upright floor lamp stand — ${lampEnvelopeTalk(p)}; densify keeps the stand around the upright lamp base (not a plant/pot stand, not orbit-chrome).`;
+      }
       if (isHamperHold(p)) {
         return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)} — densify keeps the stand around the basket envelope (not a Storage carcase of basket size).`;
       }
@@ -2117,14 +2122,22 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
 
   const order = roleScript(project);
   let sawLeave = false;
+  const climbPrompt = project.prompt ?? "";
+  const ladderRungVoice =
+    (project.kind === "ladder" || detectWeekendMech(climbPrompt) === "climb") &&
+    !isClimbStepStool(climbPrompt);
   for (const spec of order) {
     const listI = byRole.get(spec.role);
     if (!listI?.length) continue;
     if (/leaves the ramp|leaves free|free projectile/i.test(spec.why)) sawLeave = true;
+    const roleWord =
+      ladderRungVoice && spec.role === "rail"
+        ? "rung"
+        : spec.role;
     steps.push({
       step: n++,
-      title: `${spec.title} — ${listI.length} ${spec.role}${listI.length === 1 ? "" : "s"}`,
-      description: `${listI.length} ${spec.role} members. ${hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
+      title: `${spec.title} — ${listI.length} ${roleWord}${listI.length === 1 ? "" : "s"}`,
+      description: `${listI.length} ${roleWord} members. ${hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
       partsUsed: [spec.role],
       tips: spec.why,
     });

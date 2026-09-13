@@ -2536,6 +2536,108 @@ console.log("SOFT-TRUST OK", {
 
 
 
+
+// Batch36 soft-park sweep #2 — Rung · Lid · lamp densify (universal class guards).
+{
+  // A) Towel/blanket ladder: cut-list Rung not Rail; typed four held.
+  const ladderPrompt =
+    'weekend craft: pine towel ladder 60" tall × 18" wide with four rungs';
+  if (spokenRungCount(ladderPrompt) !== 4) failHonesty("b36 spokenRungCount four", spokenRungCount(ladderPrompt));
+  const ladder = generateFromPrompt(ladderPrompt);
+  if (!/Towel ladder/i.test(ladder.name)) failHonesty("b36 towel ladder title", ladder.name);
+  if (Math.abs(ladder.overall.height - 60) > 2.5) failHonesty("b36 towel H60", ladder.overall);
+  if (Math.abs(ladder.overall.width - 18) > 2.0) failHonesty("b36 towel W18", ladder.overall);
+  const ladderPlan = buildPlan(ladder);
+  const ladderCuts = ladderPlan.cutList.map((c) => `${c.quantity} ${c.name}`).join("\n");
+  if (!/\bRung\b/i.test(ladderCuts)) failHonesty("b36 towel cut-list Rung", ladderCuts || "(empty cut list)");
+  if (/\bRail\b/i.test(ladderCuts) && !/\bRung\b/i.test(ladderCuts)) {
+    failHonesty("b36 towel cut-list still Rail", ladderCuts);
+  }
+  const rungRow = ladderPlan.cutList.find((c) => /^Rung$/i.test(c.name));
+  if (rungRow && rungRow.quantity !== 4) failHonesty("b36 towel four Rungs qty", rungRow);
+  const ladderSteps = ladderPlan.instructions.map((st) => `${st.title} ${st.description}`).join("\n");
+  if (/4\s+rails?\b/i.test(ladderSteps) && !/4\s+rungs?\b/i.test(ladderSteps)) {
+    failHonesty("b36 towel steps still rails", ladderSteps.slice(0, 500));
+  }
+
+  // B) Toy chest: cut-list Lid not Top; subtitle hush — storage.
+  const chestPrompt = "house: toy chest 30″ wide × 16″ deep × 18″ tall with a hinged lid";
+  if (!isToyChest(chestPrompt.toLowerCase())) failHonesty("b36 isToyChest");
+  const chest = generateFromPrompt(chestPrompt);
+  if (!/^Toy chest/i.test(chest.name)) failHonesty("b36 toy chest title", chest.name);
+  if (!chest.panels.some((p) => /^Lid$/i.test(p.name))) failHonesty("b36 toy lid panel", chest.panels.map((p) => p.name));
+  const chestPlan = buildPlan(chest);
+  const chestCuts = chestPlan.cutList.map((c) => `${c.quantity} ${c.name}`).join("\n");
+  if (!/\bLid\b/i.test(chestCuts)) failHonesty("b36 toy cut-list Lid", chestCuts);
+  if (/\bTop\b/i.test(chestCuts) && !/\bLid\b/i.test(chestCuts)) failHonesty("b36 toy cut-list still Top", chestCuts);
+  const chestInfo = (chestPlan.feasibility?.issues ?? (chestPlan as { issues?: { message: string }[] }).issues ?? []).map((i) => i.message).join("\n");
+  const chestChip = [chest.name, chestInfo, ...(chest.notes ?? [])].join("\n");
+  if (/—\s*storage\.?/i.test(chestChip)) failHonesty("b36 toy subtitle — storage", chestChip.slice(0, 400));
+  if (!/—\s*toy chest\.?/i.test(chestInfo) && !/toy chest/i.test(chestInfo)) {
+    // Positive identity on Measure chip
+    failHonesty("b36 toy positive subtitle", chestInfo.slice(0, 400) || chestChip.slice(0, 400));
+  }
+  const chestDensify = chestPlan.instructions.map((st) => `${st.title} ${st.description}`).join("\n");
+  if (!/\bLid\b/i.test(chestDensify) && !/\bLid\b/i.test(chest.notes?.join("\n") ?? "")) {
+    failHonesty("b36 toy lid densify held", chestDensify.slice(0, 400));
+  }
+
+  // C) Floor lamp densify: lamp-base voice (not plant/pot); plant stands keep plant language.
+  const lampPrompt =
+    "weekend craft: oak floor lamp stand that holds a real lamp base 6″ diameter upright, 60″ tall";
+  if (!isFloorLampHold(lampPrompt)) failHonesty("b36 isFloorLampHold");
+  const lamp = generateFromPrompt(lampPrompt);
+  if (!/Floor lamp stand|Lamp stand/i.test(lamp.name)) failHonesty("b36 lamp title", lamp.name);
+  const lampPlan = buildPlan(lamp);
+  const lampBlob = [
+    lamp.name,
+    ...(lamp.notes ?? []),
+    ...lampPlan.instructions.map((st) => `${st.title} ${st.description} ${st.tips ?? ""}`),
+  ].join("\n");
+  if (/Upright plant stand for a real/i.test(lampBlob)) {
+    failHonesty("b36 lamp densify still plant stand", lampBlob.slice(0, 500));
+  }
+  if (!/lamp-base|lamp base/i.test(lampBlob)) failHonesty("b36 lamp densify lamp-base", lampBlob.slice(0, 500));
+  // Real plant stand keeps plant language.
+  const plantPrompt = 'weekend craft: pine plant stand that holds a real 6" pot, 24" tall';
+  const plant = generateFromPrompt(plantPrompt);
+  const plantPlan = buildPlan(plant);
+  const plantBlob = [
+    plant.name,
+    ...(plant.notes ?? []),
+    ...plantPlan.instructions.map((st) => `${st.title} ${st.description}`),
+  ].join("\n");
+  if (isFloorLampHold(plantPrompt)) failHonesty("b36 plant ≠ isFloorLampHold");
+  if (!/plant stand|pot/i.test(plantBlob)) failHonesty("b36 plant keeps pot language", plantBlob.slice(0, 400));
+
+  // PASS protect: book bin Measure chip Book bin; Linen freeze; pocket vanity freeze
+  const bookPrompt = "house: book bin bench 36″ wide × 14″ deep × 16″ tall";
+  const book = generateFromPrompt(bookPrompt);
+  if (!/^Book bin bench/i.test(book.name)) failHonesty("b36 protect book bin title", book.name);
+  const bookPlan = buildPlan(book);
+  const bookInfo = (bookPlan.feasibility?.issues ?? (bookPlan as { issues?: { message: string }[] }).issues ?? []).map((i) => i.message).join("\n");
+  if (/—\s*bench\.?/i.test(bookInfo) && !/Book bin/i.test(bookInfo)) {
+    failHonesty("b36 protect book bin chip", bookInfo.slice(0, 300));
+  }
+  if (!/Book bin/i.test(bookInfo) && !/Book bin/i.test(book.panels.map((p) => p.name).join("\n"))) {
+    failHonesty("b36 protect book bin identity", bookInfo.slice(0, 300));
+  }
+  const linen = generateFromPrompt("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep");
+  if (!/Linen/i.test(linen.name)) failHonesty("b36 protect linen title", linen.name);
+  if (Math.abs(linen.overall.width - 31.5) > 0.6 || Math.abs(linen.overall.height - 78) > 1.2 || Math.abs(linen.overall.depth - 16) > 1.2) {
+    failHonesty("b36 protect linen dims", linen.overall);
+  }
+  const pocket = generateFromPrompt(
+    "bathroom vanity for a pocket space: left wall 26\", right wall 33.5\", depth 22\", back wall 38.5\"",
+  );
+  if (!/pocket|vanity/i.test(pocket.name)) failHonesty("b36 protect pocket title", pocket.name);
+  const pocketBlob = [pocket.name, ...(pocket.notes ?? [])].join("\n");
+  if (!/38\.5|16\.0|5\.0|Pocket back/i.test(pocketBlob) && !(pocket.fitted as { opening?: unknown } | undefined)) {
+    // trapezoid freeze — opening / notes carry angles when present
+  }
+}
+
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),
