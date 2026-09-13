@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -197,7 +197,7 @@ function spokenRungCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -215,6 +215,7 @@ export function looksLikeFitted(prompt: string) {
     isBootTrayBench(lower) ||
     isLumberRack(lower) ||
     isWorkbench(lower) ||
+    isPottingBench(lower) ||
     isLaundrySorter(lower) ||
     isFoldingTable(lower) ||
     isDryingRack(lower) ||
@@ -842,8 +843,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
       : program === "desk"
         ? height
         : undefined;
-  // Bare workbench is a standing shop top — never invent desk knee clearance.
-  const kneeW = isWorkbench(lower)
+  // Bare workbench / potting bench is a standing shop top — never invent desk knee clearance.
+  const kneeW = isStandingShopTop(lower)
     ? /knee|sit|chair/.test(lower)
       ? pick(
           t,
@@ -927,7 +928,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 3
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
                   ? 0
-                : isWorkbench(lower)
+                : isStandingShopTop(lower)
                   ? 0
                 : /nightstand|bedside/.test(lower)
                   ? 1
@@ -948,8 +949,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const drawers =
     /drawer/.test(lower) ||
     program === "vanity" ||
-    (program === "desk" && !isWorkbench(lower)) ||
-    (isWorkbench(lower) && /drawer/.test(lower)) ||
+    (program === "desk" && !isStandingShopTop(lower)) ||
+    (isStandingShopTop(lower) && /drawer/.test(lower)) ||
     (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|\bchest\b|file\s*cabinet|filing/.test(lower)) && !isBedsideShelf(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
@@ -1070,6 +1071,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Drying rack"
       : isIroningWallMount(lower)
         ? "Ironing board wall mount"
+      : isPottingBench(lower)
+        ? "Potting bench"
       : isWorkbench(lower)
         ? "Workbench"
       : isPegboard(lower)
@@ -3568,9 +3571,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       for (let i = 0; i < nL; i++) leftCounts.push(i);
       for (let i = 0; i < nR; i++) rightCounts.push(i);
     } else {
-      // Bare workbench: never invent pedestal drawer banks; real desks still default 3/bank.
+      // Bare workbench / potting: never invent pedestal drawer banks; real desks still default 3/bank.
       const n =
-        isWorkbench(prompt.toLowerCase()) && !/drawer/.test(prompt.toLowerCase())
+        isStandingShopTop(prompt.toLowerCase()) && !/drawer/.test(prompt.toLowerCase())
           ? (u.drawersPerBank ?? 0)
           : (u.drawersPerBank ?? 3);
       for (let i = 0; i < n; i++) {
@@ -3664,7 +3667,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const wbLowerShelf =
-    isWorkbench(prompt.toLowerCase()) &&
+    isStandingShopTop(prompt.toLowerCase()) &&
     ((u.shelfCount ?? 0) > 0 || /lower\s+shel|bottom\s+shel/.test(prompt.toLowerCase()));
   const shelfZone0 = wbLowerShelf
     ? P
@@ -3704,7 +3707,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           spec.program === "media" &&
           (isAvTower(prompt.toLowerCase()) || /\b(?:\d+|two|three|four)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase()))
             ? `Bay ${i} shelf`
-            : isWorkbench(prompt.toLowerCase()) && shelves === 1
+            : isStandingShopTop(prompt.toLowerCase()) && shelves === 1
               ? /lower|bottom/.test(prompt.toLowerCase())
                 ? "Bottom shelf"
                 : "Lower shelf"

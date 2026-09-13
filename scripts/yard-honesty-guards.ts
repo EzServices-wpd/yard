@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
 import { detectWeekendFamily, detectWeekendMech, isUmbrellaHold, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1812,6 +1812,50 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (Math.abs(leash.overall.width - 24) > 1.5) failHonesty("leash 24 span", leash.overall);
   if (!/clear wall mount/i.test(leashText)) failHonesty("leash clear wall mount", leashText.slice(0, 400));
 
+
+
+// Batch29 outdoor — potting bench must not collapse to sittable shoe-cubby Bench.
+{
+  if (!isPottingBench("potting bench 48 wide 24 deep 36 tall with one lower shelf")) {
+    failHonesty("isPottingBench");
+  }
+  if (!isStandingShopTop("potting bench 48x24x36")) failHonesty("isStandingShopTop potting");
+  if (isWorkbench("potting bench 48x24x36")) failHonesty("potting must not isWorkbench");
+  const pot = generateFromPrompt(
+    "house: potting bench 48″ wide × 24″ deep × 36″ tall with one lower shelf",
+  );
+  if (!/^Potting bench/i.test(pot.name)) failHonesty("potting title", pot.name);
+  if (/\bBench\b/i.test(pot.name) && !/Potting/i.test(pot.name)) failHonesty("naked Bench steal", pot.name);
+  if (/Workbench|Desk|Storage/i.test(pot.name)) failHonesty("potting Workbench/Desk/Storage steal", pot.name);
+  if (pot.fitted?.program === "bench") failHonesty("potting fitted program bench", pot.fitted);
+  if (pot.panels.some((p) => /Shoe shelf|Cubby divider|Seat/i.test(p.name))) {
+    failHonesty("potting sit shoe-cubby anatomy", pot.panels.map((p) => p.name));
+  }
+  const potShelves = pot.panels.filter(
+    (p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name),
+  );
+  if (potShelves.length !== 1) failHonesty("potting exactly one lower shelf", potShelves.map((p) => p.name));
+  if (Math.abs(pot.overall.width - 48) > 1.5 || Math.abs(pot.overall.depth - 24) > 1.5 || Math.abs(pot.overall.height - 36) > 1.5) {
+    failHonesty("potting dims 48×24×36", pot.overall);
+  }
+  if (measureKindFromProject(pot) !== "potting bench") {
+    failHonesty("potting measure kind", measureKindFromProject(pot));
+  }
+  const potPlan = buildPlan(pot);
+  const potText = potPlan.steps.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (/sit-test|shoe bay|entry/i.test(potText) && !/potting|work top|lower shelf/i.test(potText)) {
+    failHonesty("potting sit-test voice", potText.slice(0, 500));
+  }
+  // Protect bare workbench shelf-only-when-typed (soft watch collision).
+  const wbBareP = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
+  if (!/^Workbench/i.test(wbBareP.name)) failHonesty("protect WB title after potting", wbBareP.name);
+  const wbBareShelvesP = wbBareP.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
+  if (wbBareShelvesP.length !== 0) {
+    failHonesty("protect bare WB no default shelf after potting", wbBareShelvesP.map((p) => p.name));
+  }
+  const mud = generateFromPrompt("mudroom bench 48 wide");
+  if (!/mudroom bench/i.test(mud.name)) failHonesty("protect mudroom bench after potting", mud.name);
+}
 
   // Protect garage / kitchen-work / Andersen / bare workbench / desk knee
   if (!isWorkbench("workbench 60x24x36")) failHonesty("protect isWorkbench batch27");

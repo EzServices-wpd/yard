@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -262,7 +262,17 @@ export function towelPortalWantsHooks(lower: string) {
 
 /** Workbench — shop work top; positive Workbench stem (not Desk-only / Storage). */
 export function isWorkbench(lower: string) {
-  return /workbench|work\s*bench/.test(lower);
+  return /workbench|work\s*bench/.test(lower) && !/potting/.test(lower);
+}
+
+/** Potting bench — standing outdoor/potting work top; never sit shoe-cubby Bench. */
+export function isPottingBench(lower: string) {
+  return /potting\s*bench/.test(lower);
+}
+
+/** Standing shop tops (workbench + potting) — not sit benches, not Desk knee pedestals. */
+export function isStandingShopTop(lower: string) {
+  return isWorkbench(lower) || isPottingBench(lower);
 }
 
 /** Pegboard wall panel fitted to an opening — panel anatomy, never naked House wire. */
@@ -608,7 +618,7 @@ const SIT_BENCH_ROOM = "dining|hall|entry|mudroom|coat|porch|patio|garden|boot|p
 export function sitBenchTitleStem(lower: string): string | null {
   if (/window\s*seat/.test(lower)) return "Window seat";
   if (/banquette/.test(lower)) return "Banquette";
-  if (/workbench/.test(lower)) return null;
+  if (/workbench/.test(lower) || isPottingBench(lower) || /potting/.test(lower)) return null;
   if (!/\bbench\b/.test(lower)) return null;
   // Boot tray bench before loose boot → Boot bench steal.
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower))) return "Boot tray bench";
@@ -672,6 +682,8 @@ export function identityTitleStem(lower: string): string | null {
   if (isDryingRack(lower)) return "Drying rack";
   if (isUtilityShelf(lower)) return "Utility shelf";
   if (isIroningWallMount(lower)) return "Ironing board wall mount";
+  // Potting / outdoor work top — before sit Bench steal (bench noun in the name).
+  if (isPottingBench(lower)) return "Potting bench";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
   if (isWorkbench(lower)) return "Workbench";
   if (isPegboard(lower)) return "Pegboard";
@@ -744,7 +756,7 @@ export function mediaIdentityLabel(lower: string): string | null {
 }
 
 function programFromNoun(lower: string): FittedProgram {
-  if (/\bdesk\b|workbench|work table/.test(lower)) return "desk";
+  if (isPottingBench(lower) || /\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicine(lower) || isOverToilet(lower) || isSpiceRack(lower) || isWineRack(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
@@ -770,7 +782,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (isKeyMailShelf(lower) || isLeashRail(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
-  if (/\bbench\b/.test(lower) && !/workbench/.test(lower)) return "bench";
+  if (/\bbench\b/.test(lower) && !/workbench/.test(lower) && !isPottingBench(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
   return "storage";
 }
@@ -811,6 +823,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isCoatCubbyWall(lower) &&
     !isLumberRack(lower) &&
     !isWorkbench(lower) &&
+    !isPottingBench(lower) &&
     !isLaundrySorter(lower) &&
     !isFoldingTable(lower) &&
     !isDryingRack(lower) &&
@@ -861,10 +874,11 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const sit =
     isDaybed(lower) ||
-    ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isMudroomCubbyWall(lower)));
+    ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isPottingBench(lower) && !isMudroomCubbyWall(lower)));
   const work =
-    (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
-      !/console table|sofa table|entry console|bedside table|night table/.test(lower));
+    (isPottingBench(lower) ||
+      (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
+        !/console table|sofa table|entry console|bedside table|night table/.test(lower)));
   const hangUse =
     (/coat/.test(lower) && /rack|rail|rod|hook|peg/.test(lower)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower)) ||
@@ -934,8 +948,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (
     /drawer/.test(lower) ||
     program === "vanity" ||
-    (program === "desk" && !isWorkbench(lower)) ||
-    (isWorkbench(lower) && /drawer/.test(lower)) ||
+    (program === "desk" && !isStandingShopTop(lower)) ||
+    (isStandingShopTop(lower) && /drawer/.test(lower)) ||
     (/nightstand/.test(lower) && !isBedsideShelf(lower)) ||
     (/bedside/.test(lower) && !isBedsideShelf(lower)) ||
     /dresser|hutch/.test(lower)

@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -108,9 +108,9 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     unit.shelfCount = parsed.unit.shelfCount;
   }
 
-  // Bare workbench: standing shop top — no invent knee/drawers; NO default lower shelf
+  // Bare workbench / potting bench: standing shop top — no invent knee/drawers; NO default lower shelf
   // (shelf only when the prompt types it, e.g. "with one lower shelf").
-  if (isWorkbench(lower)) {
+  if (isStandingShopTop(lower)) {
     if (!/knee|sit|chair/.test(lower)) unit.kneeW = undefined;
     if (!/drawer/.test(lower)) unit.drawersPerBank = undefined;
     const spokenShelf =
