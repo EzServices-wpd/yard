@@ -22,7 +22,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
+import { isBedsideShelf, isIroningWallMount, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -773,13 +773,48 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  // Ironing board wall mount — hung-open mount + PDF mount height + clear swing (not ironing cabinet steps).
+  const ironingWallMount =
+    isIroningWallMount(coatPrompt) || /^Ironing board wall mount/i.test(project.name || "");
+  if (ironingWallMount) {
+    const rail = panels.find((p) => /mount rail/i.test(p.name)) ?? of("rail")[0] ?? panels[0];
+    const cleat = panels.find((p) => /wall cleat|cleat/i.test(p.name));
+    const board = panels.find((p) => /ironing board/i.test(p.name));
+    const mountFromOpening = 36;
+    const boardLen = Math.round(board?.size.width ?? W);
+    return [
+      {
+        step: 1,
+        title: "Cut the mount rail, cleat, and board",
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${cleat ? cutLine(cleat) + "." : ""} ${board ? cutLine(board) + "." : ""} Label the waste face. Ironing board wall mount for a ${boardLen}" board — clear wall mount, not a Yard House wire skeleton and not a key/coat portal. PDF states mount height from the wall.`,
+        tips: "PDF states mount height from the wall. Keep clear swing.",
+        partsUsed: names(panels),
+      },
+      {
+        step: 2,
+        title: "Dry-fit the wall mount",
+        description: `Dry-fit the ${rail ? rail.name : "mount rail"} with the ${cleat ? cleat.name : "wall cleat"} and the ${boardLen}" ironing board. This is a wall mount for the board — not an ironing cabinet carcase and not a portal rail.`,
+        tips: "Confirm stud layout before you hang.",
+        partsUsed: names(panels),
+      },
+      {
+        step: 3,
+        title: "Clear wall mount — PDF states mount height",
+        description: `Mount height from the wall: set the ironing board wall mount ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the mount rail / wall cleat into studs. Keep clear swing so the ${boardLen}" board clears the wall and door swing when folded down.`,
+        tips: "PDF states mount height from the wall. Clear swing — guidance only, confirm the hang.",
+        partsUsed: names(panels),
+      },
+    ];
+  }
+
   const foldDownCabinet =
-    project.fitted?.affordances?.includes("fold-down-board") ||
-    /ironing/i.test(project.name) ||
-    /ironing/.test((project.prompt ?? "").toLowerCase()) ||
+    !ironingWallMount &&
+    (project.fitted?.affordances?.includes("fold-down-board") ||
+    (/ironing/i.test(project.name) && !/wall mount/i.test(project.name)) ||
+    (/ironing/.test((project.prompt ?? "").toLowerCase()) && !isIroningWallMount(coatPrompt)) ||
     /fold-down|fold down/i.test(project.name) ||
     /fold[- ]?down|drop[- ]?down/.test((project.prompt ?? "").toLowerCase()) ||
-    panels.some((p) => /fold-down board|ironing board/i.test(p.name));
+    panels.some((p) => /fold-down board/i.test(p.name)));
   if (foldDownCabinet) {
     const door = doors[0];
     const board = panels.find((p) => /fold-down board|ironing board/i.test(p.name));

@@ -573,6 +573,8 @@ export function buildPlan(project: YardProject): BuildPlan {
               ? "coat rack"
               : /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase())
                 ? "crate"
+              : isIroningWallMount((project.prompt ?? "").toLowerCase()) || /Ironing board wall mount/i.test(project.name)
+                ? "ironing board wall mount"
               : /ironing/i.test(project.name) || /ironing/.test((project.prompt ?? "").toLowerCase())
                 ? "ironing cabinet"
               : /medicine/i.test(project.name) || /medicine/.test((project.prompt ?? "").toLowerCase())

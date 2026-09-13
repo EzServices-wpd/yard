@@ -856,7 +856,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   };
   if (wantsJars(lower) || isSpiceRack(lower)) add("jar-lips");
   if (wantsBottles(lower) || isWineRack(lower)) add("bottle-rails");
-  if (fold || isIroning(lower)) add("fold-down-board");
+  if ((fold || isIroning(lower)) && !isIroningWallMount(lower)) add("fold-down-board");
   if (!isDaybed(lower) && (program === "bench" || /cubb/.test(lower) || (sit && family === "seat"))) add("cubbies");
   // Floor shoe storage → cubbies / open bays (not bookcase pin shelves).
   if (wantsShoes(lower) && (family === "floor-carcase" || family === "seat" || /rack|cubb/.test(lower))) {
