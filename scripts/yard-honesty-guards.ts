@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isDaybed, isPlatformBed, isSofaConsoleTable, wantsPrintHold } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isKitchenIsland, isOpenKitchenShelving, isPlatformBed, isPrepTable, isSofaConsoleTable, wantsPrintHold } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -734,7 +734,7 @@ if (!baseHit || baseHit.family !== "floor-carcase" || baseHit.mount !== "floor" 
   failHonesty("kitchen base family", baseHit);
 }
 const baseCab = generateFromPrompt(baseCabPrompt);
-if (!/^Base cabinet/i.test(baseCab.name)) failHonesty("base cabinet title", baseCab.name);
+if (!/^Kitchen base/i.test(baseCab.name)) failHonesty("base cabinet title", baseCab.name);
 if (!nearInch(baseCab.overall.height, 34.5)) failHonesty("base cabinet default height ~34.5", baseCab.overall);
 if (!nearInch(baseCab.overall.depth, 24)) failHonesty("base cabinet default depth ~24", baseCab.overall);
 if (!baseCab.panels.some((p) => p.type === "kick")) failHonesty("base cabinet missing toekick", baseCab.panels.map((p) => p.name));
@@ -760,7 +760,7 @@ if (!inspectHonesty(upperCab, upperPlan).ok) failHonesty("upper cabinet inspect"
 
 // Typed-wide kitchen must keep Base/Upper cabinet — never naked "Storage" from program label.
 for (const [prompt, stem] of [
-  ["kitchen base cabinet 36 wide", "Base cabinet"],
+  ["kitchen base cabinet 36 wide", "Kitchen base"],
   ["kitchen upper cabinet 30 wide", "Upper cabinet"],
   ["twin bunk bed", "Bunk bed"],
   ["twin loft bed", "Loft bed"],
@@ -768,13 +768,13 @@ for (const [prompt, stem] of [
   if (identityTitleStem(prompt) !== stem) failHonesty(`identityTitleStem(${prompt})`, identityTitleStem(prompt));
 }
 const storageWiped = generateFromPrompt("kitchen base cabinet 36 wide");
-if (!/^Base cabinet/i.test(storageWiped.name)) failHonesty("36-wide base title", storageWiped.name);
+if (!/^Kitchen base/i.test(storageWiped.name)) failHonesty("36-wide base title", storageWiped.name);
 const wipedSpec = {
   ...storageWiped.fitted!,
   name: `Storage ${storageWiped.overall.width}" × ${storageWiped.overall.height}" × ${storageWiped.overall.depth}"`,
 };
 const recovered = buildFitted(wipedSpec, "kitchen base cabinet 36 wide");
-if (!/^Base cabinet/i.test(recovered.name)) failHonesty("Storage wipe recovery for kitchen base", recovered.name);
+if (!/^Kitchen base/i.test(recovered.name)) failHonesty("Storage wipe recovery for kitchen base", recovered.name);
 const upperWiped = generateFromPrompt("kitchen upper cabinet 30 wide");
 const upperRecovered = buildFitted(
   {
@@ -1443,6 +1443,76 @@ if (identityTitleStem("house: linen closet 31.5×78×16") !== "Linen") {
 const mudCubby = generateFromPrompt("mudroom cubbies 48 wide 72 tall 16 deep");
 if (!/^Mudroom cubbies/i.test(mudCubby.name) || mudCubby.fitted?.program !== "storage") {
   failHonesty("mudroom cubbies storage freeze broken", { name: mudCubby.name, program: mudCubby.fitted?.program });
+}
+
+
+// Batch25 kitchen-work / island class pack — universal F/F/P stems + spoken shelves.
+for (const [prompt, stem] of [
+  ["house: prep table 48 wide × 24 deep × 36 tall", "Prep table"],
+  ["house: butcher block cart 30 wide × 24 deep × 36 tall with two shelves", "Butcher block cart"],
+  ["house: open kitchen shelving fitted to a 48×36×12 opening, three shelves", "Open kitchen shelving"],
+  ["house: kitchen island 60 wide × 36 deep × 36 tall", "Kitchen island"],
+  ["kitchen base cabinet with two drawers 24 wide × 24 deep × 34.5 tall", "Kitchen base"],
+] as const) {
+  if (identityTitleStem(prompt.toLowerCase()) !== stem) {
+    failHonesty(`kitchen-work identityTitleStem(${prompt})`, identityTitleStem(prompt.toLowerCase()));
+  }
+}
+if (!isPrepTable("prep table 48x24x36")) failHonesty("isPrepTable");
+if (!isButcherCart("butcher block cart with two shelves")) failHonesty("isButcherCart");
+if (!isOpenKitchenShelving("open kitchen shelving fitted to a 48×36×12 opening, three shelves")) {
+  failHonesty("isOpenKitchenShelving");
+}
+if (!isKitchenIsland("kitchen island 60x36x36")) failHonesty("isKitchenIsland");
+
+const prep = generateFromPrompt("house: prep table 48″ wide × 24″ deep × 36″ tall");
+if (!/^Prep table/i.test(prep.name)) failHonesty("prep table title", prep.name);
+if (/Storage|Yard Table\b|^Table\b/i.test(prep.name) && !/Prep/i.test(prep.name)) {
+  failHonesty("prep table naked Table/Storage", prep.name);
+}
+
+const cart = generateFromPrompt("house: butcher block cart 30″ wide × 24″ deep × 36″ tall with two shelves");
+if (!/Butcher block cart|Kitchen cart/i.test(cart.name)) failHonesty("butcher cart title", cart.name);
+if (/Storage unit/i.test(cart.name)) failHonesty("butcher cart collapsed to Storage", cart.name);
+const cartShelves = cart.panels.filter((p) => p.type === "shelf");
+if (cartShelves.length < 2) failHonesty("butcher cart two shelves", cartShelves.map((p) => p.name));
+
+const openShelves = generateFromPrompt(
+  "house: open kitchen shelving fitted to a 48×36×12 opening, three shelves",
+);
+if (!/Open kitchen shelving|Open shelving/i.test(openShelves.name)) {
+  failHonesty("open kitchen shelving title", openShelves.name);
+}
+if (/Storage unit/i.test(openShelves.name)) failHonesty("open shelving collapsed to Storage", openShelves.name);
+if (Math.abs(openShelves.overall.depth - 12) > 0.6) {
+  failHonesty("open shelving D12", openShelves.overall);
+}
+const openShelfPanels = openShelves.panels.filter((p) => p.type === "shelf");
+if (openShelfPanels.length < 3) {
+  failHonesty("open shelving three shelves", openShelfPanels.map((p) => p.name));
+}
+
+const island = generateFromPrompt("house: kitchen island 60″ wide × 36″ deep × 36″ tall");
+if (!/^Kitchen island/i.test(island.name)) failHonesty("kitchen island title", island.name);
+const islandPlan = buildPlan(island);
+const islandChip = islandPlan.issues.map((i) => i.message).join("\n");
+if (/— storage\.?/i.test(islandChip)) failHonesty("island chip still storage", islandChip);
+
+const kbase = generateFromPrompt(
+  "house: kitchen base cabinet with two drawers 24″ wide × 24″ deep × 34.5″ tall",
+);
+if (!/^Kitchen base/i.test(kbase.name)) failHonesty("kitchen base title protect", kbase.name);
+const kbaseFronts = kbase.panels.filter((p) => /drawer front/i.test(p.name));
+if (kbaseFronts.length < 2) failHonesty("kitchen base two drawer fronts protect", kbaseFronts.map((p) => p.name));
+
+// Drawer-box explode still green on nightstand (sides/back/bottom — not bounding Drawer box).
+const nightProtect = generateFromPrompt("nightstand 20 wide 24 tall 16 deep");
+const nightProtectPlan = buildPlan(nightProtect);
+if (nightProtectPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+  failHonesty("drawer-box explode regress", nightProtectPlan.cutList.map((c) => c.name));
+}
+if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
+  failHonesty("drawer side explode protect", nightProtectPlan.cutList.map((c) => c.name));
 }
 
 console.log("SOFT-TRUST OK", {

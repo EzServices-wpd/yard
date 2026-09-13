@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -354,6 +354,39 @@ export function isKitchenBase(lower: string) {
   );
 }
 
+/** Prep table — work surface; never naked Table / Storage. */
+export function isPrepTable(lower: string) {
+  if (isKitchenBase(lower) || isKitchenUpper(lower)) return false;
+  if (/kitchen\s+island|\bisland\b/.test(lower)) return false;
+  if (/butcher|\bcart\b/.test(lower)) return false;
+  return /prep\s*table|prep\s*bench|kitchen\s+prep/.test(lower);
+}
+
+/** Butcher-block / kitchen cart — cart honesty; never naked Storage unit. */
+export function isButcherCart(lower: string) {
+  if (isKitchenBase(lower) || /kitchen\s+island|\bisland\b/.test(lower)) return false;
+  if (/butcher\s*block\s*cart|butcher\s*cart|butcher\s*block/.test(lower)) return true;
+  if (/kitchen\s+cart|\bcart\b/.test(lower) && /butcher|block|shelf|shelves|shelving|wheel|caster/.test(lower)) return true;
+  return /\bcart\b/.test(lower) && /kitchen|butcher|prep/.test(lower);
+}
+
+/** Open kitchen / fitted open shelving — never naked Storage unit. */
+export function isOpenKitchenShelving(lower: string) {
+  if (isKitchenBase(lower) || isKitchenUpper(lower) || isButcherCart(lower)) return false;
+  if (/kitchen\s+island|\bisland\b/.test(lower)) return false;
+  if (/bookcase|bookshelf|spice|wine|medicine|coat|shoe/.test(lower)) return false;
+  if (/open\s+kitchen\s+shelving|kitchen\s+shelving|open\s+shelving/.test(lower)) return true;
+  if (/shelving\s+niche|fitted[^.]{0,40}shelving|shelving[^.]{0,40}fitted|shelving[^.]{0,40}opening/.test(lower)) return true;
+  if (/open\s+shel(?:f|ves|ving)/.test(lower) && /kitchen|fitted|opening|niche/.test(lower)) return true;
+  return false;
+}
+
+/** Kitchen island — freestanding work island; never bare Island / Storage. */
+export function isKitchenIsland(lower: string) {
+  if (isKitchenBase(lower) || isPrepTable(lower) || isButcherCart(lower)) return false;
+  return /kitchen\s+island|\bisland\b/.test(lower);
+}
+
 /** Twin/full/queen bunk — two sleep platforms on a frame, not a hollow box. */
 export function isBunkBed(lower: string) {
   if (isLoftBed(lower)) return false;
@@ -469,6 +502,17 @@ export function identityTitleStem(lower: string): string | null {
   // Kitchen-typed base keeps "Kitchen base" stem (not bare Base cabinet only).
   if (isKitchenBase(lower)) return /kitchen/.test(lower) ? "Kitchen base" : "Base cabinet";
   if (isKitchenUpper(lower)) return "Upper cabinet";
+  // Kitchen work / island class pack — positive stems, never naked Table / Island / Storage.
+  if (isKitchenIsland(lower)) return "Kitchen island";
+  if (isPrepTable(lower)) return "Prep table";
+  if (isButcherCart(lower)) {
+    if (/butcher/.test(lower)) return "Butcher block cart";
+    return "Kitchen cart";
+  }
+  if (isOpenKitchenShelving(lower)) {
+    if (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower)) return "Open kitchen shelving";
+    return "Open shelving";
+  }
   if (isLoftBed(lower)) return "Loft bed";
   if (isBunkBed(lower)) return "Bunk bed";
   if (isLaundryFoldDown(lower)) return "Laundry fold-down";
@@ -562,6 +606,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (isSofaConsoleTable(lower)) return "table";
   if (isPlatformBed(lower)) return "storage";
   if (isDaybed(lower)) return "bench";
+  if (isPrepTable(lower)) return "table";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (
     /\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||

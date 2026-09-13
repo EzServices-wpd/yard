@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isPlatformBed, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isButcherCart, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLoftBed, isMediaShelf, isOpenKitchenShelving, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isTowelPortalRail, isWallMediaLedge, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -85,11 +85,38 @@ function spokenDrawerCount(text: string): number | null {
   return null;
 }
 
+/** Spoken/typed shelf count — digits or words ("two shelves", "3 shelves"); class pack for carts / open shelving. */
+function spokenShelfCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*shel(?:f|ves|ving)\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 12) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    single: 1,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|single)\s+shel(?:f|ves|ving)\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  return null;
+}
+
+
 
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -126,7 +153,7 @@ export function looksLikeFitted(prompt: string) {
     return true;
   }
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|prep\s*table|butcher|cart|shelving|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
     return true;
   }
   if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower) || isPlatformBed(lower) || isBedsideShelf(lower)) return true;
@@ -704,9 +731,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /rod|hang|rail/.test(lower) ||
     program === "wardrobe" ||
     (program === "closet" && isSystem && !linen);
-  const shelfCount = pick(
+  const spokenShelves = spokenShelfCount(t);
+  const shelfCount = spokenShelves != null
+    ? Math.max(1, Math.min(12, spokenShelves))
+    : pick(
     t,
-    /(\d+)\s*shel(?:f|ves)/i,
+    /(\d+)\s*shel(?:f|ves|ving)/i,
     program === "bookcase"
       ? 5
       : program === "closet"
@@ -744,7 +774,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isPortalSpanShelf(lower)
                   ? 1
-                : (/shelf/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
+                : isButcherCart(lower)
+                  ? 2
+                : isOpenKitchenShelving(lower)
+                  ? 3
+                : (/shel(?:f|ves|ving)/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
                 ? 3
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
                   ? 0
@@ -782,7 +816,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && height >= 54) ||
     !!house?.affordances.includes("door");
   const doorsFinal =
-    isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower) || (program === "media" && !/door/.test(lower)) ? false : doors;
+    isBunkBed(lower) ||
+    isLoftBed(lower) ||
+    isDaybed(lower) ||
+    isButcherCart(lower) ||
+    isOpenKitchenShelving(lower) ||
+    isKitchenIsland(lower) ||
+    isPrepTable(lower) ||
+    (program === "media" && !/door/.test(lower))
+      ? false
+      : doors;
   const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
@@ -861,6 +904,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
+      : isPrepTable(lower)
+        ? "Prep table"
+      : isKitchenIsland(lower)
+        ? "Kitchen island"
+      : isButcherCart(lower)
+        ? (/butcher/.test(lower) ? "Butcher block cart" : "Kitchen cart")
+      : isOpenKitchenShelving(lower)
+        ? (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower) ? "Open kitchen shelving" : "Open shelving")
       : isPortalSpanShelf(lower)
         ? portalSpanShelfTitle(lower)
       : isPortalHookRail(lower)
@@ -904,7 +955,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                               : /crate/.test(lower)
                                 ? "Crate"
                                 : /island/.test(lower)
-                                  ? "Island"
+                                  ? "Kitchen island"
                                   : /range\s*hood|\bhood\b/.test(lower)
                                     ? "Range hood"
                                     : /floating/.test(lower) && /shel/.test(lower)
@@ -2793,7 +2844,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const stackH = boxH + counterT;
     return {
       id: createId("proj"),
-      name: `Island ${W}" × ${stackH}" × ${D}"`,
+      name: `Kitchen island ${W}" × ${stackH}" × ${D}"`,
       prompt,
       kind: "closet",
       overall: { width: W, height: stackH, depth: D },
@@ -2809,7 +2860,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       opening: { ...spec.opening, width: W, height: stackH, depth: D, kind: "room" },
       fitted: {
         ...spec,
-        name: `Island ${W}" × ${stackH}" × ${D}"`,
+        name: `Kitchen island ${W}" × ${stackH}" × ${D}"`,
         unit: { ...u, height: stackH, depth: D, doors: false, shelfCount: 1, drawersPerBank: undefined, counterH: stackH },
       },
       assumptions: {

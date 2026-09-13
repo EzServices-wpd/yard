@@ -12,7 +12,7 @@ import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
-  /closet|desk|vanity|table|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b/i;
+  /closet|desk|vanity|table|prep\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b/i;
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;
@@ -96,6 +96,13 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   if (parsed.unit.kneeW && !unit.kneeW) unit.kneeW = parsed.unit.kneeW;
   // Spoken/typed drawer count from local parse overrides brief defaults (desk pencil, etc.).
   if (parsed.unit.drawersPerBank != null) unit.drawersPerBank = parsed.unit.drawersPerBank;
+  // Spoken shelf count ("two shelves" / "3 shelves") always wins — digit or word.
+  if (
+    /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|single)\s+shel(?:f|ves|ving)\b/.test(lower) &&
+    parsed.unit.shelfCount != null
+  ) {
+    unit.shelfCount = parsed.unit.shelfCount;
+  }
 
   let program = brief.program;
   if (parsed.program === "table" || parsed.program === "media") program = parsed.program;
@@ -175,7 +182,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
           : /nightstand|bedside/.test(lower)
             ? "Nightstand"
             : /island/.test(lower)
-          ? "Island"
+          ? "Kitchen island"
           : /headboard/.test(lower)
             ? "Headboard"
             : /crate/.test(lower)

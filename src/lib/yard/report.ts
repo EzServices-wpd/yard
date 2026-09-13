@@ -589,6 +589,18 @@ export function buildPlan(project: YardProject): BuildPlan {
                     !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
                     !/^Bedside shelf/i.test(project.name))
                 ? "nightstand"
+              : /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase())
+                ? "kitchen island"
+              : /prep\s*table/i.test(project.name) || /prep\s*table/.test((project.prompt ?? "").toLowerCase())
+                ? "prep table"
+              : /butcher|kitchen cart/i.test(project.name) ||
+                  /butcher|\bcart\b/.test((project.prompt ?? "").toLowerCase())
+                ? "butcher block cart"
+              : /open(?:\s+kitchen)?\s+shelving/i.test(project.name) ||
+                  /open\s+kitchen\s+shelving|open\s+shelving|shelving\s+niche/.test(
+                    (project.prompt ?? "").toLowerCase(),
+                  )
+                ? "open shelving"
               : (project.fitted?.program ?? "closet")
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",
