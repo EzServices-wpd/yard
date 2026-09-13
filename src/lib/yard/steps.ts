@@ -341,10 +341,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const portalSpanShelf =
     isPortalSpanShelf(coatPrompt) || /Over-door shelf/i.test(project.name || "");
   const portalHookRail = isPortalHookRail(coatPrompt) || (/portal/i.test(project.name) && /rail|hooks/i.test(project.name) && !/towel|shoe|coat rod/i.test(project.name));
+  const pegRail =
+    isPegRail(coatPrompt) || /^Peg rail/i.test(project.name || "");
   const toolRail =
     isToolRail(coatPrompt) ||
     isLeashRail(coatPrompt) ||
-    isPegRail(coatPrompt) ||
+    pegRail ||
     /^Tool rail/i.test(project.name || "") ||
     /^Leash rail/i.test(project.name || "");
   const keyMail =
@@ -395,8 +397,19 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const hookRailLabel = portalHookRail && !/coat/i.test(project.name) && !/coat/.test(coatPrompt)
       ? portalHookRailTitle(coatPrompt)
       : null;
-    const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
-    const hookWord = coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/);
+    // Honor typed hook/peg count — Peg rail must not fall back to Tool-rail W/6 (=6).
+    const nameLower = (project.name || "").toLowerCase();
+    const hookSaid =
+      coatPrompt.match(/(\d+)\s*hooks?/) ||
+      nameLower.match(/(\d+)\s*hooks?/) ||
+      (pegRail ? coatPrompt.match(/(\d+)\s*pegs?/) || nameLower.match(/(\d+)\s*pegs?/) : null);
+    const hookWord =
+      coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/) ||
+      nameLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/) ||
+      (pegRail
+        ? coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+pegs?\b/) ||
+          nameLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+pegs?\b/)
+        : null);
     const hookWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
     const hooks = shoe
@@ -408,6 +421,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : hookWord && hookWords[hookWord[1]] != null
           ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
           : Math.max(3, Math.min(8, Math.round(W / 6)));
+    const hangNoun = pegRail ? "pegs" : "hooks";
     const rail = backs[0] ?? panels[0];
     const shelf = of("top")[0];
     const portal =
@@ -479,7 +493,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
               ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks below the mail shelf — not a Storage unit / Picture ledge / portal steal.`
               : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "")
                 ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / Tool / key steal.`
-              : isPegRail(coatPrompt) || /^Peg rail/i.test(project.name || "")
+              : pegRail
                 ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} pegs — not a Bridge / Tool / key / leash steal.`
                 : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
             tips: "PDF states mount height. Clear wall mount — hit studs.",
@@ -503,7 +517,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
           : toolRail || keyMail
-            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : isPegRail(coatPrompt) || /^Peg rail/i.test(project.name || "") ? "Peg rail" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
+            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : pegRail ? "Peg rail" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: portal ? "Mount height from the opening — keep clear swing." : toolRail || keyMail ? "PDF states mount height. Clear wall mount." : tool.tip,
         partsUsed: names(panels),
@@ -521,11 +535,19 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: shoe ? `Screw ${hooks} shoe pegs` : /rod/.test(coatPrompt) && /coat/.test(coatPrompt) ? `Span the coat rod full width` : `Screw ${hooks} hooks`,
+        title: shoe
+          ? `Screw ${hooks} shoe pegs`
+          : /rod/.test(coatPrompt) && /coat/.test(coatPrompt)
+            ? `Span the coat rod full width`
+            : `Screw ${hooks} ${hangNoun}`,
         description: shoe
           ? `Mark ${hooks} stations along the rail, about 8–9" on center. Glue and #8 × 1¼" screws through each Shoe peg into the rail — one cut peg per pair from the cut list. Pegs project into the portal; keep clear swing past the footwear.`
-          : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the hooks into the rail — not into the shelf.`,
-        tips: shoe ? "Count the Shoe peg pieces on the cut list — one per pair." : "A cheap hook pack is the whole hardware kit besides screws.",
+          : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the ${hangNoun} into the rail — not into the shelf.`,
+        tips: shoe
+          ? "Count the Shoe peg pieces on the cut list — one per pair."
+          : pegRail
+            ? "Honor the typed peg count — not a Tool-rail 6-hook leak."
+            : "A cheap hook pack is the whole hardware kit besides screws.",
         partsUsed: names(panels),
       },
       hangStep,

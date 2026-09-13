@@ -1597,7 +1597,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   const stoolText = [
     stool.name,
     ...(stool.notes ?? []),
-    ...stoolPlan.steps.map((s) => `${s.title} ${s.description}`),
+    ...stoolPlan.instructions.map((s) => `${s.title} ${s.description}`),
   ].join("\n");
   if (!/adult stands/i.test(stoolText)) failHonesty("adult tread densify", stoolText.slice(0, 600));
   if (/kid stands/i.test(stoolText) && !/adult stands/i.test(stoolText)) {
@@ -1727,7 +1727,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   const hamperText = [
     hamper.name,
     ...(hamper.notes ?? []),
-    ...hamperPlan.steps.map((s) => `${s.title} ${s.description}`),
+    ...hamperPlan.instructions.map((s) => `${s.title} ${s.description}`),
     ...hamperPlan.bom.map((b) => b.name),
   ].join("\n");
   if (!/pine/i.test(hamperText) && !/Pine/i.test(hamperPlan.bom.map((b) => b.name).join(" "))) {
@@ -1794,7 +1794,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (!/Umbrella stand/i.test(umbrella.name)) failHonesty("umbrella title", umbrella.name);
   if (/Storage unit/i.test(umbrella.name)) failHonesty("umbrella Storage steal", umbrella.name);
   const umPlan = buildPlan(umbrella);
-  const umText = [umbrella.name, ...(umbrella.notes ?? []), ...umPlan.steps.map((s) => `${s.title} ${s.description}`), ...umPlan.bom.map((b) => b.name)].join("\n");
+  const umText = [umbrella.name, ...(umbrella.notes ?? []), ...umPlan.instructions.map((s) => `${s.title} ${s.description}`), ...umPlan.bom.map((b) => b.name)].join("\n");
   if (!/oak|Oak/i.test(umText)) failHonesty("umbrella Buy Oak", umText.slice(0, 500));
   if (!/8/.test(umText) || !/umbrella/i.test(umText)) failHonesty("umbrella 8×8 envelope", umText.slice(0, 600));
   if (!/upright|envelope/i.test(umText)) failHonesty("umbrella upright densify", umText.slice(0, 500));
@@ -1805,7 +1805,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (!/Key and mail shelf/i.test(keyMail.name)) failHonesty("key+mail stem", keyMail.name);
   if (/Storage unit|Picture ledge/i.test(keyMail.name)) failHonesty("key+mail Storage/Picture steal", keyMail.name);
   const kmPlan = buildPlan(keyMail);
-  const kmText = [keyMail.name, ...(keyMail.notes ?? []), ...kmPlan.steps.map((s) => `${s.title} ${s.description}`)].join("\n");
+  const kmText = [keyMail.name, ...(keyMail.notes ?? []), ...kmPlan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
   if (!/4 hooks|four hooks|Screw 4 hooks/i.test(kmText)) failHonesty("key+mail four hooks", kmText.slice(0, 600));
   if (!/mount height|PDF states mount height/i.test(kmText)) failHonesty("key+mail PDF mount height", kmText.slice(0, 500));
   if (Math.abs(keyMail.overall.width - 24) > 1.5) failHonesty("key+mail W24", keyMail.overall);
@@ -1818,7 +1818,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
     failHonesty("leash Bridge/Tool/key steal", leash.name);
   }
   const leashPlan = buildPlan(leash);
-  const leashText = [leash.name, ...(leash.notes ?? []), ...leashPlan.steps.map((s) => `${s.title} ${s.description}`)].join("\n");
+  const leashText = [leash.name, ...(leash.notes ?? []), ...leashPlan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
   if (!/3 hooks|three hooks|Screw 3 hooks/i.test(leashText)) failHonesty("leash three hooks", leashText.slice(0, 600));
   if (!/mount height|PDF states mount height/i.test(leashText)) failHonesty("leash PDF mount height", leashText.slice(0, 500));
   if (Math.abs(leash.overall.width - 24) > 1.5) failHonesty("leash 24 span", leash.overall);
@@ -2278,9 +2278,19 @@ console.log("SOFT-TRUST OK", {
   if (!/5 pegs|five pegs/i.test(peg.name) && !/·\s*5\s*pegs/i.test(peg.name)) {
     failHonesty("b32 five pegs title", peg.name);
   }
-  const pegBlob = [peg.name, ...(peg.notes ?? [])].join("\n");
+  const pegPlan = buildPlan(peg);
+  const pegBlob = [
+    peg.name,
+    ...(peg.notes ?? []),
+    ...pegPlan.instructions.map((s) => `${s.title} ${s.description}`),
+  ].join("\n");
   if (!/5 pegs|five pegs|Screw 5 pegs/i.test(pegBlob)) failHonesty("b32 five pegs densify", pegBlob.slice(0, 600));
-  if (/6 hooks|Screw 6 hooks/i.test(pegBlob)) failHonesty("b32 peg 6 hooks steal", pegBlob.slice(0, 400));
+  if (!/Screw 5 pegs/i.test(pegBlob) || !/Mark 5 holes/i.test(pegBlob)) {
+    failHonesty("b32 peg plan count honesty", pegPlan.instructions.map((s) => s.title));
+  }
+  if (/6 hooks|Screw 6 hooks|Mark 6 holes|Screw 6 pegs/i.test(pegBlob)) {
+    failHonesty("b32 peg 6 hooks steal", pegBlob.slice(0, 400));
+  }
   if (!/mount height|PDF states mount height/i.test(pegBlob)) failHonesty("b32 peg PDF mount height", pegBlob.slice(0, 500));
   if (!/clear wall mount/i.test(pegBlob)) failHonesty("b32 peg clear wall mount", pegBlob.slice(0, 400));
   if (Math.abs(peg.overall.width - 36) > 1.5) failHonesty("b32 peg span 36", peg.overall);
@@ -2297,11 +2307,23 @@ console.log("SOFT-TRUST OK", {
   if (bareShelves.length !== 0) failHonesty("b32 protect bare WB no shelf", bareShelves.map((p) => p.name));
   const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO — freeze green");
   if (!/Andersen/i.test(andersen.name)) failHonesty("b32 protect Andersen", andersen.name);
-  // Tool rail still tool
+  // Tool rail still tool — protect typed 6 hooks in plan densify
   if (!isToolRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("b32 protect isToolRail");
   if (isPegRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("b32 tool ≠ peg");
   const tool = generateFromPrompt("house: tool rail spanning 48″ with six hooks, clear wall mount; PDF states mount height");
   if (!/^Tool rail/i.test(tool.name)) failHonesty("b32 protect tool rail title", tool.name);
+  const toolPlan = buildPlan(tool);
+  const toolBlob = [
+    tool.name,
+    ...(tool.notes ?? []),
+    ...toolPlan.instructions.map((s) => `${s.title} ${s.description}`),
+  ].join("\n");
+  if (!/6 hooks|Screw 6 hooks/i.test(toolBlob)) failHonesty("b32 protect tool 6 hooks", toolBlob.slice(0, 600));
+  if (/Screw 5 pegs|Mark 5 holes|·\s*5\s*pegs/i.test(toolBlob) && !/6 hooks/i.test(toolBlob)) {
+    failHonesty("b32 tool lost 6 hooks", toolBlob.slice(0, 400));
+  }
+  if (!/mount height|PDF states mount height/i.test(toolBlob)) failHonesty("b32 protect tool PDF mount", toolBlob.slice(0, 400));
+  if (!/clear wall mount/i.test(toolBlob)) failHonesty("b32 protect tool clear wall", toolBlob.slice(0, 400));
 }
 
 
