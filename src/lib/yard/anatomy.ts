@@ -5,7 +5,7 @@
  */
 
 import type { StructureKind } from "./types";
-import { detectHouseFamily, isAdirondackChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies } from "./family";
+import { detectHouseFamily, isAdirondackChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
 import { detectWeekendFamily, detectWeekendMech } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
@@ -21,7 +21,7 @@ export type AnatomyHit = {
 
 const OPENING = /window|rough opening|\bro\b|andersen/;
 const FITTED =
-  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b|\bbench\b|\bseat\b|cubb|\bledge\b/;
+  /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b|\bbench\b|\bseat\b|cubb|\bledge\b|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
 const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
@@ -120,7 +120,8 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
 
   if (/plane|airplane|jet|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
-  if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay) && !/hutch/.test(hay))
+  if (isToyChest(hay)) return { anatomy: "fitted", kind: "closet", named: "Toy chest" };
+  if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay) && !/hutch/.test(hay) && !/toy\s*(?:chest|box)|hinged\s*lid/.test(hay))
     return { anatomy: "carcase", kind: /castle|fort/.test(hay) ? "castle" : "house" };
   if (/arch|gateway|portal|arbor|arbour|pergola/.test(hay)) {
     // Door-portal fittings (hook rail / over-door shelf / towel / shoe) are fitted hung-open — not a garden arch.

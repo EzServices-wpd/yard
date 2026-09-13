@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -219,7 +219,7 @@ function spokenCubbyCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb|toy\s*cubb|cubby\s*wall|kids\s*cubb|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb|toy\s*cubb|cubby\s*wall|kids\s*cubb|book\s*bin|\bchest\b|toy\s*box|hinged\s*lid|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -246,6 +246,8 @@ export function looksLikeFitted(prompt: string) {
     isIroningWallMount(lower) ||
     isPlanterBox(lower) ||
     isOutdoorSideTable(lower) ||
+    isToyChest(lower) ||
+    isBookBinBench(lower) ||
     /ironing/.test(lower)
   ) {
     return true;
@@ -979,7 +981,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "vanity" ||
     (program === "desk" && !isStandingShopTop(lower)) ||
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
-    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|\bchest\b|file\s*cabinet|filing/.test(lower)) && !isBedsideShelf(lower);
+    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet|filing/.test(lower) || (/\bchest\b/.test(lower) && !isToyChest(lower) && !/hinged\s*lid/.test(lower))) && !isBedsideShelf(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -1130,7 +1132,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
         : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
           ? "File cabinet"
           : /\bchest\b/.test(lower) && !/medicine/.test(lower)
-            ? "Chest"
+            ? isToyChest(lower) || /toy/.test(lower) ? "Toy chest" : "Chest"
             : /dresser/.test(lower)
               ? "Dresser"
               : isBedsideShelf(lower)
@@ -2890,10 +2892,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const backT = 0.25;
     const apronH = Math.min(3.5, Math.max(2.5, Math.round((H * 0.2) * 8) / 8));
     const bootTray = isBootTrayBench(prompt.toLowerCase()) || (/boot/.test(prompt.toLowerCase()) && /tray/.test(prompt.toLowerCase()));
+    const bookBin = isBookBinBench(prompt.toLowerCase());
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-    panels.push(panel("bottom", bootTray ? "Boot tray" : "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("bottom", bootTray ? "Boot tray" : bookBin ? "Book bin" : "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
     panels.push(panel("top", "Seat", x0 + P, H - P, backT, innerW, P, D - backT));
     panels.push(
       panel("rail", "Front apron", x0 + P, H - P - apronH, D - P, innerW, apronH, P),
@@ -2931,6 +2934,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         bootTray
           ? `${name}. Boot tray bench with a recessed boot tray under the seat and ${cubbyN} bays — tray densify + sit-load, not Boot bench without tray. ¾" plywood.`
+          : bookBin
+          ? `${name}. Book bin bench with an open book bin under the seat and ${cubbyN} bays — bin densify + sit-load, not a naked Bench. ¾" plywood.`
           : wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
           : sitTitle === "Window seat"
@@ -2938,6 +2943,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
         bootTray
           ? `The boot tray, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, boot tray, and back.`
+          : bookBin
+          ? `The book bin, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, book bin, and back.`
           : `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
@@ -3412,6 +3419,43 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+
+  // Toy chest / hinged-lid chest — lid anatomy; never Yard House wire / Storage.
+  if (isToyChest(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Toy chest") {
+    const innerW = W - P * 2;
+    panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+    panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
+    panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
+    const name = `Toy chest ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Hinged lid toy chest — floor carcase with a real lid on a piano hinge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+        `Hinged lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge along the back edge.`,
+        "Guidance only — add a lid stay so the lid cannot slam. Soft-close optional.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    };
+  }
 
   // Planter box — open top (no lid / doors); honor typed W×D×H; never Wire skeleton cube.
   if (isPlanterBox(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Planter box") {

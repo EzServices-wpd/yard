@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -391,6 +391,25 @@ export function isBootTrayBench(lower: string) {
   return /boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower);
 }
 
+/** Book bin / bin bench — sit-load + bin densify; never naked Bench. */
+export function isBookBinBench(lower: string) {
+  if (!/\bbench\b/.test(lower)) return false;
+  if (/workbench/.test(lower) || isPottingBench(lower)) return false;
+  if (isBootTrayBench(lower)) return false;
+  if (/book/.test(lower) && /\bbin\b/.test(lower)) return true;
+  if (/\bbin\b/.test(lower) && !/laundry|sorter|hamper|boot/.test(lower)) return true;
+  return false;
+}
+
+/** Toy chest / hinged-lid chest — floor carcase + lid; never Yard House wire / Storage. */
+export function isToyChest(lower: string) {
+  if (/medicine/.test(lower)) return false;
+  if (/toy\s*(?:chest|box)/.test(lower)) return true;
+  if (/\bchest\b/.test(lower) && /hinged\s*lid|\blid\b/.test(lower) && /toy|kids|play|child|nursery/.test(lower)) return true;
+  if (/\bchest\b/.test(lower) && /hinged\s*lid/.test(lower) && !/file|tool|hope|blanket|medicine/.test(lower)) return true;
+  return false;
+}
+
 /** Lumber rack — arms hold stock; never naked Storage unit. */
 export function isLumberRack(lower: string) {
   if (/lumber\s*rack|timber\s*rack|pipe\s*arm/.test(lower)) return true;
@@ -661,12 +680,13 @@ export function climbIdentityLabel(lower: string): string | null {
   if (/\bbench\b/.test(lower) && !/step-?up|climb\s+step|climb\s+stool|step\s*stool|two-?\s*step|three-?\s*step/.test(lower)) return null;
   const climbHay = lower.replace(/[″″]/g, '"').replace(/[–—]/g, "-");
   if (
-    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*(?:[×xby]|and)\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread/.test(
+    !/step-?up(?:\s+stool)?|step\s*stool|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|two-?\s*step|three-?\s*step|each\s+step|one\s+climb\s+step|step-?shelf|rise\s*(?:[×xby]|and)\s*.*run|weight-bearing\s+climb|holds?\s+a\s+kid\s+standing|kid\s+stands|top\s+tread|three\s+treads|\d+\s*treads/.test(
       climbHay,
     )
   ) {
     return null;
   }
+  if (/climb(?:ing)?\s*triangle|pikler|step\s*triangle/.test(climbHay)) return "Climb triangle";
   if (/step-?up|stool|two-?\s*step|three-?\s*step|climb\s+stool|each\s+step/.test(climbHay)) return "Step stool";
   if (/step-?shelf/.test(lower)) return "Step shelf";
   if (/\bladder\b/.test(lower)) return "Ladder";
@@ -687,6 +707,12 @@ export function sitBenchTitleStem(lower: string): string | null {
   if (!/\bbench\b/.test(lower)) return null;
   // Boot tray bench before loose boot → Boot bench steal.
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower))) return "Boot tray bench";
+  // Book bin / bin bench — positive stem (never naked Bench).
+  if (isBookBinBench(lower)) {
+    if (/book/.test(lower)) return "Book bin bench";
+    if (/toy/.test(lower)) return "Toy bin bench";
+    return "Bin bench";
+  }
   // Prefer adjacent "<room> bench" (dining bench, hall bench, entry bench, …).
   const adj = lower.match(new RegExp(`\\b(${SIT_BENCH_ROOM})\\s+bench\\b`));
   if (adj) {
@@ -709,6 +735,8 @@ export function sitBenchTitleStem(lower: string): string | null {
 export function identityTitleStem(lower: string): string | null {
   // Entry / mudroom class — positive stems before Coat rod / Storage / Bridge steals.
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower))) return "Boot tray bench";
+  if (isBookBinBench(lower)) return sitBenchTitleStem(lower) || "Book bin bench";
+  if (isToyChest(lower)) return "Toy chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";
   if (isLeashRail(lower)) return "Leash rail";
@@ -764,7 +792,7 @@ export function identityTitleStem(lower: string): string | null {
   if (/\bvanity\b/.test(lower)) return "Vanity";
   // Chest / File cabinet — never naked Storage unit (medicine chest stays Medicine cabinet via hung path).
   if (/file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)) return "File cabinet";
-  if (/\bchest\b/.test(lower) && !/medicine/.test(lower)) return "Chest";
+  if (/\bchest\b/.test(lower) && !/medicine/.test(lower)) return /toy/.test(lower) ? "Toy chest" : "Chest";
   if (/\bdresser\b/.test(lower)) return "Dresser";
   // Nightstand only when not a bedside shelf (shelf / book envelope stays Bedside shelf).
   if (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))) return "Nightstand";
@@ -903,6 +931,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isIroningWallMount(lower) &&
     !isPlanterBox(lower) &&
     !isOutdoorSideTable(lower) &&
+    !isToyChest(lower) &&
+    !isBookBinBench(lower) &&
     !/ironing/.test(lower)
   ) {
     return null;

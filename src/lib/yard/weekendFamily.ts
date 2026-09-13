@@ -45,7 +45,7 @@ const POT_HOLD_NOUN =
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
 const CLIMB_HUMAN =
-  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|step\s*stool|one-?\s*step|two-?\s*step|each\s+step|top\s+tread|the\s+tread|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*(?:[×xby]|and)\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
+  /\bladder\b|step-?up(?:\s+stool)?|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|step\s*stool|one-?\s*step|two-?\s*step|three-?\s*step|each\s+step|top\s+tread|the\s+tread|three\s+treads|\d+\s*-?\s*treads|step-?shelf|weight-bearing.{0,28}(?:step|shelf|mid)|(?:\d+\s*["″]?\s*)?rise\s*(?:[×xby]|and)\s*(?:\d+\s*["″]?\s*)?run|\bone\s+climb\s+step\b|holds?\s+a\s+kid\s+standing|kid\s+stands/;
 
 /** Vehicle incline / craft ramp for a free projectile — launcher, not climb. */
 function isVehicleIncline(hay: string): boolean {
@@ -344,11 +344,11 @@ function softLaunchHay(hay: string): boolean {
 /** How many human climb treads the prompt asks for (1 = single step stool). */
 export function climbStepCount(prompt: string): number {
   const hay = looksHay(prompt);
-  if (/\bladder\b/.test(hay) && !/step-?up|step\s*stool|climb\s+stool|rise\s*[×xby]/.test(hay)) return 0;
-  // Word counts before "top tread" / "each step" defaults — three-step + top tread must stay 3.
-  if (/three-?\s*step|\b3\s*-?\s*steps?\b/.test(hay)) return 3;
-  if (/four-?\s*step|\b4\s*-?\s*steps?\b/.test(hay)) return 4;
-  const numbered = hay.match(/(\d+)\s*-?\s*steps?(?:\s+climb|\s+stool|\b)/);
+  if (/\bladder\b/.test(hay) && !/step-?up|step\s*stool|climb\s+stool|climb(?:ing)?\s*triangle|pikler|rise\s*[×xby]/.test(hay)) return 0;
+  // Word counts before "top tread" / "each step" defaults — three treads / three-step stay 3.
+  if (/three-?\s*(?:step|tread)s?|\b3\s*-?\s*(?:step|tread)s?\b|three\s+human\s+steps/.test(hay)) return 3;
+  if (/four-?\s*(?:step|tread)s?|\b4\s*-?\s*(?:step|tread)s?\b/.test(hay)) return 4;
+  const numbered = hay.match(/(\d+)\s*-?\s*(?:steps?|treads?)(?:\s+climb|\s+stool|\b)/);
   if (numbered) {
     const n = parseInt(numbered[1], 10);
     if (Number.isFinite(n) && n >= 1 && n <= 8) return n;
@@ -361,7 +361,7 @@ export function climbStepCount(prompt: string): number {
   if (/each\s+step|top\s+tread/.test(hay) && /two|2\s*-?\s*step|second/.test(hay)) return 2;
   if (/each\s+step|top\s+tread/.test(hay) && !/one\s+climb\s+step|single\s+step|one-?\s*step|step-?up\b/.test(hay)) {
     // Multi-step climb stool with rise×run but no explicit count — prefer 2 only when not three+.
-    if (!/three|four|\b[3-8]\s*-?\s*step/.test(hay)) return 2;
+    if (!/three|four|\b[3-8]\s*-?\s*(?:step|tread)/.test(hay)) return 2;
   }
   if (/step-?up|climb\s+step|climb\s+stool|step\s*stool|step-?shelf|one\s+climb\s+step|one-?\s*step|rise\s*[×xby]|holds?\s+a\s+kid\s+standing|kid\s+stands|the\s+tread/.test(hay)) {
     return 1;
@@ -435,7 +435,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -533,7 +533,10 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
       if (mech === "climb") {
         const rr = climbRiseRun(hay);
         const steps = climbStepCount(hay);
-        const base = /step-?up|stool|climb\s+stool|one-?\s*step|two-?\s*step|three-?\s*step|each\s+step|the\s+tread/.test(hay)
+        const triangle = /climb(?:ing)?\s*triangle|pikler|step\s*triangle/.test(hay);
+        const base = triangle
+          ? "Climb triangle"
+          : /step-?up|stool|climb\s+stool|one-?\s*step|two-?\s*step|three-?\s*step|each\s+step|the\s+tread/.test(hay)
           ? "Step stool"
           : /step-?shelf/.test(hay)
             ? "Step shelf"

@@ -2,8 +2,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { climbStepCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -2122,6 +2122,93 @@ console.log("SOFT-TRUST OK", {
   if (!/^Potting bench/i.test(pot.name)) {
     throw new Error(`Batch31 potting protect: got ${pot.name}`);
   }
+}
+
+
+// ── Batch 31 kids/play — Book bin bench / Climb triangle / Toy chest ────────
+{
+  const bookPrompt = "house: book bin bench 36″ wide × 14″ deep × 16″ tall";
+  if (identityTitleStem(bookPrompt.toLowerCase()) !== "Book bin bench") {
+    failHonesty("b31 book bin stem", identityTitleStem(bookPrompt.toLowerCase()) || "");
+  }
+  if (!isBookBinBench(bookPrompt.toLowerCase())) failHonesty("b31 isBookBinBench");
+  const book = generateFromPrompt(bookPrompt);
+  if (!/^Book bin bench/i.test(book.name)) failHonesty("b31 book bin title", book.name);
+  if (/^Bench\b/i.test(book.name) && !/Book bin/i.test(book.name)) failHonesty("b31 naked Bench", book.name);
+  if (Math.abs(book.overall.width - 36) > 1.2 || Math.abs(book.overall.depth - 14) > 1.2 || Math.abs(book.overall.height - 16) > 1.2) {
+    failHonesty("b31 book bin dims 36×14×16", book.overall);
+  }
+  const bookCuts = book.panels.map((p) => p.name).join("\n");
+  if (!/Book bin/i.test(bookCuts)) failHonesty("b31 book bin densify", bookCuts);
+  if (!book.panels.some((p) => /^Seat$/i.test(p.name))) failHonesty("b31 book bin Seat", bookCuts);
+  const bookBlob = [book.name, ...(book.notes ?? [])].join("\n");
+  if (!/sit[- ]?load|sit load|sit-test|seat/i.test(bookBlob)) failHonesty("b31 book bin sit-load", bookBlob.slice(0, 400));
+
+  const climbPrompt =
+    "weekend craft: pine climb triangle — three treads, each 8 inch rise and 8 inch run; kid stands on the top tread";
+  if (climbIdentityLabel(climbPrompt.toLowerCase()) !== "Climb triangle") {
+    failHonesty("b31 climbIdentityLabel triangle", climbIdentityLabel(climbPrompt.toLowerCase()) || "");
+  }
+  if (climbStepCount(climbPrompt) !== 3) failHonesty("b31 climbStepCount three treads", climbStepCount(climbPrompt));
+  const climb = generateFromPrompt(climbPrompt);
+  if (!/Climb triangle|Step/i.test(climb.name)) failHonesty("b31 climb title", climb.name);
+  if (/^Ladder\b/i.test(climb.name) && !/Climb triangle|Step/i.test(climb.name)) {
+    failHonesty("b31 climb stole Ladder", climb.name);
+  }
+  const climbPlan = buildPlan(climb);
+  const climbBlob = [
+    climb.name,
+    ...(climb.notes ?? []),
+    ...climbPlan.instructions.map((st) => `${st.title} ${st.description} ${st.tips ?? ""}`),
+    ...climbPlan.cutList.map((c) => c.name),
+    ...climbPlan.bom.map((b) => b.name),
+  ].join("\n");
+  if (!/three|3/.test(climbBlob) || !/tread|step/i.test(climbBlob)) {
+    failHonesty("b31 climb three human steps", climbBlob.slice(0, 600));
+  }
+  if (!/8/.test(climbBlob) || !/rise/i.test(climbBlob) || !/run/i.test(climbBlob)) {
+    failHonesty("b31 climb 8×8 rise/run", climbBlob.slice(0, 500));
+  }
+  if (!/kid stands|standing kid/i.test(climbBlob)) failHonesty("b31 climb kid densify", climbBlob.slice(0, 400));
+  if (/vehicle\s*ramp|car\s*ramp|Hot\s*Wheels/i.test(climbBlob)) failHonesty("b31 climb vehicle ramp steal", climbBlob.slice(0, 300));
+  if (!/Pine|pine/i.test(climbBlob)) failHonesty("b31 climb Buy Pine", climbBlob.slice(0, 400));
+
+  // Adult densify still when adult typed (soft-park protect).
+  const adult = generateFromPrompt(
+    "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+  );
+  const adultPlan = buildPlan(adult);
+  const adultBlob = [adult.name, ...(adult.notes ?? []), ...adultPlan.instructions.map((st) => `${st.title} ${st.description}`)].join("\n");
+  if (!/Step stool|Shop stool/i.test(adult.name)) failHonesty("b31 protect adult stool stem", adult.name);
+  if (!/adult stands/i.test(adultBlob)) failHonesty("b31 protect adult densify", adultBlob.slice(0, 400));
+
+  const chestPrompt = "house: toy chest 30″ wide × 16″ deep × 18″ tall with a hinged lid";
+  if (identityTitleStem(chestPrompt.toLowerCase()) !== "Toy chest") {
+    failHonesty("b31 toy chest stem", identityTitleStem(chestPrompt.toLowerCase()) || "");
+  }
+  if (!isToyChest(chestPrompt.toLowerCase())) failHonesty("b31 isToyChest");
+  const chest = generateFromPrompt(chestPrompt);
+  if (!/^Toy chest/i.test(chest.name)) failHonesty("b31 toy chest title", chest.name);
+  if (/^House\b|^Storage\b/i.test(chest.name)) failHonesty("b31 toy chest House/Storage steal", chest.name);
+  if (chest.kind === "house" || chest.primaryMaterialId === "wire-frame") {
+    failHonesty("b31 toy chest House wire steal", { kind: chest.kind, stock: chest.primaryMaterialId, name: chest.name });
+  }
+  if (Math.abs(chest.overall.width - 30) > 1.2 || Math.abs(chest.overall.depth - 16) > 1.2 || Math.abs(chest.overall.height - 18) > 1.2) {
+    failHonesty("b31 toy chest dims 30×16×18", chest.overall);
+  }
+  const chestCuts = chest.panels.map((p) => p.name).join("\n");
+  if (!/\bLid\b/i.test(chestCuts)) failHonesty("b31 toy chest lid densify", chestCuts);
+  const chestBlob = [chest.name, ...(chest.notes ?? [])].join("\n");
+  if (!/hinge|hinged lid/i.test(chestBlob)) failHonesty("b31 toy chest hinge", chestBlob.slice(0, 400));
+
+  // Protect already-green kids/play + desk + cubby
+  const cubby = generateFromPrompt("house: toy cubby wall fitted to a 36×48×12 opening, six cubbies");
+  if (!/^Toy cubby wall/i.test(cubby.name)) failHonesty("b31 protect toy cubby", cubby.name);
+  const easel = generateFromPrompt("weekend craft: pine kid easel that holds a real 16×20 art board at 15° tip");
+  if (!/Easel/i.test(easel.name)) failHonesty("b31 protect easel", easel.name);
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (!/^Desk/i.test(desk.name)) failHonesty("b31 protect desk", desk.name);
+  if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("b31 protect desk knee", desk.fitted?.unit);
 }
 
 console.log("STRANGER PLAN OK", {
