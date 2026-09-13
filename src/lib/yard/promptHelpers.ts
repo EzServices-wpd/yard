@@ -252,12 +252,19 @@ export function defaultSizeFor(
   }
   // Ladder / towel ladder: honor typed W×H; keep lean depth ~6 when depth was not typed
   // (parseSize defaults depth to 24, which is a fat lie for an open ladder).
+  // Inch marks between number and label ("60″ tall", "18″ wide") must count as typed —
+  // otherwise height silently falls back to 96″ and rung densify invents 8 rails.
   if (explicit && ladderLike) {
     const dim = stripLumberStock(lower);
-    const widthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:wide|width)\b/.test(dim);
-    const depthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:deep|depth)\b/.test(dim);
+    const widthTyped =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:wide|width)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width)\b/.test(dim);
+    const depthTyped =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:deep|depth)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(dim);
     const heightTyped =
-      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:tall|high|height)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|height)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:tall|high|height)\b/.test(dim) ||
       /\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim) ||
       !!ftLen;
     return {
@@ -428,15 +435,34 @@ export function toProject(
     }
     // Typed width: same pad-skip as height (24" towel ladder was HUD 25" from pad*2).
     // Open ladder with untyped depth: keep lean ~6, not Math.max(8, …) inflate.
+    // Inch marks ("18″ wide") count as typed — force envelope for ladders (stock-face pad
+    // otherwise publishes ~22×96 from a typed 18×60 towel ladder).
     if (mech !== "pot-hold" && mech !== "media-hold") {
       const dim = stripLumberStock(prompt.toLowerCase());
-      const widthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:wide|width)\b/.test(dim);
-      const depthTyped = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)?\s*(?:deep|depth)\b/.test(dim);
-      if (widthTyped && typedW && Math.abs(spanX - typedW) <= 1.25) {
+      const widthTyped =
+        /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:wide|width)\b/.test(dim) ||
+        /\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width)\b/.test(dim);
+      const depthTyped =
+        /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:deep|depth)\b/.test(dim) ||
+        /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(dim);
+      const heightTyped =
+        /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|height)\b/.test(dim) ||
+        /\d+(?:\.\d+)?\s*["″']?\s*(?:tall|high|height)\b/.test(dim) ||
+        /\d+(?:\.\d+)?\s*(?:x|by|×)\s*\d+/.test(dim);
+      if (kind === "ladder" && widthTyped && typedW) {
         width = typedW;
+      } else if (widthTyped && typedW && Math.abs(spanX - typedW) <= 1.25) {
+        width = typedW;
+      }
+      if (kind === "ladder" && heightTyped && typedH) {
+        height = typedH;
       }
       if (kind === "ladder" && !depthTyped && spanZ < 1.25) {
         depth = 6;
+      } else if (kind === "ladder" && !depthTyped) {
+        // Lean depth soft even when stock faces slightly thicken Z.
+        depth = Math.min(depth, 8);
+        if (depth < 4) depth = 6;
       }
     }
   }

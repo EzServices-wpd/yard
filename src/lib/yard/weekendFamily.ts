@@ -382,6 +382,29 @@ function softLaunchHay(hay: string): boolean {
   return /soft-?launch|leaves?\s+free|free\s+projectile/.test(hay);
 }
 
+/** Spoken rung count for towel/blanket ladders and drying racks ("four rungs" / "4 rungs"). */
+export function spokenRungCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*rungs?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 16) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight)\s+rungs?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  return null;
+}
+
 /** How many human climb treads the prompt asks for (1 = single step stool). */
 export function climbStepCount(prompt: string): number {
   const hay = looksHay(prompt);

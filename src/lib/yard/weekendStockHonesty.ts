@@ -13,6 +13,7 @@ import {
   isClimbSingleStep,
   isClimbStepStool,
   climbStepCount,
+  spokenRungCount,
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
@@ -542,11 +543,43 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (project.instances.length && legs < 2) {
         issues.push({ guard: "anatomy", message: "Climb needs ≥2 side rails." });
       }
-      if (project.instances.length && rungs < 3) {
+      const typedRungs = spokenRungCount(prompt);
+      if (typedRungs != null) {
+        if (project.instances.length && rungs !== typedRungs) {
+          issues.push({
+            guard: "anatomy",
+            message: `Towel/blanket ladder must honor typed ${typedRungs} rungs (got ${rungs}).`,
+          });
+        }
+      } else if (project.instances.length && rungs < 3) {
         issues.push({ guard: "anatomy", message: "Climb needs ≥3 rungs." });
       }
       if (project.instances.length && !/rung/i.test(blobAll)) {
         issues.push({ guard: "anatomy", message: "Climb steps must use rung language." });
+      }
+      // Typed W×H envelope for towel/blanket ladders (lean depth soft).
+      if (/towel|blanket|quilt/.test(prompt.toLowerCase()) && project.instances.length) {
+        const dim = prompt.toLowerCase();
+        const bareH = dim.match(/(\d+(?:\.\d+)?)\s*["″']?\s*(?:tall|high|height)\b/);
+        const bareW = dim.match(/(\d+(?:\.\d+)?)\s*["″']?\s*(?:wide|width)\b/);
+        if (bareH) {
+          const wantH = parseFloat(bareH[1]);
+          if (Number.isFinite(wantH) && Math.abs(project.overall.height - wantH) > 2.5) {
+            issues.push({
+              guard: "size",
+              message: `Towel/blanket ladder height must honor typed ${wantH}" (got ${project.overall.height}).`,
+            });
+          }
+        }
+        if (bareW) {
+          const wantW = parseFloat(bareW[1]);
+          if (Number.isFinite(wantW) && Math.abs(project.overall.width - wantW) > 2.0) {
+            issues.push({
+              guard: "size",
+              message: `Towel/blanket ladder width must honor typed ${wantW}" (got ${project.overall.width}).`,
+            });
+          }
+        }
       }
     }
   }

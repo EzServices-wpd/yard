@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -266,7 +266,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
     mech === "climb"
       ? isClimbStepStool(prompt)
         ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps))
-        : ladderOps(size)
+        : ladderOps(size, spokenRungCount(prompt))
       : mech === "launcher"
         ? isLauncherRamp(prompt)
           ? rampLauncherOps(size, rampLen)
@@ -297,7 +297,14 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                   ` — ${who} on the tread; densify from named stock; not a vehicle incline.`;
             })(),
           ]
-        : ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
+        : [
+            (() => {
+              const n = spokenRungCount(prompt);
+              return n != null
+                ? `${hit.name} · ${n} rungs at the named stock (cut list OK for lumber) — not a Drying rack.`
+                : `${hit.name} · side rails + rungs at the named stock (cut list OK for lumber).`;
+            })(),
+          ]
       : mech === "launcher"
         ? isLauncherRamp(prompt)
           ? [

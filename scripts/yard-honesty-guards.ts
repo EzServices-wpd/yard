@@ -3,7 +3,7 @@ import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { climbStepCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
+import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -2324,7 +2324,57 @@ console.log("SOFT-TRUST OK", {
   }
   if (!/mount height|PDF states mount height/i.test(toolBlob)) failHonesty("b32 protect tool PDF mount", toolBlob.slice(0, 400));
   if (!/clear wall mount/i.test(toolBlob)) failHonesty("b32 protect tool clear wall", toolBlob.slice(0, 400));
+
+  // Batch 33 towel/blanket ladder FAIL class — typed rungs + W×H envelope; ≠ Drying rack steal
+  {
+    const towelPrompt =
+      "weekend craft: pine towel ladder — four rungs, 60″ tall × 18″ wide; leans at wall";
+    if (spokenRungCount(towelPrompt) !== 4) failHonesty("b33 spokenRungCount four", spokenRungCount(towelPrompt));
+    const fam = detectWeekendFamily(towelPrompt);
+    if (!fam || fam.kind !== "ladder") failHonesty("b33 towel weekend ladder kind", fam);
+    if (!/^Towel ladder/i.test(fam?.name || "")) failHonesty("b33 towel title stem", fam?.name);
+    if (/Drying\s*rack/i.test(fam?.name || "")) failHonesty("b33 towel ≠ Drying rack", fam?.name);
+    const towel = generateFromPrompt(towelPrompt);
+    if (!/^Towel ladder/i.test(towel.name)) failHonesty("b33 towel title", towel.name);
+    if (/Drying\s*rack/i.test(towel.name)) failHonesty("b33 towel Drying steal", towel.name);
+    if (Math.abs(towel.overall.height - 60) > 2.5) failHonesty("b33 towel height 60", towel.overall);
+    if (Math.abs(towel.overall.width - 18) > 2.0) failHonesty("b33 towel width 18", towel.overall);
+    const rails = towel.instances.filter((i) => i.role === "rail");
+    if (rails.length !== 4) failHonesty("b33 four rungs densify", { rails: rails.length, overall: towel.overall });
+    const towelPlan = buildPlan(towel);
+    const towelBlob = [
+      towel.name,
+      ...(towel.notes ?? []),
+      ...towelPlan.instructions.map((s) => `${s.title} ${s.description}`),
+      ...towelPlan.cutList.map((c) => `${c.quantity}\t${c.name}\t${c.lengthIn || ""}`),
+    ].join("\n");
+    if (!/4\s*rungs?|four rungs|\t4\tRail\b|Screw the rungs\s*[—\-]\s*4\s*rails?/i.test(towelBlob)) {
+      failHonesty("b33 four rungs plan densify", towelBlob.slice(0, 800));
+    }
+    if (/Screw the rungs\s*[—\-]\s*(?:[5-9]|\d{2})\s*rails?|(?:^|\n|[A-Z]\t)(?:[5-9]|\d{2})\t(?:Rung|Rail)\b/im.test(towelBlob)) {
+      failHonesty("b33 eight-rail lie", towelBlob.slice(0, 600));
+    }
+    if (!/Pine/i.test(towelBlob)) failHonesty("b33 Buy Pine held", towelBlob.slice(0, 400));
+    // Drying rack still drying — not towel ladder steal
+    const drying = generateFromPrompt("house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs");
+    if (!/^Drying rack/i.test(drying.name)) failHonesty("b33 protect drying title", drying.name);
+    if (/Towel\s*ladder/i.test(drying.name)) failHonesty("b33 drying ≠ towel", drying.name);
+    // Protect green bath/vanity / peg / kids / outdoor / laundry
+    const v36 = generateFromPrompt("house: bathroom vanity 36″ wide × 21″ deep × 32″ tall with two doors");
+    if (!/Vanity/i.test(v36.name)) failHonesty("b33 protect vanity 36", v36.name);
+    const med = generateFromPrompt("house: medicine cabinet 24″ wide × 28″ tall × 6″ deep with a mirrored door");
+    if (!/Medicine cabinet/i.test(med.name)) failHonesty("b33 protect medicine", med.name);
+    const pocket = generateFromPrompt("house: bathroom pocket vanity original trapezoid");
+    if (!/pocket vanity|trapezoid|38\.5|16\s*°/i.test([pocket.name, ...(pocket.notes ?? [])].join("\n"))) {
+      failHonesty("b33 protect pocket", pocket.name);
+    }
+    const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+    if (!/Andersen/i.test(andersen.name)) failHonesty("b33 protect Andersen", andersen.name);
+    const peg = generateFromPrompt("house: peg rail spanning 36″ with five pegs, clear wall mount; PDF states mount height");
+    if (!/^Peg rail/i.test(peg.name)) failHonesty("b33 protect peg", peg.name);
+  }
 }
+
 
 
 console.log("STRANGER PLAN OK", {

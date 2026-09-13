@@ -85,11 +85,15 @@ export function archOps(s: Size3): FormOp[] {
   ];
 }
 
-export function ladderOps(s: Size3): FormOp[] {
+export function ladderOps(s: Size3, rungCount?: number | null): FormOp[] {
   // Honor typed envelope — do not silently clamp a 24″ towel ladder down to 22″.
   const H = Math.max(s.height, 36);
   const w = Math.max(12, s.width);
-  const rungs = Math.max(5, Math.round(H / 12));
+  // Honor typed rung count (four rungs → 4). Untyped: ~1 rung / foot, floor at 5.
+  const rungs =
+    rungCount != null && Number.isFinite(rungCount)
+      ? Math.max(2, Math.min(16, Math.round(rungCount)))
+      : Math.max(5, Math.round(H / 12));
   const ops: FormOp[] = [
     { op: "column", x: -w / 2, z: 0, y0: 0, y1: H, role: "leg" },
     { op: "column", x: w / 2, z: 0, y0: 0, y1: H, role: "leg" },
