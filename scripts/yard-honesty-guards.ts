@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -2635,6 +2635,92 @@ console.log("SOFT-TRUST OK", {
   if (!/38\.5|16\.0|5\.0|Pocket back/i.test(pocketBlob) && !(pocket.fitted as { opening?: unknown } | undefined)) {
     // trapezoid freeze — opening / notes carry angles when present
   }
+}
+
+
+
+// Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
+{
+  // A) Cleat-mounted singular wall shelf: ONE shelf thick 2, title Wall shelf, cleat-mounted voice.
+  const shelfPrompt = "house: wall shelf 48″ wide × 8″ deep × 2″ thick, cleat-mounted";
+  const shelf = generateFromPrompt(shelfPrompt);
+  if (!/^Wall shelf\b/i.test(shelf.name) || /Wall shelves/i.test(shelf.name)) {
+    failHonesty("b37 wall shelf singular title", shelf.name);
+  }
+  if (Math.abs(shelf.overall.width - 48) > 1.2) failHonesty("b37 wall shelf W48", shelf.overall);
+  const shelfBlob = [shelf.name, ...(shelf.notes ?? []), ...shelf.panels.map((p) => `${p.name} ${p.size.width}x${p.size.height}x${p.size.depth}`)].join("\n");
+  if (!/Wall cleat/i.test(shelfBlob)) failHonesty("b37 wall shelf Wall cleat", shelfBlob.slice(0, 400));
+  if (/floating shelf/i.test(shelfBlob) && !/cleat-mounted|hush floating|not floating/i.test(shelfBlob)) {
+    failHonesty("b37 wall shelf floating densify", shelfBlob.slice(0, 500));
+  }
+  const thickOk =
+    Math.abs(shelf.overall.height - 2) <= 1.2 ||
+    Math.abs(shelf.overall.depth - 2) <= 1.2 ||
+    shelf.panels.some((p) => /shelf/i.test(p.name) && (Math.abs(p.size.height - 2) <= 0.3 || Math.abs(p.size.depth - 2) <= 0.3));
+  if (!thickOk) failHonesty("b37 wall shelf thick 2", shelf.overall, shelf.panels.map((p) => p.size));
+  const shelfCount = shelf.panels.filter((p) => /^Shelf\b/i.test(p.name) || p.type === "shelf").length;
+  if (shelfCount !== 1) failHonesty("b37 wall shelf singular count", shelfCount, shelf.panels.map((p) => p.name));
+
+  // B) Wine rack twelve slots densify (slot-rack class extension).
+  const winePrompt = "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots";
+  const wine = generateFromPrompt(winePrompt);
+  if (!/^Wine rack/i.test(wine.name)) failHonesty("b37 wine title", wine.name);
+  const rails = wine.panels.filter((p) => /Bottle rail/i.test(p.name));
+  if (rails.length < 11) failHonesty("b37 wine twelve slots densify", rails.length, wine.panels.map((p) => p.name));
+  const wineBlob = [wine.name, ...(wine.notes ?? [])].join("\n");
+  if (!/12\s*bottle slots|twelve slots|12 bottle/i.test(wineBlob) && rails.length < 12) {
+    failHonesty("b37 wine slot voice", wineBlob.slice(0, 400));
+  }
+
+  // C) Coat hook board: title + Buy Pine + 4 hooks + PDF mount height ≠ portal/Tool.
+  const coatPrompt =
+    "weekend craft: pine coat hook board 24″ wide × 6″ tall with four hooks; PDF states mount height";
+  if (!isCoatHookBoard(coatPrompt.toLowerCase())) failHonesty("b37 isCoatHookBoard");
+  if (isToolRail(coatPrompt.toLowerCase()) || isPegRail(coatPrompt.toLowerCase())) {
+    failHonesty("b37 coat hook board ≠ Tool/Peg steal");
+  }
+  const coat = generateFromPrompt(coatPrompt);
+  if (!/Coat hook board/i.test(coat.name)) failHonesty("b37 coat hook board title", coat.name);
+  if (/Tool rail|portal/i.test(coat.name)) failHonesty("b37 coat portal/Tool steal", coat.name);
+  const coatPlan = buildPlan(coat);
+  const coatBuy = coatPlan.bom.map((b) => b.name).join("\n");
+  const coatAll = [
+    coat.name,
+    coatBuy,
+    ...coatPlan.bom.map((b) => `${b.name} ${b.notes ?? ""}`),
+    ...coatPlan.instructions.map((st) => `${st.title} ${st.description} ${st.tips ?? ""}`),
+    ...(coat.notes ?? []),
+  ].join("\n");
+  if (!/Pine\s*1\s*[×x]\s*4/i.test(coatAll)) failHonesty("b37 Buy Pine", coatBuy.slice(0, 400) + coatAll.slice(0, 400));
+  if (!/mount height/i.test(coatAll)) failHonesty("b37 coat PDF mount height", coatAll.slice(0, 600));
+  if (!/4\s*hooks|four hooks|Screw 4/i.test(coatAll)) failHonesty("b37 coat four hooks", coatAll.slice(0, 500));
+
+  // D) Wall cubby title stem wording.
+  const cubbyPrompt = "house: wall cubby fitted to a 24×36×10 opening, four cubbies";
+  if (!isOpenCubbyWall(cubbyPrompt.toLowerCase())) failHonesty("b37 isOpenCubbyWall");
+  if (openCubbyWallTitle(cubbyPrompt.toLowerCase()) !== "Wall cubby") {
+    failHonesty("b37 openCubbyWallTitle", openCubbyWallTitle(cubbyPrompt.toLowerCase()));
+  }
+  const cubby = generateFromPrompt(cubbyPrompt);
+  if (!/Wall cubby/i.test(cubby.name)) failHonesty("b37 Wall cubby title", cubby.name);
+
+  // PASS protect: desk 60×30×29 knee 24; Andersen; soft-park #2 Rung/Lid/lamp.
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (!/^Desk\b/i.test(desk.name)) failHonesty("b37 protect desk title", desk.name);
+  if (Math.abs(desk.overall.width - 60) > 1.2) failHonesty("b37 protect desk W", desk.overall);
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("b37 protect Andersen", andersen.name);
+  const ladder = generateFromPrompt('weekend craft: pine towel ladder 60" tall × 18" wide with four rungs');
+  const ladderPlan = buildPlan(ladder);
+  if (!/\bRung\b/i.test(ladderPlan.cutList.map((c) => c.name).join("\n"))) {
+    failHonesty("b37 protect soft-park Rung", ladderPlan.cutList.map((c) => c.name));
+  }
+  const chest = generateFromPrompt("house: toy chest 30″ wide × 16″ deep × 18″ tall with a hinged lid");
+  if (!chest.panels.some((p) => /^Lid$/i.test(p.name))) failHonesty("b37 protect soft-park Lid");
+  const lamp = generateFromPrompt(
+    "weekend craft: oak floor lamp stand that holds a real lamp base 6″ diameter upright, 60″ tall",
+  );
+  if (!/Floor lamp stand|Lamp stand/i.test(lamp.name)) failHonesty("b37 protect soft-park lamp", lamp.name);
 }
 
 

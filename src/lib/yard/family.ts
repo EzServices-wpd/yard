@@ -325,10 +325,23 @@ export function isPegboard(lower: string) {
 }
 
 /**
+ * Coat hook board — board + hooks + mount height (weekend craft / hung-open).
+ * Never Coat rack / Tool / portal steal when board + hooks (+ optional pine).
+ */
+export function isCoatHookBoard(lower: string) {
+  if (isCoatCubbyWall(lower)) return false;
+  if (/tool\s*rail|leash\s*rail|peg\s*rail|key\s*(?:and|&)\s*mail|ironing/.test(lower)) return false;
+  if (/coat\s*hook\s*board|hook\s*board|coat\s*board/.test(lower)) return true;
+  if (/coat/.test(lower) && /hook/.test(lower) && /\bboard\b/.test(lower)) return true;
+  return false;
+}
+
+/**
  * Peg rail — hung-open peg rail (tool-rail / leash pattern) with peg identity.
  * Never Tool / Key / Leash / Coat steal when peg rail is named.
  */
 export function isPegRail(lower: string) {
+  if (isCoatHookBoard(lower)) return false;
   if (/tool\s*rail|leash\s*rail|key\s*rail|coat\s*rail|key\s*(?:and|&)\s*mail/.test(lower)) return false;
   if (/peg\s*rail|peg\s*rack/.test(lower)) return true;
   if (/\bpegs?\b/.test(lower) && /rail|wall\s*mount|clear\s*wall|spann|mount\s*height/.test(lower) && !/tool|leash|key|coat|towel|shoe/.test(lower)) {
@@ -342,6 +355,7 @@ export function isPegRail(lower: string) {
  * Never Bridge, never key/coat/peg portal steal when tool rail is named.
  */
 export function isToolRail(lower: string) {
+  if (isCoatHookBoard(lower)) return false;
   if (/leash\s*rail/.test(lower) || isLeashRail(lower)) return false;
   if (isPegRail(lower)) return false;
   if (/tool\s*rail/.test(lower)) return true;
@@ -426,7 +440,8 @@ export function openCubbyWallTitle(lower: string): string {
   if (/\bmudroom\b/.test(lower)) return "Mudroom cubbies";
   if (/toy/.test(lower)) return "Toy cubby wall";
   if (/kids|play|nursery|child/.test(lower)) return "Kids cubby wall";
-  return "Cubby wall";
+  // Prefer Wall cubby stem wording (batch-37); cubby wall identity still held.
+  return "Wall cubby";
 }
 
 /** Boot tray bench — tray densify + sit-load (not Boot bench without tray). */
@@ -543,6 +558,7 @@ export function isDoorPortal(lower: string) {
  * Shoe / towel keep their own portal paths.
  */
 export function isPortalHookRail(lower: string) {
+  if (isCoatHookBoard(lower)) return false;
   if (!isDoorPortal(lower)) return false;
   // Tool rail is clear wall-mount shop class — never key/coat portal steal.
   if (isToolRail(lower)) return false;
@@ -838,6 +854,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isToyChest(lower)) return "Toy chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";
+  if (isCoatHookBoard(lower)) return "Coat hook board";
   if (isLeashRail(lower)) return "Leash rail";
   if (isPegRail(lower)) return "Peg rail";
   if (isPrinterStand(lower)) return "Printer stand";
@@ -1128,7 +1145,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
-  else if (isToolRail(lower) || isLeashRail(lower) || isPegRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower)) family = "hung-open";
+  else if (isCoatHookBoard(lower) || isToolRail(lower) || isLeashRail(lower) || isPegRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower)) family = "hung-open";
   else if (isCoatCubbyWall(lower) || isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) family = "floor-carcase";
   else if (isDryingRack(lower) || isLaundrySorter(lower) || isUtilityShelf(lower) || isLumberRack(lower)) {
     family = "floor-carcase";

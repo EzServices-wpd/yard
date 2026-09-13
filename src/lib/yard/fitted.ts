@@ -16,7 +16,8 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -192,7 +193,7 @@ function spokenRungCount(text: string): number | null {
   return null;
 }
 
-/** Spoken slot count for plate/magazine/dish racks ("three slots" / "3 slots"). */
+/** Spoken slot count for plate/magazine/dish/wine racks ("three slots" / "twelve slots" / "12 slots"). */
 function spokenSlotCount(text: string): number | null {
   const lower = text.toLowerCase();
   const digit = lower.match(/\b(\d+)\s*slots?\b/);
@@ -209,10 +210,27 @@ function spokenSlotCount(text: string): number | null {
     six: 6,
     seven: 7,
     eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
   };
-  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight)\s+slots?\b/);
+  const word = lower.match(
+    /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+slots?\b/,
+  );
   if (word && words[word[1]] != null) return words[word[1]];
   return null;
+}
+
+/** Spoken/typed shelf board thickness ("2 thick" / "2\" thick"). */
+function spokenShelfThickness(text: string): number | null {
+  const m =
+    text.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″'])?\s*thick\b/i) ||
+    text.match(/\bthick(?:ness)?\s*(?:of\s*)?(\d+(?:\.\d+)?)/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  if (!Number.isFinite(n) || n < 0.5 || n > 4) return null;
+  return n;
 }
 
 /** Spoken cubby / bay count — digit or word ("six cubbies" → 6). */
@@ -2457,19 +2475,22 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (isWineRack(prompt)) {
     const innerW = W - P * 2;
     const backT = P;
+    const spokenSlots = spokenSlotCount(prompt);
     const saidShelves = /\d+\s*shel/i.test(prompt);
+    // Slot-rack densify class: spoken/typed slot count (twelve → 12 bottle slots).
     const shelfN =
-      saidShelves && u.shelfCount && u.shelfCount > 0
-        ? Math.max(2, Math.min(12, u.shelfCount))
-        : Math.max(3, Math.min(10, Math.round((H - P) / 4.5)));
+      spokenSlots != null
+        ? Math.max(2, Math.min(16, spokenSlots))
+        : saidShelves && u.shelfCount && u.shelfCount > 0
+          ? Math.max(2, Math.min(12, u.shelfCount))
+          : Math.max(3, Math.min(10, Math.round((H - P) / 4.5)));
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
     for (let i = 0; i < shelfN; i++) {
       const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
       panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
-      if (i < shelfN - 1) {
-        panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
-      }
+      // Every shelf is a bottle slot with a front rail (typed slot count densify).
+      panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
     }
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
     const name = `Wine rack ${W}" × ${H}" × ${D}"`;
@@ -2483,8 +2504,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wall-mounted open wine rack with bottle rails — not a bookcase and not a hollow box. ¾" plywood.`,
-        "Bottles lie on their sides, necks facing out. Glue a 1.5\" rail on the front of every shelf (except the top cap) so bottles cannot roll off. Glue the shelves; do not pin them — a loaded row is heavy.",
+        `${name}. Wall-mounted open wine rack with ${shelfN} bottle slots — not a bookcase and not a hollow box. ¾" plywood.`,
+        `Bottles lie on their sides, necks facing out. Glue a 1.5" rail on the front of every shelf so bottles cannot roll off — ${shelfN} bottle slots densify. Glue the shelves; do not pin them — a loaded row is heavy.`,
         "Hang the rack on studs through the back. Typical bottom sits about 36–42\" off the floor, or sit it on a counter and still lag it so it cannot tip. Guidance only.",
       ],
       historic: false,
@@ -3326,6 +3347,73 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  // Coat hook board — singular board + hooks + PDF mount height (≠ Coat rack / Tool / portal).
+  if (isCoatHookBoard(coatLower)) {
+    const boardW = W;
+    const boardH = Math.max(4, Math.min(H, 12));
+    const boardD = Math.max(0.75, Math.min(D, 1.5));
+    const hookSaid = coatLower.match(/(\d+)\s*hooks?/);
+    const hookWord = coatLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/);
+    const hookWords: Record<string, number> = {
+      one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+    };
+    const hooks = hookSaid
+      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+      : hookWord && hookWords[hookWord[1]] != null
+        ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
+        : Math.max(3, Math.min(8, Math.round(boardW / 6)));
+    const mountFromOpening = Math.round(Math.min(66, Math.max(54, 60)));
+    panels.push(panel("back", "Hook board", x0, 0, 0, boardW, boardH, boardD));
+    const name = `Coat hook board ${boardW}" × ${boardH}"`;
+    const named = namedStockFromPrompt(prompt);
+    const stockId = named && named.category === "lumber" ? named.id : PLY;
+    if (stockId !== PLY) {
+      for (const pan of panels) pan.materialId = stockId;
+    }
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: boardW, height: boardH, depth: boardD },
+      instances: [],
+      panels,
+      primaryMaterialId: stockId,
+      notes: [
+        `${name}. Wall-mounted coat hook board with ${hooks} hooks — clear wall mount, not a Coat rack / Tool rail / portal steal. Board densify.`,
+        `Mount height from the wall: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the board.`,
+        `Screw ${hooks} coat hooks into the board, about 6" on center. Hit studs. Guidance only — coat hook board, not a Bridge / Tool / portal.`,
+      ],
+      historic: false,
+      opening: { width: boardW, height: boardH, depth: boardD, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "hung-open",
+        unit: {
+          ...u,
+          width: boardW,
+          height: boardH,
+          depth: boardD,
+          doors: false,
+          shelfCount: 0,
+          drawersPerBank: undefined,
+          rod: false,
+        },
+        affordances: (spec.affordances ?? []).includes("hooks")
+          ? spec.affordances
+          : [...(spec.affordances ?? []), "hooks"],
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   const portalHook = isPortalHookRail(coatLower);
   const leashRail = isLeashRail(coatLower);
   const pegRail = isPegRail(coatLower);
@@ -3334,6 +3422,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !/shoe/.test(coatLower) &&
     !/towel/.test(coatLower) &&
     !isCoatCubbyWall(coatLower) &&
+    !isCoatHookBoard(coatLower) &&
     !isKeyMailShelf(coatLower) &&
     (portalHook ||
       toolRail ||
@@ -3693,7 +3782,58 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const wallShelfCleats =
     /wall/.test(lowerPrompt) &&
     /shel(?:f|ves)\b/.test(lowerPrompt) &&
-    !/cabinet|jar|spice|wine|bottle|rack for/.test(lowerPrompt);
+    !/cabinet|jar|spice|wine|bottle|rack for|media|picture|bedside|cubb/.test(lowerPrompt);
+  // Cleat-mounted singular wall shelf: honor typed W×D×thickness as ONE shelf (not multi stack).
+  const shelfThick = spokenShelfThickness(prompt);
+  const singularCleatShelf =
+    wallShelfCleats &&
+    /\bshelf\b/.test(lowerPrompt) &&
+    !/\bshelves\b/.test(lowerPrompt) &&
+    (/cleat/.test(lowerPrompt) || shelfThick != null || /singular|single/.test(lowerPrompt));
+  if (singularCleatShelf) {
+    const cleatH = 2.5;
+    const depthTyped =
+      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
+    const Df = depthTyped ? D : Math.min(D, 8);
+    const T = shelfThick != null ? shelfThick : P;
+    // Ledger cleat against the wall; one thick shelf sits on it and screws down.
+    panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
+    panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, T, Df));
+    const name = `Wall shelf ${W}" × ${Df}" × ${T}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: T, depth: Df },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. One cleat-mounted wall shelf (${T}" thick) on a Wall cleat — not a multi Wall shelves stack, not floating boards. ¾" plywood (laminate plies when thicker than stock).`,
+        "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
+        "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+      ],
+      historic: false,
+      opening: { width: W, height: T, depth: Df, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: { ...u, width: W, height: T, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: 1 },
+        opening: { width: W, height: T, depth: Df, kind: "room" },
+        affordances: (spec.affordances ?? []).includes("cleats")
+          ? spec.affordances
+          : [...(spec.affordances ?? []), "cleats"],
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
   const floating =
     ((/floating|wall-?mounted/.test(lowerPrompt) || wallShelfCleats) && /shel/.test(lowerPrompt));
   if (floating) {
@@ -3712,21 +3852,28 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, P, W, P, Df));
     }
     const stackH = n * (cleatH + P) + Math.max(0, n - 1) * gap;
-    const name = /floating/.test(lowerPrompt)
-      ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
-      : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
+    const name =
+      n === 1
+        ? `Wall shelf ${W}" × ${Df}" × ${P}"`
+        : /floating/.test(lowerPrompt)
+          ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
+          : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: stackH, depth: Df },
+      overall: { width: W, height: n === 1 ? P : stackH, depth: Df },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${n} floating ${W}" × ${Df}" shelves on wall cleats. ¾" plywood. No box — no uprights.`,
-        `Space shelves about ${gap}" apart. Each cleat lags into studs; the shelf screws down onto its cleat.`,
+        n === 1
+          ? `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`
+          : `${n} cleat-mounted ${W}" × ${Df}" shelves on wall cleats. ¾" plywood. No box — no uprights.`,
+        n === 1
+          ? "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — not floating boards."
+          : `Space shelves about ${gap}" apart. Each cleat lags into studs; the shelf screws down onto its cleat. Cleat-mounted.`,
         "Guidance only — hit a stud. Confirm the wall type.",
       ],
       historic: false,

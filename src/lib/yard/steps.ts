@@ -30,7 +30,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame } from "./family";
+import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -345,10 +345,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const portalHookRail = isPortalHookRail(coatPrompt) || (/portal/i.test(project.name) && /rail|hooks/i.test(project.name) && !/towel|shoe|coat rod/i.test(project.name));
   const pegRail =
     isPegRail(coatPrompt) || /^Peg rail/i.test(project.name || "");
+  const coatHookBoard =
+    isCoatHookBoard(coatPrompt) || /^Coat hook board/i.test(project.name || "");
   const toolRail =
     isToolRail(coatPrompt) ||
     isLeashRail(coatPrompt) ||
     pegRail ||
+    coatHookBoard ||
     /^Tool rail/i.test(project.name || "") ||
     /^Leash rail/i.test(project.name || "");
   const keyMail =
@@ -497,6 +500,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
                 ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / Tool / key steal.`
               : pegRail
                 ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} pegs — not a Bridge / Tool / key / leash steal.`
+                : coatHookBoard
+                ? `Clear wall mount: set the coat hook board spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the board into studs. Screw ${hooks} coat hooks — not a Coat rack / Tool / portal steal.`
                 : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
             tips: "PDF states mount height. Clear wall mount — hit studs.",
             partsUsed: names(backs.length ? backs : panels),
@@ -519,7 +524,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
           : toolRail || keyMail
-            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : pegRail ? "Peg rail" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
+            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : pegRail ? "Peg rail" : coatHookBoard ? "Coat hook board" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: portal ? "Mount height from the opening — keep clear swing." : toolRail || keyMail ? "PDF states mount height. Clear wall mount." : tool.tip,
         partsUsed: names(panels),
@@ -1282,7 +1287,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         title: "Confirm the wall span — do not cut yet",
         description: holdTalk
           ? `${project.name}. Bedside shelf across the ${round(W)}" span — ${holdTalk}; never a flat decal, never a Nightstand, never a Picture ledge. Mark studs. This is not a box — there are no uprights.`
-          : `${project.name}. ${shelfBoards.length} floating shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights.`,
+          : `${project.name}. ${shelfBoards.length} cleat-mounted shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights. Cleat-mounted — not floating boards.`,
         tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },

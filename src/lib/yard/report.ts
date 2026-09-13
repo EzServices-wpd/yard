@@ -10,8 +10,8 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
-import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
+import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
+import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -91,6 +91,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   const screws = Math.max(16, project.panels.length * 6);
   const isTable = project.fitted?.program === "table";
+  const namedLumber = namedStockFromPrompt(project.prompt ?? "");
+  const coatHookBoard =
+    isCoatHookBoard((project.prompt ?? "").toLowerCase()) || /Coat hook board/i.test(project.name || "");
+  const buyNamedBoard = !!(coatHookBoard && namedLumber && namedLumber.category === "lumber");
   const legCuts = cuts.filter((c) => /^leg$/i.test(c.name));
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
@@ -114,7 +118,21 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         : 0;
 
   const bom: BuildPlan["bom"] = [];
-  if (sheets8 + sheetsFallback > 0) {
+  if (buyNamedBoard && namedLumber) {
+    const boardCuts = cuts.filter((c) => /hook board|peg rail|board/i.test(c.name) || c.quantity > 0);
+    const qty = Math.max(1, boardCuts.reduce((s, c) => s + c.quantity, 0) || project.panels.length || 1);
+    const cutTo = boardCuts[0]?.lengthIn ?? project.overall.width;
+    const label = namedStockDisplayName(project.prompt ?? "", namedLumber);
+    bom.push({
+      name: label,
+      quantity: qty,
+      unit: qty === 1 ? "pc" : "pcs",
+      catalogId: namedLumber.id,
+      searchQuery: namedLumber.searchQuery ?? label,
+      estimatedCost: (namedLumber.unitCostUsd ?? 4) * qty,
+      notes: `${qty} piece${qty === 1 ? "" : "s"} · Cut to: ${cutTo}"`,
+    });
+  } else if (sheets8 + sheetsFallback > 0) {
     const n = sheets8 + sheetsFallback;
     bom.push({
       name: sheet?.name ?? '3/4" plywood 4x8',
@@ -130,7 +148,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`,
     });
   }
-  if (sheets10 > 0) {
+  if (!buyNamedBoard && sheets10 > 0) {
     bom.push({
       name: sheet10?.name ?? '3/4" plywood 4x10',
       quantity: sheets10,
@@ -194,7 +212,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     /headboard/.test((project.prompt ?? "").toLowerCase());
   const coatRack =
     /coat/i.test(project.name) ||
-    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+    isCoatHookBoard((project.prompt ?? "").toLowerCase()) ||
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase()));
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
   const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
@@ -448,7 +467,8 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
   const { width, height, depth } = project.overall;
   const coatRack =
     /coat/i.test(project.name) ||
-    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
+    isCoatHookBoard((project.prompt ?? "").toLowerCase()) ||
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase()));
   const headboard =
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
@@ -569,6 +589,8 @@ export function buildPlan(project: YardProject): BuildPlan {
               ? "platform bed"
             : isBedsideShelf((project.prompt ?? "").toLowerCase()) || /^Bedside shelf/i.test(project.name)
               ? "bedside shelf"
+            : isCoatHookBoard((project.prompt ?? "").toLowerCase()) || /Coat hook board/i.test(project.name)
+              ? "coat hook board"
             : /coat/i.test(project.name)
               ? "coat rack"
               : /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase())
