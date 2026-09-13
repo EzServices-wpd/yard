@@ -6,7 +6,7 @@
 
 import type { StructureKind } from "./types";
 import { detectHouseFamily, isAdirondackChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
-import { detectWeekendFamily, detectWeekendMech } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, wantsPotHold } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
@@ -141,7 +141,10 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/tree|cactus|plant/.test(hay)) return { anatomy: "figure", kind: "plant", stance: "biped" };
 
   const sizeTall = /foot|ft|inch|in/.test(hay);
-  if (sizeTall && /tall|high|tower/.test(hay)) return { anatomy: "loft", kind: "lattice" };
+  // Pot-hold / floor-lamp stands are envelope frames — never loft Lattice just because they are N″ tall.
+  if (sizeTall && /tall|high|tower/.test(hay) && !wantsPotHold(hay) && detectWeekendMech(hay) !== "pot-hold") {
+    return { anatomy: "loft", kind: "lattice" };
+  }
   return { anatomy: "figure", kind: "custom", stance: "quadruped" };
 }
 

@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -151,7 +151,8 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   }
   for (const hit of HITS) {
     // AV / media component tower is house floor-carcase — never Lattice tower HITS steal.
-    if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower))) continue;
+    // Pot-hold stands (floor lamp / monitor / hose / umbrella) never Lattice / climb lace.
+    if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower) || wantsPotHold(lower) || isFloorLampHold(lower))) continue;
     // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
     if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
     if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
@@ -260,6 +261,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       ? Math.max(basketEnv.w, basketEnv.d)
       : isMonitorHold(prompt)
         ? (monitorEnvelopeIn(prompt) ?? potDia)
+      : isFloorLampHold(prompt)
+        ? (lampEnvelopeIn(prompt) ?? potDia)
       : potDia;
   const marbleDia = marbleDiameterIn(prompt);
   const frameOpsFor =
@@ -325,6 +328,8 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not orbit-chrome.`
                 : isMonitorHold(prompt)
                 ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — densify keeps the stand under the monitor at the typed rise (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                : isFloorLampHold(prompt)
+                ? `${hit.name} · ${lampEnvelopeTalk(prompt)} — densify keeps the stand around the upright lamp base (Buy named stock), not a Lattice tower / Eiffel and not orbit-chrome.`
                 : isHamperHold(prompt)
                 ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
                 : `${hit.name} · upright pot envelope` +

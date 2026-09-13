@@ -377,6 +377,17 @@ export function isPrinterStand(lower: string) {
   return false;
 }
 
+/** Floor lamp / lamp stand — weekend pot-hold class stem (never Lattice tower / Eiffel / climb lace). */
+export function isFloorLampStand(lower: string) {
+  if (/floor\s*lamp(?:\s*stand)?|lamp\s*stand/.test(lower)) return true;
+  if (/\blamp(?:\s*base)?\b/.test(lower) && /holds?\s+a\s+real|upright|envelope/.test(lower) && /stand|base/.test(lower)) return true;
+  return false;
+}
+
+export function floorLampTitleStem(lower: string): "Floor lamp stand" | "Lamp stand" {
+  return /floor\s*lamp/.test(lower) ? "Floor lamp stand" : "Lamp stand";
+}
+
 /** Key + mail shelf — shelf + hooks below; never Storage / Picture ledge / portal steal. */
 export function isKeyMailShelf(lower: string) {
   if (/key\s*(?:and|&)\s*mail|mail\s*(?:and|&)\s*key|key.?mail\s*shelf|mail\s*and\s*key|key\s*hook\s*shelf/.test(lower)) return true;
@@ -752,6 +763,8 @@ export function isBedsideShelf(lower: string) {
  * Closet/linen with a climb step-shelf stays Closet (not Step stool). Bare benches stay Bench.
  */
 export function climbIdentityLabel(lower: string): string | null {
+  // Floor lamp / lamp stand is pot-hold — never climb lace / Step stool steal.
+  if (isFloorLampStand(lower)) return null;
   // House carcase + mid climb step-shelf is an add-on — keep Closet / linen / desk titles.
   if (
     /linen|closet|wardrobe|pantry|bookcase|\bdesk\b|\bvanity\b|cabinet|mudroom|nightstand|dresser|alcove|built-?in|sideboard|credenza/.test(
@@ -817,6 +830,8 @@ export function sitBenchTitleStem(lower: string): string | null {
  * so typed width cannot wipe "Base cabinet" down to naked "Storage".
  */
 export function identityTitleStem(lower: string): string | null {
+  // Floor lamp / lamp stand — pot-hold stem before Lattice / climb / Storage steals.
+  if (isFloorLampStand(lower)) return floorLampTitleStem(lower);
   // Entry / mudroom class — positive stems before Coat rod / Storage / Bridge steals.
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower))) return "Boot tray bench";
   if (isBookBinBench(lower)) return sitBenchTitleStem(lower) || "Book bin bench";

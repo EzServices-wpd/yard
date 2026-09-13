@@ -2,8 +2,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
+import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -2457,6 +2457,81 @@ console.log("SOFT-TRUST OK", {
   const kcart = generateFromPrompt("house: kitchen cart 30″ wide × 18″ deep × 34″ tall with two shelves");
   if (!/Kitchen cart|Butcher block cart/i.test(kcart.name)) failHonesty("b34 kitchen cart stem", kcart.name);
   if (/Serving cart/i.test(kcart.name)) failHonesty("b34 kitchen ≠ serving", kcart.name);
+}
+
+// Batch35 living/lounge FAIL class pack — universal floor-lamp / lamp-stand (≠ lattice).
+{
+  const lampPrompt =
+    "weekend craft: oak floor lamp stand that holds a real lamp base 6″ diameter upright, 60″ tall";
+  if (!isFloorLampHold(lampPrompt)) failHonesty("b35 isFloorLampHold");
+  if (!isFloorLampStand(lampPrompt.toLowerCase())) failHonesty("b35 isFloorLampStand");
+  if (detectWeekendMech(lampPrompt) !== "pot-hold") failHonesty("b35 lamp pot-hold mech");
+  if (identityTitleStem(lampPrompt.toLowerCase()) !== "Floor lamp stand") {
+    failHonesty("b35 floor lamp identityTitleStem", identityTitleStem(lampPrompt.toLowerCase()));
+  }
+  if (floorLampTitleStem(lampPrompt.toLowerCase()) !== "Floor lamp stand") {
+    failHonesty("b35 floorLampTitleStem", floorLampTitleStem(lampPrompt.toLowerCase()));
+  }
+  if (climbIdentityLabel(lampPrompt.toLowerCase())) {
+    failHonesty("b35 lamp ≠ climb lace", climbIdentityLabel(lampPrompt.toLowerCase()));
+  }
+  const lampTalk = lampEnvelopeTalk(lampPrompt);
+  if (!/6/.test(lampTalk) || !/lamp/i.test(lampTalk)) failHonesty("b35 lampEnvelopeTalk dia", lampTalk);
+  if (!/60/.test(lampTalk)) failHonesty("b35 lampEnvelopeTalk H60", lampTalk);
+  if (lampEnvelopeIn(lampPrompt) !== 6) failHonesty("b35 lampEnvelopeIn", lampEnvelopeIn(lampPrompt));
+  if (lampHeightIn(lampPrompt) !== 60) failHonesty("b35 lampHeightIn", lampHeightIn(lampPrompt));
+  const lampFam = detectWeekendFamily(lampPrompt);
+  if (!lampFam || lampFam.family !== "frame") failHonesty("b35 lamp weekend frame", lampFam);
+  if (!/^Floor lamp stand$/i.test(lampFam?.name || "")) failHonesty("b35 lamp family name", lampFam?.name);
+  if (/Lattice|Eiffel|tower/i.test(lampFam?.name || "")) failHonesty("b35 lamp lattice steal", lampFam?.name);
+  const lamp = generateFromPrompt(lampPrompt);
+  if (!/Floor lamp stand|Lamp stand/i.test(lamp.name)) failHonesty("b35 lamp title", lamp.name);
+  if (/Lattice|Eiffel|tower/i.test(lamp.name)) failHonesty("b35 lamp Lattice steal", lamp.name);
+  if (/Storage unit/i.test(lamp.name)) failHonesty("b35 lamp Storage steal", lamp.name);
+  if (Math.abs(lamp.overall.height - 60) > 1.5) failHonesty("b35 lamp H60", lamp.overall);
+  if (lamp.overall.width > 24 || lamp.overall.depth > 24) failHonesty("b35 lamp envelope span", lamp.overall);
+  const lampBlob = [lamp.name, ...(lamp.notes ?? [])].join("\n");
+  if (!/6/.test(lampBlob) || !/lamp/i.test(lampBlob)) failHonesty("b35 lamp 6 envelope", lampBlob.slice(0, 500));
+  if (!/60/.test(lampBlob) && Math.abs(lamp.overall.height - 60) > 1.5) failHonesty("b35 lamp 60 densify", lampBlob.slice(0, 400));
+  if (!/envelope|lamp-base|lamp base/i.test(lampBlob)) failHonesty("b35 lamp envelope talk", lampBlob.slice(0, 400));
+  if (!/not orbit/i.test(lampBlob)) failHonesty("b35 lamp stand hush (no orbit)", lampBlob.slice(0, 500));
+  if (!/oak|Oak/i.test(lamp.prompt ?? lampPrompt)) failHonesty("b35 Buy Oak prompt");
+  // Bare lamp stand (no floor) still Lamp stand — not Lattice.
+  const bareLamp = "weekend craft: pine lamp stand that holds a real lamp base 8″ diameter upright, 54″ tall";
+  if (!isFloorLampHold(bareLamp)) failHonesty("b35 bare lamp isFloorLampHold");
+  if (identityTitleStem(bareLamp.toLowerCase()) !== "Lamp stand") {
+    failHonesty("b35 bare lamp stem", identityTitleStem(bareLamp.toLowerCase()));
+  }
+  const bare = generateFromPrompt(bareLamp);
+  if (!/Lamp stand/i.test(bare.name)) failHonesty("b35 bare lamp title", bare.name);
+  if (/Lattice|Eiffel/i.test(bare.name)) failHonesty("b35 bare lamp Lattice", bare.name);
+
+  // Protect living/lounge PASS + already-shipped pot-hold / monitor / hose / umbrella / desk.
+  const sofa = generateFromPrompt("house: sofa table 48″ wide × 14″ deep × 30″ tall");
+  if (!/Sofa table/i.test(sofa.name)) failHonesty("b35 protect sofa table", sofa.name);
+  const coffee = generateFromPrompt("house: 36″ round 3-leg coffee table");
+  if (!/Round/i.test(coffee.name) || !/Coffee/i.test(coffee.name)) failHonesty("b35 protect round coffee", coffee.name);
+  const tv = generateFromPrompt("house: TV console 70″ wide × 30″ tall × 18″ deep");
+  if (!/TV console/i.test(tv.name)) failHonesty("b35 protect TV console", tv.name);
+  const mag = generateFromPrompt("house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots");
+  if (!/Magazine rack/i.test(mag.name)) failHonesty("b35 protect magazine rack", mag.name);
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (!/^Desk/i.test(desk.name)) failHonesty("b35 protect desk", desk.name);
+  if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("b35 protect desk knee", desk.fitted?.unit);
+  const um = generateFromPrompt("weekend craft: oak umbrella stand that holds four real umbrellas upright in a 8″×8″ base");
+  if (!/Umbrella stand/i.test(um.name)) failHonesty("b35 protect umbrella", um.name);
+  if (/Lattice/i.test(um.name)) failHonesty("b35 umbrella lattice", um.name);
+  const hose = generateFromPrompt("weekend craft: pine hose reel stand that holds a real hose reel 18″ diameter upright");
+  if (!/Hose reel stand/i.test(hose.name)) failHonesty("b35 protect hose reel", hose.name);
+  const mon = generateFromPrompt("weekend craft: oak monitor stand that holds a real 24″ monitor at 4″ rise");
+  if (!/Monitor stand/i.test(mon.name)) failHonesty("b35 protect monitor", mon.name);
+  if (/Lattice|Orbit/i.test(mon.name)) failHonesty("b35 monitor lattice/orbit name", mon.name);
+  const monBlob = [mon.name, ...(mon.notes ?? [])].join("\n");
+  if (!/not orbit/i.test(monBlob)) failHonesty("b35 protect monitor hush", monBlob.slice(0, 400));
+  // Lattice tower still lattice — do not steal real towers into lamp stands.
+  const tower = generateFromPrompt("3 foot tower from popsicle sticks");
+  if (tower.kind !== "lattice") failHonesty("b35 protect lattice tower kind", tower.kind);
+  if (/lamp/i.test(tower.name)) failHonesty("b35 lattice ≠ lamp", tower.name);
 }
 
 

@@ -5,7 +5,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isHamperHold, isMonitorHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -132,7 +132,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  // Plant / pot / hamper / monitor stand: typed envelope binds upright stand (monitor: width + rise).
+  // Plant / pot / hamper / monitor / floor-lamp stand: typed envelope binds upright stand (monitor: width + rise; lamp: base dia + height).
   if (detectWeekendMech(lower) === "pot-hold" || wantsPotHold(lower)) {
     if (isMonitorHold(lower)) {
       const env = monitorEnvelopeIn(lower);
@@ -143,6 +143,15 @@ export function parseSize(lower: string): { height: number; width: number; depth
       }
       if (rise != null) height = rise;
       else if (env != null) height = Math.max(4, Math.min(8, env * 0.2));
+    } else if (isFloorLampHold(lower)) {
+      const env = lampEnvelopeIn(lower) ?? potHoldDiameterIn(lower);
+      const h = lampHeightIn(lower);
+      if (env != null) {
+        const span = Math.max(env + 1.5, env, 6);
+        width = span;
+        depth = span;
+      }
+      if (h != null) height = h;
     } else {
     const basket = isHamperHold(lower) ? basketEnvelopeWhd(lower) : null;
     if (basket) {

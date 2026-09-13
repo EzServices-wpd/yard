@@ -38,9 +38,9 @@ const LAUNCHER_NOUN =
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
   /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
-/** Plant / pot / hamper / umbrella / hose-reel / monitor stand that holds a real pot, laundry basket, umbrellas, hose reel, or monitor upright — envelope + densify, not a Tree / Storage / Orbit silhouette. */
+/** Plant / pot / hamper / umbrella / hose-reel / monitor / floor-lamp stand that holds a real pot, laundry basket, umbrellas, hose reel, monitor, or lamp base upright — envelope + densify, not a Tree / Storage / Lattice / Orbit silhouette. */
 const POT_HOLD_NOUN =
-  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)|\bhose\s*reel\b.{0,40}(?:stand|upright|envelope|diameter|dia)|\bmonitors?\b.{0,40}(?:stand|riser|rise|envelope)|(?:at\s+)?\d+\s*["″]?\s*rise/;
+  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|floor\s*lamp(?:\s*stand)?|lamp\s*stand|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?|lamp(?:\s*base)?)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?|lamp(?:\s*base)?)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|lamp(?:\s*base)?)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)|\bhose\s*reel\b.{0,40}(?:stand|upright|envelope|diameter|dia)|\bmonitors?\b.{0,40}(?:stand|riser|rise|envelope)|(?:floor\s*)?\blamp\b.{0,40}(?:stand|base|envelope|upright)|\blamp\s*base\b.{0,40}(?:diameter|dia|envelope|stand|upright)|(?:at\s+)?\d+\s*["″]?\s*rise/;
 
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
@@ -167,7 +167,9 @@ export function potHoldDiameterIn(prompt: string): number | null {
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
     hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
     hay.match(/holds?\s+a\s+real\s+(?:hose\s*)?reel\s+(\d+(?:\.\d+)?)\s*"?/) ||
-    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot|hose\s*reel)?/);
+    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot|hose\s*reel)?/) ||
+    hay.match(/lamp\s*base[^\d]{0,20}(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/holds?\s+a\s+real\s+lamp\s+base\s+(\d+(?:\.\d+)?)\s*"?/);
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -343,6 +345,51 @@ export function monitorEnvelopeTalk(prompt: string): string {
   return "typed monitor envelope";
 }
 
+/** Floor lamp / lamp stand (same pot-hold mech class) — typed lamp-base envelope + stand height; hush like monitor/hose/umbrella (no Lattice / Orbit). */
+export function isFloorLampHold(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  if (/floor\s*lamp(?:\s*stand)?|lamp\s*stand/.test(hay)) return true;
+  if (/\blamp(?:\s*base)?\b/.test(hay) && /holds?\s+a\s+real|upright|envelope/.test(hay) && /stand|base/.test(hay)) return true;
+  return false;
+}
+
+/** Typed lamp-base diameter (e.g. holds a real lamp base 6″ diameter upright). */
+export function lampEnvelopeIn(prompt: string): number | null {
+  const hay = looksHay(prompt);
+  const m =
+    hay.match(/lamp\s*base[^\d]{0,24}(\d+(?:\.\d+)?)\s*"?\s*(?:diameter|dia\b|ø)?/) ||
+    hay.match(/holds?\s+a\s+real\s+lamp\s+base\s+(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:diameter|dia\b|ø)[^\n]{0,32}(?:lamp\s*)?base/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:lamp\s*)?base/);
+  if (m) {
+    const n = parseFloat(m[1]);
+    if (Number.isFinite(n) && n > 0 && n < 24) return n;
+  }
+  const fromPot = potHoldDiameterIn(prompt);
+  if (fromPot != null && fromPot < 24) return fromPot;
+  return null;
+}
+
+/** Typed floor-lamp stand height (e.g. 60″ tall) — honor 48–96 class, not pot-tall <48 cap. */
+export function lampHeightIn(prompt: string): number | null {
+  const hay = looksHay(prompt);
+  const m =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/) ||
+    hay.match(/(?:stand|lamp)[^\d]{0,24}(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n >= 12 && n <= 96 ? n : null;
+}
+
+export function lampEnvelopeTalk(prompt: string): string {
+  const env = lampEnvelopeIn(prompt);
+  const h = lampHeightIn(prompt);
+  if (env != null && h != null) return `${env}″ diameter upright lamp-base envelope · ${h}″ tall`;
+  if (env != null) return `${env}″ diameter upright lamp-base envelope`;
+  if (h != null) return `floor lamp stand ${h}″ tall`;
+  return "typed lamp-base envelope upright";
+}
+
 
 
 /** Marble / free-projectile diameter inches (⅝ → 0.625). */
@@ -499,7 +546,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|floor\s*lamp(?:\s*stand)?|lamp\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -582,7 +629,8 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
 
   // Space frame before generic "frame".
   // AV / media component tower is a house floor-carcase — never lattice wire skeleton.
-  if (!isAvTower(hay) && !isHouseMediaCarcase(hay) && (LATTICE_NOUN.test(hay) || /eiffel-?class|lattice tower/.test(hay))) {
+  // Pot-hold stands (lamp / monitor / hose / umbrella / plant) beat lattice/tower noun steals.
+  if (!isAvTower(hay) && !isHouseMediaCarcase(hay) && !wantsPotHold(hay) && (LATTICE_NOUN.test(hay) || /eiffel-?class|lattice tower/.test(hay))) {
     return { family: "lattice", kind: "lattice", name: /space\s*frame/.test(hay) ? "Space frame" : "Lattice tower" };
   }
 
@@ -648,7 +696,11 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
               ? "Hamper stand"
               : /figurine/.test(hay)
                 ? "Figurine stand"
-                : "Plant stand",
+                : /floor\s*lamp|lamp\s*stand|\blamp\s*base\b/.test(hay)
+                  ? /floor\s*lamp/.test(hay)
+                    ? "Floor lamp stand"
+                    : "Lamp stand"
+                  : "Plant stand",
         };
       }
       if (mech === "media-hold") {
