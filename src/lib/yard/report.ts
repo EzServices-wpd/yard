@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isLumberRack, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench } from "./family";
+import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isLumberRack, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -633,7 +633,22 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "utility shelf"
               : isIroningWallMount((project.prompt ?? "").toLowerCase()) || /Ironing board wall mount/i.test(project.name)
                 ? "ironing board wall mount"
-              : (project.fitted?.program ?? "closet")
+              : isBootTrayBench((project.prompt ?? "").toLowerCase()) || /Boot tray bench/i.test(project.name)
+                ? "Boot tray"
+              : /Mudroom bench/i.test(project.name) ||
+                  (/mudroom/.test((project.prompt ?? "").toLowerCase()) && /\bbench\b/.test((project.prompt ?? "").toLowerCase()))
+                ? "mudroom bench"
+              : /Window seat/i.test(project.name) || /window seat/.test((project.prompt ?? "").toLowerCase())
+                ? "window seat"
+              : /Coat bench/i.test(project.name) ||
+                  (/coat/.test((project.prompt ?? "").toLowerCase()) && /\bbench\b/.test((project.prompt ?? "").toLowerCase()))
+                ? "coat bench"
+              : (() => {
+                  const sit = sitBenchTitleStem((project.prompt ?? "").toLowerCase());
+                  if (sit) return sit.replace(/ bench$/i, "").trim() || sit;
+                  if ((project.fitted?.program ?? "") === "bench") return "seat";
+                  return project.fitted?.program ?? "closet";
+                })()
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",
       },

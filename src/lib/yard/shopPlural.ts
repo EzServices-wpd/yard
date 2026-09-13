@@ -70,6 +70,8 @@ export function cutListName(name: string, type?: string): string {
   if (/shoe rail/i.test(name)) return "Shoe rail";
   if (/cubby divider/i.test(name)) return "Cubby divider";
   if (/shoe shelf/i.test(name)) return "Shoe shelf";
+  if (/boot tray/i.test(name)) return "Boot tray";
+  if (/^seat$/i.test(name.trim())) return "Seat";
   if (/towel rail/i.test(name)) return "Towel rail";
   if (/peg rail/i.test(name)) return "Peg rail";
   if (/hat shelf/i.test(name)) return "Hat shelf";
@@ -84,8 +86,9 @@ export function cutListName(name: string, type?: string): string {
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";
   if (type === "counter") return "Counter";
-  if (type === "top") return "Top";
-  if (type === "bottom") return "Bottom";
+  // Sit benches keep Seat (not Top); tray densify keeps Boot tray (not Bottom).
+  if (type === "top") return /^seat$/i.test(name.trim()) ? "Seat" : "Top";
+  if (type === "bottom") return /boot tray/i.test(name) ? "Boot tray" : "Bottom";
   if (type === "back") return "Back";
   if (/drawer front/i.test(name)) return "Drawer front";
   if (type === "door") return "Door";

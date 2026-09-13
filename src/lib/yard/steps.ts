@@ -580,7 +580,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 2,
         title: "Stand the legs and seat the tread",
-        description: `Assemble the frame so the tread carries a standing kid at ${riseRun}.`,
+        description: `Assemble the frame so the tread carries a ${
+          /\badult\b|adult\s+stands|adult\s+tread/.test((project.prompt ?? "").toLowerCase())
+            ? "standing adult"
+            : "standing kid"
+        } at ${riseRun}.`,
         tips: "Square the tread before the braces.",
         partsUsed: names(uprights),
       },
@@ -998,7 +1002,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       project.fitted?.program === "bench");
   if (mudroomBench) {
     const seats = panels.filter((p) => /seat/i.test(p.name) || p.type === "top");
-    const shoe = panels.filter((p) => /shoe/i.test(p.name) || p.type === "bottom");
+    const shoe = panels.filter((p) => /shoe|boot tray/i.test(p.name) || p.type === "bottom");
+    const trayBay = shoe.some((p) => /boot tray/i.test(p.name));
+    const bayName = trayBay ? "Boot tray" : "Shoe shelf";
     const aprons = panels.filter((p) => /apron/i.test(p.name) || (p.type === "rail" && !/hanging/i.test(p.name)));
     const cubbies = panels.filter((p) => /cubby/i.test(p.name));
     return [
@@ -1012,22 +1018,22 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 2,
         title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item, '— especially Seat, Shoe shelf, Front apron, and each Cubby divider.'),
+        description: sheetCutDescription(panels, item, `— especially Seat, ${bayName}, Front apron, and each Cubby divider.`),
         tips: tool.tip,
         partsUsed: names(panels),
       },
       {
         step: 3,
         title: "Stand the carcase",
-        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || "Shoe shelf."}. ${seats.map(cutLine).join("; ") || "Seat."}. Glue and #8 × 1¼" screws: back into both uprights, then shoe shelf, then seat. Predrill near the ends so the ply does not split.`,
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || `${bayName}.`}. ${seats.map(cutLine).join("; ") || "Seat."}. Glue and #8 × 1¼" screws: back into both uprights, then ${bayName.toLowerCase()}, then seat. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
         partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
       },
       {
         step: 4,
         title: "Set cubby dividers and front apron",
-        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. Screw through the seat, shoe shelf, and back into each divider — these carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. Glue and screw the front apron under the front edge of the seat between the uprights.`,
-        tips: "A 48\" seat without dividers will sag under a sitting adult. Do not skip the dividers.",
+        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. Screw through the seat, ${bayName.toLowerCase()}, and back into each divider — these carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. Glue and screw the front apron under the front edge of the seat between the uprights.`,
+        tips: `A ${round(W)}" seat without dividers will sag under a sitting adult. Do not skip the dividers.`,
         partsUsed: names([...cubbies, ...aprons]),
       },
       {
@@ -2157,7 +2163,12 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       const riseRun =
         rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
       return [
-        { role: "leg", title: "Cut the legs", why: "Legs carry a standing kid — weight-bearing." },
+        { role: "leg", title: "Cut the legs", why: (() => {
+          const adult = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase());
+          return adult
+            ? "Legs carry a standing adult — weight-bearing."
+            : "Legs carry a standing kid — weight-bearing.";
+        })() },
         {
           role: "rail",
           title: n >= 2 ? `Seat the ${n} climb treads` : "Seat the single climb tread",

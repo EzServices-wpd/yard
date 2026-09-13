@@ -1603,6 +1603,18 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (/kid stands/i.test(stoolText) && !/adult stands/i.test(stoolText)) {
     failHonesty("kid-only densify on adult prompt", stoolText.slice(0, 400));
   }
+  // Soft park: residual kid densify beside adult tread (roleScript / tips).
+  const stoolAll = [
+    stool.name,
+    ...(stool.notes ?? []),
+    ...stoolPlan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`),
+  ].join("\n");
+  if (/Legs carry a standing kid|standing kid|kid stands|holds a kid/i.test(stoolAll)) {
+    failHonesty("residual kid densify beside adult tread", stoolAll.slice(0, 700));
+  }
+  if (!/Pine|pine/i.test(stoolAll + stoolPlan.bom.map((b) => b.name).join("\n"))) {
+    failHonesty("shop stool Buy Pine", stoolAll.slice(0, 400));
+  }
 
   const lumber = generateFromPrompt("house: lumber rack 48″ wide × 24″ deep × 72″ tall with four arms");
   if (!/Lumber rack/i.test(lumber.name)) failHonesty("lumber rack title", lumber.name);
@@ -1947,6 +1959,100 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   }
 }
 
+
+  // ── Batch 30 soft-park sweep — adult climb / Boot tray subtitle / Seat+sag ─
+  {
+    const adultStool = generateFromPrompt(
+      "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+    );
+    const adultPlan = buildPlan(adultStool);
+    const adultBlob = [
+      adultStool.name,
+      ...(adultStool.notes ?? []),
+      ...adultPlan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`),
+      ...adultPlan.cutList.map((c) => c.name),
+      ...adultPlan.bom.map((b) => b.name),
+    ].join("\n");
+    if (!/Step stool|Shop stool/i.test(adultStool.name)) failHonesty("b30 shop stool stem", adultStool.name);
+    if (!/adult stands/i.test(adultBlob)) failHonesty("b30 adult tread densify", adultBlob.slice(0, 500));
+    if (/standing kid|Legs carry a standing kid|kid stands|holds a kid/i.test(adultBlob)) {
+      failHonesty("b30 residual kid densify", adultBlob.slice(0, 700));
+    }
+    if (!/10/.test(adultBlob) || !/rise/i.test(adultBlob) || !/run/i.test(adultBlob)) {
+      failHonesty("b30 climb 10 rise×run", adultBlob.slice(0, 500));
+    }
+    if (!/Pine|pine/i.test(adultBlob)) failHonesty("b30 Buy Pine", adultBlob.slice(0, 400));
+
+    // Kid densify still OK when prompt says kid — do not break batch-31 climb triangle.
+    const kidStool = generateFromPrompt(
+      "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; kid stands on the tread",
+    );
+    const kidPlan = buildPlan(kidStool);
+    const kidBlob = [
+      kidStool.name,
+      ...(kidStool.notes ?? []),
+      ...kidPlan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`),
+    ].join("\n");
+    if (!/kid stands|standing kid/i.test(kidBlob)) failHonesty("b30 kid densify still OK", kidBlob.slice(0, 500));
+    if (/adult stands|standing adult/i.test(kidBlob) && !/kid stands|standing kid/i.test(kidBlob)) {
+      failHonesty("b30 kid prompt flipped to adult-only", kidBlob.slice(0, 400));
+    }
+
+    const boot = generateFromPrompt("house: boot tray bench 48″ wide × 16″ deep × 18″ tall");
+    const bootPlan = buildPlan(boot);
+    if (!/Boot tray bench/i.test(boot.name)) failHonesty("b30 boot stem", boot.name);
+    const bootCuts = bootPlan.cutList.map((c) => c.name).join("\n");
+    if (!/Boot tray/i.test(bootCuts + boot.panels.map((p) => p.name).join("\n"))) {
+      failHonesty("b30 boot tray cut densify", bootCuts.slice(0, 400));
+    }
+    if (!boot.panels.some((p) => /^Seat$/i.test(p.name)) && !/Seat/i.test(bootCuts)) {
+      failHonesty("b30 boot Seat part", bootCuts.slice(0, 300));
+    }
+    const bootIssues = (bootPlan.feasibility?.issues ?? []).map((i) => i.message).join("\n");
+    const bootSub = bootIssues + "\n" + [boot.name, ...(boot.notes ?? [])].join("\n");
+    if (/Boot tray bench[^\n]{0,80}—\s*bench\b/i.test(bootSub) || /—\s*bench\.?$/im.test(bootIssues)) {
+      // Bare program "bench" under Boot tray title = soft park still open
+      if (!/—\s*Boot tray/i.test(bootIssues)) {
+        failHonesty("b30 boot subtitle bare — bench", bootIssues.slice(0, 400) || bootSub.slice(0, 400));
+      }
+    }
+    if (!/Boot tray/i.test(bootIssues) && /—\s*bench/i.test(bootIssues)) {
+      failHonesty("b30 boot subtitle hush", bootIssues.slice(0, 400));
+    }
+
+    const mud = generateFromPrompt("house: mudroom bench fitted to a 60×16 opening, 18″ seat height");
+    const mudPlan = buildPlan(mud);
+    if (!/Mudroom bench/i.test(mud.name)) failHonesty("b30 mudroom sit-title", mud.name);
+    if (Math.abs(mud.overall.depth - 16) > 1.2) failHonesty("b30 mudroom D16", mud.overall);
+    const mudCuts = mudPlan.cutList.map((c) => `${c.quantity}\t${c.name}`).join("\n");
+    if (!/\d+\tSeat\b/i.test(mudCuts) && !mud.panels.some((p) => /^Seat$/i.test(p.name))) {
+      failHonesty("b30 mudroom Seat not Top", mudCuts.slice(0, 400));
+    }
+    if (/\d+\tTop\b/i.test(mudCuts) && !/\d+\tSeat\b/i.test(mudCuts)) {
+      failHonesty("b30 plan Top not Seat", mudCuts.slice(0, 400));
+    }
+    const mudSteps = mudPlan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n");
+    if (/A 48" seat without dividers will sag/i.test(mudSteps)) {
+      failHonesty("b30 false 48 sag on 60 unit", mudSteps.slice(0, 500));
+    }
+    if (!/A 60" seat without dividers will sag|60" seat/i.test(mudSteps) && /will sag/i.test(mudSteps)) {
+      // width-aware sag must honor typed 60
+      if (/48" seat/i.test(mudSteps)) failHonesty("b30 sag width not 60", mudSteps.slice(0, 400));
+    }
+
+    // Protect greens from batch-30 sweep
+    const pot = generateFromPrompt("house: potting bench 48″ wide × 24″ deep × 36″ tall with one lower shelf");
+    if (!/^Potting bench/i.test(pot.name)) failHonesty("b30 protect potting", pot.name);
+    if (/Workbench|\bDesk\b/i.test(pot.name) && !/Potting/i.test(pot.name)) {
+      failHonesty("b30 potting ≠ WB", pot.name);
+    }
+    const bare = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
+    if (!/Workbench/i.test(bare.name)) failHonesty("b30 protect bare WB", bare.name);
+    const bareShelves = bare.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
+    if (bareShelves.length !== 0) failHonesty("b30 protect bare WB no shelf", bareShelves.map((p) => p.name));
+    const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO — freeze green");
+    if (!/Andersen/i.test(andersen.name)) failHonesty("b30 protect Andersen", andersen.name);
+  }
 
   // Protect garage / kitchen-work / Andersen / bare workbench / desk knee
   if (!isWorkbench("workbench 60x24x36")) failHonesty("protect isWorkbench batch27");
