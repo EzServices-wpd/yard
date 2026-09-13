@@ -2090,6 +2090,40 @@ console.log("SOFT-TRUST OK", {
   dresserFronts: dresserPlan.cutList.filter((c) => /drawer front/i.test(c.name)).map((c) => c.name),
 });
 
+
+// ── Batch 31 kids open-cubby wall — Toy cubby wall + spoken six cubbies ─────
+{
+  const toy = generateFromPrompt("toy cubby wall 36 wide 48 tall 12 deep with six cubbies");
+  if (!/^Toy cubby wall/i.test(toy.name)) {
+    throw new Error(`Batch31 toy cubby title: got ${toy.name}`);
+  }
+  if (toy.overall.width !== 36 || toy.overall.height !== 48 || toy.overall.depth !== 12) {
+    throw new Error(`Batch31 toy cubby size: ${JSON.stringify(toy.overall)}`);
+  }
+  const divs = toy.panels.filter((p) => /cubby divider/i.test(p.name));
+  if (divs.length !== 5) {
+    throw new Error(`Batch31 toy cubby need 5 dividers for 6 bays, got ${divs.length}`);
+  }
+  if (/storage unit/i.test(toy.name)) {
+    throw new Error("Batch31 toy cubby must not be bare Storage unit");
+  }
+  // Mudroom still Mudroom cubbies (not Toy steal)
+  const mud = generateFromPrompt("mudroom cubbies 48 wide 72 high 16 deep");
+  if (!/^Mudroom cubbies/i.test(mud.name)) {
+    throw new Error(`Batch31 mudroom protect: got ${mud.name}`);
+  }
+  // Coat+cubby stays dual (not open cubby steal)
+  const coat = generateFromPrompt("coat and cubby wall 48 wide 72 high 16 deep");
+  if (!/^Coat and cubby wall/i.test(coat.name)) {
+    throw new Error(`Batch31 coat+cubby protect: got ${coat.name}`);
+  }
+  // Potting / bare workbench / Andersen freezes stay clear of cubby densify
+  const pot = generateFromPrompt("potting bench 48 wide 24 deep 36 tall with one lower shelf");
+  if (!/^Potting bench/i.test(pot.name)) {
+    throw new Error(`Batch31 potting protect: got ${pot.name}`);
+  }
+}
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),

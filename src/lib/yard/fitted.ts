@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -192,12 +192,34 @@ function spokenRungCount(text: string): number | null {
   return null;
 }
 
+/** Spoken cubby / bay count — digit or word ("six cubbies" → 6). */
+function spokenCubbyCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b([2-9]|1[0-2])\s*cubb/);
+  if (digit) return Number(digit[1]);
+  const words: Record<string, number> = {
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+  };
+  const word = lower.match(/\b(two|three|four|five|six|seven|eight|nine|ten)\s+cubb/);
+  if (word) return words[word[1]];
+  return null;
+}
+
+
 
 
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb|toy\s*cubb|cubby\s*wall|kids\s*cubb|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -212,6 +234,7 @@ export function looksLikeFitted(prompt: string) {
     isLeashRail(lower) ||
     isKeyMailShelf(lower) ||
     isCoatCubbyWall(lower) ||
+    isOpenCubbyWall(lower) ||
     isBootTrayBench(lower) ||
     isLumberRack(lower) ||
     isWorkbench(lower) ||
@@ -284,7 +307,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (isDaybed(lower)) return "bench";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (/\bmedia\b|\btv\b|console|sideboard|credenza/.test(lower)) return "media";
-  if (isMudroomCubbyWall(lower)) return "storage";
+  if (isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
@@ -937,8 +960,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 1
                   : 0,
   );
-  const cubbiesSaid = pick(t, /(\d+)\s*cubb/i, NaN);
+  const spokenCubbies = spokenCubbyCount(t);
+  const cubbiesSaid = spokenCubbies != null ? spokenCubbies : pick(t, /(\d+)\s*cubb/i, NaN);
   // Mudroom / entry benches need cubby dividers so a ~48" seat does not sag under a sitting adult.
+  // Open cubby walls honor spoken N ("six cubbies") before width defaults.
   const cubbies =
     Number.isFinite(cubbiesSaid) && cubbiesSaid >= 2
       ? cubbiesSaid
@@ -1098,8 +1123,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? portalSpanShelfTitle(lower)
       : isPortalHookRail(lower)
         ? portalHookRailTitle(lower)
-      : isMudroomCubbyWall(lower)
-        ? "Mudroom cubbies"
+      : isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)
+        ? openCubbyWallTitle(lower)
       : sitStem
         ? sitStem
         : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
@@ -2764,22 +2789,80 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  // Mudroom cubby wall fitted to an opening — floor carcase cubbies, not a sit bench.
-  if (isMudroomCubbyWall(prompt.toLowerCase())) {
-    const mudSpec = {
-      ...spec,
-      program: "storage" as const,
-      name: spec.name.match(/mudroom|cubb/i) ? spec.name : `Mudroom cubbies ${W}" × ${H}" × ${D}"`,
-      unit: {
-        ...u,
-        doors: false,
-        shelfCount: u.shelfCount && u.shelfCount >= 2 ? u.shelfCount : Math.max(3, Math.min(6, Math.round((H - P) / 12))),
-        cubbies: u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(3, Math.min(6, Math.round(W / 12))),
-        drawersPerBank: undefined,
+  // Open cubby wall / mudroom / toy·kids cubbies — floor carcase with N divider bays (never bare Storage / empty box).
+  if (isOpenCubbyWall(prompt.toLowerCase()) || isMudroomCubbyWall(prompt.toLowerCase())) {
+    const lower = prompt.toLowerCase();
+    const stem = openCubbyWallTitle(lower);
+    const cubbyN =
+      u.cubbies && u.cubbies >= 2
+        ? Math.max(2, Math.min(12, u.cubbies))
+        : Math.max(3, Math.min(6, Math.round(W / 12)));
+    const backT = 0.25;
+    const shelfN =
+      u.shelfCount && u.shelfCount >= 1
+        ? Math.min(6, u.shelfCount)
+        : H >= 40
+          ? 1
+          : 0;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, W - P * 2, P, D - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, W - P * 2, P, D - backT));
+    for (let i = 1; i < cubbyN; i++) {
+      const x = x0 + (W * i) / cubbyN - P / 2;
+      panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
+    }
+    if (shelfN >= 1) {
+      for (let s = 1; s <= shelfN; s++) {
+        const y = Math.round(((H * s) / (shelfN + 1)) * 8) / 8;
+        panels.push(
+          panel("shelf", shelfN === 1 ? "Cubby shelf" : `Cubby shelf ${s}`, x0 + P, y, backT, W - P * 2, P, D - backT),
+        );
+      }
+    }
+    const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+    const name = `${stem} ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Open cubby wall with ${cubbyN} bays (~${bayW}" wide) and dividers — not a hollow Storage box and not a sit bench. ¾" plywood.`,
+        `Glue and screw each cubby divider into the shelves and back. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        affordances: affordances.includes("cubbies") ? affordances : [...affordances, "cubbies"],
+        unit: {
+          ...u,
+          width: W,
+          height: H,
+          depth: D,
+          doors: false,
+          cubbies: cubbyN,
+          shelfCount: shelfN,
+          drawersPerBank: undefined,
+          rod: false,
+        },
       },
-      affordances: affordances.includes("cubbies") ? affordances : [...affordances, "cubbies"],
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
     };
-    return buildShoeRack(mudSpec, prompt, mudSpec.affordances);
   }
 
   // Shoe storage on a floor carcase → cubbies / open bays (not pin shelves).

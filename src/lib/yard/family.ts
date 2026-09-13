@@ -363,6 +363,29 @@ export function isCoatCubbyWall(lower: string) {
   return true;
 }
 
+/**
+ * Open cubby carcase / cubby wall — toy, kids, mudroom, or named cubby wall.
+ * Universal F/F/P: positive stem + spoken N cubbies with dividers; never bare Storage.
+ * Not a sit bench, not coat+cubby (rod dual), not shoe portal/rack.
+ */
+export function isOpenCubbyWall(lower: string) {
+  if (/\bbench\b|\bseat\b|window seat|banquette/.test(lower)) return false;
+  if (isCoatCubbyWall(lower)) return false;
+  if (wantsShoes(lower) || isShoePortalCubbies(lower) || isShoePortalRail(lower)) return false;
+  if (isMudroomCubbyWall(lower)) return true;
+  if (/cubb/.test(lower) && /wall|unit|carcase|cabinet|organizer/.test(lower)) return true;
+  if (/cubb/.test(lower) && /toy|kids|play|nursery|child/.test(lower)) return true;
+  return false;
+}
+
+/** Positive stem for open cubby walls — never bare Storage / Closet. */
+export function openCubbyWallTitle(lower: string): string {
+  if (/\bmudroom\b/.test(lower)) return "Mudroom cubbies";
+  if (/toy/.test(lower)) return "Toy cubby wall";
+  if (/kids|play|nursery|child/.test(lower)) return "Kids cubby wall";
+  return "Cubby wall";
+}
+
 /** Boot tray bench — tray densify + sit-load (not Boot bench without tray). */
 export function isBootTrayBench(lower: string) {
   return /boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower);
@@ -753,7 +776,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isTowelPortalRail(lower)) return towelPortalWantsHooks(lower) ? "Towel + hook rail" : "Towel rail";
   if (isPortalSpanShelf(lower)) return portalSpanShelfTitle(lower);
   if (isPortalHookRail(lower)) return portalHookRailTitle(lower);
-  if (isMudroomCubbyWall(lower)) return "Mudroom cubbies";
+  if (isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) return openCubbyWallTitle(lower);
   // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && isDoorPortal(lower)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
@@ -827,7 +850,7 @@ function programFromNoun(lower: string): FittedProgram {
   ) {
     return "media";
   }
-  if (isCoatCubbyWall(lower) || isMudroomCubbyWall(lower)) return "storage";
+  if (isCoatCubbyWall(lower) || isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) return "storage";
   if (isKeyMailShelf(lower) || isLeashRail(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
@@ -930,7 +953,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       !isPottingBench(lower) &&
       !isPorchSwingFrame(lower) &&
       !isAdirondackChair(lower) &&
-      !isMudroomCubbyWall(lower)));
+      !isMudroomCubbyWall(lower) &&
+      !isOpenCubbyWall(lower)));
   const work =
     (isPottingBench(lower) ||
       (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
@@ -964,7 +988,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
   else if (isToolRail(lower) || isLeashRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower)) family = "hung-open";
-  else if (isCoatCubbyWall(lower) || isMudroomCubbyWall(lower)) family = "floor-carcase";
+  else if (isCoatCubbyWall(lower) || isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) family = "floor-carcase";
   else if (isDryingRack(lower) || isLaundrySorter(lower) || isUtilityShelf(lower) || isLumberRack(lower)) {
     family = "floor-carcase";
   }
