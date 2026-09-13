@@ -12,6 +12,8 @@ import {
   wantsPotHold,
   isFigurineHold,
   isHamperHold,
+  isUmbrellaHold,
+  umbrellaEnvelopeTalk,
   figureHoldEnvelopeTalk,
   basketEnvelopeTalk,
   potHoldDiameterIn,
@@ -22,7 +24,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isIroningWallMount, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
+import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -335,11 +337,18 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const portalSpanShelf =
     isPortalSpanShelf(coatPrompt) || /Over-door shelf/i.test(project.name || "");
   const portalHookRail = isPortalHookRail(coatPrompt) || (/portal/i.test(project.name) && /rail|hooks/i.test(project.name) && !/towel|shoe|coat rod/i.test(project.name));
-  const toolRail = isToolRail(coatPrompt) || /^Tool rail/i.test(project.name || "");
+  const toolRail =
+    isToolRail(coatPrompt) ||
+    isLeashRail(coatPrompt) ||
+    /^Tool rail/i.test(project.name || "") ||
+    /^Leash rail/i.test(project.name || "");
+  const keyMail =
+    isKeyMailShelf(coatPrompt) || /^Key and mail shelf/i.test(project.name || "");
   const coatRack =
     /coat/i.test(project.name) ||
     portalHookRail ||
     toolRail ||
+    keyMail ||
     ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) &&
       !/shoe/.test(coatPrompt) &&
       !/towel/.test(coatPrompt));
@@ -374,7 +383,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
     ];
   }
-  if ((coatRack || shoePortalRail || shoePortalCubbies || towelPortalRail || portalHookRail) && !uprights.length) {
+  if ((coatRack || shoePortalRail || shoePortalCubbies || towelPortalRail || portalHookRail || keyMail) && !uprights.length) {
     const shoe = shoePortalRail || shoePortalCubbies || /shoe/i.test(project.name);
     const shoeCubbies = shoePortalCubbies || /Shoe cubbies|cubb/i.test(project.name);
     const towel = !shoe && (towelPortalRail || /towel\s*rail/i.test(project.name));
@@ -457,11 +466,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
         }
-      : toolRail
+      : toolRail || keyMail
         ? {
             step: 4,
             title: "Clear wall mount — PDF states mount height",
-            description: `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
+            description: keyMail
+              ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks below the mail shelf — not a Storage unit / Picture ledge / portal steal.`
+              : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "")
+                ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / Tool / key steal.`
+                : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
             tips: "PDF states mount height. Clear wall mount — hit studs.",
             partsUsed: names(backs.length ? backs : panels),
           }
@@ -482,10 +495,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? `${tool.how} ${sheetCuts.join(" ")} Cut Shoe shelf and Cubby divider parts for ${hooks} pairs — portal cubbies, clear swing. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
-          : toolRail
-            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Tool rail spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
+          : toolRail || keyMail
+            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
-        tips: portal ? "Mount height from the opening — keep clear swing." : toolRail ? "PDF states mount height. Clear wall mount." : tool.tip,
+        tips: portal ? "Mount height from the opening — keep clear swing." : toolRail || keyMail ? "PDF states mount height. Clear wall mount." : tool.tip,
         partsUsed: names(panels),
       },
       {
@@ -1960,6 +1973,9 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       // Figurine hold: figure envelope (2×2 base × 3 tall) — never pot-diameter bleed.
       if (isFigurineHold(p)) {
         return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)} — densify keeps the figure envelope (not pot diameter).`;
+      }
+      if (isUmbrellaHold(p)) {
+        return ` Upright umbrella stand — ${umbrellaEnvelopeTalk(p)}; densify keeps the stand around the umbrellas (not Orbit chrome, not a Storage carcase).`;
       }
       if (isHamperHold(p)) {
         return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)} — densify keeps the stand around the basket envelope (not a Storage carcase of basket size).`;

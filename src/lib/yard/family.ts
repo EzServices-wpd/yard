@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -284,6 +284,38 @@ export function isToolRail(lower: string) {
   return false;
 }
 
+/** Leash rail — hung-open hook rail (tool-rail pattern). Never Bridge / Tool / Key steal. */
+export function isLeashRail(lower: string) {
+  if (/leash\s*rail|dog\s*leash(?:\s*rail)?|leash\s*hook/.test(lower)) return true;
+  if (/\bleash\b/.test(lower) && /rail|hook/.test(lower) && /wall\s*mount|clear\s*wall|spann|hooks?|mount\s*height/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/** Key + mail shelf — shelf + hooks below; never Storage / Picture ledge / portal steal. */
+export function isKeyMailShelf(lower: string) {
+  if (/key\s*(?:and|&)\s*mail|mail\s*(?:and|&)\s*key|key.?mail\s*shelf|mail\s*and\s*key|key\s*hook\s*shelf/.test(lower)) return true;
+  if (/\bkey\b/.test(lower) && /\bmail\b/.test(lower) && /shelf|ledge|hook/.test(lower)) return true;
+  return false;
+}
+
+/**
+ * Coat + cubby dual wall — four cubbies + full-width coat rod (not Coat rod–only).
+ * Sit bench / coat+bench stay seat path.
+ */
+export function isCoatCubbyWall(lower: string) {
+  if (!/coat/.test(lower)) return false;
+  if (!/cubb/.test(lower)) return false;
+  if (/\bbench\b|\bseat\b|window seat|banquette/.test(lower)) return false;
+  return true;
+}
+
+/** Boot tray bench — tray densify + sit-load (not Boot bench without tray). */
+export function isBootTrayBench(lower: string) {
+  return /boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower);
+}
+
 /** Lumber rack — arms hold stock; never naked Storage unit. */
 export function isLumberRack(lower: string) {
   if (/lumber\s*rack|timber\s*rack|pipe\s*arm/.test(lower)) return true;
@@ -343,6 +375,10 @@ export function isIroningWallMount(lower: string) {
 export function isDoorPortal(lower: string) {
   // Ironing board wall mount uses clear-swing language — never a door portal steal.
   if (/ironing/.test(lower)) return false;
+  // Leash / tool-rail clear wall mount — never a door portal steal via "spanning".
+  if (isLeashRail(lower) || isToolRail(lower)) return false;
+  // Key + mail shelf is freestanding hung shelf — never portal steal.
+  if (isKeyMailShelf(lower)) return false;
   if (/door\s*portal|portal|doorway|door opening/.test(lower)) return true;
   // Bare "door" + hang/swing language — not a cabinet / crate door panel.
   if (
@@ -373,6 +409,10 @@ export function isPortalHookRail(lower: string) {
   if (!isDoorPortal(lower)) return false;
   // Tool rail is clear wall-mount shop class — never key/coat portal steal.
   if (isToolRail(lower)) return false;
+  // Leash rail is hung-open entry class (tool-rail pattern) — never portal / Bridge steal.
+  if (isLeashRail(lower)) return false;
+  // Key + mail shelf is hung-open entry class — never portal / Picture ledge steal.
+  if (isKeyMailShelf(lower)) return false;
   // Ironing board wall mount is hung-open shop/laundry class — never portal steal.
   if (isIroningWallMount(lower) || /ironing/.test(lower)) return false;
   if (isShoePortalRail(lower) || isShoePortalCubbies(lower) || isTowelPortalRail(lower)) return false;
@@ -570,6 +610,8 @@ export function sitBenchTitleStem(lower: string): string | null {
   if (/banquette/.test(lower)) return "Banquette";
   if (/workbench/.test(lower)) return null;
   if (!/\bbench\b/.test(lower)) return null;
+  // Boot tray bench before loose boot → Boot bench steal.
+  if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower))) return "Boot tray bench";
   // Prefer adjacent "<room> bench" (dining bench, hall bench, entry bench, …).
   const adj = lower.match(new RegExp(`\\b(${SIT_BENCH_ROOM})\\s+bench\\b`));
   if (adj) {
@@ -590,6 +632,11 @@ export function sitBenchTitleStem(lower: string): string | null {
  * so typed width cannot wipe "Base cabinet" down to naked "Storage".
  */
 export function identityTitleStem(lower: string): string | null {
+  // Entry / mudroom class — positive stems before Coat rod / Storage / Bridge steals.
+  if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower))) return "Boot tray bench";
+  if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
+  if (isKeyMailShelf(lower)) return "Key and mail shelf";
+  if (isLeashRail(lower)) return "Leash rail";
   // Kitchen-typed base keeps "Kitchen base" stem (not bare Base cabinet only).
   if (isKitchenBase(lower)) return /kitchen/.test(lower) ? "Kitchen base" : "Base cabinet";
   if (isKitchenUpper(lower)) return "Upper cabinet";
@@ -719,7 +766,8 @@ function programFromNoun(lower: string): FittedProgram {
   ) {
     return "media";
   }
-  if (isMudroomCubbyWall(lower)) return "storage";
+  if (isCoatCubbyWall(lower) || isMudroomCubbyWall(lower)) return "storage";
+  if (isKeyMailShelf(lower) || isLeashRail(lower)) return "storage";
   if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower) && !/workbench/.test(lower)) return "bench";
@@ -758,6 +806,9 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isPortalSpanShelf(lower) &&
     !isPegboard(lower) &&
     !isToolRail(lower) &&
+    !isLeashRail(lower) &&
+    !isKeyMailShelf(lower) &&
+    !isCoatCubbyWall(lower) &&
     !isLumberRack(lower) &&
     !isWorkbench(lower) &&
     !isLaundrySorter(lower) &&
@@ -777,6 +828,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const wallLang =
     !coatBench &&
+    !isCoatCubbyWall(lower) &&
     (/wall[- ]?hung|wall[- ]?mount|hang(?:s|ing)? on (?:the )?wall|floating|wall[- ]?(?:shelf|shelves|rack|cabinet|cubb|organizer|ledge)|wall.{0,28}(?:media\s*)?ledge|media\s*ledge|on the wall|wall\b.{0,24}\bcabinet\b/.test(
       lower,
     ) ||
@@ -801,6 +853,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isBedsideShelf(lower) ||
       isPegboard(lower) ||
       isToolRail(lower) ||
+      isLeashRail(lower) ||
+      isKeyMailShelf(lower) ||
       isIroningWallMount(lower));
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
@@ -816,7 +870,9 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower)) ||
     isPortalHookRail(lower) ||
     isTowelPortalRail(lower) ||
-    isToolRail(lower);
+    isToolRail(lower) ||
+    isLeashRail(lower) ||
+    isKeyMailShelf(lower);
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
   const door =
@@ -837,7 +893,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
-  else if (isToolRail(lower) || isIroningWallMount(lower)) family = "hung-open";
+  else if (isToolRail(lower) || isLeashRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower)) family = "hung-open";
+  else if (isCoatCubbyWall(lower) || isMudroomCubbyWall(lower)) family = "floor-carcase";
   else if (isDryingRack(lower) || isLaundrySorter(lower) || isUtilityShelf(lower) || isLumberRack(lower)) {
     family = "floor-carcase";
   }

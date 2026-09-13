@@ -18,6 +18,8 @@ import {
   wantsMediaTipHold,
   wantsPotHold,
   isHamperHold,
+  isUmbrellaHold,
+  umbrellaEnvelopeTalk,
   potHoldDiameterIn,
   basketEnvelopeWhd,
   basketEnvelopeTalk,
@@ -415,7 +417,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     const dia = potHoldDiameterIn(prompt);
     const basket = isHamperHold(prompt) ? basketEnvelopeWhd(prompt) : null;
     const hold =
-      /plant stand|pot stand|figurine stand|hamper stand|basket stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|upright/i.test(
+      /plant stand|pot stand|figurine stand|hamper stand|basket stand|umbrella stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|umbrella envelope|umbrellas?|upright/i.test(
         blobAll,
       ) || /holds? (?:a )?real/i.test(blobAll);
     const roles = new Map<string, number>();
@@ -428,9 +430,11 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (!hold) {
       issues.push({
         guard: "anatomy",
-        message: isHamperHold(prompt)
-          ? "Hamper stand must bind a real laundry-basket envelope upright (W×D×H when typed)."
-          : "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
+        message: isUmbrellaHold(prompt)
+          ? "Umbrella stand must bind a real upright umbrella envelope (N×N base when typed)."
+          : isHamperHold(prompt)
+            ? "Hamper stand must bind a real laundry-basket envelope upright (W×D×H when typed)."
+            : "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
       });
     }
     if (project.instances.length && !hasStand) {
@@ -452,6 +456,14 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         issues.push({
           guard: "anatomy",
           message: `Hamper stand must state the ${talk} basket envelope.`,
+        });
+      }
+    } else if (isUmbrellaHold(prompt)) {
+      const talk = umbrellaEnvelopeTalk(prompt);
+      if (!/umbrella/i.test(blobAll) || (!/8/.test(blobAll) && !/base|envelope|upright/i.test(blobAll))) {
+        issues.push({
+          guard: "anatomy",
+          message: `Umbrella stand must state the ${talk}.`,
         });
       }
     } else if (dia != null && !new RegExp(String(dia)).test(blobAll)) {

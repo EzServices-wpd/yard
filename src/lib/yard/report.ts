@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isDryingRack, isFoldingTable, isIroningWallMount, isLaundrySorter, isLumberRack, isPegboard, isPlatformBed, isToolRail, isUtilityShelf, isWorkbench } from "./family";
+import { isBedsideShelf, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isLumberRack, isPegboard, isPlatformBed, isToolRail, isUtilityShelf, isWorkbench } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -609,6 +609,10 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "pegboard"
               : isToolRail((project.prompt ?? "").toLowerCase()) || /Tool rail/i.test(project.name)
                 ? "tool rail"
+              : isLeashRail((project.prompt ?? "").toLowerCase()) || /Leash rail/i.test(project.name)
+                ? "leash rail"
+              : isKeyMailShelf((project.prompt ?? "").toLowerCase()) || /Key and mail shelf/i.test(project.name)
+                ? "key and mail shelf"
               : isLumberRack((project.prompt ?? "").toLowerCase()) || /Lumber rack/i.test(project.name)
                 ? "lumber rack"
               : isFoldingTable((project.prompt ?? "").toLowerCase()) || /Folding table/i.test(project.name)

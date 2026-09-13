@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isUmbrellaHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, umbrellaEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -308,7 +308,9 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             ]
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
-              isHamperHold(prompt)
+              isUmbrellaHold(prompt)
+                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not Orbit chrome.`
+                : isHamperHold(prompt)
                 ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
                 : `${hit.name} · upright pot envelope` +
                   (potDia != null && potH != null

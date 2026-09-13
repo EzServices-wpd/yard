@@ -38,9 +38,9 @@ const LAUNCHER_NOUN =
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
   /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
-/** Plant / pot / hamper stand that holds a real pot or laundry basket upright — envelope + densify, not a Tree / Storage silhouette. */
+/** Plant / pot / hamper / umbrella stand that holds a real pot, laundry basket, or umbrellas upright — envelope + densify, not a Tree / Storage / Orbit silhouette. */
 const POT_HOLD_NOUN =
-  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|holds?\s+a\s+real\s+.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)/;
+  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)/;
 
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
@@ -256,6 +256,33 @@ export function basketEnvelopeTalk(prompt: string): string {
   return "typed laundry basket upright";
 }
 
+/** Umbrella stand (same pot-hold mech class) — upright umbrella envelope / base, stand hush like hamper. */
+export function isUmbrellaHold(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return /umbrella\s*stand|\bumbrellas?\b/.test(hay);
+}
+
+/** Umbrella base envelope talk — prefers typed N×N base upright umbrellas. */
+export function umbrellaEnvelopeTalk(prompt: string): string {
+  const hay = looksHay(prompt);
+  const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
+  const count =
+    hay.match(/(\d+)\s*(?:real\s+)?umbrellas?/) ||
+    hay.match(/holds?\s+(?:four|4)\s+(?:real\s+)?umbrellas?/) ||
+    hay.match(/\b(four|4)\s+(?:real\s+)?umbrellas?/);
+  const nTalk = count
+    ? count[1] === "four" || count[1] === "4"
+      ? "four"
+      : count[1]
+    : "typed";
+  if (basePair) {
+    return `${basePair[1]}″×${basePair[2]}″ upright umbrella envelope for ${nTalk} umbrellas`;
+  }
+  const dia = potHoldDiameterIn(prompt);
+  if (dia != null) return `${dia}″×${dia}″ upright umbrella envelope for ${nTalk} umbrellas`;
+  return `upright umbrella envelope for ${nTalk} umbrellas`;
+}
+
 /** Marble / free-projectile diameter inches (⅝ → 0.625). */
 export function marbleDiameterIn(prompt: string): number | null {
   const hay = looksHay(prompt)
@@ -387,7 +414,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -523,11 +550,13 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         return {
           family: "frame",
           kind: "frame",
-          name: /hamper|laundry\s*basket|basket\s*stand/.test(hay)
-            ? "Hamper stand"
-            : /figurine/.test(hay)
-              ? "Figurine stand"
-              : "Plant stand",
+          name: /umbrella/.test(hay)
+            ? "Umbrella stand"
+            : /hamper|laundry\s*basket|basket\s*stand/.test(hay)
+              ? "Hamper stand"
+              : /figurine/.test(hay)
+                ? "Figurine stand"
+                : "Plant stand",
         };
       }
       if (mech === "media-hold") {

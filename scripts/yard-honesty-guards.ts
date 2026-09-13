@@ -2,8 +2,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKitchenIsland, isLaundrySorter, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { detectWeekendFamily, detectWeekendMech, isUmbrellaHold, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -1730,12 +1730,98 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
     failHonesty("hamper upright basket densify", hamperText.slice(0, 500));
   }
 
+
+  // ── Batch 28 entry/mudroom class ──────────────────────────────────────────
+  const entryStems: Array<[string, string]> = [
+    ["house: boot tray bench 48 wide × 16 deep × 18 tall", "Boot tray bench"],
+    ["house: coat and cubby wall fitted to a 48×72×16 opening, four cubbies and a full-width coat rod", "Coat and cubby wall"],
+    ["house: key and mail shelf 24 wide × 6 deep × 10 tall with four hooks below; PDF states mount height", "Key and mail shelf"],
+    ["house: leash rail spanning 24 with three hooks, clear wall mount; PDF states mount height", "Leash rail"],
+    ["house: mudroom bench fitted to a 60×16 opening, 18 seat height", "Mudroom bench"],
+  ];
+  for (const [prompt, stem] of entryStems) {
+    if (identityTitleStem(prompt.toLowerCase()) !== stem) {
+      failHonesty(`entry identityTitleStem(${prompt})`, identityTitleStem(prompt.toLowerCase()));
+    }
+  }
+  if (!isBootTrayBench("boot tray bench 48x16x18")) failHonesty("isBootTrayBench");
+  if (!isCoatCubbyWall("coat and cubby wall fitted to a 48x72x16 opening, four cubbies and a full-width coat rod")) {
+    failHonesty("isCoatCubbyWall");
+  }
+  if (isCoatCubbyWall("coat rod spanning a door portal")) failHonesty("coat rod must not be coat+cubby");
+  if (!isKeyMailShelf("key and mail shelf 24x6x10 with four hooks")) failHonesty("isKeyMailShelf");
+  if (!isLeashRail("leash rail spanning 24 with three hooks, clear wall mount")) failHonesty("isLeashRail");
+  if (isToolRail("leash rail spanning 24 with three hooks")) failHonesty("leash must not be Tool rail");
+  if (!isUmbrellaHold("oak umbrella stand that holds four real umbrellas upright in a 8x8 base")) {
+    failHonesty("isUmbrellaHold");
+  }
+  if (detectWeekendMech("weekend craft: oak umbrella stand that holds four real umbrellas upright in a 8″×8″ base") !== "pot-hold") {
+    failHonesty("umbrella pot-hold mech");
+  }
+
+  const boot = generateFromPrompt("house: boot tray bench 48″ wide × 16″ deep × 18″ tall");
+  if (!/Boot tray bench/i.test(boot.name)) failHonesty("boot tray stem", boot.name);
+  if (/^(?:Yard )?Bench\b/i.test(boot.name) && !/tray/i.test(boot.name)) failHonesty("naked Bench steal", boot.name);
+  const bootBlob = [boot.name, ...(boot.notes ?? []), ...boot.panels.map((p) => p.name)].join("\n");
+  if (!/Boot tray|tray/i.test(bootBlob)) failHonesty("boot tray densify", bootBlob.slice(0, 500));
+  if (Math.abs(boot.overall.width - 48) > 1.5) failHonesty("boot W48", boot.overall);
+
+  const coatCubby = generateFromPrompt(
+    "house: coat and cubby wall fitted to a 48×72×16 opening, four cubbies and a full-width coat rod",
+  );
+  if (!/Coat and cubby/i.test(coatCubby.name)) failHonesty("coat+cubby title", coatCubby.name);
+  if (/^Coat rod\b/i.test(coatCubby.name)) failHonesty("coat rod–only steal", coatCubby.name);
+  if (Math.abs(coatCubby.overall.depth - 16) > 1.5) failHonesty("coat+cubby D16", coatCubby.overall);
+  const dividers = coatCubby.panels.filter((p) => /Cubby divider/i.test(p.name));
+  if (dividers.length < 3) failHonesty("coat+cubby four cubbies/dividers", coatCubby.panels.map((p) => p.name));
+  if (!coatCubby.panels.some((p) => /Coat rod/i.test(p.name))) failHonesty("coat+cubby Coat rod part", coatCubby.panels.map((p) => p.name));
+
+  const umbrella = generateFromPrompt(
+    "weekend craft: oak umbrella stand that holds four real umbrellas upright in a 8″×8″ base",
+  );
+  if (!/Umbrella stand/i.test(umbrella.name)) failHonesty("umbrella title", umbrella.name);
+  if (/Storage unit/i.test(umbrella.name)) failHonesty("umbrella Storage steal", umbrella.name);
+  const umPlan = buildPlan(umbrella);
+  const umText = [umbrella.name, ...(umbrella.notes ?? []), ...umPlan.steps.map((s) => `${s.title} ${s.description}`), ...umPlan.bom.map((b) => b.name)].join("\n");
+  if (!/oak|Oak/i.test(umText)) failHonesty("umbrella Buy Oak", umText.slice(0, 500));
+  if (!/8/.test(umText) || !/umbrella/i.test(umText)) failHonesty("umbrella 8×8 envelope", umText.slice(0, 600));
+  if (!/upright|envelope/i.test(umText)) failHonesty("umbrella upright densify", umText.slice(0, 500));
+
+  const keyMail = generateFromPrompt(
+    "house: key and mail shelf 24″ wide × 6″ deep × 10″ tall with four hooks below; PDF states mount height",
+  );
+  if (!/Key and mail shelf/i.test(keyMail.name)) failHonesty("key+mail stem", keyMail.name);
+  if (/Storage unit|Picture ledge/i.test(keyMail.name)) failHonesty("key+mail Storage/Picture steal", keyMail.name);
+  const kmPlan = buildPlan(keyMail);
+  const kmText = [keyMail.name, ...(keyMail.notes ?? []), ...kmPlan.steps.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (!/4 hooks|four hooks|Screw 4 hooks/i.test(kmText)) failHonesty("key+mail four hooks", kmText.slice(0, 600));
+  if (!/mount height|PDF states mount height/i.test(kmText)) failHonesty("key+mail PDF mount height", kmText.slice(0, 500));
+  if (Math.abs(keyMail.overall.width - 24) > 1.5) failHonesty("key+mail W24", keyMail.overall);
+
+  const leash = generateFromPrompt(
+    "house: leash rail spanning 24″ with three hooks, clear wall mount; PDF states mount height",
+  );
+  if (!/Leash rail/i.test(leash.name)) failHonesty("leash stem", leash.name);
+  if (/Bridge|Tool rail|Key rail|Key and mail/i.test(leash.name) && !/Leash/i.test(leash.name)) {
+    failHonesty("leash Bridge/Tool/key steal", leash.name);
+  }
+  const leashPlan = buildPlan(leash);
+  const leashText = [leash.name, ...(leash.notes ?? []), ...leashPlan.steps.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (!/3 hooks|three hooks|Screw 3 hooks/i.test(leashText)) failHonesty("leash three hooks", leashText.slice(0, 600));
+  if (!/mount height|PDF states mount height/i.test(leashText)) failHonesty("leash PDF mount height", leashText.slice(0, 500));
+  if (Math.abs(leash.overall.width - 24) > 1.5) failHonesty("leash 24 span", leash.overall);
+  if (!/clear wall mount/i.test(leashText)) failHonesty("leash clear wall mount", leashText.slice(0, 400));
+
+
   // Protect garage / kitchen-work / Andersen / bare workbench / desk knee
   if (!isWorkbench("workbench 60x24x36")) failHonesty("protect isWorkbench batch27");
   if (!isPrepTable("prep table 48x24x36")) failHonesty("protect isPrepTable batch27");
   if (!isToolRail("tool rail spanning 48 with six hooks")) failHonesty("protect isToolRail batch27");
   if (!isPegboard("pegboard wall panel fitted to a 48×36 opening")) failHonesty("protect isPegboard batch27");
   if (!isLumberRack("lumber rack 48 wide with four arms")) failHonesty("protect isLumberRack batch27");
+  if (!isLaundrySorter("laundry sorter 24x18x36 with three bins")) failHonesty("protect isLaundrySorter batch28");
+  if (isLeashRail("tool rail spanning 48 with six hooks")) failHonesty("protect tool rail ≠ leash");
+  if (isCoatCubbyWall("mudroom cubbies 48x72x16")) failHonesty("protect mudroom cubbies ≠ coat+cubby without coat");
   const wbBare27 = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
   if (!/^Workbench/i.test(wbBare27.name)) failHonesty("protect bare workbench title", wbBare27.name);
   const wbBareShelves27 = wbBare27.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));

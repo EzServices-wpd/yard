@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isButcherCart, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -197,7 +197,7 @@ function spokenRungCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -209,6 +209,10 @@ export function looksLikeFitted(prompt: string) {
   if (
     isPegboard(lower) ||
     isToolRail(lower) ||
+    isLeashRail(lower) ||
+    isKeyMailShelf(lower) ||
+    isCoatCubbyWall(lower) ||
+    isBootTrayBench(lower) ||
     isLumberRack(lower) ||
     isWorkbench(lower) ||
     isLaundrySorter(lower) ||
@@ -360,12 +364,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!Number.isFinite(width)) {
     width = pick(t, /spann(?:ing)?\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?/i, NaN);
   }
-  if (!Number.isFinite(width) && /tool\s*rail|pegboard|peg\s*board/.test(lower)) {
+  if (!Number.isFinite(width) && /tool\s*rail|leash\s*rail|pegboard|peg\s*board/.test(lower)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″]|″)?/, NaN);
   }
   if (isPegboard(lower) && (!Number.isFinite(depth) || depth > 4)) depth = 0.75;
-  if (isToolRail(lower) && (!Number.isFinite(depth) || depth > 8)) depth = 4;
-  if (isToolRail(lower) && (!Number.isFinite(height) || height > 24)) height = 6;
+  if ((isToolRail(lower) || isLeashRail(lower)) && (!Number.isFinite(depth) || depth > 8)) depth = 4;
+  if ((isToolRail(lower) || isLeashRail(lower)) && (!Number.isFinite(height) || height > 24)) height = 6;
+  if (isKeyMailShelf(lower)) {
+    if (!Number.isFinite(depth) || depth > 12) depth = Number.isFinite(depth) ? depth : 6;
+    if (!Number.isFinite(height) || height > 24) height = Number.isFinite(height) ? height : 10;
+  }
   // Ironing board wall mount — board length binds width; shallow mount depth.
   if (isIroningWallMount(lower)) {
     const boardLen = pick(
@@ -907,7 +915,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isPortalSpanShelf(lower)
                   ? 1
-                : isToolRail(lower) || isPegboard(lower)
+                : isToolRail(lower) || isLeashRail(lower) || isKeyMailShelf(lower) || isPegboard(lower)
                   ? 0
                 : isLumberRack(lower)
                   ? 0
@@ -1068,6 +1076,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Pegboard"
       : isToolRail(lower)
         ? "Tool rail"
+      : isLeashRail(lower)
+        ? "Leash rail"
+      : isKeyMailShelf(lower)
+        ? "Key and mail shelf"
+      : isCoatCubbyWall(lower)
+        ? "Coat and cubby wall"
       : isLumberRack(lower)
         ? "Lumber rack"
       : isPortalSpanShelf(lower)
@@ -1102,7 +1116,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? "Spice rack"
                     : isWineRack(lower)
                       ? "Wine rack"
-                      : /coat/.test(lower) && /rack|rail|rod|hook|peg|tree/.test(lower)
+                      : isCoatCubbyWall(lower)
+                        ? "Coat and cubby wall"
+                      : /coat/.test(lower) && /rack|rail|rod|hook|peg|tree/.test(lower) && !isCoatCubbyWall(lower)
                         ? /rod/.test(lower)
                           ? "Coat rod"
                           : /rail/.test(lower)
@@ -2663,6 +2679,81 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  // Coat + cubby dual wall — four cubbies + full-width coat rod, honor fitted D (not Coat rod–only / D12).
+  if (isCoatCubbyWall(prompt.toLowerCase())) {
+    const cubbyN =
+      u.cubbies && u.cubbies >= 2
+        ? Math.max(2, Math.min(10, u.cubbies))
+        : Math.max(4, Math.min(6, Math.round(W / 12)));
+    const backT = 0.25;
+    const rodY = Math.min(H - 8, Math.max(60, Math.round(H * 0.72)));
+    const shelfN = u.shelfCount && u.shelfCount >= 1 ? Math.min(3, u.shelfCount) : 1;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, W - P * 2, P, D - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, W - P * 2, P, D - backT));
+    for (let i = 1; i < cubbyN; i++) {
+      const x = x0 + (W * i) / cubbyN - P / 2;
+      panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
+    }
+    // Mid shelves for cubby bays when tall.
+    if (H >= 48) {
+      const yMid = Math.round((H / 2) * 8) / 8;
+      panels.push(panel("shelf", "Cubby shelf", x0 + P, yMid, backT, W - P * 2, P, D - backT));
+    }
+    panels.push(panel("rail", "Coat rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
+    const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+    const name = `Coat and cubby wall ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Dual affordance: ${cubbyN} cubbies (~${bayW}" bays) and a full-width coat rod — not Coat rod–only. Fitted depth ${D}". ¾" plywood.`,
+        `Full-width coat rod spans the ${W}" opening at ${rodY}" up. Glue and screw each cubby divider into the shelves and back.`,
+        `Four cubbies densify with dividers. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        affordances: affordances.includes("cubbies")
+          ? affordances.includes("hooks")
+            ? affordances
+            : [...affordances, "hooks"]
+          : affordances.includes("hooks")
+            ? [...affordances, "cubbies"]
+            : [...affordances, "cubbies", "hooks"],
+        unit: {
+          ...u,
+          width: W,
+          height: H,
+          depth: D,
+          doors: false,
+          cubbies: cubbyN,
+          shelfCount: shelfN,
+          drawersPerBank: undefined,
+          rod: true,
+        },
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "alcove",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   // Mudroom cubby wall fitted to an opening — floor carcase cubbies, not a sit bench.
   if (isMudroomCubbyWall(prompt.toLowerCase())) {
     const mudSpec = {
@@ -2705,10 +2796,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));
     const backT = 0.25;
     const apronH = Math.min(3.5, Math.max(2.5, Math.round((H * 0.2) * 8) / 8));
+    const bootTray = isBootTrayBench(prompt.toLowerCase()) || (/boot/.test(prompt.toLowerCase()) && /tray/.test(prompt.toLowerCase()));
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-    panels.push(panel("bottom", "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("bottom", bootTray ? "Boot tray" : "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
     panels.push(panel("top", "Seat", x0 + P, H - P, backT, innerW, P, D - backT));
     panels.push(
       panel("rail", "Front apron", x0 + P, H - P - apronH, D - P, innerW, apronH, P),
@@ -2744,12 +2836,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        wantHooks
+        bootTray
+          ? `${name}. Boot tray bench with a recessed boot tray under the seat and ${cubbyN} bays — tray densify + sit-load, not Boot bench without tray. ¾" plywood.`
+          : wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
           : sitTitle === "Window seat"
             ? `${name}. Sittable window seat at ${H}" seat height with ${cubbyN} open bays under the lid line — weight-bearing seat, not a hollow storage box. ¾" plywood.`
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
-        `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
+        bootTray
+          ? `The boot tray, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, boot tray, and back.`
+          : `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
           : sitTitle === "Window seat"
@@ -2974,17 +3070,78 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const coatLower = prompt.toLowerCase();
+  // Key + mail shelf — shelf + hooks below + PDF mount height (not Storage / Picture ledge / portal).
+  if (isKeyMailShelf(coatLower)) {
+    const railH = Math.max(4, Math.min(H > 4 ? H - P : 6, 10));
+    const shelfD = Math.max(4, Math.min(D > 2 ? D : 6, 10));
+    const hookSaid = coatLower.match(/(\d+)\s*hooks?/);
+    const hookWord = coatLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/);
+    const hookWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+    const hooks = hookSaid
+      ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
+      : hookWord && hookWords[hookWord[1]] != null
+        ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
+        : 4;
+    const mountFromOpening = Math.round(Math.min(60, Math.max(48, (H > 20 ? H : 54) * 0.7)));
+    panels.push(panel("back", "Peg rail", x0, 0, 0, W, railH, P));
+    panels.push(panel("top", "Mail shelf", x0, railH, 0, W, P, shelfD));
+    const stackH = railH + P;
+    const name = `Key and mail shelf ${W}" × ${stackH}" × ${shelfD}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: stackH, depth: shelfD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Key and mail shelf with ${hooks} hooks below the shelf — not a Storage unit, not a Picture ledge, not a portal steal. ¾" plywood.`,
+        `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Clear wall mount — lag into studs through the rail.`,
+        `Screw ${hooks} hooks into the rail below the mail shelf, about 6" on center. Hit studs. Guidance only.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: stackH, depth: shelfD, kind: "alcove" },
+      fitted: {
+        ...spec,
+        unit: {
+          ...u,
+          width: W,
+          height: stackH,
+          depth: shelfD,
+          doors: false,
+          shelfCount: 1,
+          drawersPerBank: undefined,
+        },
+        program: "storage",
+        family: "hung-open",
+        name,
+        affordances: affordances.includes("hooks") ? affordances : [...affordances, "hooks"],
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   const portalHook = isPortalHookRail(coatLower);
-  const toolRail = isToolRail(coatLower);
+  const leashRail = isLeashRail(coatLower);
+  const toolRail = isToolRail(coatLower) || leashRail;
   const coatRack =
     !/shoe/.test(coatLower) &&
     !/towel/.test(coatLower) &&
+    !isCoatCubbyWall(coatLower) &&
+    !isKeyMailShelf(coatLower) &&
     (portalHook ||
       toolRail ||
       (/coat/.test(coatLower) && /rack|rail|rod|tree|peg|hook/.test(coatLower)) ||
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
-  if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower))) {
+  if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower)) && !isCoatCubbyWall(coatLower)) {
     const portal = portalHook || isDoorPortal(coatLower);
     // Portal dims (e.g. 32×80) are the opening envelope — rail mounts inside, clear swing.
     const portalW = W;
@@ -3001,7 +3158,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         : Math.max(4, Math.min(H - P, 24));
     panels.push(panel("back", standing ? "Back board" : "Peg rail", x0, 0, 0, portalW, railH, P));
     // Hat shelf is coat/hat language — bare portal hook rails (key rail, …) stay a peg rail only.
-    const wantHatShelf = !toolRail && (/coat|hat/.test(coatLower) || (!portalHook && !portal));
+    const wantHatShelf = !toolRail && !leashRail && (/coat|hat/.test(coatLower) || (!portalHook && !portal));
     if (wantHatShelf) {
       panels.push(panel("top", "Hat shelf", x0, railH, 0, portalW, P, shelfD));
     }
@@ -3015,7 +3172,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
         : Math.max(3, Math.min(8, Math.round(portalW / 6)));
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
-    const label = toolRail
+    const label = leashRail
+      ? "Leash rail"
+      : isToolRail(coatLower)
       ? "Tool rail"
       : portalHook
       ? portalHookRailTitle(coatLower)
@@ -3039,9 +3198,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ]
       : toolRail
         ? [
-            `Tool rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
+            leashRail
+              ? `Leash rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`
+              : `Tool rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
             `Mount height from the opening: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the rail.`,
-            `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — tool rail, not a Bridge / coat portal.`,
+            leashRail
+              ? `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — leash rail, not a Bridge / Tool / key portal steal.`
+              : `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — tool rail, not a Bridge / coat portal.`,
           ]
         : [
           standing
