@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -2373,6 +2373,90 @@ console.log("SOFT-TRUST OK", {
     const peg = generateFromPrompt("house: peg rail spanning 36″ with five pegs, clear wall mount; PDF states mount height");
     if (!/^Peg rail/i.test(peg.name)) failHonesty("b33 protect peg", peg.name);
   }
+}
+
+
+
+// Batch34 dining/serve FAIL class pack — universal Dining table / Serving cart / Plate rack (slot densify).
+{
+  const diningPrompt = "house: dining table 72″ wide × 36″ deep × 30″ tall";
+  if (!isDiningTable(diningPrompt.toLowerCase())) failHonesty("b34 isDiningTable");
+  if (identityTitleStem(diningPrompt.toLowerCase()) !== "Dining table") {
+    failHonesty("b34 dining identityTitleStem", identityTitleStem(diningPrompt.toLowerCase()));
+  }
+  const dining = generateFromPrompt(diningPrompt);
+  if (!/^Dining table/i.test(dining.name)) failHonesty("b34 dining title", dining.name);
+  if (/^Table\b|Yard Table/i.test(dining.name) && !/Dining/i.test(dining.name)) {
+    failHonesty("b34 dining naked Table", dining.name);
+  }
+  if (Math.abs(dining.overall.width - 72) > 1.2) failHonesty("b34 dining W72", dining.overall);
+  if (Math.abs(dining.overall.height - 30) > 1.2) failHonesty("b34 dining H30", dining.overall);
+  if (Math.abs(dining.overall.depth - 36) > 1.2) failHonesty("b34 dining D36", dining.overall);
+
+  const servePrompt = "house: serving cart 30″ wide × 18″ deep × 34″ tall with two shelves";
+  if (!isServingCart(servePrompt.toLowerCase())) failHonesty("b34 isServingCart");
+  if (isButcherCart(servePrompt.toLowerCase())) failHonesty("b34 serving ≠ isButcherCart");
+  if (identityTitleStem(servePrompt.toLowerCase()) !== "Serving cart") {
+    failHonesty("b34 serving identityTitleStem", identityTitleStem(servePrompt.toLowerCase()));
+  }
+  const serve = generateFromPrompt(servePrompt);
+  if (!/^Serving cart/i.test(serve.name)) failHonesty("b34 serving title", serve.name);
+  if (/Kitchen cart|Butcher/i.test(serve.name)) failHonesty("b34 serving butcher/kitchen steal", serve.name);
+  if (Math.abs(serve.overall.width - 30) > 1.2) failHonesty("b34 serving W30", serve.overall);
+  if (Math.abs(serve.overall.height - 34) > 1.2) failHonesty("b34 serving H34", serve.overall);
+  if (Math.abs(serve.overall.depth - 18) > 1.2) failHonesty("b34 serving D18", serve.overall);
+  const serveShelves = serve.panels.filter((p) => p.type === "shelf" || /shelf/i.test(p.name));
+  if (serveShelves.length < 2) failHonesty("b34 serving two shelves", serveShelves.map((p) => p.name));
+  const servePlan = buildPlan(serve);
+  const serveBlob = [serve.name, ...(serve.notes ?? []), ...servePlan.issues.map((i) => i.message), ...servePlan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (/butcher block cart/i.test(serveBlob) && !/Serving cart/i.test(serve.name)) {
+    failHonesty("b34 serving plan butcher steal", serveBlob.slice(0, 500));
+  }
+  if (!/serving cart/i.test(serveBlob) && !/^Serving cart/i.test(serve.name)) {
+    failHonesty("b34 serving chip missing", serveBlob.slice(0, 400));
+  }
+
+  const platePrompt = "house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots";
+  if (!isPlateRack(platePrompt.toLowerCase())) failHonesty("b34 isPlateRack");
+  if (!isSlotRack(platePrompt.toLowerCase())) failHonesty("b34 isSlotRack plate");
+  if (identityTitleStem(platePrompt.toLowerCase()) !== "Plate rack") {
+    failHonesty("b34 plate identityTitleStem", identityTitleStem(platePrompt.toLowerCase()));
+  }
+  const plate = generateFromPrompt(platePrompt);
+  if (!/^Plate rack/i.test(plate.name)) failHonesty("b34 plate title", plate.name);
+  if (/Storage unit/i.test(plate.name)) failHonesty("b34 plate Storage steal", plate.name);
+  if (Math.abs(plate.overall.width - 36) > 1.2) failHonesty("b34 plate W36", plate.overall);
+  if (Math.abs(plate.overall.height - 24) > 1.2) failHonesty("b34 plate H24", plate.overall);
+  if (Math.abs(plate.overall.depth - 12) > 1.2) failHonesty("b34 plate D12", plate.overall);
+  const plateBlob = [plate.name, ...(plate.notes ?? []), ...plate.panels.map((p) => p.name)].join("\n");
+  if (!/3 plate slots|three slots|Slot 1|slotCount/i.test(plateBlob)) {
+    failHonesty("b34 plate three slots densify", plateBlob.slice(0, 800));
+  }
+  const slotPanels = plate.panels.filter((p) => /^Slot\s+\d+/i.test(p.name) || /Plate slot divider/i.test(p.name));
+  if (slotPanels.length < 2) failHonesty("b34 plate slot panels", plate.panels.map((p) => p.name));
+
+  // Protect PASS / green neighbors
+  const bench = generateFromPrompt("house: dining bench fitted to a 72×15 opening, 18″ seat height");
+  if (!/^Dining bench/i.test(bench.name)) failHonesty("b34 protect dining bench", bench.name);
+  const sideboard = generateFromPrompt("house: sideboard 60″ wide × 18″ deep × 34″ tall with two doors and two drawers");
+  if (!/^Sideboard/i.test(sideboard.name)) failHonesty("b34 protect sideboard", sideboard.name);
+  if (/Storage unit/i.test(sideboard.name)) failHonesty("b34 sideboard Storage", sideboard.name);
+  const round = generateFromPrompt("house: 40″ round 3-leg table");
+  if (!/Round\s*Table/i.test(round.name)) failHonesty("b34 protect round 3-leg", round.name);
+  if (/Dining/i.test(round.name)) failHonesty("b34 round ≠ Dining steal", round.name);
+  const butcher = generateFromPrompt("house: butcher block cart 30″ wide × 24″ deep × 36″ tall with two shelves");
+  if (!/^Butcher block cart/i.test(butcher.name)) failHonesty("b34 protect butcher cart", butcher.name);
+  if (/Serving cart/i.test(butcher.name)) failHonesty("b34 butcher ≠ serving", butcher.name);
+  if (!isButcherCart("butcher block cart with two shelves")) failHonesty("b34 protect isButcherCart");
+  const prep = generateFromPrompt("house: prep table 48″ wide × 24″ deep × 36″ tall");
+  if (!/^Prep table/i.test(prep.name)) failHonesty("b34 protect prep table", prep.name);
+  if (!isPrepTable("prep table 48x24x36")) failHonesty("b34 protect isPrepTable");
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("b34 protect Andersen", andersen.name);
+  // Kitchen cart without serving still Kitchen cart
+  const kcart = generateFromPrompt("house: kitchen cart 30″ wide × 18″ deep × 34″ tall with two shelves");
+  if (!/Kitchen cart|Butcher block cart/i.test(kcart.name)) failHonesty("b34 kitchen cart stem", kcart.name);
+  if (/Serving cart/i.test(kcart.name)) failHonesty("b34 kitchen ≠ serving", kcart.name);
 }
 
 

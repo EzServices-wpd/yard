@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
+import { isBedsideShelf, isBootTrayBench, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -595,9 +595,18 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "kitchen island"
               : /prep\s*table/i.test(project.name) || /prep\s*table/.test((project.prompt ?? "").toLowerCase())
                 ? "prep table"
+              : isDiningTable((project.prompt ?? "").toLowerCase()) || /Dining table/i.test(project.name)
+                ? "dining table"
+              : isServingCart((project.prompt ?? "").toLowerCase()) || /Serving cart/i.test(project.name)
+                ? "serving cart"
+              : isSlotRack((project.prompt ?? "").toLowerCase()) || /Plate rack|Magazine rack|Dish rack/i.test(project.name)
+                ? (isPlateRack((project.prompt ?? "").toLowerCase()) || /Plate rack/i.test(project.name) ? "plate rack" : "slot rack")
               : /butcher|kitchen cart/i.test(project.name) ||
-                  /butcher|\bcart\b/.test((project.prompt ?? "").toLowerCase())
-                ? "butcher block cart"
+                  isButcherCart((project.prompt ?? "").toLowerCase()) ||
+                  /butcher/.test((project.prompt ?? "").toLowerCase())
+                ? (/butcher/.test((project.prompt ?? "").toLowerCase()) || /Butcher/i.test(project.name)
+                    ? "butcher block cart"
+                    : "kitchen cart")
               : /open(?:\s+kitchen)?\s+shelving/i.test(project.name) ||
                   /open\s+kitchen\s+shelving|open\s+shelving|shelving\s+niche/.test(
                     (project.prompt ?? "").toLowerCase(),

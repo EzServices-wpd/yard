@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -192,6 +192,29 @@ function spokenRungCount(text: string): number | null {
   return null;
 }
 
+/** Spoken slot count for plate/magazine/dish racks ("three slots" / "3 slots"). */
+function spokenSlotCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*slots?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 16) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight)\s+slots?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  return null;
+}
+
 /** Spoken cubby / bay count — digit or word ("six cubbies" → 6). */
 function spokenCubbyCount(text: string): number | null {
   const lower = text.toLowerCase();
@@ -298,6 +321,8 @@ export function detectProgram(lower: string): FittedProgram {
   if (isOverToilet(lower)) return "storage";
   if (isSpiceRack(lower)) return "storage";
   if (isWineRack(lower)) return "storage";
+  if (isSlotRack(lower) || isServingCart(lower) || isButcherCart(lower)) return "storage";
+  if (isDiningTable(lower)) return "table";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
@@ -952,7 +977,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 3
                 : isLumberRack(lower)
                   ? 0
-                : isButcherCart(lower)
+                : isButcherCart(lower) || isServingCart(lower)
                   ? 2
                 : isUtilityShelf(lower) || isOpenKitchenShelving(lower)
                   ? 3
@@ -1003,6 +1028,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     isLoftBed(lower) ||
     isDaybed(lower) ||
     isButcherCart(lower) ||
+    isServingCart(lower) ||
+    isSlotRack(lower) ||
     isOpenKitchenShelving(lower) ||
     isFilingShelf(lower) ||
     isPrinterStand(lower) ||
@@ -1093,10 +1120,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Folding table"
       : isPrepTable(lower)
         ? "Prep table"
+      : isDiningTable(lower)
+        ? "Dining table"
       : isKitchenIsland(lower)
         ? "Kitchen island"
+      : isServingCart(lower)
+        ? "Serving cart"
       : isButcherCart(lower)
         ? (/butcher/.test(lower) ? "Butcher block cart" : "Kitchen cart")
+      : isSlotRack(lower)
+        ? slotRackTitle(lower)
       : isOpenKitchenShelving(lower)
         ? (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower) ? "Open kitchen shelving" : "Open shelving")
       : isUtilityShelf(lower)
@@ -2312,6 +2345,57 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: shelfN, drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined },
       },
       assumptions: { load: "medium", units: "inches", installMode: "wall", wallType: "wood_stud" },
+    };
+  }
+
+  // Slot-rack class (plate / magazine / dish) — spoken N slots densify like open-cubby dividers; never Storage.
+  if (isSlotRack(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Plate rack" || identityTitleStem(prompt.toLowerCase()) === "Magazine rack") {
+    const slotLower = prompt.toLowerCase();
+    const stem = slotRackTitle(slotLower);
+    const spokenSlots = spokenSlotCount(prompt);
+    const slotN = Math.max(2, Math.min(12, spokenSlots != null ? spokenSlots : 3));
+    const innerW = W - P * 2;
+    const backT = P;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    // N slots → N−1 vertical dividers (open-cubby / open-shelving slot densify class).
+    for (let i = 1; i < slotN; i++) {
+      const x = x0 + (W * i) / slotN - P / 2;
+      panels.push(panel("divider", `Slot ${i}`, x, P, backT, P, H - 2 * P, D - backT));
+    }
+    // Final bay stamped as Slot N so cut list densifies Slot 1..N when N>1 (last upright bay).
+    if (slotN >= 2) {
+      panels.push(panel("rail", `Slot ${slotN}`, x0 + W - P * 2, P, backT + 0.1, P, H - 2 * P, Math.max(P, D - backT - 0.2)));
+    }
+    const bayW = Math.round(((W - P * (slotN + 1)) / slotN) * 10) / 10;
+    const name = `${stem} ${W}" × ${H}" × ${D}"`;
+    const slotWord = slotN === 3 ? "three" : slotN === 2 ? "two" : String(slotN);
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Open ${stem.toLowerCase()} with ${slotN} plate slots (${slotWord} slots, ~${bayW}" bays) and dividers — not a hollow Storage box. ¾" plywood.`,
+        `Glue and screw each plate slot divider into the top, bottom, and back. ${slotN} plate slots densify Slot 1–${slotN}. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined, rod: false },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
     };
   }
 

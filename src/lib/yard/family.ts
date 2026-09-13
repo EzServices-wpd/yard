@@ -621,19 +621,69 @@ export function isPrepTable(lower: string) {
   return /prep\s*table|prep\s*bench|kitchen\s+prep/.test(lower);
 }
 
-/** Butcher-block / kitchen cart — cart honesty; never naked Storage unit. */
+/** Dining table — positive Dining table stem when dining + table (never naked Table).
+ * Protects: Round Table (no dining), Prep table, Outdoor side table, coffee/sofa/console. */
+export function isDiningTable(lower: string) {
+  if (/\bbench\b/.test(lower)) return false;
+  if (isPrepTable(lower) || isOutdoorSideTable(lower) || isFoldingTable(lower) || isSofaConsoleTable(lower)) return false;
+  if (/coffee\s*table|sofa\s*table|console\s*table|side\s*table|entry\s*console|work\s*table/.test(lower)) return false;
+  if (/dining\s*table/.test(lower)) return true;
+  if (/\bdining\b/.test(lower) && /\btable\b/.test(lower)) return true;
+  return false;
+}
+
+/** Serving cart — serving + cart (not butcher). Never steal into Kitchen cart / Butcher block cart. */
+export function isServingCart(lower: string) {
+  if (/butcher/.test(lower)) return false;
+  if (/serving\s*cart/.test(lower)) return true;
+  return /serving/.test(lower) && /\bcart\b/.test(lower);
+}
+
+/** Butcher-block / kitchen cart — cart honesty; never naked Storage unit.
+ * Serving cart is a separate stem (isServingCart) — do not steal serving → Kitchen cart. */
 export function isButcherCart(lower: string) {
   if (isKitchenBase(lower) || /kitchen\s+island|\bisland\b/.test(lower)) return false;
+  if (isServingCart(lower)) return false;
   if (/butcher\s*block\s*cart|butcher\s*cart|butcher\s*block/.test(lower)) return true;
-  if (/kitchen\s+cart|\bcart\b/.test(lower) && /butcher|block|shelf|shelves|shelving|wheel|caster/.test(lower)) return true;
-  return /\bcart\b/.test(lower) && /kitchen|butcher|prep/.test(lower);
+  if (/kitchen\s+cart/.test(lower)) return true;
+  if (/\bcart\b/.test(lower) && /butcher|block/.test(lower)) return true;
+  return /\bcart\b/.test(lower) && /kitchen|butcher|prep/.test(lower) && !/serving/.test(lower);
+}
+
+/** Slot-rack class (plate / magazine / dish) — spoken slot densify like open-cubby dividers; never Storage. */
+export function isPlateRack(lower: string) {
+  if (/spice|wine|coat|shoe|towel|drying|lumber|tool|peg|laundry|pot/.test(lower)) return false;
+  if (/plate\s*rack/.test(lower)) return true;
+  if (/\bplates?\b/.test(lower) && /\brack\b/.test(lower)) return true;
+  return false;
+}
+
+export function isMagazineRack(lower: string) {
+  if (/spice|wine|coat|shoe|towel|drying|lumber|tool|peg/.test(lower)) return false;
+  if (/magazine\s*rack/.test(lower)) return true;
+  return /magazine/.test(lower) && /\brack\b/.test(lower);
+}
+
+/** Plate / magazine / dish racks that densify spoken N slots (universal slot class). */
+export function isSlotRack(lower: string) {
+  if (isPlateRack(lower) || isMagazineRack(lower)) return true;
+  if (/spice|wine|coat|shoe|towel|drying|lumber|tool|peg|plate|magazine/.test(lower)) return false;
+  if (/dish\s*rack/.test(lower)) return true;
+  return false;
+}
+
+export function slotRackTitle(lower: string): string {
+  if (isPlateRack(lower)) return "Plate rack";
+  if (isMagazineRack(lower)) return "Magazine rack";
+  if (/dish\s*rack/.test(lower)) return "Dish rack";
+  return "Plate rack";
 }
 
 /** Open kitchen / fitted open shelving — never naked Storage unit. */
 export function isOpenKitchenShelving(lower: string) {
-  if (isKitchenBase(lower) || isKitchenUpper(lower) || isButcherCart(lower)) return false;
+  if (isKitchenBase(lower) || isKitchenUpper(lower) || isButcherCart(lower) || isServingCart(lower) || isSlotRack(lower)) return false;
   if (/kitchen\s+island|\bisland\b/.test(lower)) return false;
-  if (/bookcase|bookshelf|spice|wine|medicine|coat|shoe|utility|laundry|drying/.test(lower)) return false;
+  if (/bookcase|bookshelf|spice|wine|medicine|coat|shoe|utility|laundry|drying|plate|magazine/.test(lower)) return false;
   if (/open\s+kitchen\s+shelving|kitchen\s+shelving|open\s+shelving/.test(lower)) return true;
   if (/shelving\s+niche|fitted[^.]{0,40}shelving|shelving[^.]{0,40}fitted|shelving[^.]{0,40}opening/.test(lower)) return true;
   if (/open\s+shel(?:f|ves|ving)/.test(lower) && /kitchen|fitted|opening|niche/.test(lower)) return true;
@@ -642,7 +692,7 @@ export function isOpenKitchenShelving(lower: string) {
 
 /** Kitchen island — freestanding work island; never bare Island / Storage. */
 export function isKitchenIsland(lower: string) {
-  if (isKitchenBase(lower) || isPrepTable(lower) || isButcherCart(lower)) return false;
+  if (isKitchenBase(lower) || isPrepTable(lower) || isButcherCart(lower) || isServingCart(lower)) return false;
   return /kitchen\s+island|\bisland\b/.test(lower);
 }
 
@@ -783,10 +833,13 @@ export function identityTitleStem(lower: string): string | null {
   // Kitchen work / island class pack — positive stems, never naked Table / Island / Storage.
   if (isKitchenIsland(lower)) return "Kitchen island";
   if (isPrepTable(lower)) return "Prep table";
+  if (isServingCart(lower)) return "Serving cart";
   if (isButcherCart(lower)) {
     if (/butcher/.test(lower)) return "Butcher block cart";
     return "Kitchen cart";
   }
+  if (isDiningTable(lower)) return "Dining table";
+  if (isSlotRack(lower)) return slotRackTitle(lower);
   if (isOpenKitchenShelving(lower)) {
     if (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower)) return "Open kitchen shelving";
     return "Open shelving";
@@ -904,7 +957,8 @@ function programFromNoun(lower: string): FittedProgram {
   if (isSofaConsoleTable(lower)) return "table";
   if (isPlatformBed(lower)) return "storage";
   if (isDaybed(lower)) return "bench";
-  if (isPrepTable(lower) || isFoldingTable(lower)) return "table";
+  if (isPrepTable(lower) || isFoldingTable(lower) || isDiningTable(lower)) return "table";
+  if (isSlotRack(lower) || isServingCart(lower) || isButcherCart(lower)) return "storage";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (
     /\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||
