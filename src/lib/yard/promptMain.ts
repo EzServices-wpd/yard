@@ -224,10 +224,13 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     const rr = climbRiseRun(prompt);
     const n = Math.max(1, climbStepCount(prompt));
     const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+    const who = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
+      ? "adult stands"
+      : "kid stands";
     notes.unshift(
       n >= 2
-        ? `${n} weight-bearing human steps (each ${riseRun}) — kid stands on the top tread; not a vehicle incline.`
-        : `Weight-bearing climb step at ${riseRun} — not a vehicle incline.`,
+        ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; not a vehicle incline.`
+        : `Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`,
     );
   }
   if (wantsMediaTipHold(prompt)) {

@@ -20,7 +20,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
+import { isBedsideShelf, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold } from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -185,11 +185,17 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     const n = Math.max(1, climbStepCount(prompt));
     const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
     const stepTalk = n >= 2 ? `${n} human steps (each ${riseRun})` : `one climb step at ${riseRun}`;
+    const whoClimb = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
+      ? "Adult stands"
+      : "Kid stands";
+    const whoTip = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
+      ? "A standing adult loads the tread — square it."
+      : "A standing kid loads the tread — square it.";
     steps.push({
       step: s++,
       title: n >= 2 ? `Glue the ${n} weight-bearing climb steps` : "Glue the weight-bearing climb step",
-      description: `Build ${stepTalk}. Legs and treads only — weight-bearing human steps, not a vehicle incline. ${n >= 2 ? "Kid stands on the top tread. " : ""}${hold}`,
-      tips: "A standing kid loads the tread — square it.",
+      description: `Build ${stepTalk}. Legs and treads only — weight-bearing human steps, not a vehicle incline. ${n >= 2 ? whoClimb + " on the top tread. " : whoClimb + " on the tread. "}${hold}`,
+      tips: whoTip,
       partsUsed: ["leg", "rail"],
     });
     steps.push({
@@ -327,9 +333,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const portalSpanShelf =
     isPortalSpanShelf(coatPrompt) || /Over-door shelf/i.test(project.name || "");
   const portalHookRail = isPortalHookRail(coatPrompt) || (/portal/i.test(project.name) && /rail|hooks/i.test(project.name) && !/towel|shoe|coat rod/i.test(project.name));
+  const toolRail = isToolRail(coatPrompt) || /^Tool rail/i.test(project.name || "");
   const coatRack =
     /coat/i.test(project.name) ||
     portalHookRail ||
+    toolRail ||
     ((/coat/.test(coatPrompt) && /rack|rail|rod|hook|peg|tree/.test(coatPrompt)) &&
       !/shoe/.test(coatPrompt) &&
       !/towel/.test(coatPrompt));
@@ -372,6 +380,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       ? portalHookRailTitle(coatPrompt)
       : null;
     const hookSaid = coatPrompt.match(/(\d+)\s*hooks?/);
+    const hookWord = coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/);
+    const hookWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
     const hooks = shoe
       ? pairSaid
@@ -379,7 +389,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : Math.max(2, Math.min(8, Math.round(W / 9)))
       : hookSaid
         ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
-        : Math.max(3, Math.min(8, Math.round(W / 6)));
+        : hookWord && hookWords[hookWord[1]] != null
+          ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
+          : Math.max(3, Math.min(8, Math.round(W / 6)));
     const rail = backs[0] ?? panels[0];
     const shelf = of("top")[0];
     const portal =
@@ -443,7 +455,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
         }
-      : {
+      : toolRail
+        ? {
+            step: 4,
+            title: "Clear wall mount — PDF states mount height",
+            description: `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
+            tips: "PDF states mount height. Clear wall mount — hit studs.",
+            partsUsed: names(backs.length ? backs : panels),
+          }
+        : {
           step: 4,
           title: "Hang it on studs",
           description: `Find two studs. Predrill the rail. Drive 3" structural screws through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
@@ -460,8 +480,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? `${tool.how} ${sheetCuts.join(" ")} Cut Shoe shelf and Cubby divider parts for ${hooks} pairs — portal cubbies, clear swing. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Cut one Shoe peg per pair (${hooks} pegs) — peg length is the typed portal depth. Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${shelf ? cutLine(shelf) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.`
-          : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
-        tips: portal ? "Mount height from the opening — keep clear swing." : tool.tip,
+          : toolRail
+            ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Tool rail spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
+            : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
+        tips: portal ? "Mount height from the opening — keep clear swing." : toolRail ? "PDF states mount height. Clear wall mount." : tool.tip,
         partsUsed: names(panels),
       },
       {
@@ -1923,9 +1945,13 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const rr = climbRiseRun(p);
       const n = Math.max(1, climbStepCount(p));
       const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+      const adult =
+        /\badult\b/.test(p.toLowerCase()) ||
+        /adult\s+stands|adult\s+tread/.test(p.toLowerCase());
+      const who = adult ? "adult stands" : "kid stands";
       return n >= 2
-        ? ` ${n} weight-bearing human steps (each ${riseRun}) — kid stands on the top tread; densify from named stock; not a vehicle incline.`
-        : ` Weight-bearing climb step at ${riseRun} — kid stands on the tread; densify from named stock; not a vehicle incline.`;
+        ? ` ${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; densify from named stock; not a vehicle incline.`
+        : ` Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`;
     }
     return "";
   })();
@@ -2063,10 +2089,14 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
         {
           role: "rail",
           title: n >= 2 ? `Seat the ${n} climb treads` : "Seat the single climb tread",
-          why:
-            n >= 2
-              ? `${n} weight-bearing human steps (each ${riseRun}). Kid stands on the top tread. Densify from named stock. Not a vehicle incline.`
-              : `One weight-bearing step at ${riseRun}. Kid stands on the tread. Densify from named stock. Not a vehicle incline.`,
+          why: (() => {
+            const who = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
+              ? "Adult stands"
+              : "Kid stands";
+            return n >= 2
+              ? `${n} weight-bearing human steps (each ${riseRun}). ${who} on the top tread. Densify from named stock. Not a vehicle incline.`
+              : `One weight-bearing step at ${riseRun}. ${who} on the tread. Densify from named stock. Not a vehicle incline.`;
+          })(),
         },
         { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },

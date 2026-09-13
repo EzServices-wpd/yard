@@ -275,13 +275,18 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
     mech === "climb"
       ? isClimbStepStool(prompt)
         ? [
-            climbSteps >= 2
-              ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
-                (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
-                ` — kid stands on the top tread; not a vehicle incline.`
-              : `${hit.name} · one weight-bearing climb step` +
-                (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-                ` — kid stands on the tread; densify from named stock; not a vehicle incline.`,
+            (() => {
+              const who = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
+                ? "adult stands"
+                : "kid stands";
+              return climbSteps >= 2
+                ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
+                  (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
+                  ` — ${who} on the top tread; not a vehicle incline.`
+                : `${hit.name} · one weight-bearing climb step` +
+                  (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
+                  ` — ${who} on the tread; densify from named stock; not a vehicle incline.`;
+            })(),
           ]
         : ["Ladder · side rails + rungs at the named stock (cut list OK for lumber)."]
       : mech === "launcher"

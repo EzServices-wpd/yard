@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isPlatformBed } from "./family";
+import { isBedsideShelf, isLumberRack, isPegboard, isPlatformBed, isToolRail, isWorkbench } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -601,6 +601,14 @@ export function buildPlan(project: YardProject): BuildPlan {
                     (project.prompt ?? "").toLowerCase(),
                   )
                 ? "open shelving"
+              : isWorkbench((project.prompt ?? "").toLowerCase()) || /Workbench/i.test(project.name)
+                ? "workbench"
+              : isPegboard((project.prompt ?? "").toLowerCase()) || /Pegboard/i.test(project.name)
+                ? "pegboard"
+              : isToolRail((project.prompt ?? "").toLowerCase()) || /Tool rail/i.test(project.name)
+                ? "tool rail"
+              : isLumberRack((project.prompt ?? "").toLowerCase()) || /Lumber rack/i.test(project.name)
+                ? "lumber rack"
               : (project.fitted?.program ?? "closet")
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",

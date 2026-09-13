@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isKitchenIsland, isOpenKitchenShelving, isPlatformBed, isPrepTable, isSofaConsoleTable, wantsPrintHold } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isKitchenIsland, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1513,6 +1513,87 @@ if (nightProtectPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
 }
 if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   failHonesty("drawer side explode protect", nightProtectPlan.cutList.map((c) => c.name));
+}
+
+
+// Batch26 garage/workbench class pack — universal F/F/P stems + shelf/arms/hooks/adult tread.
+{
+  const gPrompts: Array<[string, string]> = [
+    ["house: workbench 60″ wide × 24″ deep × 36″ tall", "Workbench"],
+    ["house: workbench 72″ wide × 30″ deep × 34″ tall with one lower shelf", "Workbench"],
+    ["house: pegboard wall panel fitted to a 48×36 opening", "Pegboard"],
+    ["house: tool rail spanning 48″ with six hooks, clear wall mount; PDF states mount height", "Tool rail"],
+    ["house: lumber rack 48″ wide × 24″ deep × 72″ tall with four arms", "Lumber rack"],
+  ];
+  for (const [prompt, stem] of gPrompts) {
+    if (identityTitleStem(prompt.toLowerCase()) !== stem) {
+      failHonesty(`garage identityTitleStem(${prompt})`, identityTitleStem(prompt.toLowerCase()));
+    }
+  }
+  if (!isWorkbench("workbench 60x24x36")) failHonesty("isWorkbench");
+  if (!isPegboard("pegboard wall panel fitted to a 48×36 opening")) failHonesty("isPegboard");
+  if (!isToolRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("isToolRail");
+  if (!isLumberRack("lumber rack 48 wide × 24 deep × 72 tall with four arms")) failHonesty("isLumberRack");
+
+  const wb = generateFromPrompt("house: workbench 72″ wide × 30″ deep × 34″ tall with one lower shelf");
+  if (!/^Workbench/i.test(wb.name)) failHonesty("workbench title", wb.name);
+  if (/Storage/i.test(wb.name)) failHonesty("workbench Storage", wb.name);
+  const wbShelves = wb.panels.filter((p) => p.type === "shelf" || /shelf/i.test(p.name));
+  if (wbShelves.length !== 1) failHonesty("workbench one lower shelf", wbShelves.map((p) => p.name));
+
+  const peg = generateFromPrompt("house: pegboard wall panel fitted to a 48×36 opening");
+  if (!/Pegboard/i.test(peg.name)) failHonesty("pegboard title", peg.name);
+  if (/Yard House|^House\b/i.test(peg.name)) failHonesty("pegboard House steal", peg.name);
+  if (Math.abs(peg.overall.width - 48) > 1.2 || Math.abs(peg.overall.height - 36) > 1.2) {
+    failHonesty("pegboard fitted 48×36", peg.overall);
+  }
+
+  const rail = generateFromPrompt(
+    "house: tool rail spanning 48″ with six hooks, clear wall mount; PDF states mount height",
+  );
+  if (!/Tool rail/i.test(rail.name)) failHonesty("tool rail title", rail.name);
+  if (/Bridge|Key rail|Coat rail/i.test(rail.name)) failHonesty("tool rail portal/bridge steal", rail.name);
+  const railBlob = [rail.name, ...(rail.notes ?? [])].join("\n");
+  if (!/6\s*hooks|six hooks/i.test(railBlob) && !/6 hooks/i.test(rail.name)) {
+    failHonesty("tool rail six hooks", railBlob.slice(0, 400));
+  }
+  if (!/clear wall mount|wall[- ]mount/i.test(railBlob)) failHonesty("tool rail clear wall mount", railBlob.slice(0, 400));
+  if (!/mount height|PDF states mount height/i.test(railBlob)) failHonesty("tool rail PDF mount height", railBlob.slice(0, 400));
+
+  const stool = generateFromPrompt(
+    "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+  );
+  if (!/Step stool/i.test(stool.name)) failHonesty("shop stool title", stool.name);
+  const stoolPlan = buildPlan(stool);
+  const stoolText = [
+    stool.name,
+    ...(stool.notes ?? []),
+    ...stoolPlan.steps.map((s) => `${s.title} ${s.description}`),
+  ].join("\n");
+  if (!/adult stands/i.test(stoolText)) failHonesty("adult tread densify", stoolText.slice(0, 600));
+  if (/kid stands/i.test(stoolText) && !/adult stands/i.test(stoolText)) {
+    failHonesty("kid-only densify on adult prompt", stoolText.slice(0, 400));
+  }
+
+  const lumber = generateFromPrompt("house: lumber rack 48″ wide × 24″ deep × 72″ tall with four arms");
+  if (!/Lumber rack/i.test(lumber.name)) failHonesty("lumber rack title", lumber.name);
+  if (/Storage unit/i.test(lumber.name)) failHonesty("lumber Storage unit", lumber.name);
+  const arms = lumber.panels.filter((p) => /^Arm\b/i.test(p.name));
+  if (arms.length < 4) failHonesty("lumber four arms", lumber.panels.map((p) => p.name));
+  if (Math.abs(lumber.overall.width - 48) > 1.2 || Math.abs(lumber.overall.depth - 24) > 1.2) {
+    failHonesty("lumber dims W/D", lumber.overall);
+  }
+
+  // Protect kitchen-work + Andersen + drawer explode from batch25
+  if (!isPrepTable("prep table 48x24x36")) failHonesty("protect isPrepTable");
+  if (!isKitchenIsland("kitchen island 60x36x36")) failHonesty("protect isKitchenIsland");
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO — freeze green");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("Andersen freeze protect", andersen.name);
+  const nightProtect = generateFromPrompt("nightstand 20 wide 24 tall 16 deep");
+  const nightProtectPlan = buildPlan(nightProtect);
+  if (nightProtectPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+    failHonesty("drawer-box explode regress batch26", nightProtectPlan.cutList.map((c) => c.name));
+  }
 }
 
 console.log("SOFT-TRUST OK", {

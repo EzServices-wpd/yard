@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -79,9 +79,14 @@ function isNotHouse(lower: string) {
   }
   if (/birdhouse/.test(lower)) return true;
   if (/planter|raised (garden )?bed|garden box/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return true;
-  // Bridge spans only — a shelf/rail spanning a door portal stays house hung-open.
-  if (/bridge|viaduct|overpass|trestle/.test(lower)) return true;
-  if (/(?:\bspan\b|spanning)/.test(lower) && !/door\s*portal|portal|doorway|door opening|wall\s*span/.test(lower)) {
+  // Bridge spans only — a shelf/rail spanning a door portal or wall-mount tool rail stays house.
+  if (/bridge|viaduct|overpass|trestle/.test(lower) && !/tool\s*rail|pegboard|lumber\s*rack/.test(lower)) return true;
+  if (
+    /(?:\bspan\b|spanning)/.test(lower) &&
+    !/door\s*portal|portal|doorway|door opening|wall\s*span|tool\s*rail|wall\s*mount|clear\s*wall|hooks?|pegboard|peg\s*board|lumber\s*rack/.test(
+      lower,
+    )
+  ) {
     return true;
   }
   return false;
@@ -254,6 +259,39 @@ export function towelPortalWantsHooks(lower: string) {
   return isTowelPortalRail(lower) && /\bhooks?\b|\bpegs?\b/.test(lower);
 }
 
+
+/** Workbench — shop work top; positive Workbench stem (not Desk-only / Storage). */
+export function isWorkbench(lower: string) {
+  return /workbench|work\s*bench/.test(lower);
+}
+
+/** Pegboard wall panel fitted to an opening — panel anatomy, never naked House wire. */
+export function isPegboard(lower: string) {
+  if (/pegboard|peg\s*board/.test(lower)) return true;
+  if (/wall\s*panel/.test(lower) && /peg|tool\s*wall|fitted/.test(lower)) return true;
+  return false;
+}
+
+/**
+ * Tool rail — wall-mounted hook rail for tools (clear wall mount / span).
+ * Never Bridge, never key/coat portal steal when tool rail is named.
+ */
+export function isToolRail(lower: string) {
+  if (/tool\s*rail/.test(lower)) return true;
+  if (/hook\s*rail|peg\s*rail/.test(lower) && /tool|wall\s*mount|clear\s*wall|spanning/.test(lower) && !/coat|key|towel|shoe/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/** Lumber rack — arms hold stock; never naked Storage unit. */
+export function isLumberRack(lower: string) {
+  if (/lumber\s*rack|timber\s*rack|pipe\s*arm/.test(lower)) return true;
+  if (/\brack\b/.test(lower) && /lumber|timber/.test(lower)) return true;
+  if (/\barms?\b/.test(lower) && /lumber|timber|rack/.test(lower)) return true;
+  return false;
+}
+
 /** Door portal / doorway / door opening envelope (fitted hang — not a garden arch). */
 export function isDoorPortal(lower: string) {
   if (/door\s*portal|portal|doorway|door opening/.test(lower)) return true;
@@ -284,6 +322,8 @@ export function isDoorPortal(lower: string) {
  */
 export function isPortalHookRail(lower: string) {
   if (!isDoorPortal(lower)) return false;
+  // Tool rail is clear wall-mount shop class — never key/coat portal steal.
+  if (isToolRail(lower)) return false;
   if (isShoePortalRail(lower) || isShoePortalCubbies(lower) || isTowelPortalRail(lower)) return false;
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) return true;
   if (/hook|peg/.test(lower) && /rail|rack|board/.test(lower)) return true;
@@ -528,8 +568,13 @@ export function identityTitleStem(lower: string): string | null {
     if (/entry\s*console/.test(lower)) return "Entry console";
     return "Console table";
   }
+  // Garage / shop class — positive stems before Desk / Storage / portal steals.
+  if (isWorkbench(lower)) return "Workbench";
+  if (isPegboard(lower)) return "Pegboard";
+  if (isToolRail(lower)) return "Tool rail";
+  if (isLumberRack(lower)) return "Lumber rack";
   // Desk / vanity work surfaces win over a trailing "media shelf" add-on.
-  if (/\bdesk\b|workbench|work table/.test(lower)) return "Desk";
+  if (/\bdesk\b|work table/.test(lower)) return "Desk";
   if (/\bvanity\b/.test(lower)) return "Vanity";
   // Chest / File cabinet — never naked Storage unit (medicine chest stays Medicine cabinet via hung path).
   if (/file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)) return "File cabinet";
@@ -653,7 +698,11 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isShoePortalRail(lower) &&
     !isShoePortalCubbies(lower) &&
     !isPortalHookRail(lower) &&
-    !isPortalSpanShelf(lower)
+    !isPortalSpanShelf(lower) &&
+    !isPegboard(lower) &&
+    !isToolRail(lower) &&
+    !isLumberRack(lower) &&
+    !isWorkbench(lower)
   ) {
     return null;
   }
@@ -686,7 +735,9 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isShoePortalCubbies(lower) ||
       isPortalHookRail(lower) ||
       isPortalSpanShelf(lower) ||
-      isBedsideShelf(lower));
+      isBedsideShelf(lower) ||
+      isPegboard(lower) ||
+      isToolRail(lower));
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
 
@@ -700,7 +751,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/coat/.test(lower) && /rack|rail|rod|hook|peg/.test(lower)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower)) ||
     isPortalHookRail(lower) ||
-    isTowelPortalRail(lower);
+    isTowelPortalRail(lower) ||
+    isToolRail(lower);
   const use: HouseUse = sit ? "sit" : work ? "work" : hangUse ? "hang" : "store";
 
   const door =
@@ -720,7 +772,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isBunkBed(lower) || isLoftBed(lower)) family = "bunk";
   else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
-  else if (/headboard/.test(lower)) family = "slab";
+  else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
+  else if (isToolRail(lower)) family = "hung-open";
   // Fold-down is a hung board in a shallow cabinet — not a freestanding table,
   // even if someone said "fold-down table". "Laundry folding table" stays table
   // because isFoldDown requires fold-down / drop-down, not "folding".
@@ -757,7 +810,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (
     /drawer/.test(lower) ||
     program === "vanity" ||
-    program === "desk" ||
+    (program === "desk" && !isWorkbench(lower)) ||
+    (isWorkbench(lower) && /drawer/.test(lower)) ||
     (/nightstand/.test(lower) && !isBedsideShelf(lower)) ||
     (/bedside/.test(lower) && !isBedsideShelf(lower)) ||
     /dresser|hutch/.test(lower)
@@ -769,7 +823,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     /hook|peg rail|coat\s*rail|coat\s*rod/.test(lower) ||
     /hall\s*tree|entry\s*tree/.test(lower) ||
     (/coat/.test(lower) && /bench/.test(lower)) ||
-    isPortalHookRail(lower)
+    isPortalHookRail(lower) ||
+    isToolRail(lower)
   ) {
     add("hooks");
   }
