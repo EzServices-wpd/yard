@@ -13,7 +13,9 @@ import {
   isFigurineHold,
   isHamperHold,
   isUmbrellaHold,
+  isHoseReelHold,
   umbrellaEnvelopeTalk,
+  reelEnvelopeTalk,
   figureHoldEnvelopeTalk,
   basketEnvelopeTalk,
   potHoldDiameterIn,
@@ -1974,8 +1976,11 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       if (isFigurineHold(p)) {
         return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)} — densify keeps the figure envelope (not pot diameter).`;
       }
+      if (isHoseReelHold(p)) {
+        return ` Upright hose reel stand — ${reelEnvelopeTalk(p)}; densify keeps the stand around the reel (not orbit-chrome, not a Storage carcase).`;
+      }
       if (isUmbrellaHold(p)) {
-        return ` Upright umbrella stand — ${umbrellaEnvelopeTalk(p)}; densify keeps the stand around the umbrellas (not Orbit chrome, not a Storage carcase).`;
+        return ` Upright umbrella stand — ${umbrellaEnvelopeTalk(p)}; densify keeps the stand around the umbrellas (not orbit-chrome, not a Storage carcase).`;
       }
       if (isHamperHold(p)) {
         return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)} — densify keeps the stand around the basket envelope (not a Storage carcase of basket size).`;

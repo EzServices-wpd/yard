@@ -6,7 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -104,6 +104,9 @@ export function generateFromPrompt(
     isBedsideShelf(lower);
   if (
     !climbPrimary &&
+    !isPorchSwingFrame(lower) &&
+    !isAdirondackChair(lower) &&
+    !/\bchair\b|\bstool\b/.test(lower) &&
     weekendMech !== "launcher" &&
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
@@ -241,6 +244,21 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     const printTalk = /8\s*[×x]\s*10/.test(prompt) ? "8×10 " : "";
     notes.unshift(
       `Tipped lean at ${tipTalk} with a front lip — holds a real ${printTalk}${held}, never a flat decal.`,
+    );
+  }
+  const pl = prompt.toLowerCase();
+  if (isPorchSwingFrame(pl)) {
+    notes.unshift(
+      `Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`,
+    );
+  }
+  if (isAdirondackChair(pl)) {
+    const seatM = pl.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
+    const seat = seatM ? seatM[1] || seatM[2] : null;
+    notes.unshift(
+      seat
+        ? `Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`
+        : `Adirondack chair — outdoor seat family, never Custom closet.`,
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };

@@ -5,7 +5,7 @@
  */
 
 import type { StructureKind } from "./types";
-import { detectHouseFamily, isDoorPortal, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies } from "./family";
+import { detectHouseFamily, isAdirondackChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies } from "./family";
 import { detectWeekendFamily, detectWeekendMech } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
@@ -48,9 +48,24 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/\bladder\b/.test(hay)) return { anatomy: "carcase", kind: "ladder", named: "Ladder" };
   if (/stairs|staircase/.test(hay)) return { anatomy: "carcase", kind: "ladder" };
   if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };
-  if (/planter|raised (garden )?bed|garden box/.test(hay)) return { anatomy: "carcase", kind: "furniture", named: "Planter" };
+  if (isPlanterBox(hay) || /planter|raised (garden )?bed|garden box/.test(hay)) {
+    // Planter on house path uses fitted open-top; anatomy still carcase when craft.
+    if (detectHouseFamily(hay)) return { anatomy: "fitted", kind: "closet", named: "Planter box" };
+    return { anatomy: "carcase", kind: "furniture", named: "Planter box" };
+  }
+  // Porch swing frame — never FITTED seat→Custom closet / Bench steal.
+  if (isPorchSwingFrame(hay)) return { anatomy: "carcase", kind: "frame", named: "Porch swing frame" };
+  // Adirondack / outdoor chair — never FITTED "seat height" → Custom closet.
+  if (isAdirondackChair(hay) || (/\bchair\b|\bstool\b/.test(hay) && !/desk|vanity|\btable\b/.test(hay))) {
+    return {
+      anatomy: "carcase",
+      kind: "furniture",
+      named: isAdirondackChair(hay) ? "Adirondack chair" : "Chair",
+    };
+  }
   if (detectHouseFamily(hay)) return { anatomy: "fitted", kind: "closet" };
   // Weekend mechs (climb step / launcher ramp / device stand) must not be stolen by "shelf" FITTED.
+  // "seat height" on a chair already carved out above — bare seat still FITTED for benches.
   if (
     !detectWeekendMech(hay) &&
     !/step-?up|climb\s+step|rise\s*[×xby]\s*.*run/.test(hay) &&

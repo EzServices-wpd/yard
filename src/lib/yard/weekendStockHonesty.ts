@@ -19,7 +19,9 @@ import {
   wantsPotHold,
   isHamperHold,
   isUmbrellaHold,
+  isHoseReelHold,
   umbrellaEnvelopeTalk,
+  reelEnvelopeTalk,
   potHoldDiameterIn,
   basketEnvelopeWhd,
   basketEnvelopeTalk,
@@ -417,7 +419,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     const dia = potHoldDiameterIn(prompt);
     const basket = isHamperHold(prompt) ? basketEnvelopeWhd(prompt) : null;
     const hold =
-      /plant stand|pot stand|figurine stand|hamper stand|basket stand|umbrella stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|umbrella envelope|umbrellas?|upright/i.test(
+      /plant stand|pot stand|figurine stand|hamper stand|basket stand|umbrella stand|hose reel|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|umbrella envelope|reel envelope|umbrellas?|hose reel|upright/i.test(
         blobAll,
       ) || /holds? (?:a )?real/i.test(blobAll);
     const roles = new Map<string, number>();
@@ -430,7 +432,9 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (!hold) {
       issues.push({
         guard: "anatomy",
-        message: isUmbrellaHold(prompt)
+        message: isHoseReelHold(prompt)
+          ? "Hose reel stand must bind a real upright reel envelope (diameter when typed)."
+          : isUmbrellaHold(prompt)
           ? "Umbrella stand must bind a real upright umbrella envelope (N×N base when typed)."
           : isHamperHold(prompt)
             ? "Hamper stand must bind a real laundry-basket envelope upright (W×D×H when typed)."
@@ -456,6 +460,14 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         issues.push({
           guard: "anatomy",
           message: `Hamper stand must state the ${talk} basket envelope.`,
+        });
+      }
+    } else if (isHoseReelHold(prompt)) {
+      const talk = reelEnvelopeTalk(prompt);
+      if (!/hose\s*reel|reel envelope/i.test(blobAll) || (!/18/.test(blobAll) && !/diameter|dia|envelope|upright/i.test(blobAll))) {
+        issues.push({
+          guard: "anatomy",
+          message: `Hose reel stand must state the ${talk}.`,
         });
       }
     } else if (isUmbrellaHold(prompt)) {

@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isUmbrellaHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, umbrellaEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -99,8 +99,10 @@ const HITS: Hit[] = [
   { re: /bridge|span/, kind: "bridge", name: "Bridge", build: bridgeOps },
   { re: /birdhouse/, kind: "house", name: "Birdhouse", build: houseOps },
   { re: /stairs|staircase/, kind: "ladder", name: "Stairs", build: ladderOps },
-  { re: /planter|raised (garden )?bed|garden box/, kind: "furniture", name: "Planter", build: benchOps },
+  { re: /planter|raised (garden )?bed|garden box/, kind: "furniture", name: "Planter box", build: benchOps },
   { re: /ramp|half-?pipe/, kind: "custom", name: "Ramp", build: frameOps },
+  { re: /porch\s*swing|swing\s*frame/, kind: "frame", name: "Porch swing frame", build: swingOps },
+  { re: /adirondack/, kind: "furniture", name: "Adirondack chair", build: chairOps },
   { re: /cabin|shed|hut|cottage|barn|(?<!opera )house/, kind: "house", name: "House", build: houseOps },
   { re: /wall|fence|palisade|barrier/, kind: "wall", name: "Wall", build: wallOps },
   { re: /dome|igloo|sphere|globe/, kind: "dome", name: "Dome", build: domeOps },
@@ -308,8 +310,10 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             ]
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
-              isUmbrellaHold(prompt)
-                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not Orbit chrome.`
+              isHoseReelHold(prompt)
+                ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — densify keeps the stand around the upright hose reel (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                : isUmbrellaHold(prompt)
+                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not orbit-chrome.`
                 : isHamperHold(prompt)
                 ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
                 : `${hit.name} · upright pot envelope` +

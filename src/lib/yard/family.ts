@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -67,6 +67,7 @@ function isNotHouse(lower: string) {
   ) {
     return true;
   }
+  if (isPorchSwingFrame(lower)) return true;
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
   // Climb step-shelf on a linen/closet stays house — not a free ladder eject.
   if (
@@ -78,7 +79,7 @@ function isNotHouse(lower: string) {
     return true;
   }
   if (/birdhouse/.test(lower)) return true;
-  if (/planter|raised (garden )?bed|garden box/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return true;
+  // Planter box stays house (open-top fitted) — not craft Wire skeleton.
   // Bridge spans only — a shelf/rail spanning a door portal or wall-mount tool rail stays house.
   if (/bridge|viaduct|overpass|trestle/.test(lower) && !/tool\s*rail|pegboard|lumber\s*rack/.test(lower)) return true;
   if (
@@ -176,6 +177,20 @@ export function tableTopShape(lower: string): TableTopShape | null {
   if (/round|circular|diameter|\bdia\b/.test(lower)) return "round";
   if (/\bsquare\b/.test(lower)) return "square";
   if (/\brect(?:angle)?\b|\brectangular\b/.test(lower)) return "rect";
+  // Outdoor side table typed N×N×H (equal plan axes) → square footprint.
+  if (isOutdoorSideTable(lower)) {
+    const m = lower.replace(/[″"]/g, '"').match(
+      /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*[×xby]\s*(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*[×xby]\s*(\d+(?:\.\d+)?)/i,
+    );
+    if (m) {
+      const a = parseFloat(m[1]);
+      const b = parseFloat(m[2]);
+      const c = parseFloat(m[3]);
+      // 20×20×18 tall → square; 20×18×20 W×H×D display still square plan when W=D after parse.
+      if (Math.abs(a - b) < 0.2 && c > 0) return "square";
+      if (Math.abs(a - c) < 0.2 && b > 0) return "square";
+    }
+  }
   return null;
 }
 
@@ -273,6 +288,33 @@ export function isPottingBench(lower: string) {
 /** Standing shop tops (workbench + potting) — not sit benches, not Desk knee pedestals. */
 export function isStandingShopTop(lower: string) {
   return isWorkbench(lower) || isPottingBench(lower);
+}
+
+/** Porch swing frame — hanging seat / clear swing frame; never naked Bench / Storage. */
+export function isPorchSwingFrame(lower: string) {
+  if (/porch\s*swing|swing\s*frame/.test(lower)) return true;
+  if (/\bswing\b/.test(lower) && /(?:hanging\s*seat|clear\s*swing|frame)/.test(lower)) return true;
+  return false;
+}
+
+/** Planter box / garden box / raised bed — open-top box; honor typed W×D×H. */
+export function isPlanterBox(lower: string) {
+  if (/plant\s*stand|pot\s*stand/.test(lower)) return false;
+  return /planter(?:\s*box)?|raised\s*(?:garden\s*)?bed|garden\s*box|flower\s*bed/.test(lower);
+}
+
+/** Adirondack chair — outdoor seat family; never Custom closet steal via "seat height". */
+export function isAdirondackChair(lower: string) {
+  return /adirondack/i.test(lower);
+}
+
+/** Outdoor side table — positive Outdoor side table stem (not naked Table). */
+export function isOutdoorSideTable(lower: string) {
+  if (/outdoor\s*side\s*table|side\s*table/.test(lower)) return true;
+  if (/outdoor/.test(lower) && /\btable\b/.test(lower) && !/prep|folding|sofa|console|coffee|dining|work\s*table/.test(lower)) {
+    return true;
+  }
+  return false;
 }
 
 /** Pegboard wall panel fitted to an opening — panel anatomy, never naked House wire. */
@@ -684,6 +726,11 @@ export function identityTitleStem(lower: string): string | null {
   if (isIroningWallMount(lower)) return "Ironing board wall mount";
   // Potting / outdoor work top — before sit Bench steal (bench noun in the name).
   if (isPottingBench(lower)) return "Potting bench";
+  // Outdoor / porch class — positive stems before Bench / Table / Closet steals.
+  if (isPorchSwingFrame(lower)) return "Porch swing frame";
+  if (isPlanterBox(lower)) return "Planter box";
+  if (isAdirondackChair(lower)) return "Adirondack chair";
+  if (isOutdoorSideTable(lower)) return "Outdoor side table";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
   if (isWorkbench(lower)) return "Workbench";
   if (isPegboard(lower)) return "Pegboard";
@@ -756,6 +803,8 @@ export function mediaIdentityLabel(lower: string): string | null {
 }
 
 function programFromNoun(lower: string): FittedProgram {
+  if (isPlanterBox(lower)) return "storage";
+  if (isOutdoorSideTable(lower)) return "table";
   if (isPottingBench(lower) || /\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicine(lower) || isOverToilet(lower) || isSpiceRack(lower) || isWineRack(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
@@ -829,6 +878,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isDryingRack(lower) &&
     !isUtilityShelf(lower) &&
     !isIroningWallMount(lower) &&
+    !isPlanterBox(lower) &&
+    !isOutdoorSideTable(lower) &&
     !/ironing/.test(lower)
   ) {
     return null;
@@ -874,7 +925,12 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const sit =
     isDaybed(lower) ||
-    ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) && !/workbench/.test(lower) && !isPottingBench(lower) && !isMudroomCubbyWall(lower)));
+    ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) &&
+      !/workbench/.test(lower) &&
+      !isPottingBench(lower) &&
+      !isPorchSwingFrame(lower) &&
+      !isAdirondackChair(lower) &&
+      !isMudroomCubbyWall(lower)));
   const work =
     (isPottingBench(lower) ||
       (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&

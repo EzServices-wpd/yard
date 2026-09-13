@@ -48,9 +48,9 @@ export function parseSize(lower: string): { height: number; width: number; depth
   if (ftD) depth = parseFloat(ftD[1]) * 12;
   else if (inD) depth = parseFloat(inD[1]);
 
-  const bareD = dimText.match(/(\d+(?:\.\d+)?)\s*(?:deep|depth)\b/);
-  const bareH = dimText.match(/(\d+(?:\.\d+)?)\s*(?:tall|high|height)\b/);
-  const bareW = dimText.match(/(\d+(?:\.\d+)?)\s*(?:wide|width)\b/);
+  const bareD = dimText.match(/(\d+(?:\.\d+)?)\s*["″']?\s*(?:deep|depth)\b/);
+  const bareH = dimText.match(/(\d+(?:\.\d+)?)\s*["″']?\s*(?:tall|high|height)\b/);
+  const bareW = dimText.match(/(\d+(?:\.\d+)?)\s*["″']?\s*(?:wide|width)\b/);
   if (bareD && !ftD && !inD) depth = parseFloat(bareD[1]) * ( /ft|foot|feet/.test(bareD[0]) ? 12 : 1);
   if (bareH && !ftTall && !inTall) height = parseFloat(bareH[1]) * ( /ft|foot|feet/.test(bareH[0]) ? 12 : 1);
   if (bareW && !ftW && !inW) width = parseFloat(bareW[1]) * ( /ft|foot|feet/.test(bareW[0]) ? 12 : 1);
@@ -202,8 +202,8 @@ export function hasExplicitSize(prompt: string): boolean {
   const dim = stripLumberStock(lower);
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
-  // Bare labeled dims — same cues parseSize already honors ("24 wide", "72 high", "16 deep").
-  if (/\d+(?:\.\d+)?\s*(?:wide|width|tall|high|height|deep|depth)\b/.test(dim)) return true;
+  // Bare labeled dims — same cues parseSize already honors ("24 wide", "72 high", "16 deep", "60" wide").
+  if (/\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width|tall|high|height|deep|depth)\b/.test(dim)) return true;
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
@@ -255,8 +255,23 @@ export function defaultSizeFor(
       depth: depthTyped ? size.depth : 6,
     };
   }
+  if (explicit && /adirondack|\bchair\b/.test(lower)) {
+    const seatM = lower.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
+    if (seatM) {
+      const seat = parseFloat(seatM[1] || seatM[2]);
+      if (Number.isFinite(seat) && seat > 0) {
+        return {
+          width: size.width !== 24 ? size.width : 22,
+          depth: size.depth !== 24 ? size.depth : 34,
+          height: Math.max(size.height, seat + 16, 32),
+        };
+      }
+    }
+  }
+  if (explicit && /porch\s*swing|swing\s*frame/.test(lower)) return size;
   if (explicit) return size;
   if (kind === "furniture" || /chair|stool/.test(lower)) {
+    if (/adirondack/.test(lower)) return { width: 22, depth: 34, height: 36 };
     if (/chair|stool/.test(lower)) return { width: 18, depth: 16, height: 36 };
     if (/picnic/.test(lower)) return { width: 72, depth: 28, height: 30 };
     if (isTable) return { width: 48, depth: 24, height: 30 };
@@ -386,10 +401,12 @@ export function toProject(
     const typedW = typed.width;
     const mech = detectWeekendMech(prompt);
     // Pot-hold / media-hold: honor typed envelope (pot dia×tall / open laptop+tip), not min-8 pad inflate.
-    if (mech === "pot-hold" || mech === "media-hold") {
+    if (mech === "pot-hold" || mech === "media-hold" || /porch\s*swing|swing\s*frame/.test(prompt.toLowerCase())) {
       width = typed.width;
       height = typed.height;
-      depth = typed.depth;
+      // Swing frame depth soft — keep densified depth when not typed deep.
+      const depthTyped = /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(stripLumberStock(prompt.toLowerCase()));
+      if (depthTyped || mech === "pot-hold" || mech === "media-hold") depth = typed.depth;
     } else if (typedH && Math.abs(spanY - typedH) <= 1.25) {
       height = typedH;
     } else if (kind === "frame" || kind === "ladder") {

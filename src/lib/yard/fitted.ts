@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBunkBed, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -197,7 +197,7 @@ function spokenRungCount(text: string): number | null {
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|coat\s*(?:and|&)?\s*cubb|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -221,6 +221,8 @@ export function looksLikeFitted(prompt: string) {
     isDryingRack(lower) ||
     isUtilityShelf(lower) ||
     isIroningWallMount(lower) ||
+    isPlanterBox(lower) ||
+    isOutdoorSideTable(lower) ||
     /ironing/.test(lower)
   ) {
     return true;
@@ -249,6 +251,7 @@ export function looksLikeFitted(prompt: string) {
   if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower)) {
     return false;
   }
+  if (isPorchSwingFrame(lower)) return false;
   if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower) && !isPlatformBed(lower)) return false;
   if (detectHouseFamily(prompt)) return true;
   if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
@@ -1073,6 +1076,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Ironing board wall mount"
       : isPottingBench(lower)
         ? "Potting bench"
+      : isPlanterBox(lower)
+        ? "Planter box"
+      : isOutdoorSideTable(lower)
+        ? "Outdoor side table"
       : isWorkbench(lower)
         ? "Workbench"
       : isPegboard(lower)
@@ -3322,6 +3329,42 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+
+  // Planter box — open top (no lid / doors); honor typed W×D×H; never Wire skeleton cube.
+  if (isPlanterBox(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Planter box") {
+    const innerW = W - P * 2;
+    panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+    panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H, P));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
+    const name = `Planter box ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾" plywood.`,
+        `Open top: fill with soil; typed ${W}" wide × ${D}" deep × ${H}" tall. Not a Wire-frame skeleton and not a sealed storage cube.`,
+        "Guidance only — set level outdoors. Drainage holes optional.",
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    };
+  }
 
   const crate = /crate/.test(prompt.toLowerCase());
   if (crate) {

@@ -38,9 +38,9 @@ const LAUNCHER_NOUN =
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
   /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
-/** Plant / pot / hamper / umbrella stand that holds a real pot, laundry basket, or umbrellas upright — envelope + densify, not a Tree / Storage / Orbit silhouette. */
+/** Plant / pot / hamper / umbrella / hose-reel stand that holds a real pot, laundry basket, umbrellas, or hose reel upright — envelope + densify, not a Tree / Storage / Orbit silhouette. */
 const POT_HOLD_NOUN =
-  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)/;
+  /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)|\bhose\s*reel\b.{0,40}(?:stand|upright|envelope|diameter|dia)/;
 
 
 /** Weight-bearing human step (rise/run). Never vehicle incline alone. */
@@ -163,10 +163,11 @@ export function potHoldDiameterIn(prompt: string): number | null {
   }
   const m =
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
-    hay.match(/(?:pot|planter|figurine)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
+    hay.match(/(?:pot|planter|figurine|hose\s*reel|reel)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
     hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
-    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot)?/);
+    hay.match(/holds?\s+a\s+real\s+(?:hose\s*)?reel\s+(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot|hose\s*reel)?/);
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -263,6 +264,26 @@ export function isUmbrellaHold(prompt: string): boolean {
 }
 
 /** Umbrella base envelope talk — prefers typed N×N base upright umbrellas. */
+/** Hose reel stand (same pot-hold mech class) — upright reel envelope, stand hush like umbrella/hamper. */
+export function isHoseReelHold(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return /hose\s*reel/.test(hay);
+}
+
+/** Hose reel envelope talk — prefers typed N″ diameter upright reel. */
+export function reelEnvelopeTalk(prompt: string): string {
+  const hay = looksHay(prompt);
+  const dia =
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:diameter|dia\b|ø)/) ||
+    hay.match(/(?:diameter|dia\b|ø)\s*(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:hose\s*)?reel/) ||
+    hay.match(/holds?\s+a\s+real\s+(?:hose\s*)?reel\s+(\d+(?:\.\d+)?)\s*"?/);
+  if (dia) return `${dia[1]}″ diameter upright hose reel envelope`;
+  const fromPot = potHoldDiameterIn(prompt);
+  if (fromPot != null) return `${fromPot}″ diameter upright hose reel envelope`;
+  return "typed diameter upright hose reel envelope";
+}
+
 export function umbrellaEnvelopeTalk(prompt: string): string {
   const hay = looksHay(prompt);
   const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
@@ -414,7 +435,7 @@ const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
 const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
 
-const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
+const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|two-?\s*step|three-?\s*step/;
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
@@ -550,7 +571,9 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         return {
           family: "frame",
           kind: "frame",
-          name: /umbrella/.test(hay)
+          name: /hose\s*reel/.test(hay)
+            ? "Hose reel stand"
+            : /umbrella/.test(hay)
             ? "Umbrella stand"
             : /hamper|laundry\s*basket|basket\s*stand/.test(hay)
               ? "Hamper stand"

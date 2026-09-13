@@ -2,8 +2,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
-import { detectWeekendFamily, detectWeekendMech, isUmbrellaHold, wantsPotHold } from "../src/lib/yard/weekendFamily";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBootTrayBench, isButcherCart, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isKitchenIsland, isLaundrySorter, isLeashRail, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, reelEnvelopeTalk, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -1856,6 +1856,97 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   const mud = generateFromPrompt("mudroom bench 48 wide");
   if (!/mudroom bench/i.test(mud.name)) failHonesty("protect mudroom bench after potting", mud.name);
 }
+
+
+// Batch 29 outdoor/porch class — remaining after potting standing shop-top (6abbf00).
+{
+  if (!isPorchSwingFrame("porch swing frame 60 wide × 48 tall for a hanging seat, clear swing")) {
+    failHonesty("isPorchSwingFrame");
+  }
+  if (identityTitleStem("porch swing frame 60 wide hanging seat clear swing") !== "Porch swing frame") {
+    failHonesty("Porch swing frame stem", identityTitleStem("porch swing frame 60 wide hanging seat clear swing") || "");
+  }
+  const swing = generateFromPrompt(
+    "house: porch swing frame 60″ wide × 48″ tall for a hanging seat, clear swing",
+  );
+  if (!/Porch swing frame/i.test(swing.name)) failHonesty("porch swing title", swing.name);
+  if (/^Yard Bench|^Bench\b/i.test(swing.name) && !/swing/i.test(swing.name)) {
+    failHonesty("porch swing Bench steal", swing.name);
+  }
+  const swingBlob = `${swing.name}\n${swing.notes.join("\n")}`;
+  if (!/clear swing|hanging seat/i.test(swingBlob)) failHonesty("porch swing densify", swingBlob.slice(0, 400));
+
+  if (!isPlanterBox("planter box 24 wide × 12 deep × 18 tall")) failHonesty("isPlanterBox");
+  if (identityTitleStem("planter box 24x12x18") !== "Planter box") {
+    failHonesty("Planter box stem", identityTitleStem("planter box 24x12x18") || "");
+  }
+  const planter = generateFromPrompt("house: planter box 24″ wide × 12″ deep × 18″ tall");
+  if (!/Planter box/i.test(planter.name)) failHonesty("planter title", planter.name);
+  const pU = planter.fitted?.unit ?? planter.overall;
+  if (!pU || Math.abs(pU.width - 24) > 1.2 || Math.abs(pU.depth - 12) > 1.2 || Math.abs(pU.height - 18) > 1.2) {
+    failHonesty("planter dims", JSON.stringify(pU));
+  }
+  const planterBlob = `${planter.name}\n${(planter.notes || []).join("\n")}`;
+  if (!/open top/i.test(planterBlob)) failHonesty("planter open top", planterBlob.slice(0, 400));
+  if (/Wire frame|Skeleton only/i.test(planterBlob) && /25/.test(planterBlob)) {
+    failHonesty("planter wire skeleton", planterBlob.slice(0, 300));
+  }
+
+  if (!isAdirondackChair("adirondack chair with 16 seat height")) failHonesty("isAdirondackChair");
+  if (identityTitleStem("adirondack chair 16 seat height") !== "Adirondack chair") {
+    failHonesty("Adirondack stem", identityTitleStem("adirondack chair 16 seat height") || "");
+  }
+  const adi = generateFromPrompt("house: Adirondack chair with 16″ seat height");
+  if (!/Adirondack/i.test(adi.name)) failHonesty("adirondack title", adi.name);
+  if (/Custom closet|Closet/i.test(adi.name)) failHonesty("adirondack closet steal", adi.name);
+  const adiBlob = `${adi.name}\n${(adi.notes || []).join("\n")}`;
+  if (!/16/.test(adiBlob) || !/seat/i.test(adiBlob)) failHonesty("adirondack seat height", adiBlob.slice(0, 400));
+
+  if (!isHoseReelHold("pine hose reel stand that holds a real hose reel 18 diameter upright")) {
+    failHonesty("isHoseReelHold");
+  }
+  if (detectWeekendMech("weekend craft: pine hose reel stand 18 diameter upright") !== "pot-hold") {
+    failHonesty("hose reel pot-hold mech");
+  }
+  const reelTalk = reelEnvelopeTalk("pine hose reel stand that holds a real hose reel 18″ diameter upright");
+  if (!/18/.test(reelTalk) || !/reel/i.test(reelTalk)) failHonesty("reelEnvelopeTalk", reelTalk);
+  const hose = generateFromPrompt(
+    "weekend craft: pine hose reel stand that holds a real hose reel 18″ diameter upright",
+  );
+  if (!/Hose reel stand/i.test(hose.name)) failHonesty("hose reel title", hose.name);
+  const hoseBlob = `${hose.name}\n${(hose.notes || []).join("\n")}`;
+  if (!/18/.test(hoseBlob) || !/reel envelope|diameter upright|upright hose reel/i.test(hoseBlob)) {
+    failHonesty("hose reel envelope densify", hoseBlob.slice(0, 500));
+  }
+  if (!wantsPotHold("pine hose reel stand holds a real hose reel 18 diameter upright")) {
+    failHonesty("hose wantsPotHold");
+  }
+
+  if (!isOutdoorSideTable("outdoor side table 20 × 20 × 18 tall")) failHonesty("isOutdoorSideTable");
+  if (identityTitleStem("outdoor side table 20x20x18") !== "Outdoor side table") {
+    failHonesty("Outdoor side table stem", identityTitleStem("outdoor side table 20x20x18") || "");
+  }
+  const ost = generateFromPrompt("house: outdoor side table 20″ × 20″ × 18″ tall");
+  if (!/Outdoor side table|Side table/i.test(ost.name)) failHonesty("outdoor side table title", ost.name);
+  if (/^Table\b/i.test(ost.name.trim()) && !/Outdoor|Side/i.test(ost.name)) {
+    failHonesty("naked Table steal", ost.name);
+  }
+
+  // Protect: potting still standing shop-top; bare workbench no default shelf.
+  const pot = generateFromPrompt(
+    "house: potting bench 48″ wide × 24″ deep × 36″ tall with one lower shelf",
+  );
+  if (!/^Potting bench/i.test(pot.name)) failHonesty("potting still Potting bench", pot.name);
+  if ((pot.fitted?.unit?.shelfCount ?? 0) !== 1) {
+    failHonesty("potting one shelf", String(pot.fitted?.unit?.shelfCount));
+  }
+  const bareWb = generateFromPrompt("house: workbench 60 wide × 24 deep × 36 tall");
+  if (!/Workbench/i.test(bareWb.name)) failHonesty("bare workbench title", bareWb.name);
+  if ((bareWb.fitted?.unit?.shelfCount ?? 0) !== 0) {
+    failHonesty("bare workbench no default shelf", String(bareWb.fitted?.unit?.shelfCount));
+  }
+}
+
 
   // Protect garage / kitchen-work / Andersen / bare workbench / desk knee
   if (!isWorkbench("workbench 60x24x36")) failHonesty("protect isWorkbench batch27");

@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -12,13 +12,14 @@ import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
-  /closet|desk|vanity|table|prep\s*table|folding\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|sorter|drying\s*rack|utility\s*shel/i;
+  /closet|desk|vanity|table|prep\s*table|folding\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|sorter|drying\s*rack|utility\s*shel|planter|outdoor\s*side\s*table|side\s*table/i;
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;
   const lower = prompt.toLowerCase();
   // Climb/step stools: "reach a shelf" must not house-steal into Bench after densify.
   if (climbIdentityLabel(lower)) return false;
+  if (isPorchSwingFrame(lower) || isAdirondackChair(lower)) return false;
   // Launcher / media-hold weekend mechs stay craft — linen+climb step-shelf still house via family.
   const mech = detectWeekendMech(prompt);
   // Universal weekend mechs stay craft even when a house noun overlaps (ledge, ramp, plane).
