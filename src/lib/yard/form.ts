@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, isHamperHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
 import {
   houseOps,
@@ -252,6 +252,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const climbSteps = climbStepCount(prompt);
   const potDia = potHoldDiameterIn(prompt);
   const potH = potHoldHeightIn(prompt);
+  const basketEnv = basketEnvelopeWhd(prompt);
+  const standDia =
+    isHamperHold(prompt) && basketEnv
+      ? Math.max(basketEnv.w, basketEnv.d)
+      : potDia;
   const marbleDia = marbleDiameterIn(prompt);
   const frameOpsFor =
     mech === "climb"
@@ -263,7 +268,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? rampLauncherOps(size, rampLen)
           : launcherFrameOps(size)
         : mech === "pot-hold" || wantsPotHold(prompt)
-          ? plantStandOps(size, potDia)
+          ? plantStandOps(size, standDia)
           : mech === "media-hold" && wantsMediaTipHold(prompt)
             ? mediaHoldStandOps(size, tip)
             : frameOps(size);
@@ -303,19 +308,21 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             ]
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
-              `${hit.name} · upright pot envelope` +
-                (potDia != null && potH != null
-                    ? /figurine/.test(prompt.toLowerCase())
-                      ? ` for a real figurine ${potDia}" × ${potDia}" base × ${potH}" tall upright`
-                      : ` for a real ${potDia}" diameter × ${potH}" tall pot`
-                    : potDia != null
+              isHamperHold(prompt)
+                ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
+                : `${hit.name} · upright pot envelope` +
+                  (potDia != null && potH != null
                       ? /figurine/.test(prompt.toLowerCase())
-                        ? ` for a real figurine ~${potDia}" base`
-                        : ` for a real ${potDia}" pot`
-                      : /figurine/.test(prompt.toLowerCase())
-                        ? " for a real figurine"
-                        : " for a real pot") +
-                ` — densify keeps the whole stand at the named stock; ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}, not a Tree silhouette.`,
+                        ? ` for a real figurine ${potDia}" × ${potDia}" base × ${potH}" tall upright`
+                        : ` for a real ${potDia}" diameter × ${potH}" tall pot`
+                      : potDia != null
+                        ? /figurine/.test(prompt.toLowerCase())
+                          ? ` for a real figurine ~${potDia}" base`
+                          : ` for a real ${potDia}" pot`
+                        : /figurine/.test(prompt.toLowerCase())
+                          ? " for a real figurine"
+                          : " for a real pot") +
+                  ` — densify keeps the whole stand at the named stock; ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}, not a Tree silhouette.`,
             ]
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)

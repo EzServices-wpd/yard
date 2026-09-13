@@ -17,7 +17,10 @@ import {
   isMediaDeviceStand,
   wantsMediaTipHold,
   wantsPotHold,
+  isHamperHold,
   potHoldDiameterIn,
+  basketEnvelopeWhd,
+  basketEnvelopeTalk,
   launcherRampLengthIn,
   mediaHoldTipDeg,
 } from "./weekendFamily";
@@ -410,9 +413,11 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
   }
   if (mech === "pot-hold" || wantsPotHold(prompt)) {
     const dia = potHoldDiameterIn(prompt);
+    const basket = isHamperHold(prompt) ? basketEnvelopeWhd(prompt) : null;
     const hold =
-      /plant stand|pot stand|figurine stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|upright/i.test(blobAll) ||
-      /holds? (?:a )?real/i.test(blobAll);
+      /plant stand|pot stand|figurine stand|hamper stand|basket stand|real (?:\d+\"?\s*)?\s*pot|figurine|pot envelope|basket envelope|laundry basket|upright/i.test(
+        blobAll,
+      ) || /holds? (?:a )?real/i.test(blobAll);
     const roles = new Map<string, number>();
     for (const i of project.instances) {
       const k = i.role || "?";
@@ -423,16 +428,33 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     if (!hold) {
       issues.push({
         guard: "anatomy",
-        message: "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
+        message: isHamperHold(prompt)
+          ? "Hamper stand must bind a real laundry-basket envelope upright (W×D×H when typed)."
+          : "Plant / pot stand must bind a real pot envelope upright (diameter × tall when typed).",
       });
     }
     if (project.instances.length && !hasStand) {
       issues.push({
         guard: "anatomy",
-        message: "Plant / pot / figurine stand needs legs + deck/ring after densify.",
+        message: "Plant / pot / figurine / hamper stand needs legs + deck/ring after densify.",
       });
     }
-    if (dia != null && !new RegExp(String(dia)).test(blobAll)) {
+    if (basket != null) {
+      const talk = basketEnvelopeTalk(prompt);
+      if (
+        !(
+          blobAll.includes(String(basket.w)) &&
+          blobAll.includes(String(basket.d)) &&
+          blobAll.includes(String(basket.h))
+        ) &&
+        !/18\s*[″"']?\s*[×x]\s*14/.test(blobAll)
+      ) {
+        issues.push({
+          guard: "anatomy",
+          message: `Hamper stand must state the ${talk} basket envelope.`,
+        });
+      }
+    } else if (dia != null && !new RegExp(String(dia)).test(blobAll)) {
       issues.push({
         guard: "anatomy",
         message: `Plant / pot stand must state the ${dia}" pot envelope.`,

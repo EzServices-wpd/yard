@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isLumberRack, isPegboard, isPlatformBed, isToolRail, isWorkbench } from "./family";
+import { isBedsideShelf, isDryingRack, isFoldingTable, isIroningWallMount, isLaundrySorter, isLumberRack, isPegboard, isPlatformBed, isToolRail, isUtilityShelf, isWorkbench } from "./family";
 import { honestWeekendPlan, namedStockDisplayName } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -609,6 +609,16 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "tool rail"
               : isLumberRack((project.prompt ?? "").toLowerCase()) || /Lumber rack/i.test(project.name)
                 ? "lumber rack"
+              : isFoldingTable((project.prompt ?? "").toLowerCase()) || /Folding table/i.test(project.name)
+                ? "folding table"
+              : isLaundrySorter((project.prompt ?? "").toLowerCase()) || /Laundry sorter/i.test(project.name)
+                ? "laundry sorter"
+              : isDryingRack((project.prompt ?? "").toLowerCase()) || /Drying rack/i.test(project.name)
+                ? "drying rack"
+              : isUtilityShelf((project.prompt ?? "").toLowerCase()) || /Utility shelf/i.test(project.name)
+                ? "utility shelf"
+              : isIroningWallMount((project.prompt ?? "").toLowerCase()) || /Ironing board wall mount/i.test(project.name)
+                ? "ironing board wall mount"
               : (project.fitted?.program ?? "closet")
         }.`,
         suggestion: "Measure is live. Change W × H × D to refit.",

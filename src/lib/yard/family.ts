@@ -48,7 +48,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -292,8 +292,57 @@ export function isLumberRack(lower: string) {
   return false;
 }
 
+/** Laundry sorter — N real bins; never naked Storage unit. */
+export function isLaundrySorter(lower: string) {
+  if (/laundry\s*sorter/.test(lower)) return true;
+  if (/\bsorter\b/.test(lower) && /laundry|clothes|wash|bin/.test(lower)) return true;
+  if (/laundry/.test(lower) && /\bbins?\b/.test(lower) && /triple|three|\b3\b|sorter/.test(lower)) return true;
+  return false;
+}
+
+/** Folding table — freestanding work top; never naked Table / Storage / fold-down cabinet. */
+export function isFoldingTable(lower: string) {
+  if (isFoldDown(lower) || isLaundryFoldDown(lower)) return false;
+  if (/prep\s*table/.test(lower)) return false;
+  return /folding\s*table|laundry\s+folding(?:\s+table)?|folding\s+laundry\s*table/.test(lower);
+}
+
+/** Drying rack — N rungs; never naked Storage. */
+export function isDryingRack(lower: string) {
+  if (/drying\s*rack|clothes\s*drying|laundry\s*drying/.test(lower)) return true;
+  if (/\brack\b/.test(lower) && /dry|rung/.test(lower) && !/spice|wine|shoe|coat|lumber|tool|towel|media/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/** Utility shelf / utility shelving — never naked Storage unit. */
+export function isUtilityShelf(lower: string) {
+  if (isOpenKitchenShelving(lower) || isLaundrySorter(lower) || isDryingRack(lower)) return false;
+  if (/utility\s*shel(?:f|ves|ving)/.test(lower)) return true;
+  if (/\butility\b/.test(lower) && /shel(?:f|ves|ving)/.test(lower)) return true;
+  return false;
+}
+
+/**
+ * Ironing board wall mount — clear wall mount + PDF mount height + clear swing.
+ * Not portal/key/coat steal; not Yard House wire. Explicit cabinet stays Ironing cabinet.
+ */
+export function isIroningWallMount(lower: string) {
+  if (!/ironing/.test(lower)) return false;
+  // "wall mounted ironing board cabinet" stays Ironing cabinet.
+  if (/cabinet/.test(lower)) return false;
+  if (/ironing\s*board\s*wall[- ]*mount|wall[- ]*mount(?:ed)?\s+ironing|ironing.{0,24}wall[- ]*mount/.test(lower)) return true;
+  if (/ironing\s*board/.test(lower) && /(?:mount\s+height|clear\s*swing|mount(?:ed)?\s+for|board\s+mount)/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
 /** Door portal / doorway / door opening envelope (fitted hang — not a garden arch). */
 export function isDoorPortal(lower: string) {
+  // Ironing board wall mount uses clear-swing language — never a door portal steal.
+  if (/ironing/.test(lower)) return false;
   if (/door\s*portal|portal|doorway|door opening/.test(lower)) return true;
   // Bare "door" + hang/swing language — not a cabinet / crate door panel.
   if (
@@ -324,6 +373,8 @@ export function isPortalHookRail(lower: string) {
   if (!isDoorPortal(lower)) return false;
   // Tool rail is clear wall-mount shop class — never key/coat portal steal.
   if (isToolRail(lower)) return false;
+  // Ironing board wall mount is hung-open shop/laundry class — never portal steal.
+  if (isIroningWallMount(lower) || /ironing/.test(lower)) return false;
   if (isShoePortalRail(lower) || isShoePortalCubbies(lower) || isTowelPortalRail(lower)) return false;
   if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) return true;
   if (/hook|peg/.test(lower) && /rail|rack|board/.test(lower)) return true;
@@ -414,7 +465,7 @@ export function isButcherCart(lower: string) {
 export function isOpenKitchenShelving(lower: string) {
   if (isKitchenBase(lower) || isKitchenUpper(lower) || isButcherCart(lower)) return false;
   if (/kitchen\s+island|\bisland\b/.test(lower)) return false;
-  if (/bookcase|bookshelf|spice|wine|medicine|coat|shoe/.test(lower)) return false;
+  if (/bookcase|bookshelf|spice|wine|medicine|coat|shoe|utility|laundry|drying/.test(lower)) return false;
   if (/open\s+kitchen\s+shelving|kitchen\s+shelving|open\s+shelving/.test(lower)) return true;
   if (/shelving\s+niche|fitted[^.]{0,40}shelving|shelving[^.]{0,40}fitted|shelving[^.]{0,40}opening/.test(lower)) return true;
   if (/open\s+shel(?:f|ves|ving)/.test(lower) && /kitchen|fitted|opening|niche/.test(lower)) return true;
@@ -568,6 +619,12 @@ export function identityTitleStem(lower: string): string | null {
     if (/entry\s*console/.test(lower)) return "Entry console";
     return "Console table";
   }
+  // Laundry / utility class — positive stems; never naked Table / Storage / Yard House wire.
+  if (isFoldingTable(lower)) return "Folding table";
+  if (isLaundrySorter(lower)) return "Laundry sorter";
+  if (isDryingRack(lower)) return "Drying rack";
+  if (isUtilityShelf(lower)) return "Utility shelf";
+  if (isIroningWallMount(lower)) return "Ironing board wall mount";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
   if (isWorkbench(lower)) return "Workbench";
   if (isPegboard(lower)) return "Pegboard";
@@ -651,7 +708,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (isSofaConsoleTable(lower)) return "table";
   if (isPlatformBed(lower)) return "storage";
   if (isDaybed(lower)) return "bench";
-  if (isPrepTable(lower)) return "table";
+  if (isPrepTable(lower) || isFoldingTable(lower)) return "table";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (
     /\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||
@@ -702,7 +759,13 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isPegboard(lower) &&
     !isToolRail(lower) &&
     !isLumberRack(lower) &&
-    !isWorkbench(lower)
+    !isWorkbench(lower) &&
+    !isLaundrySorter(lower) &&
+    !isFoldingTable(lower) &&
+    !isDryingRack(lower) &&
+    !isUtilityShelf(lower) &&
+    !isIroningWallMount(lower) &&
+    !/ironing/.test(lower)
   ) {
     return null;
   }
@@ -737,7 +800,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isPortalSpanShelf(lower) ||
       isBedsideShelf(lower) ||
       isPegboard(lower) ||
-      isToolRail(lower));
+      isToolRail(lower) ||
+      isIroningWallMount(lower));
 
   const mount: HouseMount = isOverToilet(lower) ? "straddle" : wallLang ? "wall" : "floor";
 
@@ -773,12 +837,15 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
-  else if (isToolRail(lower)) family = "hung-open";
+  else if (isToolRail(lower) || isIroningWallMount(lower)) family = "hung-open";
+  else if (isDryingRack(lower) || isLaundrySorter(lower) || isUtilityShelf(lower) || isLumberRack(lower)) {
+    family = "floor-carcase";
+  }
   // Fold-down is a hung board in a shallow cabinet — not a freestanding table,
   // even if someone said "fold-down table". "Laundry folding table" stays table
   // because isFoldDown requires fold-down / drop-down, not "folding".
-  else if (fold) family = "hung-cabinet";
-  else if (program === "table") family = "table";
+  else if (fold && !isFoldingTable(lower) && !isIroningWallMount(lower)) family = "hung-cabinet";
+  else if (program === "table" || isFoldingTable(lower)) family = "table";
   else if (program === "bench" || (sit && !/vanity|desk/.test(lower))) family = "seat";
   else if (mount === "wall") family = opening === "open" ? "hung-open" : "hung-cabinet";
   else family = "floor-carcase";

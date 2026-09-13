@@ -105,6 +105,7 @@ export function generateFromPrompt(
   if (
     !climbPrimary &&
     weekendMech !== "launcher" &&
+    weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
     (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia)
   ) {

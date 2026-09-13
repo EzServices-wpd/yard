@@ -5,7 +5,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isHamperHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -132,18 +132,26 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  // Plant / pot stand: typed pot diameter × tall binds the upright pot envelope (stand slightly larger).
+  // Plant / pot / hamper stand: typed pot diameter × tall OR basket W×D×H binds the upright envelope.
   if (detectWeekendMech(lower) === "pot-hold" || wantsPotHold(lower)) {
-    const dia = potHoldDiameterIn(lower);
-    const potH = potHoldHeightIn(lower);
-    if (dia != null || potH != null) {
-      const d = dia ?? potH ?? 4;
-      const h = potH ?? Math.max(d * 1.0, 4);
-      // Envelope for the pot itself is dia × tall; stand clears ~¾" around.
-      const span = Math.max(d + 1.5, d, 4);
-      width = span;
-      depth = span;
-      height = Math.max(h + 1.25, h, span * 0.85);
+    const basket = isHamperHold(lower) ? basketEnvelopeWhd(lower) : null;
+    if (basket) {
+      // Stand clears ~1" around the upright basket envelope.
+      width = basket.w + 2;
+      depth = basket.d + 2;
+      height = Math.max(basket.h + 2, basket.h, 14);
+    } else {
+      const dia = potHoldDiameterIn(lower);
+      const potH = potHoldHeightIn(lower);
+      if (dia != null || potH != null) {
+        const d = dia ?? potH ?? 4;
+        const h = potH ?? Math.max(d * 1.0, 4);
+        // Envelope for the pot itself is dia × tall; stand clears ~¾" around.
+        const span = Math.max(d + 1.5, d, 4);
+        width = span;
+        depth = span;
+        height = Math.max(h + 1.25, h, span * 0.85);
+      }
     }
   }
 

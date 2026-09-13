@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isButcherCart, isDaybed, isFoldDown, isHouseMediaCarcase, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isWallMediaLedge, isWorkbench, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAvTower, isBedsideShelf, isBunkBed, isButcherCart, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -147,12 +147,57 @@ function spokenArmCount(text: string): number | null {
   return null;
 }
 
+/** Spoken bin count for laundry sorters ("three bins" / "3 bins"). */
+function spokenBinCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*bins?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 8) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    triple: 3,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|triple)\s+bins?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  return null;
+}
+
+/** Spoken rung count for drying racks ("four rungs" / "4 rungs"). */
+function spokenRungCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*rungs?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 16) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight)\s+rungs?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  return null;
+}
+
 
 
 const CRAFT = /popsicle|craft stick|toothpick|paper towel|toilet paper|straw|dowel|pvc|lego|mailing tube/;
 const MAKER = /eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/;
 const BUILDER =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|table|prep\s*table|butcher|cart|shelving|shelves|shelf|\bledge\b|drawer|storage|bench seat|window seat|system|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|kitchen\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table/;
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
@@ -161,9 +206,24 @@ export function looksLikeFitted(prompt: string) {
   // Climb-primary stools / launcher / media-hold are craft — not fitted.
   // Linen/closet with a climb step-shelf still fitted (climbIdentityLabel null).
   if (climbIdentityLabel(lower)) return false;
-  if (isPegboard(lower) || isToolRail(lower) || isLumberRack(lower) || isWorkbench(lower)) return true;
+  if (
+    isPegboard(lower) ||
+    isToolRail(lower) ||
+    isLumberRack(lower) ||
+    isWorkbench(lower) ||
+    isLaundrySorter(lower) ||
+    isFoldingTable(lower) ||
+    isDryingRack(lower) ||
+    isUtilityShelf(lower) ||
+    isIroningWallMount(lower) ||
+    /ironing/.test(lower)
+  ) {
+    return true;
+  }
   const weekendMech = detectWeekendMech(prompt);
   // House media ledge / shelf / stereo / AV stay fitted even if craft nouns overlap.
+  // Pot-hold / hamper stand is weekend craft — never house Storage steal via laundry noun.
+  if (weekendMech === "pot-hold") return false;
   if (weekendMech === "launcher") return false;
   if (
     weekendMech === "media-hold" &&
@@ -190,7 +250,7 @@ export function looksLikeFitted(prompt: string) {
     return true;
   }
   if (!BUILDER.test(lower)) return false;
-  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|prep\s*table|butcher|cart|shelving|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment/.test(lower)) {
+  if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|prep\s*table|butcher|cart|shelving|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment|ironing|laundry|sorter|drying|utility|folding\s*table/.test(lower)) {
     return true;
   }
   if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower) || isPlatformBed(lower) || isBedsideShelf(lower)) return true;
@@ -306,6 +366,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (isPegboard(lower) && (!Number.isFinite(depth) || depth > 4)) depth = 0.75;
   if (isToolRail(lower) && (!Number.isFinite(depth) || depth > 8)) depth = 4;
   if (isToolRail(lower) && (!Number.isFinite(height) || height > 24)) height = 6;
+  // Ironing board wall mount — board length binds width; shallow mount depth.
+  if (isIroningWallMount(lower)) {
+    const boardLen = pick(
+      t,
+      /(?:board|for\s+a)\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″]|″)?/i,
+      NaN,
+    );
+    if (Number.isFinite(boardLen) && (!Number.isFinite(width) || width < boardLen * 0.5)) width = boardLen;
+    if (!Number.isFinite(depth) || depth > 12) depth = 6;
+    if (!Number.isFinite(height) || height > 36) height = 8;
+  }
 
 
   if (!Number.isFinite(width) && trip.w) width = trip.w;
@@ -842,7 +913,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isButcherCart(lower)
                   ? 2
-                : isOpenKitchenShelving(lower)
+                : isUtilityShelf(lower) || isOpenKitchenShelving(lower)
                   ? 3
                 : (/shel(?:f|ves|ving)/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
                 ? 3
@@ -973,6 +1044,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const titleStem =
     /coffee/.test(lower) && /table/.test(lower)
       ? "Coffee table"
+      : isFoldingTable(lower)
+        ? "Folding table"
       : isPrepTable(lower)
         ? "Prep table"
       : isKitchenIsland(lower)
@@ -981,6 +1054,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? (/butcher/.test(lower) ? "Butcher block cart" : "Kitchen cart")
       : isOpenKitchenShelving(lower)
         ? (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower) ? "Open kitchen shelving" : "Open shelving")
+      : isUtilityShelf(lower)
+        ? "Utility shelf"
+      : isLaundrySorter(lower)
+        ? "Laundry sorter"
+      : isDryingRack(lower)
+        ? "Drying rack"
+      : isIroningWallMount(lower)
+        ? "Ironing board wall mount"
       : isWorkbench(lower)
         ? "Workbench"
       : isPegboard(lower)
@@ -1009,6 +1090,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? "Platform bed"
               : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
                 ? "Nightstand"
+                : isIroningWallMount(lower)
+              ? "Ironing board wall mount"
                 : isIroningCabinet(lower)
               ? "Ironing cabinet"
               : isMedicineCabinet(lower)
@@ -1925,7 +2008,50 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildBunkBed(spec, prompt, affordances);
   }
 
-  if (isIroningCabinet(prompt)) {
+  // Ironing board wall mount — hung-open mount + PDF mount height + clear swing (not portal / Yard House wire).
+  if (isIroningWallMount(prompt) || identityTitleStem(prompt.toLowerCase()) === "Ironing board wall mount") {
+    const boardLen = Math.max(
+      36,
+      pick(prompt, /(?:board|for\s+a)\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″]|″)?/i, W) || W,
+    );
+    const mountW = Math.max(W, boardLen);
+    const mountH = Math.min(H, 10);
+    const mountD = Math.min(D, 6);
+    const mountFromOpening = 36;
+    panels.push(panel("rail", "Mount rail", x0, 0, 0, mountW, mountH, P));
+    panels.push(panel("cleat", "Wall cleat", x0, mountH * 0.35, 0, mountW, P, P));
+    panels.push(
+      panel("deck", "Ironing board", x0 + Math.max(0, (mountW - boardLen) / 2), P, P, boardLen, Math.max(12, mountH - P), P),
+    );
+    const name = `Ironing board wall mount ${mountW}" × ${mountH}" × ${mountD}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: mountW, height: mountH, depth: mountD },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Ironing board wall mount for a ${boardLen}" board — clear wall mount, not a Yard House wire skeleton and not a key/coat portal. ¾" plywood.`,
+        `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Keep clear swing so the board clears the wall and door swing when folded down.`,
+        `Clear swing: the ${boardLen}" board hinges down clear of the wall — lag the mount rail into studs. Guidance only.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: mountW, height: mountH, depth: mountD, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "hung-open",
+        unit: { ...u, width: mountW, height: mountH, depth: mountD, doors: false, shelfCount: 0, drawersPerBank: undefined },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "wall", wallType: "wood_stud" },
+    };
+  }
+
+  if (isIroningCabinet(prompt) && !isIroningWallMount(prompt)) {
     const innerW = W - P * 2;
     const backT = P;
     const boardW = Math.max(10, innerW - 0.25);
@@ -2690,6 +2816,90 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         unit: { ...u, width: W, height: H, depth: panelD, doors: false, shelfCount: 0, drawersPerBank: undefined },
       },
       assumptions: { load: "medium", units: "inches", installMode: "wall", wallType: "wood_stud" },
+    };
+  }
+
+  // Laundry sorter — floor carcase with N real Bin parts (not Storage / open-bay-only).
+  if (isLaundrySorter(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Laundry sorter") {
+    const bins = Math.max(2, Math.min(6, spokenBinCount(prompt) ?? 3));
+    const backT = P;
+    const innerW = W - P * 2;
+    const innerD = D - backT;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, innerD));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, innerD));
+    for (let i = 1; i < bins; i++) {
+      const x = x0 + (W * i) / bins - P / 2;
+      panels.push(panel("divider", `Bin divider ${i}`, x, P, backT, P, H - 2 * P, innerD));
+    }
+    const bayW = Math.round(((W - P * (bins + 1)) / bins) * 10) / 10;
+    for (let i = 0; i < bins; i++) {
+      const x = x0 + P + (i * (bayW + P));
+      panels.push(panel("bay", `Bin ${i + 1}`, x, P, backT, bayW, H - 2 * P, Math.min(4, innerD)));
+    }
+    const name = `Laundry sorter ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Laundry sorter with ${bins} real bins (~${bayW}" wide each) — not a Storage unit and not open-bay-only shelves. ¾" plywood.`,
+        `Glue and screw each bin divider into the top, bottom, and back. Three-bin laundry sorter densifies Bin 1–${bins}.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined, bays: bins },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    };
+  }
+
+  // Drying rack — vertical standards + N rungs (not Storage unit without rungs).
+  if (isDryingRack(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Drying rack") {
+    const rungs = Math.max(2, Math.min(12, spokenRungCount(prompt) ?? 4));
+    const stdD = Math.min(D, Math.max(3, P * 2));
+    panels.push(panel("upright", "Left standard", x0, 0, 0, P, H, stdD));
+    panels.push(panel("upright", "Right standard", x0 + W - P, 0, 0, P, H, stdD));
+    for (let i = 0; i < rungs; i++) {
+      const y = rungs === 1 ? H * 0.5 : (i * (H - P * 2)) / (rungs - 1) + P;
+      panels.push(panel("rail", `Rung ${i + 1}`, x0 + P, y, 0, W - P * 2, P, D));
+    }
+    const name = `Drying rack ${W}" × ${H}" × ${D}"`;
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: H, depth: D },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. Drying rack with ${rungs} rungs — not a Storage unit. ¾" plywood / lumber standards.`,
+        `Rungs hold laundry at the typed depth (${D}"). Lag or freestand the standards. Guidance only.`,
+      ],
+      historic: false,
+      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        program: "storage",
+        family: "floor-carcase",
+        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+      },
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
     };
   }
 

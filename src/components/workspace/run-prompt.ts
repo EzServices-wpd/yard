@@ -12,7 +12,7 @@ import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
-  /closet|desk|vanity|table|prep\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel/i;
+  /closet|desk|vanity|table|prep\s*table|folding\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|sorter|drying\s*rack|utility\s*shel/i;
 
 function isHousePrompt(prompt: string, kind?: string, fitted?: unknown) {
   if (kind === "closet" || fitted) return true;

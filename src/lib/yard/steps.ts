@@ -11,7 +11,9 @@ import {
   wantsMediaTipHold,
   wantsPotHold,
   isFigurineHold,
+  isHamperHold,
   figureHoldEnvelopeTalk,
+  basketEnvelopeTalk,
   potHoldDiameterIn,
   potHoldHeightIn,
   marbleDiameterIn,
@@ -1923,6 +1925,9 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       // Figurine hold: figure envelope (2×2 base × 3 tall) — never pot-diameter bleed.
       if (isFigurineHold(p)) {
         return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)} — densify keeps the figure envelope (not pot diameter).`;
+      }
+      if (isHamperHold(p)) {
+        return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)} — densify keeps the stand around the basket envelope (not a Storage carcase of basket size).`;
       }
       const dia = potHoldDiameterIn(p);
       const potH = potHoldHeightIn(p);

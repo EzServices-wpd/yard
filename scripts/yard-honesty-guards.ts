@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isKitchenIsland, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isBedsideShelf, isButcherCart, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKitchenIsland, isLaundrySorter, isLumberRack, isOpenKitchenShelving, isPegboard, isPlatformBed, isPrepTable, isSofaConsoleTable, isToolRail, isUtilityShelf, isWorkbench, wantsPrintHold } from "../src/lib/yard/family";
 import { detectWeekendFamily } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1639,6 +1639,116 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
     failHonesty("drawer-box explode regress batch26", nightProtectPlan.cutList.map((c) => c.name));
   }
 }
+
+
+// Batch27 laundry/utility class pack — universal F/F/P stems + bins/rungs/mount/hamper.
+{
+  const laundryPrompts: Array<[string, string]> = [
+    ["house: laundry sorter 24″ wide × 18″ deep × 36″ tall with three bins", "Laundry sorter"],
+    ["house: folding table 48″ wide × 24″ deep × 36″ tall", "Folding table"],
+    ["house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs", "Drying rack"],
+    ["house: utility shelf fitted to a 36×72×16 opening, five shelves", "Utility shelf"],
+    ["house: ironing board wall mount for a 48″ board, clear swing; PDF states mount height from the wall", "Ironing board wall mount"],
+  ];
+  for (const [prompt, stem] of laundryPrompts) {
+    if (identityTitleStem(prompt.toLowerCase()) !== stem) {
+      failHonesty(`laundry identityTitleStem(${prompt})`, identityTitleStem(prompt.toLowerCase()));
+    }
+  }
+  if (!isLaundrySorter("laundry sorter 24x18x36 with three bins")) failHonesty("isLaundrySorter");
+  if (!isFoldingTable("folding table 48x24x36")) failHonesty("isFoldingTable");
+  if (isFoldingTable("laundry fold-down 48x36x6")) failHonesty("fold-down must not be Folding table");
+  if (!isDryingRack("drying rack 36x18x60 with four rungs")) failHonesty("isDryingRack");
+  if (!isUtilityShelf("utility shelf fitted to a 36x72x16 opening, five shelves")) failHonesty("isUtilityShelf");
+  if (!isIroningWallMount("ironing board wall mount for a 48 board, clear swing")) failHonesty("isIroningWallMount");
+  if (isIroningWallMount("wall mounted ironing board cabinet 48 high 16 wide 6 deep")) {
+    failHonesty("ironing cabinet must not be wall-mount stem");
+  }
+
+  const sorter = generateFromPrompt("house: laundry sorter 24″ wide × 18″ deep × 36″ tall with three bins");
+  if (!/^Laundry sorter/i.test(sorter.name)) failHonesty("laundry sorter title", sorter.name);
+  if (/Storage unit/i.test(sorter.name)) failHonesty("laundry sorter Storage", sorter.name);
+  const bins = sorter.panels.filter((p) => /^Bin\s+\d+/i.test(p.name));
+  if (bins.length < 3) failHonesty("laundry sorter three bins", sorter.panels.map((p) => p.name));
+  if (Math.abs(sorter.overall.width - 24) > 1.2 || Math.abs(sorter.overall.depth - 18) > 1.2) {
+    failHonesty("laundry sorter dims W/D", sorter.overall);
+  }
+
+  const folding = generateFromPrompt("house: folding table 48″ wide × 24″ deep × 36″ tall");
+  if (!/^Folding table/i.test(folding.name)) failHonesty("folding table title", folding.name);
+  if (/Storage|Yard Table\b|^Table\b/i.test(folding.name) && !/Folding/i.test(folding.name)) {
+    failHonesty("folding table naked Table/Storage", folding.name);
+  }
+  if (Math.abs(folding.overall.width - 48) > 1.2) failHonesty("folding table W", folding.overall);
+
+  const drying = generateFromPrompt("house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs");
+  if (!/^Drying rack/i.test(drying.name)) failHonesty("drying rack title", drying.name);
+  if (/Storage unit/i.test(drying.name)) failHonesty("drying Storage", drying.name);
+  const rungs = drying.panels.filter((p) => /^Rung\s+\d+/i.test(p.name));
+  if (rungs.length < 4) failHonesty("drying four rungs", drying.panels.map((p) => p.name));
+
+  const utility = generateFromPrompt("house: utility shelf fitted to a 36×72×16 opening, five shelves");
+  if (!/^Utility shelf/i.test(utility.name)) failHonesty("utility shelf title", utility.name);
+  if (/Storage unit/i.test(utility.name)) failHonesty("utility Storage", utility.name);
+  if (Math.abs(utility.overall.depth - 16) > 1.2) failHonesty("utility D16", utility.overall);
+  const uShelves = utility.panels.filter((p) => p.type === "shelf" || /^Shelf\s+\d+/i.test(p.name));
+  if (uShelves.length < 5) failHonesty("utility five shelves", uShelves.map((p) => p.name));
+
+  const iron = generateFromPrompt(
+    "house: ironing board wall mount for a 48″ board, clear swing; PDF states mount height from the wall",
+  );
+  if (!/Ironing board wall mount/i.test(iron.name)) failHonesty("ironing wall mount title", iron.name);
+  if (/Yard House|^House\b|Key rail|Coat rail|Bridge/i.test(iron.name)) {
+    failHonesty("ironing wall mount portal/House steal", iron.name);
+  }
+  const ironBlob = [iron.name, ...(iron.notes ?? [])].join("\n");
+  if (!/mount height|PDF states mount height/i.test(ironBlob)) failHonesty("ironing PDF mount height", ironBlob.slice(0, 500));
+  if (!/clear swing/i.test(ironBlob)) failHonesty("ironing clear swing", ironBlob.slice(0, 500));
+  if (!/48/.test(ironBlob)) failHonesty("ironing 48 board", ironBlob.slice(0, 400));
+
+  const hamper = generateFromPrompt(
+    "weekend craft: pine hamper stand that holds a real laundry basket 18″×14″×12″ upright",
+  );
+  if (!/Hamper stand/i.test(hamper.name)) failHonesty("hamper stand title", hamper.name);
+  if (/Storage unit/i.test(hamper.name)) failHonesty("hamper Storage steal", hamper.name);
+  const hamperPlan = buildPlan(hamper);
+  const hamperText = [
+    hamper.name,
+    ...(hamper.notes ?? []),
+    ...hamperPlan.steps.map((s) => `${s.title} ${s.description}`),
+    ...hamperPlan.bom.map((b) => b.name),
+  ].join("\n");
+  if (!/pine/i.test(hamperText) && !/Pine/i.test(hamperPlan.bom.map((b) => b.name).join(" "))) {
+    // Buy species may land on lumber-1x4 densify with Pine label
+    const buy = hamperPlan.bom.map((b) => b.name).join("\n");
+    if (!/pine|Pine/i.test(buy + hamperText)) failHonesty("hamper Buy Pine", buy.slice(0, 400) + hamperText.slice(0, 400));
+  }
+  if (!/18/.test(hamperText) || !/14/.test(hamperText) || !/12/.test(hamperText)) {
+    failHonesty("hamper basket envelope 18×14×12", hamperText.slice(0, 600));
+  }
+  if (!/basket|upright|envelope/i.test(hamperText)) {
+    failHonesty("hamper upright basket densify", hamperText.slice(0, 500));
+  }
+
+  // Protect garage / kitchen-work / Andersen / bare workbench / desk knee
+  if (!isWorkbench("workbench 60x24x36")) failHonesty("protect isWorkbench batch27");
+  if (!isPrepTable("prep table 48x24x36")) failHonesty("protect isPrepTable batch27");
+  if (!isToolRail("tool rail spanning 48 with six hooks")) failHonesty("protect isToolRail batch27");
+  if (!isPegboard("pegboard wall panel fitted to a 48×36 opening")) failHonesty("protect isPegboard batch27");
+  if (!isLumberRack("lumber rack 48 wide with four arms")) failHonesty("protect isLumberRack batch27");
+  const wbBare27 = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
+  if (!/^Workbench/i.test(wbBare27.name)) failHonesty("protect bare workbench title", wbBare27.name);
+  const wbBareShelves27 = wbBare27.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
+  if (wbBareShelves27.length !== 0) {
+    failHonesty("protect bare workbench no default shelf", wbBareShelves27.map((p) => p.name));
+  }
+  const desk27 = generateFromPrompt("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space");
+  if (!/^Desk/i.test(desk27.name)) failHonesty("protect desk knee title", desk27.name);
+  if (!nearInch(desk27.fitted?.unit.kneeW ?? 0, 24)) failHonesty("protect desk 24in knee", desk27.fitted?.unit);
+  const andersen27 = generateFromPrompt("house: Andersen 36×48 hung window with RO — freeze green");
+  if (!/Andersen/i.test(andersen27.name)) failHonesty("protect Andersen batch27", andersen27.name);
+}
+
 
 console.log("SOFT-TRUST OK", {
   tv18: tv18.name,
