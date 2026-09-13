@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -106,6 +106,19 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     unit.shelfCount = parsed.unit.shelfCount;
   } else if (/\blower\s+shel(?:f|ves)\b/.test(lower) && parsed.unit.shelfCount != null) {
     unit.shelfCount = parsed.unit.shelfCount;
+  }
+
+  // Bare workbench: standing shop top — no invent knee/drawers; default one lower shelf.
+  if (isWorkbench(lower)) {
+    if (!/knee|sit|chair/.test(lower)) unit.kneeW = undefined;
+    if (!/drawer/.test(lower)) unit.drawersPerBank = undefined;
+    const spokenShelf =
+      /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|single)\s+(?:(?:lower|upper|bottom|top|open|middle)\s+)?shel(?:f|ves|ving)\b/.test(
+        lower,
+      ) || /\blower\s+shel(?:f|ves)\b/.test(lower);
+    if (!spokenShelf && (unit.shelfCount == null || unit.shelfCount === 0)) {
+      unit.shelfCount = 1;
+    }
   }
 
   let program = brief.program;

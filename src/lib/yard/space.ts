@@ -1,7 +1,7 @@
 import { buildClosetFromOpening } from "./closet";
 import { buildWindowProject, pickWindow, STOCK_WINDOWS } from "./windows";
 import type { FittedProgram, SpaceKind, YardProject } from "./types";
-import { wantsShoes, type HouseFamily } from "./family";
+import { wantsShoes, isWorkbench, type HouseFamily } from "./family";
 
 export type { SpaceKind };
 
@@ -63,7 +63,9 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
   const program = project.fitted?.program as FittedProgram | undefined;
   const family = project.fitted?.family as HouseFamily | undefined;
   const blob = `${project.name ?? ""} ${project.prompt ?? ""} ${project.fitted?.name ?? ""}`.toLowerCase();
-  if (program === "desk" || /\bdesk\b|workbench/.test(blob)) return "desk";
+  // Workbench is its own measure kind — never collapse to Desk.
+  if (isWorkbench(blob) || /\bworkbench\b/.test(blob)) return "workbench";
+  if (program === "desk" || /\bdesk\b/.test(blob)) return "desk";
   if (program === "media" || /\btv\b|media console|entertainment\s*cent/.test(blob)) return "media";
   if (program === "table" || family === "table" || (/\btable\b/.test(blob) && !/work table/.test(blob))) return "table";
   if (program === "bench" || family === "seat") return "bench";

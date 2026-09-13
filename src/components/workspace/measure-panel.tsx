@@ -129,6 +129,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             <option value="closet_niche">Closet / alcove</option>
             <option value="window_rough_opening">Window rough opening</option>
             <option value="desk">Desk</option>
+            <option value="workbench">Workbench</option>
             <option value="media">Media / TV</option>
             <option value="table">Table</option>
             <option value="bench">Bench</option>

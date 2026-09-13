@@ -1535,6 +1535,35 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (!isToolRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("isToolRail");
   if (!isLumberRack("lumber rack 48 wide × 24 deep × 72 tall with four arms")) failHonesty("isLumberRack");
 
+  // Bare 60×24×36 — not a pedestal Desk: no knee, no drawers, exactly one lower shelf, measure=workbench.
+  const wbBare = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
+  if (!/^Workbench/i.test(wbBare.name)) failHonesty("bare workbench title", wbBare.name);
+  if (/Storage|Desk/i.test(wbBare.name) && !/^Workbench/i.test(wbBare.name)) {
+    failHonesty("bare workbench Desk/Storage steal", wbBare.name);
+  }
+  if (wbBare.panels.some((p) => /\bDrawer\b|Drawer front/i.test(p.name))) {
+    failHonesty("bare workbench invented drawers", wbBare.panels.map((p) => p.name));
+  }
+  if (wbBare.panels.some((p) => /Left knee divider|Right knee divider/i.test(p.name))) {
+    failHonesty("bare workbench knee dividers", wbBare.panels.map((p) => p.name));
+  }
+  const wbBareShelves = wbBare.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
+  if (wbBareShelves.length !== 1) {
+    failHonesty("bare workbench exactly one shelf", wbBareShelves.map((p) => p.name));
+  }
+  if (!wbBareShelves.some((p) => /Lower shelf|Bottom shelf|^Shelf$/i.test(p.name))) {
+    failHonesty("bare workbench Lower/Bottom shelf label", wbBareShelves.map((p) => p.name));
+  }
+  if (measureKindFromProject(wbBare) !== "workbench") {
+    failHonesty("bare workbench measure kind", measureKindFromProject(wbBare));
+  }
+  if (wbBare.fitted?.unit.kneeW != null && (wbBare.fitted.unit.kneeW as number) > 8) {
+    failHonesty("bare workbench default kneeW", wbBare.fitted.unit);
+  }
+  if (wbBare.fitted?.unit.drawersPerBank) {
+    failHonesty("bare workbench drawersPerBank", wbBare.fitted.unit);
+  }
+
   const wb = generateFromPrompt("house: workbench 72″ wide × 30″ deep × 34″ tall with one lower shelf");
   if (!/^Workbench/i.test(wb.name)) failHonesty("workbench title", wb.name);
   if (/Storage/i.test(wb.name)) failHonesty("workbench Storage", wb.name);
@@ -1582,6 +1611,21 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (arms.length < 4) failHonesty("lumber four arms", lumber.panels.map((p) => p.name));
   if (Math.abs(lumber.overall.width - 48) > 1.2 || Math.abs(lumber.overall.depth - 24) > 1.2) {
     failHonesty("lumber dims W/D", lumber.overall);
+  }
+
+  // Protect typed-knee desk freeze — still Desk with knee + drawers (not workbench strip).
+  const deskFreeze = generateFromPrompt(
+    "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
+  );
+  if (!/^Desk/i.test(deskFreeze.name)) failHonesty("desk freeze title", deskFreeze.name);
+  if (!nearInch(deskFreeze.fitted?.unit.kneeW ?? 0, 24)) {
+    failHonesty("desk freeze 24in knee", deskFreeze.fitted?.unit);
+  }
+  if (!deskFreeze.panels.some((p) => /Drawer/i.test(p.name))) {
+    failHonesty("desk freeze drawers missing", deskFreeze.panels.map((p) => p.name));
+  }
+  if (measureKindFromProject(deskFreeze) !== "desk") {
+    failHonesty("desk freeze measure kind", measureKindFromProject(deskFreeze));
   }
 
   // Protect kitchen-work + Andersen + drawer explode from batch25

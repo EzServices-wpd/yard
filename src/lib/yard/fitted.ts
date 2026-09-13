@@ -763,15 +763,24 @@ export function parseBrief(prompt: string): FittedSpec | null {
       : program === "desk"
         ? height
         : undefined;
-  const kneeW = /knee|sit|chair|open/.test(lower)
-    ? pick(
-        t,
-        /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
-        pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
-      )
-    : program === "vanity" || program === "desk"
-      ? Math.min(24, Math.max(18, width * 0.4))
-      : undefined;
+  // Bare workbench is a standing shop top — never invent desk knee clearance.
+  const kneeW = isWorkbench(lower)
+    ? /knee|sit|chair/.test(lower)
+      ? pick(
+          t,
+          /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
+          pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
+        )
+      : undefined
+    : /knee|sit|chair|open/.test(lower)
+      ? pick(
+          t,
+          /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
+          pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
+        )
+      : program === "vanity" || program === "desk"
+        ? Math.min(24, Math.max(18, width * 0.4))
+        : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
   const upperStart =
     /upper/.test(lower) && !isKitchenUpper(lower) && !/upper\s+cabinet/.test(lower)
@@ -839,6 +848,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 ? 3
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
                   ? 0
+                : isWorkbench(lower)
+                  ? 1
                 : /nightstand|bedside/.test(lower)
                   ? 1
                   : 0,
@@ -3184,7 +3195,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       for (let i = 0; i < nL; i++) leftCounts.push(i);
       for (let i = 0; i < nR; i++) rightCounts.push(i);
     } else {
-      const n = u.drawersPerBank ?? 3;
+      // Bare workbench: never invent pedestal drawer banks; real desks still default 3/bank.
+      const n =
+        isWorkbench(prompt.toLowerCase()) && !/drawer/.test(prompt.toLowerCase())
+          ? (u.drawersPerBank ?? 0)
+          : (u.drawersPerBank ?? 3);
       for (let i = 0; i < n; i++) {
         leftCounts.push(i);
         rightCounts.push(i);
@@ -3316,8 +3331,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           spec.program === "media" &&
           (isAvTower(prompt.toLowerCase()) || /\b(?:\d+|two|three|four)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase()))
             ? `Bay ${i} shelf`
-            : isWorkbench(prompt.toLowerCase()) && shelves === 1 && /lower|bottom/.test(prompt.toLowerCase())
-              ? "Bottom shelf"
+            : isWorkbench(prompt.toLowerCase()) && shelves === 1
+              ? /lower|bottom/.test(prompt.toLowerCase())
+                ? "Bottom shelf"
+                : "Lower shelf"
             : shelves === 1
               ? "Shelf"
               : `Shelf ${i}`;
