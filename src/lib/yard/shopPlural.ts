@@ -9,6 +9,39 @@ export function shopPlural(label: string, qty: number): string {
   return `${label}s`;
 }
 
+/** Bounding drawer envelope → sides / back / bottom a stranger can cut from sheet stock. */
+export type DrawerCutPart = {
+  name: string;
+  type: string;
+  width: number;
+  height: number;
+  depth: number;
+};
+
+export function isBoundingDrawerPanel(name: string, type?: string): boolean {
+  return type === "drawer" && !/drawer\s*front/i.test(name);
+}
+
+/**
+ * Class pack: a type=drawer panel is a visual envelope, not a cuttable board.
+ * Explode into ¾" sides + back and a ¼" bottom so sheetCutDims never treats
+ * drawer height as "thickness" (the 19.5×15.75×6.375 lie).
+ */
+export function explodeDrawerBoxCuts(boxW: number, boxH: number, boxD: number): DrawerCutPart[] {
+  const Ts = 0.75;
+  const Tb = 0.25;
+  const innerW = Math.max(Math.round((boxW - 2 * Ts) * 8) / 8, 1);
+  const bottomD = Math.max(Math.round((boxD - Ts) * 8) / 8, 1);
+  const H = Math.round(boxH * 8) / 8;
+  const D = Math.round(boxD * 8) / 8;
+  return [
+    { name: "Drawer side", type: "drawer-side", width: Ts, height: H, depth: D },
+    { name: "Drawer side", type: "drawer-side", width: Ts, height: H, depth: D },
+    { name: "Drawer back", type: "drawer-back", width: innerW, height: H, depth: Ts },
+    { name: "Drawer bottom", type: "drawer-bottom", width: innerW, height: Tb, depth: bottomD },
+  ];
+}
+
 /** Long × mid × thick — same order as the cut list a builder takes to the lumber aisle. */
 export function sheetCutDims(w: number, h: number, d: number) {
   const a = Math.round(w * 8) / 8;
@@ -47,7 +80,6 @@ export function cutListName(name: string, type?: string): string {
   if (/^apron\b/i.test(name) || (type === "rail" && /apron/i.test(name))) return "Apron";
   if (/^leg\b/i.test(name)) return "Leg";
   if (/cut round/i.test(name)) return name;
-  if (/cut oval/i.test(name)) return name;
   if (type === "upright") return "Upright";
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";

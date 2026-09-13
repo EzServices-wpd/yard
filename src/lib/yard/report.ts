@@ -7,7 +7,7 @@ import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isPlatformBed } from "./family";

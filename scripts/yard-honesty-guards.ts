@@ -1400,6 +1400,22 @@ if (!night.panels.some((p) => /drawer front/i.test(p.name))) {
 if (!nightPlan.cutList.some((c) => /drawer front/i.test(c.name))) {
   failHonesty("nightstand cut list missing Drawer front", nightPlan.cutList.map((c) => c.name));
 }
+if (nightPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+  failHonesty("nightstand cut list still has bounding Drawer box", nightPlan.cutList.map((c) => `${c.name} ${c.lengthIn}x${c.widthIn}x${c.thicknessIn}`));
+}
+if (!nightPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
+  failHonesty("nightstand cut list missing Drawer side", nightPlan.cutList.map((c) => c.name));
+}
+if (!nightPlan.cutList.some((c) => /drawer back/i.test(c.name))) {
+  failHonesty("nightstand cut list missing Drawer back", nightPlan.cutList.map((c) => c.name));
+}
+if (!nightPlan.cutList.some((c) => /drawer bottom/i.test(c.name))) {
+  failHonesty("nightstand cut list missing Drawer bottom", nightPlan.cutList.map((c) => c.name));
+}
+const nightDrawerThick = nightPlan.cutList.filter((c) => /drawer/i.test(c.name) && (c.thicknessIn ?? 0) > 1.05);
+if (nightDrawerThick.length) {
+  failHonesty("nightstand drawer cut thicker than stock", nightDrawerThick.map((c) => `${c.name} ${c.thicknessIn}`));
+}
 const nightSlides = nightPlan.bom.filter((b) => /slide/i.test(b.name));
 if (nightSlides.some((b) => b.quantity !== 1 && /pair/i.test(b.unit ?? ""))) {
   // one drawer → one pair; fronts must not double the slide count

@@ -25,7 +25,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
-import { shopPlural, fmtSheetCut, cutListName, sheetCutDims } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 
 function dim(p: Panel) {
@@ -1395,7 +1395,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Build 1 drawer box + front",
-        description: `${drawers.map(cutLine).join("; ") || "Drawer."} Build the box to the cut list. The drawer front is the face people see — edge-band the plywood edge (thin veneer strip over the raw edge). One cup pull centered on the front.`,
+        description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom — glue and nail the box square. Screw the Drawer front onto the box face; edge-band the plywood edge people see (thin veneer strip over the raw edge). One cup pull centered on the front.`,
         tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
         partsUsed: names(drawers),
       },
@@ -1555,7 +1555,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Build ${drawers.length} drawer boxes + fronts`,
-      description: `${drawers.map(cutLine).join("; ")}. Build each box to the cut list. Drawer fronts are the faces people see — edge-band the plywood edge (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
+      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} boxes). Glue and nail each box square; screw each Drawer front onto its box face — edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
       tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
       partsUsed: names(drawers),
     });
@@ -1649,7 +1649,7 @@ function cutStockGroups(
     { label: string; panels: Panel[]; tool: { how: string; tip: string } }
   >();
 
-  for (const p of panels) {
+  const enqueue = (p: Panel) => {
     const item = getCatalogItem(p.materialId);
     const t = sheetCutDims(p.size.width, p.size.height, p.size.depth).thicknessIn;
     const isSheet =
@@ -1660,14 +1660,14 @@ function cutStockGroups(
 
     if (isSheet && t < 0.5) {
       thin.push(p);
-      continue;
+      return;
     }
 
     const key = p.materialId || "primary";
     const existing = byKey.get(key);
     if (existing) {
       existing.panels.push(p);
-      continue;
+      return;
     }
     const cat = item ?? fallbackItem;
     byKey.set(key, {
@@ -1675,6 +1675,23 @@ function cutStockGroups(
       panels: [p],
       tool: cutHow(cat),
     });
+  };
+
+  for (const p of panels) {
+    // Expand drawer envelopes into cuttable parts before stock grouping.
+    if (isBoundingDrawerPanel(p.name, p.type)) {
+      for (const part of explodeDrawerBoxCuts(p.size.width, p.size.height, p.size.depth)) {
+        enqueue({
+          ...p,
+          id: `${p.id}-${part.type}`,
+          name: part.name,
+          type: (part.type === "drawer-bottom" ? "bottom" : part.type === "drawer-back" ? "back" : "upright") as Panel["type"],
+          size: { width: part.width, height: part.height, depth: part.depth },
+        });
+      }
+      continue;
+    }
+    enqueue(p);
   }
 
   const groups = [...byKey.values()];
@@ -1721,16 +1738,26 @@ function sheetCutDescription(
 
 function groupSheetCuts(panels: Panel[]): string[] {
   const map = new Map<string, { qty: number; label: string; w: number; h: number; d: number }>();
-  for (const p of panels) {
-    const w = Math.round(p.size.width * 8) / 8;
-    const h = Math.round(p.size.height * 8) / 8;
-    const d = Math.round(p.size.depth * 8) / 8;
-    const family = cutListName(p.name, p.type).toLowerCase();
+  const push = (name: string, type: string | undefined, w: number, h: number, d: number) => {
+    const family = cutListName(name, type).toLowerCase();
     const dims = fmtSheetCut(w, h, d);
     const key = `${family}|${dims}`;
     const g = map.get(key);
     if (g) g.qty += 1;
-    else map.set(key, { qty: 1, label: cutListName(p.name, p.type), w, h, d });
+    else map.set(key, { qty: 1, label: cutListName(name, type), w, h, d });
+  };
+  for (const p of panels) {
+    const w = Math.round(p.size.width * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    // Same class pack as closetCuts — never ask builders to cut a drawer envelope.
+    if (isBoundingDrawerPanel(p.name, p.type)) {
+      for (const part of explodeDrawerBoxCuts(w, h, d)) {
+        push(part.name, part.type, part.width, part.height, part.depth);
+      }
+      continue;
+    }
+    push(p.name, p.type, w, h, d);
   }
   return [...map.values()].map((g) => {
     return `${g.qty} ${shopPlural(g.label, g.qty)} ${fmtSheetCut(g.w, g.h, g.d)}".`;
