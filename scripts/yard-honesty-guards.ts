@@ -1535,7 +1535,7 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (!isToolRail("tool rail spanning 48 with six hooks, clear wall mount")) failHonesty("isToolRail");
   if (!isLumberRack("lumber rack 48 wide × 24 deep × 72 tall with four arms")) failHonesty("isLumberRack");
 
-  // Bare 60×24×36 — not a pedestal Desk: no knee, no drawers, exactly one lower shelf, measure=workbench.
+  // Bare 60×24×36 — standing shop top: no knee, no drawers, NO default lower shelf, measure=workbench.
   const wbBare = generateFromPrompt("house: workbench 60″ wide × 24″ deep × 36″ tall");
   if (!/^Workbench/i.test(wbBare.name)) failHonesty("bare workbench title", wbBare.name);
   if (/Storage|Desk/i.test(wbBare.name) && !/^Workbench/i.test(wbBare.name)) {
@@ -1548,11 +1548,11 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
     failHonesty("bare workbench knee dividers", wbBare.panels.map((p) => p.name));
   }
   const wbBareShelves = wbBare.panels.filter((p) => p.type === "shelf" || /^(?:Lower |Bottom )?Shelf/i.test(p.name));
-  if (wbBareShelves.length !== 1) {
-    failHonesty("bare workbench exactly one shelf", wbBareShelves.map((p) => p.name));
+  if (wbBareShelves.length !== 0) {
+    failHonesty("bare workbench must not invent default shelf", wbBareShelves.map((p) => p.name));
   }
-  if (!wbBareShelves.some((p) => /Lower shelf|Bottom shelf|^Shelf$/i.test(p.name))) {
-    failHonesty("bare workbench Lower/Bottom shelf label", wbBareShelves.map((p) => p.name));
+  if ((wbBare.fitted?.unit.shelfCount ?? 0) !== 0) {
+    failHonesty("bare workbench shelfCount must be 0", wbBare.fitted?.unit);
   }
   if (measureKindFromProject(wbBare) !== "workbench") {
     failHonesty("bare workbench measure kind", measureKindFromProject(wbBare));

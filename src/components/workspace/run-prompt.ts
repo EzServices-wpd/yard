@@ -108,7 +108,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     unit.shelfCount = parsed.unit.shelfCount;
   }
 
-  // Bare workbench: standing shop top — no invent knee/drawers; default one lower shelf.
+  // Bare workbench: standing shop top — no invent knee/drawers; NO default lower shelf
+  // (shelf only when the prompt types it, e.g. "with one lower shelf").
   if (isWorkbench(lower)) {
     if (!/knee|sit|chair/.test(lower)) unit.kneeW = undefined;
     if (!/drawer/.test(lower)) unit.drawersPerBank = undefined;
@@ -116,8 +117,8 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
       /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|single)\s+(?:(?:lower|upper|bottom|top|open|middle)\s+)?shel(?:f|ves|ving)\b/.test(
         lower,
       ) || /\blower\s+shel(?:f|ves)\b/.test(lower);
-    if (!spokenShelf && (unit.shelfCount == null || unit.shelfCount === 0)) {
-      unit.shelfCount = 1;
+    if (!spokenShelf) {
+      unit.shelfCount = 0;
     }
   }
 

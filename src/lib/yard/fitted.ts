@@ -849,7 +849,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
                   ? 0
                 : isWorkbench(lower)
-                  ? 1
+                  ? 0
                 : /nightstand|bedside/.test(lower)
                   ? 1
                   : 0,
