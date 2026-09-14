@@ -45,17 +45,21 @@ function effortLabel(project: YardProject, pieces: number): string {
 function closetCuts(project: YardProject): CutLine[] {
   const STOCK_T = 0.75;
   const grouped = new Map<string, CutLine>();
-  for (const p of project.panels) {
-    const item = getCatalogItem(p.materialId);
-    const w = Math.round(p.size.width * 8) / 8;
-    const d = Math.round(p.size.depth * 8) / 8;
-    const h = Math.round(p.size.height * 8) / 8;
-    const family = partFamily(p.name, p.type);
+  const addCut = (
+    materialId: string,
+    name: string,
+    type: string | undefined,
+    w: number,
+    h: number,
+    d: number,
+    materialName: string,
+  ) => {
+    const family = partFamily(name, type);
     let dims = sheetCutDims(w, h, d);
     let qty = 1;
     const isPly =
-      /plywood/i.test(p.materialId ?? "") ||
-      /plywood/i.test(item?.name ?? "");
+      /plywood/i.test(materialId ?? "") ||
+      /plywood/i.test(materialName ?? "");
     // Class pack: sheet goods thicker than stock are laminated plies (island/desk
     // 1½" counters), not a magic thick board the lumber aisle does not sell.
     if (
@@ -68,11 +72,11 @@ function closetCuts(project: YardProject): CutLine[] {
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
       qty = plies;
     }
-    const key = `${p.materialId}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
+    const key = `${materialId}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += qty;
-      continue;
+      return;
     }
     grouped.set(key, {
       id: key,
@@ -81,8 +85,24 @@ function closetCuts(project: YardProject): CutLine[] {
       lengthIn: dims.lengthIn,
       widthIn: dims.widthIn,
       thicknessIn: dims.thicknessIn,
-      material: item?.name ?? p.materialId,
+      material: materialName,
     });
+  };
+  for (const p of project.panels) {
+    const item = getCatalogItem(p.materialId);
+    const w = Math.round(p.size.width * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const materialName = item?.name ?? p.materialId;
+    // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
+    // Explode into sides/back/bottom so the cut list matches Build steps.
+    if (isBoundingDrawerPanel(p.name, p.type)) {
+      for (const part of explodeDrawerBoxCuts(w, h, d)) {
+        addCut(p.materialId, part.name, part.type, part.width, part.height, part.depth, materialName);
+      }
+      continue;
+    }
+    addCut(p.materialId, p.name, p.type, w, h, d, materialName);
   }
   return stampLabels(spliceCutListToSheet([...grouped.values()]));
 }
@@ -289,6 +309,22 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: "3 inch cup pulls cabinet drawer",
       estimatedCost: 12.98,
       notes: `One cup pull centered on each drawer front (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
+    });
+    bom.push({
+      name: '1" finish nails / brads',
+      quantity: 1,
+      unit: "box",
+      searchQuery: "1 inch finish nails brad box",
+      estimatedCost: 6,
+      notes: `Nail drawer boxes square (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
+    });
+    bom.push({
+      name: "Iron-on edge banding",
+      quantity: 1,
+      unit: "roll",
+      searchQuery: "iron on edge banding plywood birch",
+      estimatedCost: 8.98,
+      notes: `Cover raw plywood edges on drawer fronts people see (${drawers.length} front${drawers.length === 1 ? "" : "s"}).`,
     });
   }
   if (coatRack) {
