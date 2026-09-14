@@ -108,7 +108,7 @@ export function typedExtents(prompt: string): TypedExtents | null {
   };
 
   if (!saidAxis && trip) {
-    // Rect tables stay W×H×D (laundry folding 48x36x24). Desk/media/storage are W×D×H.
+    // Rect tables stay W×H×D (laundry folding 48x36x24). Desk/media/storage/vanity are W×D×H.
     // Oval/square bare triples are long×wide×tall → plan W×D×H (display W×H×D).
     // Closet / wardrobe / pantry / vanity stay W×H×D (opening order).
     // Fitted-to-opening unlabeled triples are also W×H×D (bookshelf 36×84×12 opening).
@@ -120,7 +120,6 @@ export function typedExtents(prompt: string): TypedExtents | null {
       program !== "closet" &&
       program !== "wardrobe" &&
       program !== "pantry" &&
-      program !== "vanity" &&
       !openingFit;
     if (trip.c != null) {
       if (program === "table") {

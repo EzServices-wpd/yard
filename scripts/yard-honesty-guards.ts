@@ -2733,6 +2733,139 @@ console.log("SOFT-TRUST OK", {
 }
 
 
+// Day-push door-vanity class pack — typed doors → door carcase (no invent drawers/knee/mirror).
+// Marker: b-day-push door vanity no invent drawers
+{
+  const doorVanityPrompt =
+    "house: bathroom vanity 36″ wide × 21″ deep × 32″ tall with two doors";
+  const doorVanity = generateFromPrompt(doorVanityPrompt);
+  if (!/Vanity/i.test(doorVanity.name)) failHonesty("b-day-push door vanity title", doorVanity.name);
+  if (doorVanity.fitted?.program !== "vanity") {
+    failHonesty("b-day-push door vanity program", doorVanity.fitted?.program);
+  }
+  if (!doorVanity.fitted?.unit.doors) failHonesty("b-day-push door vanity doors true", doorVanity.fitted?.unit);
+  if (doorVanity.fitted?.unit.drawersPerBank != null) {
+    failHonesty("b-day-push door vanity no invent drawers", doorVanity.fitted?.unit);
+  }
+  if (doorVanity.fitted?.unit.kneeW != null) {
+    failHonesty("b-day-push door vanity no invent knee", doorVanity.fitted?.unit);
+  }
+  if (Math.abs((doorVanity.fitted?.unit.width ?? 0) - 36) > 1.2) {
+    failHonesty("b-day-push door vanity W36", doorVanity.fitted?.unit);
+  }
+  if (Math.abs((doorVanity.fitted?.unit.depth ?? 0) - 21) > 1.2) {
+    failHonesty("b-day-push door vanity D21", doorVanity.fitted?.unit);
+  }
+  if (Math.abs((doorVanity.fitted?.unit.height ?? 0) - 32) > 1.2) {
+    failHonesty("b-day-push door vanity H32", doorVanity.fitted?.unit);
+  }
+  const doorLeaves = doorVanity.panels.filter((p) => /door/i.test(p.name));
+  if (doorLeaves.length < 2) failHonesty("b-day-push two door leaves", doorLeaves.map((p) => p.name));
+  for (const leaf of doorLeaves) {
+    const leafW = leaf.size.width;
+    // Leaf width must fit cabinet: ≤ W/2 + small tol (≈18″ on 36″).
+    if (leafW > 36 / 2 + 1.5) {
+      failHonesty("b-day-push door leaf width ≤ W/2", { name: leaf.name, leafW, unit: doorVanity.fitted?.unit });
+    }
+  }
+  if (doorVanity.panels.some((p) => /Drawer|knee divider/i.test(p.name))) {
+    failHonesty("b-day-push door vanity no Drawer/knee invent", doorVanity.panels.map((p) => p.name));
+  }
+  if (doorVanity.panels.some((p) => /^Mirror$/i.test(p.name))) {
+    failHonesty("b-day-push door vanity no invent mirror", doorVanity.panels.map((p) => p.name));
+  }
+  const doorVanityPlan = buildPlan(doorVanity);
+  const doorVanityBlob = [
+    ...doorVanityPlan.bom.map((b) => `${b.name} ${b.searchQuery ?? ""} ${b.notes ?? ""}`),
+    ...doorVanityPlan.instructions.map((s) => `${s.title} ${s.description}`),
+  ].join("\n");
+  if (/22"/.test(doorVanityBlob) && /slide/i.test(doorVanityBlob)) {
+    failHonesty("b-day-push door vanity no 22in slides", doorVanityBlob.slice(0, 500));
+  }
+
+  // Unlabeled triple 36×21×32 two doors — same door-carcase class (W×D×H); HUD must not swap H/D.
+  const unlabeled = generateFromPrompt("bathroom vanity 36×21×32 two doors");
+  if (unlabeled.fitted?.program !== "vanity") {
+    failHonesty("b-day-push unlabeled door vanity program", unlabeled.fitted?.program);
+  }
+  if (!unlabeled.fitted?.unit.doors) failHonesty("b-day-push unlabeled doors", unlabeled.fitted?.unit);
+  if (unlabeled.fitted?.unit.drawersPerBank != null) {
+    failHonesty("b-day-push unlabeled no invent drawers", unlabeled.fitted?.unit);
+  }
+  if (unlabeled.fitted?.unit.kneeW != null) {
+    failHonesty("b-day-push unlabeled no invent knee", unlabeled.fitted?.unit);
+  }
+  if (Math.abs((unlabeled.fitted?.unit.width ?? 0) - 36) > 1.2 || Math.abs(unlabeled.overall.width - 36) > 1.2) {
+    failHonesty("b-day-push unlabeled W36", { unit: unlabeled.fitted?.unit, overall: unlabeled.overall });
+  }
+  if (Math.abs((unlabeled.fitted?.unit.depth ?? 0) - 21) > 1.2 || Math.abs(unlabeled.overall.depth - 21) > 1.2) {
+    failHonesty("b-day-push unlabeled D21", { unit: unlabeled.fitted?.unit, overall: unlabeled.overall });
+  }
+  if (Math.abs((unlabeled.fitted?.unit.height ?? 0) - 32) > 1.2 || Math.abs(unlabeled.overall.height - 32) > 1.2) {
+    failHonesty("b-day-push unlabeled H32", { unit: unlabeled.fitted?.unit, overall: unlabeled.overall });
+  }
+  const unlabeledLeaves = unlabeled.panels.filter((p) => /door/i.test(p.name));
+  if (unlabeledLeaves.length < 2) {
+    failHonesty("b-day-push unlabeled two doors", unlabeledLeaves.map((p) => p.name));
+  }
+  for (const leaf of unlabeledLeaves) {
+    if (leaf.size.width > 36 / 2 + 1.5) {
+      failHonesty("b-day-push unlabeled door leaf ≤ W/2", { name: leaf.name, w: leaf.size.width });
+    }
+  }
+
+  // Drawers + doors densify — honor typed drawers; no invent knee unless knee typed; W×D×H holds.
+  const mixed = generateFromPrompt(
+    "bathroom vanity 48×21×34 with two drawers and two doors",
+  );
+  if (mixed.fitted?.program !== "vanity") failHonesty("b-day-push mixed program", mixed.fitted?.program);
+  if (!mixed.fitted?.unit.doors) failHonesty("b-day-push mixed doors", mixed.fitted?.unit);
+  if (mixed.fitted?.unit.drawersPerBank !== 2) {
+    failHonesty("b-day-push mixed two drawers", mixed.fitted?.unit);
+  }
+  if (mixed.fitted?.unit.kneeW != null) {
+    failHonesty("b-day-push mixed no invent knee", mixed.fitted?.unit);
+  }
+  if (Math.abs((mixed.fitted?.unit.width ?? 0) - 48) > 1.2 || Math.abs((mixed.fitted?.unit.depth ?? 0) - 21) > 1.2 || Math.abs((mixed.fitted?.unit.height ?? 0) - 34) > 1.2) {
+    failHonesty("b-day-push mixed dims W48 D21 H34", mixed.fitted?.unit);
+  }
+  const mixedFronts = mixed.panels.filter((p) => /drawer front/i.test(p.name));
+  if (mixedFronts.length < 2) failHonesty("b-day-push mixed drawer fronts", mixedFronts.map((p) => p.name));
+  const mixedDoors = mixed.panels.filter((p) => /door/i.test(p.name));
+  if (mixedDoors.length < 2) failHonesty("b-day-push mixed door leaves", mixedDoors.map((p) => p.name));
+  if (mixed.panels.some((p) => /knee divider/i.test(p.name))) {
+    failHonesty("b-day-push mixed knee divider invent", mixed.panels.map((p) => p.name));
+  }
+
+  // Protect pocket vanity trapezoid + knee/drawers.
+  const pocket = generateFromPrompt(
+    "bathroom vanity for a pocket space: left wall 26\", right wall 33.5\", depth 22\", back wall 38.5\"",
+  );
+  if (!/pocket|vanity/i.test(pocket.name)) failHonesty("b-day-push protect pocket title", pocket.name);
+  if (pocket.fitted?.unit.kneeW == null || (pocket.fitted.unit.kneeW as number) < 8) {
+    failHonesty("b-day-push protect pocket knee", pocket.fitted?.unit);
+  }
+  if (!pocket.fitted?.unit.drawersPerBank) {
+    failHonesty("b-day-push protect pocket drawers", pocket.fitted?.unit);
+  }
+
+  // Protect desk 60×30×29 knee 24.
+  const desk = generateFromPrompt("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space");
+  if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) {
+    failHonesty("b-day-push protect desk 24in knee", desk.fitted?.unit);
+  }
+
+  // Protect linen + Andersen freezes.
+  const linen = generateFromPrompt("linen cabinet 31.5 wide × 16 deep × 78 tall");
+  if (Math.abs(linen.overall.width - 31.5) > 1.5 || Math.abs(linen.overall.height - 78) > 2.5) {
+    failHonesty("b-day-push protect linen", { name: linen.name, overall: linen.overall });
+  }
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("b-day-push protect Andersen", andersen.name);
+}
+
+
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),

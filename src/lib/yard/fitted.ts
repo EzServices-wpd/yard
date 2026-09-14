@@ -545,11 +545,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
   // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
   // not a 24" coffee height with a 36" deep top.
+  // Vanity is casegoods: unlabeled triples are W×D×H (36×21×32 → H32), not middle-as-depth + default 34.
+  // Closet/wardrobe/pantry stay opening-oriented; tables keep their own plan-axis rules.
   const furnitureTriple =
     program !== "closet" &&
     program !== "wardrobe" &&
     program !== "pantry" &&
-    program !== "vanity" &&
     program !== "table";
   let unlabeledWd = false;
   if (!saidAxis && furnitureTriple && trip.w && trip.h && trip.d) {
@@ -923,6 +924,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? height
         : undefined;
   // Bare workbench / potting bench is a standing shop top — never invent desk knee clearance.
+  // Door-carcase vanity: typed doors → no invent knee (pocket early-return already set knee).
+  // Drawers+doors vanity also skips knee unless knee/sit/chair/open is typed.
+  const vanityDoorsSaid =
+    program === "vanity" && /door/.test(lower) && !isDoorPortal(lower);
   const kneeW = isStandingShopTop(lower)
     ? /knee|sit|chair/.test(lower)
       ? pick(
@@ -937,7 +942,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
           /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
           pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
         )
-      : program === "vanity" || program === "desk"
+      : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
         ? Math.min(24, Math.max(18, width * 0.4))
         : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
@@ -1031,9 +1036,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
           : house?.affordances?.includes("cubbies") && house.family === "floor-carcase" && wantsShoes(lower)
             ? Math.max(2, Math.min(8, Math.round(width / 6)))
             : NaN;
+  // Door-carcase vanity: typed doors without drawers → no invent drawer banks.
+  // Honor typed drawers (with or without doors). Bare vanity (no doors typed) still densifies drawers.
   const drawers =
     /drawer/.test(lower) ||
-    program === "vanity" ||
+    (program === "vanity" && !vanityDoorsSaid) ||
     (program === "desk" && !isStandingShopTop(lower)) ||
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
     (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isToyChest(lower) && !/hinged\s*lid/.test(lower))) && !isBedsideShelf(lower);
@@ -1064,7 +1071,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "media" && !/door/.test(lower))
       ? false
       : doors;
-  const mirror = /mirror/.test(lower) || program === "vanity" || isMedicineCabinet(lower);
+  // Door-carcase vanity: never invent a mirror when doors were typed (pocket early-return sets mirror).
+  const mirror =
+    /mirror/.test(lower) ||
+    (program === "vanity" && !vanityDoorsSaid) ||
+    isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
     ? {
