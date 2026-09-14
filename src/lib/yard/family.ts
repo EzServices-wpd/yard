@@ -35,7 +35,8 @@ export type HouseAffordance =
   | "drawers"
   | "hooks"
   | "cleats"
-  | "sleep-platforms";
+  | "sleep-platforms"
+  | "hinged-lid";
 
 export type HouseHit = {
   family: HouseFamily;
@@ -459,12 +460,26 @@ export function isBookBinBench(lower: string) {
   return false;
 }
 
-/** Toy chest / hinged-lid chest — floor carcase + lid; never Yard House wire / Storage. */
+/** Toy chest / toy box — kids/play/nursery path only (not every hinged-lid chest). */
 export function isToyChest(lower: string) {
   if (/medicine/.test(lower)) return false;
   if (/toy\s*(?:chest|box)/.test(lower)) return true;
   if (/\bchest\b/.test(lower) && /hinged\s*lid|\blid\b/.test(lower) && /toy|kids|play|child|nursery/.test(lower)) return true;
-  if (/\bchest\b/.test(lower) && /hinged\s*lid/.test(lower) && !/file|tool|hope|blanket|medicine/.test(lower)) return true;
+  return false;
+}
+
+/**
+ * OPERATE class: hinged-lid chest / trunk / box.
+ * Toy path OR chest/trunk/box + hinged lid/lid — not medicine / file / tool cabinet drawer chests.
+ */
+export function isHingedLidChest(lower: string) {
+  if (isToyChest(lower)) return true;
+  if (/medicine|file\s*cabinet|filing\s*cabinet|tool\s*chest|tool\s*cabinet/.test(lower)) return false;
+  // Drawer-bank chests stay drawer path unless a hinged lid is typed.
+  if (/drawer/.test(lower) && !/hinged\s*lid|\blid\b/.test(lower)) return false;
+  if (/(?:\bchest\b|\btrunk\b|\bbox\b)/.test(lower) && /hinged\s*lid|\blid\b/.test(lower)) {
+    return true;
+  }
   return false;
 }
 
@@ -852,6 +867,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower))) return "Boot tray bench";
   if (isBookBinBench(lower)) return sitBenchTitleStem(lower) || "Book bin bench";
   if (isToyChest(lower)) return "Toy chest";
+  if (isHingedLidChest(lower)) return "Chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";
   if (isCoatHookBoard(lower)) return "Coat hook board";
@@ -1058,6 +1074,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isPlanterBox(lower) &&
     !isOutdoorSideTable(lower) &&
     !isToyChest(lower) &&
+    !isHingedLidChest(lower) &&
     !isBookBinBench(lower) &&
     !/ironing/.test(lower)
   ) {
@@ -1215,6 +1232,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     add("cleats");
   }
   if (family === "bunk" || isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower) || isPlatformBed(lower)) add("sleep-platforms");
+  if (isHingedLidChest(lower)) add("hinged-lid");
 
   return { family, mount, use, opening, affordances, program };
 }

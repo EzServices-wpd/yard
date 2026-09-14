@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -2187,6 +2187,7 @@ console.log("SOFT-TRUST OK", {
     failHonesty("b31 toy chest stem", identityTitleStem(chestPrompt.toLowerCase()) || "");
   }
   if (!isToyChest(chestPrompt.toLowerCase())) failHonesty("b31 isToyChest");
+  if (!isHingedLidChest(chestPrompt.toLowerCase())) failHonesty("b31 isHingedLidChest toy");
   const chest = generateFromPrompt(chestPrompt);
   if (!/^Toy chest/i.test(chest.name)) failHonesty("b31 toy chest title", chest.name);
   if (/^House\b|^Storage\b/i.test(chest.name)) failHonesty("b31 toy chest House/Storage steal", chest.name);
@@ -2200,6 +2201,41 @@ console.log("SOFT-TRUST OK", {
   if (!/\bLid\b/i.test(chestCuts)) failHonesty("b31 toy chest lid densify", chestCuts);
   const chestBlob = [chest.name, ...(chest.notes ?? [])].join("\n");
   if (!/hinge|hinged lid/i.test(chestBlob)) failHonesty("b31 toy chest hinge", chestBlob.slice(0, 400));
+  const chestPlan = buildPlan(chest);
+  if (!chestPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
+    failHonesty("b31 toy chest Piano hinge BOM", chestPlan.bom.map((b) => b.name));
+  }
+  if (!chestPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+    failHonesty(
+      "b31 toy chest piano-hinge step",
+      chestPlan.instructions.map((s) => s.title).join(" | "),
+    );
+  }
+
+  // Non-toy hinged-lid OPERATE — cedar chest titles Chest (not Toy chest / Storage / House).
+  const cedarPrompt = "cedar chest 36 wide × 18 deep × 20 tall with hinged lid";
+  if (isToyChest(cedarPrompt.toLowerCase())) failHonesty("b31 cedar must not be isToyChest");
+  if (!isHingedLidChest(cedarPrompt.toLowerCase())) failHonesty("b31 cedar isHingedLidChest");
+  if (identityTitleStem(cedarPrompt.toLowerCase()) !== "Chest") {
+    failHonesty("b31 cedar stem Chest", identityTitleStem(cedarPrompt.toLowerCase()) || "");
+  }
+  const cedar = generateFromPrompt(cedarPrompt);
+  if (!/^Chest\b/i.test(cedar.name)) failHonesty("b31 cedar title Chest", cedar.name);
+  if (/^Toy chest/i.test(cedar.name)) failHonesty("b31 cedar stole Toy chest", cedar.name);
+  if (/^House\b|^Storage\b/i.test(cedar.name)) failHonesty("b31 cedar House/Storage steal", cedar.name);
+  if (!cedar.panels.some((p) => /^Lid$/i.test(p.name))) {
+    failHonesty("b31 cedar Lid panel", cedar.panels.map((p) => p.name));
+  }
+  const cedarPlan = buildPlan(cedar);
+  if (!cedarPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
+    failHonesty("b31 cedar Piano hinge BOM", cedarPlan.bom.map((b) => b.name));
+  }
+  if (!cedarPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+    failHonesty(
+      "b31 cedar piano-hinge step",
+      cedarPlan.instructions.map((s) => s.title).join(" | "),
+    );
+  }
 
   // Protect already-green kids/play + desk + cubby
   const cubby = generateFromPrompt("house: toy cubby wall fitted to a 36×48×12 opening, six cubbies");

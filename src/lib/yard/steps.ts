@@ -30,7 +30,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard} from "./family";
+import { isBedsideShelf, isHingedLidChest, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -1530,6 +1530,67 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  // Hinged-lid chest OPERATE — never glue the Lid as a fixed top.
+  {
+    const lidPrompt = (project.prompt ?? "").toLowerCase();
+    const hasLidPanel = panels.some((p) => /^Lid$/i.test(p.name));
+    const hingedLidChest =
+      (/Toy chest|\bChest\b/i.test(project.name) && hasLidPanel) ||
+      isHingedLidChest(lidPrompt) ||
+      isToyChest(lidPrompt) ||
+      hasLidPanel;
+    if (hingedLidChest && hasLidPanel) {
+      const carcaseOnly = [...uprights, ...backs, ...bottoms, ...rails].filter(
+        (p) => !/^Lid$/i.test(p.name),
+      );
+      const lidPanel = panels.filter((p) => /^Lid$/i.test(p.name));
+      return [
+        {
+          step: 1,
+          title: "Confirm the footprint — do not cut yet",
+          description: `${project.name}. Freestanding hinged-lid chest ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. ${panels.length} parts on this list — the Lid stays off until it is hinged.`,
+          tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+          partsUsed: ["*"],
+        },
+        {
+          step: 2,
+          title: sheetCutTitle(panels, item),
+          description: sheetCutDescription(panels, item),
+          tips: tool.tip,
+          partsUsed: ["*"],
+        },
+        {
+          step: 3,
+          title: "Stand the carcase (the main box) — sides, back, front, bottom only",
+          description: `${carcaseOnly.map(cutLine).join("; ") || "Sides, back, front, and bottom."}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then front. Do NOT glue or screw the Lid on as a fixed top — it hinges on next.`,
+          tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box. Leave the Lid off the carcase.",
+          partsUsed: names(carcaseOnly),
+        },
+        {
+          step: 4,
+          title: "Piano-hinge the lid along the back edge",
+          description: `${lidPanel.map(cutLine).join("; ") || "Lid."} A piano hinge is a long continuous hinge (one long knuckle strip, not two butt hinges). Screw one leaf into the back edge of the Lid and the other into the top edge of the carcase back (or the back rail). The lid should open up and back. Predrill so the ply does not split.`,
+          tips: "Cut or buy a piano hinge about as long as the chest is wide. Keep the hinge barrel just proud of the back edge so the lid clears when it opens.",
+          partsUsed: names([...lidPanel, ...backs]),
+        },
+        {
+          step: 5,
+          title: "Add a lid stay — open/close test",
+          description: "Screw on a lid stay / lid support so the lid cannot slam shut on fingers. Open and close the lid a few times — it should lift smoothly on the piano hinge and hold or slow on the stay.",
+          tips: "Toy-chest and blanket-chest lid stays are sold as lid support / lid stay kits. Guidance only — confirm the hardware before you cut.",
+          partsUsed: names(lidPanel),
+        },
+        {
+          step: 6,
+          title: "Level it",
+          description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the carcase (main box). The lid should still open/close after leveling.",
+          tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+          partsUsed: names([...carcaseOnly, ...lidPanel]),
+        },
+      ];
+    }
+  }
+
   if (pocket) {
     steps.push({
       step: n++,
@@ -1580,9 +1641,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     partsUsed: ["*"],
   });
 
-  if (uprights.length && (backs.length || bottoms.length || of("top").length)) {
+  // Exclude panels named Lid from the fixed-top carcase join — lids hinge, they do not glue on.
+  const carcaseTops = of("top").filter((p) => !/^Lid$/i.test(p.name));
+  if (uprights.length && (backs.length || bottoms.length || carcaseTops.length)) {
     const uDesc = uprights.map(cutLine).join("; ");
-    const box = [...backs, ...bottoms, ...of("top")].map(cutLine).join("; ");
+    const box = [...backs, ...bottoms, ...carcaseTops].map(cutLine).join("; ");
     steps.push({
       step: n++,
       title: "Stand the carcase (the main box)",
@@ -1590,7 +1653,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       tips: doors.length
         ? "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box."
         : "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
-      partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
+      partsUsed: names([...uprights, ...backs, ...bottoms, ...carcaseTops]),
     });
   }
 

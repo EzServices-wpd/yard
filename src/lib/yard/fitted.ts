@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -296,6 +296,7 @@ export function looksLikeFitted(prompt: string) {
     isPlanterBox(lower) ||
     isOutdoorSideTable(lower) ||
     isToyChest(lower) ||
+    isHingedLidChest(lower) ||
     isBookBinBench(lower) ||
     /ironing/.test(lower)
   ) {
@@ -1043,7 +1044,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && !vanityDoorsSaid) ||
     (program === "desk" && !isStandingShopTop(lower)) ||
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
-    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isToyChest(lower) && !/hinged\s*lid/.test(lower))) && !isBedsideShelf(lower);
+    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -1215,6 +1216,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? "Filing shelf"
         : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
           ? "File cabinet"
+          : isHingedLidChest(lower)
+            ? isToyChest(lower) ? "Toy chest" : "Chest"
           : /\bchest\b/.test(lower) && !/medicine/.test(lower)
             ? isToyChest(lower) || /toy/.test(lower) ? "Toy chest" : "Chest"
             : /dresser/.test(lower)
@@ -3636,41 +3639,61 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
-  // Toy chest / hinged-lid chest — lid anatomy; never Yard House wire / Storage.
-  if (isToyChest(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Toy chest") {
-    const innerW = W - P * 2;
-    panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
-    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
-    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
-    panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
-    panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
-    panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
-    const name = `Toy chest ${W}" × ${H}" × ${D}"`;
-    return {
-      id: createId("proj"),
-      name,
-      prompt,
-      kind: "closet",
-      overall: { width: W, height: H, depth: D },
-      instances: [],
-      panels,
-      primaryMaterialId: PLY,
-      notes: [
-        `${name}. Hinged lid toy chest — floor carcase with a real lid on a piano hinge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
-        `Hinged lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge along the back edge.`,
-        "Guidance only — add a lid stay so the lid cannot slam. Soft-close optional.",
-      ],
-      historic: false,
-      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
-      fitted: {
-        ...spec,
+  // Hinged-lid chest OPERATE class — lid anatomy; never Yard House wire / Storage.
+  // Toy chest stays Toy chest; cedar / blanket / hope chests with a hinged lid title Chest.
+  // Planter (no lid) and crate (door) stay on their own builders.
+  {
+    const lidLower = prompt.toLowerCase();
+    const lidStem = identityTitleStem(lidLower);
+    if (
+      isHingedLidChest(lidLower) ||
+      lidStem === "Toy chest" ||
+      (lidStem === "Chest" && /hinged\s*lid|\blid\b/.test(lidLower))
+    ) {
+      const toy = isToyChest(lidLower) || lidStem === "Toy chest";
+      const innerW = W - P * 2;
+      panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
+      panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
+      panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+      panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
+      panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
+      panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
+      const name = toy
+        ? `Toy chest ${W}" × ${H}" × ${D}"`
+        : `Chest ${W}" × ${H}" × ${D}"`;
+      const priorAff: HouseAffordance[] = spec.affordances ?? [];
+      const lidAff: HouseAffordance[] = priorAff.includes("hinged-lid")
+        ? priorAff
+        : [...priorAff, "hinged-lid"];
+      return {
+        id: createId("proj"),
         name,
-        program: "storage",
-        family: "floor-carcase",
-        unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
-      },
-      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
-    };
+        prompt,
+        kind: "closet",
+        overall: { width: W, height: H, depth: D },
+        instances: [],
+        panels,
+        primaryMaterialId: PLY,
+        notes: [
+          toy
+            ? `${name}. Hinged-lid toy chest — floor carcase with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
+            : `${name}. Hinged-lid chest — floor carcase with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+          `Lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge (a long continuous hinge) along the back edge of the lid into the carcase back/top edge. Add a lid stay so the lid cannot slam.`,
+          "Guidance only — open/close test the lid. Soft-close optional.",
+        ],
+        historic: false,
+        opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+        fitted: {
+          ...spec,
+          name,
+          program: "storage",
+          family: "floor-carcase",
+          affordances: lidAff,
+          unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+        },
+        assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+      };
+    }
   }
 
   // Planter box — open top (no lid / doors); honor typed W×D×H; never Wire skeleton cube.

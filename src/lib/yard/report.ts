@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
+import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -374,6 +374,42 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       });
     }
   }
+  // Hinged-lid chest OPERATE — piano hinge + lid stay (do not double-add if fold-down already added piano hinge).
+  {
+    const lidPrompt = (project.prompt ?? "").toLowerCase();
+    const hasLidPanel = project.panels.some((p) => /^Lid$/i.test(p.name));
+    const hingedLid =
+      hasLidPanel ||
+      isHingedLidChest(lidPrompt) ||
+      isToyChest(lidPrompt) ||
+      /hinged\s*lid/i.test(`${project.name} ${project.prompt ?? ""}`) ||
+      ((/Toy chest|\bChest\b/i.test(project.name) || /Toy chest/i.test(project.name)) && hasLidPanel);
+    if (hingedLid) {
+      const alreadyPiano = bom.some((b) => /piano hinge/i.test(b.name));
+      if (!alreadyPiano) {
+        bom.push({
+          name: "Piano hinge",
+          quantity: 1,
+          unit: "pc",
+          searchQuery: "continuous piano hinge",
+          estimatedCost: 14.98,
+          notes: `Along the back edge of the lid · length ≈ ${project.overall.width}" (chest width). Long continuous hinge — not two butt hinges.`,
+        });
+      }
+      const alreadyStay = bom.some((b) => /lid stay|lid support/i.test(b.name));
+      if (!alreadyStay) {
+        bom.push({
+          name: "Lid stay / lid support",
+          quantity: 1,
+          unit: "pc",
+          searchQuery: "toy chest lid support or lid stay",
+          estimatedCost: 9.98,
+          notes: "Keeps the lid from slamming. Mount per the stay instructions — usually one side of the lid into the carcase.",
+        });
+      }
+    }
+  }
+
   const hangingRods = project.panels.filter(
     (panel) => /hanging rod/i.test(panel.name),
   );
@@ -670,6 +706,9 @@ export function buildPlan(project: YardProject): BuildPlan {
                 ? "Boot tray"
               : isToyChest((project.prompt ?? "").toLowerCase()) || /Toy chest/i.test(project.name)
                 ? "toy chest"
+              : isHingedLidChest((project.prompt ?? "").toLowerCase()) ||
+                  (/\bChest\b/i.test(project.name) && project.panels.some((p) => /^Lid$/i.test(p.name)))
+                ? "chest"
               : /Mudroom bench/i.test(project.name) ||
                   (/mudroom/.test((project.prompt ?? "").toLowerCase()) && /\bbench\b/.test((project.prompt ?? "").toLowerCase()))
                 ? "mudroom bench"
