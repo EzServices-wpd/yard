@@ -4,7 +4,7 @@ import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
@@ -123,8 +123,35 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     }
   }
 
+  // Door-carcase vanity: typed doors without drawers must not keep AI invent of drawer banks / knee / mirror.
+  // Local parseBrief already leaves these undefined; labeled prompts still hit LLM house-brief which invents them.
+  // Prefer local parsed.unit doors/drawers/knee/mirror (and W/D/H) when program is vanity.
+  const vanityDoorsSaid =
+    (/\bvanity\b/.test(lower) || parsed.program === "vanity") &&
+    /door/.test(lower) &&
+    !isDoorPortal(lower);
+  if (parsed.program === "vanity") {
+    unit.width = parsed.unit.width;
+    unit.depth = parsed.unit.depth;
+    unit.height = parsed.unit.height;
+    opening.width = parsed.opening.width;
+    opening.depth = parsed.opening.depth;
+    opening.height = parsed.opening.height;
+    if (parsed.unit.doors != null) unit.doors = parsed.unit.doors;
+    if (parsed.unit.drawersPerBank != null) unit.drawersPerBank = parsed.unit.drawersPerBank;
+    if (parsed.unit.kneeW != null) unit.kneeW = parsed.unit.kneeW;
+    if (parsed.unit.mirror != null) unit.mirror = parsed.unit.mirror;
+  }
+  if (vanityDoorsSaid) {
+    // Drawers only when said; knee/mirror invent always scrubbed for typed-door vanities.
+    if (!/drawer/.test(lower)) unit.drawersPerBank = undefined;
+    if (!/knee|sit|chair/.test(lower)) unit.kneeW = undefined;
+    unit.doors = true;
+    if (!/mirror/.test(lower)) unit.mirror = false;
+  }
+
   let program = brief.program;
-  if (parsed.program === "table" || parsed.program === "media") program = parsed.program;
+  if (parsed.program === "table" || parsed.program === "media" || parsed.program === "vanity") program = parsed.program;
   else if (brief.program === "storage" && parsed.program && parsed.program !== "storage") {
     program = parsed.program;
   }
