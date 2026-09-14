@@ -904,8 +904,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 4,
-        title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`,
+        title:
+          doors.length > 1
+            ? `Hang ${doors.length} doors — 2 concealed hinges each`
+            : "Hang the door — 2 concealed hinges",
+        description:
+          doors.length > 1
+            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`
+            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
         partsUsed: names(doors),
       },

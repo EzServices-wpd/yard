@@ -86,6 +86,35 @@ function spokenDrawerCount(text: string): number | null {
   return null;
 }
 
+
+/** Spoken/typed door-leaf count — digits or words; null → width/bay heuristic. */
+function typedDoorCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*-?\s*doors?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 8) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    single: 1,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|seven|eight|single)\s*-?\s*doors?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  // "a door" / "the door" → one leaf
+  if (/\b(?:a|the)\s+doors?\b/.test(lower)) return 1;
+  // Bare singular "door" (not "doors") → one; bare plural "doors" → null (heuristic)
+  if (/\bdoor\b/.test(lower) && !/\bdoors\b/.test(lower)) return 1;
+  return null;
+}
+
 /** Spoken/typed shelf count — digits or words; honor "one lower shelf" / adjective between count and shelf. */
 function spokenShelfCount(text: string): number | null {
   const lower = text.toLowerCase();
@@ -1680,7 +1709,19 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     panels.push(panel("deck", "Fold-down board", x0 + P + (innerW - boardW) / 2, P, D - P * 2, boardW, boardLen, P));
     panels.push(panel("deck", "Support leg", x0 + P + (innerW - 1.5) / 2, P, D - P * 3, 1.5, legLen, P));
   }
-  panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+  const doorN = fold ? 1 : typedDoorCount(prompt) ?? (W > 28 ? 2 : 1);
+  if (fold) {
+    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+  } else {
+    const leafH = H - 0.16;
+    const bayW = W / doorN;
+    const leafW = bayW - 0.2;
+    for (let i = 0; i < doorN; i++) {
+      const label =
+        doorN === 1 ? "Door" : doorN === 2 ? (i === 0 ? "Left door" : "Right door") : `Door ${i + 1}`;
+      panels.push(panel("door", label, x0 + i * bayW + 0.1, 0.08, D - P, leafW, leafH, P));
+    }
+  }
   const lowerPrompt = prompt.toLowerCase();
   const name = isKitchenUpper(lowerPrompt)
     ? spec.name.match(/upper/i)
@@ -1710,7 +1751,9 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
         : `${name}. Wall-mounted cabinet — not a floor box. ¾" plywood.`,
       fold
         ? "The board stores upright and hinges down on a piano hinge. A support leg kicks out to the floor. Hang the carcase on studs through the back."
-        : "Hang the carcase on studs through the back. Concealed hinges on the door. Glue the shelves; do not pin them.",
+        : doorN > 1
+          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorN} hinge pairs). Glue the shelves; do not pin them.`
+          : "Hang the carcase on studs through the back. Concealed hinges on the door. Glue the shelves; do not pin them.",
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -4243,7 +4286,21 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (u.doors && (spec.program !== "media" || mediaWantsDoors)) {
     const doorY = u.upperStart ?? 0;
     const doorH = H - doorY;
-    if (bayN >= 2) {
+    const typedDoors = typedDoorCount(prompt);
+    if (typedDoors != null) {
+      const bayW = W / typedDoors;
+      for (let i = 0; i < typedDoors; i++) {
+        const label =
+          typedDoors === 1
+            ? "Door"
+            : typedDoors === 2
+              ? i === 0
+                ? "Left door"
+                : "Right door"
+              : `Door ${i + 1}`;
+        panels.push(panel("door", label, x0 + i * bayW + 0.1, doorY, D - P, bayW - 0.2, doorH, P));
+      }
+    } else if (bayN >= 2) {
       const bayW = W / bayN;
       for (let i = 0; i < bayN; i++) {
         panels.push(
