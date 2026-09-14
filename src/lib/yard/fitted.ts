@@ -193,13 +193,13 @@ function spokenRungCount(text: string): number | null {
   return null;
 }
 
-/** Spoken slot count for plate/magazine/dish/wine racks ("three slots" / "twelve slots" / "12 slots"). */
+/** Spoken slot count for plate/magazine/dish/wine racks ("three slots" / "sixteen slots" / "12 slots" / "16 slots"). */
 function spokenSlotCount(text: string): number | null {
   const lower = text.toLowerCase();
   const digit = lower.match(/\b(\d+)\s*slots?\b/);
   if (digit) {
     const n = parseInt(digit[1], 10);
-    if (n >= 1 && n <= 16) return n;
+    if (n >= 1 && n <= 24) return n;
   }
   const words: Record<string, number> = {
     one: 1,
@@ -214,9 +214,17 @@ function spokenSlotCount(text: string): number | null {
     ten: 10,
     eleven: 11,
     twelve: 12,
+    thirteen: 13,
+    fourteen: 14,
+    fifteen: 15,
+    sixteen: 16,
+    seventeen: 17,
+    eighteen: 18,
+    nineteen: 19,
+    twenty: 20,
   };
   const word = lower.match(
-    /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+slots?\b/,
+    /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+slots?\b/,
   );
   if (word && words[word[1]] != null) return words[word[1]];
   return null;
@@ -2371,7 +2379,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const slotLower = prompt.toLowerCase();
     const stem = slotRackTitle(slotLower);
     const spokenSlots = spokenSlotCount(prompt);
-    const slotN = Math.max(2, Math.min(12, spokenSlots != null ? spokenSlots : 3));
+    const slotN = Math.max(2, Math.min(24, spokenSlots != null ? spokenSlots : 3));
     const innerW = W - P * 2;
     const backT = P;
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
@@ -2477,10 +2485,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const backT = P;
     const spokenSlots = spokenSlotCount(prompt);
     const saidShelves = /\d+\s*shel/i.test(prompt);
-    // Slot-rack densify class: spoken/typed slot count (twelve → 12 bottle slots).
+    // Slot-rack densify class: spoken/typed slot count (twelve/sixteen/12/16 → N bottle rails).
     const shelfN =
       spokenSlots != null
-        ? Math.max(2, Math.min(16, spokenSlots))
+        ? Math.max(2, Math.min(24, spokenSlots))
         : saidShelves && u.shelfCount && u.shelfCount > 0
           ? Math.max(2, Math.min(12, u.shelfCount))
           : Math.max(3, Math.min(10, Math.round((H - P) / 4.5)));

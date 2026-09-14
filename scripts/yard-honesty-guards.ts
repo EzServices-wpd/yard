@@ -2661,7 +2661,7 @@ console.log("SOFT-TRUST OK", {
   const shelfCount = shelf.panels.filter((p) => /^Shelf\b/i.test(p.name) || p.type === "shelf").length;
   if (shelfCount !== 1) failHonesty("b37 wall shelf singular count", shelfCount, shelf.panels.map((p) => p.name));
 
-  // B) Wine rack twelve slots densify (slot-rack class extension).
+  // B) Wine rack typed slot count densify (slot-rack class — any spoken digit/word, not only 12).
   const winePrompt = "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots";
   const wine = generateFromPrompt(winePrompt);
   if (!/^Wine rack/i.test(wine.name)) failHonesty("b37 wine title", wine.name);
@@ -2670,6 +2670,15 @@ console.log("SOFT-TRUST OK", {
   const wineBlob = [wine.name, ...(wine.notes ?? [])].join("\n");
   if (!/12\s*bottle slots|twelve slots|12 bottle/i.test(wineBlob) && rails.length < 12) {
     failHonesty("b37 wine slot voice", wineBlob.slice(0, 400));
+  }
+  const wine16Prompt = "house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots";
+  const wine16 = generateFromPrompt(wine16Prompt);
+  if (!/^Wine rack/i.test(wine16.name)) failHonesty("b37b wine16 title", wine16.name);
+  const rails16 = wine16.panels.filter((p) => /Bottle rail/i.test(p.name));
+  if (rails16.length < 15) failHonesty("b37b wine sixteen slots densify", rails16.length, wine16.panels.map((p) => p.name));
+  const wine16Blob = [wine16.name, ...(wine16.notes ?? [])].join("\n");
+  if (!/16\s*bottle slots|sixteen slots|16 bottle/i.test(wine16Blob) && rails16.length < 16) {
+    failHonesty("b37b wine sixteen slot voice", wine16Blob.slice(0, 400));
   }
 
   // C) Coat hook board: title + Buy Pine + 4 hooks + PDF mount height ≠ portal/Tool.
