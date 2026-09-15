@@ -3083,6 +3083,65 @@ console.log("SOFT-TRUST OK", {
 }
 
 
+// Catapult-class ≠ marble trough — marble is payload; soft-launch trough stays trough; Eiffel freeze.
+{
+  const failCat = (msg: string, detail?: unknown) => failHonesty(`catapult≠trough ${msg}`, detail);
+
+  // FAIL canary: catapult that launches a marble → Catapult anatomy, never Marble trough.
+  const canaryPrompt = "weekend craft: popsicle stick catapult that launches a marble";
+  const canary = generateFromPrompt(canaryPrompt);
+  if (/marble\s*trough/i.test(canary.name)) failCat("canary title still Marble trough", canary.name);
+  if (!/catapult/i.test(canary.name)) failCat("canary title not Catapult", canary.name);
+  if (canary.primaryMaterialId !== "popsicle-standard") failCat("canary stock", canary.primaryMaterialId);
+  const canaryBlob = [...(canary.notes || []), ...buildPlan(canary).instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (!/axle|pivot|throwing arm|payload cup|fulcrum/i.test(canaryBlob)) {
+    failCat("canary missing arm/fulcrum/cup talk", canaryBlob.slice(0, 400));
+  }
+  if (/trough channel|side guides \+ floor ties/i.test(canaryBlob) && !/throwing arm|payload cup|axle pivot/i.test(canaryBlob)) {
+    failCat("canary densified as U-channel trough", canaryBlob.slice(0, 400));
+  }
+  // Roles: catapult densify keeps support (arm/axle) + deck (cup); trough steal is mostly deck guides.
+  const canaryRoles = new Map<string, number>();
+  for (const i of canary.instances) canaryRoles.set(i.role || "?", (canaryRoles.get(i.role || "?") || 0) + 1);
+  if ((canaryRoles.get("support") || 0) < 1) failCat("canary missing support/arm roles", Object.fromEntries(canaryRoles));
+
+  // Twin: trebuchet popsicle → launcher not trough.
+  const treb = generateFromPrompt("weekend craft: popsicle stick trebuchet that launches a marble");
+  if (/marble\s*trough/i.test(treb.name)) failCat("trebuchet title Marble trough", treb.name);
+  if (!/trebuchet/i.test(treb.name)) failCat("trebuchet title", treb.name);
+  const trebBlob = [...(treb.notes || []), ...buildPlan(treb).instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (/trough channel|side guides \+ floor ties/i.test(trebBlob) && !/throwing arm|payload cup|axle pivot/i.test(trebBlob)) {
+    failCat("trebuchet densified as trough", trebBlob.slice(0, 400));
+  }
+
+  // Protect: honest soft-launch marble trough / marble run stays trough (not catapult).
+  const troughPrompt = 'weekend craft: soft-launch a 5/8" marble on a 12" oak trough; marble leaves free';
+  const trough = generateFromPrompt(troughPrompt);
+  if (!/marble\s*trough|trough/i.test(trough.name)) failCat("protect trough title stolen", trough.name);
+  if (/catapult|trebuchet/i.test(trough.name)) failCat("protect trough became catapult", trough.name);
+  const troughBlob = [...(trough.notes || []), ...buildPlan(trough).instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (!/trough|side guide|floor tie|leaves/i.test(troughBlob)) failCat("protect trough anatomy lost", troughBlob.slice(0, 400));
+  if (/throwing arm|payload cup|axle pivot/i.test(troughBlob) && !/trough|side guide/i.test(troughBlob)) {
+    failCat("protect trough became arm-launch", troughBlob.slice(0, 400));
+  }
+
+  const runPrompt = "weekend craft: popsicle soft-launch marble run; marble leaves free";
+  const run = generateFromPrompt(runPrompt);
+  if (/catapult|trebuchet/i.test(run.name)) failCat("protect marble run became catapult", run.name);
+
+  // Protect: 3-ft popsicle Eiffel freeze.
+  const eiffel = generateFromPrompt("3 foot Eiffel Tower from popsicle sticks");
+  if (eiffel.kind !== "eiffel" || eiffel.primaryMaterialId !== "popsicle-standard") {
+    failCat("protect Eiffel freeze", { kind: eiffel.kind, stock: eiffel.primaryMaterialId });
+  }
+  if (Math.abs(eiffel.overall.height - 36) > 2.5) failCat("protect Eiffel height", eiffel.overall);
+
+  // Plain catapult (no marble) still Catapult.
+  const plain = generateFromPrompt("catapult from popsicle sticks");
+  if (plain.name !== "Catapult") failCat("plain catapult name", plain.name);
+}
+
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),

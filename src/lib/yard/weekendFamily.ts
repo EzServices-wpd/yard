@@ -50,10 +50,11 @@ const CLIMB_HUMAN =
 /** Vehicle incline / craft ramp for a free projectile — launcher, not climb. */
 function isVehicleIncline(hay: string): boolean {
   if (CLIMB_HUMAN.test(hay)) return false;
+  // Marble + "launch(es)" alone is payload language (catapult cup), not trough identity.
   return (
-    /\bramp\b|\btrough\b|\bincline\b|soft-?launch|projectile|leaves the ramp|leaves?\s+free|marble\s+(?:trough|run)/.test(hay) ||
+    /\bramp\b|\btrough\b|\bincline\b|soft-?launch|projectile|leaves the ramp|leaves?\s+free|marble\s+(?:trough|run|ramp)/.test(hay) ||
     (/(?:paper\s*)?plane/.test(hay) && /\bramp\b|launch/.test(hay)) ||
-    (/marble/.test(hay) && /(?:run|trough|launch|leaves)/.test(hay))
+    (/marble/.test(hay) && /(?:run|trough|ramp|soft-?launch|leaves)/.test(hay))
   );
 }
 
@@ -417,8 +418,37 @@ export function marbleDiameterIn(prompt: string): number | null {
   return Number.isFinite(n) && n > 0 && n < 4 ? n : null;
 }
 
+/**
+ * Catapult / siege / arm-launch class — densify arm + fulcrum + cup, not U-channel trough.
+ * Marble (or any free projectile) named as payload stays payload; trough identity requires
+ * soft-launch trough / marble run / ramp WITHOUT these nouns.
+ */
+const CATAPULT_CLASS_NOUN =
+  /\b(catapult|trebuchet|mangonel|onager|ballista|slingshot)\b/;
+
+export function isCatapultClass(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  if (CATAPULT_CLASS_NOUN.test(hay)) return true;
+  // Explicit siege anatomy ask (arm / fulcrum / pivot cup / elastic throw).
+  if (/\b(fulcrum|throwing\s+arm|payload\s+cup|sling\s+pouch)\b/.test(hay)) return true;
+  if (/\barm\b/.test(hay) && /\b(launch|pivot|fulcrum|elastic|band|axle)\b/.test(hay)) return true;
+  // Bare craft "launcher" (not soft-launch) when the ask is not an explicit trough/ramp/run.
+  if (
+    /\blauncher\b/.test(hay) &&
+    !/soft-?launch/.test(hay) &&
+    !/\b(trough|marble\s+run|popsicle\s+run)\b/.test(hay) &&
+    !(/\bramp\b/.test(hay) && !CATAPULT_CLASS_NOUN.test(hay))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Soft-launch / marble trough / plane ramp — U-channel incline. Never when catapult-class. */
 export function isLauncherRamp(prompt: string): boolean {
   const hay = looksHay(prompt);
+  // Catapult / trebuchet / arm-launch wins over marble-as-payload trough steal.
+  if (isCatapultClass(hay)) return false;
   return (
     isVehicleIncline(hay) ||
     ((/\bramp\b|\btrough\b|marble\s+run|popsicle\s+run/.test(hay) || softLaunchHay(hay)) && !isHumanClimb(hay))
@@ -671,15 +701,28 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
         return { family: "frame", kind: "ladder", name };
       }
       if (mech === "launcher" || (FRAME_NOUN.test(hay) && detectWeekendMech(hay) === "launcher")) {
-        const name = isLauncherRamp(hay)
-          ? /marble|trough/.test(hay)
-            ? "Marble trough"
-            : /(?:paper\s*)?plane/.test(hay)
-              ? "Plane ramp"
-              : "Launch ramp"
-          : /trebuchet/.test(hay)
+        // Catapult-class title first — marble as payload must not rename to Marble trough.
+        const name = isCatapultClass(hay)
+          ? /trebuchet/.test(hay)
             ? "Trebuchet"
-            : "Catapult";
+            : /ballista/.test(hay)
+              ? "Ballista"
+              : /slingshot/.test(hay)
+                ? "Slingshot"
+                : /mangonel/.test(hay)
+                  ? "Mangonel"
+                  : /onager/.test(hay)
+                    ? "Onager"
+                    : "Catapult"
+          : isLauncherRamp(hay)
+            ? /marble|trough/.test(hay)
+              ? "Marble trough"
+              : /(?:paper\s*)?plane/.test(hay)
+                ? "Plane ramp"
+                : "Launch ramp"
+            : /trebuchet/.test(hay)
+              ? "Trebuchet"
+              : "Catapult";
         return { family: "frame", kind: "frame", name };
       }
       if (mech === "pot-hold") {
