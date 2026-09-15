@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem } from "./family";
+import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -759,8 +759,18 @@ export function buildPlan(project: YardProject): BuildPlan {
               : /Coat bench/i.test(project.name) ||
                   (/coat/.test((project.prompt ?? "").toLowerCase()) && /\bbench\b/.test((project.prompt ?? "").toLowerCase()))
                 ? "coat bench"
+              : isRockingChair((project.prompt ?? "").toLowerCase()) || /Rocking chair/i.test(project.name)
+                ? "Rocking chair"
+              : isLoungeChair((project.prompt ?? "").toLowerCase()) || /Lounge chair/i.test(project.name)
+                ? "Lounge chair"
+              : isOttoman((project.prompt ?? "").toLowerCase()) || /^Ottoman\b/i.test(project.name)
+                ? "Ottoman"
               : (() => {
-                  const sit = sitBenchTitleStem((project.prompt ?? "").toLowerCase());
+                  const lower = (project.prompt ?? "").toLowerCase();
+                  if (isSeatingLoungeClass(lower)) {
+                    return identityTitleStem(lower) || identityTitleStem((project.name ?? "").toLowerCase()) || "Lounge chair";
+                  }
+                  const sit = sitBenchTitleStem(lower);
                   if (sit) return sit.replace(/ bench$/i, "").trim() || sit;
                   if ((project.fitted?.program ?? "") === "bench") return "seat";
                   return project.fitted?.program ?? "closet";

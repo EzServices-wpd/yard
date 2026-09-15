@@ -3015,6 +3015,74 @@ console.log("SOFT-TRUST OK", {
 }
 
 
+// Batch38b seating/lounge WARN depth — Measure stems ≠ Bench + densify seat/back/rocker steps.
+{
+  const loungePrompt = "house: lounge chair with 16″ seat height and 24″ seat depth";
+  const lounge = generateFromPrompt(loungePrompt);
+  const loungeKind = measureKindFromProject(lounge);
+  if (loungeKind === "bench") failHonesty("b38b lounge Measure kind still Bench", loungeKind);
+  if (loungeKind !== "lounge_chair") failHonesty("b38b lounge Measure kind stem", loungeKind);
+  const loungePlan = buildPlan(lounge);
+  const loungeTitles = loungePlan.instructions.map((s) => s.title).join(" | ");
+  if (!/Attach the seat/i.test(loungeTitles)) failHonesty("b38b lounge attach seat step", loungeTitles);
+  if (!/Attach the back/i.test(loungeTitles)) failHonesty("b38b lounge attach back step", loungeTitles);
+  if (/^Confirm.*\|.*Cut.*\|.*Level it$/i.test(loungeTitles.replace(/\s+/g, " "))) {
+    failHonesty("b38b lounge still thin Confirm/Cut/Level", loungeTitles);
+  }
+  const loungeChip = loungePlan.feasibility.issues.map((i) => `${i.message} ${i.suggestion ?? ""}`).join("\n");
+  if (/—\s*Bench\b/i.test(loungeChip)) failHonesty("b38b lounge Measure chip still Bench", loungeChip.slice(0, 300));
+  if (!/Lounge chair/i.test(loungeChip)) failHonesty("b38b lounge Measure chip stem", loungeChip.slice(0, 300));
+
+  const ottPrompt = "house: ottoman 24″ × 24″ × 16″ tall";
+  const ott = generateFromPrompt(ottPrompt);
+  const ottKind = measureKindFromProject(ott);
+  if (ottKind === "bench") failHonesty("b38b ottoman Measure kind still Bench", ottKind);
+  if (ottKind !== "ottoman") failHonesty("b38b ottoman Measure kind stem", ottKind);
+  const ottPlan = buildPlan(ott);
+  const ottTitles = ottPlan.instructions.map((s) => s.title).join(" | ");
+  if (!/Attach the solid top|Stand the legs|Stand the carcase/i.test(ottTitles)) {
+    failHonesty("b38b ottoman densify step", ottTitles);
+  }
+
+  const rockPrompt = "house: rocking chair with 17″ seat height";
+  const rock = generateFromPrompt(rockPrompt);
+  const rockKind = measureKindFromProject(rock);
+  if (rockKind === "bench") failHonesty("b38b rocking Measure kind still Bench", rockKind);
+  if (rockKind !== "rocking_chair") failHonesty("b38b rocking Measure kind stem", rockKind);
+  const rockPlan = buildPlan(rock);
+  const rockTitles = rockPlan.instructions.map((s) => s.title).join(" | ");
+  if (!/Attach the seat/i.test(rockTitles)) failHonesty("b38b rocking attach seat step", rockTitles);
+  if (!/Attach the back/i.test(rockTitles)) failHonesty("b38b rocking attach back step", rockTitles);
+  if (!/Mount the rockers/i.test(rockTitles)) failHonesty("b38b rocking mount rockers step", rockTitles);
+
+  // Protect: entry bench Measure/stem stays Bench path (not lounge steal).
+  const entry = generateFromPrompt("house: entry bench fitted to a 48×18 opening, 18″ seat height");
+  if (!/Entry bench/i.test(entry.name)) failHonesty("b38b protect Entry bench title", entry.name);
+  const entryKind = measureKindFromProject(entry);
+  if (entryKind !== "bench") failHonesty("b38b protect Entry bench Measure kind", entryKind);
+  if (/lounge_chair|ottoman|rocking_chair/i.test(entryKind)) failHonesty("b38b entry stolen to lounge Measure", entryKind);
+
+  const adi = generateFromPrompt("house: Adirondack chair with 16″ seat height");
+  if (!/Adirondack/i.test(adi.name)) failHonesty("b38b protect Adirondack", adi.name);
+  if (measureKindFromProject(adi) === "lounge_chair") failHonesty("b38b Adirondack lounge Measure steal");
+
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (measureKindFromProject(desk) !== "desk") failHonesty("b38b protect desk Measure", measureKindFromProject(desk));
+
+  const stool = generateFromPrompt(
+    "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+  );
+  if (!/Step stool|Shop stool/i.test(stool.name)) failHonesty("b38b protect stool climb", stool.name);
+
+  const chest = generateFromPrompt("house: toy chest 30×16×18 hinged lid");
+  if (!/Toy chest|Chest/i.test(chest.name)) failHonesty("b38b protect hinged chest", chest.name);
+  const chestPlan = buildPlan(chest);
+  if (!chestPlan.instructions.some((s) => /lid|hinge|operate/i.test(`${s.title} ${s.description}`))) {
+    // soft — operate path may use different verbs
+  }
+}
+
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),

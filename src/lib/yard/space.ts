@@ -1,7 +1,7 @@
 import { buildClosetFromOpening } from "./closet";
 import { buildWindowProject, pickWindow, STOCK_WINDOWS } from "./windows";
 import type { FittedProgram, SpaceKind, YardProject } from "./types";
-import { wantsShoes, isWorkbench, type HouseFamily } from "./family";
+import { wantsShoes, isWorkbench, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman, type HouseFamily } from "./family";
 
 export type { SpaceKind };
 
@@ -68,7 +68,11 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
   if (program === "desk" || /\bdesk\b/.test(blob)) return "desk";
   if (program === "media" || /\btv\b|media console|entertainment\s*cent/.test(blob)) return "media";
   if (program === "table" || family === "table" || (/\btable\b/.test(blob) && !/work table/.test(blob))) return "table";
-  if (program === "bench" || family === "seat") return "bench";
+  // Seating lounge class — Measure type uses identity stems, never naked Bench.
+  if (isRockingChair(blob) || /rocking\s*chair/.test(blob)) return "rocking_chair";
+  if (isLoungeChair(blob) || /lounge\s*chair|easy\s*chair|club\s*chair/.test(blob)) return "lounge_chair";
+  if (isOttoman(blob) || /\bottoman\b|\bpouf\b|foot\s*stool|footstool/.test(blob)) return "ottoman";
+  if ((program === "bench" || family === "seat") && !isSeatingLoungeClass(blob)) return "bench";
   if (wantsShoes(blob) || /shoe rack/.test(blob)) return "shoe_rack";
   // Bookcase / wall cabinet keep their own labels — never leftover "Shelving niche".
   if (program === "bookcase") return "bookcase";

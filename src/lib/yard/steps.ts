@@ -30,7 +30,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isHingedLidChest, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard} from "./family";
+import { isBedsideShelf, isHingedLidChest, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -1066,12 +1066,124 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
+  // Seating lounge class — densify seat / back / rocker join steps when those parts are in the cut.
+  // Confirm→Cut→Level alone is not stranger-finishable for lounge / rocking. Do not invent for non-seating.
+  {
+    const seatingLower = (project.prompt ?? "").toLowerCase();
+    const seatingLounge =
+      !isAdirondackChair(seatingLower) &&
+      (isSeatingLoungeClass(seatingLower) ||
+        /^Lounge chair\b|^Ottoman\b|^Rocking chair\b/i.test(project.name || ""));
+    if (seatingLounge) {
+      const seats = panels.filter(
+        (p) => /^Seat$/i.test(p.name) || (p.type === "deck" && /seat/i.test(p.name)),
+      );
+      const backrests = panels.filter((p) => /backrest|^Back$/i.test(p.name));
+      const rockers = panels.filter((p) => /rocker/i.test(p.name));
+      const solidTops = panels.filter(
+        (p) => /solid top/i.test(p.name) || (p.type === "top" && !/^Lid$/i.test(p.name)),
+      );
+      const legs = uprights.length
+        ? uprights
+        : panels.filter((p) => /leg|post/i.test(p.name) && !/rocker/i.test(p.name));
+      const aprons = panels.filter(
+        (p) =>
+          /apron|seat rail|side rail/i.test(p.name) && !/backrest|rocker/i.test(p.name),
+      );
+      const stem = isRockingChair(seatingLower)
+        ? "Rocking chair"
+        : isLoungeChair(seatingLower)
+          ? "Lounge chair"
+          : isOttoman(seatingLower)
+            ? "Ottoman"
+            : project.name.split(/\s+\d/)[0] || "Seat";
+      const out: AssemblyStep[] = [];
+      let sn = 1;
+      out.push({
+        step: sn++,
+        title: "Confirm the footprint — do not cut yet",
+        description: `${project.name}. ${stem} ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Freestanding sit piece — mark the footprint on the floor and check it is square. ${panels.length} parts on this list.`,
+        tips: "If a number disagrees with the cut list, trust the cut list. Sit anatomy comes from the panels on the bench.",
+        partsUsed: ["*"],
+      });
+      out.push({
+        step: sn++,
+        title: sheetCutTitle(panels, item),
+        description: sheetCutDescription(
+          panels,
+          item,
+          seats.length || backrests.length || rockers.length
+            ? "— especially Seat, Backrest, and each Rocker rail when listed."
+            : solidTops.length
+              ? "— especially the Solid top and apron frame."
+              : undefined,
+        ),
+        tips: tool.tip,
+        partsUsed: names(panels),
+      });
+      if (legs.length) {
+        out.push({
+          step: sn++,
+          title: "Stand the legs and frame",
+          description: `${legs.map(cutLine).join("; ")}. ${aprons.map(cutLine).join("; ") || "Aprons / seat rails as labeled."}. Set the four legs plumb on the footprint. Glue and #8 × 1¼" screws through the aprons into the legs. Predrill near the ends so the ply does not split.`,
+          tips: "Check both diagonals before the seat goes on. Dry-fit first if this is your first chair frame.",
+          partsUsed: names([...legs, ...aprons]),
+        });
+      }
+      // Emit join steps only when those parts are actually on the cut list — never invent.
+      if (seats.length) {
+        out.push({
+          step: sn++,
+          title: "Attach the seat",
+          description: `${seats.map(cutLine).join("; ")}. Set the seat on the frame at sit height. Glue and screw down into the front seat rail and side rails / legs. Predrill near the ends.`,
+          tips: "The seat carries sit load — keep it flush and square before the back goes on.",
+          partsUsed: names(seats),
+        });
+      } else if (solidTops.length) {
+        out.push({
+          step: sn++,
+          title: "Attach the solid top",
+          description: `${solidTops.map(cutLine).join("; ")}. Set the solid top on the apron frame. Glue and screw down into the aprons and legs. Predrill near the ends so the ply does not split.`,
+          tips: "Ottoman sit-load — the top must land flush and solid before you finish.",
+          partsUsed: names(solidTops),
+        });
+      }
+      if (backrests.length) {
+        out.push({
+          step: sn++,
+          title: "Attach the back",
+          description: `${backrests.map(cutLine).join("; ")}. Screw the backrest to the back legs above the seat. Glue the joints too. The back must not rack when you lean.`,
+          tips: "Sit-test the seat height before you lock the back angle.",
+          partsUsed: names(backrests),
+        });
+      }
+      if (rockers.length) {
+        out.push({
+          step: sn++,
+          title: "Mount the rockers",
+          description: `${rockers.map(cutLine).join("; ")}. Mount each curved rocker rail under the legs — Rocker 1 and Rocker 2, not skis or a sled. Screw up through the rocker into each leg. Keep both rockers parallel so the chair tracks straight.`,
+          tips: "Rock on a flat floor before you finish. Shim a leg only if one rocker tips; do not twist the frame.",
+          partsUsed: names(rockers),
+        });
+      }
+      out.push({
+        step: sn++,
+        title: "Level it and sit-test",
+        description: `Level the ${stem.toLowerCase()} on the floor. Shim a foot if the floor is out — do not twist the frame. Sit on the seat — it should feel solid, not springy. Wipe glue squeeze-out.`,
+        tips: "Guidance only — confirm the seat height before you finish the wood.",
+        partsUsed: ["*"],
+      });
+      return out;
+    }
+  }
+
   const mudroomBench =
-    /mudroom bench|^bench\b/i.test(project.name) ||
-    ((/mudroom|window seat/.test((project.prompt ?? "").toLowerCase()) ||
-      (/\bbench\b/.test((project.prompt ?? "").toLowerCase()) &&
-        !/workbench|park bench/.test((project.prompt ?? "").toLowerCase()))) &&
-      project.fitted?.program === "bench");
+    !isSeatingLoungeClass((project.prompt ?? "").toLowerCase()) &&
+    (/mudroom bench|^bench\b/i.test(project.name) ||
+      ((/mudroom|window seat/.test((project.prompt ?? "").toLowerCase()) ||
+        (/\bbench\b/.test((project.prompt ?? "").toLowerCase()) &&
+          !/workbench|park bench/.test((project.prompt ?? "").toLowerCase()))) &&
+        project.fitted?.program === "bench"));
   if (mudroomBench) {
     const seats = panels.filter((p) => /seat/i.test(p.name) || p.type === "top");
     const shoe = panels.filter((p) => /shoe|boot tray/i.test(p.name) || p.type === "bottom");
