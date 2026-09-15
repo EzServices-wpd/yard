@@ -1072,6 +1072,21 @@ for (const [pp, w, h, d] of platformPrompts) {
 // Protect headboard + nightstand freezes against platform routing.
 const hbFreeze = generateFromPrompt("house: headboard fitted to a 60″ wall span, 48″ tall");
 if (!/^Headboard/i.test(hbFreeze.name)) failHonesty("headboard freeze after platform", hbFreeze.name);
+if (!nearInch(hbFreeze.overall.depth, 0.75)) failHonesty("headboard freeze depth stays ¾", hbFreeze.overall);
+if (hbFreeze.panels.filter((p) => /headboard/i.test(p.name)).length !== 1) {
+  failHonesty("headboard freeze single slab", hbFreeze.panels.map((p) => p.name));
+}
+// Typed headboard depth: laminate ¾" plies — overall and cut list match spoken deep.
+const hbDeep = generateFromPrompt("house: headboard 60 wide 48 tall 3 deep for queen bed");
+if (!/^Headboard/i.test(hbDeep.name)) failHonesty("typed deep headboard title", hbDeep.name);
+if (!nearInch(hbDeep.overall.width, 60) || !nearInch(hbDeep.overall.height, 48) || !nearInch(hbDeep.overall.depth, 3)) {
+  failHonesty("typed deep headboard overall", hbDeep.overall);
+}
+const hbPlies = hbDeep.panels.filter((p) => /headboard ply/i.test(p.name));
+if (hbPlies.length !== 4) failHonesty("typed deep headboard 4 plies", hbDeep.panels.map((p) => `${p.name} ${p.size.depth}`));
+if (hbPlies.some((p) => !nearInch(p.size.depth, 0.75) || !nearInch(p.size.width, 60) || !nearInch(p.size.height, 48))) {
+  failHonesty("typed deep headboard ply size", hbPlies.map((p) => p.size));
+}
 const nsFreeze = generateFromPrompt("house: nightstand with two drawers 20″ wide × 18″ deep × 24″ tall");
 if (!/^Nightstand/i.test(nsFreeze.name)) failHonesty("nightstand freeze after platform", nsFreeze.name);
 if (!nsFreeze.panels.some((p) => /drawer front/i.test(p.name))) failHonesty("nightstand drawers freeze", nsFreeze.panels.map((p) => p.name));

@@ -801,29 +801,61 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /headboard/.test((project.prompt ?? "").toLowerCase());
   if (headboard && !uprights.length) {
     const slab = backs[0] ?? panels[0];
-    return [
+    const plyN = Math.max(1, panels.filter((p) => /headboard/i.test(p.name)).length || panels.length);
+    const laminate = plyN > 1;
+    const steps: AssemblyStep[] = [
       {
         step: 1,
         title: "Confirm the size — do not cut yet",
-        description: `${project.name}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} part on this list.`,
-        tips: "A headboard is a wall board, not a box. If a number on this plan disagrees with the cut list, trust the cut list.",
+        description: laminate
+          ? `${project.name}. Typed ${round(D)}" deep headboard from ${plyN}×¾" plywood plies laminated face-to-face (${round(W)}" × ${round(H)}" each) for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} parts on this list.`
+          : `${project.name}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} part on this list.`,
+        tips: laminate
+          ? "A headboard is a wall board, not a box. Laminate plies to the typed depth — the lumber aisle does not sell a magic thick sheet. If a number on this plan disagrees with the cut list, trust the cut list."
+          : "A headboard is a wall board, not a box. If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
       {
         step: 2,
         title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item, slab ? cutLine(slab) + "." : ""),
+        description: sheetCutDescription(
+          panels,
+          item,
+          laminate
+            ? panels.map((p) => cutLine(p)).filter(Boolean).join(" ") || (slab ? cutLine(slab) + "." : "")
+            : slab
+              ? cutLine(slab) + "."
+              : "",
+        ),
         tips: tool.tip,
         partsUsed: names(panels),
       },
-      {
+    ];
+    if (laminate) {
+      steps.push({
+        step: 3,
+        title: `Glue ${plyN} plies to ${round(D)}" deep`,
+        description: `Spread glue on the face of each Headboard ply. Stack all ${plyN} plies aligned, clamp flat across the face, and wipe squeeze-out. Let the glue cure so the slab is a solid ${round(D)}" thick panel before you hang it.`,
+        tips: "Keep the stack flat — twist now becomes a warped headboard later.",
+        partsUsed: names(panels),
+      });
+      steps.push({
+        step: 4,
+        title: "Hang it on studs",
+        description: `Find two studs behind the bed. Predrill the laminated slab. Drive 3" structural screws through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
+        tips: "Guidance only — hit a stud. Drywall anchors alone will not hold a full-width plywood panel.",
+        partsUsed: names(panels),
+      });
+    } else {
+      steps.push({
         step: 3,
         title: "Hang it on studs",
         description: `Find two studs behind the bed. Predrill the slab. Drive 3" structural screws through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
         tips: "Guidance only — hit a stud. Drywall anchors alone will not hold a full-width plywood panel.",
         partsUsed: names(panels),
-      },
-    ];
+      });
+    }
+    return steps;
   }
 
   // Ironing board wall mount — hung-open mount + PDF mount height + clear swing (not ironing cabinet steps).

@@ -488,7 +488,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Do not glue the shelves — the pins hold them.`,
     });
   }
-  if (!headboard) {
+  const headboardPlies = project.panels.filter((p) => /headboard/i.test(p.name)).length;
+  // Untyped single-slab headboard needs no glue; laminated typed-depth plies do.
+  if (!headboard || headboardPlies > 1) {
     bom.push({
       name: "Wood glue",
       quantity: 1,
@@ -496,6 +498,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: "glue",
       searchQuery: "titebond wood glue",
       estimatedCost: 5.47,
+      notes:
+        headboard && headboardPlies > 1
+          ? `Glue ${headboardPlies} headboard plies face-to-face to the typed depth.`
+          : undefined,
     });
   }
   if (project.assumptions.installMode !== "freestanding") {

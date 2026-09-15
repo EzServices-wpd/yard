@@ -3322,13 +3322,29 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const headboard = (/headboard/.test(prompt.toLowerCase()) || family === "slab") && !isPegboard(prompt.toLowerCase());
   if (headboard) {
-    const slabD = P;
+    // Typed depth/thickness is real: laminate ¾" plies to the spoken depth.
+    // Untyped headboard stays a single ¾" wall slab (freeze: wall-span only).
+    const depthTyped =
+      /\d[\d.]*\s*(?:in|inch|inches|["″'])?\s*(?:deep|depth|thick)/i.test(prompt) ||
+      /\b(?:deep|depth|thick(?:ness)?)\b[^\d]{0,16}\d/i.test(prompt);
+    const wantD = depthTyped ? Math.max(P, Math.min(D, 4)) : P;
+    const plies = Math.max(1, Math.round(wantD / P));
+    const slabD = plies * P;
     const slabH = Math.max(14, H);
-    panels.push(panel("back", "Headboard", x0, 0, 0, W, slabH, slabD));
+    for (let i = 0; i < plies; i++) {
+      const label = plies === 1 ? "Headboard" : `Headboard ply ${i + 1}`;
+      panels.push(panel("back", label, x0, 0, i * P, W, slabH, P));
+    }
     const wallFit = /wall\s*span|fitted to a/.test(prompt.toLowerCase());
+    const plyNote =
+      plies > 1
+        ? ` ${plies}×¾" plywood plies laminated face-to-face to ${slabD}" deep — stock the aisle sells, not a magic thick board.`
+        : ` from ¾" plywood.`;
+    const name =
+      plies > 1 ? `Headboard ${W}" × ${slabH}" × ${slabD}"` : `Headboard ${W}" × ${slabH}"`;
     return {
       id: createId("proj"),
-      name: `Headboard ${W}" × ${slabH}"`,
+      name,
       prompt,
       kind: "closet",
       overall: { width: W, height: slabH, depth: slabD },
@@ -3337,13 +3353,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         wallFit
-          ? `One ${W}" × ${slabH}" headboard fitted to the ${W}" wall span — ${slabH}" tall from ¾" plywood. No box — it sits behind the mattress.`
-          : `One ${W}" × ${slabH}" headboard from ¾" plywood. No box — it sits behind the mattress.`,
-        "Hang on a french cleat or lag into studs. Guidance only.",
+          ? `One ${W}" × ${slabH}" headboard fitted to the ${W}" wall span — ${slabH}" tall${plyNote} No box — it sits behind the mattress.`
+          : `One ${W}" × ${slabH}" × ${slabD}" headboard${plyNote} No box — it sits behind the mattress.`,
+        plies > 1
+          ? "Glue the plies face-to-face, clamp flat, then hang on a french cleat or lag into studs. Guidance only."
+          : "Hang on a french cleat or lag into studs. Guidance only.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: slabH, depth: slabD },
-      fitted: { ...spec, unit: { ...u, width: W, height: slabH, depth: slabD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name: `Headboard ${W}" × ${slabH}"` },
+      fitted: { ...spec, unit: { ...u, width: W, height: slabH, depth: slabD, doors: false, shelfCount: 0, drawersPerBank: undefined }, name },
       assumptions: {
         load: "medium",
         units: "inches",
