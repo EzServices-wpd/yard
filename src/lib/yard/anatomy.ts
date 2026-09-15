@@ -5,7 +5,7 @@
  */
 
 import type { StructureKind } from "./types";
-import { detectHouseFamily, isAdirondackChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
+import { detectHouseFamily, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
 import { detectWeekendFamily, detectWeekendMech, wantsPotHold } from "./weekendFamily";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
@@ -55,8 +55,12 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   }
   // Porch swing frame — never FITTED seat→Custom closet / Bench steal.
   if (isPorchSwingFrame(hay)) return { anatomy: "carcase", kind: "frame", named: "Porch swing frame" };
+  // Seating lounge class — fitted sit anatomy (not FITTED closet / House wire).
+  if (isOttoman(hay)) return { anatomy: "fitted", kind: "closet", named: "Ottoman" };
+  if (isRockingChair(hay)) return { anatomy: "fitted", kind: "closet", named: "Rocking chair" };
+  if (isLoungeChair(hay)) return { anatomy: "fitted", kind: "closet", named: "Lounge chair" };
   // Adirondack / outdoor chair — never FITTED "seat height" → Custom closet.
-  if (isAdirondackChair(hay) || (/\bchair\b|\bstool\b/.test(hay) && !/desk|vanity|\btable\b/.test(hay))) {
+  if (isAdirondackChair(hay) || (/\bchair\b|\bstool\b/.test(hay) && !/desk|vanity|\btable\b/.test(hay) && !isSeatingLoungeClass(hay))) {
     return {
       anatomy: "carcase",
       kind: "furniture",

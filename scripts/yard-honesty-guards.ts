@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -2915,6 +2915,104 @@ console.log("SOFT-TRUST OK", {
   if (!/Andersen/i.test(andersen.name)) failHonesty("b-day-push protect Andersen", andersen.name);
 }
 
+
+
+// Batch38 seating/lounge FAIL class pack — lounge / ottoman / rocking (≠ House wire).
+{
+  const loungePrompt = "house: lounge chair with 16″ seat height and 24″ seat depth";
+  if (!isLoungeChair(loungePrompt.toLowerCase())) failHonesty("b38 isLoungeChair");
+  if (!isSeatingLoungeClass(loungePrompt.toLowerCase())) failHonesty("b38 lounge seating class");
+  if (identityTitleStem(loungePrompt.toLowerCase()) !== "Lounge chair") {
+    failHonesty("b38 lounge identityTitleStem", identityTitleStem(loungePrompt.toLowerCase()));
+  }
+  const lounge = generateFromPrompt(loungePrompt);
+  if (!/Lounge chair/i.test(lounge.name)) failHonesty("b38 lounge title", lounge.name);
+  if (/^House\b|Yard House|Adirondack|^Chair\b|^Bench\b/i.test(lounge.name) && !/Lounge/i.test(lounge.name)) {
+    failHonesty("b38 lounge House/Bench/Chair steal", lounge.name);
+  }
+  if (lounge.kind === "house" || /wire-frame/i.test(lounge.primaryMaterialId ?? "")) {
+    failHonesty("b38 lounge House wire", { kind: lounge.kind, stock: lounge.primaryMaterialId, name: lounge.name });
+  }
+  if (Math.abs(lounge.overall.height - 16) > 1.2) failHonesty("b38 lounge seat H16", lounge.overall);
+  if (Math.abs(lounge.overall.depth - 24) > 1.2) failHonesty("b38 lounge seat D24", lounge.overall);
+  const loungeBlob = [lounge.name, ...(lounge.notes ?? []), ...lounge.panels.map((x) => x.name)].join("\n");
+  if (!/seat/i.test(loungeBlob) || !/back/i.test(loungeBlob)) failHonesty("b38 lounge sit anatomy", loungeBlob.slice(0, 400));
+  if (!lounge.panels.length) failHonesty("b38 lounge panels densify", lounge.name);
+  if (lounge.primaryMaterialId !== "plywood-3-4-4x8") failHonesty("b38 lounge plywood densify", lounge.primaryMaterialId);
+
+  const ottPrompt = "house: ottoman 24″ × 24″ × 16″ tall";
+  if (!isOttoman(ottPrompt.toLowerCase())) failHonesty("b38 isOttoman");
+  if (identityTitleStem(ottPrompt.toLowerCase()) !== "Ottoman") {
+    failHonesty("b38 ottoman identityTitleStem", identityTitleStem(ottPrompt.toLowerCase()));
+  }
+  const ott = generateFromPrompt(ottPrompt);
+  if (!/^Ottoman\b/i.test(ott.name)) failHonesty("b38 ottoman title", ott.name);
+  if (/Storage|Yard House|^House\b/i.test(ott.name)) failHonesty("b38 ottoman Storage/House steal", ott.name);
+  if (Math.abs(ott.overall.width - 24) > 1.2 || Math.abs(ott.overall.depth - 24) > 1.2) {
+    failHonesty("b38 ottoman square W=D 24", ott.overall);
+  }
+  if (Math.abs(ott.overall.height - 16) > 1.2) failHonesty("b38 ottoman H16", ott.overall);
+  if (!ott.panels.some((x) => /solid top|top/i.test(x.name))) failHonesty("b38 ottoman solid top", ott.panels.map((x) => x.name));
+  if (ott.primaryMaterialId !== "plywood-3-4-4x8") failHonesty("b38 ottoman plywood", ott.primaryMaterialId);
+
+  const rockPrompt = "house: rocking chair with 17″ seat height";
+  if (!isRockingChair(rockPrompt.toLowerCase())) failHonesty("b38 isRockingChair");
+  if (identityTitleStem(rockPrompt.toLowerCase()) !== "Rocking chair") {
+    failHonesty("b38 rocking identityTitleStem", identityTitleStem(rockPrompt.toLowerCase()));
+  }
+  const rock = generateFromPrompt(rockPrompt);
+  if (!/Rocking chair/i.test(rock.name)) failHonesty("b38 rocking title", rock.name);
+  if (/^House\b|Yard House|ski|sled/i.test(rock.name)) failHonesty("b38 rocking House/ski steal", rock.name);
+  if (Math.abs(rock.overall.height - 17) > 1.2) failHonesty("b38 rocking seat H17", rock.overall);
+  const rockBlob = [rock.name, ...(rock.notes ?? []), ...rock.panels.map((x) => x.name)].join("\n");
+  if (!/rocker/i.test(rockBlob)) failHonesty("b38 rocker densify", rockBlob.slice(0, 500));
+  if (/ski|sled/i.test(rockBlob) && !/rocker/i.test(rockBlob)) failHonesty("b38 ski/sled steal", rockBlob.slice(0, 400));
+  if (rock.primaryMaterialId !== "plywood-3-4-4x8") failHonesty("b38 rocking plywood", rock.primaryMaterialId);
+
+  // Protect: Entry bench, Adirondack, Dining bench, pine shop stool, desk knee, Andersen, linen, hinged chest, door vanity, drawer explode.
+  const entry = generateFromPrompt("house: entry bench fitted to a 48×18 opening, 18″ seat height");
+  if (!/Entry bench/i.test(entry.name)) failHonesty("b38 protect Entry bench", entry.name);
+  if (Math.abs(entry.overall.width - 48) > 1.5) failHonesty("b38 protect entry W48", entry.overall);
+
+  const adi = generateFromPrompt("house: Adirondack chair with 16″ seat height");
+  if (!/Adirondack/i.test(adi.name)) failHonesty("b38 protect Adirondack", adi.name);
+  if (/Lounge/i.test(adi.name)) failHonesty("b38 Adirondack lounge steal", adi.name);
+
+  const dining = generateFromPrompt("house: dining bench 60 wide, 18 seat height");
+  if (!/Dining bench/i.test(dining.name)) failHonesty("b38 protect Dining bench", dining.name);
+
+  const stool = generateFromPrompt(
+    "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+  );
+  if (!/Step stool|Shop stool/i.test(stool.name)) failHonesty("b38 protect pine shop stool", stool.name);
+
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (!/^Desk/i.test(desk.name)) failHonesty("b38 protect desk", desk.name);
+  if (!nearInch(desk.fitted?.unit.kneeW ?? 0, 24)) failHonesty("b38 protect desk knee freeze", desk.fitted?.unit);
+
+  const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+  if (!/Andersen/i.test(andersen.name)) failHonesty("b38 protect Andersen", andersen.name);
+
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (!/Linen/i.test(linen.name)) failHonesty("b38 protect linen", linen.name);
+
+  const chest = generateFromPrompt("house: toy chest 30×16×18 hinged lid");
+  if (!/Toy chest|Chest/i.test(chest.name)) failHonesty("b38 protect hinged chest", chest.name);
+  if (/Yard House|^House\b/i.test(chest.name)) failHonesty("b38 chest House steal", chest.name);
+
+  const vanity = generateFromPrompt("bathroom vanity 36×21×32 with two doors");
+  if (!/Vanity/i.test(vanity.name)) failHonesty("b38 protect door vanity", vanity.name);
+  const vanityDoors = vanity.panels.filter((x) => /door/i.test(x.name));
+  if (vanityDoors.length < 2) failHonesty("b38 protect vanity typed doors", vanityDoors.map((x) => x.name));
+
+  const drawers = generateFromPrompt("bathroom vanity 36×21×32 with three drawers");
+  if ((drawers.fitted?.unit.drawersPerBank ?? 0) < 3 && drawers.panels.filter((x) => /drawer/i.test(x.name)).length < 3) {
+    failHonesty("b38 protect drawer explode", {
+      drawersPerBank: drawers.fitted?.unit.drawersPerBank,
+      panels: drawers.panels.map((x) => x.name),
+    });
+  }
+}
 
 
 console.log("STRANGER PLAN OK", {

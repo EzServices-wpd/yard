@@ -16,7 +16,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -324,6 +324,7 @@ export function looksLikeFitted(prompt: string) {
     isIroningWallMount(lower) ||
     isPlanterBox(lower) ||
     isOutdoorSideTable(lower) ||
+    isSeatingLoungeClass(lower) ||
     isToyChest(lower) ||
     isHingedLidChest(lower) ||
     isBookBinBench(lower) ||
@@ -356,7 +357,16 @@ export function looksLikeFitted(prompt: string) {
     return false;
   }
   if (isPorchSwingFrame(lower)) return false;
-  if (/chair|stool|ladder/.test(lower) && !/vanity|desk|bookcase/.test(lower) && !isBunkBed(lower) && !isLoftBed(lower) && !isPlatformBed(lower)) return false;
+  // Seating lounge class stays fitted (plywood sit anatomy) — not craft House-wire.
+  if (
+    /chair|stool|ladder/.test(lower) &&
+    !isSeatingLoungeClass(lower) &&
+    !/vanity|desk|bookcase/.test(lower) &&
+    !isBunkBed(lower) &&
+    !isLoftBed(lower) &&
+    !isPlatformBed(lower)
+  )
+    return false;
   if (detectHouseFamily(prompt)) return true;
   if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
     return true;
@@ -461,7 +471,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
   let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height)/i, NaN);
-  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
+  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:deep|depth)/i, NaN);
   // Table plan length — "42 long × 24 wide" is length × plan-width, not a dropped axis.
   const labeledLong = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length)\b/i, NaN);
   // Headboard / slab wall-fit: "60\" wall span" is the typed width.
@@ -494,6 +504,72 @@ export function parseBrief(prompt: string): FittedSpec | null {
     if (Number.isFinite(boardLen) && (!Number.isFinite(width) || width < boardLen * 0.5)) width = boardLen;
     if (!Number.isFinite(depth) || depth > 12) depth = 6;
     if (!Number.isFinite(height) || height > 36) height = 8;
+  }
+  // Seating lounge class — honor typed seat H + seat D; square ottoman W=D; never House wire dims.
+  if (isSeatingLoungeClass(lower)) {
+    const seatH = pick(
+      t,
+      /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*seat\s*(?:height|high|tall)/i,
+      NaN,
+    );
+    const seatHAlt = pick(
+      t,
+      /seat\s*(?:height|high|tall)[^\d]{0,12}(\d+(?:\.\d+)?)/i,
+      NaN,
+    );
+    const seatH2 = Number.isFinite(seatH)
+      ? seatH
+      : Number.isFinite(seatHAlt)
+        ? seatHAlt
+        : pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height)/i, NaN);
+    const seatD = pick(
+      t,
+      /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*seat\s*(?:depth|deep)/i,
+      NaN,
+    );
+    const seatDAlt = pick(
+      t,
+      /seat\s*(?:depth|deep)[^\d]{0,12}(\d+(?:\.\d+)?)/i,
+      NaN,
+    );
+    if (Number.isFinite(seatH2)) height = seatH2;
+    if (Number.isFinite(seatD)) depth = seatD;
+    else if (Number.isFinite(seatDAlt)) depth = seatDAlt;
+    if (isOttoman(lower)) {
+      // 24×24×16 tall — square W=D when typed equal; height from tall.
+      if (trip.w && trip.h && trip.d) {
+        // labeled tall already bound height; prefer square plan from first two when equal-ish
+        if (Math.abs(trip.w - trip.h) < 0.05) {
+          width = trip.w;
+          depth = trip.h;
+          if (!Number.isFinite(height) || height === trip.h) height = trip.d;
+        } else if (Math.abs(trip.w - trip.d) < 0.05) {
+          width = trip.w;
+          depth = trip.d;
+          height = trip.h;
+        } else {
+          // W×W×H tall pattern: pair already set W/H/D — force square plan + tall height
+          width = trip.w;
+          depth = trip.w;
+          const tall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height)/i, NaN);
+          if (Number.isFinite(tall)) height = tall;
+          else if (trip.d) height = trip.d;
+        }
+      }
+      if (!Number.isFinite(width)) width = 24;
+      if (!Number.isFinite(depth)) depth = width;
+      if (!Number.isFinite(height)) height = 16;
+      // square W=D when one axis missing
+      if (Number.isFinite(width) && Number.isFinite(depth) && Math.abs(width - depth) > 0.05) {
+        // keep typed; if only one of W/D spoken equal intent via "square"
+      }
+      if (/square/.test(lower) || (Number.isFinite(width) && !Number.isFinite(depth))) depth = width;
+      if (/square/.test(lower) || (Number.isFinite(depth) && !Number.isFinite(width))) width = depth;
+    } else if (isLoungeChair(lower) || isRockingChair(lower)) {
+      if (!Number.isFinite(width)) width = isRockingChair(lower) ? 26 : 30;
+      if (!Number.isFinite(depth)) depth = isLoungeChair(lower) ? 24 : 32;
+      if (!Number.isFinite(height)) height = isRockingChair(lower) ? 17 : 16;
+    }
   }
 
 
@@ -1209,6 +1285,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Ironing board wall mount"
       : isPottingBench(lower)
         ? "Potting bench"
+      : isRockingChair(lower)
+        ? "Rocking chair"
+      : isLoungeChair(lower)
+        ? "Lounge chair"
+      : isOttoman(lower)
+        ? "Ottoman"
       : isPlanterBox(lower)
         ? "Planter box"
       : isOutdoorSideTable(lower)
@@ -1875,6 +1957,221 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
 
 
 
+
+/** Ottoman / pouf / footstool — solid top densify; square W=D when typed; never Storage / House wire. */
+function buildOttoman(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  let W = u.width;
+  let H = u.height;
+  let D = u.depth;
+  // Square plan when W≈D intent
+  if (Math.abs(W - D) > 0.05 && Math.abs(W - H) < 0.05 && H > D) {
+    // misread W×W×H as W×H×D
+    D = W;
+    H = u.depth;
+  }
+  if (Math.abs(W - D) > 0.05 && /square|ottoman|pouf|foot/.test(prompt.toLowerCase())) {
+    const side = Math.max(W, D);
+    // prefer equal when both look like plan dims
+    if (Math.abs(W - D) < 6) {
+      /* keep */
+    } else if (H <= 20 && W > 20 && D > 20) {
+      /* already plan */
+    }
+  }
+  const x0 = -W / 2;
+  const panels: Panel[] = [];
+  const leg = Math.max(P, 1.5);
+  const topY = Math.max(P, H - P);
+  panels.push(panel("upright", "Front left leg", x0, 0, D - leg, leg, topY, leg));
+  panels.push(panel("upright", "Front right leg", x0 + W - leg, 0, D - leg, leg, topY, leg));
+  panels.push(panel("upright", "Back left leg", x0, 0, 0, leg, topY, leg));
+  panels.push(panel("upright", "Back right leg", x0 + W - leg, 0, 0, leg, topY, leg));
+  panels.push(panel("top", "Solid top", x0, topY, 0, W, P, D));
+  panels.push(panel("rail", "Front apron", x0 + leg, Math.max(0, topY - 3), D - leg - P, Math.max(6, W - leg * 2), 3, P));
+  panels.push(panel("rail", "Back apron", x0 + leg, Math.max(0, topY - 3), 0, Math.max(6, W - leg * 2), 3, P));
+  panels.push(panel("rail", "Left apron", x0 + leg, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
+  panels.push(panel("rail", "Right apron", x0 + W - leg - P, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
+  const name = `Ottoman ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Ottoman — solid top over a sit frame at ${H}" tall, square ${W}" × ${D}" plan. Not Storage, not a Yard House wire skeleton. ¾" plywood.`,
+      `Solid top densify — sit-load apron frame. Guidance only — confirm ${H}" seat height.`,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        cubbies: undefined,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "person",
+    },
+  };
+}
+
+/** Lounge / easy / club chair — seat + back + legs; honor seat H + seat D; never House wire. */
+function buildLoungeChair(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const seatH = u.height;
+  const seatD = u.depth;
+  const W = u.width;
+  const backH = Math.max(14, Math.round(seatH * 0.95));
+  const overallH = seatH + backH;
+  const x0 = -W / 2;
+  const leg = Math.max(P, 1.5);
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Front left leg", x0, 0, seatD - leg, leg, seatH, leg));
+  panels.push(panel("upright", "Front right leg", x0 + W - leg, 0, seatD - leg, leg, seatH, leg));
+  panels.push(panel("upright", "Back left leg", x0, 0, 0, leg, overallH, leg));
+  panels.push(panel("upright", "Back right leg", x0 + W - leg, 0, 0, leg, overallH, leg));
+  panels.push(panel("deck", "Seat", x0 + leg, seatH - P, leg, Math.max(8, W - leg * 2), P, Math.max(8, seatD - leg * 2)));
+  panels.push(panel("rail", "Backrest", x0 + leg, seatH, 0, Math.max(8, W - leg * 2), backH, P));
+  panels.push(panel("rail", "Front seat rail", x0 + leg, seatH - 3, seatD - leg - P, Math.max(6, W - leg * 2), 3, P));
+  panels.push(panel("rail", "Side rail left", x0 + leg, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
+  panels.push(panel("rail", "Side rail right", x0 + W - leg - P, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
+  const name = `Lounge chair ${W}" × ${seatH}" × ${seatD}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: seatH, depth: seatD },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Lounge chair — real sit anatomy: seat at ${seatH}" seat height, ${seatD}" seat depth, backrest + legs/frame. Not Yard House wire, not naked Bench/Chair, not Adirondack. ¾" plywood.`,
+      `Seat height ${seatH}" held; seat depth ${seatD}" held. Sit-test before you finish.`,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: seatH, depth: seatD, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: seatH,
+        depth: seatD,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        cubbies: undefined,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "person",
+    },
+  };
+}
+
+/** Rocking chair — seat height held + curved rocker rails under legs (≠ skis/sled). */
+function buildRockingChair(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const seatH = u.height;
+  const W = u.width;
+  const D = Math.max(u.depth, 28);
+  const backH = Math.max(14, Math.round(seatH * 0.95));
+  const overallH = seatH + backH;
+  const x0 = -W / 2;
+  const leg = Math.max(P, 1.5);
+  const rockerLift = 1.25;
+  const rockerLen = D + 4;
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Front left leg", x0, rockerLift, D - leg - 2, leg, seatH - rockerLift, leg));
+  panels.push(panel("upright", "Front right leg", x0 + W - leg, rockerLift, D - leg - 2, leg, seatH - rockerLift, leg));
+  panels.push(panel("upright", "Back left leg", x0, rockerLift, 2, leg, overallH - rockerLift, leg));
+  panels.push(panel("upright", "Back right leg", x0 + W - leg, rockerLift, 2, leg, overallH - rockerLift, leg));
+  panels.push(panel("deck", "Seat", x0 + leg, seatH - P, 2, Math.max(8, W - leg * 2), P, Math.max(10, D - 6)));
+  panels.push(panel("rail", "Backrest", x0 + leg, seatH, 0, Math.max(8, W - leg * 2), backH, P));
+  // Curved rocker rails under the legs — named Rocker (not ski/sled).
+  panels.push(panel("rail", "Rocker 1", x0, 0, -2, P, rockerLift + 0.5, rockerLen));
+  panels.push(panel("rail", "Rocker 2", x0 + W - P, 0, -2, P, rockerLift + 0.5, rockerLen));
+  const name = `Rocking chair ${W}" × ${seatH}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: seatH, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Rocking chair — seat height ${seatH}" held. Curved rocker rails under the legs (Rocker 1 / Rocker 2) — not skis, not a sled, not Yard House wire. ¾" plywood.`,
+      `Rocker densify: two curved rocker rails carry the legs. Sit-test the ${seatH}" seat height before you finish.`,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: seatH, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances,
+      unit: {
+        ...u,
+        width: W,
+        height: seatH,
+        depth: D,
+        doors: false,
+        shelfCount: 0,
+        drawersPerBank: undefined,
+        rod: false,
+        cubbies: undefined,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "person",
+    },
+  };
+}
+
 function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const W = u.width;
@@ -2176,6 +2473,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (isDaybed(sleepLower) || identityTitleStem(sleepLower) === "Daybed") {
     return buildDaybed(spec, prompt, affordances);
+  }
+
+  if (isOttoman(sleepLower) || identityTitleStem(sleepLower) === "Ottoman") {
+    return buildOttoman(spec, prompt, affordances);
+  }
+  if (isRockingChair(sleepLower) || identityTitleStem(sleepLower) === "Rocking chair") {
+    return buildRockingChair(spec, prompt, affordances);
+  }
+  if (isLoungeChair(sleepLower) || identityTitleStem(sleepLower) === "Lounge chair") {
+    return buildLoungeChair(spec, prompt, affordances);
   }
 
   if (isPlatformBed(sleepLower) || identityTitleStem(sleepLower) === "Platform bed") {
@@ -3069,7 +3376,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     return buildRadiatorCover(spec, prompt, affordances);
   }
 
-  if ((spec.program === "bench" || family === "seat") && !isDaybed(prompt.toLowerCase())) {
+  if ((spec.program === "bench" || family === "seat") && !isDaybed(prompt.toLowerCase()) && !isSeatingLoungeClass(prompt.toLowerCase())) {
     const innerW = W - P * 2;
     const cubbyN =
       u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));

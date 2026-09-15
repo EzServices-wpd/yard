@@ -282,14 +282,37 @@ export function defaultSizeFor(
       depth: depthTyped ? size.depth : 6,
     };
   }
-  if (explicit && /adirondack|\bchair\b/.test(lower)) {
+  if (explicit && /adirondack|lounge|rocking|\bchair\b|\bottoman\b|\bpouf\b|footstool/.test(lower)) {
     const seatM = lower.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
-    if (seatM) {
-      const seat = parseFloat(seatM[1] || seatM[2]);
+    const seatD = lower.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*depth|seat\s*depth[^\d]{0,12}(\d+(?:\.\d+)?)/);
+    if (seatM || seatD || /\bottoman\b|\bpouf\b|footstool/.test(lower)) {
+      const seat = seatM ? parseFloat(seatM[1] || seatM[2]) : NaN;
+      const depthSeat = seatD ? parseFloat(seatD[1] || seatD[2]) : NaN;
+      if (/\bottoman\b|\bpouf\b|footstool/.test(lower)) {
+        return {
+          width: size.width,
+          depth: size.depth === 24 && size.width !== 24 ? size.width : size.depth,
+          height: size.height,
+        };
+      }
+      if (/lounge/.test(lower)) {
+        return {
+          width: size.width !== 24 ? size.width : 30,
+          depth: Number.isFinite(depthSeat) ? depthSeat : size.depth !== 24 ? size.depth : 24,
+          height: Number.isFinite(seat) ? seat : size.height,
+        };
+      }
+      if (/rocking/.test(lower)) {
+        return {
+          width: size.width !== 24 ? size.width : 26,
+          depth: size.depth !== 24 ? size.depth : 32,
+          height: Number.isFinite(seat) ? seat : size.height,
+        };
+      }
       if (Number.isFinite(seat) && seat > 0) {
         return {
           width: size.width !== 24 ? size.width : 22,
-          depth: size.depth !== 24 ? size.depth : 34,
+          depth: Number.isFinite(depthSeat) ? depthSeat : size.depth !== 24 ? size.depth : 34,
           height: Math.max(size.height, seat + 16, 32),
         };
       }

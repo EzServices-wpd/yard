@@ -49,7 +49,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|lounge\s*chair|easy\s*chair|club\s*chair|rocking\s*chair|\bottoman\b|\bpouf\b|foot\s*stool|footstool|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -69,7 +69,10 @@ function isNotHouse(lower: string) {
     return true;
   }
   if (isPorchSwingFrame(lower)) return true;
-  if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
+  // Seating lounge class (lounge / rocking / ottoman) stays house/fitted — never craft House-wire steal.
+  if (isSeatingLoungeClass(lower)) {
+    /* keep house path */
+  } else if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
   // Climb step-shelf on a linen/closet stays house — not a free ladder eject.
   if (
     /ladder|stairs|staircase/.test(lower) &&
@@ -307,6 +310,35 @@ export function isPlanterBox(lower: string) {
 /** Adirondack chair — outdoor seat family; never Custom closet steal via "seat height". */
 export function isAdirondackChair(lower: string) {
   return /adirondack/i.test(lower);
+}
+
+/** Rocking chair — curved rocker rails under legs; never skis/sled / House wire. */
+export function isRockingChair(lower: string) {
+  if (isAdirondackChair(lower)) return false;
+  if (/rocking\s*chair|\brocker\b/.test(lower)) return true;
+  if (/rocking/.test(lower) && /\bchair\b/.test(lower)) return true;
+  return false;
+}
+
+/**
+ * Lounge / easy / club chair — sit anatomy (seat + back + legs); never Yard House wire.
+ * Adirondack / rocking keep their own stems.
+ */
+export function isLoungeChair(lower: string) {
+  if (isAdirondackChair(lower) || isRockingChair(lower)) return false;
+  if (/lounge\s*chair|easy\s*chair|club\s*chair/.test(lower)) return true;
+  if (/\blounge\b/.test(lower) && /\bchair\b/.test(lower)) return true;
+  return false;
+}
+
+/** Ottoman / pouf / footstool — solid top sit cube; never Storage / Yard House wire. */
+export function isOttoman(lower: string) {
+  return /\bottoman\b|\bpouf\b|foot\s*stool|footstool/.test(lower);
+}
+
+/** Seating lounge class — prefer seat/chair family over naked House wire. */
+export function isSeatingLoungeClass(lower: string) {
+  return isLoungeChair(lower) || isRockingChair(lower) || isOttoman(lower);
 }
 
 /** Outdoor side table — positive Outdoor side table stem (not naked Table). */
@@ -918,6 +950,10 @@ export function identityTitleStem(lower: string): string | null {
   // Outdoor / porch class — positive stems before Bench / Table / Closet steals.
   if (isPorchSwingFrame(lower)) return "Porch swing frame";
   if (isPlanterBox(lower)) return "Planter box";
+  // Seating lounge class — before Adirondack / naked Chair steals.
+  if (isRockingChair(lower)) return "Rocking chair";
+  if (isLoungeChair(lower)) return "Lounge chair";
+  if (isOttoman(lower)) return "Ottoman";
   if (isAdirondackChair(lower)) return "Adirondack chair";
   if (isOutdoorSideTable(lower)) return "Outdoor side table";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
@@ -993,6 +1029,8 @@ export function mediaIdentityLabel(lower: string): string | null {
 
 function programFromNoun(lower: string): FittedProgram {
   if (isPlanterBox(lower)) return "storage";
+  if (isOttoman(lower)) return "bench";
+  if (isLoungeChair(lower) || isRockingChair(lower)) return "bench";
   if (isOutdoorSideTable(lower)) return "table";
   if (isPottingBench(lower) || /\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicine(lower) || isOverToilet(lower) || isSpiceRack(lower) || isWineRack(lower)) return "storage";
@@ -1072,6 +1110,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isUtilityShelf(lower) &&
     !isIroningWallMount(lower) &&
     !isPlanterBox(lower) &&
+    !isSeatingLoungeClass(lower) &&
     !isOutdoorSideTable(lower) &&
     !isToyChest(lower) &&
     !isHingedLidChest(lower) &&
@@ -1122,11 +1161,13 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
 
   const sit =
     isDaybed(lower) ||
+    isSeatingLoungeClass(lower) ||
     ((/\bbench\b|window seat|mudroom|banquette|\bseat\b/.test(lower) &&
       !/workbench/.test(lower) &&
       !isPottingBench(lower) &&
       !isPorchSwingFrame(lower) &&
       !isAdirondackChair(lower) &&
+      !isSeatingLoungeClass(lower) &&
       !isMudroomCubbyWall(lower) &&
       !isOpenCubbyWall(lower)));
   const work =
@@ -1183,7 +1224,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   if (wantsJars(lower) || isSpiceRack(lower)) add("jar-lips");
   if (wantsBottles(lower) || isWineRack(lower)) add("bottle-rails");
   if ((fold || isIroning(lower)) && !isIroningWallMount(lower)) add("fold-down-board");
-  if (!isDaybed(lower) && (program === "bench" || /cubb/.test(lower) || (sit && family === "seat"))) add("cubbies");
+  if (!isDaybed(lower) && !isSeatingLoungeClass(lower) && (program === "bench" || /cubb/.test(lower) || (sit && family === "seat"))) add("cubbies");
   // Floor shoe storage → cubbies / open bays (not bookcase pin shelves).
   if (wantsShoes(lower) && (family === "floor-carcase" || family === "seat" || /rack|cubb/.test(lower))) {
     add("cubbies");

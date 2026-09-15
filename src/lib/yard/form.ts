@@ -27,7 +27,7 @@ import {
   bridgeOps,
 } from "./formBuildersCore";
 import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
-import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed } from "./family";
+import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
   wallOps,
@@ -103,6 +103,9 @@ const HITS: Hit[] = [
   { re: /ramp|half-?pipe/, kind: "custom", name: "Ramp", build: frameOps },
   { re: /porch\s*swing|swing\s*frame/, kind: "frame", name: "Porch swing frame", build: swingOps },
   { re: /adirondack/, kind: "furniture", name: "Adirondack chair", build: chairOps },
+  { re: /rocking\s*chair|\brocker\b/, kind: "furniture", name: "Rocking chair", build: chairOps },
+  { re: /lounge\s*chair|easy\s*chair|club\s*chair/, kind: "furniture", name: "Lounge chair", build: chairOps },
+  { re: /\bottoman\b|\bpouf\b|foot\s*stool|footstool/, kind: "furniture", name: "Ottoman", build: benchOps },
   { re: /cabin|shed|hut|cottage|barn|(?<!opera )house/, kind: "house", name: "House", build: houseOps },
   { re: /wall|fence|palisade|barrier/, kind: "wall", name: "Wall", build: wallOps },
   { re: /dome|igloo|sphere|globe/, kind: "dome", name: "Dome", build: domeOps },
@@ -154,8 +157,8 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
     // Pot-hold stands (floor lamp / monitor / hose / umbrella) never Lattice / climb lace.
     if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower) || wantsPotHold(lower) || isFloorLampHold(lower))) continue;
     // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
-    if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
-    if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower))) continue;
+    if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
+    if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
     if (hit.re.test(hay)) {
       const sized = hit.fit ? hit.fit(size, prompt) : size;
       const ops = hit.build(sized);
@@ -172,7 +175,14 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
             })
           : undefined;
       const figLabel = hit.kind === "figure" ? figureIdentityLabel(hay) : null;
-      const name = figLabel ?? hit.name;
+      const seatLabel = isRockingChair(lower)
+        ? "Rocking chair"
+        : isLoungeChair(lower)
+          ? "Lounge chair"
+          : isOttoman(lower)
+            ? "Ottoman"
+            : null;
+      const name = figLabel ?? seatLabel ?? hit.name;
       return {
         name,
         kind: hit.kind,

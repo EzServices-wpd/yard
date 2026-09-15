@@ -6,7 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -106,7 +106,7 @@ export function generateFromPrompt(
     !climbPrimary &&
     !isPorchSwingFrame(lower) &&
     !isAdirondackChair(lower) &&
-    !/\bchair\b|\bstool\b/.test(lower) &&
+    (!/\bchair\b|\bstool\b/.test(lower) || isSeatingLoungeClass(lower)) &&
     weekendMech !== "launcher" &&
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
@@ -259,6 +259,21 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
       seat
         ? `Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`
         : `Adirondack chair — outdoor seat family, never Custom closet.`,
+    );
+  }
+  if (isLoungeChair(pl)) {
+    notes.unshift(
+      `Lounge chair — sit anatomy (seat + back + legs/frame); honor typed seat height and seat depth. Never Yard House wire.`,
+    );
+  }
+  if (isRockingChair(pl)) {
+    notes.unshift(
+      `Rocking chair — curved rocker rails under the legs (not skis/sled). Honor typed seat height. Never Yard House wire.`,
+    );
+  }
+  if (isOttoman(pl)) {
+    notes.unshift(
+      `Ottoman — solid top densify; square W=D when typed equal; honor height. Never Storage / Yard House wire.`,
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };
