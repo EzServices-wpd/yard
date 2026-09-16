@@ -13,10 +13,17 @@ export function PromptBar({ onBuilt, onStock }: { onBuilt: () => void; onStock?:
   const project = useYard((s) => s.project);
   const grokBusy = useYard((s) => s.grokBusy);
   const [value, setValue] = useState(project.prompt);
+  const [weekendOpen, setWeekendOpen] = useState(false);
+
+  const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted) || Boolean(project.pocket);
 
   useEffect(() => {
     if (project.prompt) setValue(project.prompt);
   }, [project.prompt]);
+
+  useEffect(() => {
+    if (housePath) setWeekendOpen(false);
+  }, [housePath, project.id]);
 
   async function run(raw: string, fresh = false) {
     const prompt = raw.trim();
@@ -25,6 +32,8 @@ export function PromptBar({ onBuilt, onStock }: { onBuilt: () => void; onStock?:
     onBuilt();
     await runYardPrompt(prompt, { fresh });
   }
+
+  const showWeekend = !housePath || weekendOpen;
 
   return (
     <div className="shrink-0 border-b border-border bg-surface px-2 py-2 sm:px-4 sm:py-3">
@@ -39,9 +48,9 @@ export function PromptBar({ onBuilt, onStock }: { onBuilt: () => void; onStock?:
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={
-            project.prompt
-              ? "taller · from 2x4 · or type a new thing"
-              : "table 40 round · tv console 70 wide · closet system"
+            housePath
+              ? "taller · 36 wide · or type a new opening"
+              : "bathroom vanity, 36 wide"
           }
           enterKeyHint="go"
           className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
@@ -67,12 +76,20 @@ export function PromptBar({ onBuilt, onStock }: { onBuilt: () => void; onStock?:
             {d.label}
           </button>
         ))}
-        <span className="shrink-0 pl-1 text-[10px] uppercase tracking-[0.14em] text-faint">Weekend</span>
-        {DREAMS.filter((d) => d.group === "weekend").map((d) => (
-          <button key={d.id} type="button" onClick={() => void run(d.prompt, true)} className={CHIP}>
-            {d.label}
+        {showWeekend ? (
+          <>
+            <span className="shrink-0 pl-1 text-[10px] uppercase tracking-[0.14em] text-faint">Weekend</span>
+            {DREAMS.filter((d) => d.group === "weekend").map((d) => (
+              <button key={d.id} type="button" onClick={() => void run(d.prompt, true)} className={CHIP}>
+                {d.label}
+              </button>
+            ))}
+          </>
+        ) : (
+          <button type="button" onClick={() => setWeekendOpen(true)} className={CHIP} data-yard-weekend>
+            Weekend
           </button>
-        ))}
+        )}
       </div>
     </div>
   );

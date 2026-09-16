@@ -11,10 +11,13 @@ export function MeasureOverlay() {
   const makePlan = useYard((s) => s.makePlan);
   const project = useYard((s) => s.project);
 
-  if (!open) return null;
+  const housePath =
+    project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted) || Boolean(project.pocket);
+
+  if (!open && !housePath) return null;
 
   function commitLive() {
-    if (project.kind === "closet" || project.kind === "opening") {
+    if (project.kind === "closet" || project.kind === "opening" || project.fitted || project.pocket) {
       applyMeasure();
       makePlan();
     }
@@ -55,8 +58,7 @@ export function MeasureOverlay() {
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
             Pocket back {project.pocket.walls.backWidth}" · L {project.pocket.walls.leftDepth}" @{" "}
             {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {project.pocket.walls.rightDepth}" @{" "}
-            {project.pocket.walls.rightAngleDeg.toFixed(1)}° · clear {project.pocket.leftClear.toFixed(1)}" /{" "}
-            {project.pocket.rightClear.toFixed(1)}"
+            {project.pocket.walls.rightAngleDeg.toFixed(1)}° · tap Measure for the walls
           </span>
         )}
       </div>

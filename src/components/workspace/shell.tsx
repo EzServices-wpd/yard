@@ -79,6 +79,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const revealBench = useYard((s) => s.revealBench);
   const activeStep = useYard((s) => s.activeStep);
   const setActiveStep = useYard((s) => s.setActiveStep);
+  const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
 
   useEffect(() => {
@@ -125,17 +126,12 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [undo, redo, deleteSelected, selectedId]);
 
   useEffect(() => {
-    const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket);
-    if (!house) {
-      setSide((s) => (s === "measure" ? null : s));
-      return;
-    }
-    if (project.pocket) {
-      setSide("measure");
-      return;
-    }
-    setSide("measure");
-  }, [project.id, project.kind, project.pocket]);
+    const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket) || Boolean(project.fitted);
+    setMeasureOpen(house);
+    // Unit is the hero. Do not steal the bench with the measure sidebar.
+    // Measure button still opens the full card (pocket walls, kind, example pocket).
+    setSide(null);
+  }, [project.id, setMeasureOpen]);
 
   useEffect(() => {
     if (workMode === "build") setWorkMode("look");
@@ -201,7 +197,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             }}
             className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg sm:h-9"
           >
-            Build plan
+            Get the plan
           </button>
           <button
             type="button"
