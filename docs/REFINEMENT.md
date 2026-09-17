@@ -24,4 +24,10 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Weekend chips fold behind one Weekend chip on house path.
 - First-timer never needs the kebab. Craft chrome stays gated.
 
+**Slice C — nest as hero (17 Sep 2026):**
+- Get the plan opens on the sheet: lettered 4×8 nest, then cut list, then buy.
+- Printed plan: nest is page 1 (and page 2 when two sheets). Cover photo stays for crafts.
+- Footer names the real sheet (4×8 / 4×10 + material). Thin backer stays off the 3/4" nest.
+- Linen 31.5 × 78 × 16 canary unchanged.
+
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.

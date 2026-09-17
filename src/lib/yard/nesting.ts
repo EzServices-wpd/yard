@@ -450,3 +450,10 @@ export function nestCutList(cutList: CutLine[]): NestResult | null {
 export const SHEET_4X8 = DEFAULT_SHEET;
 export const SHEET_4X10 = SHEET_10;
 export const BLADE_KERF = KERF;
+
+/** 96×48 → "4x8". ASCII — PDF footers cannot rely on Unicode multiply. */
+export function sheetSizeLabel(sheet: { width: number; height: number }): string {
+  const a = Math.max(1, Math.round((sheet.width || 96) / 12));
+  const b = Math.max(1, Math.round((sheet.height || 48) / 12));
+  return `${Math.min(a, b)}x${Math.max(a, b)}`;
+}

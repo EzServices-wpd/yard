@@ -9,7 +9,9 @@ import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type Pap
 import { usd } from "@/lib/utils";
 import { tagNote } from "@/lib/yard/listings";
 import { IsoPlate } from "@/components/workspace/iso-plate";
+import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
+import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -201,6 +203,14 @@ function PlanBody({
 
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
+  const nest = useMemo(
+    () => (plan.partsKind === "whole" || !plan.cutList.length ? null : nestCutList(plan.cutList)),
+    [plan.cutList, plan.partsKind],
+  );
+  const nestSheets = nest?.sheets ?? [];
+  const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
+  const houseNest = housePath && nestSheets.length > 0;
+  const nestSize = nestSheets[0] ? sheetSizeLabel(nestSheets[0]).replace("x", "×") : "4×8";
   const tone =
     plan.feasibility.status === "critical"
       ? "text-danger"
@@ -228,6 +238,62 @@ function PlanBody({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 text-sm">
+          {houseNest && (
+            <section data-yard-nest-hero="1">
+              <h3 className="font-display text-lg text-fg">Cut this {nestSize} plywood</h3>
+              <p className="mt-1 text-xs text-muted">
+                Letters match the cut list. 1/8" kerf included. Grain runs long.
+                {thinCuts.length
+                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately.`
+                  : ""}
+              </p>
+              <div className="mt-3 space-y-3">
+                {nestSheets.map((sheet) => (
+                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} />
+                ))}
+              </div>
+              {nest && nest.unplaced.length > 0 && (
+                <p className="mt-2 text-xs text-warn">
+                  Could not fit {nest.unplaced.map((p) => p.label || p.name).join(", ")} on a {nestSize}. They need a
+                  bigger sheet or a splice — not a guessed size.
+                </p>
+              )}
+            </section>
+          )}
+
+          {plan.cutList.length > 0 && (
+            <section>
+              <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
+              <p className="mt-1 text-xs text-muted">
+                {plan.partsKind === "whole"
+                  ? "Full pieces from the pack. Glue them. Do not cut."
+                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+              </p>
+              <table className="mt-3 w-full text-left text-xs">
+                <thead className="text-faint">
+                  <tr>
+                    <th className="py-1 font-medium"> </th>
+                    <th className="py-1 font-medium">Qty</th>
+                    <th className="py-1 font-medium">Part</th>
+                    <th className="py-1 font-medium">Size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.cutList.map((c) => (
+                    <tr key={c.id} className="border-t border-border/70">
+                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
+                      <td className="py-1.5 font-mono">{c.quantity}</td>
+                      <td className="py-1.5">{c.name}</td>
+                      <td className="py-1.5 font-mono text-muted">
+                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+
           {plan.bom.length > 0 && (
             <section>
               <h3 className="font-display text-lg text-fg">Buy</h3>
@@ -279,39 +345,6 @@ function PlanBody({
             </section>
           )}
 
-          {plan.cutList.length > 0 && (
-            <section>
-              <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
-              <p className="mt-1 text-xs text-muted">
-                {plan.partsKind === "whole"
-                  ? "Full pieces from the pack. Glue them. Do not cut."
-                  : "Same size is the same letter. Mark A on the first cut, then batch."}
-              </p>
-              <table className="mt-3 w-full text-left text-xs">
-                <thead className="text-faint">
-                  <tr>
-                    <th className="py-1 font-medium"> </th>
-                    <th className="py-1 font-medium">Qty</th>
-                    <th className="py-1 font-medium">Part</th>
-                    <th className="py-1 font-medium">Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.cutList.map((c) => (
-                    <tr key={c.id} className="border-t border-border/70">
-                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
-                      <td className="py-1.5 font-mono">{c.quantity}</td>
-                      <td className="py-1.5">{c.name}</td>
-                      <td className="py-1.5 font-mono text-muted">
-                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
-
           {(!housePath || hasIssues) && (
             <section>
               <h3 className="font-display text-lg text-fg">Check</h3>
@@ -347,7 +380,7 @@ function PlanBody({
             {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
             {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <p className="mt-2 text-[11px] text-faint print:hidden">
-              View a step on the bench to capture its photo into the plan and PDF. Auto-capture runs for the first 4 steps after Build plan.
+              View a step on the bench to capture its photo into the plan and PDF. Auto-capture runs for the first 4 steps after Get the plan.
             </p>
             {housePath && (
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">

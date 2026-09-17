@@ -1,19 +1,15 @@
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import { nestCutList, type NestSheet } from "./nesting";
-import type { AssemblyStep, BuildPlan, YardProject } from "./types";
+import { nestCutList } from "./nesting";
+import type { BuildPlan, YardProject } from "./types";
 import { ACCENT, PHOTO_RULE } from "./pdfTheme";
 import { fmtDims, fmtDimsWHD } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
 import { drawStepPlate } from "./pdfPlate";
-import { drawNestSheet } from "./pdfNest";
+import { drawNestSheet, nestPageTitle } from "./pdfNest";
 
 const INK: [number, number, number] = [26, 22, 18];
 const MUTED: [number, number, number] = [107, 99, 88];
-const RULE: [number, number, number] = [216, 208, 194];
-const PAPER: [number, number, number] = [243, 238, 228];
-const PLY_FILL: [number, number, number] = [232, 220, 196];
-const PLY_EDGE: [number, number, number] = [160, 140, 110];
 
 export function slugPlan(name: string) {
   return name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "yard-plan";
@@ -126,30 +122,83 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(p, left, y);
     y += p.length * 14 + 12;
   }
-  const coverStep = plan.instructions.find((s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800);
-  if (coverStep?.imageDataUrl) {
-    const fmt = dataUrlFormat(coverStep.imageDataUrl);
-    if (fmt) {
-      try {
-        const imgH = 220;
-        ensure(imgH + 28);
-        doc.addImage(coverStep.imageDataUrl, fmt, left, y, width, imgH, undefined, "FAST");
-        doc.setDrawColor(...PHOTO_RULE);
-        doc.setLineWidth(0.75);
-        doc.rect(left, y, width, imgH, "S");
-        y += imgH + 10;
-        doc.setFont("times", "italic");
-        doc.setFontSize(9);
-        doc.setTextColor(...MUTED);
-        doc.text("The unit on the bench", left + width / 2, y, { align: "center" });
-        y += 18;
-      } catch { /* skip */ }
+  const housePly = plan.partsKind !== "whole" && plan.cutList.length > 0;
+  const thinCuts = housePly ? plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5) : [];
+  const nest = housePly ? nestCutList(plan.cutList) : null;
+  const nestSheets = nest?.sheets ?? [];
+
+  // House ply: the nest is the hero of page 1. Crafts keep a bench photo.
+  if (housePly && nestSheets.length) {
+    const first = nestSheets[0];
+    y += 4;
+    doc.setFont("times", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...INK);
+    doc.text(nestPageTitle(first), left, y);
+    y += 16;
+    doc.setFont("times", "italic");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    doc.text(
+      "Letters match the cut list. 3/4\" plywood — not a pine board. 1/8\" kerf included. Grain runs long.",
+      left,
+      y,
+    );
+    y += 14;
+    if (thinCuts.length) {
+      doc.text(
+        `Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
+        left,
+        y,
+      );
+      y += 14;
+    }
+    const maxH = Math.max(180, pageH - 56 - y);
+    drawNestSheet(doc, first, left, y, width, { maxHeight: maxH, sheetCount: nestSheets.length });
+    for (const sheet of nestSheets.slice(1)) {
+      doc.addPage();
+      y = 52;
+      doc.setFont("times", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(...INK);
+      doc.text(nestPageTitle(sheet), left, y);
+      y += 16;
+      doc.setFont("times", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(...MUTED);
+      doc.text("Letters match the cut list. 1/8\" kerf included. Grain runs long.", left, y);
+      y += 16;
+      drawNestSheet(doc, sheet, left, y, width, { maxHeight: 520, sheetCount: nestSheets.length });
+    }
+  } else {
+    const coverStep = plan.instructions.find(
+      (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
+    );
+    if (coverStep?.imageDataUrl) {
+      const fmt = dataUrlFormat(coverStep.imageDataUrl);
+      if (fmt) {
+        try {
+          const imgH = 220;
+          ensure(imgH + 28);
+          doc.addImage(coverStep.imageDataUrl, fmt, left, y, width, imgH, undefined, "FAST");
+          doc.setDrawColor(...PHOTO_RULE);
+          doc.setLineWidth(0.75);
+          doc.rect(left, y, width, imgH, "S");
+          y += imgH + 10;
+          doc.setFont("times", "italic");
+          doc.setFontSize(9);
+          doc.setTextColor(...MUTED);
+          doc.text("The unit on the bench", left + width / 2, y, { align: "center" });
+          y += 18;
+        } catch {
+          /* skip */
+        }
+      }
     }
   }
-  doc.setDrawColor(...RULE);
-  doc.setLineWidth(0.6);
-  doc.line(left, y, right, y);
-  y += 22;
+
+  doc.addPage();
+  y = 52;
   heading("Check");
   body(plan.feasibility.summary);
   for (const issue of plan.feasibility.issues) {
@@ -158,7 +207,11 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
   if (plan.cutList.length) {
     heading(plan.partsKind === "whole" ? "Stick list" : "Cut list");
-    muted(plan.partsKind === "whole" ? "Full pieces from the pack. Glue them. Do not cut." : "Same size is the same letter. Mark A on the first cut, then batch.");
+    muted(
+      plan.partsKind === "whole"
+        ? "Full pieces from the pack. Glue them. Do not cut."
+        : "Same size is the same letter. Mark A on the first cut, then batch.",
+    );
     for (const c of plan.cutList) {
       ensure(16);
       doc.setFont("times", "bold");
@@ -193,38 +246,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     }
     if (plan.totals.pieces) {
       muted(`${plan.totals.pieces} full pieces on the bench. Open the glue.`);
-    }
-  }
-
-  // Nest pages
-  if (plan.partsKind !== "whole" && plan.cutList.length) {
-    const structural = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) >= 0.5);
-    const thin = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
-    if (structural.length) {
-      const nest = nestCutList(structural);
-      for (const sheet of nest?.sheets ?? []) {
-        doc.addPage();
-        y = 52;
-        doc.setFont("times", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(...INK);
-        doc.text("Cut this 4x8 plywood", left, y);
-        y += 18;
-        doc.setFont("times", "italic");
-        doc.setFontSize(10);
-        doc.setTextColor(...MUTED);
-        doc.text("Letters match the cut list. 3/4\" plywood — not a pine board. 1/8\" kerf included. Grain runs long.", left, y);
-        y += 14;
-        if (thin.length) {
-          doc.text(
-            `Thin backer (${thin.map((t) => t.label ?? t.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
-            left,
-            y,
-          );
-          y += 16;
-        }
-        drawNestSheet(doc, sheet, left, y, width);
-      }
     }
   }
 

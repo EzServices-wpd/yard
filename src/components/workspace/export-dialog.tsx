@@ -37,8 +37,10 @@ export function ExportDialog({
       setPdfUrl(url);
       setDlNote(
         photoCount
-          ? `Ready · ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. Tap Save PDF when you want the file.`
-          : "Ready. Save PDF for the shop copy. Open a step on the bench first if you want photos in the plan.",
+          ? `Ready · nest on page 1 · ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. Tap Save PDF when you want the file.`
+          : plan.partsKind === "whole"
+            ? "Ready. Save PDF for the shop copy. Open a step on the bench first if you want photos in the plan."
+            : "Ready · nest on page 1. Save PDF for the lumber aisle. Open a step on the bench first if you want photos in the plan.",
       );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
