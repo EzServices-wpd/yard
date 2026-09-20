@@ -43,6 +43,42 @@ export function explodeDrawerBoxCuts(boxW: number, boxH: number, boxD: number): 
 }
 
 /** Long × mid × thick — same order as the cut list a builder takes to the lumber aisle. */
+
+/**
+ * Clear drawer-bay opening → honest box envelope a stranger can cut (or buy).
+ * Side-mount slides eat ~1″ total width; height/depth insets leave running clearance.
+ * Shared densify helper — callers pass bay clear W×H×D (between uprights / under top).
+ */
+export type DrawerBoxFromOpening = {
+  boxW: number;
+  boxH: number;
+  boxD: number;
+  frontW: number;
+};
+
+export function drawerBoxFromOpening(
+  openingW: number,
+  openingH: number,
+  openingD: number,
+  opts?: {
+    slideClearIn?: number;
+    heightInsetIn?: number;
+    depthInsetIn?: number;
+    frontInsetIn?: number;
+  },
+): DrawerBoxFromOpening {
+  const slide = opts?.slideClearIn ?? 1;
+  const hInset = opts?.heightInsetIn ?? 0.12;
+  const dInset = opts?.depthInsetIn ?? 0.3;
+  const fInset = opts?.frontInsetIn ?? 0.25;
+  const r8 = (n: number) => Math.round(n * 8) / 8;
+  const boxW = Math.max(r8(openingW - slide), 4);
+  const boxH = Math.max(r8(openingH - hInset), 3);
+  const boxD = Math.max(r8(openingD - dInset), 4);
+  const frontW = Math.max(r8(openingW - fInset), boxW);
+  return { boxW, boxH, boxD, frontW };
+}
+
 export function sheetCutDims(w: number, h: number, d: number) {
   const a = Math.round(w * 8) / 8;
   const b = Math.round(h * 8) / 8;
@@ -82,6 +118,15 @@ export function cutListName(name: string, type?: string): string {
   if (/^apron\b/i.test(name) || (type === "rail" && /apron/i.test(name))) return "Apron";
   if (/^leg\b/i.test(name)) return "Leg";
   if (/cut round/i.test(name)) return name;
+  // Drawer box parts — name wins BEFORE carcase type aliases. Cut-step explode
+  // remaps drawer-side→upright, drawer-back→back, drawer-bottom→bottom; without
+  // this order the cut step lies "Upright/Back/Bottom" for parts the cut list
+  // correctly names Drawer side/back/bottom (soft-park envelope honesty).
+  if (/drawer front/i.test(name)) return "Drawer front";
+  if (type === "drawer-side" || /drawer side/i.test(name)) return "Drawer side";
+  if (type === "drawer-back" || /drawer back/i.test(name)) return "Drawer back";
+  if (type === "drawer-bottom" || /drawer bottom/i.test(name)) return "Drawer bottom";
+  if (type === "drawer") return "Drawer box";
   if (type === "upright") return "Upright";
   if (type === "shelf") return "Shelf";
   if (type === "divider") return "Divider";
@@ -94,12 +139,7 @@ export function cutListName(name: string, type?: string): string {
   }
   if (type === "bottom") return /boot tray/i.test(name) ? "Boot tray" : "Bottom";
   if (type === "back") return "Back";
-  if (/drawer front/i.test(name)) return "Drawer front";
-  if (type === "drawer-side" || /drawer side/i.test(name)) return "Drawer side";
-  if (type === "drawer-back" || /drawer back/i.test(name)) return "Drawer back";
-  if (type === "drawer-bottom" || /drawer bottom/i.test(name)) return "Drawer bottom";
   if (type === "door") return "Door";
-  if (type === "drawer") return "Drawer box";
   if (type === "rail") {
     const stripped = name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Bay \d+)\s+/i, "").trim();
     return stripped || "Rail";

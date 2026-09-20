@@ -18,6 +18,7 @@ import {
   wantsFixedGlueShelves,
 } from "../src/lib/yard/honesty";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
+import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName } from "../src/lib/yard/shopPlural";
 import {
   inspectWeekendHonesty,
   namedStockDisplayName,
@@ -3421,6 +3422,117 @@ console.log("SOFT-TRUST OK", {
   // shelfInstallHeightsClause / shelfMarkedHeightTalk / shelfHeightInch
 
 }
+
+
+
+{
+  // Soft-park: drawer box cut-list / cut-step honesty — explode parts (not envelope),
+  // cut step names Drawer side/back/bottom (not Upright lie), dims from opening.
+  const ns = generateFromPrompt("house: nightstand 18″ wide × 16″ deep × 24″ tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  if (nsPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+    failHonesty("drawerCutlist nightstand cut list still Drawer box envelope", nsPlan.cutList.map((c) => c.name));
+  }
+  for (const need of ["Drawer side", "Drawer back", "Drawer bottom", "Drawer front"]) {
+    if (!nsPlan.cutList.some((c) => c.name === need)) {
+      failHonesty(`drawerCutlist nightstand missing ${need}`, nsPlan.cutList.map((c) => c.name));
+    }
+  }
+  const cutStep = nsPlan.instructions.find((s) => /^Cut the /i.test(s.title));
+  const cutBlob = cutStep?.description ?? "";
+  if (/Drawer box/i.test(cutBlob)) {
+    failHonesty("drawerCutlist nightstand cut step still names Drawer box envelope", cutBlob.slice(0, 400));
+  }
+  if (!/Drawer sides?/i.test(cutBlob)) {
+    failHonesty("drawerCutlist nightstand cut step missing Drawer side", cutBlob.slice(0, 400));
+  }
+  if (!/Drawer back/i.test(cutBlob)) {
+    failHonesty("drawerCutlist nightstand cut step missing Drawer back", cutBlob.slice(0, 400));
+  }
+  if (!/Drawer bottom/i.test(cutBlob)) {
+    failHonesty("drawerCutlist nightstand cut step missing Drawer bottom", cutBlob.slice(0, 400));
+  }
+  // Remap lie: exploded sides must not read as Upright in the cut step.
+  if (/\d+\s+Uprights?\s+15[.\d]*\s*×\s*6/i.test(cutBlob)) {
+    failHonesty("drawerCutlist nightstand cut step still lies Drawer side as Upright", cutBlob.slice(0, 500));
+  }
+  // Opening honesty: box W = clear bay − ~1″ slide; helper matches densify.
+  const box = ns.panels.find((p) => p.type === "drawer" && !/front/i.test(p.name));
+  if (!box) failHonesty("drawerCutlist nightstand missing drawer envelope panel", ns.panels.map((p) => p.name));
+  else {
+    const openingW = ns.overall.width - 1.5; // 2×¾″ uprights
+    const expect = drawerBoxFromOpening(openingW, box.size.height + 0.12, ns.overall.depth);
+    if (Math.abs(box.size.width - expect.boxW) > 0.2) {
+      failHonesty("drawerCutlist nightstand box W ≠ opening-derived", { boxW: box.size.width, expect: expect.boxW, openingW });
+    }
+    if (Math.abs(box.size.depth - expect.boxD) > 0.2) {
+      failHonesty("drawerCutlist nightstand box D ≠ opening-derived", { boxD: box.size.depth, expect: expect.boxD });
+    }
+  }
+  // cutListName: drawer-side name wins over upright type (cut-step explode remap).
+  if (cutListName("Drawer side", "upright") !== "Drawer side") {
+    failHonesty("drawerCutlist cutListName Drawer side lost to upright type", cutListName("Drawer side", "upright"));
+  }
+  if (cutListName("Drawer back", "back") !== "Drawer back") {
+    failHonesty("drawerCutlist cutListName Drawer back lost to back type", cutListName("Drawer back", "back"));
+  }
+  if (cutListName("Drawer bottom", "bottom") !== "Drawer bottom") {
+    failHonesty("drawerCutlist cutListName Drawer bottom lost to bottom type", cutListName("Drawer bottom", "bottom"));
+  }
+  const exploded = explodeDrawerBoxCuts(15.5, 6.38, 15.7);
+  if (exploded.length !== 4 || !exploded.every((p) => /Drawer (side|back|bottom)/.test(p.name))) {
+    failHonesty("drawerCutlist explodeDrawerBoxCuts shape", exploded);
+  }
+
+  // Twin: dresser / vanity-with-drawers — explode, not envelope.
+  const dresser = generateFromPrompt("house: dresser 36″ wide × 18″ deep × 36″ tall with three drawers");
+  const dresserPlan = buildPlan(dresser);
+  if (dresserPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+    failHonesty("drawerCutlist dresser still Drawer box envelope", dresserPlan.cutList.map((c) => c.name));
+  }
+  if (!dresserPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
+    failHonesty("drawerCutlist dresser missing Drawer side", dresserPlan.cutList.map((c) => c.name));
+  }
+  const dCut = dresserPlan.instructions.find((s) => /^Cut the /i.test(s.title))?.description ?? "";
+  if (!/Drawer sides?/i.test(dCut) || /Drawer box/i.test(dCut)) {
+    failHonesty("drawerCutlist dresser cut step envelope/side lie", dCut.slice(0, 400));
+  }
+
+  // Protect prior wins.
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (Math.abs(linen.overall.width - 31.5) > 0.2 || Math.abs(linen.overall.height - 78) > 0.2 || Math.abs(linen.overall.depth - 16) > 0.2) {
+    failHonesty("drawerCutlist protect linen freeze", linen.overall);
+  }
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+    failHonesty("drawerCutlist protect lounge Seat 30×24", seat?.size);
+  }
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (Math.abs(desk.overall.height - 29) > 0.2) failHonesty("drawerCutlist protect desk freeze H29", desk.overall);
+  // knee clearance held via densify + drawers present + H29
+  const deskPlan = buildPlan(desk);
+  if (deskPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+    failHonesty("drawerCutlist protect desk still Drawer box", deskPlan.cutList.map((c) => c.name));
+  }
+  if (!deskPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
+    failHonesty("drawerCutlist protect desk missing Drawer side", deskPlan.cutList.map((c) => c.name));
+  }
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failHonesty("drawerCutlist protect catapult≠trough", cat.name);
+  }
+  const cedar = generateFromPrompt('house: cedar chest 36" wide × 18" deep × 20" tall with hinged lid');
+  if (!/Cedar/i.test(cedar.name)) failHonesty("drawerCutlist protect cedar title", cedar.name);
+  const cedarPlan = buildPlan(cedar);
+  const pianoBest = cedarPlan.bom?.find((b) => /piano|continuous hinge/i.test(b.name))
+    ?? cedarPlan.buy?.find?.((b: { name: string }) => /piano|hinge/i.test(b.name));
+  // Soft: if a hinge buy row exists it should be piano/continuous class, not soft-close concealed alone.
+  if (pianoBest && /soft-?close|concealed/i.test(pianoBest.name) && !/piano|continuous/i.test(pianoBest.name)) {
+    failHonesty("drawerCutlist protect cedar piano Best", pianoBest.name);
+  }
+}
+
 
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),

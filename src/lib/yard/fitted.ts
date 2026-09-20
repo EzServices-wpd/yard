@@ -5,6 +5,7 @@
  */
 
 import { createId } from "@/lib/utils";
+import { drawerBoxFromOpening } from "./shopPlural";
 import type {
   FittedProgram,
   FittedSpec,
@@ -4341,6 +4342,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
     panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
     panels.push(panel("shelf", "Shelf", x0 + P, shelfY, 0.1, W - P * 2, P, D - 0.2));
+    // Honest box from clear bay opening (between uprights × drawerH × D).
+    const nsBox = drawerBoxFromOpening(W - P * 2, drawerH, D);
     pushDrawerWithFront(
       panels,
       "Drawer",
@@ -4348,10 +4351,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       x0 + P + 0.5,
       drawerY,
       0.15,
-      W - P * 2 - 1,
-      drawerH - 0.12,
-      D - 0.3,
-      W - P * 2 - 0.25,
+      nsBox.boxW,
+      nsBox.boxH,
+      nsBox.boxD,
+      nsBox.frontW,
     );
     const name = `Nightstand ${W}" × ${H}" × ${D}"`;
     return {
@@ -4448,6 +4451,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     for (let i = 0; i < leftCounts.length; i++) {
       const dh = span / nL;
       const y = 3.5 + i * dh;
+      const leftBox = drawerBoxFromOpening(leftW - P, dh, D, { slideClearIn: 0.1, frontInsetIn: 0.05 });
       pushDrawerWithFront(
         panels,
         leftCounts.length === 1 ? "Drawer" : `Left drawer ${i + 1}`,
@@ -4455,15 +4459,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         x0 + P,
         y,
         0.15,
-        leftW - P - 0.1,
-        dh - 0.12,
-        D - 0.3,
-        leftW - P - 0.05,
+        leftBox.boxW,
+        leftBox.boxH,
+        leftBox.boxD,
+        leftBox.frontW,
       );
     }
     for (let i = 0; i < rightCounts.length; i++) {
       const dh = span / nR;
       const y = 3.5 + i * dh;
+      const rightBox = drawerBoxFromOpening(rightW - P, dh, D, { slideClearIn: 0.1, frontInsetIn: 0.05 });
       pushDrawerWithFront(
         panels,
         `Right drawer ${i + 1}`,
@@ -4471,10 +4476,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         kneeR + P,
         y,
         0.15,
-        rightW - P - 0.1,
-        dh - 0.12,
-        D - 0.3,
-        rightW - P - 0.05,
+        rightBox.boxW,
+        rightBox.boxH,
+        rightBox.boxD,
+        rightBox.frontW,
       );
     }
     panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
@@ -4486,6 +4491,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const n = u.drawersPerBank;
     const dh = (H - 4) / n;
     for (let i = 0; i < n; i++) {
+      const bankBox = drawerBoxFromOpening(W - P * 2, dh, D);
       pushDrawerWithFront(
         panels,
         `Drawer ${i + 1}`,
@@ -4493,10 +4499,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         x0 + P + 0.5,
         3.5 + i * dh,
         0.15,
-        W - P * 2 - 1,
-        dh - 0.12,
-        D - 0.3,
-        W - P * 2 - 0.25,
+        bankBox.boxW,
+        bankBox.boxH,
+        bankBox.boxD,
+        bankBox.frontW,
       );
     }
   }
