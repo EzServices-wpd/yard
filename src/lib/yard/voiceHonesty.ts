@@ -14,6 +14,7 @@ export function hardwareCatalogIdFromHay(hay: string): string | null {
   // Pulls before hinge catch-alls — "cup hinge" ≠ "cup pulls".
   if (/cup\s*pulls?/.test(h)) return "cup-pulls";
   if (/bar\s*pulls?|door\s*pulls?|cabinet\s*pulls?|cabinet\s*bar\s*pulls?/.test(h)) return "cabinet-bar-pulls";
+  if (/coat\s*hooks?/.test(h)) return "coat-hooks";
   if (/soft-?close|concealed|cup\s*hinge/.test(h)) return "cabinet-hinges";
   if (/utility\s*hinge|butt\s*hinge|support-?leg\s*hinge/.test(h)) return "utility-hinges";
   if (/\bhinge/.test(h)) return "cabinet-hinges";

@@ -466,7 +466,26 @@ export const LISTINGS: ListingOffer[] = [
     lengthIn: 0,
     checkedAt: CHECK,
   },
-  
+  {
+    catalogId: "coat-hooks",
+    retailer: "amazon",
+    title: "Coat hooks, pack",
+    href: "https://www.amazon.com/s?k=coat+hooks+wall+mount+6+pack",
+    packQty: 1,
+    packPrice: 12.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "coat-hooks",
+    retailer: "homedepot",
+    title: "Coat hooks",
+    href: "https://www.homedepot.com/s/coat%20hooks%20wall%20mount",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
   {
     catalogId: "piano-hinge",
     retailer: "amazon",
@@ -707,6 +726,15 @@ function sameSize(a: ListingOffer, b: { lengthIn?: number; widthIn?: number; thi
   return close(a.lengthIn, b.lengthIn) && close(a.widthIn, b.widthIn) && close(a.thickIn, b.thickIn);
 }
 
+/** Turn catalogId kebab (coat-hooks) into shop-readable title (Coat hooks). */
+export function humanizeCatalogSlug(id: string): string {
+  const parts = id.split(/[-_]+/).filter(Boolean);
+  if (!parts.length) return id;
+  return parts
+    .map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()))
+    .join(" ");
+}
+
 export function offersFor(
   catalogId: string,
   piecesNeeded: number,
@@ -717,7 +745,7 @@ export function offersFor(
   );
   if (!rows.length) {
     const item = getCatalogItem(catalogId);
-    const q = item?.searchQuery || item?.name || catalogId;
+    const q = item?.searchQuery || item?.name || humanizeCatalogSlug(catalogId);
     const pack = item?.unitsPerPack ?? 1;
     const recycled =
       item?.unitCostUsd === 0 ||
@@ -728,7 +756,8 @@ export function offersFor(
     rows = shopLinks(q, item?.asin).map((l) => ({
       catalogId,
       retailer: l.retailer,
-      title: item?.name ?? q,
+      // Prefer catalog name; never surface bare kebab catalogId as the shop title.
+      title: item?.name ?? (q === catalogId ? humanizeCatalogSlug(catalogId) : q),
       href: l.href,
       asin: item?.asin,
       packQty: pack,
@@ -846,10 +875,12 @@ function searchOffers(
   // Honest fallback: use BOM estimatedCost when no LISTINGS SKU — never fake index-as-price blanks.
   const packPrice = fallbackPackPrice != null && fallbackPackPrice > 0 ? fallbackPackPrice : 0;
   const packQty = Math.max(1, qty);
+  const title =
+    /^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(query.trim()) ? humanizeCatalogSlug(query.trim()) : query;
   return links.map((l, i) => ({
     retailer: l.retailer,
     label: l.label,
-    title: query,
+    title,
     href: stampAmazon(l.href),
     packQty,
     packPrice,
@@ -865,12 +896,16 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
   return lines.map((line) => {
     const id = guessCatalogId(line);
     const item = id ? getCatalogItem(id) : undefined;
+    const hasListings = Boolean(id && LISTINGS.some((o) => o.catalogId === id));
+    // Orphan catalogId (no LISTINGS, no FORGE item) must not synthesize kebab titles / $9.99 —
+    // fall through to searchOffers with BOM name + estimatedCost.
+    const canPriceFromCatalog = Boolean(id && (hasListings || item));
     const prim = item ? toPrimitive(item) : undefined;
     const packMatch = line.unit.match(/pack of (\d+)/i);
     const pieces = packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
-    const priced = id
+    const priced = canPriceFromCatalog
       ? offersFor(
-          id,
+          id!,
           Math.max(1, pieces),
           prim ? { lengthIn: prim.length, widthIn: prim.width, thickIn: prim.height } : undefined,
         )

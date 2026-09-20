@@ -5338,3 +5338,42 @@ console.log("STRANGER PLAN OK", {
     failHonesty("cedar hinged lid must not buy door bar pulls / cabinet hinges", cedarPlan.bom.map((b) => b.name));
   }
 }
+
+
+// ── Coat hooks Buy Best title — human, not catalogId kebab slug ──
+{
+  const coat = generateFromPrompt("wall coat rack 36 wide with hooks");
+  const coatPlan = buildPlan(coat);
+  if (!/Coat rack/i.test(coat.name)) failHonesty("coat rack title protect", coat.name);
+  const hooksLine = coatPlan.bom.find((b) => /coat hooks/i.test(b.name));
+  if (!hooksLine || hooksLine.catalogId !== "coat-hooks") {
+    failHonesty("coat rack Buy missing coat-hooks catalogId", hooksLine?.catalogId || "missing");
+  }
+  const hooksBest = (hooksLine?.offers ?? []).find((o) => o.best) ?? (hooksLine?.offers ?? [])[0];
+  if (!hooksBest || hooksBest.retailer !== "amazon") {
+    failHonesty("coat rack Coat hooks Best must be Amazon", hooksBest);
+  }
+  if (!(hooksBest.packPrice > 0) || !(hooksBest.lineTotal > 0)) {
+    failHonesty("coat rack Coat hooks Best Amazon blank/zero price", {
+      packPrice: hooksBest.packPrice,
+      lineTotal: hooksBest.lineTotal,
+      title: hooksBest.title,
+    });
+  }
+  // Stranger-facing Best title must be shop-readable — never catalogId kebab.
+  if (/coat-hooks/i.test(hooksBest.title || "") || /^[a-z0-9]+(?:-[a-z0-9]+)+$/.test((hooksBest.title || "").trim())) {
+    failHonesty("coat rack Coat hooks Best title is catalogId slug", hooksBest.title);
+  }
+  if (!/coat hooks/i.test(hooksBest.title || "")) {
+    failHonesty("coat rack Coat hooks Best title not human", hooksBest.title);
+  }
+
+  // Universal: no Buy Best offer title may be a bare kebab catalogId when line has a human name.
+  for (const line of coatPlan.bom) {
+    const best = (line.offers ?? []).find((o) => o.best) ?? (line.offers ?? [])[0];
+    if (!best?.title) continue;
+    if (line.catalogId && best.title === line.catalogId) {
+      failHonesty("Buy Best title echoed catalogId slug", { name: line.name, title: best.title });
+    }
+  }
+}
