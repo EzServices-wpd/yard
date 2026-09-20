@@ -59,6 +59,20 @@ function pick(text: string, re: RegExp, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * Spoken drawer negation — "no/zero/without/drawerless/0 drawers".
+ * Soft leftover: /\bdrawer/ matched the word inside "no drawers" and desk/nightstand/dresser
+ * class defaults still invented banks + Operate + Buy slides — silent collapse.
+ */
+function isNoDrawersPrompt(lower: string): boolean {
+  return (
+    /\b(?:no|zero|without|sans)\s+(?:any\s+)?drawers?\b/.test(lower) ||
+    /\bdrawerless\b/.test(lower) ||
+    /\b0\s*-?\s*drawers?\b/.test(lower) ||
+    /\bdrawers?\s*[:=]\s*0\b/.test(lower)
+  );
+}
+
 /** Spoken/typed drawer count — digits or words; overrides family defaults (nightstand=1, bank=3). */
 function spokenDrawerCount(text: string): number | null {
   const lower = text.toLowerCase();
@@ -1220,12 +1234,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
             : NaN;
   // Door-carcase vanity: typed doors without drawers → no invent drawer banks.
   // Honor typed drawers (with or without doors). Bare vanity (no doors typed) still densifies drawers.
-  const drawers =
-    /drawer/.test(lower) ||
-    (program === "vanity" && !vanityDoorsSaid) ||
-    (program === "desk" && !isStandingShopTop(lower)) ||
-    (isStandingShopTop(lower) && /drawer/.test(lower)) ||
-    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
+  // Spoken no/zero/without/drawerless drawers — never silent-collapse to banks (desk/nightstand/dresser/vanity).
+  const drawers = isNoDrawersPrompt(lower)
+    ? false
+    : /drawer/.test(lower) ||
+      (program === "vanity" && !vanityDoorsSaid) ||
+      (program === "desk" && !isStandingShopTop(lower)) ||
+      (isStandingShopTop(lower) && /drawer/.test(lower)) ||
+      (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -4665,7 +4681,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
 
   // Multi-drawer nightstand (spoken "two drawers") uses the general bank path below.
-  if (nightstand && (u.drawersPerBank == null || u.drawersPerBank <= 1)) {
+  // Spoken no-drawers: skip the one-drawer nightstand special (was silent-collapsing via drawersPerBank==null).
+  if (
+    nightstand &&
+    !isNoDrawersPrompt(prompt.toLowerCase()) &&
+    (u.drawersPerBank == null || u.drawersPerBank <= 1)
+  ) {
     const drawerH = Math.min(6.5, Math.max(4.5, Math.round(H * 0.28 * 8) / 8));
     const shelfY = Math.max(P + 6, H - P - drawerH - P);
     const drawerY = shelfY + P;
@@ -4773,11 +4794,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       for (let i = 0; i < nL; i++) leftCounts.push(i);
       for (let i = 0; i < nR; i++) rightCounts.push(i);
     } else {
-      // Bare workbench / potting: never invent pedestal drawer banks; real desks still default 3/bank.
-      const n =
-        isStandingShopTop(prompt.toLowerCase()) && !/drawer/.test(prompt.toLowerCase())
-          ? (u.drawersPerBank ?? 0)
-          : (u.drawersPerBank ?? 3);
+      // drawersPerBank is set when drawers densify (desk default 3/bank). Undefined = no banks
+      // (no-drawers ask, standing shop top, or drawers gated off) — never invent here.
+      const n = u.drawersPerBank ?? 0;
       for (let i = 0; i < n; i++) {
         leftCounts.push(i);
         rightCounts.push(i);
@@ -5021,7 +5040,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     hasKnee
       ? deskMediaBehind
         ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear stays open — media shelf behind holds a laptop upright without eating the knee.`
-        : `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
+        : (u.drawersPerBank ?? 0) > 0
+          ? `Work surface at ${counterY}". Knee ${u.kneeW}" clear, drawers in the wings.`
+          : `Work surface at ${counterY}". Knee ${u.kneeW}" clear — open pedestals, no drawers.`
       : spec.program === "media"
         ? [
             wantsSoundbarHold(prompt.toLowerCase()) || isMediaShelf(prompt.toLowerCase())

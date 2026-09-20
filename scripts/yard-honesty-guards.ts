@@ -5653,3 +5653,93 @@ console.log("STRANGER PLAN OK", {
     failHonesty("coat hooks Best title protect", coatBest.title);
   }
 }
+
+
+// Spoken no-drawers — never silent-collapse to banks + Operate + Buy slides.
+// Soft leftover after b717268: /\bdrawer/ matched inside "no drawers"; desk/nightstand/dresser
+// class defaults still invented drawer banks + Operate + Buy slides/pulls.
+{
+  for (const noPrompt of [
+    "desk 60 wide 30 deep 29 tall with no drawers",
+    "desk 60 wide without drawers",
+    "drawerless desk 48 wide 24 deep 30 tall",
+    "desk 60 wide 30 deep 29 tall zero drawers",
+    "desk 60 wide 30 deep 29 tall 0 drawers",
+    "bathroom vanity 36 wide with two doors and no drawers",
+    "nightstand with no drawers",
+    "nightstand 20 wide 16 deep 24 tall with no drawers",
+    "dresser with no drawers",
+  ]) {
+    const proj = generateFromPrompt(noPrompt);
+    const plan = buildPlan(proj);
+    const drawers = (proj.panels || []).filter((p) => p.type === "drawer");
+    if (drawers.length !== 0) {
+      failHonesty("no-drawers must densify zero drawers", { prompt: noPrompt, drawers: drawers.map((d) => d.name) });
+    }
+    const kinds = operateFaceKinds(proj.panels || []);
+    if (kinds.drawers > 0) {
+      failHonesty("no-drawers must not Operate drawers", { prompt: noPrompt, kinds });
+    }
+    if (plan.bom.some((b) => /drawer slides?|cup pulls?/i.test(b.name))) {
+      failHonesty("no-drawers must not Buy drawer slides/pulls", {
+        prompt: noPrompt,
+        bom: plan.bom.map((b) => b.name),
+      });
+    }
+    if (/desk/i.test(noPrompt) && (proj.notes || []).some((n) => /drawers in the wings/i.test(n))) {
+      failHonesty("no-drawers desk must not say drawers in the wings", (proj.notes || []).slice(0, 4));
+    }
+    console.log("PASS no-drawers", noPrompt.slice(0, 52));
+  }
+
+  // Protect: bare desk still defaults drawer banks; typed drawer counts held.
+  {
+    const bare = generateFromPrompt("desk 60 wide 30 deep 29 tall");
+    const bareDrawers = (bare.panels || []).filter((p) => p.type === "drawer");
+    if (bareDrawers.length < 2) {
+      failHonesty("bare desk must still densify drawer banks", bareDrawers.length);
+    }
+    if (!hasOperableFaces(operateFaceKinds(bare.panels || []))) {
+      failHonesty("bare desk Operate drawers", operateFaceKinds(bare.panels || []));
+    }
+    console.log("PASS bare desk drawers default", bareDrawers.length);
+  }
+  {
+    const two = generateFromPrompt("desk 60 wide 30 deep 29 tall with two drawers");
+    const n = (two.panels || []).filter((p) => p.type === "drawer").length;
+    if (n !== 2) failHonesty("typed two drawers desk", n);
+    console.log("PASS typed two drawers desk", n);
+  }
+  {
+    const one = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+    const n = (one.panels || []).filter((p) => p.type === "drawer").length;
+    if (n !== 1) failHonesty("nightstand one drawer protect", n);
+    if (operateFacesLabel(false, operateFaceKinds(one.panels || [])) !== "Open drawer") {
+      failHonesty("nightstand Open drawer protect", operateFacesLabel(false, operateFaceKinds(one.panels || [])));
+    }
+    console.log("PASS nightstand one drawer protect");
+  }
+  {
+    const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
+    const kinds = operateFaceKinds(vanity.panels || []);
+    if (kinds.doors < 2) failHonesty("vanity doors protect", kinds);
+    if (kinds.drawers !== 0) failHonesty("vanity doors-only must not invent drawers", kinds);
+    console.log("PASS vanity doors protect");
+  }
+  // Prior softs protect
+  {
+    const multi = generateFromPrompt("hope chest with two hinged lids");
+    if (!(multi.notes || []).some((n) => /^Assumed one lid\b/i.test(n))) {
+      failHonesty("multi-lid Assumed one lid protect", (multi.notes || []).slice(0, 4));
+    }
+    const lift = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with lift-off lid");
+    if (hasOperableFaces(operateFaceKinds(lift.panels || []))) {
+      failHonesty("lift-off Operate protect", operateFaceKinds(lift.panels || []));
+    }
+    const ledge = generateFromPrompt("picture ledge 36 wide");
+    if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) {
+      failHonesty("picture ledge tip-rail protect", ledge.name);
+    }
+    console.log("PASS multi/lift-off/ledge protect");
+  }
+}
