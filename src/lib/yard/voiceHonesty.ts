@@ -818,6 +818,28 @@ export function fmtUnitEnvelopeInches(
 }
 
 /**
+ * Named-lumber Buy lead Voice note — qty honesty when wood is split across
+ * primary board line + separate leg stock (e.g. 2×2 legs).
+ *
+ * When legs are listed on their own BOM line, primary pcs are structural-only
+ * (top/aprons/rails). Never claim Confirm/chip total parity in that case —
+ * Confirm/chip count includes the legs. Prefer naming what the qty counts.
+ * Shared (not teak-only): any named-lumber primary with legCuts split.
+ */
+export function honestNamedLumberBuyWoodNote(opts: {
+  qty: number;
+  legQty?: number;
+}): string {
+  const n = Math.max(1, opts.qty | 0);
+  const legs = Math.max(0, opts.legQty ?? 0);
+  const pcs = `${n} piece${n === 1 ? "" : "s"}`;
+  if (legs > 0) {
+    return `${pcs} · board pcs excluding ${legs} leg${legs === 1 ? "" : "s"} listed below · cut from stock.`;
+  }
+  return `${pcs} · same wood count as Confirm/chip · cut from stock.`;
+}
+
+/**
  * Stranger-facing species stock honesty — title may say Cedar while stock is ply.
  * Prefer this on Buy plywood notes / PDF so the substitute is not silent.
  */

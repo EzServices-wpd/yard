@@ -13,7 +13,7 @@ import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honest
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
-import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -194,8 +194,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
       notes: (() => {
+        const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
         const base = isNamedLumberPrimary
-          ? `${n} piece${n === 1 ? "" : "s"} · same wood count as Confirm/chip · cut from stock.`
+          ? honestNamedLumberBuyWoodNote({ qty: n, legQty: legQtyForNote })
           : `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
               cuts.some((c) => / · /.test(c.name))
                 ? " Some faces are splice segments — butt-join before assembly."

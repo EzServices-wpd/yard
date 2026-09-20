@@ -4547,6 +4547,26 @@ console.log("SOFT-TRUST OK", {
     if (!/pc/i.test(teakBuy.unit ?? "")) {
       failBom("teak Buy unit should be pc/pcs (named lumber)", teakBuy.unit);
     }
+    // Soft leftover: when 2×2 legs split out, Buy note must NOT claim Confirm/chip
+    // total parity (primary qty is structural-only). Prefer densify that names
+    // board pcs excluding legs listed below.
+    const teakNotes = teakBuy.notes ?? "";
+    if (teakLegQty > 0) {
+      if (/same wood count as Confirm\/chip|same as Confirm\/chip|same wood count as Confirm/i.test(teakNotes)) {
+        failBom("teak Buy note falsely claims Confirm/chip parity while legs split", {
+          notes: teakNotes.slice(0, 200),
+          qty: teakBuy.quantity,
+          legs: teakLegQty,
+          cut: teakCut,
+        });
+      }
+      if (!/excluding|listed below|board pcs|structural/i.test(teakNotes)) {
+        failBom("teak Buy note should name structural/board pcs excluding legs", {
+          notes: teakNotes.slice(0, 200),
+          legs: teakLegQty,
+        });
+      }
+    }
   }
 
   // Protect: nightstand effort/screws/Confirm 11-class; linen 31.5; banding; ledge; desk; lounge; catapult.
