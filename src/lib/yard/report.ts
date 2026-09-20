@@ -149,9 +149,13 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         : 0;
 
   const bom: BuildPlan["bom"] = [];
+  // Honest Buy wood qty: cut-list quantity sum (same class as Confirm/chip/effort
+  // woodPieces). Never last-resort to raw panels.length — bounding envelopes
+  // under-count exploded kits / multi-piece named lumber.
+  const honestBuyWoodQty = (cutQty: number) => Math.max(1, cutQty || woodPieces || 1);
   if (buyNamedBoard && namedLumber) {
     const boardCuts = cuts.filter((c) => /hook board|peg rail|board/i.test(c.name) || c.quantity > 0);
-    const qty = Math.max(1, boardCuts.reduce((s, c) => s + c.quantity, 0) || project.panels.length || 1);
+    const qty = honestBuyWoodQty(boardCuts.reduce((s, c) => s + c.quantity, 0));
     const cutTo = boardCuts[0]?.lengthIn ?? project.overall.width;
     const label = namedStockDisplayName(project.prompt ?? "", namedLumber);
     bom.push({
@@ -164,32 +168,39 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: `${qty} piece${qty === 1 ? "" : "s"} · Cut to: ${cutTo}"`,
     });
   } else if (sheets8 + sheetsFallback > 0) {
-    const n = sheets8 + sheetsFallback;
+    const isNamedLumberPrimary =
+      project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber;
+    // Solid named lumber (teak outdoor etc.): Buy pcs = honest cut wood qty, not
+    // 4×8 nest sheet count (silent undercount vs Confirm/chip). Plywood stays nest.
+    const structuralQty = structural.reduce((s, c) => s + c.quantity, 0);
+    const n = isNamedLumberPrimary
+      ? honestBuyWoodQty(structuralQty)
+      : sheets8 + sheetsFallback;
     // Named-species primary bind: Buy lead speaks densifyLabel (Teak 1×4), not bare board / silent ply.
-    const sheetName =
-      project.primaryMaterialId === CATALOG_LUMBER_BIND && namedLumber
-        ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber)
-        : (sheet?.name ?? '3/4" plywood 4x8');
+    const sheetName = isNamedLumberPrimary
+      ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber!)
+      : (sheet?.name ?? '3/4" plywood 4x8');
     bom.push({
       name: sheetName,
       quantity: n,
-      unit:
-        project.primaryMaterialId === CATALOG_LUMBER_BIND && namedLumber
-          ? n === 1
-            ? "pc"
-            : "pcs"
-          : n === 1
-            ? "sheet"
-            : "sheets",
+      unit: isNamedLumberPrimary
+        ? n === 1
+          ? "pc"
+          : "pcs"
+        : n === 1
+          ? "sheet"
+          : "sheets",
       catalogId: sheet?.id ?? "plywood-3-4-4x8",
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
       notes: (() => {
-        const base = `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
-          cuts.some((c) => / · /.test(c.name))
-            ? " Some faces are splice segments — butt-join before assembly."
-            : ""
-        }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
+        const base = isNamedLumberPrimary
+          ? `${n} piece${n === 1 ? "" : "s"} · same wood count as Confirm/chip · cut from stock.`
+          : `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
+              cuts.some((c) => / · /.test(c.name))
+                ? " Some faces are splice segments — butt-join before assembly."
+                : ""
+            }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
         const species = speciesStockHonestyTalk(project.prompt ?? "", sheet?.name ?? '3/4" plywood');
         return species ? `${base} ${species}` : base;
       })(),

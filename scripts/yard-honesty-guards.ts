@@ -4452,6 +4452,133 @@ console.log("SOFT-TRUST OK", {
 
 }
 
+// Soft leftover: named-board / solid named-lumber Buy qty must use honest cut
+// wood count (closetCuts qty / woodPieces), never last-resort panels.length or
+// silent 4×8 nest sheet count as board pcs (teak outdoor undercount).
+{
+  const failBom = (msg: string, detail?: unknown) => failHonesty(`namedBoardBomQty ${msg}`, detail);
+
+  // Coat-hook named lumber path (buyNamedBoard): qty follows cut wood, not panels.length.
+  const coat = generateFromPrompt("weekend craft: oak coat hook board 24″ wide × 6″ tall with four hooks");
+  const coatPlan = buildPlan(coat);
+  const coatCut = coatPlan.totals.pieces;
+  const coatWood = coatPlan.bom.find(
+    (b) => /oak/i.test(b.name) && !/screw|hook|banding|glue/i.test(b.name),
+  );
+  if (!coatWood) {
+    failBom("coat hook missing oak Buy lead", coatPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+  } else {
+    if (coatWood.quantity !== coatCut && coatWood.quantity === coat.panels.length && coat.panels.length !== coatCut) {
+      failBom("coat hook Buy still panels.length", {
+        qty: coatWood.quantity,
+        raw: coat.panels.length,
+        cut: coatCut,
+      });
+    }
+    if (coatWood.quantity !== coatCut && coatCut > 0) {
+      // Prefer exact match to cut wood; allow only if qty is honest woodPieces class.
+      if (coatWood.quantity === coat.panels.length) {
+        failBom("coat hook Buy qty = raw panels.length", {
+          qty: coatWood.quantity,
+          raw: coat.panels.length,
+          cut: coatCut,
+        });
+      }
+    }
+    if (coat.panels.length !== coatCut && coatWood.quantity === coat.panels.length) {
+      failBom("coat hook Buy undercount via panels.length", {
+        qty: coatWood.quantity,
+        raw: coat.panels.length,
+        cut: coatCut,
+      });
+    }
+  }
+
+  // Teak outdoor side table: Buy teak pcs = structural cut wood (top/aprons), not
+  // nest sheet count (silent 1-pc undercount) or raw panels.length. 2x2 legs stay
+  // on their own BOM line (tableFitted TWO_BY_TWO) — do not fold into teak qty.
+  const teak = generateFromPrompt("house: teak outdoor side table 22 wide 18 deep 18 tall");
+  const teakPlan = buildPlan(teak);
+  const teakCut = teakPlan.totals.pieces;
+  if (teak.primaryMaterialId !== "lumber-1x4-8") {
+    failBom("teak primaryMaterialId", teak.primaryMaterialId);
+  }
+  if (woodCutPieceCount(teak) !== teakCut) {
+    failBom("teak chip≠cut", { chip: woodCutPieceCount(teak), cut: teakCut });
+  }
+  const teakLegBom = teakPlan.bom.find((b) => /2x2|2×2/i.test(b.name));
+  const teakLegQty = teakLegBom?.quantity ?? 0;
+  const teakStructuralExpect = Math.max(1, teakCut - teakLegQty);
+  const teakBuy = teakPlan.bom.find(
+    (b) => /teak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2/i.test(b.name),
+  );
+  if (!teakBuy) {
+    failBom("teak missing Teak Buy lead", teakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+  } else {
+    if (teakBuy.quantity !== teakStructuralExpect) {
+      failBom("teak Buy qty ≠ structural cut wood", {
+        qty: teakBuy.quantity,
+        expect: teakStructuralExpect,
+        cut: teakCut,
+        legs: teakLegQty,
+        raw: teak.panels.length,
+        unit: teakBuy.unit,
+        notes: teakBuy.notes?.slice(0, 140),
+      });
+    }
+    if (teakBuy.quantity === 1 && teakStructuralExpect > 1) {
+      failBom("teak Buy still nest-sheet undercount (1 pc vs multi structural)", {
+        qty: teakBuy.quantity,
+        expect: teakStructuralExpect,
+        cut: teakCut,
+      });
+    }
+    if (
+      teak.panels.length !== teakStructuralExpect &&
+      teakBuy.quantity === teak.panels.length
+    ) {
+      failBom("teak Buy undercount via panels.length", {
+        qty: teakBuy.quantity,
+        raw: teak.panels.length,
+        expect: teakStructuralExpect,
+        cut: teakCut,
+      });
+    }
+    if (!/pc/i.test(teakBuy.unit ?? "")) {
+      failBom("teak Buy unit should be pc/pcs (named lumber)", teakBuy.unit);
+    }
+  }
+
+  // Protect: nightstand effort/screws/Confirm 11-class; linen 31.5; banding; ledge; desk; lounge; catapult.
+  const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  if (nsPlan.totals.pieces !== 11) failBom("protect nightstand pieces 11", nsPlan.totals.pieces);
+  if (nsPlan.effort !== "1-day") failBom("protect nightstand effort 1-day", nsPlan.effort);
+  const nsScrews = nsPlan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name))?.quantity;
+  if (nsScrews !== 66) failBom("protect nightstand screws 66", nsScrews);
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (Math.abs(linen.overall.width - 31.5) > 0.2) failBom("protect linen 31.5", linen.overall);
+  const band = nsPlan.bom.find((b) => /edge banding|banding/i.test(b.name));
+  if (band) {
+    const best = band.offers?.find((o) => o.best) ?? band.offers?.[0];
+    if (best && /plywood|4x8|4×8|sande/i.test(best.title || "") && !/band/i.test(best.title || "")) {
+      failBom("protect banding Best≠sheet", best.title);
+    }
+  }
+  const ledge = generateFromPrompt("house: picture ledge 36″ wide × 3.5″ deep × 3.5″ tall");
+  if (ledge.overall.height > 8) failBom("protect picture ledge H", ledge.overall);
+  const desk = generateFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee');
+  if (Math.abs(desk.overall.height - 29) > 0.2) failBom("protect desk H29", desk.overall);
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.depth - 24) > 0.2) failBom("protect lounge Seat depth 24", seat?.size);
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failBom("protect catapult≠trough", cat.name);
+  }
+
+}
+
 
 
 console.log("STRANGER PLAN OK", {
