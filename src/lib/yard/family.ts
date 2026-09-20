@@ -532,23 +532,54 @@ export function isToyChest(lower: string) {
 }
 
 /**
- * OPERATE class: hinged-lid chest / trunk / box.
- * Toy path OR chest/trunk/box + hinged lid/lid — not medicine / file / tool cabinet drawer chests.
+ * Lift-off / removable / loose lid — NOT hinged Operate.
+ * Universal lid-attachment class: stranger said the lid comes off, not piano-hinge.
  */
-export function isHingedLidChest(lower: string) {
+export function isLiftOffLidPrompt(lower: string) {
+  return (
+    /lift[\s-]?off\s+lid/i.test(lower) ||
+    /removable\s+lid/i.test(lower) ||
+    /loose\s+lid/i.test(lower) ||
+    /unhinged\s+lid/i.test(lower) ||
+    /lid\s+lifts?\s+off/i.test(lower) ||
+    /lid\s+comes?\s+off/i.test(lower)
+  );
+}
+
+/**
+ * Chest / trunk / box lid anatomy (hinged OR lift-off).
+ * Not medicine / file / tool cabinet drawer chests.
+ */
+export function isLidChestAnatomy(lower: string) {
   if (isToyChest(lower)) return true;
   if (/medicine|file\s*cabinet|filing\s*cabinet|tool\s*chest|tool\s*cabinet/.test(lower)) return false;
-  // Drawer-bank / chest of drawers stay drawer path unless a hinged lid is typed.
+  // Drawer-bank / chest of drawers stay drawer path unless a lid is typed.
   if (/of\s+drawers/.test(lower)) return false;
   if (/drawer/.test(lower) && !/hinged\s*lid|\blid\b/.test(lower)) return false;
-  // Explicit lid on chest/trunk/box
+  // Explicit lid on chest/trunk/box (includes lift-off / removable / hinged wording).
   if (/(?:\bchest\b|\btrunk\b|\bbox\b)/.test(lower) && /hinged\s*lid|\blid\b/.test(lower)) {
     return true;
   }
-  // Bare chest class (cedar / blanket / hope / storage / …) — hinged-lid densify by default.
-  // Aligns anatomy + title/Assumed with isClassDefaultDensifyPrompt chest gate (not per-noun).
+  // Bare chest class (cedar / blanket / hope / storage / …) — lid densify by default.
   if (/\bchest\b/.test(lower)) return true;
   return false;
+}
+
+/**
+ * OPERATE class: hinged-lid chest / trunk / box.
+ * Toy path OR chest/trunk/box + lid — not lift-off/removable (those are isLiftOffLidChest).
+ */
+export function isHingedLidChest(lower: string) {
+  if (isLiftOffLidPrompt(lower)) return false;
+  return isLidChestAnatomy(lower);
+}
+
+/** Lift-off lid chest — same carcase + lid panel, no piano hinge / Operate swing. */
+export function isLiftOffLidChest(lower: string) {
+  if (!isLiftOffLidPrompt(lower)) return false;
+  if (/medicine|file\s*cabinet|filing\s*cabinet|tool\s*chest|tool\s*cabinet/.test(lower)) return false;
+  if (/of\s+drawers/.test(lower)) return false;
+  return /(?:\bchest\b|\btrunk\b|\bbox\b|toy\s*box)/.test(lower) || isToyChest(lower);
 }
 
 /**

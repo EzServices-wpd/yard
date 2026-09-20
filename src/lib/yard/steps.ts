@@ -30,7 +30,7 @@ import {
   mediaHoldHeldLabel,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { isBedsideShelf, isHingedLidChest, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
+import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -1690,20 +1690,70 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     ];
   }
 
-  // Hinged-lid chest OPERATE — never glue the Lid as a fixed top.
+  // Lid-chest class — hinged Operate OR lift-off (never glue the lid as a fixed top).
   {
     const lidPrompt = (project.prompt ?? "").toLowerCase();
+    const hasLiftOffLidPanel = panels.some((p) => /^Lift-off lid$/i.test(p.name));
     const hasLidPanel = panels.some((p) => /^Lid$/i.test(p.name));
-    const hingedLidChest =
-      (/Toy chest|\bChest\b/i.test(project.name) && hasLidPanel) ||
+    const liftOff = isLiftOffLidPrompt(lidPrompt) || hasLiftOffLidPanel;
+    const anyLid = hasLidPanel || hasLiftOffLidPanel;
+    const lidChest =
+      (/Toy chest|\bChest\b/i.test(project.name) && anyLid) ||
       isHingedLidChest(lidPrompt) ||
       isToyChest(lidPrompt) ||
-      hasLidPanel;
-    if (hingedLidChest && hasLidPanel) {
+      liftOff ||
+      anyLid;
+    if (lidChest && anyLid) {
       const carcaseOnly = [...uprights, ...backs, ...bottoms, ...rails].filter(
-        (p) => !/^Lid$/i.test(p.name),
+        (p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name),
       );
-      const lidPanel = panels.filter((p) => /^Lid$/i.test(p.name));
+      const lidPanel = panels.filter((p) => /^Lid$/i.test(p.name) || /^Lift-off lid$/i.test(p.name));
+      if (liftOff) {
+        return [
+          {
+            step: 1,
+            title: "Confirm the footprint — do not cut yet",
+            description: `${project.name}. Freestanding lift-off-lid chest ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. ${partsOnThisListPhrase(project)} — the lid stays off until the main box is standing.`,
+            tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+            partsUsed: ["*"],
+          },
+          {
+            step: 2,
+            title: sheetCutTitle(panels, item),
+            description: sheetCutDescription(panels, item),
+            tips: tool.tip,
+            partsUsed: ["*"],
+          },
+          {
+            step: 3,
+            title: "Stand the main box — sides, back, front, bottom only",
+            description: `${carcaseOnly.map(cutLine).join("; ") || "Sides, back, front, and bottom."}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then front. Do NOT glue or screw the lid on as a fixed top — it lifts off.`,
+            tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box. Leave the lid off the main box.",
+            partsUsed: names(carcaseOnly),
+          },
+          {
+            step: 4,
+            title: "Set the lift-off lid on the main box",
+            description: `${lidPanel.map(cutLine).join("; ") || "Lift-off lid."} Set the lid on the top edges of the main box so it sits flat and lifts straight off. No piano hinge and no lid stay — this is a removable lid, not a hinged Operate lid.`,
+            tips: "A light cleat or bumper strip under the lid (optional) can keep it from sliding. Guidance only — confirm fit before you cut.",
+            partsUsed: names(lidPanel),
+          },
+          {
+            step: 5,
+            title: "Lift-off test",
+            description: "Lift the lid straight off and set it back on a few times — it should clear the main box without binding. Not an open/close hinge swing.",
+            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            partsUsed: names(lidPanel),
+          },
+          {
+            step: 6,
+            title: "Level it",
+            description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still lift off cleanly after leveling.",
+            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            partsUsed: names([...carcaseOnly, ...lidPanel]),
+          },
+        ];
+      }
       return [
         {
           step: 1,
@@ -1802,7 +1852,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   });
 
   // Exclude panels named Lid from the fixed-top carcase join — lids hinge, they do not glue on.
-  const carcaseTops = of("top").filter((p) => !/^Lid$/i.test(p.name));
+  const carcaseTops = of("top").filter((p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name));
   if (uprights.length && (backs.length || bottoms.length || carcaseTops.length)) {
     const uDesc = uprights.map(cutLine).join("; ");
     const box = [...backs, ...bottoms, ...carcaseTops].map(cutLine).join("; ");

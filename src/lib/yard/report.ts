@@ -10,7 +10,7 @@ import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
-import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
+import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
@@ -468,15 +468,19 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     }
   }
   // Hinged-lid chest OPERATE — piano hinge + lid stay (do not double-add if fold-down already added piano hinge).
+  // Lift-off / removable / loose lid ≠ piano / stay (universal lid-attachment class).
   {
     const lidPrompt = (project.prompt ?? "").toLowerCase();
+    const hasLiftOffLidPanel = project.panels.some((p) => /^Lift-off lid$/i.test(p.name));
     const hasLidPanel = project.panels.some((p) => /^Lid$/i.test(p.name));
+    const liftOff = isLiftOffLidPrompt(lidPrompt) || hasLiftOffLidPanel;
     const hingedLid =
-      hasLidPanel ||
-      isHingedLidChest(lidPrompt) ||
-      isToyChest(lidPrompt) ||
-      /hinged\s*lid/i.test(`${project.name} ${project.prompt ?? ""}`) ||
-      ((/Toy chest|\bChest\b/i.test(project.name) || /Toy chest/i.test(project.name)) && hasLidPanel);
+      !liftOff &&
+      (hasLidPanel ||
+        isHingedLidChest(lidPrompt) ||
+        isToyChest(lidPrompt) ||
+        /hinged\s*lid/i.test(`${project.name} ${project.prompt ?? ""}`) ||
+        ((/Toy chest|\bChest\b/i.test(project.name) || /Toy chest/i.test(project.name)) && hasLidPanel));
     if (hingedLid) {
       const alreadyPiano = bom.some((b) => /piano hinge/i.test(b.name));
       if (!alreadyPiano) {
@@ -841,7 +845,9 @@ export function buildPlan(project: YardProject): BuildPlan {
               : isToyChest((project.prompt ?? "").toLowerCase()) || /Toy chest/i.test(project.name)
                 ? "toy chest"
               : isHingedLidChest((project.prompt ?? "").toLowerCase()) ||
-                  (/\bChest\b/i.test(project.name) && project.panels.some((p) => /^Lid$/i.test(p.name)))
+                  isLiftOffLidPrompt((project.prompt ?? "").toLowerCase()) ||
+                  (/\bChest\b/i.test(project.name) &&
+                    project.panels.some((p) => /^Lid$/i.test(p.name) || /^Lift-off lid$/i.test(p.name)))
                 ? "chest"
               : /Mudroom bench/i.test(project.name) ||
                   (/mudroom/.test((project.prompt ?? "").toLowerCase()) && /\bbench\b/.test((project.prompt ?? "").toLowerCase()))

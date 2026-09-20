@@ -24,7 +24,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -5507,5 +5507,63 @@ console.log("STRANGER PLAN OK", {
   const ledge = generateFromPrompt("picture ledge 36 wide");
   if (hasOperableFaces(operateFaceKinds(ledge.panels))) {
     failHonesty("picture ledge must not expose Operate", operateFaceKinds(ledge.panels));
+  }
+
+  // Lift-off / removable lid ≠ hinged Operate + piano (universal lid-attachment class).
+  for (const liftPrompt of [
+    "cedar chest 36 wide 18 deep 20 tall with lift-off lid",
+    "cedar chest 36 wide 18 deep 20 tall with removable lid",
+  ]) {
+    if (!isLiftOffLidPrompt(liftPrompt.toLowerCase())) {
+      failHonesty("isLiftOffLidPrompt false", liftPrompt);
+    }
+    if (isHingedLidChest(liftPrompt.toLowerCase())) {
+      failHonesty("lift-off must not gate isHingedLidChest", liftPrompt);
+    }
+    if (!isLiftOffLidChest(liftPrompt.toLowerCase())) {
+      failHonesty("isLiftOffLidChest false", liftPrompt);
+    }
+    const lift = generateFromPrompt(liftPrompt);
+    const liftKinds = operateFaceKinds(lift.panels);
+    if (liftKinds.lids > 0 || hasOperableFaces(liftKinds)) {
+      failHonesty("lift-off must not expose Operate lid", {
+        prompt: liftPrompt,
+        kinds: liftKinds,
+        panels: lift.panels.map((p) => `${p.type}:${p.name}`),
+      });
+    }
+    if (!lift.panels.some((p) => /^Lift-off lid$/i.test(p.name))) {
+      failHonesty("lift-off missing Lift-off lid panel", lift.panels.map((p) => p.name));
+    }
+    if (lift.panels.some(isHingedLidPanel)) {
+      failHonesty("lift-off must not count as hinged Lid Operate panel", lift.panels.map((p) => p.name));
+    }
+    const liftPlan = buildPlan(lift);
+    if (liftPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
+      failHonesty("lift-off must not Buy piano hinge", liftPlan.bom.map((b) => b.name));
+    }
+    if (liftPlan.bom.some((b) => /lid stay|lid support/i.test(b.name))) {
+      failHonesty("lift-off must not Buy lid stay", liftPlan.bom.map((b) => b.name));
+    }
+    const liftBlob = liftPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+    if (/Piano-hinge the lid|Add a lid stay — open\/close|lid should open|opens up and back/i.test(liftBlob)) {
+      failHonesty("lift-off Voice still hinged piano talk", liftBlob.slice(0, 500));
+    }
+    // Allow "No piano hinge" densify; forbid positive piano Buy/step densify already checked via BOM.
+    if (/with 1 piano hinge/i.test(liftBlob)) {
+      failHonesty("lift-off one-join still piano hinge", liftBlob.slice(0, 400));
+    }
+    if (!/lift-off|lifts? straight off|removable lid|no piano hinge/i.test(liftBlob + (lift.notes || []).join(" "))) {
+      failHonesty("lift-off densify talk missing", (lift.notes || []).slice(0, 3));
+    }
+  }
+
+  // Protect hinged path still densifies Operate + piano after lift-off class.
+  const hingedProtect = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with hinged lid");
+  if (operateFacesLabel(false, operateFaceKinds(hingedProtect.panels)) !== "Open lid") {
+    failHonesty("hinged protect Open lid after lift-off class", operateFacesLabel(false, operateFaceKinds(hingedProtect.panels)));
+  }
+  if (!buildPlan(hingedProtect).bom.some((b) => /piano hinge/i.test(b.name))) {
+    failHonesty("hinged protect piano after lift-off class", buildPlan(hingedProtect).bom.map((b) => b.name));
   }
 }

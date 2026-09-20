@@ -10,7 +10,10 @@ export type OperateFaceKinds = {
   lids: number;
 };
 
-/** Hinged-lid Operate panel — universal chest/trunk/box lid, not noun-only. */
+/**
+ * Hinged-lid Operate panel — universal chest/trunk/box lid, not noun-only.
+ * Lift-off lids are named "Lift-off lid" (no Operate swing / no /^Lid\b/ match).
+ */
 export function isHingedLidPanel(panel: Panel): boolean {
   return panel.type === "top" && /^Lid\b/i.test(panel.name);
 }

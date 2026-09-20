@@ -17,7 +17,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
@@ -4204,14 +4204,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
 
-  // Hinged-lid chest OPERATE class — lid anatomy; never Yard House wire / Storage.
+  // Lid-chest class — hinged OR lift-off; never Yard House wire / Storage.
   // Toy chest stays Toy chest; species-named chests (cedar/oak/…) honor species in title + substitute note when densify stays ply.
+  // Lift-off / removable / loose lid ≠ piano hinge / Operate swing (universal lid-attachment class).
   // Planter (no lid) and crate (door) stay on their own builders.
   {
     const lidLower = prompt.toLowerCase();
     const lidStem = identityTitleStem(lidLower);
+    const liftOff = isLiftOffLidPrompt(lidLower) || isLiftOffLidChest(lidLower);
     if (
       isHingedLidChest(lidLower) ||
+      isLiftOffLidChest(lidLower) ||
       lidStem === "Toy chest" ||
       (lidStem === "Chest" && /hinged\s*lid|\blid\b/.test(lidLower))
     ) {
@@ -4222,7 +4225,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
       panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
       panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
-      panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
+      // Hinged Operate matches /^Lid\b/; lift-off uses "Lift-off lid" so no Open/Shut swing.
+      panels.push(panel("top", liftOff ? "Lift-off lid" : "Lid", x0, H - P, 0, W, P, D));
       const stem = honorSpeciesInTitle(toy ? "Toy chest" : "Chest", prompt);
       // Class-default densify honesty — bare "cedar chest with hinged lid" must not stamp stock W×H×D as typed.
       const chestAxes = typedClassDefaultAxes(prompt);
@@ -4245,9 +4249,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `Honor typed ${W}" wide × ${D}" deep × ${H}" tall.`
           : "Class defaults fill untyped axes — type Measure to lock size.";
       const priorAff: HouseAffordance[] = spec.affordances ?? [];
-      const lidAff: HouseAffordance[] = priorAff.includes("hinged-lid")
-        ? priorAff
-        : [...priorAff, "hinged-lid"];
+      const lidAff: HouseAffordance[] = liftOff
+        ? priorAff.filter((a) => a !== "hinged-lid")
+        : priorAff.includes("hinged-lid")
+          ? priorAff
+          : [...priorAff, "hinged-lid"];
       return {
         id: createId("proj"),
         name,
@@ -4261,6 +4267,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           const sub =
             speciesStockHonestyTalk(prompt, '¾" plywood') ??
             speciesSubstituteNote(prompt, '¾" plywood');
+          if (liftOff) {
+            return [
+              toy
+                ? `${name}. Lift-off-lid toy chest — floor main box with a removable lid (no piano hinge), not a Yard House wire skeleton and not Storage. ¾" plywood.`
+                : `${name}. Lift-off-lid chest — floor main box with a removable lid (no piano hinge), not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+              `Lift-off lid ${W}" × ${D}". ${chestSizeTalk} The lid sits on the main box and lifts straight off — not hinged along the back edge. No piano hinge or lid stay.`,
+              ...chestAssumed,
+              ...(sub ? [sub] : []),
+              "Guidance only — lift the lid off and set it back on. Not an Operate swing lid.",
+            ];
+          }
           return [
             toy
               ? `${name}. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
