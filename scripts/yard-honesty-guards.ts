@@ -3333,6 +3333,93 @@ console.log("SOFT-TRUST OK", {
       failVoice("parts-plate ship lost 3 legs");
     }
   }
+  // Shelf install/join steps must name marked heights (AFF or from the bottom) — soft-park honesty.
+  {
+    const book = generateFromPrompt("house: bookshelf 36 wide 12 deep 72 tall five shelves");
+    const bookPlan = buildPlan(book);
+    const shelfPanels = book.panels.filter((p) => p.type === "shelf");
+    if (shelfPanels.length !== 5) {
+      failVoice("shelfHeight bookcase shelf count ≠ 5", shelfPanels.map((p) => p.name));
+    }
+    const pinStep = bookPlan.instructions.find(
+      (s) => /Pin \d+ adjustable shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
+    );
+    if (!pinStep) failVoice("shelfHeight bookcase missing pin/glue shelf step", bookPlan.instructions.map((s) => s.title));
+    const pinBlob = `${pinStep!.title} ${pinStep!.description}`;
+    if (!/Marked heights?:/i.test(pinBlob)) failVoice("shelfHeight bookcase step missing Marked height(s)", pinBlob.slice(0, 400));
+    if (!/\bAFF\b/.test(pinBlob)) failVoice("shelfHeight bookcase freestanding missing AFF", pinBlob.slice(0, 400));
+    // Every engine shelf y must appear as a marked inch — no invented heights.
+    for (const sp of shelfPanels) {
+      const y = Math.round(sp.position.y * 8) / 8;
+      const inch =
+        Number.isInteger(y)
+          ? String(y)
+          : Math.abs(y - Math.floor(y) - 0.5) < 1e-6
+            ? `${Math.floor(y)}½`
+            : String(y);
+      if (!pinBlob.includes(`${inch}"`)) {
+        failVoice(`shelfHeight bookcase missing engine y ${inch}" for ${sp.name}`, {
+          y: sp.position.y,
+          blob: pinBlob.slice(0, 500),
+        });
+      }
+    }
+    // Parts-plate letters still present on shelf join after densify.
+    if (!bookPlan.cutList.every((c) => c.label && /^[A-Z]+$/.test(c.label))) {
+      failVoice("shelfHeight bookcase lost parts-plate letters", bookPlan.cutList.map((c) => c.label));
+    }
+  }
+
+  {
+    // Wall-hung shelves name from-the-bottom marks (not AFF).
+    const wall = generateFromPrompt("house: wall shelves 48 wide 8 deep with 3 shelves");
+    const wallPlan = buildPlan(wall);
+    const lag = wallPlan.instructions.find((s) => /Lag each wall cleat/i.test(s.title) || /Sit each shelf/i.test(s.title));
+    const wallBlob = wallPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+    if (!/Marked heights?:/i.test(wallBlob)) failVoice("shelfHeight wall shelves missing Marked height(s)", wallBlob.slice(0, 500));
+    if (!/from the bottom/i.test(wallBlob)) failVoice("shelfHeight wall shelves missing from-the-bottom marks", wallBlob.slice(0, 500));
+    if (/\bAFF\b/.test(lag?.description ?? "") && /Lag each wall cleat/i.test(lag?.title ?? "")) {
+      failVoice("shelfHeight wall cleat step wrongly uses AFF", lag?.description?.slice(0, 300));
+    }
+  }
+
+  // Protect freezes / prior wins still green under shelf-height densify.
+  {
+    const linenH = generateFromPrompt("house: linen closet 31.5×78×16");
+    if (!linenH.fitted || Math.abs(linenH.overall.width - 31.5) > 0.1 || Math.abs(linenH.overall.height - 78) > 0.1 || Math.abs(linenH.overall.depth - 16) > 0.1) {
+      failVoice("shelfHeight protect linen freeze", linenH.overall);
+    }
+    const linenHP = buildPlan(linenH);
+    const linenPin = linenHP.instructions.find((s) => /Pin \d+ adjustable shel|Glue \d+ fixed shel/i.test(s.title));
+    if (linenPin && !/Marked heights?:/i.test(linenPin.description)) {
+      failVoice("shelfHeight linen shelf step missing marked heights", linenPin.description.slice(0, 300));
+    }
+    const loungeH = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+    const seatH = loungeH.panels.find((p) => /^Seat$/i.test(p.name));
+    if (!seatH || Math.abs(seatH.size.width - 30) > 1.2 || Math.abs(seatH.size.depth - 24) > 0.6) {
+      failVoice("shelfHeight protect lounge Seat 30×24", seatH?.size);
+    }
+    const deskH = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+    if (Math.abs(deskH.overall.width - 60) > 0.6 || Math.abs(deskH.overall.depth - 30) > 0.6 || Math.abs(deskH.overall.height - 29) > 0.6) {
+      failVoice("shelfHeight protect desk freeze", deskH.overall);
+    }
+    const catH = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+    if (/trough|marble run/i.test(catH.name) && !/catapult|launcher/i.test(catH.name)) {
+      failVoice("shelfHeight protect catapult≠trough", catH.name);
+    }
+    const cedarH = generateFromPrompt('house: cedar chest 36" wide × 18" deep × 20" tall with hinged lid');
+    if (!/^Cedar chest/i.test(cedarH.name)) failVoice("shelfHeight protect cedar piano Best title", cedarH.name);
+    const cedarHP = buildPlan(cedarH);
+    const piano = cedarHP.bom.find((b) => /piano hinge/i.test(b.name));
+    const best = piano?.offers?.find((o) => o.best) ?? piano?.offers?.[0];
+    if (best && /soft-?close|concealed/i.test(best.title) && !/piano|continuous/i.test(best.title)) {
+      failVoice("shelfHeight protect cedar piano Best", best.title);
+    }
+  }
+
+  // Shared shelf-height helpers exist (ship markers).
+  // shelfInstallHeightsClause / shelfMarkedHeightTalk / shelfHeightInch
+
 }
 
 console.log("STRANGER PLAN OK", {

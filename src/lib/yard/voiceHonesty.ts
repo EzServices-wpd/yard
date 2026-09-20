@@ -391,3 +391,49 @@ export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutLis
   const plated = stampPartsPlate(cutList);
   return densifyOneJoinInstructions(instructions, plated);
 }
+
+/** Shelf panel enough to name an installed height from engine position.y. */
+export type ShelfHeightDatum = {
+  name: string;
+  position: { y: number };
+};
+
+/** Shop inch from engine y — nearest eighth; never invent a height. */
+export function shelfHeightInch(y: number): string {
+  const r = Math.round(y * 8) / 8;
+  if (Number.isInteger(r)) return String(r);
+  if (Math.abs(r - Math.floor(r) - 0.5) < 1e-6) return `${Math.floor(r)}½`;
+  return String(r)
+    .replace(/(\.\d*?)0+$/, "$1")
+    .replace(/\.$/, "");
+}
+
+/**
+ * One shelf's marked install height from panel.position.y (engine measure).
+ * Floor / alcove → AFF; wall-hung → from the bottom of the unit.
+ */
+export function shelfMarkedHeightTalk(
+  shelf: ShelfHeightDatum,
+  opts?: { wallMounted?: boolean },
+): string {
+  const inch = shelfHeightInch(shelf.position.y);
+  const where = opts?.wallMounted ? `${inch}" from the bottom` : `${inch}" AFF`;
+  return `${shelf.name} at ${where}`;
+}
+
+/**
+ * Clause listing every shelf's marked height for install / pin / glue / cleat steps.
+ * Empty when no shelves — caller keeps prior talk. Sorted low→high by engine y.
+ */
+export function shelfInstallHeightsClause(
+  shelves: ShelfHeightDatum[],
+  opts?: { wallMounted?: boolean },
+): string {
+  if (!shelves.length) return "";
+  const sorted = [...shelves].sort(
+    (a, b) => a.position.y - b.position.y || a.name.localeCompare(b.name),
+  );
+  const marks = sorted.map((s) => shelfMarkedHeightTalk(s, opts));
+  if (marks.length === 1) return `Marked height: ${marks[0]}.`;
+  return `Marked heights: ${marks.join("; ")}.`;
+}

@@ -37,6 +37,7 @@ import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
+import { shelfInstallHeightsClause } from "./voiceHonesty";
 
 function dim(p: Panel) {
   return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
@@ -322,6 +323,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
   const wallHang = project.assumptions.installMode === "wall";
   const slide = drawers.length ? slideInches(D) : 0;
+  const shelfHeightOpts = { wallMounted: wallHang };
+  const shelfHeights = (list: Panel[]) => shelfInstallHeightsClause(list, shelfHeightOpts);
 
   const sheetCuts = groupSheetCuts(panels);
   const steps: AssemblyStep[] = [];
@@ -998,7 +1001,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. Rest each shelf on 5 mm pins (four per shelf — two in each upright). Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. Do not glue the shelves; pins let you move them later.`,
         tips: "A medicine bottle is taller than a spice tin — leave the middle gap honest.",
         partsUsed: names(shelves),
       },
@@ -1253,7 +1256,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Stand the rack",
-        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. Glue and #8 × 1¼" screws. Do not use shelf pins — jars are heavy and the lips need a solid shelf. Predrill near the ends so the ply does not split.`,
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Do not use shelf pins — jars are heavy and the lips need a solid shelf. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first rack.",
         partsUsed: names([...uprights, ...backs, ...shelves]),
       },
@@ -1297,7 +1300,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Stand the rack",
-        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. Glue and #8 × 1¼" screws. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first rack.",
         partsUsed: names([...uprights, ...backs, ...shelves]),
       },
@@ -1344,7 +1347,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 3,
           title: "Stand the uprights and glue the tank shelf",
-          description: `${uprights.map(cutLine).join("; ")}. ${tank ? cutLine(tank) + "." : "Tank shelf."} Glue and #8 × 1¼" screws: tank shelf into both uprights at the marked height. Leave the floor open — a bottom panel would sit on the toilet.`,
+          description: `${uprights.map(cutLine).join("; ")}. ${tank ? cutLine(tank) + "." : "Tank shelf."} ${tank ? shelfInstallHeightsClause([tank], { wallMounted: true }) : "Marked height: tank shelf."} Glue and #8 × 1¼" screws: tank shelf into both uprights at that marked height. Leave the floor open — a bottom panel would sit on the toilet.`,
           tips: "Check both diagonals. The gap under the tank shelf is where the tank lives.",
           partsUsed: names([...uprights, ...shelves.filter((p) => /tank/i.test(p.name))]),
         },
@@ -1396,7 +1399,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Shelves."}. Rest each shelf on 5 mm pins (four per shelf). Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf) at those marked heights. Do not glue the shelves; pins let you move them later.`,
         partsUsed: names(shelves),
       },
       {
@@ -1451,7 +1454,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Lag each wall cleat into studs",
-        description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. Level a cleat on the wall, hit at least two studs, and drive 3" structural screws through the cleat into the studs. Repeat for each shelf height (about 10" clear between shelves).`,
+        description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Level a cleat on the wall at each marked shelf height, hit at least two studs, and drive 3" structural screws through the cleat into the studs. Repeat for every marked height.`,
         tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
         partsUsed: names(cleats.length ? cleats : panels),
       },
@@ -1459,8 +1462,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 4,
         title: holdTalk ? "Sit the shelf on its cleat and add the upright envelope" : "Sit each shelf on its cleat and screw down",
         description: holdTalk
-          ? `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. ${lips.map(cutLine).join("; ") || (printHold ? "Print front lip and Print backstop." : "Book front lip and Book backstop.")}. Screw the front lip and backstop so a real ${printHold ? (fiveBySeven ? "5×7 print" : "print") : "book"} sits upright — never a flat decal.`
-          : `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the cleat so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
+          ? `${shelfBoards.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Set the shelf on the cleat at the marked height so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. ${lips.map(cutLine).join("; ") || (printHold ? "Print front lip and Print backstop." : "Book front lip and Book backstop.")}. Screw the front lip and backstop so a real ${printHold ? (fiveBySeven ? "5×7 print" : "print") : "book"} sits upright — never a flat decal.`
+          : `${shelfBoards.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Set each shelf on its cleat at the marked height so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
         tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out if you add glue.",
         partsUsed: names([...shelfBoards, ...cleats, ...lips]),
       },
@@ -1597,7 +1600,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Glue in the middle shelf",
-        description: `${shelves.map(cutLine).join("; ") || "Middle shelf."} Glue and screw through the uprights into the shelf. Square it. This shelf is fixed — no pins.`,
+        description: `${shelves.map(cutLine).join("; ") || "Middle shelf."} ${shelfHeights(shelves)} Glue and screw through the uprights into the shelf at the marked height. Square it. This shelf is fixed — no pins.`,
         partsUsed: names([...uprights, ...shelves]),
       },
       {
@@ -1653,7 +1656,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Glue in the shelf",
-        description: `${shelves.map(cutLine).join("; ") || "Shelf."} This shelf is the floor of the drawer bay and the top of the open cubby. Glue and screw through the uprights into the shelf. Square it. No pins — it is fixed.`,
+        description: `${shelves.map(cutLine).join("; ") || "Shelf."} ${shelfHeights(shelves)} This shelf is the floor of the drawer bay and the top of the open cubby. Glue and screw through the uprights into the shelf at the marked height. Square it. No pins — it is fixed.`,
         partsUsed: names([...uprights, ...shelves]),
       },
       {
@@ -1902,14 +1905,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? {
             step: n++,
             title: `Glue ${shelves.length} fixed shel${shelves.length === 1 ? "f" : "ves"}`,
-            description: `${shelves.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws through the uprights into each shelf. Square every bay. These shelves are fixed — no pins.`,
+            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Square every bay. These shelves are fixed — no pins.`,
             tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
           }
         : {
             step: n++,
             title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
-            description: `${shelves.map(cutLine).join("; ")}. Drill 5mm pin holes in both uprights (and dividers if the bay is split), 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
+            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Drill 5mm pin holes in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
             tips: "A pegboard jig or a 32mm shelf-pin jig beats measuring every hole twice.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
           },
