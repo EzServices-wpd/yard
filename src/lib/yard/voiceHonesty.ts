@@ -740,13 +740,14 @@ export function isOpeningStoragePrompt(prompt: string): boolean {
 /**
  * Fitted classes that densify class-default W×H×D when the stranger typed no axes.
  * Same honesty class as bare linen: title/HUD must not stamp densified envelope as typed.
- * Universal mechanism — opening-storage + vanity + hinged/cedar chest (not per-noun patches).
+ * Universal mechanism — opening-storage (incl. hutch) + vanity + chest class (not per-noun patches).
+ * Chest gate matches isHingedLidChest bare-chest densify (cedar/blanket/hope without spelling "lid").
  */
 export function isClassDefaultDensifyPrompt(prompt: string): boolean {
   if (isOpeningStoragePrompt(prompt)) return true;
   const p = prompt.toLowerCase();
   if (/\bvanity\b/.test(p)) return true;
-  // Hinged-lid / cedar / blanket / toy chest — not "chest of drawers".
+  // Chest class — not "chest of drawers". Bare cedar/blanket/hope densify here too.
   if (/\bchest\b/.test(p) && !/of\s+drawers/.test(p)) return true;
   if (/hinged\s+(?:lid|top)/.test(p) && /\b(?:chest|box|trunk)\b/.test(p)) return true;
   return false;

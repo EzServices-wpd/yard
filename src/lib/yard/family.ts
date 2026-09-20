@@ -535,11 +535,16 @@ export function isToyChest(lower: string) {
 export function isHingedLidChest(lower: string) {
   if (isToyChest(lower)) return true;
   if (/medicine|file\s*cabinet|filing\s*cabinet|tool\s*chest|tool\s*cabinet/.test(lower)) return false;
-  // Drawer-bank chests stay drawer path unless a hinged lid is typed.
+  // Drawer-bank / chest of drawers stay drawer path unless a hinged lid is typed.
+  if (/of\s+drawers/.test(lower)) return false;
   if (/drawer/.test(lower) && !/hinged\s*lid|\blid\b/.test(lower)) return false;
+  // Explicit lid on chest/trunk/box
   if (/(?:\bchest\b|\btrunk\b|\bbox\b)/.test(lower) && /hinged\s*lid|\blid\b/.test(lower)) {
     return true;
   }
+  // Bare chest class (cedar / blanket / hope / storage / …) — hinged-lid densify by default.
+  // Aligns anatomy + title/Assumed with isClassDefaultDensifyPrompt chest gate (not per-noun).
+  if (/\bchest\b/.test(lower)) return true;
   return false;
 }
 
@@ -927,6 +932,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isBootTrayBench(lower) || (/boot/.test(lower) && /tray/.test(lower) && /\bbench\b/.test(lower))) return "Boot tray bench";
   if (isBookBinBench(lower)) return sitBenchTitleStem(lower) || "Book bin bench";
   if (isToyChest(lower)) return "Toy chest";
+  if (/\bhutch\b/.test(lower)) return /kitchen/.test(lower) ? "Kitchen hutch" : "Hutch";
   if (isHingedLidChest(lower)) return "Chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";

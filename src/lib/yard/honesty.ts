@@ -9,7 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
-import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt } from "./voiceHonesty";
+import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -529,13 +529,19 @@ function snapName(
     .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
     .trim();
   const label = cleaned || name;
+  // Class-default densify: bare (no digits) + partial typed axes share stampTypedAxesTitle densify.
+  // Bare prompts often have null typedExtents — still must not re-full-stamp densified envelope.
+  if (prompt && isClassDefaultDensifyPrompt(prompt)) {
+    const labeled = typed?.labeled ?? typedClassDefaultAxes(prompt);
+    if (!(labeled.width && labeled.height && labeled.depth)) {
+      return stampTypedAxesTitle(label, labeled, { width: w, height: h, depth: d }, typed ?? undefined);
+    }
+  }
   const anyLabeled =
     Boolean(typed?.labeled.width || typed?.labeled.height || typed?.labeled.depth);
   const allLabeled =
     Boolean(typed?.labeled.width && typed?.labeled.height && typed?.labeled.depth);
-  // Class-default densify: bare (no digits) + partial typed axes share stampTypedAxesTitle densify.
-  // Never re-full-stamp densified envelope as typed on bare linen/closet/vanity/chest.
-  if (typed && !allLabeled && (anyLabeled || (prompt && isClassDefaultDensifyPrompt(prompt)))) {
+  if (typed && !allLabeled && anyLabeled) {
     return stampTypedAxesTitle(label, typed.labeled, { width: w, height: h, depth: d }, typed);
   }
   return `${label} ${w}" × ${h}" × ${d}"`;

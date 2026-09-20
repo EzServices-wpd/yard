@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -860,12 +860,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Axes the stranger typed — class-default densify uses prompt digits (width-only linen ≠ stock H;
   // bare vanity/chest must not treat stock fills as typed). Capture before height/depth class defaults
   // so stock fills never flip labeled flags.
-  const classDefaultTitleHonesty =
-    program === "closet" ||
-    program === "wardrobe" ||
-    program === "pantry" ||
-    program === "vanity" ||
-    (program === "storage" && isHingedLidChest(lower));
+  // Universal densify gate (opening-storage + vanity + chest) — not a program whitelist.
+  const classDefaultTitleHonesty = isClassDefaultDensifyPrompt(prompt);
   const typedAxes = classDefaultTitleHonesty
     ? typedClassDefaultAxes(prompt)
     : {
@@ -5008,25 +5004,21 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
   ];
 
-  if (
-    spec.typedAxes &&
-    (spec.program === "closet" ||
-      spec.program === "wardrobe" ||
-      spec.program === "pantry" ||
-      spec.program === "vanity" ||
-      (spec.program === "storage" && isHingedLidChest(prompt.toLowerCase())))
-  ) {
+  if (spec.typedAxes && isClassDefaultDensifyPrompt(prompt)) {
     const promptLowerAssumed = prompt.toLowerCase();
     const linen = /linen/.test(promptLowerAssumed);
-    const vanity = spec.program === "vanity";
-    const chest = spec.program === "storage" && isHingedLidChest(promptLowerAssumed);
+    const vanity = spec.program === "vanity" || /\bvanity\b/.test(promptLowerAssumed);
+    const chest = isHingedLidChest(promptLowerAssumed) || (/\bchest\b/.test(promptLowerAssumed) && !/of\s+drawers/.test(promptLowerAssumed));
+    const hutch = /\bhutch\b/.test(promptLowerAssumed);
     const klass = linen
       ? "linen class default"
       : vanity
         ? "vanity class default"
         : chest
           ? "chest class default"
-          : "closet class";
+          : hutch
+            ? "hutch class default"
+            : "closet class";
     // Densified envelope honesty — stamp only typed axes into the title; note the rest.
     if (!spec.typedAxes.width) {
       notes.push(`Assumed ${W}" wide (${klass}) — type a width to lock it.`);
@@ -5039,7 +5031,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
             ? `Assumed ${H}" tall (vanity class default) — type a height to lock it.`
             : chest
               ? `Assumed ${H}" tall (chest class default) — type a height to lock it.`
-              : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
+              : hutch
+                ? `Assumed ${H}" tall (hutch class default) — type a height to lock it.`
+                : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
       );
     }
     if (!spec.typedAxes.depth) {
@@ -5057,11 +5051,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const storageAxes = spec.typedAxes;
   // Class-default densify: stamp only typed axes (incl. bare = stem only). Full triple keeps classic.
   const storagePartial =
-    (spec.program === "closet" ||
-      spec.program === "wardrobe" ||
-      spec.program === "pantry" ||
-      spec.program === "vanity" ||
-      (spec.program === "storage" && isHingedLidChest(promptLower))) &&
+    isClassDefaultDensifyPrompt(prompt) &&
     storageAxes &&
     !(storageAxes.width && storageAxes.height && storageAxes.depth);
   const stampFull = (stem: string) =>

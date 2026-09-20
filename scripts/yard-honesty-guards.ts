@@ -5085,6 +5085,48 @@ console.log("STRANGER PLAN OK", {
   if (!/31\.5" wide/i.test(widthLinen.name) || /×\s*84|×\s*78/.test(widthLinen.name)) {
     failHonesty("width-only linen regress", widthLinen.name);
   }
+
+  // Soft leftover after 10c734e: bare chest without spelling "lid" still drawer-stamped stock dims.
+  const bareCedarNoLid = generateFromPrompt("cedar chest");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareCedarNoLid.name)) {
+    failHonesty("bare cedar chest (no lid words) must not stamp class-default W×H×D as typed", {
+      name: bareCedarNoLid.name,
+    });
+  }
+  if (!bareCedarNoLid.panels.some((p) => /^Lid$/i.test(p.name))) {
+    failHonesty("bare cedar chest must densify hinged-lid anatomy", bareCedarNoLid.panels.map((p) => p.name));
+  }
+  const bareCedarNotes = (bareCedarNoLid.notes ?? []).join(" ");
+  if (!/Assumed .*chest class default/i.test(bareCedarNotes)) {
+    failHonesty("bare cedar chest missing Assumed class-default notes", bareCedarNoLid.notes);
+  }
+  const blanketChest = generateFromPrompt("blanket chest");
+  if (/\d+(?:\.\d+)?"\s*×/.test(blanketChest.name)) {
+    failHonesty("blanket chest must not stamp class-default W×H×D as typed", blanketChest.name);
+  }
+  if (!blanketChest.panels.some((p) => /^Lid$/i.test(p.name))) {
+    failHonesty("blanket chest must densify hinged-lid anatomy", blanketChest.panels.map((p) => p.name));
+  }
+  // Hutch is opening-storage densify gate — title/HUD must not full-stamp stock envelope as typed.
+  const bareHutch = generateFromPrompt("hutch");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareHutch.name)) {
+    failHonesty("bare hutch title must not stamp class-default W×H×D as typed", bareHutch.name);
+  }
+  if (!/^Hutch$/i.test(bareHutch.name.trim())) {
+    failHonesty("bare hutch title stem", bareHutch.name);
+  }
+  const hutchNotes = (bareHutch.notes ?? []).join(" ");
+  if (!/Assumed .*hutch class default/i.test(hutchNotes)) {
+    failHonesty("bare hutch missing Assumed class-default notes", bareHutch.notes);
+  }
+  // Protect: chest of drawers stays drawer bank (not hinged-lid steal).
+  const chestDrawers = generateFromPrompt("chest of drawers 40 wide 36 tall 18 deep");
+  if (chestDrawers.panels.some((p) => /^Lid$/i.test(p.name))) {
+    failHonesty("chest of drawers must not steal hinged-lid path", chestDrawers.panels.map((p) => p.name));
+  }
+  if (!/40/.test(chestDrawers.name)) {
+    failHonesty("chest of drawers typed width", chestDrawers.name);
+  }
 }
 
 // ── Assumed densify notes surface in Confirm/Build (soft leftover after 5d07304) ──
