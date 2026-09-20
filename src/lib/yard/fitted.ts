@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -616,10 +616,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
 
   if (!Number.isFinite(width)) {
-    const alcove = t.match(
-      /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:bathroom\s+)?(?:alcove|opening|niche|closet)\b/i,
-    );
-    if (alcove && !(trip.w && trip.h)) width = parseFloat(alcove[1]);
+    // Universal typed opening width — "31.5 inch linen closet" (adjectives between measure + noun).
+    // Superset of the old bare alcove/closet matcher; halves and stock twins both honor typed W.
+    const openingW = openingWidthFromPrompt(t);
+    if (Number.isFinite(openingW) && !(trip.w && trip.h)) width = openingW;
   }
   if (!Number.isFinite(width) && /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(lower)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);

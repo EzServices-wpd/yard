@@ -624,6 +624,46 @@ export function deskWidthFromPrompt(prompt: string): number {
 }
 
 /**
+ * Typed overall width before a storage / opening noun — universal densify, not linen-only.
+ * "31.5 inch linen closet" / "36\" tall pantry" / "24 inch bathroom alcove" must bind W
+ * (halves welcome). Do not steal axis-labeled measures ("16 inch deep linen closet").
+ * Returns NaN when no bare opening width is spoken.
+ */
+export function openingWidthFromPrompt(prompt: string): number {
+  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  // Adjectives may sit between the measure and the noun (linen, tall, utility, broom…).
+  // Negative lookahead blocks "16 inch deep …" / "78 inch tall …" from becoming width.
+  const storageNoun =
+    String.raw`(?:(?:bathroom|linen|utility|broom|coat|pantry|tall|storage|closet|wardrobe)\s+){0,3}` +
+    String.raw`(?:alcove|opening|niche|closet|wardrobe|pantry|cabinet|cupboard|armoire|hutch|locker|linen)\b`;
+  const ahead = t.match(
+    new RegExp(
+      String.raw`(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
+        storageNoun,
+      "i",
+    ),
+  );
+  if (ahead) {
+    const n = parseFloat(ahead[1]);
+    // Opening / carcase widths — reject hardware ("2 inch closet rod").
+    if (Number.isFinite(n) && n >= 12 && n <= 120) return n;
+  }
+  const after = t.match(
+    new RegExp(
+      String.raw`\b` +
+        storageNoun +
+        String.raw`\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length))`,
+      "i",
+    ),
+  );
+  if (after) {
+    const n = parseFloat(after[1]);
+    if (Number.isFinite(n) && n >= 12 && n <= 120) return n;
+  }
+  return NaN;
+}
+
+/**
  * Measure overlay / panel axis labels.
  * Round tables: Dia × H only — never W×H×D diameter echo (40×30×40).
  */

@@ -33,6 +33,12 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
     /(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s+)((?:bathroom\s+)?alcove)\b/i,
     `${W}$2$3`,
   );
+  // Typed opening width with adjectives between measure and noun — "31.5 inch linen closet".
+  // Skip axis-labeled spans ("16 inch deep …") so Measure apply does not rewrite depth as width.
+  p = p.replace(
+    /(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)((?:(?:bathroom|linen|utility|broom|coat|pantry|tall|storage|closet|wardrobe)\s+){0,3}(?:alcove|opening|niche|closet|wardrobe|pantry|cabinet|cupboard|armoire|hutch|locker|linen))\b/i,
+    `${W}$2$3`,
+  );
   // Bare desk width: "60\" desk …" / "desk 60\"" — keep W honest across Measure apply.
   if (deskLike) {
     p = p.replace(
