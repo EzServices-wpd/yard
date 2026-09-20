@@ -4861,3 +4861,38 @@ console.log("STRANGER PLAN OK", {
   }
   if (!/24"\s*wide/.test(pantry.name)) failHonesty("pantry width-only title", pantry.name);
 }
+
+// ── Bare linen/closet (no typed digits) title honesty (soft leftover after 9a4419c / ef1d1a4) ──
+{
+  for (const bare of ["linen closet", "linen"]) {
+    const proj = generateFromPrompt(bare);
+    if (/\d+(?:\.\d+)?"\s*×/.test(proj.name)) {
+      failHonesty("bare linen title must not stamp densified W×H×D as typed", {
+        prompt: bare,
+        name: proj.name,
+      });
+    }
+    if (!/^Linen\b/i.test(proj.name)) {
+      failHonesty("bare linen title stem", { prompt: bare, name: proj.name });
+    }
+    // Densify may still build class envelope (36×78×16 linen).
+    if (Math.abs(proj.overall.width - 36) > 0.6 || Math.abs(proj.overall.height - 78) > 0.6) {
+      failHonesty("bare linen densify envelope", { prompt: bare, overall: proj.overall });
+    }
+    const notes = (proj.notes ?? []).join(" ");
+    if (!/Assumed 78" tall/i.test(notes)) {
+      failHonesty("bare linen missing Assumed tall note", { prompt: bare, notes: proj.notes });
+    }
+    const hud = fmtUnitEnvelopeInches(proj.overall.width, proj.overall.height, proj.overall.depth, {
+      prompt: bare,
+      name: proj.name,
+    });
+    if (/\d+(?:\.\d+)?"\s*×/.test(hud)) {
+      failHonesty("bare linen HUD must not present densified triple as typed", { prompt: bare, hud });
+    }
+  }
+  const bareCloset = generateFromPrompt("closet");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareCloset.name) && !/Assumed/i.test((bareCloset.notes ?? []).join(" "))) {
+    failHonesty("bare closet title stamps densified dims without Assumed", bareCloset.name);
+  }
+}

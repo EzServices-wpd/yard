@@ -633,6 +633,8 @@ export function deskWidthFromPrompt(prompt: string): number {
 /**
  * Title stamp from axes the stranger actually typed — never invent stock H/D into the title.
  * Width-only linen/closet → `Linen 31.5" wide` (overall may still densify H/D for geometry).
+ * Bare opening-storage (no typed digits) → stem only (`Linen` / `Closet`) — densified
+ * envelope stays in geometry + Assumed Voice notes, never stamped as typed W×H×D.
  * Full typed triple keeps classic `Stem W" × H" × D"`.
  */
 export function stampTypedAxesTitle(
@@ -654,8 +656,9 @@ export function stampTypedAxesTitle(
   if (labeled.height) parts.push(`${fmt(h)}"`);
   if (labeled.depth) parts.push(`${fmt(d)}"`);
   const base = stem.trim() || "Unit";
+  // Zero typed axes (bare "linen closet") — never full-stamp densified envelope as typed.
   if (parts.length === 0) {
-    return `${base} ${fmt(overall.width)}" × ${fmt(overall.height)}" × ${fmt(overall.depth)}"`;
+    return base;
   }
   if (parts.length === 1) {
     if (labeled.width) return `${base} ${parts[0]} wide`;
@@ -800,10 +803,13 @@ export function fmtUnitEnvelopeInches(
     if (opts?.legs && opts.legs > 0) s += ` · ${opts.legs} legs`;
     return s;
   }
-  // Opening-storage partial typed axes — HUD must not present densified H/D as typed.
+  // Opening-storage typed-axes honesty — HUD must not present densified axes as typed.
   const prompt = opts?.prompt ?? "";
   if (prompt && isOpeningStoragePrompt(prompt)) {
     const axes = typedOpeningStorageAxes(prompt);
+    const any = axes.width || axes.height || axes.depth;
+    // Bare linen/closet (no digits) — densify may still build; never stamp W×H×D as typed.
+    if (!any) return "—";
     if (axes.width && !axes.height && !axes.depth) {
       return `${fmt(width)}" wide`;
     }
@@ -813,6 +819,21 @@ export function fmtUnitEnvelopeInches(
     if (axes.width && !axes.height && axes.depth) {
       return `${fmt(width)}" × ${fmt(depth)}" deep`;
     }
+    if (!axes.width && axes.height && !axes.depth) {
+      return `${fmt(height)}" tall`;
+    }
+    if (!axes.width && !axes.height && axes.depth) {
+      return `${fmt(depth)}" deep`;
+    }
+    if (axes.width && axes.height && axes.depth) {
+      return `${fmt(width)}" × ${fmt(height)}" × ${fmt(depth)}"`;
+    }
+    // Mixed partials (e.g. H+D without W)
+    const parts: string[] = [];
+    if (axes.width) parts.push(`${fmt(width)}"`);
+    if (axes.height) parts.push(`${fmt(height)}"`);
+    if (axes.depth) parts.push(`${fmt(depth)}"`);
+    return parts.join(" × ");
   }
   return `${fmt(width)}" × ${fmt(height)}" × ${fmt(depth)}"`;
 }

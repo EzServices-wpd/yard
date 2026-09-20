@@ -1475,8 +1475,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const displayName =
     tableShape === "round"
       ? `${shapePrefix}${titleStem} ${width}" × ${height}"`
-      : storageTitleClass && typedAxes && !(typedAxes.width && typedAxes.height && typedAxes.depth) &&
-          (typedAxes.width || typedAxes.height || typedAxes.depth)
+      : storageTitleClass && typedAxes && !(typedAxes.width && typedAxes.height && typedAxes.depth)
         ? stampTypedAxesTitle(
             `${shapePrefix}${titleStem}`,
             typedAxes,
@@ -4986,15 +4985,24 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (
     spec.typedAxes &&
-    !spec.typedAxes.height &&
     (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry")
   ) {
     const linen = /linen/.test(prompt.toLowerCase());
-    notes.push(
-      linen
-        ? `Assumed ${H}" tall (linen class default) — type a height to lock it.`
-        : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
-    );
+    const klass = linen ? "linen class default" : "closet class";
+    // Densified envelope honesty — stamp only typed axes into the title; note the rest.
+    if (!spec.typedAxes.width) {
+      notes.push(`Assumed ${W}" wide (${klass}) — type a width to lock it.`);
+    }
+    if (!spec.typedAxes.height) {
+      notes.push(
+        linen
+          ? `Assumed ${H}" tall (linen class default) — type a height to lock it.`
+          : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
+      );
+    }
+    if (!spec.typedAxes.depth) {
+      notes.push(`Assumed ${D}" deep (${klass}) — type a depth to lock it.`);
+    }
   }
 
   // Keep TV / Media console identity through Measure dim merges — never naked "Media",
@@ -5005,10 +5013,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? identityTitleStem(promptLower) || mediaIdentityLabel(promptLower) || "Media console"
       : identityTitleStem(promptLower);
   const storageAxes = spec.typedAxes;
+  // Opening-storage: stamp only typed axes (incl. bare = stem only). Full triple keeps classic.
   const storagePartial =
     (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry") &&
     storageAxes &&
-    (storageAxes.width || storageAxes.height || storageAxes.depth) &&
     !(storageAxes.width && storageAxes.height && storageAxes.depth);
   const stampFull = (stem: string) =>
     storagePartial
