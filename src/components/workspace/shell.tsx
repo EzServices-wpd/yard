@@ -27,7 +27,7 @@ import { honestNestSheetStockName } from "@/lib/yard/report";
 import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
-import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
+import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { isLockedForm } from "@/lib/yard/form";
 import { detectWeekendMech } from "@/lib/yard/weekendFamily";
@@ -603,34 +603,46 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   : ""}
               </p>
               <p className="mt-0.5 text-faint">
-                {fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
-                  shape: project.fitted?.unit?.shape,
-                  prompt: project.prompt,
-                  name: project.name,
-                  legs: project.fitted?.unit?.legs,
-                })}
-                {housePath
-                  ? " · the unit"
-                  : wire
-                    ? " · Skeleton only — pick a real material to densify"
-                    : workMode === "look"
-                      ? (() => {
-                          const mech = detectWeekendMech(project.prompt ?? "");
-                          // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
-                          return (
-                            mech === "launcher" ||
-                            mech === "media-hold" ||
-                            mech === "climb" ||
-                            mech === "pot-hold"
-                          )
-                            ? ""
-                            : " · Orbit";
-                        })()
-                      : workMode === "walk"
-                        ? " · On the road"
-                        : workMode === "build"
-                          ? " · Snap to the glow"
-                          : " · Drag · snap home"}
+                {(() => {
+                  const envelope = fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
+                    shape: project.fitted?.unit?.shape,
+                    prompt: project.prompt,
+                    name: project.name,
+                    legs: project.fitted?.unit?.legs,
+                  });
+                  const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
+                  // Bare opening-storage HUD: keep dash honesty; companion must not say "the unit".
+                  const companion = emptyTalk
+                    ? emptyTalk.hudCompanion
+                    : housePath
+                      ? " · the unit"
+                      : wire
+                        ? " · Skeleton only — pick a real material to densify"
+                        : workMode === "look"
+                          ? (() => {
+                              const mech = detectWeekendMech(project.prompt ?? "");
+                              // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
+                              return (
+                                mech === "launcher" ||
+                                mech === "media-hold" ||
+                                mech === "climb" ||
+                                mech === "pot-hold"
+                              )
+                                ? ""
+                                : " · Orbit";
+                            })()
+                          : workMode === "walk"
+                            ? " · On the road"
+                            : workMode === "build"
+                              ? " · Snap to the glow"
+                              : " · Drag · snap home";
+                  return (
+                    <>
+                      {envelope}
+                      {companion}
+                    </>
+                  );
+                })()}
               </p>
               {hasFaces && (
                 <button

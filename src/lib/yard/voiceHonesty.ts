@@ -839,6 +839,33 @@ export function fmtUnitEnvelopeInches(
 }
 
 /**
+ * Opening-storage Measure / HUD empty-state when the stranger typed no axes.
+ * Universal (linen / closet / pantry / wardrobe / alcove) — densify may still
+ * build a class envelope, but stranger copy must not imply those dims were typed
+ * and must avoid shop jargon ("the unit") next to a bare dash.
+ * Partial typed axes keep normal Measure/HUD language.
+ */
+export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined): {
+  bare: boolean;
+  hudCompanion: string;
+  panelBlurb: string;
+  overlayHint: string;
+} | null {
+  const p = (prompt ?? "").trim();
+  if (!p || !isOpeningStoragePrompt(p)) return null;
+  const axes = typedOpeningStorageAxes(p);
+  if (axes.width || axes.height || axes.depth) return null;
+  return {
+    bare: true,
+    // HUD after fmt "—" — action, not jargon.
+    hudCompanion: " · type Measure to lock size",
+    panelBlurb:
+      "No size typed yet. These fields start from Yard's class guess — type your opening to lock width, height, and depth.",
+    overlayHint: "Yard sized this — type to lock",
+  };
+}
+
+/**
  * Named-lumber Buy lead Voice note — qty honesty when wood is split across
  * primary board line + separate leg stock (e.g. 2×2 legs).
  *

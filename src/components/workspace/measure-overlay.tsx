@@ -1,7 +1,7 @@
 "use client";
 
 import { useYard } from "@/lib/yard/store";
-import { isRoundUnitEnvelope, measureChipAxisLabels } from "@/lib/yard/voiceHonesty";
+import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
 /** On-bench tape: same numbers as the measure panel, sitting on the opening. */
 export function MeasureOverlay() {
@@ -37,6 +37,7 @@ export function MeasureOverlay() {
   };
   const chip = measureChipAxisLabels(envOpts);
   const round = chip.mode === "round" || isRoundUnitEnvelope(envOpts);
+  const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
@@ -85,6 +86,9 @@ export function MeasureOverlay() {
           </>
         )}
         <span className="mb-2.5 text-xs text-faint">{round ? "dia × H in" : "in"}</span>
+        {emptyTalk && (
+          <span className="mb-2 w-full text-[11px] leading-snug text-muted">{emptyTalk.overlayHint}</span>
+        )}
         {project.windowPkg && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
             {project.windowPkg.window.brand} {project.windowPkg.window.line} {project.windowPkg.window.callW}×

@@ -5,7 +5,7 @@ import { useYard } from "@/lib/yard/store";
 import type { SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
-import { isRoundUnitEnvelope, measureChipAxisLabels } from "@/lib/yard/voiceHonesty";
+import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
 export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
@@ -55,13 +55,19 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     <div className="p-4">
       <h2 className="font-display text-lg text-fg">{isPocket ? "The pocket you measured" : "Measure a space"}</h2>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        {isPocket
-          ? "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls."
-          : project.fitted
-            ? roundUnit
+        {(() => {
+          if (isPocket) {
+            return "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls.";
+          }
+          const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
+          if (emptyTalk) return emptyTalk.panelBlurb;
+          if (project.fitted) {
+            return roundUnit
               ? "Dia × H refits this round table — diameter on both plan axes, never W×H×W."
-              : "W × H × D refits this unit. Drawers, knee, doors, and shelves stay."
-            : "The opening is on the bench — type into the arrows or these fields."}
+              : "W × H × D refits this unit. Drawers, knee, doors, and shelves stay.";
+          }
+          return "The opening is on the bench — type into the arrows or these fields.";
+        })()}
       </p>
 
       {isPocket && (

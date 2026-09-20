@@ -6,6 +6,7 @@ import {
   glossaryForPlan,
   isRoundUnitEnvelope,
   fmtUnitEnvelopeInches,
+  openingStorageMeasureEmptyTalk,
   measureChipAxisLabels,
   deskWidthFromPrompt,
   speciesStockHonestyTalk,
@@ -4894,5 +4895,32 @@ console.log("STRANGER PLAN OK", {
   const bareCloset = generateFromPrompt("closet");
   if (/\d+(?:\.\d+)?"\s*×/.test(bareCloset.name) && !/Assumed/i.test((bareCloset.notes ?? []).join(" "))) {
     failHonesty("bare closet title stamps densified dims without Assumed", bareCloset.name);
+  }
+}
+
+// ── Measure / HUD empty-state copy for bare opening-storage (soft leftover after 0690dc0) ──
+{
+  for (const bare of ["linen", "linen closet", "closet", "pantry"]) {
+    const talk = openingStorageMeasureEmptyTalk(bare);
+    if (!talk?.bare) failHonesty("bare opening-storage Measure empty talk missing", { bare, talk });
+    if (/the unit/i.test(talk.hudCompanion)) {
+      failHonesty("bare HUD companion must not say the unit", talk.hudCompanion);
+    }
+    if (!/type Measure to lock size/i.test(talk.hudCompanion)) {
+      failHonesty("bare HUD companion action copy", talk.hudCompanion);
+    }
+    if (!/No size typed yet/i.test(talk.panelBlurb)) {
+      failHonesty("bare Measure panel empty blurb", talk.panelBlurb);
+    }
+    if (/refits this unit/i.test(talk.panelBlurb)) {
+      failHonesty("bare Measure panel must not imply typed refit", talk.panelBlurb);
+    }
+  }
+  // Width-only / typed — not empty-state
+  if (openingStorageMeasureEmptyTalk('31.5" wide linen closet')) {
+    failHonesty("width-only linen must not use Measure empty talk");
+  }
+  if (openingStorageMeasureEmptyTalk("60 inch desk with drawers")) {
+    failHonesty("desk must not use opening-storage Measure empty talk");
   }
 }
