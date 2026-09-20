@@ -5127,6 +5127,53 @@ console.log("STRANGER PLAN OK", {
   if (!/40/.test(chestDrawers.name)) {
     failHonesty("chest of drawers typed width", chestDrawers.name);
   }
+
+  // Soft leftover: bare bookcase / dresser / media / shoe / entry bench / floating shelf
+  // stamped stock W×H×D as typed — join shared class-default densify gate.
+  const stockStampCases: Array<{ prompt: string; stem: RegExp; klass: RegExp }> = [
+    { prompt: "bookcase", stem: /^Bookcase$/i, klass: /bookcase class default/i },
+    { prompt: "dresser", stem: /^Dresser$/i, klass: /dresser class default/i },
+    { prompt: "media console", stem: /^Media console$/i, klass: /media console class default/i },
+    { prompt: "sideboard", stem: /^Sideboard$/i, klass: /sideboard class default/i },
+    { prompt: "buffet", stem: /^Buffet$/i, klass: /buffet class default/i },
+    { prompt: "shoe rack", stem: /^Shoe rack$/i, klass: /shoe rack class default/i },
+    { prompt: "entry bench", stem: /^Entry bench$/i, klass: /entry bench class default/i },
+    { prompt: "floating shelf", stem: /^Floating shelf$/i, klass: /floating shelf class default/i },
+  ];
+  for (const c of stockStampCases) {
+    const proj = generateFromPrompt(c.prompt);
+    if (/\d+(?:\.\d+)?"\s*×/.test(proj.name)) {
+      failHonesty(`bare ${c.prompt} title must not stamp class-default W×H×D as typed`, proj.name);
+    }
+    if (!c.stem.test(proj.name.trim())) {
+      failHonesty(`bare ${c.prompt} title stem`, proj.name);
+    }
+    const notes = (proj.notes ?? []).join(" ");
+    if (!c.klass.test(notes)) {
+      failHonesty(`bare ${c.prompt} missing Assumed class-default notes`, proj.notes);
+    }
+    const hud = fmtUnitEnvelopeInches(proj.overall.width, proj.overall.height, proj.overall.depth, {
+      prompt: c.prompt,
+      name: proj.name,
+    });
+    if (/\d+(?:\.\d+)?"\s*×/.test(hud)) {
+      failHonesty(`bare ${c.prompt} HUD must not present densified triple as typed`, hud);
+    }
+    const talk = openingStorageMeasureEmptyTalk(c.prompt);
+    if (!talk?.bare) {
+      failHonesty(`bare ${c.prompt} Measure empty talk missing`, talk);
+    }
+  }
+
+  // Protect: desk + nightstand keep stock design stamp (outside densify gate).
+  const bareDesk = generateFromPrompt("desk");
+  if (!/\d+(?:\.\d+)?"\s*×/.test(bareDesk.name)) {
+    failHonesty("bare desk must keep stock stamp protect (not densify steal)", bareDesk.name);
+  }
+  const bareNight = generateFromPrompt("nightstand");
+  if (!/\d+(?:\.\d+)?"\s*×/.test(bareNight.name)) {
+    failHonesty("bare nightstand must keep stock stamp protect (not densify steal)", bareNight.name);
+  }
 }
 
 // ── Assumed densify notes surface in Confirm/Build (soft leftover after 5d07304) ──

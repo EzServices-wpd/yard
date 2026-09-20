@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -860,7 +860,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Axes the stranger typed — class-default densify uses prompt digits (width-only linen ≠ stock H;
   // bare vanity/chest must not treat stock fills as typed). Capture before height/depth class defaults
   // so stock fills never flip labeled flags.
-  // Universal densify gate (opening-storage + vanity + chest) — not a program whitelist.
+  // Universal densify gate (opening-storage + vanity + chest + floor-carcase class defaults) — not a program whitelist.
   const classDefaultTitleHonesty = isClassDefaultDensifyPrompt(prompt);
   const typedAxes = classDefaultTitleHonesty
     ? typedClassDefaultAxes(prompt)
@@ -2055,9 +2055,9 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
     panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
   }
   const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
-  const name = spec.name.match(/shoe|mudroom|cubb/i)
-    ? spec.name
-    : `Shoe rack ${W}" × ${H}" × ${D}"`;
+  const shoeStem = "Shoe rack";
+  const name = classDefaultDensifyTitle(shoeStem, prompt, { width: W, height: H, depth: D });
+  const shoeAssumed = classDefaultAssumedNotes(prompt, shoeStem, { width: W, height: H, depth: D });
   return {
     id: createId("proj"),
     name,
@@ -2071,6 +2071,7 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
       `${name}. Open shoe cubbies with ${shelfN} shoe shelf line${shelfN === 1 ? "" : "s"} and ${cubbyN} bays (~${bayW}" wide) — not bookcase pin shelves. ¾" plywood.`,
       `Glue and screw each cubby divider into the shoe shelves and back. Shelf pitch fits footwear (~5–6" clear). No leftover rails.`,
       "Level it on the floor. Guidance only — confirm height for your entry.",
+      ...shoeAssumed,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -3584,11 +3585,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
     const stackH = H + pegH;
     // Coat + peg rail uses stacked height; other named sits keep seat H.
-    const name = coatBench
-      ? `Coat bench ${W}" × ${stackH}" × ${D}"`
-      : sitTitle
-        ? `${sitTitle} ${W}" × ${H}" × ${D}"`
-        : `Bench ${W}" × ${H}" × ${D}"`;
+    // Class-default densify: bare entry bench must not stamp stock W×H×D as typed.
+    const benchStem = coatBench ? "Coat bench" : sitTitle || "Bench";
+    const benchH = coatBench ? stackH : H;
+    const name = classDefaultDensifyTitle(benchStem, prompt, { width: W, height: benchH, depth: D });
+    const benchAssumed = classDefaultAssumedNotes(prompt, benchStem, { width: W, height: benchH, depth: D });
     return {
       id: createId("proj"),
       name,
@@ -3618,6 +3619,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : sitTitle === "Window seat"
             ? `Set it under the sill at ${H}" seat height. Sit-test before you finish — dividers carry sit load. Guidance only — confirm the ${H}" seat height for the window.`
           : "Level it on the floor. Sit-test before you finish. Guidance only — confirm the seat height for your entry.",
+        ...benchAssumed,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: stackH, depth: D, kind: "room" },
@@ -4487,9 +4489,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       if (useEnvelope) {
         panels.push(panel("back", "Shelf backstop", x0, 0, P, W, outH, P));
       }
-      const name = /floating/.test(lowerPrompt) || wantsLip
-        ? `Floating shelf ${W}" × ${outH}" × ${Df}"`
-        : `Wall shelf ${W}" × ${Df}" × ${P}"`;
+      const floatStem = /floating/.test(lowerPrompt) || wantsLip ? "Floating shelf" : "Wall shelf";
+      const name = classDefaultDensifyTitle(
+        floatStem,
+        prompt,
+        /floating/.test(lowerPrompt) || wantsLip
+          ? { width: W, height: outH, depth: Df }
+          : { width: W, height: Df, depth: P },
+      );
+      // Wall shelf legacy stamped W×D×P — densify gate only covers floating shelf class.
+      const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df });
       return {
         id: createId("proj"),
         name,
@@ -4507,6 +4516,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               : `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`,
           "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
           "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+          ...floatAssumed,
         ],
         historic: false,
         opening: { width: W, height: outH, depth: Df, kind: "room" },
@@ -5006,35 +5016,32 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (spec.typedAxes && isClassDefaultDensifyPrompt(prompt)) {
     const promptLowerAssumed = prompt.toLowerCase();
-    const linen = /linen/.test(promptLowerAssumed);
-    const vanity = spec.program === "vanity" || /\bvanity\b/.test(promptLowerAssumed);
-    const chest = isHingedLidChest(promptLowerAssumed) || (/\bchest\b/.test(promptLowerAssumed) && !/of\s+drawers/.test(promptLowerAssumed));
-    const hutch = /\bhutch\b/.test(promptLowerAssumed);
-    const klass = linen
-      ? "linen class default"
-      : vanity
-        ? "vanity class default"
-        : chest
-          ? "chest class default"
-          : hutch
-            ? "hutch class default"
-            : "closet class";
+    // Universal densify Assumed klass — stem from identity, not a growing per-noun cascade.
+    const stem =
+      identityTitleStem(promptLowerAssumed) ||
+      mediaIdentityLabel(promptLowerAssumed) ||
+      (/linen/.test(promptLowerAssumed)
+        ? "Linen"
+        : spec.program === "vanity" || /\bvanity\b/.test(promptLowerAssumed)
+          ? "Vanity"
+          : isHingedLidChest(promptLowerAssumed) || (/\bchest\b/.test(promptLowerAssumed) && !/of\s+drawers/.test(promptLowerAssumed))
+            ? "Chest"
+            : /\bhutch\b/.test(promptLowerAssumed)
+              ? "Hutch"
+              : spec.program === "bookcase"
+                ? "Bookcase"
+                : spec.program === "media"
+                  ? "Media console"
+                  : spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry"
+                    ? "Closet"
+                    : "Unit");
+    const klass = `${stem.toLowerCase()} class default`;
     // Densified envelope honesty — stamp only typed axes into the title; note the rest.
     if (!spec.typedAxes.width) {
       notes.push(`Assumed ${W}" wide (${klass}) — type a width to lock it.`);
     }
     if (!spec.typedAxes.height) {
-      notes.push(
-        linen
-          ? `Assumed ${H}" tall (linen class default) — type a height to lock it.`
-          : vanity
-            ? `Assumed ${H}" tall (vanity class default) — type a height to lock it.`
-            : chest
-              ? `Assumed ${H}" tall (chest class default) — type a height to lock it.`
-              : hutch
-                ? `Assumed ${H}" tall (hutch class default) — type a height to lock it.`
-                : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
-      );
+      notes.push(`Assumed ${H}" tall (${klass}) — type a height to lock it.`);
     }
     if (!spec.typedAxes.depth) {
       notes.push(`Assumed ${D}" deep (${klass}) — type a depth to lock it.`);

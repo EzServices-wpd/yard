@@ -49,7 +49,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|lounge\s*chair|easy\s*chair|club\s*chair|rocking\s*chair|\bottoman\b|\bpouf\b|foot\s*stool|footstool|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|buffet|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|lounge\s*chair|easy\s*chair|club\s*chair|rocking\s*chair|\bottoman\b|\bpouf\b|foot\s*stool|footstool|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -184,7 +184,8 @@ export function isHouseMediaCarcase(lower: string) {
   if (isSofaConsoleTable(lower)) return false;
   if (isWallMediaLedge(lower) || isMediaShelf(lower) || isStereoCabinet(lower) || isAvTower(lower)) return true;
   if (wantsSoundbarHold(lower) && /shelf|ledge|console|cabinet|media/.test(lower)) return true;
-  if (/\bmedia\b|\btv\b/.test(lower) && /console|cabinet|sideboard|credenza|entertainment/.test(lower)) return true;
+  if (/\bmedia\b|\btv\b/.test(lower) && /console|cabinet|sideboard|buffet|credenza|entertainment/.test(lower)) return true;
+  if (/\b(?:sideboard|buffet|credenza)\b/.test(lower)) return true;
   return false;
 }
 
@@ -863,7 +864,7 @@ export function climbIdentityLabel(lower: string): string | null {
   if (isFloorLampStand(lower)) return null;
   // House carcase + mid climb step-shelf is an add-on — keep Closet / linen / desk titles.
   if (
-    /linen|closet|wardrobe|pantry|bookcase|\bdesk\b|\bvanity\b|cabinet|mudroom|nightstand|dresser|alcove|built-?in|sideboard|credenza/.test(
+    /linen|closet|wardrobe|pantry|bookcase|\bdesk\b|\bvanity\b|cabinet|mudroom|nightstand|dresser|alcove|built-?in|sideboard|buffet|credenza/.test(
       lower,
     )
   ) {
@@ -1026,6 +1027,10 @@ export function identityTitleStem(lower: string): string | null {
   if (media) return media;
   // Linen closet keeps Linen stem — never bare Closet (Entry bench pattern).
   if (/\blinen\b/.test(lower)) return "Linen";
+  // Bookcase / floating shelf stems — densify Assumed klass (never naked Storage unit).
+  if (/bookcase|bookshelf/.test(lower)) return "Bookcase";
+  if (/floating/.test(lower) && /shelves/.test(lower)) return "Floating shelves";
+  if (/floating/.test(lower) && /shelf/.test(lower)) return "Floating shelf";
   return null;
 }
 
@@ -1042,7 +1047,7 @@ export function mediaIdentityLabel(lower: string): string | null {
   if (isWallMediaLedge(lower)) return "Media ledge";
   if (isMediaShelf(lower) || (wantsSoundbarHold(lower) && /shelf|ledge/.test(lower))) return "Media shelf";
   if (
-    !/\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) &&
+    !/\bmedia\b|\btv\b|console|sideboard|buffet|credenza|entertainment|\bstereo\b|soundbar/.test(lower) &&
     !isAvTower(lower)
   ) {
     return null;
@@ -1051,6 +1056,7 @@ export function mediaIdentityLabel(lower: string): string | null {
   if (/\btv\b/.test(lower) && /console/.test(lower)) return "TV console";
   if (/media\s*console/.test(lower)) return "Media console";
   if (/sideboard/.test(lower)) return "Sideboard";
+  if (/buffet/.test(lower)) return "Buffet";
   if (/credenza/.test(lower)) return "Credenza";
   // "55 TV stand footprint clear below" is hold language on a ledge — not a TV console.
   if (/\btv\b/.test(lower) && /stand\s+footprint|footprint\s+clear|clear below/.test(lower) && !/console/.test(lower)) {
@@ -1082,7 +1088,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (isSlotRack(lower) || isServingCart(lower) || isButcherCart(lower)) return "storage";
   if (/\btable\b/.test(lower) && !/work table/.test(lower)) return "table";
   if (
-    /\bmedia\b|\btv\b|console|sideboard|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||
+    /\bmedia\b|\btv\b|console|sideboard|buffet|credenza|entertainment|\bstereo\b|soundbar/.test(lower) ||
     isAvTower(lower) ||
     isStereoCabinet(lower) ||
     isWallMediaLedge(lower) ||

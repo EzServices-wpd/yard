@@ -740,7 +740,9 @@ export function isOpeningStoragePrompt(prompt: string): boolean {
 /**
  * Fitted classes that densify class-default W×H×D when the stranger typed no axes.
  * Same honesty class as bare linen: title/HUD must not stamp densified envelope as typed.
- * Universal mechanism — opening-storage (incl. hutch) + vanity + chest class (not per-noun patches).
+ * Universal mechanism — opening-storage / vanity / chest / floor-carcase class defaults
+ * (bookcase, dresser, media sideboard class, shoe rack, entry bench, floating shelf).
+ * Not desk/nightstand (stock design stamp protect) and not chest-of-drawers (drawer bank).
  * Chest gate matches isHingedLidChest bare-chest densify (cedar/blanket/hope without spelling "lid").
  */
 export function isClassDefaultDensifyPrompt(prompt: string): boolean {
@@ -750,6 +752,16 @@ export function isClassDefaultDensifyPrompt(prompt: string): boolean {
   // Chest class — not "chest of drawers". Bare cedar/blanket/hope densify here too.
   if (/\bchest\b/.test(p) && !/of\s+drawers/.test(p)) return true;
   if (/hinged\s+(?:lid|top)/.test(p) && /\b(?:chest|box|trunk)\b/.test(p)) return true;
+  // Floor / hung carcase class defaults — shared gate, not per-noun title patches.
+  // Desk / nightstand / picture ledge stay outside (typed-axes / stock stamp protect).
+  if (/\b(?:bookcase|bookshelf)\b/.test(p)) return true;
+  if (/\bdresser\b/.test(p)) return true;
+  if (/\b(?:sideboard|buffet|credenza)\b/.test(p)) return true;
+  if (/\b(?:media|tv)\s*console\b/.test(p)) return true;
+  if (/\bmedia\b/.test(p) && /\b(?:console|cabinet|unit)\b/.test(p)) return true;
+  if (/shoe\s*rack/.test(p)) return true;
+  if (/entry\s*bench/.test(p)) return true;
+  if (/floating\s+shel(?:f|ves)\b/.test(p)) return true;
   return false;
 }
 
@@ -760,6 +772,39 @@ export function typedClassDefaultAxes(prompt: string): {
   depth: boolean;
 } {
   return typedOpeningStorageAxes(prompt);
+}
+
+/**
+ * Title for class-default densify — stem / partial typed axes; never invent stock W×H×D.
+ * Early-return builders (shoe / floating shelf / entry bench) share this with stampFull.
+ */
+export function classDefaultDensifyTitle(
+  stem: string,
+  prompt: string,
+  overall: { width: number; height: number; depth: number },
+): string {
+  const base = stem.trim() || "Unit";
+  if (!isClassDefaultDensifyPrompt(prompt)) {
+    return `${base} ${overall.width}" × ${overall.height}" × ${overall.depth}"`;
+  }
+  return stampTypedAxesTitle(base, typedClassDefaultAxes(prompt), overall);
+}
+
+/** Assumed Voice notes for densified (untyped) axes — shared across early-return builders. */
+export function classDefaultAssumedNotes(
+  prompt: string,
+  stem: string,
+  overall: { width: number; height: number; depth: number },
+): string[] {
+  if (!isClassDefaultDensifyPrompt(prompt)) return [];
+  const axes = typedClassDefaultAxes(prompt);
+  if (axes.width && axes.height && axes.depth) return [];
+  const klass = `${(stem.trim() || "unit").toLowerCase()} class default`;
+  const notes: string[] = [];
+  if (!axes.width) notes.push(`Assumed ${overall.width}" wide (${klass}) — type a width to lock it.`);
+  if (!axes.height) notes.push(`Assumed ${overall.height}" tall (${klass}) — type a height to lock it.`);
+  if (!axes.depth) notes.push(`Assumed ${overall.depth}" deep (${klass}) — type a depth to lock it.`);
+  return notes;
 }
 
 export function openingWidthFromPrompt(prompt: string): number {
