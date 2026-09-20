@@ -1,7 +1,7 @@
-/** Shop words for the plan PDF. */
+/** Shop words for the plan PDF — plain stranger words (never carcase/toekick jargon). */
 export const SHOP_GLOSSARY: { term: string; def: string }[] = [
-  { term: "Main box (carcase)", def: "The main box of the unit — uprights, top, bottom, and back screwed together. Plans say main box; carcase is the shop word." },
-  { term: "Kick strip (toekick)", def: "The recessed strip at the floor so your toes clear when you stand close to the face. Plans say kick strip; toekick is the shop word." },
+  { term: "Main box", def: "The uprights, top, bottom, and back screwed together." },
+  { term: "Kick strip", def: "The recessed strip at the floor so your toes clear when you stand close to the face." },
   { term: "Dry-fit", def: "Assemble without glue or screws first, to check fit and square before you commit." },
   { term: "Overlay", def: "Door or drawer front sits on top of the face, not inside the opening." },
   { term: "Lag", def: "Long heavy screw driven into a wall stud (or masonry anchor) to hold the unit." },
@@ -20,5 +20,5 @@ export const SHOP_GLOSSARY: { term: string; def: string }[] = [
   { term: "32mm pin holes", def: "Standard shelf-pin spacing: holes 32mm (about 1-1/4\") apart, 5mm diameter, set back about 1-1/4\" from the front edge." },
 ];
 
-/** Cabinetry jargon terms — gate via glossaryForPlan / wantsCabinetryShopWords. */
-export const CABINETRY_GLOSSARY_TERMS = ["Main box (carcase)", "Kick strip (toekick)"] as const;
+/** Cabinetry glossary lead terms — gate via glossaryForPlan / wantsCabinetryShopWords. */
+export const CABINETRY_GLOSSARY_TERMS = ["Main box", "Kick strip"] as const;

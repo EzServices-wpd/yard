@@ -4,6 +4,7 @@ import {
   wantsCabinetryShopWords,
   shopWordsChipTalk,
   glossaryForPlan,
+  strangerPlainShopTalk,
   isRoundUnitEnvelope,
   fmtUnitEnvelopeInches,
   openingStorageMeasureEmptyTalk,
@@ -4638,7 +4639,38 @@ console.log("STRANGER PLAN OK", {
   ]) {
     if (!wantsCabinetryShopWords(hay)) failVoice2("cabinetry lost shop-words gate", hay);
     const chip = shopWordsChipTalk(hay);
-    if (!/carcase|toekick|main box|kick strip/i.test(chip)) failVoice2("cabinetry chip missing shop words", chip);
+    if (!/main box/i.test(chip) || !/kick strip/i.test(chip)) {
+      failVoice2("cabinetry chip missing plain Main box / Kick strip", chip);
+    }
+    if (/\bcarcase\b|\btoekick\b/i.test(chip)) {
+      failVoice2("cabinetry shop-words chip still says carcase/toekick", chip);
+    }
+    const gloss = glossaryForPlan(hay, SHOP_GLOSSARY);
+    if (gloss.some((g) => /carcase|toekick/i.test(`${g.term} ${g.def}`))) {
+      failVoice2("cabinetry PDF glossary still says carcase/toekick", hay);
+    }
+    if (!gloss.some((g) => /^Main box$/i.test(g.term)) || !gloss.some((g) => /^Kick strip$/i.test(g.term))) {
+      failVoice2("cabinetry PDF glossary missing plain Main box / Kick strip", gloss.map((g) => g.term));
+    }
+  }
+
+  // Universal densify: strangerPlainShopTalk + cutListName never leave carcase/toekick.
+  {
+    const raw =
+      "Stand the carcase. Add the toekick. Overlay the carcase. Main box (carcase). Kick strip (toekick).";
+    const plain = strangerPlainShopTalk(raw);
+    if (/\bcarcase\b|\btoekick\b/i.test(plain)) {
+      failVoice2("strangerPlainShopTalk left carcase/toekick", plain);
+    }
+    if (!/main box/i.test(plain) || !/kick strip/i.test(plain)) {
+      failVoice2("strangerPlainShopTalk missing plain densify", plain);
+    }
+    if (cutListName("Front toekick", "kick") !== "Kick strip") {
+      failVoice2("cutListName toekick not densified to Kick strip", cutListName("Front toekick", "kick"));
+    }
+    if (cutListName("Toekick", "kick") !== "Kick strip") {
+      failVoice2("cutListName bare Toekick not densified", cutListName("Toekick", "kick"));
+    }
   }
 
   {

@@ -63,14 +63,19 @@ export function speciesSubstituteNote(prompt: string, stockLabel: string): strin
   return `Prompt names ${sp.display} — densify uses ${stockLabel} as the structural substitute (not a silent drop). Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
 }
 
-/** Prefer plain stranger words in step/PDF body; keep glossary for shop terms. */
+/** Prefer plain stranger words in step/PDF/glossary body — never carcase/toekick. */
 export function strangerPlainShopTalk(text: string): string {
   return text
     .replace(/carcase\s*\(\s*the main box\s*\)/gi, "main box")
+    .replace(/main box\s*\(\s*carcase\s*\)/gi, "main box")
+    .replace(/kick strip\s*\(\s*toekick\s*\)/gi, "kick strip")
     .replace(/\bthe carcase\b/gi, "the main box")
     .replace(/\ba carcase\b/gi, "a main box")
+    .replace(/\bcarcases\b/gi, "main boxes")
     .replace(/\bcarcase\b/gi, "main box")
+    .replace(/\btoe[- ]?kicks\b/gi, "kick strips")
     .replace(/\btoekicks\b/gi, "kick strips")
+    .replace(/\btoe[- ]?kick\b/gi, "kick strip")
     .replace(/\btoekick\b/gi, "kick strip")
     .replace(/\borbit-?chrome\b/gi, "skeleton chrome");
 }
@@ -524,14 +529,14 @@ export function shelfInstallHeightsClause(
 // ── Voice/PDF impress pack: glossary gate · round envelope · species stock ─
 
 /**
- * Cabinetry / fitted-alcove families may keep carcase·toekick shop words.
- * Tables, lounge, chests, nightstands, desks, crafts must NOT get that jargon
- * on the stranger Voice/PDF/glossary path.
+ * Cabinetry / fitted-alcove families keep Main box / Kick strip + overlay/slides
+ * glossary terms. Stranger Voice never speaks carcase/toekick jargon (plain densify).
+ * Tables, lounge, chests, nightstands, desks, crafts drop cabinetry glossary terms.
  */
 export function wantsCabinetryShopWords(hay: string): boolean {
   const h = hay.toLowerCase();
   if (!h.trim()) return false;
-  // Explicit non-cabinetry — never leak carcase/toekick.
+  // Explicit non-cabinetry — no cabinetry glossary chip/terms.
   if (
     /\b(table|desk|lounge|chair|bench|stool|chest|nightstand|bedside|catapult|trough|bridge|eiffel|shelf|ledge|rack|cart|swing|bed|headboard|planter)\b/.test(
       h,
@@ -545,26 +550,35 @@ export function wantsCabinetryShopWords(hay: string): boolean {
   );
 }
 
-/** Shop-words chip for the plan drawer — gated. */
+/** Shop-words chip for the plan drawer — gated.
+ * Cabinetry still names Main box / Kick strip (needed on fitted walks), but never
+ * introduces carcase/toekick jargon on the stranger path.
+ */
 export function shopWordsChipTalk(hay: string): string {
   if (wantsCabinetryShopWords(hay)) {
-    return "Main box = the carcase · Kick strip = recessed toekick at the floor so your toes clear · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
+    return "Main box = uprights, top, bottom, and back screwed together · Kick strip = recessed strip at the floor so your toes clear · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
   }
   return "Dry-fit = assemble without glue first · Kerf = width the saw blade removes · Square = matching diagonals within about 1/16\"";
 }
 
 export type GlossaryEntry = { term: string; def: string };
 
-/** Cabinetry-only glossary terms (carcase / toekick family). */
-const CABINETRY_GLOSSARY_TERM_RE = /carcase|toekick|kick strip|main box \(carcase\)|overlay|side-mount slides|concealed hinges|32mm pin/i;
+/** Cabinetry-only glossary terms (plain Main box / Kick strip + cabinetry siblings). */
+const CABINETRY_GLOSSARY_TERM_RE =
+  /\bmain box\b|\bkick strip\b|carcase|toekick|overlay|side-mount slides|concealed hinges|32mm pin/i;
 
 /**
- * Filter shop glossary: drop carcase/toekick (and sibling cabinetry jargon)
- * unless the project is cabinetry / fitted alcove.
+ * Filter shop glossary: drop Main box / Kick strip / overlay siblings unless
+ * the project is cabinetry / fitted alcove. Entries themselves use plain shop
+ * words — never carcase/toekick on the stranger PDF path.
  */
 export function glossaryForPlan(hay: string, entries: GlossaryEntry[]): GlossaryEntry[] {
-  if (wantsCabinetryShopWords(hay)) return entries;
-  return entries.filter((e) => !CABINETRY_GLOSSARY_TERM_RE.test(`${e.term} ${e.def}`));
+  const plain = entries.map((e) => ({
+    term: strangerPlainShopTalk(e.term),
+    def: strangerPlainShopTalk(e.def),
+  }));
+  if (wantsCabinetryShopWords(hay)) return plain;
+  return plain.filter((e) => !CABINETRY_GLOSSARY_TERM_RE.test(`${e.term} ${e.def}`));
 }
 
 /** True when overall W≈D is a round/circular table diameter echo. */

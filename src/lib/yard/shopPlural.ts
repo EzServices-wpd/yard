@@ -3,7 +3,8 @@ export function shopPlural(label: string, qty: number): string {
   if (qty === 1) return label;
   if (/shelves$/i.test(label)) return label;
   if (/shelf$/i.test(label)) return label.replace(/shelf$/i, "shelves");
-  if (label === "toekick" || label === "Toekick") return "Toekicks";
+  if (label === "Kick strip" || label === "kick strip") return "Kick strips";
+  if (label === "toekick" || label === "Toekick") return "Kick strips";
   if (/box$/i.test(label)) return label.replace(/box$/i, "boxes");
   if (label.endsWith("s")) return label;
   return `${label}s`;
@@ -111,7 +112,7 @@ export function cutListName(name: string, type?: string): string {
   if (/towel rail/i.test(name)) return "Towel rail";
   if (/peg rail/i.test(name)) return "Peg rail";
   if (/hat shelf/i.test(name)) return "Hat shelf";
-  if (/toekick|toe[- ]?kick/i.test(name) || type === "kick") return "Toekick";
+  if (/toekick|toe[- ]?kick|kick strip/i.test(name) || type === "kick") return "Kick strip";
   if (/desktop|desk top/i.test(name)) return "Desktop";
   if (/headboard/i.test(name)) return "Headboard";
   if (/picture ledge/i.test(name)) return "Picture ledge";

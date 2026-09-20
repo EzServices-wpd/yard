@@ -157,7 +157,7 @@ Rules:
 - Keep the same number of steps (or add at most 2 intermediate steps if a critical dry-fit / square check is missing). Never invent new piece counts or cut lengths.
 - Every sentence must mention something on this bench: a named role, a measured length, a join method, a clearance, a footprint dimension, or a joint count.
 - Expand each description into 3–6 short sentences: what to do, how to hold it, what "good" looks like, what goes wrong if you skip the dry-fit.
-- When you use a shop term, explain it in parentheses on first use in that step. Examples: carcase (the main box of the unit), toekick (the recessed strip at the floor so your toes clear), dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).
+- Prefer plain shop words strangers already know: main box (not carcase), kick strip (not toekick). When you use another shop term, explain it in parentheses on first use in that step. Examples: dry-fit (assemble without glue or screws to check fit), overlay (door sits on top of the face, not inside the opening), lag (long heavy screw into a wall stud), edge banding (thin strip of veneer ironed onto a raw plywood edge).
 - Tips must be actionable (tool choice, order of operations, cure time, square check).
 - Frame → support → brace language for lattice / tower / pyramid / bridge. Portal stays open on arch. Abutments plant on the ground for bridge. North door stays open on pyramid.
 - No cheerleading. No generic "assemble the structure." No changing the cut list.
