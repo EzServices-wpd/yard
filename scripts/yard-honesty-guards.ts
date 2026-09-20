@@ -128,8 +128,53 @@ const deskAprons = desk.panels.filter((p) => /apron/i.test(p.name));
 if (deskAprons.length) failHonesty("desk grew table aprons across the knee", deskAprons.map((p) => p.name));
 if (tableBraceIssues(desk).length) failHonesty("desk table-brace guard false positive", tableBraceIssues(desk));
 {
+  // Soft-park: envelope AABB H must match typed overall H (Desktop top face = 29, not 29+1½).
+  const desktop = desk.panels.find((p) => p.type === "counter" && /^Desktop$/i.test(p.name));
+  if (!desktop) failHonesty("desk Desktop panel missing", desk.panels.map((p) => p.name));
+  else {
+    const topFace = desktop.position.y + desktop.size.height;
+    if (!nearInch(topFace, 29)) {
+      failHonesty("desk Desktop top face ≠ typed H29", {
+        y: desktop.position.y,
+        thick: desktop.size.height,
+        topFace,
+      });
+    }
+    if (!nearInch(desktop.size.height, 1.5)) {
+      failHonesty("desk Desktop thickness ≠ 1½", desktop.size);
+    }
+    // Knee dividers stop at undersurface — never climb through the worktop.
+    for (const div of deskKnee) {
+      if (!nearInch(div.size.height, 29 - 1.5)) {
+        failHonesty("desk knee divider H ≠ undersurface", {
+          name: div.name,
+          h: div.size.height,
+          want: 27.5,
+        });
+      }
+    }
+  }
   const deskHonesty = inspectHonesty(desk, buildPlan(desk));
   if (!deskHonesty.ok) failHonesty("desk envelope/honesty", deskHonesty.issues);
+  const envIssue = deskHonesty.issues.find((i) => /envelope/i.test(i.message) && /H /.test(i.message));
+  if (envIssue) failHonesty("desk envelope H still flakes vs typed 29", envIssue);
+}
+// Twin: writing desk / table worktop — typed H wins on envelope AABB (same worktop class).
+{
+  const writing = generateFromPrompt("writing desk 48 inches wide by 24 deep by 30 high with 22 inch knee space");
+  if (!nearInch(writing.overall.height, 30)) failHonesty("writing desk overall H", writing.overall);
+  if (!nearInch(writing.fitted?.unit.kneeW ?? 0, 22)) failHonesty("writing desk kneeW", writing.fitted?.unit);
+  const top = writing.panels.find((p) => p.type === "counter" && /^Desktop$/i.test(p.name));
+  if (!top) failHonesty("writing desk Desktop missing", writing.panels.map((p) => p.name));
+  else if (!nearInch(top.position.y + top.size.height, 30)) {
+    failHonesty("writing desk Desktop top face ≠ typed H30", {
+      y: top.position.y,
+      thick: top.size.height,
+      topFace: top.position.y + top.size.height,
+    });
+  }
+  const writingHonesty = inspectHonesty(writing, buildPlan(writing));
+  if (!writingHonesty.ok) failHonesty("writing desk envelope/honesty", writingHonesty.issues);
 }
 
 function expectTableAprons(prompt: string, extra?: { legs?: number; round?: boolean }) {

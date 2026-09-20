@@ -4418,6 +4418,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
   const counterY = u.counterH ?? (spec.program === "desk" ? H : 34);
+  // Desk/vanity worktop (two ¾" plies → 1½"): top face = typed overall/counter H.
+  // Same honesty as kitchen island + tableFitted — never stack thickness above typed H
+  // (that lied envelope AABB H+1.5, e.g. desk typed 29 → AABB 30.5).
+  const workTopT = 1.5;
 
   if (hasKnee) {
     const knee = Math.min(u.kneeW ?? 22, W - 10);
@@ -4425,7 +4429,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const kneeR = knee / 2;
     const leftW = kneeL - x0;
     const rightW = x0 + W - kneeR;
-    const boxH = Math.min(counterY, H);
+    const workTopFace = Math.min(counterY, H);
+    const boxH = Math.max(P * 2, workTopFace - workTopT);
     panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
     panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
@@ -4487,10 +4492,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         rightBox.frontW,
       );
     }
-    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, 1.5, D));
+    panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, workTopT, D));
     if (u.mirror && spec.program === "vanity") {
-      const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - boxH - 3);
-      panels.push(panel("mirror", "Mirror", kneeL, boxH + 2, 0.4, knee, mh, 0.2));
+      const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - workTopFace - 3);
+      panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2));
     }
   } else if (u.drawersPerBank) {
     const n = u.drawersPerBank;
@@ -4521,15 +4526,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const laptopM = prompt.match(/(\d+(?:\.\d+)?)\s*"?\s*laptop/i);
     const laptopH = laptopM ? parseFloat(laptopM[1]) : 13;
     const behindD = Math.max(8, Math.min(12, Math.round(laptopH * 0.7)));
+    // Sit on the worktop face (typed counterY/H) — not stacked above thickness.
     panels.push(
-      panel("shelf", "Media shelf behind", x0 + P, counterY + 1.5, -behindD, W - P * 2, P, behindD),
+      panel("shelf", "Media shelf behind", x0 + P, counterY, -behindD, W - P * 2, P, behindD),
     );
     panels.push(
       panel(
         "rail",
         "Laptop upright stop",
         x0 + P,
-        counterY + 1.5 + P,
+        counterY + P,
         -behindD,
         W - P * 2,
         Math.min(2, Math.max(1, laptopH * 0.12)),
