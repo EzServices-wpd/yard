@@ -574,7 +574,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     });
     steps0.push({
       step: n0++,
-      title: "Stand the carcase (the main box)",
+      title: "Stand the main box",
       description: `Glue and screw uprights, back, bottom, and top. Keep ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}" square.`,
       tips: "Predrill near the ends so the ply does not split.",
       partsUsed: names(uprights),
@@ -929,7 +929,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the carcase (the main box)",
+        title: "Stand the main box",
         description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
@@ -942,8 +942,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             : "Hang the door — 2 concealed hinges",
         description:
           doors.length > 1
-            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`
-            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening).`,
+            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening).`
+            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening).`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
         partsUsed: names(doors),
       },
@@ -990,7 +990,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the carcase (the main box)",
+        title: "Stand the main box",
         description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
@@ -1005,7 +1005,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the carcase (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
@@ -1208,7 +1208,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the carcase",
+        title: "Stand the main box",
         description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || `${bayName}.`}. ${seats.map(cutLine).join("; ") || "Seat."}. Glue and #8 × 1¼" screws: back into both uprights, then ${bayName.toLowerCase()}, then seat. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
         partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
@@ -1388,7 +1388,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the carcase (the main box)",
+        title: "Stand the main box",
         description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${bottoms.map(cutLine).join("; ")}. ${of("top").map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top.`,
         tips: "Check both diagonals before the glue skins.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
@@ -1602,8 +1602,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Add the toekicks",
-        description: `${kicks.map(cutLine).join("; ")}. The toekick is the recessed strip at the floor so your toes clear when you stand close. One on the front, one on the back. 3½" tall, set back about 3½" from each long face.`,
+        title: "Add the kick strips",
+        description: `${kicks.map(cutLine).join("; ")}. The kick strip is the recessed strip at the floor so your toes clear when you stand close. One on the front, one on the back. 3½" tall, set back about 3½" from each long face.`,
         partsUsed: names(kicks),
       },
       {
@@ -1645,7 +1645,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the carcase (the main box)",
+        title: "Stand the main box",
         description: `${uprights.map(cutLine).join("; ")}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${[...backs, ...bottoms, ...of("top")].map(cutLine).join("; ")}. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top")]),
@@ -1666,14 +1666,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: `Hang the drawer on ${slide}" slides`,
-        description: `One pair of ${slide}" side-mount slides (metal tracks that screw to the sides of the box and the cabinet). Hang the slides on the uprights first, then set the box. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+        description: `One pair of ${slide}" side-mount slides (metal tracks that screw to the sides of the box and the cabinet). Hang the slides on the uprights first, then set the box. Confirm the slide against the ${round(D)}" main box before you buy.`,
         tips: `A 16" box does not take an 18" slide. 1 pair of ${slide}" slides.`,
         partsUsed: names(drawers),
       },
       {
         step: 7,
         title: "Level it",
-        description: "This nightstand sits on the floor. The back is already on it so it cannot rack (twist). Shim the feet if the floor is out — do not twist the carcase (main box).",
+        description: "This nightstand sits on the floor. The back is already on it so it cannot rack (twist). Shim the feet if the floor is out — do not twist the main box.",
         tips: "Guidance only — confirm the bedside height before you cut. Not stamped engineering.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...drawers]),
       },
@@ -1711,15 +1711,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           step: 3,
-          title: "Stand the carcase (the main box) — sides, back, front, bottom only",
+          title: "Stand the main box — sides, back, front, bottom only",
           description: `${carcaseOnly.map(cutLine).join("; ") || "Sides, back, front, and bottom."}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then front. Do NOT glue or screw the Lid on as a fixed top — it hinges on next.`,
-          tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box. Leave the Lid off the carcase.",
+          tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box. Leave the Lid off the main box.",
           partsUsed: names(carcaseOnly),
         },
         {
           step: 4,
           title: "Piano-hinge the lid along the back edge",
-          description: `${lidPanel.map(cutLine).join("; ") || "Lid."} A piano hinge is a long continuous hinge (one long knuckle strip, not two butt hinges). Screw one leaf into the back edge of the Lid and the other into the top edge of the carcase back (or the back rail). The lid should open up and back. Predrill so the ply does not split.`,
+          description: `${lidPanel.map(cutLine).join("; ") || "Lid."} A piano hinge is a long continuous hinge (one long knuckle strip, not two butt hinges). Screw one leaf into the back edge of the Lid and the other into the top edge of the main box back (or the back rail). The lid should open up and back. Orientation: lid opens up and back — hinge along the back edge. Predrill so the ply does not split.`,
           tips: "Cut or buy a piano hinge about as long as the chest is wide. Keep the hinge barrel just proud of the back edge so the lid clears when it opens.",
           partsUsed: names([...lidPanel, ...backs]),
         },
@@ -1733,7 +1733,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 6,
           title: "Level it",
-          description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the carcase (main box). The lid should still open/close after leveling.",
+          description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still open/close after leveling.",
           tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
           partsUsed: names([...carcaseOnly, ...lidPanel]),
         },
@@ -1798,7 +1798,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const box = [...backs, ...bottoms, ...carcaseTops].map(cutLine).join("; ");
     steps.push({
       step: n++,
-      title: "Stand the carcase (the main box)",
+      title: "Stand the main box",
       description: `Lay the two uprights on edge. ${uDesc}. Glue and #8 × 1¼" screws: back into both uprights, then bottom, then top. ${box || "Back, top, and bottom as labeled."} Predrill near the ends so the ply does not split.`,
       tips: doors.length
         ? "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box."
@@ -1871,8 +1871,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: pocket || u?.kneeW ? "Toekick on the banks only" : "Add the toekick",
       description: `${kicks.map(cutLine).join("; ")}. ${
         pocket || u?.kneeW
-          ? "The toekick is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."
-          : "The toekick is the recessed strip at the floor so your toes clear. Cut it from the same ¾\" plywood — 3½\" tall, set back about 3½\" from the front face."
+          ? "The kick strip is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."
+          : "The kick strip is the recessed strip at the floor so your toes clear. Cut it from the same ¾\" plywood — 3½\" tall, set back about 3½\" from the front face."
       }`,
       partsUsed: names(kicks),
     });
@@ -1889,7 +1889,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Hang ${drawers.length} drawers on ${slide}" slides`,
-      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${dividers.length ? "dividers" : "uprights"} first, then set the boxes. Confirm the slide against the ${round(D)}" carcase before you buy.`,
+      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${dividers.length ? "dividers" : "uprights"} first, then set the boxes. Confirm the slide against the ${round(D)}" main box before you buy.`,
       tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
       partsUsed: names(drawers),
     });
@@ -1953,7 +1953,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
       : wallHang
         ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."
-        : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the carcase (main box).",
+        : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the main box.",
     tips: "Guidance only — confirm plumbing, studs, and the real opening before you cut. Not stamped engineering.",
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
   });

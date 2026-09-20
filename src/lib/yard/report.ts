@@ -12,6 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
+import { strangerPlainShopTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -385,6 +386,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       name: "Piano hinge",
       quantity: 1,
       unit: "pc",
+      catalogId: "piano-hinge",
       searchQuery: "1-1/2 inch x 48 inch piano hinge continuous",
       estimatedCost: 14.98,
       notes: ironing
@@ -395,6 +397,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       name: "Support-leg hinge",
       quantity: 1,
       unit: "pc",
+      catalogId: "utility-hinges",
       searchQuery: "narrow utility hinge 1-1/2 inch",
       estimatedCost: 3.48,
       notes: "Short hinge so the support leg kicks out to the floor when the board is down.",
@@ -427,6 +430,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           name: "Piano hinge",
           quantity: 1,
           unit: "pc",
+          catalogId: "piano-hinge",
           searchQuery: "continuous piano hinge",
           estimatedCost: 14.98,
           notes: `Along the back edge of the lid · length ≈ ${project.overall.width}" (chest width). Long continuous hinge — not two butt hinges.`,
@@ -438,9 +442,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           name: "Lid stay / lid support",
           quantity: 1,
           unit: "pc",
+          catalogId: "lid-stay",
           searchQuery: "toy chest lid support or lid stay",
           estimatedCost: 9.98,
-          notes: "Keeps the lid from slamming. Mount per the stay instructions — usually one side of the lid into the carcase.",
+          notes: "Keeps the lid from slamming. Mount per the stay instructions — usually one side of the lid into the main box.",
         });
       }
     }
@@ -575,6 +580,17 @@ function packPlan(
   cost: number,
   partsKind: "cut" | "whole" = "cut",
 ): BuildPlan {
+  // Stranger Voice/PDF path — prefer plain words (main box / kick strip) over carcase/toekick/Orbit.
+  const plainInstructions = instructions.map((s) => ({
+    ...s,
+    title: strangerPlainShopTalk(s.title),
+    description: strangerPlainShopTalk(s.description),
+    tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
+  }));
+  const plainBom = bom.map((b) => ({
+    ...b,
+    notes: b.notes ? strangerPlainShopTalk(b.notes) : b.notes,
+  }));
   return {
     feasibility: {
       status: issues.some((i) => i.severity === "critical")
@@ -586,8 +602,8 @@ function packPlan(
       issues,
     },
     cutList,
-    bom,
-    instructions,
+    bom: plainBom,
+    instructions: plainInstructions,
     totals: {
       pieces,
       estCostUsd: cost,

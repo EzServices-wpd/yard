@@ -1,8 +1,11 @@
-/** Table walkthrough — top + legs + aprons. Not a closet. */
+/** Table walkthrough — top + legs + aprons. Not a closet.
+ * Round/oval footprint uses footprintConfirmTalk (round top is not a square).
+ */
 
 import { getCatalogItem } from "./catalog";
 import { shopPlural } from "./shopPlural";
 import type { AssemblyStep, Panel, YardProject } from "./types";
+import { footprintConfirmTalk } from "./voiceHonesty";
 
 function round(n: number) {
   return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1);
@@ -31,7 +34,11 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: "Confirm the footprint — do not cut yet",
-    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs. Mark the footprint on the floor. Check it is square (or the circle / oval is the size you want).`,
+    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs. ${footprintConfirmTalk({
+      shape: roundTop ? "round" : ovalTop ? "oval" : "rect",
+      widthLabel: round(W),
+      depthLabel: round(D),
+    })} ${legN} legs stay on the plan.`,
     tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
     partsUsed: ["*"],
   });

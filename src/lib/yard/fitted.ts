@@ -17,6 +17,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { honorSpeciesInTitle, speciesSubstituteNote } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -4008,7 +4009,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
 
   // Hinged-lid chest OPERATE class — lid anatomy; never Yard House wire / Storage.
-  // Toy chest stays Toy chest; cedar / blanket / hope chests with a hinged lid title Chest.
+  // Toy chest stays Toy chest; species-named chests (cedar/oak/…) honor species in title + substitute note when densify stays ply.
   // Planter (no lid) and crate (door) stay on their own builders.
   {
     const lidLower = prompt.toLowerCase();
@@ -4026,9 +4027,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
       panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
       panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
-      const name = toy
-        ? `Toy chest ${W}" × ${H}" × ${D}"`
-        : `Chest ${W}" × ${H}" × ${D}"`;
+      const stem = honorSpeciesInTitle(toy ? "Toy chest" : "Chest", prompt);
+      const name = `${stem} ${W}" × ${H}" × ${D}"`;
       const priorAff: HouseAffordance[] = spec.affordances ?? [];
       const lidAff: HouseAffordance[] = priorAff.includes("hinged-lid")
         ? priorAff
@@ -4042,13 +4042,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         instances: [],
         panels,
         primaryMaterialId: PLY,
-        notes: [
-          toy
-            ? `${name}. Hinged-lid toy chest — floor carcase with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
-            : `${name}. Hinged-lid chest — floor carcase with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
-          `Lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge (a long continuous hinge) along the back edge of the lid into the carcase back/top edge. Add a lid stay so the lid cannot slam.`,
-          "Guidance only — open/close test the lid. Soft-close optional.",
-        ],
+        notes: (() => {
+          const sub = speciesSubstituteNote(prompt, '¾" plywood');
+          return [
+            toy
+              ? `${name}. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
+              : `${name}. Hinged-lid chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+            `Lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid cannot slam.`,
+            ...(sub ? [sub] : []),
+            "Guidance only — open/close test the lid. Soft-close optional.",
+          ];
+        })(),
         historic: false,
         opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
         fitted: {

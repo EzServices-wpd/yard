@@ -15,6 +15,7 @@ import {
   stampAmazon,
   type ShopRetailer,
 } from "./shop";
+import { hardwareCatalogIdFromHay } from "./voiceHonesty";
 
 export type ListingOffer = {
   catalogId: string;
@@ -401,6 +402,68 @@ export const LISTINGS: ListingOffer[] = [
     lengthIn: 0,
     checkedAt: CHECK,
   },
+  
+  {
+    catalogId: "piano-hinge",
+    retailer: "amazon",
+    title: "Continuous piano hinge 1-1/2\" x 48\"",
+    href: "https://www.amazon.com/s?k=continuous+piano+hinge+1-1%2F2+x+48",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 48,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "piano-hinge",
+    retailer: "homedepot",
+    title: "Continuous piano hinge",
+    href: "https://www.homedepot.com/s/continuous%20piano%20hinge",
+    packQty: 1,
+    packPrice: 16.98,
+    lengthIn: 48,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "lid-stay",
+    retailer: "amazon",
+    title: "Toy chest lid support / lid stay",
+    href: "https://www.amazon.com/s?k=toy+chest+lid+support+lid+stay",
+    packQty: 1,
+    packPrice: 9.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "lid-stay",
+    retailer: "homedepot",
+    title: "Lid support / lid stay",
+    href: "https://www.homedepot.com/s/lid%20support%20lid%20stay",
+    packQty: 1,
+    packPrice: 11.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "utility-hinges",
+    retailer: "amazon",
+    title: "3\" utility hinges, pair",
+    href: "https://www.amazon.com/s?k=3+inch+utility+hinges",
+    packQty: 2,
+    packPrice: 5.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "utility-hinges",
+    retailer: "homedepot",
+    title: "3\" utility hinges",
+    href: "https://www.homedepot.com/s/3%20inch%20utility%20hinges",
+    packQty: 2,
+    packPrice: 4.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+
   {
     catalogId: "shelf-pins",
     retailer: "amazon",
@@ -693,7 +756,9 @@ function guessCatalogId(line: BomLine): string | null {
     if (/\b18\b/.test(hay)) return "drawer-slides-18";
     return "drawer-slides-16";
   }
-  if (/hinge/.test(hay)) return "cabinet-hinges";
+  // Hardware class match — piano / lid-stay / utility before soft-close concealed.
+  const hw = hardwareCatalogIdFromHay(hay);
+  if (hw) return hw;
   if (/shelf pin/.test(hay)) return "shelf-pins";
   if (/rod socket|rod flange|closet rod socket/.test(hay)) return "closet-rod-sockets";
   if (/flashing|sill pan/.test(hay)) return "flashing-tape";

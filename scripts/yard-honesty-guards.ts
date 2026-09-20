@@ -2227,7 +2227,7 @@ console.log("SOFT-TRUST OK", {
     );
   }
 
-  // Non-toy hinged-lid OPERATE — cedar chest titles Chest (not Toy chest / Storage / House).
+  // Non-toy hinged-lid OPERATE — cedar chest titles Cedar chest (species honesty; not Toy chest / Storage / House).
   const cedarPrompt = "cedar chest 36 wide × 18 deep × 20 tall with hinged lid";
   if (isToyChest(cedarPrompt.toLowerCase())) failHonesty("b31 cedar must not be isToyChest");
   if (!isHingedLidChest(cedarPrompt.toLowerCase())) failHonesty("b31 cedar isHingedLidChest");
@@ -2235,12 +2235,15 @@ console.log("SOFT-TRUST OK", {
     failHonesty("b31 cedar stem Chest", identityTitleStem(cedarPrompt.toLowerCase()) || "");
   }
   const cedar = generateFromPrompt(cedarPrompt);
-  if (!/^Chest\b/i.test(cedar.name)) failHonesty("b31 cedar title Chest", cedar.name);
+  if (!/^Cedar chest\b/i.test(cedar.name)) failHonesty("b31 cedar title Cedar chest", cedar.name);
   if (/^Toy chest/i.test(cedar.name)) failHonesty("b31 cedar stole Toy chest", cedar.name);
   if (/^House\b|^Storage\b/i.test(cedar.name)) failHonesty("b31 cedar House/Storage steal", cedar.name);
   if (!cedar.panels.some((p) => /^Lid$/i.test(p.name))) {
     failHonesty("b31 cedar Lid panel", cedar.panels.map((p) => p.name));
   }
+  const cedarBlob = [cedar.name, ...(cedar.notes ?? [])].join("\n");
+  if (!/cedar/i.test(cedarBlob)) failHonesty("b31 cedar species silent drop", cedarBlob.slice(0, 400));
+  if (!/substitute|plywood/i.test(cedarBlob)) failHonesty("b31 cedar missing ply substitute note", cedarBlob.slice(0, 400));
   const cedarPlan = buildPlan(cedar);
   if (!cedarPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 cedar Piano hinge BOM", cedarPlan.bom.map((b) => b.name));
@@ -2250,6 +2253,22 @@ console.log("SOFT-TRUST OK", {
       "b31 cedar piano-hinge step",
       cedarPlan.instructions.map((s) => s.title).join(" | "),
     );
+  }
+  // Buy↔step hardware class — Piano hinge Best must not be soft-close concealed.
+  const pianoLine = cedarPlan.bom.find((b) => /piano hinge/i.test(b.name));
+  if (!pianoLine || pianoLine.catalogId !== "piano-hinge") {
+    failHonesty("b31 cedar piano catalogId", pianoLine?.catalogId || "missing");
+  }
+  const pianoBest = (pianoLine?.offers ?? []).find((o) => o.best) ?? (pianoLine?.offers ?? [])[0];
+  if (pianoBest && /soft-?close|concealed|cabinet hinge/i.test(pianoBest.title || "")) {
+    failHonesty("b31 cedar Piano hinge Best is concealed", pianoBest.title);
+  }
+  if (pianoBest && !/piano|continuous/i.test(pianoBest.title || "")) {
+    failHonesty("b31 cedar Piano hinge Best not piano class", pianoBest.title);
+  }
+  const stayLine = cedarPlan.bom.find((b) => /lid stay|lid support/i.test(b.name));
+  if (!stayLine || stayLine.catalogId !== "lid-stay") {
+    failHonesty("b31 cedar lid-stay catalogId", stayLine?.catalogId || "missing");
   }
 
   // Protect already-green kids/play + desk + cubby
@@ -3141,6 +3160,46 @@ console.log("SOFT-TRUST OK", {
   if (plain.name !== "Catapult") failCat("plain catapult name", plain.name);
 }
 
+
+
+
+// Voice/PDF depth pillar — hardware class match · species title · round footprint · plain shop words.
+{
+  const failVoice = (msg: string, detail?: unknown) => failHonesty(`voice/pdf ${msg}`, detail);
+
+  // Round table footprint must not lead with "check it is square".
+  const roundPrompt = 'house: 40" round 3-leg table';
+  const roundProj = generateFromPrompt(roundPrompt);
+  const roundPlan = buildPlan(roundProj);
+  const foot = roundPlan.instructions.find((s) => /footprint/i.test(s.title));
+  const footText = `${foot?.title ?? ""} ${foot?.description ?? ""}`;
+  if (/check it is square/i.test(footText) && !/round top is not a square|diameter matches|circle on the floor/i.test(footText)) {
+    failVoice("round footprint still check-it-is-square primary", footText.slice(0, 320));
+  }
+  if (!/round|diameter|circle/i.test(footText)) failVoice("round footprint missing round language", footText.slice(0, 320));
+  const legTalk = roundPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/\b3\s*legs?\b|three legs/i.test(`${roundProj.name}\n${legTalk}`)) {
+    failVoice("round table lost 3 legs", roundProj.name);
+  }
+
+  // Plain shop words on stranger steps — no bare carcase/toekick in default path after soften.
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  const linenPlan = buildPlan(linen);
+  const linenSteps = linenPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (/\bcarcase\b/i.test(linenSteps)) failVoice("linen stranger path still says carcase", linenSteps.match(/[^\n]{0,40}carcase[^\n]{0,40}/i)?.[0]);
+  if (/\btoekick\b/i.test(linenSteps)) failVoice("linen stranger path still says toekick", linenSteps.match(/[^\n]{0,40}toekick[^\n]{0,40}/i)?.[0]);
+
+  const vanity = generateFromPrompt('house: bathroom vanity 36" wide × 21" deep × 32" tall with two doors');
+  if (!/Vanity/i.test(vanity.name)) failVoice("protect vanity title", vanity.name);
+  if (!vanity.panels.some((p) => /^Door\b/i.test(p.name))) failVoice("protect vanity doors", vanity.panels.map((p) => p.name));
+  const vanityPlan = buildPlan(vanity);
+  const vanitySteps = vanityPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (/\bcarcase\b/i.test(vanitySteps)) failVoice("vanity stranger path still says carcase");
+
+  // Shared helpers exist (markers for ship check).
+  // honorSpeciesInTitle / hardwareCatalogIdFromHay / footprintConfirmTalk / strangerPlainShopTalk
+  // Voice/PDF depth pillar
+}
 
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
