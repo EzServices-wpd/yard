@@ -2,7 +2,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1248,6 +1248,73 @@ if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
     failHonesty("bedside print soft: — nightstand. subtitle", checkMsg.slice(0, 300));
   }
 }
+
+// Soft leftover: hung-open media ledge rails-only densify — envelope H must match typed overall H
+// (not shelf ply ¾″). Same class as bedside Book/Print; Media backstop top face = typed H.
+{
+  const mediaPrompt =
+    'house: media ledge 48″ wide × 10″ deep × 6″ tall clear below for 55″ TV stand';
+  if (!isWallMediaLedge(mediaPrompt.toLowerCase())) failHonesty("isWallMediaLedge miss", mediaPrompt);
+  const mediaHit = detectHouseFamily(mediaPrompt);
+  if (!mediaHit || mediaHit.family !== "hung-open") failHonesty("media ledge family", mediaHit);
+  const media = generateFromPrompt(mediaPrompt);
+  if (!/^Media ledge/i.test(media.name)) failHonesty("media ledge title", media.name);
+  if (!nearInch(media.overall.width, 48) || !nearInch(media.overall.height, 6) || !nearInch(media.overall.depth, 10)) {
+    failHonesty("media ledge overall", media.overall);
+  }
+  if (media.assumptions.installMode !== "wall") failHonesty("media ledge mount", media.assumptions);
+  const mediaPlan = buildPlan(media);
+  if (!inspectHonesty(media, mediaPlan).ok) failHonesty("media ledge inspect", inspectHonesty(media, mediaPlan).issues);
+  {
+    const back = media.panels.find((p) => /Media backstop/i.test(p.name));
+    if (!back || back.type !== "back") {
+      failHonesty("media ledge Media backstop missing/type", media.panels.map((p) => `${p.type}:${p.name}`));
+    } else {
+      const topFace = back.position.y + back.size.height;
+      if (!nearInch(topFace, 6)) {
+        failHonesty("media ledge Media backstop top face ≠ typed H6", {
+          y: back.position.y,
+          h: back.size.height,
+          topFace,
+        });
+      }
+    }
+    const envIssue = inspectHonesty(media, mediaPlan).issues.find(
+      (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+    );
+    if (envIssue) failHonesty("media ledge envelope H still flakes vs typed 6", envIssue);
+  }
+  // Twin: taller typed H8 — backstop top face + envelope H must follow typed overall.
+  const mediaTallPrompt =
+    'house: wall media ledge 36″ wide × 8″ deep × 8″ tall clear below for TV stand';
+  if (!isWallMediaLedge(mediaTallPrompt.toLowerCase())) failHonesty("isWallMediaLedge tall miss", mediaTallPrompt);
+  const mediaTall = generateFromPrompt(mediaTallPrompt);
+  if (!/^Media ledge/i.test(mediaTall.name)) failHonesty("media ledge tall title", mediaTall.name);
+  if (!nearInch(mediaTall.overall.width, 36) || !nearInch(mediaTall.overall.height, 8) || !nearInch(mediaTall.overall.depth, 8)) {
+    failHonesty("media ledge tall overall", mediaTall.overall);
+  }
+  const mediaTallPlan = buildPlan(mediaTall);
+  if (!inspectHonesty(mediaTall, mediaTallPlan).ok) {
+    failHonesty("media ledge tall inspect", inspectHonesty(mediaTall, mediaTallPlan).issues);
+  }
+  {
+    const back = mediaTall.panels.find((p) => /Media backstop/i.test(p.name));
+    if (!back || back.type !== "back") {
+      failHonesty("media ledge tall Media backstop missing/type", mediaTall.panels.map((p) => `${p.type}:${p.name}`));
+    } else if (!nearInch(back.position.y + back.size.height, 8)) {
+      failHonesty("media ledge Media backstop top face ≠ typed H8", {
+        y: back.position.y,
+        h: back.size.height,
+        topFace: back.position.y + back.size.height,
+      });
+    }
+    const envIssue = inspectHonesty(mediaTall, mediaTallPlan).issues.find(
+      (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+    );
+    if (envIssue) failHonesty("media ledge tall envelope H still flakes vs typed 8", envIssue);
+  }
+}
+
 
 const bambooFramePrompt = "picture frame from bamboo skewers";
 const bambooFrame = generateFromPrompt(bambooFramePrompt);

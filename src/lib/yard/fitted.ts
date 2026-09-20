@@ -1489,6 +1489,11 @@ function buildWallMediaLedge(spec: FittedSpec, prompt: string, affordances: Hous
   panels.push(panel("shelf", "Media ledge", x0, cleatH, P, W, P, Math.max(D - P, 2)));
   // Low front lip so gear cannot slide off — still an open ledge (hung-open).
   panels.push(panel("rail", "Front lip", x0, cleatH + P, D - P, W, Math.min(1.25, Math.max(0.75, H - cleatH - P)), P));
+  // Soft leftover: envelopePanels() drops type=rail, so rails-only media ledge AABB
+  // was H≈¾″ (shelf ply) while typed overall H (e.g. 6″/8″) stayed on HUD — same class
+  // as bedside Book/Print. Mirror bedside: Media backstop as type=back from y=0 with
+  // height H (top face = typed H). Cleat + lip stay rails (mount + cradle).
+  panels.push(panel("back", "Media backstop", x0, 0, P, W, H, P));
   const stem = mediaIdentityLabel(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) || "Media ledge";
   const name = `${stem} ${W}" × ${H}" × ${D}"`;
   const clearNote = /55/.test(prompt)
