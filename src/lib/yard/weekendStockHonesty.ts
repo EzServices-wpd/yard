@@ -40,7 +40,9 @@ import {
   CATALOG_LUMBER_BIND,
   densifyLabelForPrompt,
   isNamedLumberSpeciesId,
+  namedLumberFromPrompt,
 } from "./namedLumberSpecies";
+import { honorSpeciesInTitle } from "./voiceHonesty";
 import type { BuildPlan, CatalogItem, CutLine, JoinMethod, YardInstance, YardProject } from "./types";
 
 export type WeekendGuard = "stock" | "whole" | "join" | "size" | "anatomy";
@@ -124,6 +126,79 @@ export function promptBoundStock(project: YardProject): boolean {
   if (named) return project.primaryMaterialId === named.id;
   return isWireStock(getCatalogItem(project.primaryMaterialId));
 }
+
+/** Sheet / ply catalog ids — fitted densify default when no named species binds. */
+export function isSheetPrimaryId(id: string | undefined | null): boolean {
+  return !!id && /^(plywood-|sheet-)/i.test(id);
+}
+
+/**
+ * Shared named-species primary honesty (universal densify/bind helper).
+ *
+ * When the stranger names a solid lumber species (teak, walnut, oak, cedar, …)
+ * and fitted densify would silently keep sheet/ply as primaryMaterialId, bind
+ * primary to CATALOG_LUMBER_BIND and honor the species in the title — never a
+ * silent plywood default. Buy lead then speaks densifyLabel via namedStockDisplayName.
+ *
+ * Cedar-chest-class hinged-lid sheet carcases that already publish a substitute
+ * note keep ply primary (protect cedar chest species/lining honesty).
+ */
+export function applyNamedLumberPrimaryHonesty(
+  project: YardProject,
+  prompt = project.prompt ?? "",
+): YardProject {
+  const species = namedLumberFromPrompt(prompt);
+  if (!species) return project;
+
+  const primary = project.primaryMaterialId;
+  const notes = project.notes ?? [];
+
+  const honorTitle = (p: YardProject): YardProject => {
+    const esc = species.display.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`\\b${esc}\\b`, "i").test(p.name)) return p;
+    // Split trailing dimension suffix so honorSpeciesInTitle sees a clean stem.
+    const m = p.name.match(/^(.*?)(\s+\d.*)?$/);
+    const stem = (m?.[1] || p.name).trim();
+    const dims = m?.[2] || "";
+    const honored = honorSpeciesInTitle(stem, prompt);
+    const nextName = `${honored}${dims}`.replace(/\s+/g, " ").trim();
+    if (nextName === p.name) return p;
+    const fitted = p.fitted ? { ...p.fitted, name: nextName } : p.fitted;
+    return { ...p, name: nextName, fitted };
+  };
+
+  if (primary === CATALOG_LUMBER_BIND) {
+    return honorTitle(project);
+  }
+
+  if (!isSheetPrimaryId(primary)) return project;
+
+  // Protect cedar-chest-class: hinged-lid sheet carcase keeps ply + substitute note.
+  const program = project.fitted?.program ?? "";
+  const aff = project.fitted?.affordances ?? [];
+  const chestClass =
+    (/chest/i.test(project.name) || /chest/i.test(prompt)) &&
+    (program === "storage" || aff.includes("hinged-lid") || /hinged\s*lid|\blid\b/i.test(prompt));
+  if (chestClass) {
+    return honorTitle(project);
+  }
+
+  // Bind primary to named lumber catalog id; title speaks species.
+  // Structural panels may still nest on ply — Buy lead speaks densifyLabel, not silent plywood-only.
+  const label = densifyLabelForPrompt(prompt) ?? `${species.display} 1×4`;
+  const bindNote = `Prompt names ${species.display} — primary stock binds ${label} (not silent plywood). Sheet panels may still nest on plywood as structural parts; buy ${species.display} boards or lining/finish for the named-species story.`;
+  const nextNotes = notes.some((n) => /primary stock binds/i.test(n))
+    ? notes
+    : [...notes, bindNote];
+
+  return honorTitle({
+    ...project,
+    primaryMaterialId: CATALOG_LUMBER_BIND,
+    notes: nextNotes,
+  });
+}
+
+
 
 
 function itemOf(project: YardProject): CatalogItem | undefined {

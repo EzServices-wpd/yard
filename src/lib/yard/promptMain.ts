@@ -9,7 +9,7 @@ import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
-import { enforceWeekendHonesty } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -54,8 +54,9 @@ function withWireNote(project: YardProject, item: CatalogItem): YardProject {
 
 
 function honestHouse(project: YardProject, prompt: string, honorUnit = false): YardProject {
-  return enforceHonesty(project, {
-    rebuild: (spec) => buildFitted(spec, prompt),
+  const bound = applyNamedLumberPrimaryHonesty(project, prompt);
+  return enforceHonesty(bound, {
+    rebuild: (spec) => applyNamedLumberPrimaryHonesty(buildFitted(spec, prompt), prompt),
     honorUnit,
   });
 }

@@ -12,6 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
+import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
@@ -155,10 +156,22 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     });
   } else if (sheets8 + sheetsFallback > 0) {
     const n = sheets8 + sheetsFallback;
+    // Named-species primary bind: Buy lead speaks densifyLabel (Teak 1×4), not bare board / silent ply.
+    const sheetName =
+      project.primaryMaterialId === CATALOG_LUMBER_BIND && namedLumber
+        ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber)
+        : (sheet?.name ?? '3/4" plywood 4x8');
     bom.push({
-      name: sheet?.name ?? '3/4" plywood 4x8',
+      name: sheetName,
       quantity: n,
-      unit: n === 1 ? "sheet" : "sheets",
+      unit:
+        project.primaryMaterialId === CATALOG_LUMBER_BIND && namedLumber
+          ? n === 1
+            ? "pc"
+            : "pcs"
+          : n === 1
+            ? "sheet"
+            : "sheets",
       catalogId: sheet?.id ?? "plywood-3-4-4x8",
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
