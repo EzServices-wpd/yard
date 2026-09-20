@@ -146,3 +146,47 @@ export function cutListName(name: string, type?: string): string {
   }
   return name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "") || name;
 }
+
+/**
+ * HUD piece-chip ↔ cut-list reconciliation.
+ * Counts wood pieces a stranger sees on the cut list: bounding type=drawer
+ * envelopes explode into sides/back/bottom; laminated ply thicker than stock
+ * counts as plies (same class pack as closetCuts). Buy-only hardware (slides,
+ * screws, knobs) is BOM — never in this count.
+ */
+export function woodCutPieceCount(project: {
+  panels: Array<{
+    name: string;
+    type?: string;
+    materialId?: string;
+    size: { width: number; height: number; depth: number };
+  }>;
+  instances?: readonly unknown[];
+}): number {
+  const STOCK_T = 0.75;
+  let n = project.instances?.length ?? 0;
+  for (const p of project.panels) {
+    const w = Math.round(p.size.width * 8) / 8;
+    const h = Math.round(p.size.height * 8) / 8;
+    const d = Math.round(p.size.depth * 8) / 8;
+    if (isBoundingDrawerPanel(p.name, p.type)) {
+      n += explodeDrawerBoxCuts(w, h, d).length;
+      continue;
+    }
+    const dims = sheetCutDims(w, h, d);
+    const isPly = /plywood/i.test(p.materialId ?? "");
+    const family = cutListName(p.name, p.type);
+    if (
+      isPly &&
+      dims.thicknessIn > STOCK_T + 0.05 &&
+      dims.thicknessIn <= 2.05 &&
+      !/^leg$/i.test(family)
+    ) {
+      n += Math.max(2, Math.round(dims.thicknessIn / STOCK_T));
+    } else {
+      n += 1;
+    }
+  }
+  return n;
+}
+

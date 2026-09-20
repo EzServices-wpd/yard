@@ -18,7 +18,7 @@ import {
   wantsFixedGlueShelves,
 } from "../src/lib/yard/honesty";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
-import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName } from "../src/lib/yard/shopPlural";
+import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
 import {
   inspectWeekendHonesty,
   namedStockDisplayName,
@@ -3826,6 +3826,87 @@ console.log("SOFT-TRUST OK", {
   // Soft: if a hinge buy row exists it should be piano/continuous class, not soft-close concealed alone.
   if (pianoBest && /soft-?close|concealed/i.test(pianoBest.name) && !/piano|continuous/i.test(pianoBest.name)) {
     failHonesty("drawerCutlist protect cedar piano Best", pianoBest.name);
+  }
+}
+
+
+
+
+// Soft leftover: HUD piece chip must match stranger-facing cut-list wood piece count
+// for drawer furniture (nightstand / dresser). Chip used panels.length (bounding
+// drawer envelopes); cut list explodes → sides/back/bottom. Hardware stays Buy/BOM.
+{
+  const failChip = (msg: string, detail?: unknown) => failHonesty(`pieceChip ${msg}`, detail);
+  const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  const nsChip = woodCutPieceCount(ns);
+  const nsCut = nsPlan.totals.pieces;
+  if (nsChip !== nsCut) {
+    failChip("nightstand chip ≠ cut-list wood pieces", {
+      chip: nsChip,
+      cut: nsCut,
+      rawPanels: ns.panels.length,
+      cutNames: nsPlan.cutList.map((c) => `${c.quantity} ${c.name}`),
+    });
+  }
+  if (ns.panels.length >= nsChip) {
+    failChip("nightstand raw panel count should under-count vs exploded chip", {
+      rawPanels: ns.panels.length,
+      chip: nsChip,
+    });
+  }
+  if (nsChip < 10) {
+    failChip("nightstand exploded wood pieces too few (expect ~11)", nsChip);
+  }
+  // Twin: dresser three drawers — same reconciliation class.
+  const dr = generateFromPrompt("house: dresser 36″ wide × 18″ deep × 36″ tall with three drawers");
+  const drPlan = buildPlan(dr);
+  const drChip = woodCutPieceCount(dr);
+  if (drChip !== drPlan.totals.pieces) {
+    failChip("dresser chip ≠ cut-list wood pieces", { chip: drChip, cut: drPlan.totals.pieces });
+  }
+  // Twin: alternate nightstand size.
+  const ns2 = generateFromPrompt("nightstand 18 wide 16 deep 24 tall with one drawer");
+  const ns2Plan = buildPlan(ns2);
+  if (woodCutPieceCount(ns2) !== ns2Plan.totals.pieces) {
+    failChip("nightstand 18×16×24 chip ≠ cut", {
+      chip: woodCutPieceCount(ns2),
+      cut: ns2Plan.totals.pieces,
+    });
+  }
+  // Protect: floating shelf lip — no drawer explode; chip == panels (no instances).
+  const lip = generateFromPrompt("house: floating shelf with lip 36″ wide × 8″ deep × 6″ tall");
+  if (woodCutPieceCount(lip) !== lip.panels.length) {
+    failChip("floating shelf lip chip drifted", { chip: woodCutPieceCount(lip), panels: lip.panels.length });
+  }
+  // Protect: desk AABB H29 — laminated desktop + drawer explode; splice may add segments.
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  const deskPlan = buildPlan(desk);
+  if (Math.abs(desk.overall.height - 29) > 0.2) failChip("protect desk H29", desk.overall);
+  const deskChip = woodCutPieceCount(desk);
+  if (deskChip > deskPlan.totals.pieces) {
+    failChip("desk chip over-counts cut list", { chip: deskChip, cut: deskPlan.totals.pieces });
+  }
+  if (desk.panels.some((p) => p.type === "drawer") && deskChip <= desk.panels.length) {
+    failChip("desk drawer explode not reflected in chip helper", {
+      chip: deskChip,
+      raw: desk.panels.length,
+    });
+  }
+  // Protect: lounge Seat 30×24.
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+    failChip("protect lounge Seat 30×24", seat?.size);
+  }
+  // Protect: catapult ≠ trough.
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failChip("protect catapult≠trough", cat.name);
+  }
+  // Protect: bamboo skewers bridge stock bind.
+  if (detectMaterial("bamboo skewers warren bridge").id !== "bamboo-skewer-12") {
+    failChip("protect bamboo skewers bridge", detectMaterial("bamboo skewers warren bridge").id);
   }
 }
 

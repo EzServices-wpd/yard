@@ -24,6 +24,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { namedStockDisplayName } from "@/lib/yard/weekendStockHonesty";
 import { honestNestSheetStockName } from "@/lib/yard/report";
+import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
@@ -147,7 +148,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const nestSheetLabel = honestNestSheetStockName(project, plan);
   const wire = isWireStock(material);
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
-  const pieceCount = project.instances.length + project.panels.length;
+  // Soft leftover: drawer furniture HUD chip counted bounding type=drawer envelopes
+  // (carcase + box + front) while cut list explodes each box → sides/back/bottom.
+  // Prefer plan.totals.pieces when built (includes splice); else woodCutPieceCount
+  // (instances + exploded panels + laminated plies). Buy-only hardware stays BOM.
+  const pieceCount = plan?.totals.pieces ?? woodCutPieceCount(project);
   const historicOk = hasHistoricProfile(project.kind) || !!project.historic;
   const locked = selectedId ? lockedIds.includes(selectedId) : false;
   const steps = plan?.instructions ?? [];

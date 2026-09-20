@@ -653,6 +653,22 @@ export function honestNestSheetStockName(
   return sheets10 > 0 ? name10 : null;
 }
 
+/**
+ * Stranger-facing wood piece count for the HUD chip — same quantity sum as
+ * BuildPlan.totals.pieces for house/fitted projects (closetCuts: drawer explode
+ * + laminated plies + sheet splice). Buy-only hardware is BOM, not counted.
+ * Crafts (instances, no panels path) → instance count.
+ */
+export function strangerWoodPieceCount(project: YardProject): number {
+  if (project.kind === "opening" && project.windowPkg) {
+    return stampLabels(windowCuts(project)).reduce((s, c) => s + c.quantity, 0);
+  }
+  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
+    return closetCuts(project).reduce((s, c) => s + c.quantity, 0);
+  }
+  return project.instances.length;
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
   if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
