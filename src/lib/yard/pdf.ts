@@ -3,8 +3,9 @@ import { usd } from "@/lib/utils";
 import { nestCutList } from "./nesting";
 import type { BuildPlan, YardProject } from "./types";
 import { ACCENT, PHOTO_RULE } from "./pdfTheme";
-import { fmtDims, fmtDimsWHD } from "./pdfFormat";
+import { fmtDims, fmtDimsWHD, fmtUnitEnvelope } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
+import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
 import { drawStepPlate } from "./pdfPlate";
 import { drawNestSheet, nestPageTitle } from "./pdfNest";
 
@@ -101,8 +102,23 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   doc.setFont("times", "normal");
   doc.setFontSize(12);
   doc.setTextColor(...MUTED);
-  const dim = fmtDims(project.overall.width, project.overall.height, project.overall.depth);
+  const dim = fmtUnitEnvelope(project.overall.width, project.overall.height, project.overall.depth, {
+    shape: project.fitted?.unit?.shape,
+    prompt: project.prompt,
+    name: project.name,
+    legs: project.fitted?.unit?.legs,
+  });
   doc.text(dim, left, y);
+  const speciesTalk = speciesStockHonestyTalk(project.prompt ?? "", '¾" plywood');
+  if (speciesTalk) {
+    y += 14;
+    doc.setFont("times", "italic");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    const spLines = wrap(speciesTalk, 10);
+    doc.text(spLines, left, y);
+    y += spLines.length * 12;
+  }
   y += 16;
   if (plan.effort || plan.totals.estCostUsd) {
     doc.setFontSize(10);
@@ -302,7 +318,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
           { term: "Joint", def: "Where two sticks meet — a small bead of glue on both faces, then hold." },
           { term: "Square", def: "Corners at 90 degrees. Check by measuring both diagonals — they should match." },
         ]
-      : SHOP_GLOSSARY;
+      : glossaryForPlan(`${project.prompt ?? ""} ${project.name}`, SHOP_GLOSSARY);
   for (const g of glossary) {
     ensure(28);
     doc.setFont("times", "bold");
@@ -357,7 +373,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         drawStepPlate(doc, project, s, left, y, width, isoH);
         y += isoH + 10;
       } catch {
-        muted(fmtDimsWHD(project.overall.width, project.overall.height, project.overall.depth));
+        muted(fmtUnitEnvelope(project.overall.width, project.overall.height, project.overall.depth, { shape: project.fitted?.unit?.shape, prompt: project.prompt, name: project.name, legs: project.fitted?.unit?.legs }));
       }
     }
     body(s.description);

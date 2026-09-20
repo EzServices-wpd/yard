@@ -27,6 +27,7 @@ import { honestNestSheetStockName } from "@/lib/yard/report";
 import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
+import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { isLockedForm } from "@/lib/yard/form";
 import { detectWeekendMech } from "@/lib/yard/weekendFamily";
@@ -602,7 +603,12 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   : ""}
               </p>
               <p className="mt-0.5 text-faint">
-                {inches(project.overall.width)} × {inches(project.overall.height)} × {inches(project.overall.depth)}
+                {fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
+                  shape: project.fitted?.unit?.shape,
+                  prompt: project.prompt,
+                  name: project.name,
+                  legs: project.fitted?.unit?.legs,
+                })}
                 {housePath
                   ? " · the unit"
                   : wire

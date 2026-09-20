@@ -12,7 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
-import { strangerPlainShopTalk, densifyKitCraftInstructions, stampPartsPlate } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, stampPartsPlate, speciesStockHonestyTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -162,11 +162,15 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: sheet?.id ?? "plywood-3-4-4x8",
       searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
       estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
-      notes: `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
-        cuts.some((c) => / · /.test(c.name))
-          ? " Some faces are splice segments — butt-join before assembly."
-          : ""
-      }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`,
+      notes: (() => {
+        const base = `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
+          cuts.some((c) => / · /.test(c.name))
+            ? " Some faces are splice segments — butt-join before assembly."
+            : ""
+        }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
+        const species = speciesStockHonestyTalk(project.prompt ?? "", sheet?.name ?? '3/4" plywood');
+        return species ? `${base} ${species}` : base;
+      })(),
     });
   }
   if (!buyNamedBoard && sheets10 > 0) {
@@ -177,7 +181,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: sheet10?.id ?? "plywood-3-4-4x10",
       searchQuery: sheet10?.searchQuery ?? '3/4" x 4x10 sanded plywood',
       estimatedCost: (sheet10?.unitCostUsd ?? 72) * sheets10,
-      notes: `From nest · ${sheets10} sheet${sheets10 === 1 ? "" : "s"} · 1/8" kerf · full-height faces that do not fit a 4×8.`,
+      notes: (() => {
+        const base = `From nest · ${sheets10} sheet${sheets10 === 1 ? "" : "s"} · 1/8" kerf · full-height faces that do not fit a 4×8.`;
+        const species = speciesStockHonestyTalk(project.prompt ?? "", sheet10?.name ?? '3/4" plywood 4x10');
+        return species ? `${base} ${species}` : base;
+      })(),
     });
   }
   if (legCuts.length) {

@@ -1,5 +1,15 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
+import {
+  wantsCabinetryShopWords,
+  shopWordsChipTalk,
+  glossaryForPlan,
+  isRoundUnitEnvelope,
+  fmtUnitEnvelopeInches,
+  speciesStockHonestyTalk,
+  speciesSubstituteNote,
+} from "../src/lib/yard/voiceHonesty";
+import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge } from "../src/lib/yard/family";
@@ -3977,4 +3987,121 @@ console.log("STRANGER PLAN OK", {
   pocketSlides: pocketSlides?.name,
   deskSlides: deskSlides?.name,
 });
+
+
+// Voice/PDF impress WARN pack — glossary gate · round dia envelope · cedar stock honesty.
+{
+  const failVoice2 = (msg: string, detail?: unknown) => failHonesty(`voice/pdf impress ${msg}`, detail);
+
+  for (const hay of [
+    'house: 40" round 3-leg table',
+    "house: lounge chair with 16″ seat height and 24″ seat depth",
+    'house: cedar chest 36" wide × 18" deep × 20" tall with hinged lid',
+    "weekend craft: popsicle stick catapult that launches a marble",
+  ]) {
+    if (wantsCabinetryShopWords(hay)) failVoice2("non-cabinetry wants cabinetry shop words", hay);
+    const chip = shopWordsChipTalk(hay);
+    if (/\bcarcase\b|\btoekick\b/i.test(chip)) failVoice2("shop-words chip leaks carcase/toekick", { hay, chip });
+    const gloss = glossaryForPlan(hay, SHOP_GLOSSARY);
+    if (gloss.some((g) => /carcase|toekick/i.test(`${g.term} ${g.def}`))) {
+      failVoice2("PDF glossary leaks carcase/toekick", hay);
+    }
+  }
+  for (const hay of [
+    'house: bathroom vanity 36" wide × 21" deep × 32" tall with two doors',
+    "house: linen closet 31.5×78×16",
+  ]) {
+    if (!wantsCabinetryShopWords(hay)) failVoice2("cabinetry lost shop-words gate", hay);
+    const chip = shopWordsChipTalk(hay);
+    if (!/carcase|toekick|main box|kick strip/i.test(chip)) failVoice2("cabinetry chip missing shop words", chip);
+  }
+
+  {
+    const roundPrompt = 'house: 40" round 3-leg table';
+    const round = generateFromPrompt(roundPrompt);
+    if (
+      !isRoundUnitEnvelope({
+        width: round.overall.width,
+        height: round.overall.height,
+        depth: round.overall.depth,
+        shape: round.fitted?.unit?.shape,
+        prompt: round.prompt,
+        name: round.name,
+      })
+    ) {
+      failVoice2("round table not detected as round envelope", {
+        overall: round.overall,
+        shape: round.fitted?.unit?.shape,
+        name: round.name,
+      });
+    }
+    const line = fmtUnitEnvelopeInches(round.overall.width, round.overall.height, round.overall.depth, {
+      shape: round.fitted?.unit?.shape,
+      prompt: round.prompt,
+      name: round.name,
+      legs: round.fitted?.unit?.legs ?? 3,
+    });
+    if (/40\s*[×x]\s*30\s*[×x]\s*40|40"\s*×\s*30"\s*×\s*40"/.test(line)) {
+      failVoice2("round envelope still echoes diameter as W×H×W", line);
+    }
+    if (!/dia/i.test(line) || !/40/.test(line) || !/30/.test(line)) {
+      failVoice2("round envelope missing dia×H honesty", line);
+    }
+    if ((round.fitted?.unit?.legs ?? 0) !== 3 && !/\b3\s*legs?\b/i.test(`${round.name}`)) {
+      failVoice2("round table lost 3 legs", { legs: round.fitted?.unit?.legs, name: round.name });
+    }
+  }
+
+  {
+    const cedarPrompt = 'house: cedar chest 36" wide × 18" deep × 20" tall with hinged lid';
+    const cedar = generateFromPrompt(cedarPrompt);
+    if (!/Cedar/i.test(cedar.name)) failVoice2("cedar title lost species", cedar.name);
+    const talk =
+      speciesStockHonestyTalk(cedarPrompt, '¾" plywood') ??
+      speciesSubstituteNote(cedarPrompt, '¾" plywood');
+    if (!talk || !/ply|plywood/i.test(talk) || !/cedar/i.test(talk)) {
+      failVoice2("cedar stock honesty missing", talk);
+    }
+    if (!/lining|finish|optional|substitute|structural/i.test(talk)) {
+      failVoice2("cedar stock honesty not plain-speak enough", talk);
+    }
+    const cedarPlan = buildPlan(cedar);
+    const plyBom = cedarPlan.bom.filter((b) => /ply|plywood/i.test(b.name));
+    const bomBlob = plyBom.map((b) => b.notes ?? "").join(" ");
+    const notesBlob = (cedar.notes ?? []).join(" ");
+    if (!/cedar/i.test(`${bomBlob} ${notesBlob} ${talk}`)) {
+      failVoice2("cedar honesty not on notes/BOM path", {
+        bomBlob: bomBlob.slice(0, 240),
+        notesBlob: notesBlob.slice(0, 240),
+      });
+    }
+    const piano = cedarPlan.bom.find((b) => /piano hinge/i.test(b.name));
+    const pianoBest = piano?.offers?.find((o) => o.best) ?? piano?.offers?.[0];
+    if (pianoBest && /soft-?close|concealed/i.test(pianoBest.title) && !/piano|continuous/i.test(pianoBest.title)) {
+      failVoice2("cedar piano Best class lost", pianoBest.title);
+    }
+  }
+
+  {
+    const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+    if (
+      Math.abs(linen.overall.width - 31.5) > 0.2 ||
+      Math.abs(linen.overall.height - 78) > 0.2 ||
+      Math.abs(linen.overall.depth - 16) > 0.2
+    ) {
+      failVoice2("protect linen 31.5×78×16", linen.overall);
+    }
+    const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+    if (Math.abs(desk.overall.height - 29) > 0.2) failVoice2("protect desk H29", desk.overall);
+    const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+    const seat = lounge.panels.find((pn) => /^Seat$/i.test(pn.name));
+    if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+      failVoice2("protect lounge Seat 30×24", seat?.size);
+    }
+    const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+    if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+      failVoice2("protect catapult≠trough", cat.name);
+    }
+  }
+}
 

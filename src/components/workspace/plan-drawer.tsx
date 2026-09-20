@@ -13,6 +13,7 @@ import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
+import { shopWordsChipTalk, fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -112,7 +113,7 @@ function PlanBody({
             materialName: itemName,
             pieceCount: project.instances.length || project.panels.length || undefined,
             joints: project.buildStats?.joints,
-            envelope: `${project.overall.width.toFixed(0)}×${project.overall.height.toFixed(0)}×${project.overall.depth.toFixed(0)}"`,
+            envelope: fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, { shape: project.fitted?.unit?.shape, prompt: project.prompt, name: project.name, legs: project.fitted?.unit?.legs }),
           },
         });
       }
@@ -385,10 +386,7 @@ function PlanBody({
             {housePath && (
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
                 <p className="font-medium text-fg">Shop words used in this plan</p>
-                <p className="mt-1">
-                  <span className="text-fg">Main box</span> = the carcase · <span className="text-fg">Kick strip</span> = recessed toekick at the floor so your toes clear ·{" "}
-                  <span className="text-fg">Dry-fit</span> = assemble without glue first · <span className="text-fg">Kerf</span> = width the saw blade removes
-                </p>
+                <p className="mt-1">{shopWordsChipTalk(`${project.prompt ?? ""} ${project.name}`)}</p>
               </div>
             )}
             <ol className="mt-3 space-y-3">

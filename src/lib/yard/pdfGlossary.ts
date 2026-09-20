@@ -19,3 +19,6 @@ export const SHOP_GLOSSARY: { term: string; def: string }[] = [
   { term: "Kerf", def: "The width of material the saw blade removes (about 1/8\" on a circular saw). Already included in the nest." },
   { term: "32mm pin holes", def: "Standard shelf-pin spacing: holes 32mm (about 1-1/4\") apart, 5mm diameter, set back about 1-1/4\" from the front edge." },
 ];
+
+/** Cabinetry jargon terms — gate via glossaryForPlan / wantsCabinetryShopWords. */
+export const CABINETRY_GLOSSARY_TERMS = ["Main box (carcase)", "Kick strip (toekick)"] as const;

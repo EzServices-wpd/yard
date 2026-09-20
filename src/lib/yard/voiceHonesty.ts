@@ -60,7 +60,7 @@ export function speciesSubstituteNote(prompt: string, stockLabel: string): strin
   const sp = namedLumberFromPrompt(prompt);
   if (!sp) return null;
   if (!/ply|plywood|sheet/i.test(stockLabel)) return null;
-  return `Prompt names ${sp.display} — densify uses ${stockLabel} as the structural substitute (not a silent drop). Buy ${sp.display} boards or lining if you want the named-species story.`;
+  return `Prompt names ${sp.display} — densify uses ${stockLabel} as the structural substitute (not a silent drop). Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
 }
 
 /** Prefer plain stranger words in step/PDF body; keep glossary for shop terms. */
@@ -437,3 +437,126 @@ export function shelfInstallHeightsClause(
   if (marks.length === 1) return `Marked height: ${marks[0]}.`;
   return `Marked heights: ${marks.join("; ")}.`;
 }
+
+// ── Voice/PDF impress pack: glossary gate · round envelope · species stock ─
+
+/**
+ * Cabinetry / fitted-alcove families may keep carcase·toekick shop words.
+ * Tables, lounge, chests, nightstands, desks, crafts must NOT get that jargon
+ * on the stranger Voice/PDF/glossary path.
+ */
+export function wantsCabinetryShopWords(hay: string): boolean {
+  const h = hay.toLowerCase();
+  if (!h.trim()) return false;
+  // Explicit non-cabinetry — never leak carcase/toekick.
+  if (
+    /\b(table|desk|lounge|chair|bench|stool|chest|nightstand|bedside|catapult|trough|bridge|eiffel|shelf|ledge|rack|cart|swing|bed|headboard|planter)\b/.test(
+      h,
+    ) &&
+    !/\b(vanity|linen|closet|cabinet|pantry|wardrobe|cupboard)\b/.test(h)
+  ) {
+    return false;
+  }
+  return /\b(vanity|linen|closet|cabinet|pantry|wardrobe|cupboard|kitchen\s*(base|upper|island)|built-?in|alcove|mudroom\s*cubb)/.test(
+    h,
+  );
+}
+
+/** Shop-words chip for the plan drawer — gated. */
+export function shopWordsChipTalk(hay: string): string {
+  if (wantsCabinetryShopWords(hay)) {
+    return "Main box = the carcase · Kick strip = recessed toekick at the floor so your toes clear · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
+  }
+  return "Dry-fit = assemble without glue first · Kerf = width the saw blade removes · Square = matching diagonals within about 1/16\"";
+}
+
+export type GlossaryEntry = { term: string; def: string };
+
+/** Cabinetry-only glossary terms (carcase / toekick family). */
+const CABINETRY_GLOSSARY_TERM_RE = /carcase|toekick|kick strip|main box \(carcase\)|overlay|side-mount slides|concealed hinges|32mm pin/i;
+
+/**
+ * Filter shop glossary: drop carcase/toekick (and sibling cabinetry jargon)
+ * unless the project is cabinetry / fitted alcove.
+ */
+export function glossaryForPlan(hay: string, entries: GlossaryEntry[]): GlossaryEntry[] {
+  if (wantsCabinetryShopWords(hay)) return entries;
+  return entries.filter((e) => !CABINETRY_GLOSSARY_TERM_RE.test(`${e.term} ${e.def}`));
+}
+
+/** True when overall W≈D is a round/circular table diameter echo. */
+export function isRoundUnitEnvelope(opts: {
+  width: number;
+  height: number;
+  depth: number;
+  shape?: string | null;
+  prompt?: string | null;
+  name?: string | null;
+}): boolean {
+  const hay = `${opts.prompt ?? ""} ${opts.name ?? ""}`.toLowerCase();
+  const shape = (opts.shape ?? "").toLowerCase();
+  if (shape === "round" || shape === "circle") return true;
+  if (/\b(oval)\b/.test(hay) || shape === "oval") return false;
+  if (/\b(round|circular|diameter|\bdia\b)\b/.test(hay) && /table|top/.test(hay)) return true;
+  // Geometry echo: W≈D and prompt/name says round, or table with equal plan axes from diameter densify.
+  if (
+    Number.isFinite(opts.width) &&
+    Number.isFinite(opts.depth) &&
+    Math.abs(opts.width - opts.depth) < 0.51 &&
+    opts.width >= 12 &&
+    (/\b(round|circular|diameter|\bdia\b)\b/.test(hay) || /round\s*table/i.test(opts.name ?? ""))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Honest unit envelope for HUD / PDF / plan chip.
+ * Round tables: "40\" dia × 30\" H" — never "40 × 30 × 40" diameter echo.
+ */
+export function fmtUnitEnvelopeInches(
+  width: number,
+  height: number,
+  depth: number,
+  opts?: {
+    shape?: string | null;
+    prompt?: string | null;
+    name?: string | null;
+    legs?: number | null;
+  },
+): string {
+  const round = isRoundUnitEnvelope({
+    width,
+    height,
+    depth,
+    shape: opts?.shape,
+    prompt: opts?.prompt,
+    name: opts?.name,
+  });
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return "—";
+    const r = Math.round(n * 10) / 10;
+    return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  };
+  if (round) {
+    const dia = Math.abs(width - depth) < 0.51 ? width : Math.max(width, depth);
+    let s = `${fmt(dia)}" dia × ${fmt(height)}" H`;
+    if (opts?.legs && opts.legs > 0) s += ` · ${opts.legs} legs`;
+    return s;
+  }
+  return `${fmt(width)}" × ${fmt(height)}" × ${fmt(depth)}"`;
+}
+
+/**
+ * Stranger-facing species stock honesty — title may say Cedar while stock is ply.
+ * Prefer this on Buy plywood notes / PDF so the substitute is not silent.
+ */
+export function speciesStockHonestyTalk(prompt: string, stockLabel: string): string | null {
+  const note = speciesSubstituteNote(prompt, stockLabel);
+  if (!note) return null;
+  const sp = speciesDisplayFromPrompt(prompt);
+  if (!sp) return note;
+  return `Stock is ${stockLabel} (structural). ${sp} in the title means optional ${sp.toLowerCase()} lining or finish — not silent solid-${sp.toLowerCase()} boards.`;
+}
+
