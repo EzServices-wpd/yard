@@ -36,4 +36,7 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Walk linen expect is **Linen** (product name), not Closet.
 - Bot first command: `scripts/walk-canary.ts`. Queue in `docs/BOT.md`. NEXT = cut A id, then D photo. Park lounge/desk.
 
+**Bot field manual (20 Sep 2026):**
+- `docs/BOT-BRIEF.md` is the long brief for a new Grok session. PDF lives with Ezra (submit at session start). NEXT unchanged: Cut A, then D.
+
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
