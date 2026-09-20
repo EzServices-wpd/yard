@@ -13,7 +13,7 @@
  * stock. Unnamed stock stays the wire-frame placeholder.
  */
 
-import { detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge } from "./family";
+import { detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isWallMediaLedge } from "./family";
 import type { StructureKind } from "./types";
 
 export type WeekendFamily = "lattice" | "arch" | "truss" | "figure" | "frame";
@@ -69,9 +69,9 @@ export function detectWeekendMech(prompt: string): WeekendMech | null {
   if (isHumanClimb(hay)) return "climb";
   if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
   if (POT_HOLD_NOUN.test(hay)) return "pot-hold";
-  // House media ledge / shelf / stereo / AV tower / bedside book shelf / platform bed stay fitted.
-  // ("footprint" must not count as print; wall media ledge is hung-open plywood.)
-  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return null;
+  // House media ledge / tip-rail picture ledge / shelf / stereo / AV / bedside / platform stay fitted.
+  // ("footprint" must not count as print; wall media + tip-rail are hung-open plywood.)
+  if (isWallMediaLedge(hay) || isPictureLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return null;
   if (MEDIA_HOLD_NOUN.test(hay)) return "media-hold";
   return null;
 }
@@ -126,8 +126,8 @@ export function isMediaDeviceStand(prompt: string): boolean {
  */
 export function wantsMediaTipHold(prompt: string): boolean {
   const hay = looksHay(prompt);
-  // House wall media ledge / media shelf / AV / stereo / bedside shelf — never tip-hold picture ledge.
-  if (isWallMediaLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return false;
+  // House wall media ledge / tip-rail picture ledge / AV / bedside — never freestanding tip-hold steal.
+  if (isWallMediaLedge(hay) || isPictureLedge(hay) || isHouseMediaCarcase(hay) || isAvTower(hay) || isBedsideShelf(hay) || isPlatformBed(hay)) return false;
   // Flat picture frames stay rabbet/backing — tip/lean/easel/print-hold claim tip-hold anatomy.
   if (
     /(?:picture|photo|poster|art)\s*frame/.test(hay) &&
@@ -138,8 +138,7 @@ export function wantsMediaTipHold(prompt: string): boolean {
   }
   if (isMediaDeviceStand(prompt)) return true;
   if (/lean\s*frame|photo\s+lean|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|open\s+book|open\s+laptop|laptop\s*lean|(?:book)\s*stand|music\s*sheet|sheet\s*music|tablet\s*lean/.test(hay)) return true;
-  // Picture/photo/art ledge tip-hold only — bare house "ledge" + hold is not craft.
-  if (/picture\s*ledge|(?:photo|art)\s*ledge/.test(hay) && /(?:\bprint\b|photo|tip|lean|hold|upright)/.test(hay)) return true;
+  // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — not craft tip-hold.
   if (/holds?\s+a\s+real\s+(?:\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)/.test(hay) && /lean|tip|frame|stand|hold|ledge/.test(hay)) {
     return true;
   }
@@ -593,7 +592,7 @@ function isNotWeekend(lower: string) {
   // Pot-hold / hamper stand beats house laundry-noun steals (weekend craft, not Storage).
   if (POT_HOLD_NOUN.test(lower)) return false;
   if (detectHouseFamily(lower)) return true;
-  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isAvTower(lower) || isBedsideShelf(lower) || isPlatformBed(lower)) return true;
+  if (isWallMediaLedge(lower) || isPictureLedge(lower) || isHouseMediaCarcase(lower) || isAvTower(lower) || isBedsideShelf(lower) || isPlatformBed(lower)) return true;
   if (isWindowPrompt(lower)) return true;
   // Step-up / climb stools are weekend climb — not house chairs.
   if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) {

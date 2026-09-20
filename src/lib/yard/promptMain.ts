@@ -6,7 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -98,6 +98,7 @@ export function generateFromPrompt(
   const houseMedia =
     !!detectHouseFamily(prompt) ||
     isWallMediaLedge(lower) ||
+    isPictureLedge(lower) ||
     isHouseMediaCarcase(lower) ||
     isAvTower(lower) ||
     isPlatformBed(lower) ||

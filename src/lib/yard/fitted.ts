@@ -17,7 +17,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
@@ -357,6 +357,7 @@ export function looksLikeFitted(prompt: string) {
     !detectHouseFamily(prompt) &&
     !isHouseMediaCarcase(lower) &&
     !isWallMediaLedge(lower) &&
+    !isPictureLedge(lower) &&
     !isBedsideShelf(lower) &&
     !isPlatformBed(lower)
   ) {
@@ -390,7 +391,7 @@ export function looksLikeFitted(prompt: string) {
   if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|prep\s*table|butcher|cart|shelving|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment|ironing|laundry|sorter|drying|utility|folding\s*table/.test(lower)) {
     return true;
   }
-  if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isAvTower(lower) || isStereoCabinet(lower) || isPlatformBed(lower) || isBedsideShelf(lower)) return true;
+  if (isHouseMediaCarcase(lower) || isWallMediaLedge(lower) || isPictureLedge(lower) || isAvTower(lower) || isStereoCabinet(lower) || isPlatformBed(lower) || isBedsideShelf(lower)) return true;
   return nums >= 2;
 }
 
@@ -434,7 +435,7 @@ function triple(text: string): { w?: number; h?: number; d?: number } {
 
 export function parseBrief(prompt: string): FittedSpec | null {
   const craftLower = prompt.toLowerCase();
-  if (/(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(craftLower)) return null;
+  // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — do not null brief.
   if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
   if (!looksLikeFitted(prompt)) return null;
   const pocket = parsePocket(prompt);
@@ -1589,6 +1590,73 @@ function buildWallMediaLedge(spec: FittedSpec, prompt: string, affordances: Hous
   };
 }
 
+/** Tip-rail hung-open — picture/photo/art ledge or picture/tip rail.
+ * Typed W×H×D; Wall cleat + shelf + Front lip + Picture backstop spanning typed H.
+ * Same envelope honesty class as media ledge / floating lip / bedside (rails dropped by envelopePanels). */
+function buildPictureLedge(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const H = Math.max(u.height, P + 1.5);
+  const D = u.depth;
+  const x0 = -W / 2;
+  const cleatH = Math.min(2.5, Math.max(1.5, H - P));
+  const lipH = Math.min(1.5, Math.max(0.75, Math.min(H - cleatH - P, 1.25)));
+  const lower = prompt.toLowerCase();
+  const stem = pictureLedgeTitleStem(lower);
+  const panels: Panel[] = [];
+  panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
+  panels.push(panel("shelf", stem, x0, cleatH, P, W, P, Math.max(D - P, 2)));
+  // Low front lip cradles tipped frames / prints — never a flat decal, never Picture frame steal.
+  panels.push(panel("rail", "Front lip", x0, cleatH + P, D - P, W, lipH, P));
+  // envelopePanels() drops type=rail — Picture backstop as type=back from y=0 with height H
+  // so AABB top face == typed overall H (media / floating lip / bedside class).
+  panels.push(panel("back", "Picture backstop", x0, 0, P, W, H, P));
+  const name = `${stem} ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Tip-rail hung-open on a wall cleat — Front lip + Picture backstop span typed ${H}" so frames tip upright against the back; never a weekend Picture frame, never a Media ledge, never a flat decal.`,
+      "Mount the cleat to studs; the ledge screws down onto the cleat. Guidance only — confirm the wall type.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "hung-open",
+      affordances: affordances.includes("cleats") ? affordances : [...affordances, "cleats"],
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: 1,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+        mirror: false,
+        bays: undefined,
+      },
+    },
+    assumptions: {
+      load: "light",
+      units: "inches",
+      installMode: "wall",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 function buildBedsideShelf(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const W = u.width;
@@ -1666,6 +1734,9 @@ function buildHungOpen(spec: FittedSpec, prompt: string, affordances: HouseAffor
   const lower = prompt.toLowerCase();
   if (isBedsideShelf(lower)) {
     return buildBedsideShelf(spec, prompt, affordances);
+  }
+  if (isPictureLedge(lower)) {
+    return buildPictureLedge(spec, prompt, affordances);
   }
   if (isWallMediaLedge(lower) || (/\bmedia\b/.test(lower) && /\bledge\b/.test(lower))) {
     return buildWallMediaLedge(spec, prompt, affordances);

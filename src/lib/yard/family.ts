@@ -64,7 +64,7 @@ function isNotHouse(lower: string) {
   if (
     /popsicle|craft stick|toothpick|paper towel|lego|mailing tube|cedar/.test(lower) &&
     (!HOUSE_NOUN.test(lower) ||
-      /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower))
+      /soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower))
   ) {
     return true;
   }
@@ -135,6 +135,25 @@ export function isWallMediaLedge(lower: string) {
     return true;
   }
   return false;
+}
+
+/** Tip-rail hung-open envelope — picture/photo/art ledge or picture/tip rail.
+ * Lip + backstop spanning typed H (same honesty class as media ledge / floating lip).
+ * Not media ledge, not bedside, not freestanding weekend tip-stand / Picture frame. */
+export function isPictureLedge(lower: string) {
+  if (isWallMediaLedge(lower) || isBedsideShelf(lower)) return false;
+  if (/(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower)) return true;
+  if (/\bpicture\s*rail\b|\btip[- ]?rail\b/.test(lower)) return true;
+  return false;
+}
+
+/** Title stem for tip-rail hung-open — Picture rail when named, else Picture ledge. */
+export function pictureLedgeTitleStem(lower: string): string {
+  if (/\bpicture\s*rail\b/.test(lower)) return "Picture rail";
+  if (/\btip[- ]?rail\b/.test(lower)) return "Tip rail";
+  if (/\bphoto\s*ledge\b/.test(lower)) return "Photo ledge";
+  if (/\bart\s*ledge\b/.test(lower)) return "Art ledge";
+  return "Picture ledge";
 }
 
 /** Media shelf (incl. soundbar hold) — positive shelf/ledge identity, not bare Media console. */
@@ -996,6 +1015,7 @@ export function identityTitleStem(lower: string): string | null {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
   }
   if (wantsShoes(lower)) return "Shoe rack";
+  if (isPictureLedge(lower)) return pictureLedgeTitleStem(lower);
   const media = mediaIdentityLabel(lower);
   if (media) return media;
   // Linen closet keeps Linen stem — never bare Closet (Entry bench pattern).
@@ -1081,13 +1101,18 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   const lower = prompt.toLowerCase();
   if (isNotHouse(lower)) return null;
   // Weekend craft tip-hold / soft-launch — never a house ledge or portal noun.
-  // House media ledge (wall media + TV stand footprint clear below) stays house:
+  // House media ledge + tip-rail picture/photo/art ledge / picture rail stay hung-open:
   // bare "print" must not match inside "footprint".
-  if (isWallMediaLedge(lower) || isHouseMediaCarcase(lower) || isBedsideShelf(lower) || isPlatformBed(lower)) {
+  if (
+    isWallMediaLedge(lower) ||
+    isPictureLedge(lower) ||
+    isHouseMediaCarcase(lower) ||
+    isBedsideShelf(lower) ||
+    isPlatformBed(lower)
+  ) {
     // keep house path
   } else if (
-    /(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b/.test(lower) ||
-    (/\bledge\b/.test(lower) && /(?:\bprint\b|tip|lean|popsicle|craft|weekend)/.test(lower)) ||
+    (/\bledge\b/.test(lower) && /(?:\bprint\b|tip|lean|popsicle|craft|weekend)/.test(lower) && !isPictureLedge(lower)) ||
     (/soft-?launch|leaves?\s+free|(?:paper\s*)?plane.{0,40}\bramp\b/.test(lower) && /weekend|craft|popsicle|cedar|marble/.test(lower))
   ) {
     return null;
@@ -1124,6 +1149,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isToyChest(lower) &&
     !isHingedLidChest(lower) &&
     !isBookBinBench(lower) &&
+    !isPictureLedge(lower) &&
     !/ironing/.test(lower)
   ) {
     return null;
@@ -1159,6 +1185,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isPortalHookRail(lower) ||
       isPortalSpanShelf(lower) ||
       isBedsideShelf(lower) ||
+      isPictureLedge(lower) ||
       isPegboard(lower) ||
       isToolRail(lower) ||
       isLeashRail(lower) ||
@@ -1212,7 +1239,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   else if (isPlatformBed(lower)) family = "bunk";
   else if (isDaybed(lower)) family = "seat";
   else if (/headboard/.test(lower) || isPegboard(lower)) family = "slab";
-  else if (isCoatHookBoard(lower) || isToolRail(lower) || isLeashRail(lower) || isPegRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower)) family = "hung-open";
+  else if (isCoatHookBoard(lower) || isToolRail(lower) || isLeashRail(lower) || isPegRail(lower) || isKeyMailShelf(lower) || isIroningWallMount(lower) || isPictureLedge(lower)) family = "hung-open";
   else if (isCoatCubbyWall(lower) || isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) family = "floor-carcase";
   else if (isDryingRack(lower) || isLaundrySorter(lower) || isUtilityShelf(lower) || isLumberRack(lower)) {
     family = "floor-carcase";
@@ -1275,6 +1302,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (/floating/.test(lower) && /shel/.test(lower)) ||
     (/wall/.test(lower) && /shel(?:f|ves)\b/.test(lower) && !/cabinet|jar|spice|wine|bottle/.test(lower)) ||
     isWallMediaLedge(lower) ||
+    isPictureLedge(lower) ||
     (/\bledge\b/.test(lower) && /\bmedia\b/.test(lower)) ||
     isPortalSpanShelf(lower) ||
     isBedsideShelf(lower)

@@ -19,7 +19,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -1472,6 +1472,103 @@ if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
   }
 }
 
+
+
+// Soft leftover: tip-rail picture/photo/art ledge + picture/tip rail — hung-open envelope H
+// must match typed overall H (Picture backstop top face). Never weekend Picture frame steal,
+// never freestanding tip-stand axis steal, never Media ledge title steal.
+{
+  const picPrompt =
+    'house: picture ledge 36″ wide × 4″ deep × 6″ tall';
+  if (!isPictureLedge(picPrompt.toLowerCase())) failHonesty("isPictureLedge miss", picPrompt);
+  if (pictureLedgeTitleStem(picPrompt.toLowerCase()) !== "Picture ledge") {
+    failHonesty("pictureLedgeTitleStem", pictureLedgeTitleStem(picPrompt.toLowerCase()));
+  }
+  const picHit = detectHouseFamily(picPrompt);
+  if (!picHit || picHit.family !== "hung-open") failHonesty("picture ledge family", picHit);
+  const pic = generateFromPrompt(picPrompt);
+  if (!/^Picture ledge\b/i.test(pic.name) || /Picture frame/i.test(pic.name) || /Media ledge/i.test(pic.name)) {
+    failHonesty("picture ledge title", pic.name);
+  }
+  if (!nearInch(pic.overall.width, 36) || !nearInch(pic.overall.height, 6) || !nearInch(pic.overall.depth, 4)) {
+    failHonesty("picture ledge overall", pic.overall);
+  }
+  if (pic.assumptions.installMode !== "wall") failHonesty("picture ledge mount", pic.assumptions);
+  if (!pic.panels.some((p) => /Front lip/i.test(p.name) && p.type === "rail")) {
+    failHonesty("picture ledge missing Front lip", pic.panels.map((p) => `${p.type}:${p.name}`));
+  }
+  {
+    const back = pic.panels.find((p) => /Picture backstop/i.test(p.name));
+    if (!back || back.type !== "back") {
+      failHonesty("picture ledge Picture backstop missing/type", pic.panels.map((p) => `${p.type}:${p.name}`));
+    } else {
+      const top = back.position.y + back.size.height;
+      if (!nearInch(top, 6) || !nearInch(back.size.height, 6) || !nearInch(back.position.y, 0)) {
+        failHonesty("picture ledge Picture backstop top face ≠ typed H6", {
+          y: back.position.y,
+          h: back.size.height,
+          top,
+        });
+      }
+    }
+    const picPlan = buildPlan(pic);
+    if (!inspectHonesty(pic, picPlan).ok) failHonesty("picture ledge inspect", inspectHonesty(pic, picPlan).issues);
+    const envIssue = inspectHonesty(pic, picPlan).issues.find((i) => /envelope/i.test(i.message));
+    if (envIssue) failHonesty("picture ledge envelope H still flakes vs typed 6", envIssue);
+  }
+}
+
+{
+  const railPrompt =
+    'house: picture rail 48″ wide × 3″ deep × 6″ tall';
+  if (!isPictureLedge(railPrompt.toLowerCase())) failHonesty("isPictureLedge rail miss", railPrompt);
+  if (pictureLedgeTitleStem(railPrompt.toLowerCase()) !== "Picture rail") {
+    failHonesty("pictureLedgeTitleStem rail", pictureLedgeTitleStem(railPrompt.toLowerCase()));
+  }
+  const rail = generateFromPrompt(railPrompt);
+  if (!/^Picture rail\b/i.test(rail.name) || /Picture frame|Media ledge|House\b/i.test(rail.name)) {
+    failHonesty("picture rail title", rail.name);
+  }
+  if (!nearInch(rail.overall.width, 48) || !nearInch(rail.overall.height, 6) || !nearInch(rail.overall.depth, 3)) {
+    failHonesty("picture rail overall", rail.overall);
+  }
+  {
+    const back = rail.panels.find((p) => /Picture backstop/i.test(p.name));
+    if (!back || back.type !== "back") {
+      failHonesty("picture rail Picture backstop missing/type", rail.panels.map((p) => `${p.type}:${p.name}`));
+    } else {
+      const top = back.position.y + back.size.height;
+      if (!nearInch(top, 6)) {
+        failHonesty("picture rail Picture backstop top face ≠ typed H6", {
+          y: back.position.y,
+          h: back.size.height,
+          top,
+        });
+      }
+    }
+    const railPlan = buildPlan(rail);
+    const envIssue = inspectHonesty(rail, railPlan).issues.find((i) => /envelope/i.test(i.message));
+    if (envIssue) failHonesty("picture rail envelope H still flakes vs typed 6", envIssue);
+  }
+}
+
+{
+  // Photo ledge twin — same tip-rail class; must not freestanding tip-stand axis-steal typed H.
+  const photoPrompt =
+    'house: photo ledge 30″ wide × 4″ deep × 6″ tall';
+  if (!isPictureLedge(photoPrompt.toLowerCase())) failHonesty("isPictureLedge photo miss", photoPrompt);
+  const photo = generateFromPrompt(photoPrompt);
+  if (!/^Photo ledge\b/i.test(photo.name) || /Picture frame/i.test(photo.name)) {
+    failHonesty("photo ledge title", photo.name);
+  }
+  if (!nearInch(photo.overall.width, 30) || !nearInch(photo.overall.height, 6) || !nearInch(photo.overall.depth, 4)) {
+    failHonesty("photo ledge overall (tip-stand axis steal?)", photo.overall);
+  }
+  const back = photo.panels.find((p) => /Picture backstop/i.test(p.name));
+  if (!back || back.type !== "back" || !nearInch(back.position.y + back.size.height, 6)) {
+    failHonesty("photo ledge Picture backstop top face ≠ typed H6", back);
+  }
+}
 
 const bambooFramePrompt = "picture frame from bamboo skewers";
 const bambooFrame = generateFromPrompt(bambooFramePrompt);
