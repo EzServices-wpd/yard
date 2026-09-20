@@ -12,6 +12,9 @@ import {
   speciesSubstituteNote,
   densifyDrawerExplodeTalk,
   cutListHasExplodedDrawers,
+  densifyPartsCountTalk,
+  densifyPartsPlateTalk,
+  cutListWoodPieceCount,
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
@@ -4087,6 +4090,116 @@ console.log("SOFT-TRUST OK", {
   }
 }
 
+
+
+
+
+// Soft leftover: plate/BOM Confirm "N parts on this list" must match honest cut wood
+// (chip / totals.pieces), not raw panels.length (bounding drawer envelopes).
+{
+  const failParts = (msg: string, detail?: unknown) => failHonesty(`partsCountPlate ${msg}`, detail);
+  const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  const nsChip = woodCutPieceCount(ns);
+  const nsCut = nsPlan.totals.pieces;
+  if (nsChip !== nsCut || nsCut !== 11) {
+    failParts("nightstand chip/cut expect 11", { chip: nsChip, cut: nsCut, raw: ns.panels.length });
+  }
+  const nsConfirm = nsPlan.instructions.find((s) => /confirm/i.test(s.title));
+  if (!nsConfirm) failParts("nightstand missing Confirm", nsPlan.instructions.map((s) => s.title));
+  else {
+    if (!/\b11 parts on this list\b/i.test(nsConfirm.description)) {
+      failParts("nightstand Confirm not honest 11 parts", nsConfirm.description.slice(0, 320));
+    }
+    if (/\b8 parts on this list\b/i.test(nsConfirm.description)) {
+      failParts("nightstand Confirm still raw panels.length 8", nsConfirm.description.slice(0, 320));
+    }
+    if (/open D shelf/i.test(nsConfirm.description)) {
+      failParts("nightstand Confirm plate-bleed open D shelf", nsConfirm.description.slice(0, 320));
+    }
+  }
+  const nsBuild = nsPlan.instructions.find((s) => /^Build\b/i.test(s.title) && /drawer/i.test(s.title));
+  if (!nsBuild) failParts("nightstand missing Build drawer", nsPlan.instructions.map((s) => s.title));
+  else {
+    if (/Drawer C bottom/i.test(nsBuild.description)) {
+      failParts("nightstand Build plate-bleed Drawer C bottom", nsBuild.description.slice(0, 320));
+    }
+    if (/\bdrawer\s+box(?:es)?\b/i.test(nsBuild.title)) {
+      failParts("protect Build explode talk regress", nsBuild.title);
+    }
+  }
+  // Helper unit: densifyPartsCountTalk rewrites raw N → cut qty sum.
+  const rewritten = densifyPartsCountTalk("Mark the floor. 8 parts on this list.", nsPlan.cutList);
+  if (!/\b11 parts on this list\b/.test(rewritten) || /\b8 parts on this list\b/.test(rewritten)) {
+    failParts("densifyPartsCountTalk missed rewrite", rewritten);
+  }
+  if (cutListWoodPieceCount(nsPlan.cutList) !== 11) {
+    failParts("cutListWoodPieceCount ≠ 11", cutListWoodPieceCount(nsPlan.cutList));
+  }
+  // Plate bleed unit: Drawer bottom keeps own letter; rhetorical open shelf — not plated.
+  const bleed = densifyPartsPlateTalk(
+    "one Drawer bottom — 15 × 14. One drawer over an open shelf — not a mini dresser. Shelf — 18.50 × 15.",
+    nsPlan.cutList,
+  );
+  if (/Drawer C bottom/i.test(bleed)) failParts("densifyPartsPlateTalk Drawer C bleed", bleed);
+  if (/open [A-Z] shelf/i.test(bleed)) failParts("densifyPartsPlateTalk open X shelf bleed", bleed);
+  if (!/\b[A-Z] Shelf — 18\.50/.test(bleed)) failParts("densifyPartsPlateTalk missed real Shelf dim", bleed);
+  // Twin: dresser 3-drawer — plate count matches cut wood.
+  const dr = generateFromPrompt("house: dresser 36″ wide × 18″ deep × 36″ tall with three drawers");
+  const drPlan = buildPlan(dr);
+  const drConfirm = drPlan.instructions.find((s) => /confirm/i.test(s.title));
+  const drCut = drPlan.totals.pieces;
+  if (woodCutPieceCount(dr) !== drCut) {
+    failParts("dresser chip≠cut", { chip: woodCutPieceCount(dr), cut: drCut });
+  }
+  if (!drConfirm) failParts("dresser missing Confirm");
+  else {
+    const m = drConfirm.description.match(/\b(\d+) parts on this list\b/i);
+    if (!m || Number(m[1]) !== drCut) {
+      failParts("dresser Confirm parts ≠ cut", { spoken: m?.[1], cut: drCut, desc: drConfirm.description.slice(-120) });
+    }
+    if (Number(m![1]) === dr.panels.length && dr.panels.length !== drCut) {
+      failParts("dresser Confirm still raw panels.length", { raw: dr.panels.length, cut: drCut });
+    }
+  }
+  // Protect: desk title 60×29×30; round Dia×H; lounge; linen; catapult; Build explode held.
+  const desk = generateFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee');
+  if (Math.abs(desk.overall.width - 60) > 0.2) failParts("protect desk W60", desk.overall);
+  if (Math.abs(desk.overall.height - 29) > 0.2) failParts("protect desk H29", desk.overall);
+  if (Math.abs(desk.overall.depth - 30) > 0.2) failParts("protect desk D30", desk.overall);
+  if (!/60/.test(desk.name) || /30\s*[×x]\s*29\s*[×x]\s*30/.test(desk.name)) {
+    failParts("protect desk title 60×29×30 (not 30×29×30)", desk.name);
+  }
+  const round = generateFromPrompt('house: 40" round 3-leg table 30" tall');
+  const roundChip = measureChipAxisLabels({
+    width: round.overall.width,
+    height: round.overall.height,
+    depth: round.overall.depth,
+    shape: round.fitted?.unit?.shape,
+    prompt: round.prompt,
+    name: round.name,
+  });
+  if (roundChip.mode !== "round" || roundChip.labels.join("×") !== "Dia×H") {
+    failParts("protect round Dia×H", roundChip);
+  }
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+    failParts("protect lounge Seat 30×24", seat?.size);
+  }
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (
+    Math.abs(linen.overall.width - 31.5) > 0.2 ||
+    Math.abs(linen.overall.height - 78) > 0.2 ||
+    Math.abs(linen.overall.depth - 16) > 0.2
+  ) {
+    failParts("protect linen freeze", linen.overall);
+  }
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failParts("protect catapult≠trough", cat.name);
+  }
+}
 
 
 console.log("STRANGER PLAN OK", {

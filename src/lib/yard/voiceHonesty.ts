@@ -157,8 +157,10 @@ export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string 
   let out = text;
 
   // Dimension lines: "Back — 34.50" / "Left side — 20 × 18" / "Top (cut round…) — 40"
+  // Require a digit after the em-dash so rhetorical "open shelf — not a mini…" is not plated.
+  // Prefer Drawer bottom/front/back/side before bare Bottom/Front/Back (avoids "Drawer C bottom").
   out = out.replace(
-    /\b((?:Left|Right)\s+(?:side|upright|door)|Uprights?|Sides?|Lid|Back|Front|Bottom|Top(?:\s*\([^)]*\))?|Counter|Doors?|Legs?|Aprons?|Shelf|Shelves)(\s+\d+)?(\s*—)/gi,
+    /(?<![A-Z]\s)\b((?:Left|Right)\s+(?:side|upright|door)|Drawer\s+(?:side|front|back|bottom)|Uprights?|Sides?|Lid|(?<!\bDrawer\s)Back|(?<!\bDrawer\s)Front|(?<!\bDrawer\s)Bottom|Top(?:\s*\([^)]*\))?|Counter|Doors?|Legs?|Aprons?|Shelf|Shelves)(\s+\d+)?(\s*—\s*(?=\d|\())/gi,
     (full, rawName: string, qty: string | undefined, dash: string) => {
       const plate = findPlate(entries, rawName);
       if (!plate) return full;
@@ -430,15 +432,42 @@ export function densifyDrawerExplodeTalk(
   return out;
 }
 
+/** Honest wood piece count from cut-list rows (qty sum) — same class as chip/totals.pieces. */
+export function cutListWoodPieceCount(cutList: Array<{ quantity: number }>): number {
+  return cutList.reduce((s, c) => s + Math.max(0, c.quantity || 0), 0);
+}
+
+/**
+ * Soft leftover: Confirm/plate intro still said "N parts on this list" from panels.length
+ * (bounding drawer envelopes) while chip + cut list use exploded wood pieces.
+ * Rewrite to cut-list qty sum (same honest count as plan.totals.pieces / woodCutPieceCount).
+ */
+export function densifyPartsCountTalk(
+  text: string,
+  cutList: Array<{ quantity: number }>,
+): string {
+  if (!text || !cutList.length) return text;
+  const n = cutListWoodPieceCount(cutList);
+  if (n <= 0) return text;
+  const phrase = n === 1 ? "1 part on this list" : `${n} parts on this list`;
+  return text.replace(/\b\d+\s+parts?\s+on\s+this\s+list\b/gi, phrase);
+}
+
 /**
  * Full kit-craft densify for packPlan: plain shop words already applied;
- * then parts-plate refs + one-join split + drawer-explode Voice honesty.
+ * then parts-plate refs + one-join split + honest parts-count + drawer-explode Voice honesty.
  */
 export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
   const plated = stampPartsPlate(cutList);
   const joined = densifyOneJoinInstructions(instructions, plated);
-  if (!cutListHasExplodedDrawers(plated)) return joined;
-  return joined.map((s) => ({
+  const counted = joined.map((s) => ({
+    ...s,
+    title: densifyPartsCountTalk(s.title, plated),
+    description: densifyPartsCountTalk(s.description, plated),
+    tips: s.tips ? densifyPartsCountTalk(s.tips, plated) : s.tips,
+  }));
+  if (!cutListHasExplodedDrawers(plated)) return counted;
+  return counted.map((s) => ({
     ...s,
     title: densifyDrawerExplodeTalk(s.title, plated),
     description: densifyDrawerExplodeTalk(s.description, plated),
