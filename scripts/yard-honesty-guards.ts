@@ -5281,6 +5281,24 @@ console.log("STRANGER PLAN OK", {
   if (!vanityPlan.bom.some((b) => /bar pulls|door pulls|cabinet pulls/i.test(b.name))) {
     failHonesty("two-door vanity Buy missing door/bar pulls (bench shows BarPull)", vanityPlan.bom.map((b) => b.name));
   }
+  const barLine = vanityPlan.bom.find((b) => /bar pulls|door pulls|cabinet pulls/i.test(b.name));
+  if (!barLine || barLine.catalogId !== "cabinet-bar-pulls") {
+    failHonesty("two-door vanity bar pulls catalogId", barLine?.catalogId || "missing");
+  }
+  const barBest = (barLine?.offers ?? []).find((o) => o.best) ?? (barLine?.offers ?? [])[0];
+  if (!barBest || barBest.retailer !== "amazon") {
+    failHonesty("two-door vanity bar pulls Best must be Amazon", barBest);
+  }
+  if (!(barBest.packPrice > 0) || !(barBest.lineTotal > 0)) {
+    failHonesty("two-door vanity bar pulls Best Amazon blank/zero price", {
+      packPrice: barBest.packPrice,
+      lineTotal: barBest.lineTotal,
+      title: barBest.title,
+    });
+  }
+  if (/cup pulls/i.test(barBest.title || "")) {
+    failHonesty("two-door vanity bar pulls Best stole cup-pulls listing", barBest.title);
+  }
   const hang = vanityPlan.instructions.find((s) => /Hang .*door/i.test(s.title));
   if (!hang || !/bar pull/i.test(hang.description) || !/open and close/i.test(hang.description)) {
     failHonesty("two-door vanity hang step must install bar pulls + open/close test", {
@@ -5297,6 +5315,17 @@ console.log("STRANGER PLAN OK", {
   }
   if (nightPlan.bom.some((b) => /bar pulls|door pulls/i.test(b.name))) {
     failHonesty("nightstand drawer must not buy door/bar pulls", nightPlan.bom.map((b) => b.name));
+  }
+  const cupLine = nightPlan.bom.find((b) => /cup pulls/i.test(b.name));
+  if (!cupLine || cupLine.catalogId !== "cup-pulls") {
+    failHonesty("nightstand cup pulls catalogId", cupLine?.catalogId || "missing");
+  }
+  const cupBest = (cupLine?.offers ?? []).find((o) => o.best) ?? (cupLine?.offers ?? [])[0];
+  if (!cupBest || !(cupBest.packPrice > 0) || !(cupBest.lineTotal > 0)) {
+    failHonesty("nightstand cup pulls Best Amazon blank/zero price", cupBest);
+  }
+  if (/bar pulls/i.test(cupBest.title || "")) {
+    failHonesty("nightstand cup pulls Best stole bar-pulls listing", cupBest.title);
   }
 
   // Cedar hinged lid — piano hinge path, not cabinet bar pulls.

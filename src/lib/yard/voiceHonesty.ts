@@ -11,6 +11,9 @@ export function hardwareCatalogIdFromHay(hay: string): string | null {
   const h = hay.toLowerCase();
   if (/piano|continuous\s*hinge/.test(h)) return "piano-hinge";
   if (/lid\s*stay|lid\s*support/.test(h)) return "lid-stay";
+  // Pulls before hinge catch-alls — "cup hinge" ≠ "cup pulls".
+  if (/cup\s*pulls?/.test(h)) return "cup-pulls";
+  if (/bar\s*pulls?|door\s*pulls?|cabinet\s*pulls?|cabinet\s*bar\s*pulls?/.test(h)) return "cabinet-bar-pulls";
   if (/soft-?close|concealed|cup\s*hinge/.test(h)) return "cabinet-hinges";
   if (/utility\s*hinge|butt\s*hinge|support-?leg\s*hinge/.test(h)) return "utility-hinges";
   if (/\bhinge/.test(h)) return "cabinet-hinges";

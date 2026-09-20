@@ -426,6 +426,46 @@ export const LISTINGS: ListingOffer[] = [
     lengthIn: 0,
     checkedAt: CHECK,
   },
+  {
+    catalogId: "cabinet-bar-pulls",
+    retailer: "amazon",
+    title: "Cabinet bar pulls, pack",
+    href: "https://www.amazon.com/s?k=cabinet+bar+pulls+door+handle",
+    packQty: 1,
+    packPrice: 12.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "cabinet-bar-pulls",
+    retailer: "homedepot",
+    title: "Cabinet bar pulls",
+    href: "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "cup-pulls",
+    retailer: "amazon",
+    title: "3\" cup pulls, pack",
+    href: "https://www.amazon.com/s?k=3+inch+cup+pulls+cabinet+drawer",
+    packQty: 1,
+    packPrice: 12.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "cup-pulls",
+    retailer: "homedepot",
+    title: "3\" cup pulls",
+    href: "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
   
   {
     catalogId: "piano-hinge",
@@ -796,18 +836,26 @@ function guessCatalogId(line: BomLine): string | null {
   return line.catalogId ?? null;
 }
 
-function searchOffers(query: string, asin: string | undefined, qty: number): ShopOffer[] {
+function searchOffers(
+  query: string,
+  asin: string | undefined,
+  qty: number,
+  fallbackPackPrice?: number,
+): ShopOffer[] {
   const links = shopLinks(query, asin);
+  // Honest fallback: use BOM estimatedCost when no LISTINGS SKU — never fake index-as-price blanks.
+  const packPrice = fallbackPackPrice != null && fallbackPackPrice > 0 ? fallbackPackPrice : 0;
+  const packQty = Math.max(1, qty);
   return links.map((l, i) => ({
     retailer: l.retailer,
     label: l.label,
     title: query,
     href: stampAmazon(l.href),
-    packQty: Math.max(1, qty),
-    packPrice: 0,
-    unitPrice: i,
+    packQty,
+    packPrice,
+    unitPrice: packPrice / packQty,
     packsNeeded: 1,
-    lineTotal: 0,
+    lineTotal: packPrice,
     best: i === 0,
     checkedAt: CHECK,
   }));
@@ -841,7 +889,12 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
       checkedAt: o.checkedAt,
     }));
     if (!offers.length) {
-      offers = searchOffers(line.searchQuery || line.name, line.asin, Math.max(1, line.quantity));
+      offers = searchOffers(
+        line.searchQuery || line.name,
+        line.asin,
+        Math.max(1, line.quantity),
+        line.estimatedCost,
+      );
     }
     const best = offers.find((o) => o.best) ?? offers[0];
     return {
