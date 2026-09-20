@@ -880,6 +880,40 @@ export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined
 }
 
 /**
+ * Shared Measure refit talk densify — universal round envelope class
+ * (isRoundUnitEnvelope), not table-noun only.
+ * Aligns Check suggestion + Measure panel blurb with Dia×H HUD/paper honesty
+ * so strangers are never told to change W×H×D on a Dia×H round build.
+ */
+export function measureRefitTalk(opts: {
+  width: number;
+  height: number;
+  depth: number;
+  shape?: string | null;
+  prompt?: string | null;
+  name?: string | null;
+}): {
+  round: boolean;
+  panelBlurb: string;
+  checkSuggestion: string;
+} {
+  if (isRoundUnitEnvelope(opts)) {
+    return {
+      round: true,
+      // Universal round class — diameter × height, not W×H×D axis jargon.
+      panelBlurb:
+        "Dia × H refits this unit — diameter on both plan axes, never W×H×W.",
+      checkSuggestion: "Measure is live. Change Dia × H to refit.",
+    };
+  }
+  return {
+    round: false,
+    panelBlurb: "W × H × D refits this unit. Drawers, knee, doors, and shelves stay.",
+    checkSuggestion: "Measure is live. Change W × H × D to refit.",
+  };
+}
+
+/**
  * Densify Assumed notes from project.notes — filter existing text only; do not invent.
  * Universal (any Assumed … densify disclosure), not linen-only.
  */

@@ -13,7 +13,7 @@ import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honest
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
-import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -857,7 +857,14 @@ export function buildPlan(project: YardProject): BuildPlan {
                   return project.fitted?.program ?? "closet";
                 })()
         }.`,
-        suggestion: "Measure is live. Change W × H × D to refit.",
+        suggestion: measureRefitTalk({
+          width: project.overall.width,
+          height: project.overall.height,
+          depth: project.overall.depth,
+          shape: project.fitted?.unit?.shape,
+          prompt: project.prompt,
+          name: project.name,
+        }).checkSuggestion,
       },
       ...closetIssues(project),
       ...loadIssues(project),

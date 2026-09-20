@@ -5,7 +5,7 @@ import { useYard } from "@/lib/yard/store";
 import type { SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
-import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
+import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk, measureRefitTalk } from "@/lib/yard/voiceHonesty";
 
 export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
@@ -62,9 +62,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
           if (emptyTalk) return emptyTalk.panelBlurb;
           if (project.fitted) {
-            return roundUnit
-              ? "Dia × H refits this round table — diameter on both plan axes, never W×H×W."
-              : "W × H × D refits this unit. Drawers, knee, doors, and shelves stay.";
+            return measureRefitTalk(envOpts).panelBlurb;
           }
           return "The opening is on the bench — type into the arrows or these fields.";
         })()}

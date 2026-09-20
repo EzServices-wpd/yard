@@ -16,9 +16,10 @@ import {
   cutListHasExplodedDrawers,
   densifyPartsCountTalk,
   densifyPartsPlateTalk,
-  cutListWoodPieceCount,,
+  cutListWoodPieceCount,
   assumedDensifyNotesTalk,
-  densifyConfirmAssumedNotes
+  densifyConfirmAssumedNotes,
+  measureRefitTalk,
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
@@ -4750,6 +4751,32 @@ console.log("STRANGER PLAN OK", {
       if (/\bW\s*×\s*.*\bH\s*×\s*.*\bD\b/.test(isoLine) || /40\s*[×x]\s*30\s*[×x]\s*40/.test(isoLine)) {
         failVoice2("round iso/AABB size still W×H×D echo", isoLine);
       }
+    }
+    // Soft leftover: Check / Measure refit suggestion must densify Dia×H, not W×H×D.
+    const refitTalk = measureRefitTalk({
+      width: round.overall.width,
+      height: round.overall.height,
+      depth: round.overall.depth,
+      shape: round.fitted?.unit?.shape,
+      prompt: round.prompt,
+      name: round.name,
+    });
+    if (!refitTalk.round) failVoice2("round measureRefitTalk not round", refitTalk);
+    if (/W\s*×\s*H\s*×\s*D/i.test(refitTalk.checkSuggestion) || /W\s*×\s*H\s*×\s*D/i.test(refitTalk.panelBlurb)) {
+      failVoice2("round Measure refit talk still W×H×D", refitTalk);
+    }
+    if (!/Dia\s*×\s*H/i.test(refitTalk.checkSuggestion) || !/Dia\s*×\s*H/i.test(refitTalk.panelBlurb)) {
+      failVoice2("round Measure refit talk missing Dia×H", refitTalk);
+    }
+    const roundPlan = buildPlan(round);
+    const sug = (roundPlan.feasibility?.issues ?? [])
+      .map((i) => i.suggestion ?? "")
+      .join(" | ");
+    if (/Change\s+W\s*×\s*H\s*×\s*D\s+to\s+refit/i.test(sug)) {
+      failVoice2("round Check suggestion still Change W×H×D to refit", sug);
+    }
+    if (!/Change\s+Dia\s*×\s*H\s+to\s+refit/i.test(sug)) {
+      failVoice2("round Check suggestion missing Change Dia×H to refit", sug);
     }
   }
 
