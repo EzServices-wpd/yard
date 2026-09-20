@@ -2041,11 +2041,11 @@ function buildOttoman(spec: FittedSpec, prompt: string, affordances: HouseAfford
 
 
 /**
- * Seating-lounge Seat deck cut size — depth honors typed seat depth (not leg-inset).
- * Soft-park root cause: lounge typed 24″ seat D densified Seat panel at seatD-leg*2 (~21″)
- * while header D held. Seat sits on the frame from z=0 so cut D == typed seat D.
- * Width stays between legs (rails remain frame). Shared by lounge / easy / club / rocking
- * sit densify — never entry bench / stool / Adirondack paths.
+ * Seating-lounge Seat deck cut size — width + depth honor typed overall/seat footprint
+ * (not leg-inset). Soft-park root cause: lounge typed ~30″ W densified Seat at W−leg×2
+ * (~27″) and typed 24″ seat D at seatD−leg×2 (~21″) while header held. Legs sit under the
+ * deck (flush/overhang), so cut W×D == typed W × typed seat D. Shared by lounge / easy /
+ * club / rocking sit densify — never entry bench / stool / Adirondack paths.
  */
 function seatingLoungeSeatDeck(args: {
   x0: number;
@@ -2053,10 +2053,10 @@ function seatingLoungeSeatDeck(args: {
   seatDepth: number;
   leg: number;
 }): { x: number; z: number; w: number; d: number } {
-  const leg = Math.max(0, args.leg);
+  // args.leg kept for call-site compatibility; deck spans full typed W×D (legs under).
   const d = Math.max(8, args.seatDepth);
-  const w = Math.max(8, args.width - leg * 2);
-  return { x: args.x0 + leg, z: 0, w, d };
+  const w = Math.max(8, args.width);
+  return { x: args.x0, z: 0, w, d };
 }
 
 /** Lounge / easy / club chair — seat + back + legs; honor seat H + seat D; never House wire. */

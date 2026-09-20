@@ -3116,6 +3116,12 @@ console.log("SOFT-TRUST OK", {
   }
   // Leg-inset lie must stay gone (was ~21 when typed 24).
   if (seatPanel.size.depth < 23) failHonesty("seatD lounge Seat panel still leg-inset", seatPanel.size);
+  // Soft leftover: Seat panel W must honor typed overall W (default lounge 30″), not W−leg×2 (~27″).
+  if (Math.abs(lounge.overall.width - 30) > 1.2) failHonesty("seatW lounge overall W30", lounge.overall);
+  if (Math.abs(seatPanel.size.width - 30) > 0.6) {
+    failHonesty("seatW lounge Seat panel W ≠ typed 30", seatPanel.size);
+  }
+  if (seatPanel.size.width < 29) failHonesty("seatW lounge Seat panel still leg-inset", seatPanel.size);
   const loungePlan = buildPlan(lounge);
   if (!loungePlan.instructions.some((s) => /Attach the seat/i.test(s.title))) {
     failHonesty("seatD lounge Attach the seat densify", loungePlan.instructions.map((s) => s.title));
@@ -3126,6 +3132,9 @@ console.log("SOFT-TRUST OK", {
     const dims = [seatCut.lengthIn, seatCut.widthIn, seatCut.thicknessIn];
     if (!dims.some((n) => Math.abs(n - 24) <= 0.6)) {
       failHonesty("seatD lounge cut-list Seat missing typed 24″ face", { dims, seatCut });
+    }
+    if (!dims.some((n) => Math.abs(n - 30) <= 0.6)) {
+      failHonesty("seatW lounge cut-list Seat missing typed 30″ face", { dims, seatCut });
     }
   }
   if (measureKindFromProject(lounge) === "bench") failHonesty("seatD lounge Measure stolen to Bench");
@@ -3140,6 +3149,32 @@ console.log("SOFT-TRUST OK", {
   if (!easySeat) failHonesty("seatD easy Seat panel missing");
   else if (Math.abs(easySeat.size.depth - 22) > 0.6) {
     failHonesty("seatD easy Seat panel D ≠ typed 22", easySeat.size);
+  }
+  if (easySeat && Math.abs(easySeat.size.width - easy.overall.width) > 0.6) {
+    failHonesty("seatW easy Seat panel W ≠ overall", { seat: easySeat.size, overall: easy.overall });
+  }
+
+  // Explicit typed width: "30″ wide lounge…" — Seat cut W must match typed W (same helper).
+  const wide = generateFromPrompt("house: 30″ wide lounge chair with 16″ seat height and 24″ seat depth");
+  if (!/Lounge chair/i.test(wide.name)) failHonesty("seatW wide lounge title", wide.name);
+  if (Math.abs(wide.overall.width - 30) > 1.2) failHonesty("seatW wide overall W30", wide.overall);
+  const wideSeat = wide.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!wideSeat) failHonesty("seatW wide Seat panel missing");
+  else {
+    if (Math.abs(wideSeat.size.width - 30) > 0.6) failHonesty("seatW wide Seat panel W ≠ typed 30", wideSeat.size);
+    if (Math.abs(wideSeat.size.depth - 24) > 0.6) failHonesty("seatW wide Seat panel D ≠ typed 24", wideSeat.size);
+  }
+  const widePlan = buildPlan(wide);
+  const wideCut = widePlan.cutList.find((c) => /^Seat$/i.test(c.name));
+  if (!wideCut) failHonesty("seatW wide cut-list Seat missing");
+  else {
+    const dims = [wideCut.lengthIn, wideCut.widthIn, wideCut.thicknessIn];
+    if (!dims.some((n) => Math.abs(n - 30) <= 0.6)) {
+      failHonesty("seatW wide cut-list Seat missing typed 30″ face", { dims, wideCut });
+    }
+    if (!dims.some((n) => Math.abs(n - 24) <= 0.6)) {
+      failHonesty("seatW wide cut-list Seat missing typed 24″ face", { dims, wideCut });
+    }
   }
 
   // Protect: entry bench seat path not stolen to lounge Measure / helper.
