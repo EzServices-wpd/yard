@@ -250,6 +250,64 @@ void round3;
 void coffee;
 void dining;
 
+// Spoken "N diameter" / "N dia" binds round table top size — never steal height from "N tall".
+// Protects: round dining table 40 diameter 30 tall with three legs (FAIL tip 407b5c2).
+// Protects: house 40″ round 3-leg (inch-mark form already green).
+{
+  const diaSpoken = generateFromPrompt("round dining table 40 diameter 30 tall with three legs");
+  if (diaSpoken.fitted?.program !== "table") failHonesty("diaSpoken not a table", diaSpoken.fitted);
+  if (diaSpoken.fitted?.unit?.shape !== "round") failHonesty("diaSpoken not round", diaSpoken.fitted?.unit);
+  if (!nearInch(diaSpoken.overall.width, 40) || !nearInch(diaSpoken.overall.depth, 40)) {
+    failHonesty("diaSpoken overall dia≈40 (not height leak)", diaSpoken.overall);
+  }
+  if (!nearInch(diaSpoken.overall.height, 30)) {
+    failHonesty("diaSpoken overall H≈30", diaSpoken.overall);
+  }
+  const diaLegs = diaSpoken.panels.filter((p) => p.type === "upright" && /^leg\b/i.test(p.name));
+  if (diaLegs.length !== 3) failHonesty("diaSpoken 3 legs", diaLegs.map((p) => p.name));
+  const diaTop = diaSpoken.panels.find((p) => /^Top\b/i.test(p.name));
+  if (!diaTop) failHonesty("diaSpoken missing Top", diaSpoken.panels.map((p) => p.name));
+  if (diaTop && (!nearInch(diaTop.size.width, 40) || !nearInch(diaTop.size.depth, 40))) {
+    failHonesty("diaSpoken Top cut dia 40", diaTop.size);
+  }
+  const diaBlob = [diaSpoken.name, ...(diaSpoken.notes ?? []), ...(diaTop ? [diaTop.name] : [])].join("\n");
+  if (!/40/.test(diaBlob)) failHonesty("diaSpoken title/notes honor 40", diaBlob.slice(0, 400));
+  if (/\b30\s*[×x]\s*30\b/.test(diaSpoken.name) && !/40/.test(diaSpoken.name)) {
+    failHonesty("diaSpoken title still 30×30 (height leaked into dia)", diaSpoken.name);
+  }
+  // Twin: N dia shorthand + diameter N (Raw) when number is not an axis label.
+  const diaShort = generateFromPrompt("round table 36 dia 29 tall with three legs");
+  if (!nearInch(diaShort.overall.width, 36) || !nearInch(diaShort.overall.height, 29)) {
+    failHonesty("diaShort 36 dia × 29 tall", diaShort.overall);
+  }
+  const diaRawOk = generateFromPrompt("round table diameter 42 28 tall with three legs");
+  if (!nearInch(diaRawOk.overall.width, 42) || !nearInch(diaRawOk.overall.height, 28)) {
+    failHonesty("diameter N (Raw) still binds when not axis-labeled", diaRawOk.overall);
+  }
+  // Protect working inch-mark form + freezes.
+  const inchRound = generateFromPrompt("house: 40″ round 3-leg table");
+  if (!nearInch(inchRound.overall.width, 40) || !nearInch(inchRound.overall.depth, 40)) {
+    failHonesty("protect 40″ round overall dia", inchRound.overall);
+  }
+  if (inchRound.fitted?.unit?.shape !== "round") failHonesty("protect 40″ round shape", inchRound.fitted?.unit);
+  const legs40 = inchRound.panels.filter((p) => p.type === "upright" && /^leg\b/i.test(p.name));
+  if (legs40.length !== 3) failHonesty("protect 40″ round 3 legs", legs40.map((p) => p.name));
+  const linenFreeze = generateFromPrompt("linen closet 31.5 wide 78 high 16 deep with a rod and two shelves");
+  if (!linenFreeze.fitted || !nearInch(linenFreeze.overall.width, 31.5) || !nearInch(linenFreeze.overall.height, 78)) {
+    failHonesty("protect linen freeze after dia bind", linenFreeze.overall);
+  }
+  const deskFreeze = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (Math.abs(deskFreeze.overall.height - 29) > 0.5) failHonesty("protect desk H29 after dia bind", deskFreeze.overall);
+  const andersenFreeze = generateFromPrompt("house: Andersen 36×48 hung window with RO");
+  if (!/Andersen/i.test(andersenFreeze.name)) failHonesty("protect Andersen after dia bind", andersenFreeze.name);
+  const catFreeze = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(catFreeze.name) && !/catapult/i.test(catFreeze.name)) {
+    failHonesty("protect catapult≠trough after dia bind", catFreeze.name);
+  }
+  const pocketFreeze = generateFromPrompt("house: nightstand 20″ wide × 16″ deep × 26″ tall with one drawer");
+  if (!/nightstand|bedside/i.test(pocketFreeze.name)) failHonesty("protect nightstand after dia bind", pocketFreeze.name);
+}
+
 const lyingApronTable = {
   ...laundryTable,
   panels: laundryTable.panels.map((p) =>

@@ -476,9 +476,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const isRound = topShape === "round" || (program === "table" && /round|circular|diameter|\bdia\b/.test(lower) && topShape !== "oval");
   const isOval = topShape === "oval";
   const isSquareTop = topShape === "square";
-  const diameterRaw = pick(t, /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, NaN);
+  // Prefer N diameter / N dia (Tail) over diameter N (Raw): Raw otherwise steals the
+  // height from "40 diameter 30 tall" as diameter 30. Harden Raw so a captured number
+  // that is immediately an axis label (tall/high/wide/deep/long) is not treated as dia.
+  const diameterRaw = pick(
+    t,
+    /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|wide|width|deep|depth|long|length))/i,
+    NaN,
+  );
   const diameterTail = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)/i, NaN);
-  const diameter = Number.isFinite(diameterRaw) ? diameterRaw : diameterTail;
+  const diameter = Number.isFinite(diameterTail) ? diameterTail : diameterRaw;
   const legs = Math.max(
     3,
     Math.min(4, Math.round(pick(t, /(\d+)\s*(?:-?\s*)legs?/i, program === "table" ? (isRound ? 3 : 4) : 4))),
