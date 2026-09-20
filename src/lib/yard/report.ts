@@ -12,7 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
-import { strangerPlainShopTalk, densifyKitCraftInstructions, stampPartsPlate, speciesStockHonestyTalk } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -325,7 +325,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       unit: "box",
       searchQuery: "1 inch finish nails brad box",
       estimatedCost: 6,
-      notes: `Nail drawer boxes square (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
+      notes: `Nail each drawer (sides, back, and bottom) square (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
     });
     bom.push({
       name: "Iron-on edge banding",
@@ -600,7 +600,9 @@ function packPlan(
   const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList);
   const plainBom = bom.map((b) => ({
     ...b,
-    notes: b.notes ? strangerPlainShopTalk(b.notes) : b.notes,
+    notes: b.notes
+      ? densifyDrawerExplodeTalk(strangerPlainShopTalk(b.notes), platedCutList)
+      : b.notes,
   }));
   return {
     feasibility: {

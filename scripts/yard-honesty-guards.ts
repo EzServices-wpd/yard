@@ -10,6 +10,8 @@ import {
   deskWidthFromPrompt,
   speciesStockHonestyTalk,
   speciesSubstituteNote,
+  densifyDrawerExplodeTalk,
+  cutListHasExplodedDrawers,
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
@@ -3979,6 +3981,112 @@ console.log("SOFT-TRUST OK", {
     failChip("protect bamboo skewers bridge", detectMaterial("bamboo skewers warren bridge").id);
   }
 }
+
+
+// Soft leftover: Build/step Voice must name exploded drawer parts (not lone "drawer box")
+// when cut list already lists Drawer side/front/back/bottom. Universal densify helper.
+{
+  const failDraw = (msg: string, detail?: unknown) => failHonesty(`drawerBuildVoice ${msg}`, detail);
+  const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  if (!cutListHasExplodedDrawers(nsPlan.cutList)) {
+    failDraw("nightstand cut list missing exploded Drawer side", nsPlan.cutList.map((c) => c.name));
+  }
+  if (nsPlan.totals.pieces !== 11) {
+    failDraw("nightstand chip/cut expect 11", { pieces: nsPlan.totals.pieces, chip: woodCutPieceCount(ns) });
+  }
+  if (woodCutPieceCount(ns) !== nsPlan.totals.pieces) {
+    failDraw("nightstand chip≠cut", { chip: woodCutPieceCount(ns), cut: nsPlan.totals.pieces });
+  }
+  const buildStep = nsPlan.instructions.find((s) => /^Build\b/i.test(s.title) && /drawer/i.test(s.title));
+  if (!buildStep) failDraw("nightstand missing Build drawer step", nsPlan.instructions.map((s) => s.title));
+  else {
+    if (/\bdrawer\s+box(?:es)?\b/i.test(buildStep.title)) {
+      failDraw("nightstand Build title still envelope drawer box", buildStep.title);
+    }
+    if (!/sides?/i.test(buildStep.title) || !/front/i.test(buildStep.title) || !/back/i.test(buildStep.title) || !/bottom/i.test(buildStep.title)) {
+      failDraw("nightstand Build title missing exploded parts", buildStep.title);
+    }
+    if (/\bdrawer\s+box(?:es)?\b/i.test(buildStep.description) && !/Drawer sides?/i.test(buildStep.description)) {
+      failDraw("nightstand Build prose lone drawer box without parts", buildStep.description.slice(0, 300));
+    }
+  }
+  // Helper unit: densify rewrites legacy envelope titles when cut list exploded.
+  const fakeCuts = [
+    { name: "Drawer side", quantity: 2, lengthIn: 16, widthIn: 6, thicknessIn: 0.75 },
+    { name: "Drawer back", quantity: 1, lengthIn: 15, widthIn: 6, thicknessIn: 0.75 },
+    { name: "Drawer bottom", quantity: 1, lengthIn: 15, widthIn: 15, thicknessIn: 0.25 },
+    { name: "Drawer front", quantity: 1, lengthIn: 18, widthIn: 6, thicknessIn: 0.75 },
+  ];
+  const densified = densifyDrawerExplodeTalk("Build 1 drawer box + front", fakeCuts);
+  if (/drawer\s+box/i.test(densified) || !/sides?/i.test(densified)) {
+    failDraw("densifyDrawerExplodeTalk missed singular title", densified);
+  }
+  const densifiedN = densifyDrawerExplodeTalk("Build 3 drawer boxes + fronts", fakeCuts);
+  if (/drawer\s+boxes/i.test(densifiedN) || !/sides?/i.test(densifiedN)) {
+    failDraw("densifyDrawerExplodeTalk missed plural title", densifiedN);
+  }
+  const densifiedNail = densifyDrawerExplodeTalk("Nail drawer boxes square (3 drawers).", fakeCuts);
+  if (/Nail drawer boxes/i.test(densifiedNail)) {
+    failDraw("densifyDrawerExplodeTalk missed BOM nail note", densifiedNail);
+  }
+  // Twin: dresser 3-drawer.
+  const dr = generateFromPrompt("house: dresser 36″ wide × 18″ deep × 36″ tall with three drawers");
+  const drPlan = buildPlan(dr);
+  const drBuild = drPlan.instructions.find((s) => /^Build\b/i.test(s.title) && /drawer/i.test(s.title));
+  if (!drBuild) failDraw("dresser missing Build drawer step", drPlan.instructions.map((s) => s.title));
+  else if (/\bdrawer\s+box(?:es)?\b/i.test(drBuild.title)) {
+    failDraw("dresser Build title still envelope drawer box", drBuild.title);
+  } else if (!/sides?/i.test(drBuild.title)) {
+    failDraw("dresser Build title missing sides", drBuild.title);
+  }
+  // Protect: desk title 60×29×30 / H29 / knee24; round Dia×H; lounge; linen; catapult.
+  const desk = generateFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee');
+  if (Math.abs(desk.overall.width - 60) > 0.2) failDraw("protect desk W60", desk.overall);
+  if (Math.abs(desk.overall.height - 29) > 0.2) failDraw("protect desk H29", desk.overall);
+  if (Math.abs(desk.overall.depth - 30) > 0.2) failDraw("protect desk D30", desk.overall);
+  if (!/60/.test(desk.name) || /30\s*[×x]\s*29\s*[×x]\s*30/.test(desk.name)) {
+    failDraw("protect desk title 60×29×30 (not 30×29×30)", desk.name);
+  }
+  const deskPlan = buildPlan(desk);
+  if (deskPlan.cutList.some((c) => /^drawer box$/i.test(c.name))) {
+    failDraw("protect desk cut still Drawer box", deskPlan.cutList.map((c) => c.name));
+  }
+  const deskBuild = deskPlan.instructions.find((s) => /^Build\b/i.test(s.title) && /drawer/i.test(s.title));
+  if (deskBuild && /\bdrawer\s+box(?:es)?\b/i.test(deskBuild.title)) {
+    failDraw("protect desk Build title envelope", deskBuild.title);
+  }
+  const round = generateFromPrompt('house: 40" round 3-leg table 30" tall');
+  const roundChip = measureChipAxisLabels({
+    width: round.overall.width,
+    height: round.overall.height,
+    depth: round.overall.depth,
+    shape: round.fitted?.unit?.shape,
+    prompt: round.prompt,
+    name: round.name,
+  });
+  if (roundChip.mode !== "round" || roundChip.labels.join("×") !== "Dia×H") {
+    failDraw("protect round Dia×H", roundChip);
+  }
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+    failDraw("protect lounge Seat 30×24", seat?.size);
+  }
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (
+    Math.abs(linen.overall.width - 31.5) > 0.2 ||
+    Math.abs(linen.overall.height - 78) > 0.2 ||
+    Math.abs(linen.overall.depth - 16) > 0.2
+  ) {
+    failDraw("protect linen freeze", linen.overall);
+  }
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failDraw("protect catapult≠trough", cat.name);
+  }
+}
+
 
 
 console.log("STRANGER PLAN OK", {

@@ -383,13 +383,67 @@ function densifyHardwareCountTalk(text: string): string {
     .replace(/#8\s*×\s*1-1\/4"/gi, SCREW_HW);
 }
 
+
+/** Cut list already exploded drawers into side/back/bottom (not envelope Drawer box). */
+export function cutListHasExplodedDrawers(cutList: Array<{ name: string }>): boolean {
+  return cutList.some((c) => /drawer\s+side/i.test(c.name));
+}
+
+/**
+ * Universal drawer-furniture Voice densify: when cut list names exploded drawer
+ * parts, Build/BOM prose must not speak a lone envelope "drawer box" (implies one cut).
+ * Tied to exploded cut names (Drawer side/back/bottom). Assembly language after parts
+ * are named ("nail the box square", "set the box") stays.
+ */
+export function densifyDrawerExplodeTalk(
+  text: string,
+  cutList: Array<{ name: string }>,
+): string {
+  if (!text || !cutListHasExplodedDrawers(cutList)) return text;
+  let out = text;
+
+  // Step titles: "Build 1 drawer box + front" / "Build N drawer boxes + fronts"
+  out = out.replace(
+    /\bBuild\s+1\s+drawer\s+box\s*\+\s*fronts?\b/gi,
+    "Build drawer sides, front, back, and bottom",
+  );
+  out = out.replace(
+    /\bBuild\s+(\d+)\s+drawer\s+boxes\s*\+\s*fronts?\b/gi,
+    (_m, n: string) => `Build ${n} drawers (sides, fronts, backs, and bottoms)`,
+  );
+
+  // BOM notes: "Nail drawer boxes square …"
+  out = out.replace(
+    /\bNail\s+drawer\s+boxes\s+square\b/gi,
+    "Nail each drawer (sides, back, and bottom) square",
+  );
+
+  // Lead-in after exploded parts: "(N boxes)" → "(N drawers)"
+  out = out.replace(/\((\d+)\s+boxes\)/gi, (_m, n: string) => `(${n} drawers)`);
+
+  // Stranger assemble phrases that still treat the envelope as one cut blob
+  out = out.replace(
+    /\bassemble\s+(?:a|the|one)\s+drawer\s+box\b/gi,
+    "assemble the drawer sides, front, back, and bottom",
+  );
+
+  return out;
+}
+
 /**
  * Full kit-craft densify for packPlan: plain shop words already applied;
- * then parts-plate refs + one-join split.
+ * then parts-plate refs + one-join split + drawer-explode Voice honesty.
  */
 export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
   const plated = stampPartsPlate(cutList);
-  return densifyOneJoinInstructions(instructions, plated);
+  const joined = densifyOneJoinInstructions(instructions, plated);
+  if (!cutListHasExplodedDrawers(plated)) return joined;
+  return joined.map((s) => ({
+    ...s,
+    title: densifyDrawerExplodeTalk(s.title, plated),
+    description: densifyDrawerExplodeTalk(s.description, plated),
+    tips: s.tips ? densifyDrawerExplodeTalk(s.tips, plated) : s.tips,
+  }));
 }
 
 /** Shelf panel enough to name an installed height from engine position.y. */

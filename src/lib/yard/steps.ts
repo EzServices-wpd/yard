@@ -1661,7 +1661,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Build 1 drawer box + front",
+        title: "Build drawer sides, front, back, and bottom",
         description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom — glue and nail the box square. Screw the Drawer front onto the box face; edge-band the plywood edge people see (thin veneer strip over the raw edge). One cup pull centered on the front.`,
         tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
         partsUsed: names(drawers),
@@ -1884,8 +1884,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (drawers.length) {
     steps.push({
       step: n++,
-      title: `Build ${drawers.length} drawer boxes + fronts`,
-      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} boxes). Glue and nail each box square; screw each Drawer front onto its box face — edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
+      title:
+        drawers.length === 1
+          ? "Build drawer sides, front, back, and bottom"
+          : `Build ${drawers.length} drawers (sides, fronts, backs, and bottoms)`,
+      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}). Glue and nail each box square; screw each Drawer front onto its box face — edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
       tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
       partsUsed: names(drawers),
     });
