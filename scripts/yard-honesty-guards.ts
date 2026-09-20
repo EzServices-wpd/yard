@@ -7,6 +7,7 @@ import {
   isRoundUnitEnvelope,
   fmtUnitEnvelopeInches,
   measureChipAxisLabels,
+  deskWidthFromPrompt,
   speciesStockHonestyTalk,
   speciesSubstituteNote,
 } from "../src/lib/yard/voiceHonesty";
@@ -4068,6 +4069,38 @@ console.log("STRANGER PLAN OK", {
     }
   }
 
+
+
+  // Desk title W/D echo — bare "60\" desk … 30 deep × 29 tall" must stay 60×29×30 (never 30×29×30).
+  {
+    const liveDesk = generateFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee');
+    if (!nearInch(liveDesk.overall.width, 60) || !nearInch(liveDesk.overall.height, 29) || !nearInch(liveDesk.overall.depth, 30)) {
+      failVoice2("desk title W/D echo — overall not 60×29×30", liveDesk.overall);
+    }
+    if (!nearInch(liveDesk.fitted?.unit.kneeW ?? 0, 24)) failVoice2("desk title echo lost knee 24", liveDesk.fitted?.unit);
+    if (/30"\s*×\s*29"\s*×\s*30"|30\s*×\s*29\s*×\s*30/.test(liveDesk.name)) {
+      failVoice2("desk title still 30×29×30 W/D echo", liveDesk.name);
+    }
+    if (!/60/.test(liveDesk.name) || !/29/.test(liveDesk.name) || !/30/.test(liveDesk.name)) {
+      failVoice2("desk title missing honest 60×29×30", liveDesk.name);
+    }
+    if (Math.abs(deskWidthFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee') - 60) > 0.1) {
+      failVoice2("deskWidthFromPrompt missed bare 60\" desk", deskWidthFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee'));
+    }
+    const desktop = liveDesk.panels.find((p) => p.type === "counter" && /^Desktop$/i.test(p.name));
+    if (!desktop) failVoice2("desk title echo missing Desktop", liveDesk.panels.map((p) => p.name));
+    else if (!nearInch(desktop.position.y + desktop.size.height, 29)) {
+      failVoice2("desk title echo Desktop top ≠ H29", {
+        y: desktop.position.y,
+        thick: desktop.size.height,
+      });
+    }
+    const writing = generateFromPrompt('60" writing desk 24" deep × 30" tall with 22" knee');
+    if (!nearInch(writing.overall.width, 60) || !nearInch(writing.overall.height, 30) || !nearInch(writing.overall.depth, 24)) {
+      failVoice2("writing desk bare-width echo", writing.overall);
+    }
+    if (!nearInch(writing.fitted?.unit.kneeW ?? 0, 22)) failVoice2("writing desk knee", writing.fitted?.unit);
+  }
 
   {
     const oval = generateFromPrompt('house: oval coffee table 42" long × 24" wide × 18" tall');

@@ -516,6 +516,31 @@ export function isRoundUnitEnvelope(opts: {
  * Round tables: "40\" dia × 30\" H" — never "40 × 30 × 40" diameter echo.
  */
 /**
+ * Bare size beside a desk / writing-desk noun.
+ * "60\" desk with drawers 30\" deep × 29\" tall" must bind W=60 — never let the
+ * deep×tall pair echo as title 30×29×30 (same axis-honesty class as round Dia×H).
+ * Returns NaN when no bare desk width is spoken.
+ */
+export function deskWidthFromPrompt(prompt: string): number {
+  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  const ahead = t.match(
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
+  );
+  if (ahead) {
+    const n = parseFloat(ahead[1]);
+    if (Number.isFinite(n) && n >= 18 && n <= 120) return n;
+  }
+  const after = t.match(
+    /\b(?:writing\s+)?desk\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))/i,
+  );
+  if (after) {
+    const n = parseFloat(after[1]);
+    if (Number.isFinite(n) && n >= 18 && n <= 120) return n;
+  }
+  return NaN;
+}
+
+/**
  * Measure overlay / panel axis labels.
  * Round tables: Dia × H only — never W×H×D diameter echo (40×30×40).
  */

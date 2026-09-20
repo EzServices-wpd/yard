@@ -9,6 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
+import { deskWidthFromPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -94,6 +95,12 @@ export function typedExtents(prompt: string): TypedExtents | null {
   } else if (labeledLong != null) {
     width = labeledLong;
     if (labeledWide != null) depthOut = labeledWide;
+  }
+
+  // Bare desk width — same as parseBrief: "60\" desk … 30 deep × 29 tall" is W60 not W30.
+  if (width == null && /\b(?:writing\s+)?desk\b/.test(lower)) {
+    const deskW = deskWidthFromPrompt(t);
+    if (Number.isFinite(deskW)) width = deskW;
   }
 
   const out: TypedExtents = {

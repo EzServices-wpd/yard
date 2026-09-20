@@ -16,7 +16,7 @@ export type SpaceMeasurement = {
 export { matchStockWindows as matchWindows } from "./windows";
 
 
-/** Rewrite the prompt so Measure W×H×D is the typed fact honesty will honor. */
+/** Rewrite the prompt so Measure axes are the typed fact honesty will honor. */
 export function stampPromptSize(prompt: string, w: number, h: number, d: number): string {
   let p = prompt.trim();
   if (!p) return `${w} wide ${h} high ${d} deep`;
@@ -24,6 +24,8 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
   const W = fmt(w);
   const H = fmt(h);
   const D = fmt(d);
+  // Desks / writing desks speak unlabeled triples as W×D×H (casegoods), not opening W×H×D.
+  const deskLike = /\b(?:writing\s+)?desk\b|\bworkbench\b/.test(p.toLowerCase());
   p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(wide|width)\b/i, `${W}$2$3`);
   p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(tall|high|height)\b/i, `${H}$2$3`);
   p = p.replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(deep|depth)\b/i, `${D}$2$3`);
@@ -31,14 +33,26 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
     /(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s+)((?:bathroom\s+)?alcove)\b/i,
     `${W}$2$3`,
   );
+  // Bare desk width: "60\" desk …" / "desk 60\"" — keep W honest across Measure apply.
+  if (deskLike) {
+    p = p.replace(
+      /(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s+)((?:writing\s+)?desk)\b/i,
+      `${W}$2$3`,
+    );
+    p = p.replace(
+      /\b((?:writing\s+)?desk\s+)(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?)(?!\s*(?:wide|width|deep|depth|tall|high|height|knee))/i,
+      `$1${W}$3`,
+    );
+  }
   p = p.replace(
     /(\d+(?:\.\d+)?)\s*(x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(x|by|×)\s*(\d+(?:\.\d+)?))?/i,
     (m: string, a: string, sep1: string, b: string, sep2?: string, c?: string) => {
       const na = parseFloat(a);
       const nb = parseFloat(b);
       if (na <= 4 && nb <= 12 && (c == null || parseFloat(c) <= 16)) return m;
-      if (c) return `${W}${sep1}${H}${sep2}${D}`;
-      return `${W}${sep1}${H}`;
+      // Desk casegoods: stamp W×D×H so re-parse does not swap H/D (unlike opening W×H×D).
+      if (c) return deskLike ? `${W}${sep1}${D}${sep2}${H}` : `${W}${sep1}${H}${sep2}${D}`;
+      return deskLike ? `${W}${sep1}${D}` : `${W}${sep1}${H}`;
     },
   );
   return p.replace(/\s{2,}/g, " ").trim();
