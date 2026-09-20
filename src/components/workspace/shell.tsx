@@ -33,6 +33,11 @@ import { isLockedForm } from "@/lib/yard/form";
 import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
+import {
+  hasOperableFaces,
+  operateFaceKinds,
+  operateFacesLabel,
+} from "@/lib/yard/operateFaces";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 import type { WorkMode } from "@/lib/yard/types";
 
@@ -163,7 +168,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const makerJob = !housePath && project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
   const showLoadBtn = !housePath && Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
-  const hasFaces = project.panels.some((p) => p.type === "door" || p.type === "drawer");
+  const faceKinds = operateFaceKinds(project.panels);
+  const hasFaces = hasOperableFaces(faceKinds);
+  const facesLabel = operateFacesLabel(facesOpen, faceKinds);
   const sheetOnly = project.panels.length > 0 && project.instances.length === 0;
   const cutChoice = !housePath && (paperCraft || project.instances.length > 0 || sheetOnly);
   const wholeOn =
@@ -271,7 +278,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 />
                 {hasFaces && (
                   <MoreItem
-                    label={facesOpen ? "Shut doors / drawers" : "Open doors / drawers"}
+                    label={facesLabel}
                     onClick={() => {
                       setFacesOpen(!facesOpen);
                       setMoreOpen(false);
@@ -650,7 +657,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   onClick={() => setFacesOpen(!facesOpen)}
                   className="mt-1.5 rounded border border-border px-2 py-1 text-[11px] text-fg hover:bg-elevated"
                 >
-                  {facesOpen ? "Shut doors / drawers" : "Open doors / drawers"}
+                  {facesLabel}
                 </button>
               )}
             </div>

@@ -39,6 +39,12 @@ import {
   typedExtents,
   wantsFixedGlueShelves,
 } from "../src/lib/yard/honesty";
+import {
+  hasOperableFaces,
+  isHingedLidPanel,
+  operateFaceKinds,
+  operateFacesLabel,
+} from "../src/lib/yard/operateFaces";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
@@ -5426,5 +5432,80 @@ console.log("STRANGER PLAN OK", {
     if (!(nearInch(typed.overall.height, 6) && nearInch(typed.overall.depth, 4))) {
       failHonesty("typed picture ledge title/overall protect", typed.name);
     }
+  }
+}
+
+// ── Hinged-lid Operate + densified face labels (door / drawer / lid) ──
+{
+  // Lid-only chest — Lid is type top; must count as operable face (not door|drawer-only).
+  const cedar = generateFromPrompt("cedar chest 36 wide × 18 deep × 20 tall with hinged lid");
+  const cedarKinds = operateFaceKinds(cedar.panels);
+  if (cedarKinds.lids < 1) {
+    failHonesty("cedar hinged-lid Operate: missing Lid type=top panel", cedar.panels.map((x) => `${x.type}:${x.name}`));
+  }
+  if (!cedar.panels.some(isHingedLidPanel)) {
+    failHonesty("cedar isHingedLidPanel false", cedar.panels.map((x) => `${x.type}:${x.name}`));
+  }
+  if (cedarKinds.doors > 0 || cedarKinds.drawers > 0) {
+    failHonesty("cedar should be lid-only operable faces", cedarKinds);
+  }
+  if (!hasOperableFaces(cedarKinds)) failHonesty("cedar hasOperableFaces", cedarKinds);
+  const cedarOpen = operateFacesLabel(false, cedarKinds);
+  const cedarShut = operateFacesLabel(true, cedarKinds);
+  if (cedarOpen !== "Open lid") failHonesty("cedar Operate open label densify", cedarOpen);
+  if (cedarShut !== "Shut lid") failHonesty("cedar Operate shut label densify", cedarShut);
+  // Voice open/close still present (protect).
+  const cedarPlan = buildPlan(cedar);
+  const cedarBlob = cedarPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/open\/?close|lid should open|opens up and back/i.test(cedarBlob)) {
+    failHonesty("cedar Voice open/close lid talk missing", cedarBlob.slice(0, 500));
+  }
+
+  // Toy chest twin — same hinged-lid Operate class.
+  const toy = generateFromPrompt("toy chest 30 wide 16 deep 18 tall with hinged lid");
+  const toyKinds = operateFaceKinds(toy.panels);
+  if (toyKinds.lids < 1 || toyKinds.doors > 0 || toyKinds.drawers > 0) {
+    failHonesty("toy chest lid-only Operate faces", toyKinds);
+  }
+  if (operateFacesLabel(false, toyKinds) !== "Open lid") {
+    failHonesty("toy chest Operate label", operateFacesLabel(false, toyKinds));
+  }
+
+  // Protect vanity doors Operate densify (door-only — not "doors / drawers").
+  const vanity = generateFromPrompt("house: bathroom vanity 36″ wide × 21″ deep × 32″ tall with two doors");
+  const vanityKinds = operateFaceKinds(vanity.panels);
+  if (vanityKinds.doors < 2) failHonesty("vanity doors Operate protect count", vanityKinds);
+  if (vanityKinds.lids > 0) failHonesty("vanity must not invent lid Operate", vanityKinds);
+  if (operateFacesLabel(false, vanityKinds) !== "Open doors") {
+    failHonesty("vanity Operate label densify doors-only", operateFacesLabel(false, vanityKinds));
+  }
+  if (operateFacesLabel(true, vanityKinds) !== "Shut doors") {
+    failHonesty("vanity Operate shut densify", operateFacesLabel(true, vanityKinds));
+  }
+
+  // Protect nightstand drawer Operate densify (drawer-only).
+  const night = generateFromPrompt("nightstand 20 wide 24 tall 16 deep");
+  const nightKinds = operateFaceKinds(night.panels);
+  if (nightKinds.drawers < 1) failHonesty("nightstand drawer Operate protect", nightKinds);
+  if (nightKinds.lids > 0) failHonesty("nightstand must not invent lid Operate", nightKinds);
+  const nightLabel = operateFacesLabel(false, nightKinds);
+  if (!/^Open drawers?$/i.test(nightLabel)) {
+    failHonesty("nightstand Operate label densify drawer-only", nightLabel);
+  }
+
+  // Table Top must NOT become Operate (type top ≠ hinged Lid).
+  const round = generateFromPrompt("round dining table 40 diameter 30 tall with three legs");
+  const roundKinds = operateFaceKinds(round.panels);
+  if (roundKinds.lids > 0 || hasOperableFaces(roundKinds)) {
+    failHonesty("round table Top must not expose Operate faces", {
+      kinds: roundKinds,
+      tops: round.panels.filter((x) => x.type === "top").map((x) => x.name),
+    });
+  }
+
+  // Picture ledge protect — no operable faces invented.
+  const ledge = generateFromPrompt("picture ledge 36 wide");
+  if (hasOperableFaces(operateFaceKinds(ledge.panels))) {
+    failHonesty("picture ledge must not expose Operate", operateFaceKinds(ledge.panels));
   }
 }

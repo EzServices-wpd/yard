@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
+import { isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { stockLook } from "@/lib/yard/stockLook";
 import {
   BarPull,
@@ -54,15 +55,17 @@ export function PanelMesh({
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
-  if (hasStep && !inStep && (isDoor || isDrawer)) return null;
+  const isLid = isHingedLidPanel(panel);
+  if (hasStep && !inStep && (isDoor || isDrawer || isLid)) return null;
 
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
   const fittedShape = useYard((s) => s.project.fitted?.unit?.shape);
   const stepTitle = plan?.instructions.find((s) => s.step === activeStep)?.title ?? "";
   const allowSwing =
-    facesOpen && (activeStep == null || /hang|door|drawer|front|pull/i.test(stepTitle));
-  const open = allowSwing && (isDoor || isDrawer) && (!hasStep || inStep);
+    facesOpen &&
+    (activeStep == null || /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle));
+  const open = allowSwing && (isDoor || isDrawer || isLid) && (!hasStep || inStep);
   const isLeft =
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
@@ -86,6 +89,14 @@ export function PanelMesh({
   } else if (isDrawer && open) {
     const pull = Math.max(8, Math.min(d * 0.75, 16));
     groupPos = [cx * explode, cy, (cz + pull) * explode];
+  } else if (isLid && open) {
+    // Piano hinge along the back edge — lid opens up and back (pitch about X).
+    const hingeY = panel.position.y;
+    const hingeZ = panel.position.z;
+    const swing = (-80 * Math.PI) / 180;
+    groupPos = [cx * explode, hingeY, hingeZ * explode];
+    groupRot = [swing, yaw, 0];
+    meshPos = [0, h / 2, d / 2];
   }
 
   const grain = useMemo(() => {
