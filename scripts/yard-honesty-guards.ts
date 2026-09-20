@@ -1167,6 +1167,27 @@ if (bedside.assumptions.installMode !== "wall") failHonesty("bedside mount", bed
 const bedsidePlan = buildPlan(bedside);
 if (!inspectHonesty(bedside, bedsidePlan).ok) failHonesty("bedside inspect", inspectHonesty(bedside, bedsidePlan).issues);
 {
+  // Soft leftover: envelope AABB H must match typed overall H (not shelf ply ¾″).
+  // Book backstop is the envelope-counted face — top face = typed H (desk worktop pattern).
+  const back = bedside.panels.find((p) => /Book backstop/i.test(p.name));
+  if (!back || back.type !== "back") {
+    failHonesty("bedside Book backstop missing/type", bedside.panels.map((p) => `${p.type}:${p.name}`));
+  } else {
+    const topFace = back.position.y + back.size.height;
+    if (!nearInch(topFace, 6)) {
+      failHonesty("bedside Book backstop top face ≠ typed H6", {
+        y: back.position.y,
+        h: back.size.height,
+        topFace,
+      });
+    }
+  }
+  const envIssue = inspectHonesty(bedside, bedsidePlan).issues.find(
+    (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+  );
+  if (envIssue) failHonesty("bedside envelope H still flakes vs typed 6", envIssue);
+}
+{
   const checkMsg = (bedsidePlan.issues || []).map((i) => i.message).join("\n");
   if (/—\s*nightstand\.?/i.test(checkMsg)) {
     failHonesty("bedside soft: — nightstand. subtitle while Bedside shelf", checkMsg.slice(0, 300));
@@ -1199,6 +1220,23 @@ if (/Picture ledge/i.test(bedsidePrint.name) || /Nightstand/i.test(bedsidePrint.
 const bedsidePrintPlan = buildPlan(bedsidePrint);
 if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
   failHonesty("bedside print inspect", inspectHonesty(bedsidePrint, bedsidePrintPlan).issues);
+}
+{
+  // Twin: print bedside envelope H = typed H6; Print backstop top face = typed H.
+  const back = bedsidePrint.panels.find((p) => /Print backstop/i.test(p.name));
+  if (!back || back.type !== "back") {
+    failHonesty("bedside print Print backstop missing/type", bedsidePrint.panels.map((p) => `${p.type}:${p.name}`));
+  } else if (!nearInch(back.position.y + back.size.height, 6)) {
+    failHonesty("bedside print Print backstop top face ≠ typed H6", {
+      y: back.position.y,
+      h: back.size.height,
+      topFace: back.position.y + back.size.height,
+    });
+  }
+  const envIssue = inspectHonesty(bedsidePrint, bedsidePrintPlan).issues.find(
+    (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+  );
+  if (envIssue) failHonesty("bedside print envelope H still flakes vs typed 6", envIssue);
 }
 {
   const stepBlob = bedsidePrintPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");

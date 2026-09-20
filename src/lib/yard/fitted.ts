@@ -1561,7 +1561,12 @@ function buildBedsideShelf(spec: FittedSpec, prompt: string, affordances: HouseA
   panels.push(panel("shelf", "Bedside shelf", x0, cleatH, P, W, P, Math.max(D - P, 2)));
   // Envelope — front lip cradles a real book/print upright, never a flat decal.
   panels.push(panel("rail", lipName, x0, cleatH + P, D - P, W, lipH, P));
-  panels.push(panel("rail", backName, x0, cleatH + P, P, W, Math.max(lipH, Math.min(4, H - cleatH - P)), P));
+  // Soft leftover: envelopePanels() drops type=rail, so shelf-only AABB was H≈¾″
+  // (ply thickness) while typed overall was ~6″ — same class of lie as desk worktop
+  // stacking above typed H. Mirror desk: an envelope-counted face spans typed H —
+  // Book/Print backstop as type=back from y=0 with height H (top face = typed H).
+  // Cleat + lip stay rails (mount + cradle). Universal bedside hung-open class.
+  panels.push(panel("back", backName, x0, 0, P, W, H, P));
   const name = `Bedside shelf ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
