@@ -517,6 +517,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     if (!Number.isFinite(depth) || depth > 12) depth = Number.isFinite(depth) ? depth : 6;
     if (!Number.isFinite(height) || height > 24) height = Number.isFinite(height) ? height : 10;
   }
+  // Tip-rail hung-open (picture/photo/art ledge + picture/tip rail) — never storage 30×16.
+  // Same class as tool/peg rail envelope: shallow D, short H for tipped frames.
+  if (isPictureLedge(lower)) {
+    if (!Number.isFinite(depth) || depth > 12) depth = Number.isFinite(depth) ? depth : 4;
+    if (!Number.isFinite(height) || height > 24) height = Number.isFinite(height) ? height : 6;
+  }
   // Ironing board wall mount — board length binds width; shallow mount depth.
   if (isIroningWallMount(lower)) {
     const boardLen = pick(
@@ -959,6 +965,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 30
                     : isBunkBed(lower) || isLoftBed(lower)
                       ? 65
+                    : isPictureLedge(lower)
+                      ? 6
                     : /shelf/.test(lower)
                       ? 18
                     : isStorageHutch(lower)
@@ -1017,6 +1025,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         : 75
                     : isBedsideShelf(lower)
                       ? 8
+                    : isPictureLedge(lower)
+                      ? 4
                     : /dresser/.test(lower)
                       ? 18
                       : /crate/.test(lower)
@@ -1640,7 +1650,8 @@ function buildPictureLedge(spec: FittedSpec, prompt: string, affordances: HouseA
   // envelopePanels() drops type=rail — Picture backstop as type=back from y=0 with height H
   // so AABB top face == typed overall H (media / floating lip / bedside class).
   panels.push(panel("back", "Picture backstop", x0, 0, P, W, H, P));
-  const name = `${stem} ${W}" × ${H}" × ${D}"`;
+  const name = classDefaultDensifyTitle(stem, prompt, { width: W, height: H, depth: D });
+  const ledgeAssumed = classDefaultAssumedNotes(prompt, stem, { width: W, height: H, depth: D });
   return {
     id: createId("proj"),
     name,
@@ -1651,8 +1662,9 @@ function buildPictureLedge(spec: FittedSpec, prompt: string, affordances: HouseA
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Tip-rail hung-open on a wall cleat — Front lip + Picture backstop span typed ${H}" so frames tip upright against the back; never a weekend Picture frame, never a Media ledge, never a flat decal.`,
+      `${name}. Tip-rail hung-open on a wall cleat — Front lip + Picture backstop span ${H}" so frames tip upright against the back; never a weekend Picture frame, never a Media ledge, never a flat decal, never a storage closet envelope.`,
       "Mount the cleat to studs; the ledge screws down onto the cleat. Guidance only — confirm the wall type.",
+      ...ledgeAssumed,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },

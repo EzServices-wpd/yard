@@ -757,7 +757,10 @@ export function isClassDefaultDensifyPrompt(prompt: string): boolean {
   if (/\bchest\b/.test(p) && !/of\s+drawers/.test(p)) return true;
   if (/hinged\s+(?:lid|top)/.test(p) && /\b(?:chest|box|trunk)\b/.test(p)) return true;
   // Floor / hung carcase class defaults — shared gate, not per-noun title patches.
-  // Desk / nightstand / picture ledge stay outside (typed-axes / stock stamp protect).
+  // Desk / nightstand stay outside (typed-axes / stock stamp protect).
+  // Tip-rail hung-open (picture/photo/art ledge + picture/tip rail): width-only must not
+  // stamp invented storage 30×16 as typed — class defaults H6 D4 + Assumed notes.
+  if (/(?:picture|photo|art)\s*ledge|\bpicture\s*rail\b|\btip[- ]?rail\b/.test(p)) return true;
   if (/\b(?:bookcase|bookshelf)\b/.test(p)) return true;
   if (/\bdresser\b/.test(p)) return true;
   if (/\b(?:sideboard|buffet|credenza)\b/.test(p)) return true;

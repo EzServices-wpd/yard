@@ -5377,3 +5377,54 @@ console.log("STRANGER PLAN OK", {
     }
   }
 }
+
+
+// ── Tip-rail picture ledge class defaults — width-only ≠ storage 30×16 ──
+{
+  const wideOnly = generateFromPrompt("picture ledge 36 wide");
+  if (!/^Picture ledge\b/i.test(wideOnly.name)) failHonesty("picture ledge width-only stem", wideOnly.name);
+  // Must not invent closet/storage envelope as typed W×H×D.
+  if (/30/.test(wideOnly.name) && /16/.test(wideOnly.name)) {
+    failHonesty("picture ledge width-only stamped storage 30×16", wideOnly.name);
+  }
+  if (!nearInch(wideOnly.overall.width, 36)) failHonesty("picture ledge width-only W", wideOnly.overall);
+  if (!nearInch(wideOnly.overall.height, 6)) failHonesty("picture ledge width-only H class default", wideOnly.overall);
+  if (!nearInch(wideOnly.overall.depth, 4)) failHonesty("picture ledge width-only D class default", wideOnly.overall);
+  // Title densify: width typed → "36\" wide"; Assumed H/D notes.
+  if (!/36"\s*wide/i.test(wideOnly.name) && /\d+"\s*×\s*\d+"\s*×\s*\d+"/.test(wideOnly.name)) {
+    failHonesty("picture ledge width-only title should densify typed width only", wideOnly.name);
+  }
+  const assumed = (wideOnly.notes ?? []).filter((n) => /^Assumed\b/i.test(n));
+  if (!assumed.some((n) => /Assumed\s+6"/i.test(n))) {
+    failHonesty("picture ledge width-only Assumed H6 note", assumed);
+  }
+  if (!assumed.some((n) => /Assumed\s+4"/i.test(n))) {
+    failHonesty("picture ledge width-only Assumed D4 note", assumed);
+  }
+  if (!wideOnly.panels.some((x) => /Front lip/i.test(x.name))) {
+    failHonesty("picture ledge width-only Front lip", wideOnly.panels.map((x) => x.name));
+  }
+  if (!wideOnly.panels.some((x) => /Picture backstop/i.test(x.name) && x.type === "back")) {
+    failHonesty("picture ledge width-only Picture backstop", wideOnly.panels.map((x) => `${x.type}:${x.name}`));
+  }
+  // Bare picture ledge — stem + Assumed, no invented 30×16 stamp.
+  const bare = generateFromPrompt("picture ledge");
+  if (!/^Picture ledge\b/i.test(bare.name)) failHonesty("bare picture ledge stem", bare.name);
+  if (/\d+"\s*×\s*\d+"\s*×\s*\d+"/.test(bare.name)) {
+    failHonesty("bare picture ledge stamped densified dims as typed", bare.name);
+  }
+  if (!nearInch(bare.overall.height, 6) || !nearInch(bare.overall.depth, 4)) {
+    failHonesty("bare picture ledge class defaults", bare.overall);
+  }
+  // Protect fully typed tip-rail envelope (prior tip-hold).
+  const typed = generateFromPrompt("picture ledge 36 wide 4 deep 6 tall");
+  if (!nearInch(typed.overall.width, 36) || !nearInch(typed.overall.height, 6) || !nearInch(typed.overall.depth, 4)) {
+    failHonesty("typed picture ledge 36×6×4 protect", typed.overall);
+  }
+  if (!/36"\s*×\s*6"\s*×\s*4"|36"\s*×\s*4"\s*×\s*6"/.test(typed.name) && !/36"\s*wide/.test(typed.name)) {
+    // All axes typed → full stamp OK
+    if (!(nearInch(typed.overall.height, 6) && nearInch(typed.overall.depth, 4))) {
+      failHonesty("typed picture ledge title/overall protect", typed.name);
+    }
+  }
+}
