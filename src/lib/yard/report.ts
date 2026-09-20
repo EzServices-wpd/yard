@@ -37,8 +37,15 @@ function partFamily(name: string, type?: string) {
 
 function effortLabel(project: YardProject, pieces: number): string {
   if (project.kind === "opening") return "1/2-day";
-  if (project.panels.length <= 10) return "1/2-day";
-  if (project.panels.length <= 20) return "1-day";
+  // Fitted/house: bands on honest wood piece count (same as Confirm/chip /
+  // plan.totals.pieces via closetCuts) — never raw panels.length. Bounding
+  // type=drawer envelopes under-count exploded sides/back/bottom kits.
+  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
+    if (pieces <= 10) return "1/2-day";
+    if (pieces <= 20) return "1-day";
+    return "weekend";
+  }
+  // Crafts / instances: stick-count bands.
   if (pieces <= 120) return "1/2-day";
   if (pieces <= 400) return "1-day";
   return "weekend";
@@ -111,7 +118,9 @@ function closetCuts(project: YardProject): CutLine[] {
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
-  const screws = Math.max(16, project.panels.length * 6);
+  // Join-screw estimate from honest cut wood qty (drawer explode + plies), not raw panels.length.
+  const woodPieces = cuts.reduce((s, c) => s + c.quantity, 0);
+  const screws = Math.max(16, woodPieces * 6);
   const isTable = project.fitted?.program === "table";
   const namedLumber = namedStockFromPrompt(project.prompt ?? "");
   const coatHookBoard =

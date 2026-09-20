@@ -4320,6 +4320,140 @@ console.log("SOFT-TRUST OK", {
 }
 
 
+// Soft leftover: stranger-facing effort / join-screw estimates must use honest
+// wood piece count (closetCuts qty / plan.totals.pieces), not raw panels.length.
+// Nightstand one-drawer: panels≈8 vs cut 11 — effort band + #8 screw qty follow 11.
+{
+  const failEff = (msg: string, detail?: unknown) => failHonesty(`reportEffortHardware ${msg}`, detail);
+  const expectedEffort = (pieces: number) => {
+    if (pieces <= 10) return "1/2-day";
+    if (pieces <= 20) return "1-day";
+    return "weekend";
+  };
+  const joinScrewQty = (plan: ReturnType<typeof buildPlan>) => {
+    const row = plan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name));
+    return row?.quantity ?? null;
+  };
+
+  const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  const nsCut = nsPlan.totals.pieces;
+  if (nsCut !== 11) failEff("nightstand cut expect 11", { cut: nsCut, raw: ns.panels.length });
+  if (ns.panels.length >= nsCut) {
+    failEff("nightstand raw panels should under-count exploded cut", {
+      raw: ns.panels.length,
+      cut: nsCut,
+    });
+  }
+  if (nsPlan.effort !== expectedEffort(nsCut)) {
+    failEff("nightstand effort not keyed to honest pieces", {
+      effort: nsPlan.effort,
+      expect: expectedEffort(nsCut),
+      cut: nsCut,
+      raw: ns.panels.length,
+      rawEffortWould: expectedEffort(ns.panels.length),
+    });
+  }
+  // Prove raw panels.length would lie when it crosses a band (8→1/2-day vs 11→1-day).
+  if (expectedEffort(ns.panels.length) !== expectedEffort(nsCut) && nsPlan.effort === expectedEffort(ns.panels.length)) {
+    failEff("nightstand effort still follows raw panels.length band", {
+      effort: nsPlan.effort,
+      raw: ns.panels.length,
+      cut: nsCut,
+    });
+  }
+  const nsScrews = joinScrewQty(nsPlan);
+  const nsExpectScrews = Math.max(16, nsCut * 6);
+  if (nsScrews !== nsExpectScrews) {
+    failEff("nightstand #8 screws ≠ honest woodPieces*6", {
+      screws: nsScrews,
+      expect: nsExpectScrews,
+      cut: nsCut,
+      rawWould: Math.max(16, ns.panels.length * 6),
+    });
+  }
+  if (nsScrews === Math.max(16, ns.panels.length * 6) && ns.panels.length !== nsCut) {
+    failEff("nightstand screws still raw panels.length*6", {
+      screws: nsScrews,
+      raw: ns.panels.length,
+      cut: nsCut,
+    });
+  }
+  // Feasibility summary speaks effort too.
+  if (!nsPlan.feasibility.summary.includes(nsPlan.effort)) {
+    failEff("nightstand summary missing effort label", nsPlan.feasibility.summary.slice(0, 200));
+  }
+
+  // Twin: dresser 3-drawer — effort + screws follow exploded wood count.
+  const dr = generateFromPrompt("house: dresser 36″ wide × 18″ deep × 36″ tall with three drawers");
+  const drPlan = buildPlan(dr);
+  const drCut = drPlan.totals.pieces;
+  if (woodCutPieceCount(dr) !== drCut) {
+    failEff("dresser chip≠cut", { chip: woodCutPieceCount(dr), cut: drCut });
+  }
+  if (drPlan.effort !== expectedEffort(drCut)) {
+    failEff("dresser effort not keyed to honest pieces", {
+      effort: drPlan.effort,
+      expect: expectedEffort(drCut),
+      cut: drCut,
+      raw: dr.panels.length,
+    });
+  }
+  const drScrews = joinScrewQty(drPlan);
+  const drExpectScrews = Math.max(16, drCut * 6);
+  if (drScrews !== drExpectScrews) {
+    failEff("dresser #8 screws ≠ honest woodPieces*6", {
+      screws: drScrews,
+      expect: drExpectScrews,
+      cut: drCut,
+      rawWould: Math.max(16, dr.panels.length * 6),
+    });
+  }
+  if (dr.panels.length !== drCut && drScrews === Math.max(16, dr.panels.length * 6)) {
+    failEff("dresser screws still raw panels.length*6", { screws: drScrews, raw: dr.panels.length, cut: drCut });
+  }
+
+  // Protect: linen typed width 31.5; teak outdoor primary; banding Best≠sheet;
+  // picture ledge H; desk 60×29×30; lounge Seat; catapult≠trough.
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (
+    Math.abs(linen.overall.width - 31.5) > 0.2 ||
+    Math.abs(linen.overall.height - 78) > 0.2 ||
+    Math.abs(linen.overall.depth - 16) > 0.2
+  ) {
+    failEff("protect linen 31.5×78×16", linen.overall);
+  }
+  if (/\b36\b/.test(linen.name) && !/31/.test(linen.name)) {
+    failEff("protect linen title snapped to stock 36", linen.name);
+  }
+  expectNamedLumberBuy("teak outdoor side table", "teak");
+  const band = nsPlan.bom.find((b) => /edge banding|banding/i.test(b.name));
+  if (band) {
+    const best = band.offers?.find((o) => o.best) ?? band.offers?.[0];
+    if (best && /plywood|4x8|4×8|sande/i.test(best.title || "") && !/band/i.test(best.title || "")) {
+      failEff("protect banding Best≠sheet", best.title);
+    }
+  }
+  const desk = generateFromPrompt('house: 60" desk with drawers 30" deep × 29" tall with 24" knee');
+  if (Math.abs(desk.overall.width - 60) > 0.2) failEff("protect desk W60", desk.overall);
+  if (Math.abs(desk.overall.height - 29) > 0.2) failEff("protect desk H29", desk.overall);
+  if (Math.abs(desk.overall.depth - 30) > 0.2) failEff("protect desk D30", desk.overall);
+  const lounge = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
+  const seat = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seat || Math.abs(seat.size.width - 30) > 0.2 || Math.abs(seat.size.depth - 24) > 0.2) {
+    failEff("protect lounge Seat 30×24", seat?.size);
+  }
+  const ledge = generateFromPrompt("house: picture ledge 36″ wide × 3.5″ deep × 3.5″ tall");
+  if (ledge.overall.height > 8) failEff("protect picture ledge H", ledge.overall);
+  const cat = generateFromPrompt("weekend craft: popsicle stick catapult that launches a marble");
+  if (/trough|marble run/i.test(cat.name) && !/catapult/i.test(cat.name)) {
+    failEff("protect catapult≠trough", cat.name);
+  }
+
+}
+
+
+
 console.log("STRANGER PLAN OK", {
   coat: coatPlan.cutList.map((c) => c.name),
   closet80: closetRodPlan.cutList.map((c) => c.name),
