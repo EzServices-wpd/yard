@@ -3102,6 +3102,61 @@ console.log("SOFT-TRUST OK", {
 }
 
 
+
+// Soft-park honesty: seating-lounge Seat panel D honors typed seat depth (≠ leg-inset ~21″ when typed 24″).
+{
+  const loungePrompt = "house: lounge chair with 16″ seat height and 24″ seat depth";
+  const lounge = generateFromPrompt(loungePrompt);
+  if (!/Lounge chair/i.test(lounge.name)) failHonesty("seatD lounge title", lounge.name);
+  if (Math.abs(lounge.overall.depth - 24) > 1.2) failHonesty("seatD lounge overall D24", lounge.overall);
+  const seatPanel = lounge.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!seatPanel) failHonesty("seatD lounge Seat panel missing", lounge.panels.map((p) => p.name));
+  if (Math.abs(seatPanel.size.depth - 24) > 0.6) {
+    failHonesty("seatD lounge Seat panel D ≠ typed 24", seatPanel.size);
+  }
+  // Leg-inset lie must stay gone (was ~21 when typed 24).
+  if (seatPanel.size.depth < 23) failHonesty("seatD lounge Seat panel still leg-inset", seatPanel.size);
+  const loungePlan = buildPlan(lounge);
+  if (!loungePlan.instructions.some((s) => /Attach the seat/i.test(s.title))) {
+    failHonesty("seatD lounge Attach the seat densify", loungePlan.instructions.map((s) => s.title));
+  }
+  const seatCut = loungePlan.cutList.find((c) => /^Seat$/i.test(c.name));
+  if (!seatCut) failHonesty("seatD lounge cut-list Seat missing");
+  else {
+    const dims = [seatCut.lengthIn, seatCut.widthIn, seatCut.thicknessIn];
+    if (!dims.some((n) => Math.abs(n - 24) <= 0.6)) {
+      failHonesty("seatD lounge cut-list Seat missing typed 24″ face", { dims, seatCut });
+    }
+  }
+  if (measureKindFromProject(lounge) === "bench") failHonesty("seatD lounge Measure stolen to Bench");
+  if (measureKindFromProject(lounge) !== "lounge_chair") {
+    failHonesty("seatD lounge Measure kind", measureKindFromProject(lounge));
+  }
+
+  // Twin: easy/club sit with typed seat D — same helper path.
+  const easy = generateFromPrompt("house: easy chair with 18″ seat height and 22″ seat depth");
+  if (!/Lounge chair/i.test(easy.name)) failHonesty("seatD easy/club title stem", easy.name);
+  const easySeat = easy.panels.find((p) => /^Seat$/i.test(p.name));
+  if (!easySeat) failHonesty("seatD easy Seat panel missing");
+  else if (Math.abs(easySeat.size.depth - 22) > 0.6) {
+    failHonesty("seatD easy Seat panel D ≠ typed 22", easySeat.size);
+  }
+
+  // Protect: entry bench seat path not stolen to lounge Measure / helper.
+  const entry = generateFromPrompt("house: entry bench fitted to a 48×18 opening, 18″ seat height");
+  if (!/Entry bench/i.test(entry.name)) failHonesty("seatD protect Entry bench title", entry.name);
+  if (measureKindFromProject(entry) !== "bench") failHonesty("seatD protect Entry bench Measure", measureKindFromProject(entry));
+  if (/lounge_chair/i.test(measureKindFromProject(entry))) failHonesty("seatD entry stolen to lounge Measure");
+
+  const stool = generateFromPrompt(
+    "weekend craft: pine shop stool — one climb step, 10 inch rise and 10 inch run; adult stands on the tread",
+  );
+  if (!/Step stool|Shop stool|Pine/i.test(stool.name)) failHonesty("seatD protect pine stool", stool.name);
+
+  const desk = generateFromPrompt("house: desk 60×30×29 with 24″ knee");
+  if (Math.abs(desk.overall.height - 29) > 1.5) failHonesty("seatD protect desk H29", desk.overall);
+}
+
 // Catapult-class ≠ marble trough — marble is payload; soft-launch trough stays trough; Eiffel freeze.
 {
   const failCat = (msg: string, detail?: unknown) => failHonesty(`catapult≠trough ${msg}`, detail);
@@ -3219,9 +3274,7 @@ console.log("SOFT-TRUST OK", {
       failVoice("protect Stand the main box title after densify");
     }
     if (!/with 1 piano hinge/i.test(cedarBlob)) {
-      failVoice("piano one-join densify missing", cedarBlob.match(/[^
-]*piano[^
-]*/i)?.[0]);
+      failVoice("piano one-join densify missing", cedarBlob.split("\n").find((l) => /piano/i.test(l)));
     }
     // Buy class still holds after densify.
     const piano2 = cedarPlan2.bom.find((b) => /piano hinge/i.test(b.name));
