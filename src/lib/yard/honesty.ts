@@ -9,7 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
-import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt } from "./voiceHonesty";
+import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -533,9 +533,9 @@ function snapName(
     Boolean(typed?.labeled.width || typed?.labeled.height || typed?.labeled.depth);
   const allLabeled =
     Boolean(typed?.labeled.width && typed?.labeled.height && typed?.labeled.depth);
-  // Opening-storage: bare (no digits) + partial typed axes share stampTypedAxesTitle densify.
-  // Never re-full-stamp densified envelope as typed on bare linen/closet.
-  if (typed && !allLabeled && (anyLabeled || (prompt && isOpeningStoragePrompt(prompt)))) {
+  // Class-default densify: bare (no digits) + partial typed axes share stampTypedAxesTitle densify.
+  // Never re-full-stamp densified envelope as typed on bare linen/closet/vanity/chest.
+  if (typed && !allLabeled && (anyLabeled || (prompt && isClassDefaultDensifyPrompt(prompt)))) {
     return stampTypedAxesTitle(label, typed.labeled, { width: w, height: h, depth: d }, typed);
   }
   return `${label} ${w}" × ${h}" × ${d}"`;

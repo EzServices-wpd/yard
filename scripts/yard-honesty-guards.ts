@@ -5015,6 +5015,78 @@ console.log("STRANGER PLAN OK", {
   }
 }
 
+
+// ── Undimmed class-default size densify (vanity / hinged chest) — same honesty as bare linen ──
+{
+  const bareVanity = generateFromPrompt("bathroom vanity with two doors");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareVanity.name)) {
+    failHonesty("bare vanity title must not stamp class-default W×H×D as typed", {
+      name: bareVanity.name,
+    });
+  }
+  if (!/Vanity/i.test(bareVanity.name)) {
+    failHonesty("bare vanity title stem", bareVanity.name);
+  }
+  const vanityNotes = (bareVanity.notes ?? []).join(" ");
+  if (!/Assumed .*vanity class default/i.test(vanityNotes)) {
+    failHonesty("bare vanity missing Assumed class-default notes", bareVanity.notes);
+  }
+  const vanityHud = fmtUnitEnvelopeInches(
+    bareVanity.overall.width,
+    bareVanity.overall.height,
+    bareVanity.overall.depth,
+    { prompt: "bathroom vanity with two doors", name: bareVanity.name },
+  );
+  if (/\d+(?:\.\d+)?"\s*×/.test(vanityHud)) {
+    failHonesty("bare vanity HUD must not present densified triple as typed", vanityHud);
+  }
+  const vanityTalk = openingStorageMeasureEmptyTalk("bathroom vanity with two doors");
+  if (!vanityTalk?.bare) {
+    failHonesty("bare vanity Measure empty talk missing", vanityTalk);
+  }
+
+  const bareCedar = generateFromPrompt("cedar chest with hinged lid");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareCedar.name)) {
+    failHonesty("bare cedar chest title must not stamp class-default W×H×D as typed", {
+      name: bareCedar.name,
+    });
+  }
+  if (!/Chest|Cedar/i.test(bareCedar.name)) {
+    failHonesty("bare cedar chest title stem", bareCedar.name);
+  }
+  const cedarNotes = (bareCedar.notes ?? []).join(" ");
+  if (!/Assumed .*chest class default/i.test(cedarNotes)) {
+    failHonesty("bare cedar chest missing Assumed class-default notes", bareCedar.notes);
+  }
+  const cedarHud = fmtUnitEnvelopeInches(
+    bareCedar.overall.width,
+    bareCedar.overall.height,
+    bareCedar.overall.depth,
+    { prompt: "cedar chest with hinged lid", name: bareCedar.name },
+  );
+  if (/\d+(?:\.\d+)?"\s*×/.test(cedarHud)) {
+    failHonesty("bare cedar chest HUD must not present densified triple as typed", cedarHud);
+  }
+  const cedarTalk = openingStorageMeasureEmptyTalk("cedar chest with hinged lid");
+  if (!cedarTalk?.bare) {
+    failHonesty("bare cedar chest Measure empty talk missing", cedarTalk);
+  }
+
+  // Protect: typed axes still stamp; linen bare + width-only; desk/round unchanged
+  const typedVanity = generateFromPrompt('bathroom vanity 36" wide × 34" tall × 21" deep with two doors');
+  if (!/36/.test(typedVanity.name) || !/21/.test(typedVanity.name)) {
+    failHonesty("typed vanity must still stamp typed axes", typedVanity.name);
+  }
+  const bareLinenGuard = generateFromPrompt("linen closet");
+  if (/\d+(?:\.\d+)?"\s*×/.test(bareLinenGuard.name)) {
+    failHonesty("bare linen regress under class-default densify ship", bareLinenGuard.name);
+  }
+  const widthLinen = generateFromPrompt("31.5 inch linen closet");
+  if (!/31\.5" wide/i.test(widthLinen.name) || /×\s*84|×\s*78/.test(widthLinen.name)) {
+    failHonesty("width-only linen regress", widthLinen.name);
+  }
+}
+
 // ── Assumed densify notes surface in Confirm/Build (soft leftover after 5d07304) ──
 {
   const bare = generateFromPrompt("linen closet");

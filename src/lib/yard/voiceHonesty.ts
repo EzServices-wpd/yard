@@ -737,6 +737,30 @@ export function isOpeningStoragePrompt(prompt: string): boolean {
   return /\b(?:linen|closet|alcove|pantry|wardrobe|armoire|hutch|locker)\b/i.test(prompt);
 }
 
+/**
+ * Fitted classes that densify class-default W×H×D when the stranger typed no axes.
+ * Same honesty class as bare linen: title/HUD must not stamp densified envelope as typed.
+ * Universal mechanism — opening-storage + vanity + hinged/cedar chest (not per-noun patches).
+ */
+export function isClassDefaultDensifyPrompt(prompt: string): boolean {
+  if (isOpeningStoragePrompt(prompt)) return true;
+  const p = prompt.toLowerCase();
+  if (/\bvanity\b/.test(p)) return true;
+  // Hinged-lid / cedar / blanket / toy chest — not "chest of drawers".
+  if (/\bchest\b/.test(p) && !/of\s+drawers/.test(p)) return true;
+  if (/hinged\s+(?:lid|top)/.test(p) && /\b(?:chest|box|trunk)\b/.test(p)) return true;
+  return false;
+}
+
+/** Typed axes for class-default densify prompts — shared digit parser (opening-storage). */
+export function typedClassDefaultAxes(prompt: string): {
+  width: boolean;
+  height: boolean;
+  depth: boolean;
+} {
+  return typedOpeningStorageAxes(prompt);
+}
+
 export function openingWidthFromPrompt(prompt: string): number {
   const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
   // Adjectives may sit between the measure and the noun (linen, tall, utility, broom…).
@@ -817,12 +841,13 @@ export function fmtUnitEnvelopeInches(
     if (opts?.legs && opts.legs > 0) s += ` · ${opts.legs} legs`;
     return s;
   }
-  // Opening-storage typed-axes honesty — HUD must not present densified axes as typed.
+  // Class-default densify typed-axes honesty — HUD must not present densified axes as typed.
+  // Opening-storage + vanity + hinged chest (same class as bare linen).
   const prompt = opts?.prompt ?? "";
-  if (prompt && isOpeningStoragePrompt(prompt)) {
-    const axes = typedOpeningStorageAxes(prompt);
+  if (prompt && isClassDefaultDensifyPrompt(prompt)) {
+    const axes = typedClassDefaultAxes(prompt);
     const any = axes.width || axes.height || axes.depth;
-    // Bare linen/closet (no digits) — densify may still build; never stamp W×H×D as typed.
+    // Bare class-default densify (no digits) — densify may still build; never stamp W×H×D as typed.
     if (!any) return "—";
     if (axes.width && !axes.height && !axes.depth) {
       return `${fmt(width)}" wide`;
@@ -853,10 +878,10 @@ export function fmtUnitEnvelopeInches(
 }
 
 /**
- * Opening-storage Measure / HUD empty-state when the stranger typed no axes.
- * Universal (linen / closet / pantry / wardrobe / alcove) — densify may still
- * build a class envelope, but stranger copy must not imply those dims were typed
- * and must avoid shop jargon ("the unit") next to a bare dash.
+ * Class-default densify Measure / HUD empty-state when the stranger typed no axes.
+ * Universal (linen / closet / pantry / wardrobe / alcove / vanity / hinged chest) —
+ * densify may still build a class envelope, but stranger copy must not imply those
+ * dims were typed and must avoid shop jargon ("the unit") next to a bare dash.
  * Partial typed axes keep normal Measure/HUD language.
  */
 export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined): {
@@ -866,8 +891,8 @@ export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined
   overlayHint: string;
 } | null {
   const p = (prompt ?? "").trim();
-  if (!p || !isOpeningStoragePrompt(p)) return null;
-  const axes = typedOpeningStorageAxes(p);
+  if (!p || !isClassDefaultDensifyPrompt(p)) return null;
+  const axes = typedClassDefaultAxes(p);
   if (axes.width || axes.height || axes.depth) return null;
   return {
     bare: true,

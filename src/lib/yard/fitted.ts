@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -857,12 +857,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "vanity" &&
     /upper|to the ceiling|floor.?to.?ceiling|linen storage|towels to/.test(lower);
 
-  // Axes the stranger typed — storage class uses prompt densify (width-only linen ≠ stock H).
-  // Capture before height/depth class defaults so stock fills never flip labeled flags.
-  const storageTitleClass =
-    program === "closet" || program === "wardrobe" || program === "pantry";
-  const typedAxes = storageTitleClass
-    ? typedOpeningStorageAxes(prompt)
+  // Axes the stranger typed — class-default densify uses prompt digits (width-only linen ≠ stock H;
+  // bare vanity/chest must not treat stock fills as typed). Capture before height/depth class defaults
+  // so stock fills never flip labeled flags.
+  const classDefaultTitleHonesty =
+    program === "closet" ||
+    program === "wardrobe" ||
+    program === "pantry" ||
+    program === "vanity" ||
+    (program === "storage" && isHingedLidChest(lower));
+  const typedAxes = classDefaultTitleHonesty
+    ? typedClassDefaultAxes(prompt)
     : {
         width: Number.isFinite(width),
         height: Number.isFinite(height) && height !== 0,
@@ -1475,7 +1480,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const displayName =
     tableShape === "round"
       ? `${shapePrefix}${titleStem} ${width}" × ${height}"`
-      : storageTitleClass && typedAxes && !(typedAxes.width && typedAxes.height && typedAxes.depth)
+      : classDefaultTitleHonesty && typedAxes && !(typedAxes.width && typedAxes.height && typedAxes.depth)
         ? stampTypedAxesTitle(
             `${shapePrefix}${titleStem}`,
             typedAxes,
@@ -4202,7 +4207,26 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
       panels.push(panel("top", "Lid", x0, H - P, 0, W, P, D));
       const stem = honorSpeciesInTitle(toy ? "Toy chest" : "Chest", prompt);
-      const name = `${stem} ${W}" × ${H}" × ${D}"`;
+      // Class-default densify honesty — bare "cedar chest with hinged lid" must not stamp stock W×H×D as typed.
+      const chestAxes = typedClassDefaultAxes(prompt);
+      const name =
+        chestAxes.width && chestAxes.height && chestAxes.depth
+          ? `${stem} ${W}" × ${H}" × ${D}"`
+          : stampTypedAxesTitle(stem, chestAxes, { width: W, height: H, depth: D });
+      const chestAssumed: string[] = [];
+      if (!chestAxes.width) {
+        chestAssumed.push(`Assumed ${W}" wide (chest class default) — type a width to lock it.`);
+      }
+      if (!chestAxes.height) {
+        chestAssumed.push(`Assumed ${H}" tall (chest class default) — type a height to lock it.`);
+      }
+      if (!chestAxes.depth) {
+        chestAssumed.push(`Assumed ${D}" deep (chest class default) — type a depth to lock it.`);
+      }
+      const chestSizeTalk =
+        chestAxes.width && chestAxes.height && chestAxes.depth
+          ? `Honor typed ${W}" wide × ${D}" deep × ${H}" tall.`
+          : "Class defaults fill untyped axes — type Measure to lock size.";
       const priorAff: HouseAffordance[] = spec.affordances ?? [];
       const lidAff: HouseAffordance[] = priorAff.includes("hinged-lid")
         ? priorAff
@@ -4224,7 +4248,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
             toy
               ? `${name}. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
               : `${name}. Hinged-lid chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
-            `Lid ${W}" × ${D}". Honor typed ${W}" wide × ${D}" deep × ${H}" tall. Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid cannot slam.`,
+            `Lid ${W}" × ${D}". ${chestSizeTalk} Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid cannot slam.`,
+            ...chestAssumed,
             ...(sub ? [sub] : []),
             "Guidance only — open/close test the lid. Soft-close optional.",
           ];
@@ -4985,10 +5010,23 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (
     spec.typedAxes &&
-    (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry")
+    (spec.program === "closet" ||
+      spec.program === "wardrobe" ||
+      spec.program === "pantry" ||
+      spec.program === "vanity" ||
+      (spec.program === "storage" && isHingedLidChest(prompt.toLowerCase())))
   ) {
-    const linen = /linen/.test(prompt.toLowerCase());
-    const klass = linen ? "linen class default" : "closet class";
+    const promptLowerAssumed = prompt.toLowerCase();
+    const linen = /linen/.test(promptLowerAssumed);
+    const vanity = spec.program === "vanity";
+    const chest = spec.program === "storage" && isHingedLidChest(promptLowerAssumed);
+    const klass = linen
+      ? "linen class default"
+      : vanity
+        ? "vanity class default"
+        : chest
+          ? "chest class default"
+          : "closet class";
     // Densified envelope honesty — stamp only typed axes into the title; note the rest.
     if (!spec.typedAxes.width) {
       notes.push(`Assumed ${W}" wide (${klass}) — type a width to lock it.`);
@@ -4997,7 +5035,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes.push(
         linen
           ? `Assumed ${H}" tall (linen class default) — type a height to lock it.`
-          : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
+          : vanity
+            ? `Assumed ${H}" tall (vanity class default) — type a height to lock it.`
+            : chest
+              ? `Assumed ${H}" tall (chest class default) — type a height to lock it.`
+              : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
       );
     }
     if (!spec.typedAxes.depth) {
@@ -5013,9 +5055,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? identityTitleStem(promptLower) || mediaIdentityLabel(promptLower) || "Media console"
       : identityTitleStem(promptLower);
   const storageAxes = spec.typedAxes;
-  // Opening-storage: stamp only typed axes (incl. bare = stem only). Full triple keeps classic.
+  // Class-default densify: stamp only typed axes (incl. bare = stem only). Full triple keeps classic.
   const storagePartial =
-    (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry") &&
+    (spec.program === "closet" ||
+      spec.program === "wardrobe" ||
+      spec.program === "pantry" ||
+      spec.program === "vanity" ||
+      (spec.program === "storage" && isHingedLidChest(promptLower))) &&
     storageAxes &&
     !(storageAxes.width && storageAxes.height && storageAxes.depth);
   const stampFull = (stem: string) =>
