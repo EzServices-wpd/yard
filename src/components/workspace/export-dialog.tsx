@@ -7,6 +7,7 @@ import { buildPlanPdf, slugPlan } from "@/lib/yard/pdf";
 import { IsoPlate } from "@/components/workspace/iso-plate";
 import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
+import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
 
 export function ExportDialog({
   project,
@@ -110,6 +111,13 @@ export function ExportDialog({
     project.fitted?.unit ??
     project.pocket?.unit ??
     project.overall;
+  // Shared Dia×H densify — never W×H×W diameter echo on stranger paper/PDF chrome.
+  const sizeLine = fmtUnitEnvelopeInches(unit.width, unit.height, unit.depth, {
+    shape: project.fitted?.unit?.shape,
+    prompt: project.prompt,
+    name: project.name,
+    legs: project.fitted?.unit?.legs,
+  });
 
   return (
     <div className="pointer-events-auto fixed inset-0 z-[60] flex flex-col bg-paper text-ink">
@@ -117,7 +125,7 @@ export function ExportDialog({
         <div className="min-w-0">
           <p className="truncate font-display text-lg text-ink">{project.name}</p>
           <p className="text-xs text-ink-muted">
-            {unit.width}" × {unit.height}" × {unit.depth}" · the plan on paper
+            {sizeLine} · the plan on paper
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -158,7 +166,7 @@ export function ExportDialog({
           <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Yard plan</p>
           <h1 className="mt-2 font-display text-3xl tracking-tight text-ink">{project.name}</h1>
           <p className="mt-2 font-mono text-sm tracking-tight text-ink">
-            {unit.width}" × {unit.height}" × {unit.depth}"
+            {sizeLine}
           </p>
           {project.prompt && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.prompt}</p>}
           {dlNote && <p className="mt-3 text-xs text-ink-muted">{dlNote}</p>}

@@ -4722,6 +4722,14 @@ console.log("STRANGER PLAN OK", {
     if (chip.labels.includes("W") && chip.labels.includes("D")) {
       failVoice2("round measure chip still W×H×D diameter echo", chip);
     }
+    // Paper/PDF chrome must reuse shared Dia×H densify — never raw W×H×W on "the plan on paper".
+    if (!/dia/i.test(line) || /40\s*[×x]\s*30\s*[×x]\s*40/.test(line)) {
+      failVoice2("round paper/PDF size line still echoes W×H×W", line);
+    }
+    const paperLine = `${line} · the plan on paper`;
+    if (/40\s*[×x]\s*30\s*[×x]\s*40/.test(paperLine) || !/dia/i.test(paperLine)) {
+      failVoice2("round plan-on-paper stamp still W×H×W echo", paperLine);
+    }
   }
 
 
