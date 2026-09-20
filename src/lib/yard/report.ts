@@ -331,7 +331,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       name: "Iron-on edge banding",
       quantity: 1,
       unit: "roll",
-      searchQuery: "iron on edge banding plywood birch",
+      catalogId: "edge-banding",
+      searchQuery: "iron on edge banding birch 3/4 inch",
       estimatedCost: 8.98,
       notes: `Cover raw plywood edges on drawer fronts people see (${drawers.length} front${drawers.length === 1 ? "" : "s"}).`,
     });

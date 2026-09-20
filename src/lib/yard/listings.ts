@@ -333,6 +333,30 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "edge-banding",
+    retailer: "amazon",
+    title: "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+    href: "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+    packQty: 1,
+    packPrice: 8.98,
+    lengthIn: 300,
+    widthIn: 0.8125,
+    thickIn: 0.02,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "edge-banding",
+    retailer: "homedepot",
+    title: "Iron-on birch edge banding roll",
+    href: "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+    packQty: 1,
+    packPrice: 9.98,
+    lengthIn: 300,
+    widthIn: 0.8125,
+    thickIn: 0.02,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "drawer-slides-16",
     retailer: "amazon",
     title: "16\" side-mount drawer slides, pair",
@@ -733,6 +757,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";
   if (/foam board|foamcore|foam-board/.test(hay)) return "foam-board-20x30";
   if (/cardboard/.test(hay)) return "cardboard-corrugated-sheet";
+  // Edge banding before plywood — searchQuery may say "plywood birch" for the veneer match.
+  if (/edge.?band|iron.?on.?band|\bbanding\b/.test(hay)) return "edge-banding";
   // Thin backer before generic plywood
   if (/1\/4|quarter.?inch|backer/.test(hay) && /ply/.test(hay)) return "plywood-1-4-4x8";
   if (/plywood/.test(hay)) return "plywood-3-4-4x8";

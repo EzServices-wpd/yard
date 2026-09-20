@@ -4486,6 +4486,33 @@ console.log("STRANGER PLAN OK", {
     }
   }
 
+
+// Buy honesty: Iron-on edge banding Best must not be a plywood sheet (searchQuery used to say "plywood birch").
+{
+  const ns = generateFromPrompt("house: nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nsPlan = buildPlan(ns);
+  const band = nsPlan.bom.find((b) => /edge banding|banding/i.test(b.name));
+  if (!band) failHonesty("nightstand missing Iron-on edge banding BOM", nsPlan.bom.map((b) => b.name));
+  if (band.catalogId && band.catalogId !== "edge-banding") {
+    failHonesty("nightstand edge banding catalogId", band.catalogId);
+  }
+  const best = band.offers?.find((o) => o.best) ?? band.offers?.[0];
+  if (!best) failHonesty("nightstand edge banding missing offers", band);
+  if (/plywood|4x8|4×8|sande/i.test(best.title || "") && !/band/i.test(best.title || "")) {
+    failHonesty("nightstand edge banding Best is plywood sheet", best.title);
+  }
+  if (!/band|veneer/i.test(best.title || "")) {
+    failHonesty("nightstand edge banding Best not banding class", best.title);
+  }
+  const dr = generateFromPrompt("house: dresser 48 wide 18 deep 36 tall three drawers");
+  const drPlan = buildPlan(dr);
+  const drBand = drPlan.bom.find((b) => /edge banding|banding/i.test(b.name));
+  const drBest = drBand?.offers?.find((o) => o.best) ?? drBand?.offers?.[0];
+  if (drBest && /plywood|4x8|sande/i.test(drBest.title || "") && !/band/i.test(drBest.title || "")) {
+    failHonesty("dresser edge banding Best is plywood sheet", drBest.title);
+  }
+}
+
   {
     const linen = generateFromPrompt("house: linen closet 31.5×78×16");
     if (
