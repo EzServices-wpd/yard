@@ -2,6 +2,7 @@ import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
 import type { AssemblyStep, YardProject } from "./types";
+import { fmtUnitEnvelopeInches } from "./voiceHonesty";
 import { stepInstanceIds } from "./assembly";
 
 function iso(x: number, y: number, z: number) {
@@ -238,7 +239,13 @@ export function isoCaption(project: YardProject, highlightIds: string[], step?: 
   }
   const b = useOverallDims(project, highlightIds) ? overviewBounds(project) : hotBounds(project, highlightIds);
   if (b) {
-    const size = `${inchLabel(b.maxX - b.minX)} W × ${inchLabel(b.maxY - b.minY)} H × ${inchLabel(b.maxZ - b.minZ)} D`;
+    // Shared Dia×H densify for round tops — never AABB W×H×W diameter echo on iso/paper.
+    const size = fmtUnitEnvelopeInches(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ, {
+      shape: project.fitted?.unit?.shape,
+      prompt: project.prompt,
+      name: project.name,
+      legs: project.fitted?.unit?.legs,
+    });
     if (!panels.length && project.instances.length) {
       const n =
         !highlightIds.length || highlightIds.length >= project.instances.length * 0.8

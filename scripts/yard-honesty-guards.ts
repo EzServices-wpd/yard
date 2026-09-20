@@ -4730,6 +4730,27 @@ console.log("STRANGER PLAN OK", {
     if (/40\s*[×x]\s*30\s*[×x]\s*40/.test(paperLine) || !/dia/i.test(paperLine)) {
       failVoice2("round plan-on-paper stamp still W×H×W echo", paperLine);
     }
+    // Iso/paper AABB caption must not speak labeled W×H×D diameter echo.
+    const aabbEcho = `${round.overall.width}" W × ${round.overall.height}" H × ${round.overall.depth}" D`;
+    if (/40"\s*W\s*×\s*30"\s*H\s*×\s*40"\s*D/.test(aabbEcho) && isRoundUnitEnvelope({
+      width: round.overall.width,
+      height: round.overall.height,
+      depth: round.overall.depth,
+      shape: round.fitted?.unit?.shape,
+      prompt: round.prompt,
+      name: round.name,
+    })) {
+      // fmtUnitEnvelopeInches is the stranger path; AABB labeled form is the leak class.
+      const isoLine = fmtUnitEnvelopeInches(round.overall.width, round.overall.height, round.overall.depth, {
+        shape: round.fitted?.unit?.shape,
+        prompt: round.prompt,
+        name: round.name,
+        legs: round.fitted?.unit?.legs ?? 3,
+      });
+      if (/\bW\s*×\s*.*\bH\s*×\s*.*\bD\b/.test(isoLine) || /40\s*[×x]\s*30\s*[×x]\s*40/.test(isoLine)) {
+        failVoice2("round iso/AABB size still W×H×D echo", isoLine);
+      }
+    }
   }
 
 
