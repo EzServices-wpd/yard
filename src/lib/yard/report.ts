@@ -12,7 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
-import { strangerPlainShopTalk } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, stampPartsPlate } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -581,12 +581,15 @@ function packPlan(
   partsKind: "cut" | "whole" = "cut",
 ): BuildPlan {
   // Stranger Voice/PDF path — prefer plain words (main box / kick strip) over carcase/toekick/Orbit.
+  // Then kit craft: parts-plate letters on every cut + one-join densify with hardware counts.
+  const platedCutList = stampPartsPlate(cutList);
   const plainInstructions = instructions.map((s) => ({
     ...s,
     title: strangerPlainShopTalk(s.title),
     description: strangerPlainShopTalk(s.description),
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
+  const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList);
   const plainBom = bom.map((b) => ({
     ...b,
     notes: b.notes ? strangerPlainShopTalk(b.notes) : b.notes,
@@ -601,9 +604,9 @@ function packPlan(
       summary,
       issues,
     },
-    cutList,
+    cutList: platedCutList,
     bom: plainBom,
-    instructions: plainInstructions,
+    instructions: kitInstructions,
     totals: {
       pieces,
       estCostUsd: cost,

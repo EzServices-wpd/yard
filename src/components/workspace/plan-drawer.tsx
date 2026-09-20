@@ -386,7 +386,7 @@ function PlanBody({
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
                 <p className="font-medium text-fg">Shop words used in this plan</p>
                 <p className="mt-1">
-                  <span className="text-fg">Carcase</span> = the main box · <span className="text-fg">Toekick</span> = recessed strip at the floor so your toes clear ·{" "}
+                  <span className="text-fg">Main box</span> = the carcase · <span className="text-fg">Kick strip</span> = recessed toekick at the floor so your toes clear ·{" "}
                   <span className="text-fg">Dry-fit</span> = assemble without glue first · <span className="text-fg">Kerf</span> = width the saw blade removes
                 </p>
               </div>

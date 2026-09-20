@@ -3198,7 +3198,53 @@ console.log("SOFT-TRUST OK", {
 
   // Shared helpers exist (markers for ship check).
   // honorSpeciesInTitle / hardwareCatalogIdFromHay / footprintConfirmTalk / strangerPlainShopTalk
+  // densifyKitCraftInstructions / densifyOneJoinInstructions / densifyPartsPlateTalk / stampPartsPlate
   // Voice/PDF depth pillar
+
+  // Parts-plate + one-join densify — letters on cut list; assembly joins name parts + hardware counts.
+  {
+    const cedar2 = generateFromPrompt('house: cedar chest 36" wide × 18" deep × 20" tall with hinged lid');
+    const cedarPlan2 = buildPlan(cedar2);
+    if (!cedarPlan2.cutList.every((c) => c.label && /^[A-Z]+$/.test(c.label))) {
+      failVoice("parts-plate cut list missing stable letters", cedarPlan2.cutList.map((c) => c.label));
+    }
+    const cedarBlob = cedarPlan2.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+    if (!/One join: attach [A-Z] /i.test(cedarBlob)) {
+      failVoice("one-join densify missing Attach lettered parts", cedarBlob.slice(0, 400));
+    }
+    if (!/with 4 × #8/i.test(cedarBlob) && !/with 1 piano hinge/i.test(cedarBlob)) {
+      failVoice("one-join densify missing hardware counts", cedarBlob.slice(0, 400));
+    }
+    if (!cedarPlan2.instructions.some((s) => /Stand the main box/i.test(s.title))) {
+      failVoice("protect Stand the main box title after densify");
+    }
+    if (!/with 1 piano hinge/i.test(cedarBlob)) {
+      failVoice("piano one-join densify missing", cedarBlob.match(/[^
+]*piano[^
+]*/i)?.[0]);
+    }
+    // Buy class still holds after densify.
+    const piano2 = cedarPlan2.bom.find((b) => /piano hinge/i.test(b.name));
+    const pianoBest2 = piano2?.offers?.find((o) => o.best) ?? piano2?.offers?.[0];
+    if (pianoBest2 && /soft-?close|concealed/i.test(pianoBest2.title) && !/piano|continuous/i.test(pianoBest2.title)) {
+      failVoice("parts-plate ship lost piano Best class", pianoBest2.title);
+    }
+  }
+
+  {
+    const round2 = generateFromPrompt('house: 40" round 3-leg table');
+    const roundPlan2 = buildPlan(round2);
+    const roundBlob = roundPlan2.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+    if (!roundPlan2.cutList.every((c) => c.label && /^[A-Z]+$/.test(c.label))) {
+      failVoice("parts-plate round cut list missing letters");
+    }
+    if (!/One join/i.test(roundBlob)) {
+      failVoice("one-join densify missing on round table", roundBlob.slice(0, 400));
+    }
+    if (!/\b3\s*legs?\b|three legs/i.test(`${round2.name}\n${roundBlob}`)) {
+      failVoice("parts-plate ship lost 3 legs");
+    }
+  }
 }
 
 console.log("STRANGER PLAN OK", {

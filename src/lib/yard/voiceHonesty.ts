@@ -1,6 +1,7 @@
-/** Voice/PDF honesty helpers — hardware↔Buy class match, species title/stock, footprint talk, plain shop words. */
+/** Voice/PDF honesty helpers — hardware↔Buy class match, species title/stock, footprint talk, plain shop words, parts-plate + one-join densify. */
 
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
+import type { AssemblyStep, CutLine } from "./types";
 
 /**
  * Map BOM / step hardware language to a Buy catalogId class.
@@ -74,10 +75,319 @@ export function strangerPlainShopTalk(text: string): string {
     .replace(/\borbit-?chrome\b/gi, "skeleton chrome");
 }
 
-
 /** Short kit-style orientation cue when hinge/face direction matters. */
 export function orientationCueTalk(kind: "hinge-toward-you" | "flip-the-box" | "lid-opens-back"): string {
   if (kind === "hinge-toward-you") return "Orientation: hinge edge toward you on the bench.";
   if (kind === "flip-the-box") return "Orientation: flip the box right-side up before this join.";
   return "Orientation: lid opens up and back — hinge along the back edge.";
+}
+
+// ── Parts plate + one-join densify (universal kit craft) ───────────────────
+
+/** Stable A, B, C… plate letters (same alphabet as report stampLabels). */
+export function letterLabel(i: number): string {
+  let n = i;
+  let s = "";
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+}
+
+/** Ensure every cut line has a stable plate letter. */
+export function stampPartsPlate(lines: CutLine[]): CutLine[] {
+  if (!lines.length) return lines;
+  if (lines.every((c) => c.label && /^[A-Z]+$/.test(c.label))) return lines;
+  const sorted = [...lines].sort((a, b) => b.lengthIn - a.lengthIn || a.name.localeCompare(b.name));
+  return sorted.map((line, i) => ({ ...line, label: line.label && /^[A-Z]+$/.test(line.label) ? line.label : letterLabel(i) }));
+}
+
+type PlateEntry = { label: string; name: string; quantity: number; family: string };
+
+function plateFamily(name: string): string {
+  const bare = name.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  if (/^(left|right)\s+door\b|^door\b/.test(bare)) return "door";
+  if (/^(left|right)\s+(side|upright)\b|^upright\b|^side\b/.test(bare)) return "upright";
+  if (/^leg\b/.test(bare)) return "leg";
+  if (/^apron\b/.test(bare)) return "apron";
+  if (/^lid\b/.test(bare)) return "lid";
+  if (/^back\b/.test(bare)) return "back";
+  if (/^front\b/.test(bare)) return "front";
+  if (/^bottom\b/.test(bare)) return "bottom";
+  if (/^top\b|^counter\b|^desktop\b/.test(bare)) return "top";
+  if (/^shelf\b/.test(bare)) return "shelf";
+  if (/^toekick\b|^kick strip\b/.test(bare)) return "toekick";
+  return bare;
+}
+
+/** Parts plate index: cut-list rows with stable letters for step/PDF refs. */
+export function partsPlateEntries(cutList: CutLine[]): PlateEntry[] {
+  return stampPartsPlate(cutList)
+    .filter((c) => c.label)
+    .map((c) => ({
+      label: c.label!,
+      name: c.name,
+      quantity: c.quantity,
+      family: plateFamily(c.name),
+    }));
+}
+
+function plateRef(entry: PlateEntry, spoken?: string): string {
+  const word = (spoken ?? entry.name).replace(/\s+/g, " ").trim();
+  // Avoid "A A Lid" if already lettered.
+  if (new RegExp(`^${entry.label}\\b`, "i").test(word)) return word;
+  return `${entry.label} ${word}`;
+}
+
+function findPlate(entries: PlateEntry[], spoken: string): PlateEntry | undefined {
+  const fam = plateFamily(spoken);
+  const exact = entries.find((e) => e.family === fam || e.name.toLowerCase() === spoken.toLowerCase());
+  if (exact) return exact;
+  return entries.find((e) => e.family === fam || e.name.toLowerCase().startsWith(fam));
+}
+
+/**
+ * Inject cut-list plate letters into step/PDF talk so strangers can match
+ * "B Back" on the bench to letter B on the cut list / nest plate.
+ */
+export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string {
+  const entries = partsPlateEntries(cutList);
+  if (!entries.length || !text) return text;
+  let out = text;
+
+  // Dimension lines: "Back — 34.50" / "Left side — 20 × 18" / "Top (cut round…) — 40"
+  out = out.replace(
+    /\b((?:Left|Right)\s+(?:side|upright|door)|Uprights?|Sides?|Lid|Back|Front|Bottom|Top(?:\s*\([^)]*\))?|Counter|Doors?|Legs?|Aprons?|Shelf|Shelves)(\s+\d+)?(\s*—)/gi,
+    (full, rawName: string, qty: string | undefined, dash: string) => {
+      const plate = findPlate(entries, rawName);
+      if (!plate) return full;
+      if (new RegExp(`\\b${plate.label}\\s+${rawName}`, "i").test(full)) return full;
+      return `${plateRef(plate, rawName)}${qty ?? ""}${dash}`;
+    },
+  );
+
+  // Bare part tokens in prose (longest names first).
+  const byLen = [...entries].sort((a, b) => b.name.length - a.name.length);
+  for (const e of byLen) {
+    const esc = e.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Skip tiny tokens that are too ambiguous.
+    if (e.name.length < 3) continue;
+    const re = new RegExp(`(?<![A-Z]\\s)\\b(${esc})\\b`, "gi");
+    out = out.replace(re, (m) => {
+      // Already prefixed with this letter.
+      return m;
+    });
+    // Safer: prefix only on "the Name" / "Name and" style when not already lettered.
+    const theRe = new RegExp(`\\b([Tt]he)\\s+(?!${e.label}\\b)(${esc})\\b`, "g");
+    out = out.replace(theRe, (_m, the: string, name: string) => `${the} ${plateRef(e, name)}`);
+  }
+
+  // Synonym families for uprights / sides that cut-list groups as Upright.
+  const upright = entries.find((e) => e.family === "upright");
+  if (upright) {
+    out = out.replace(/\b([Ll]ay the)\s+two uprights\b/g, `$1 two ${upright.label} uprights`);
+    out = out.replace(/\b([Tt]he)\s+two uprights\b/g, `$1 two ${upright.label} uprights`);
+    out = out.replace(/\bboth uprights\b/gi, `both ${upright.label} uprights`);
+  }
+
+  return out;
+}
+
+const SCREW_HW = '#8 × 1¼" screws';
+const JOIN_BLOB =
+  /Glue and (#8[^:]*?):\s*([^.]*?)(\.|$)(?:\s*)(Do NOT[^.]*\.)?/i;
+
+type JoinBit = { part: string; onto: string; hardware: string };
+
+/** Parse "back into both uprights, then bottom, then front" → one-join bits. */
+function parseJoinSequence(seq: string, _screwClass: string): JoinBit[] {
+  const cleaned = seq.replace(/\s+/g, " ").trim();
+  if (!cleaned) return [];
+  // "back into both uprights, then bottom, then front"
+  const into = cleaned.match(/^(.+?)\s+into\s+(.+?)(?:,\s*then\s+|$)(.*)$/i);
+  const bits: JoinBit[] = [];
+  const hw = `4 × ${SCREW_HW} (2 per upright)`;
+  if (into) {
+    const firstPart = into[1].trim();
+    const onto = into[2].replace(/,/g, "").trim();
+    bits.push({ part: firstPart, onto, hardware: hw });
+    const rest = (into[3] ?? "").trim();
+    if (rest) {
+      for (const t of rest.split(/\s*,\s*then\s+/i)) {
+        const name = t.replace(/^then\s+/i, "").replace(/\.$/, "").trim();
+        if (!name || /^into\b/i.test(name)) continue;
+        if (bits.some((b) => b.part.toLowerCase() === name.toLowerCase())) continue;
+        bits.push({ part: name, onto, hardware: hw });
+      }
+    }
+  } else if (/\bthen\b/i.test(cleaned)) {
+    const parts = cleaned.split(/\s*,\s*then\s+/i).map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) {
+      bits.push({ part: p, onto: "the main box", hardware: `4 × ${SCREW_HW}` });
+    }
+  }
+  return bits;
+}
+
+function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFirst: boolean): string {
+  if (keepStand && isFirst) return ""; // caller keeps original
+  const partPlate = findPlate(entries, bit.part);
+  const ontoPlate = findPlate(entries, bit.onto.replace(/^both\s+/i, "").replace(/uprights?/i, "upright"));
+  const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
+  const ontoTalk = ontoPlate
+    ? plateRef(ontoPlate, bit.onto.replace(/^both\s+/i, ""))
+    : bit.onto;
+  return `Attach ${partTalk} to ${ontoTalk}`;
+}
+
+function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string, coda: string): string {
+  const partPlate = findPlate(entries, bit.part);
+  const upright = entries.find((e) => e.family === "upright");
+  const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
+  const ontoRaw = bit.onto.replace(/^both\s+/i, "");
+  const ontoTalk = upright && /upright/i.test(ontoRaw)
+    ? `both ${upright.label} uprights`
+    : bit.onto;
+  const count = bit.hardware || `4 × ${SCREW_HW} (2 per upright)`;
+  // Prefer exact screw class from source when present.
+  const hw = /#8/.test(screwClass) ? count.replace(SCREW_HW, SCREW_HW) : count;
+  return `One join: attach ${partTalk} to ${ontoTalk} with ${hw}. Glue the mating edges. Predrill near the ends so the ply does not split.${coda ? ` ${coda}` : ""}`;
+}
+
+/**
+ * Densify assembly steps to kit craft bar:
+ * 1) Parts plate letters on cut/BOM pieces referenced in steps
+ * 2) One join per step with named parts + exact hardware count
+ * Confirm/cut/level steps stay as-is (not joins). Leaves freezes' titles intact
+ * ("Stand the main box" kept on the first carcase join).
+ */
+export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
+  const entries = partsPlateEntries(cutList);
+  const out: AssemblyStep[] = [];
+
+  for (const step of instructions) {
+    const title = densifyPartsPlateTalk(step.title, cutList);
+    const tips = step.tips ? densifyPartsPlateTalk(step.tips, cutList) : step.tips;
+    const desc0 = densifyPartsPlateTalk(step.description, cutList);
+
+    // Non-join steps (confirm / cut / level / footprint) — plate letters only.
+    if (/confirm|cut the|cut \d|level it|footprint|do not cut|mark the/i.test(step.title) && !/stand the main box|attach |screw the|hinge|hang /i.test(step.title)) {
+      out.push({ ...step, title, description: densifyHardwareCountTalk(desc0), tips });
+      continue;
+    }
+
+    const blob = desc0.match(JOIN_BLOB);
+    const keepStand = /stand the main box/i.test(step.title);
+    if (blob && /then/i.test(blob[2] ?? "")) {
+      const screwClass = (blob[1] ?? SCREW_HW).trim();
+      const bits = parseJoinSequence(blob[2], screwClass);
+      const coda = (blob[4] ?? "").trim();
+      // Lead-in before the glue/screw clause (part dim list).
+      const lead = desc0.slice(0, blob.index ?? 0).trim();
+      if (bits.length >= 2) {
+        bits.forEach((bit, i) => {
+          const isFirst = i === 0;
+          const t =
+            isFirst && keepStand
+              ? title
+              : joinTitle(bit, entries, keepStand, isFirst) || title;
+          const d = [
+            isFirst && lead ? lead : "",
+            joinDescription(bit, entries, screwClass, isFirst ? coda : ""),
+          ]
+            .filter(Boolean)
+            .join(" ");
+          out.push({
+            ...step,
+            title: t,
+            description: densifyHardwareCountTalk(d),
+            tips: isFirst ? tips : "One join at a time — dry-fit, then glue and drive the screws for this join only.",
+            partsUsed: step.partsUsed,
+          });
+        });
+        continue;
+      }
+    }
+
+    // Single-join densify for hinge / stay / apron / hang patterns.
+    out.push({
+      ...step,
+      title,
+      description: densifyHardwareCountTalk(densifyNamedJoinTalk(desc0, title, entries)),
+      tips,
+    });
+  }
+
+  return out.map((s, i) => ({ ...s, step: i + 1 }));
+}
+
+/** Ensure hinge/stay/apron joins name hardware count explicitly. */
+function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]): string {
+  let d = desc;
+  const hayTitle = title;
+
+  // Lid stay first — must not inherit piano-hinge join from body mention of piano hinge.
+  if (/lid stay|lid support/i.test(hayTitle) && !/with\s+1\s+lid stay/i.test(d)) {
+    const lid = entries.find((e) => e.family === "lid");
+    if (!/one join:/i.test(d)) {
+      d = `One join: attach 1 lid stay / lid support to ${lid ? plateRef(lid, "Lid") : "the lid"} with 1 lid stay. ${d}`;
+    }
+    return d;
+  }
+
+  // Piano hinge join — name parts + 1 hinge (title-gated).
+  if (/piano-?hinge|piano hinge/i.test(hayTitle) && !/with\s+1\s+piano hinge/i.test(d)) {
+    const lid = entries.find((e) => e.family === "lid");
+    const back = entries.find((e) => e.family === "back");
+    if (lid && back && !/one join:/i.test(d)) {
+      d = `One join: attach ${plateRef(lid, "Lid")} to ${plateRef(back, "Back")} with 1 piano hinge (continuous hinge). ${d}`;
+    } else if (!/one join:/i.test(d)) {
+      d = `One join: attach the lid to the main box back with 1 piano hinge. ${d}`;
+    }
+  }
+
+  // Aprons → legs: stamp one-join + plate letters + screws per end.
+  if (/apron/i.test(hayTitle) && /leg/i.test(hayTitle + d) && !/one join:/i.test(d)) {
+    const apron = entries.find((e) => e.family === "apron");
+    const leg = entries.find((e) => e.family === "leg");
+    const hw = `2 × ${SCREW_HW} per end`;
+    const aTalk = apron ? plateRef(apron, "Aprons") : "aprons";
+    const lTalk = leg ? plateRef(leg, "Legs") : "legs";
+    d = `One join class: attach each ${aTalk} to ${lTalk} with ${hw}. ${d}`;
+  }
+
+  // Doors — "2 hinges each" / "Two concealed hinges".
+  if (/hang\s+\d*\s*doors?/i.test(hayTitle) && !/one join:/i.test(d)) {
+    const door = entries.find((e) => e.family === "door");
+    const dTalk = door ? plateRef(door, "Door") : "door";
+    if (/(?:2|two)\s+(?:concealed\s+)?hinges/i.test(d + hayTitle)) {
+      d = `One join per door: hang each ${dTalk} with 2 concealed hinges. ${d}`;
+    }
+  }
+
+  // Top on base (table) — screw count from aprons into top.
+  if (/center the (round |oval )?top|set the top on the base/i.test(hayTitle) && !/one join:/i.test(d)) {
+    const top = entries.find((e) => e.family === "top");
+    const apron = entries.find((e) => e.family === "apron");
+    d = `One join: attach ${top ? plateRef(top, "Top") : "the top"} to ${apron ? plateRef(apron, "Aprons") : "the aprons"} with ${SCREW_HW} up through the aprons (not down through the face). ${d}`;
+  }
+
+  return d;
+}
+
+/** Normalize "#8 x 1-1/4" variants already present; no-op if counts exist. */
+function densifyHardwareCountTalk(text: string): string {
+  return text
+    .replace(/#8\s*x\s*1-1\/4"/gi, SCREW_HW)
+    .replace(/#8\s*×\s*1-1\/4"/gi, SCREW_HW);
+}
+
+/**
+ * Full kit-craft densify for packPlan: plain shop words already applied;
+ * then parts-plate refs + one-join split.
+ */
+export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
+  const plated = stampPartsPlate(cutList);
+  return densifyOneJoinInstructions(instructions, plated);
 }
