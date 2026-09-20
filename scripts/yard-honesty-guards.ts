@@ -1315,6 +1315,87 @@ if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
   }
 }
 
+// Soft leftover: floating shelf with lip / multi Floating shelves — typed overall H vs envelope AABB.
+// Singular floating shelf must not invent shelfCount=3; lip densify + Shelf backstop spans typed H
+// so envelope AABB == HUD (mirror media/bedside). Multi stack packs into typed H; honor spoken count.
+{
+  const floatLipPrompt =
+    'house: floating shelf with lip 36″ wide × 8″ deep × 6″ tall';
+  const floatLip = generateFromPrompt(floatLipPrompt);
+  if (!/^Floating shelf\b/i.test(floatLip.name) || /Floating shelves/i.test(floatLip.name)) {
+    failHonesty("floating shelf with lip singular title", floatLip.name);
+  }
+  if (!nearInch(floatLip.overall.width, 36) || !nearInch(floatLip.overall.height, 6) || !nearInch(floatLip.overall.depth, 8)) {
+    failHonesty("floating shelf with lip overall", floatLip.overall);
+  }
+  if ((floatLip.fitted?.unit?.shelfCount ?? 0) !== 1) {
+    failHonesty("floating shelf with lip invented shelfCount", floatLip.fitted?.unit?.shelfCount);
+  }
+  const floatLipShelves = floatLip.panels.filter((p) => p.type === "shelf");
+  if (floatLipShelves.length !== 1) {
+    failHonesty("floating shelf with lip shelf panel count", floatLipShelves.map((p) => p.name));
+  }
+  if (!floatLip.panels.some((p) => /Front lip/i.test(p.name) && p.type === "rail")) {
+    failHonesty("floating shelf with lip missing Front lip", floatLip.panels.map((p) => `${p.type}:${p.name}`));
+  }
+  {
+    const back = floatLip.panels.find((p) => /Shelf backstop/i.test(p.name));
+    if (!back || back.type !== "back") {
+      failHonesty("floating shelf Shelf backstop missing/type", floatLip.panels.map((p) => `${p.type}:${p.name}`));
+    } else if (!nearInch(back.position.y + back.size.height, 6)) {
+      failHonesty("floating shelf Shelf backstop top face ≠ typed H6", {
+        y: back.position.y,
+        h: back.size.height,
+        topFace: back.position.y + back.size.height,
+      });
+    }
+  }
+  const floatLipPlan = buildPlan(floatLip);
+  if (!inspectHonesty(floatLip, floatLipPlan).ok) {
+    failHonesty("floating shelf with lip inspect", inspectHonesty(floatLip, floatLipPlan).issues);
+  }
+  {
+    const envIssue = inspectHonesty(floatLip, floatLipPlan).issues.find(
+      (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+    );
+    if (envIssue) failHonesty("floating shelf envelope H still flakes vs typed 6", envIssue);
+  }
+
+  // Twin: multi floating shelves — pack into typed overall H; honor "two floating shelves".
+  const floatTwoPrompt =
+    'house: two floating shelves 36″ wide × 8″ deep × 30″ tall';
+  const floatTwo = generateFromPrompt(floatTwoPrompt);
+  if (!/^Floating shelves\b/i.test(floatTwo.name)) {
+    failHonesty("two floating shelves title", floatTwo.name);
+  }
+  if (!nearInch(floatTwo.overall.height, 30)) {
+    failHonesty("two floating shelves overall H30", floatTwo.overall);
+  }
+  if ((floatTwo.fitted?.unit?.shelfCount ?? 0) !== 2) {
+    failHonesty("two floating shelves shelfCount ≠ 2", floatTwo.fitted?.unit?.shelfCount);
+  }
+  const floatTwoShelves = floatTwo.panels.filter((p) => p.type === "shelf");
+  if (floatTwoShelves.length !== 2) {
+    failHonesty("two floating shelves panel count", floatTwoShelves.map((p) => p.name));
+  }
+  {
+    const back = floatTwo.panels.find((p) => /Shelf backstop/i.test(p.name));
+    if (!back || back.type !== "back" || !nearInch(back.position.y + back.size.height, 30)) {
+      failHonesty("two floating shelves Shelf backstop top face ≠ typed H30", back);
+    }
+  }
+  const floatTwoPlan = buildPlan(floatTwo);
+  if (!inspectHonesty(floatTwo, floatTwoPlan).ok) {
+    failHonesty("two floating shelves inspect", inspectHonesty(floatTwo, floatTwoPlan).issues);
+  }
+  {
+    const envIssue = inspectHonesty(floatTwo, floatTwoPlan).issues.find(
+      (i) => /envelope/i.test(i.message) && /H /.test(i.message),
+    );
+    if (envIssue) failHonesty("two floating shelves envelope H still flakes vs typed 30", envIssue);
+  }
+}
+
 
 const bambooFramePrompt = "picture frame from bamboo skewers";
 const bambooFrame = generateFromPrompt(bambooFramePrompt);

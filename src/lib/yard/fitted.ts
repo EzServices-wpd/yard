@@ -120,8 +120,10 @@ function typedDoorCount(text: string): number | null {
 /** Spoken/typed shelf count — digits or words; honor "one lower shelf" / adjective between count and shelf. */
 function spokenShelfCount(text: string): number | null {
   const lower = text.toLowerCase();
-  const adj = "(?:lower|upper|bottom|top|open|middle|adjustable)\s+";
-  const digit = lower.match(new RegExp(`\\b(\\d+)\\s+(?:${adj})?shel(?:f|ves|ving)\\b`));
+  // Allow short intervening adjectives: "two floating shelves", "3 wall shelves", "one open shelf".
+  const bridge = "(?:[\\w'-]+\\s+){0,3}";
+  const adj = "(?:lower|upper|bottom|top|open|middle|adjustable|floating|wall|cleat-?mounted)\\s+";
+  const digit = lower.match(new RegExp(`\\b(\\d+)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`));
   if (digit) {
     const n = parseInt(digit[1], 10);
     if (n >= 1 && n <= 12) return n;
@@ -145,12 +147,23 @@ function spokenShelfCount(text: string): number | null {
     single: 1,
   };
   const word = lower.match(
-    new RegExp(`\\b(one|two|three|four|five|six|seven|eight|nine|ten|single)\\s+(?:${adj})?shel(?:f|ves|ving)\\b`),
+    new RegExp(
+      `\\b(one|two|three|four|five|six|seven|eight|nine|ten|single)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`,
+    ),
   );
   if (word && words[word[1]] != null) return words[word[1]];
   // "a lower shelf" / "the lower shelf" → one
   if (/\b(?:a|the|one|single)\s+(?:lower|bottom)\s+shel(?:f|ves)\b/.test(lower)) return 1;
   if (/\blower\s+shel(?:f|ves)\b/.test(lower) && !/\b(?:[2-9]|1[0-2]|two|three|four|five|six|seven|eight|nine|ten)\s+(?:lower\s+)?shel/.test(lower)) {
+    return 1;
+  }
+  // Bare singular "floating shelf" / "a shelf" (not shelves) → one — do not invent multi stack.
+  if (
+    /\bshelf\b/.test(lower) &&
+    !/\bshelves\b/.test(lower) &&
+    (/floating|wall-?mounted|with\s+(?:a\s+)?lip|\blip\b/.test(lower) ||
+      /\b(?:a|the|one|single)\s+shel(?:f)\b/.test(lower))
+  ) {
     return 1;
   }
   return null;
@@ -1120,6 +1133,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 2
                 : isUtilityShelf(lower) || isOpenKitchenShelving(lower)
                   ? 3
+                // Singular floating / lip shelf — never invent a 3-shelf stack for one board.
+                : ((/floating|wall-?mounted/.test(lower) || /\bwith\s+(?:a\s+)?lip\b|\blip\b/.test(lower)) &&
+                    /\bshelf\b/.test(lower) &&
+                    !/\bshelves\b/.test(lower))
+                  ? 1
                 : (/shel(?:f|ves|ving)/.test(lower) && !/coat/.test(lower) && !(program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower)))
                 ? 3
                 : (program === "desk" && /media\s*shelf|shelf behind|laptop/.test(lower))
@@ -1371,8 +1389,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                   ? "Kitchen island"
                                   : /range\s*hood|\bhood\b/.test(lower)
                                     ? "Range hood"
-                                    : /floating/.test(lower) && /shel/.test(lower)
-                                      ? "Shelves"
+                                    : /floating/.test(lower) && /shelves/.test(lower)
+                                      ? "Floating shelves"
+                                      : /floating/.test(lower) && /shelf/.test(lower)
+                                        ? "Floating shelf"
                                       : house?.family === "hung-open" && house.affordances.includes("jar-lips")
                                         ? "Jar rack"
                                         : house?.family === "hung-open" && house.affordances.includes("bottle-rails")
@@ -4289,43 +4309,138 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const floating =
     ((/floating|wall-?mounted/.test(lowerPrompt) || wallShelfCleats) && /shel/.test(lowerPrompt));
   if (floating) {
-    const n = Math.max(1, Math.min(8, u.shelfCount ?? 3));
-    const gap = 10;
-    const cleatH = 2.5;
+    const wantsLip =
+      /\blip\b|with\s+(?:a\s+)?lip|front\s+lip|jar\s+lip/.test(lowerPrompt) &&
+      !/jar\s+rack|spice|bottle/.test(lowerPrompt);
+    const singularShelf =
+      /\bshelf\b/.test(lowerPrompt) && !/\bshelves\b/.test(lowerPrompt);
+    // Honor spoken / singular count — never invent a multi stack for one floating shelf.
+    const n = Math.max(
+      1,
+      Math.min(8, singularShelf ? 1 : u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3),
+    );
+    const cleatH0 = 2.5;
     const depthTyped =
       /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
       /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
     const Df = depthTyped ? D : Math.min(D, 8);
+    // Typed overall H wins — densify lip/backstop/spacers so envelope AABB == typed H
+    // (do not invent gap=10 stacks that overshoot, then hide behind snapHud).
+    const envelopeH = Math.max(
+      H > 0 ? H : n === 1 ? (wantsLip ? 6 : P) : n * (cleatH0 + P) + Math.max(0, n - 1) * 10,
+      n === 1 ? (wantsLip ? P + 2 : P) : n * (P + 1.5),
+    );
+    const lipH = wantsLip
+      ? Math.min(1.25, Math.max(0.75, Math.min(envelopeH - cleatH0 - P, 1.25)))
+      : 0;
+
+    if (n === 1) {
+      const useEnvelope = /floating/.test(lowerPrompt) || wantsLip || envelopeH > P + 0.1;
+      const outH = useEnvelope ? envelopeH : P;
+      const cleatH = Math.min(cleatH0, Math.max(1.5, outH - P - (wantsLip ? lipH : 0)));
+      panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
+      panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, P, Df));
+      if (wantsLip) {
+        panels.push(panel("rail", "Front lip", x0, cleatH + P, Df - P, W, lipH, P));
+      }
+      // Soft leftover: envelopePanels drops rails — without a type=back face, AABB collapses
+      // to shelf ply (or ignores typed H). Shelf backstop spans typed overall H (media/bedside).
+      if (useEnvelope) {
+        panels.push(panel("back", "Shelf backstop", x0, 0, P, W, outH, P));
+      }
+      const name = /floating/.test(lowerPrompt) || wantsLip
+        ? `Floating shelf ${W}" × ${outH}" × ${Df}"`
+        : `Wall shelf ${W}" × ${Df}" × ${P}"`;
+      return {
+        id: createId("proj"),
+        name,
+        prompt,
+        kind: "closet",
+        overall: { width: W, height: outH, depth: Df },
+        instances: [],
+        panels,
+        primaryMaterialId: PLY,
+        notes: [
+          wantsLip
+            ? `One cleat-mounted ${W}" × ${Df}" floating shelf with a front lip and Shelf backstop spanning ${outH}" — typed overall H, not a multi Floating shelves stack. ¾" plywood.`
+            : /floating/.test(lowerPrompt)
+              ? `One cleat-mounted ${W}" × ${Df}" floating shelf on a Wall cleat — Shelf backstop spans typed ${outH}". ¾" plywood. No box — no uprights.`
+              : `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`,
+          "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
+          "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+        ],
+        historic: false,
+        opening: { width: W, height: outH, depth: Df, kind: "room" },
+        fitted: {
+          ...spec,
+          name,
+          unit: {
+            ...u,
+            width: W,
+            height: outH,
+            depth: Df,
+            doors: false,
+            drawersPerBank: undefined,
+            shelfCount: 1,
+          },
+          opening: { width: W, height: outH, depth: Df, kind: "room" },
+          affordances: (spec.affordances ?? []).includes("cleats")
+            ? spec.affordances
+            : [...(spec.affordances ?? []), "cleats"],
+        },
+        assumptions: {
+          load: "medium",
+          units: "inches",
+          installMode: "wall",
+          wallType: "wood_stud",
+        },
+      };
+    }
+
+    // Multi floating / wall shelves — pack into typed envelope H; do not invent gap past typed H.
+    const shelfBand = cleatH0 + P;
+    let gap =
+      n <= 1
+        ? 0
+        : Math.max(2, (envelopeH - n * shelfBand) / Math.max(1, n - 1));
+    // If typed H is too short for preferred cleat, shrink cleat/gap rather than overshoot.
+    let cleatH = cleatH0;
+    if (n * shelfBand + Math.max(0, n - 1) * gap > envelopeH + 0.05) {
+      const room = Math.max(0, envelopeH - n * P);
+      cleatH = Math.max(1.25, Math.min(cleatH0, room / n - 0.01));
+      const band = cleatH + P;
+      gap = n <= 1 ? 0 : Math.max(1, (envelopeH - n * band) / Math.max(1, n - 1));
+    }
     for (let i = 0; i < n; i++) {
       const y = i * (cleatH + P + gap);
-      const label = n === 1 ? "" : ` ${i + 1}`;
-      // Ledger cleat against the wall; shelf sits on it and screws down.
+      const label = ` ${i + 1}`;
       panels.push(panel("rail", `Wall cleat${label}`, x0, y, 0, W, cleatH, P));
       panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, P, W, P, Df));
+      if (wantsLip) {
+        const thisLip = Math.min(1.25, Math.max(0.75, Math.min(gap > 0 ? gap * 0.4 : 1.25, 1.25)));
+        panels.push(panel("rail", `Front lip${label}`, x0, y + cleatH + P, Df - P, W, thisLip, P));
+      }
     }
-    const stackH = n * (cleatH + P) + Math.max(0, n - 1) * gap;
-    const name =
-      n === 1
-        ? `Wall shelf ${W}" × ${Df}" × ${P}"`
-        : /floating/.test(lowerPrompt)
-          ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
-          : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
+    // Envelope-counted face spans typed overall H so AABB == HUD (rails drop out of envelope).
+    panels.push(panel("back", "Shelf backstop", x0, 0, P, W, envelopeH, P));
+    const stackH = envelopeH;
+    const name = /floating/.test(lowerPrompt)
+      ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
+      : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: n === 1 ? P : stackH, depth: Df },
+      overall: { width: W, height: stackH, depth: Df },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
-        n === 1
-          ? `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`
-          : `${n} cleat-mounted ${W}" × ${Df}" shelves on wall cleats. ¾" plywood. No box — no uprights.`,
-        n === 1
-          ? "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — not floating boards."
-          : `Space shelves about ${gap}" apart. Each cleat lags into studs; the shelf screws down onto its cleat. Cleat-mounted.`,
+        wantsLip
+          ? `${n} cleat-mounted ${W}" × ${Df}" shelves with front lips inside a ${stackH}" envelope — Shelf backstop spans typed overall H. ¾" plywood. No box — no uprights.`
+          : `${n} cleat-mounted ${W}" × ${Df}" shelves on wall cleats inside a ${stackH}" envelope — Shelf backstop spans typed overall H. ¾" plywood. No box — no uprights.`,
+        `Space shelves about ${gap.toFixed(1)}" apart. Each cleat lags into studs; the shelf screws down onto its cleat. Cleat-mounted.`,
         "Guidance only — hit a stud. Confirm the wall type.",
       ],
       historic: false,
@@ -4335,6 +4450,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         name,
         unit: { ...u, width: W, height: stackH, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: n },
         opening: { width: W, height: stackH, depth: Df, kind: "room" },
+        affordances: (spec.affordances ?? []).includes("cleats")
+          ? spec.affordances
+          : [...(spec.affordances ?? []), "cleats"],
       },
       assumptions: {
         load: "medium",
