@@ -5880,4 +5880,55 @@ console.log("STRANGER PLAN OK", {
     }
     console.log("PASS media-open-front protect vanity/no-drawers/multi/lift/ledge/coat/round/nightstand");
   }
+
+  // Soft leftover after b8f8e37 (media open-front note): paper/HUD/Measure teach
+  // "40\" dia × 30\" H" but prompt parse only accepted tall|high|height — bare H
+  // silently collapsed to class-default height (side table 22 H → 30; dining 28 H → 30;
+  // coffee 16 H → 18). Universal paper Dia×H / W×H×D axis-label honesty (not noun-only).
+  {
+    const cases: Array<[string, number, number]> = [
+      ["round side table 24 dia × 22 H", 24, 22],
+      ["round side table 24\" dia × 22\" H", 24, 22],
+      ["round dining table 40 dia × 28 H with 3 legs", 40, 28],
+      ["round coffee table 36 dia × 16 H", 36, 16],
+      ["round side table 24 dia × 22 tall", 24, 22],
+      ["round dining table 40 diameter by 30 tall with 3 legs", 40, 30],
+    ];
+    for (const [prompt, wantDia, wantH] of cases) {
+      const p = generateFromPrompt(prompt);
+      if (Math.abs(p.overall.width - wantDia) > 0.6 || Math.abs(p.overall.depth - wantDia) > 0.6) {
+        failHonesty(`paper Dia×H dia ${prompt}`, p.overall);
+      }
+      if (Math.abs(p.overall.height - wantH) > 0.6) {
+        failHonesty(`paper Dia×H height ${prompt} want ${wantH}`, p.overall);
+      }
+      const env = fmtUnitEnvelopeInches(p.overall.width, p.overall.height, p.overall.depth, {
+        shape: p.fitted?.unit?.shape,
+        prompt: p.prompt,
+        name: p.name,
+      });
+      if (!new RegExp(String.raw`${wantDia}["″]?\s*dia\s*×\s*${wantH}["″]?\s*H`, "i").test(env)) {
+        failHonesty(`paper Dia×H envelope ${prompt}`, env);
+      }
+    }
+    // Protect prior softs after paper-H densify
+    const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
+    if (operateFaceKinds(vanity.panels || []).doors < 2) failHonesty("vanity doors protect after paper Dia×H");
+    const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
+    if ((noDr.panels || []).filter((x) => x.type === "drawer").length !== 0) failHonesty("no-drawers protect after paper Dia×H");
+    const media = generateFromPrompt("media console 60 wide 18 deep 24 tall with two doors");
+    if (operateFaceKinds(media.panels || []).doors < 2) failHonesty("media doors protect after paper Dia×H");
+    if ((media.notes || []).some((n) => /Open front|No leftover doors/i.test(n))) {
+      failHonesty("media doors note protect after paper Dia×H", (media.notes || []).slice(0, 3));
+    }
+    const multi = generateFromPrompt("hope chest with two hinged lids");
+    if (!(multi.notes || []).some((n) => /^Assumed one lid\b/i.test(n))) failHonesty("multi Assumed protect after paper Dia×H");
+    const lift = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with lift-off lid");
+    if (hasOperableFaces(operateFaceKinds(lift.panels || []))) failHonesty("lift-off protect after paper Dia×H");
+    const ledge = generateFromPrompt("picture ledge 36 wide");
+    if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) failHonesty("ledge protect after paper Dia×H", ledge.name);
+    const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+    if ((night.panels || []).filter((x) => x.type === "drawer").length !== 1) failHonesty("nightstand one protect after paper Dia×H");
+    console.log("PASS paper Dia×H bare-H height + protect vanity/no-drawers/media/multi/lift/ledge/night");
+  }
 }

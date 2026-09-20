@@ -511,7 +511,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // that is immediately an axis label (tall/high/wide/deep/long) is not treated as dia.
   const diameterRaw = pick(
     t,
-    /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|wide|width|deep|depth|long|length))/i,
+    /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|H|wide|width|deep|depth|long|length))/i,
     NaN,
   );
   const diameterTail = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)/i, NaN);
@@ -522,7 +522,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
   );
 
   let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
-  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height)/i, NaN);
+  // Paper/HUD/Measure teach Dia×H and W×H×D — bare H is a height axis label
+  // (same honesty class as round envelope "40\" dia × 30\" H"). tall|high|height still win.
+  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height|H)\b/i, NaN);
   let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:deep|depth)/i, NaN);
   // Table plan length — "42 long × 24 wide" is length × plan-width, not a dropped axis.
   const labeledLong = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length)\b/i, NaN);
@@ -579,7 +581,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? seatH
       : Number.isFinite(seatHAlt)
         ? seatHAlt
-        : pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height)/i, NaN);
+        : pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|H)\b/i, NaN);
     const seatD = pick(
       t,
       /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*seat\s*(?:depth|deep)/i,
@@ -609,7 +611,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
           // W×W×H tall pattern: pair already set W/H/D — force square plan + tall height
           width = trip.w;
           depth = trip.w;
-          const tall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height)/i, NaN);
+          const tall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|H)\b/i, NaN);
           if (Number.isFinite(tall)) height = tall;
           else if (trip.d) height = trip.d;
         }
@@ -722,7 +724,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     // height already from "seat height" / tall|high|height pick when present
   }
 
-  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
+  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length|(?:^|[^a-z])h(?:$|[^a-z])/.test(lower);
   // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
   // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
   // not a 24" coffee height with a 36" deep top.
@@ -776,7 +778,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Rect tables (laundry folding 48x36x24) stay unlabeled W×H×D.
   if (program === "table" && !isRound && !Number.isFinite(diameter)) {
     const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
-    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height|H)\b/i, NaN);
     const labeledDeep = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)/i, NaN);
     if (Number.isFinite(labeledLong)) {
       width = labeledLong;
@@ -818,7 +820,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       const heightHits = slots.filter((s) => near(s.n, height));
       // Prefer the last matching slot when duplicates (square 36×36×30 tall → height is the 30).
       const heightSlot = heightHits.length ? heightHits[heightHits.length - 1] : null;
-      if (heightSlot && (Number.isFinite(labeledTall) || /\d[^\d]{0,12}(?:tall|high|height)/i.test(t))) {
+      if (heightSlot && (Number.isFinite(labeledTall) || /\d[^\d]{0,12}(?:tall|high|height|H)\b/i.test(t))) {
         const plan = slots.filter((s) => s.key !== heightSlot.key).map((s) => s.n);
         if (plan.length === 2) {
           if (!Number.isFinite(labeledLong) && !Number.isFinite(labeledWide)) width = plan[0];
@@ -866,7 +868,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Platform / bunk / loft beds: wide × long × tall → W × H × D(length). Never drop length.
   if (isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower)) {
     const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
-    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)/i, NaN);
+    const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height|H)\b/i, NaN);
     if (Number.isFinite(labeledWide)) width = labeledWide;
     if (Number.isFinite(labeledLong)) depth = labeledLong;
     if (Number.isFinite(labeledTall)) height = labeledTall;
