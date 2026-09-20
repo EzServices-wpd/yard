@@ -341,6 +341,15 @@ export function isSeatingLoungeClass(lower: string) {
   return isLoungeChair(lower) || isRockingChair(lower) || isOttoman(lower);
 }
 
+/**
+ * True when the prompt names a sit-on chair/stool.
+ * "Chair space" is knee room under a vanity — never a seating steal.
+ */
+export function namesSitChair(lower: string) {
+  const hay = lower.replace(/chair[\s-]+space/g, " ");
+  return /\bchair\b|\bstool\b/.test(hay);
+}
+
 /** Outdoor side table — positive Outdoor side table stem (not naked Table). */
 export function isOutdoorSideTable(lower: string) {
   if (/outdoor\s*side\s*table|side\s*table/.test(lower)) return true;

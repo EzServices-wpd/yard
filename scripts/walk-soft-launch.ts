@@ -28,7 +28,7 @@ Centered vanity with open knee space (≈22 inches clear) under a counter at 34 
     id: "2-linen",
     house: true,
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
-    expect: { w: 31.5, h: 78, d: 16, kind: "closet", nameIncludes: "Closet" },
+    expect: { w: 31.5, h: 78, d: 16, kind: "closet", nameIncludes: "Linen" },
   },
   {
     id: "3-window",

@@ -106,7 +106,7 @@ const HITS: Hit[] = [
   { re: /rocking\s*chair|\brocker\b/, kind: "furniture", name: "Rocking chair", build: chairOps },
   { re: /lounge\s*chair|easy\s*chair|club\s*chair/, kind: "furniture", name: "Lounge chair", build: chairOps },
   { re: /\bottoman\b|\bpouf\b|foot\s*stool|footstool/, kind: "furniture", name: "Ottoman", build: benchOps },
-  { re: /cabin|shed|hut|cottage|barn|(?<!opera )house/, kind: "house", name: "House", build: houseOps },
+  { re: /\bcabin\b|\bshed\b|\bhut\b|\bcottage\b|\bbarn\b|(?<!opera )house/, kind: "house", name: "House", build: houseOps },
   { re: /wall|fence|palisade|barrier/, kind: "wall", name: "Wall", build: wallOps },
   { re: /dome|igloo|sphere|globe/, kind: "dome", name: "Dome", build: domeOps },
   { re: /garden\s*arch|arbor|arbour|pergola/, kind: "arch", name: "Garden arch", build: archOps },

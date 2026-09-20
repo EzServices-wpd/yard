@@ -12,7 +12,7 @@ The side walls are angled (almost trapezoidal): at 20 inches perpendicular from 
 I want mixed-use towel and linen storage as well as a vanity space.
 A centered rectangular unit 38 inches wide × 17 inches deep × 102 inches high. Front face parallel to the back wall, centered on the back-wall centerline. At 17" depth: about 5.1" clearance on the left and 1.7" on the right.
 Centered vanity with open knee space (≈22 inches clear) under a counter at 34 inches high. Drawers on either side of the knee space. Upper cabinetry from 54 inches to the ceiling (102"). Large doors with adjustable shelving for towels and linens. Mirror and storage beside the chair space. Structurally centered and anchored into studs.`, expect: { kind: "closet", nameIncludes: "vanity" } },
-  { id: "2-linen", prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep", expect: { w: 31.5, h: 78, d: 16, kind: "closet", nameIncludes: "Closet" } },
+  { id: "2-linen", prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep", expect: { w: 31.5, h: 78, d: 16, kind: "closet", nameIncludes: "Linen" } },
   { id: "3-window", prompt: "Andersen 100 Series 36 by 48 double hung window, frame the rough opening", expect: { kind: "opening" } },
   { id: "4-desk", prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space", expect: { w: 60, h: 29, d: 30, kind: "closet", nameIncludes: "Desk" } },
   { id: "5-pantry", prompt: "hall pantry 24 wide by 84 tall by 14 deep, 5 shelves, 3/4 inch plywood", expect: { w: 24, h: 84, d: 14, nameIncludes: "Pantry" } },

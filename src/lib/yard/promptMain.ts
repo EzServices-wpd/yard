@@ -4,9 +4,9 @@ import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
-import { parsePocket, buildPocket } from "./pocket";
+import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty } from "./weekendStockHonesty";
@@ -106,16 +106,19 @@ export function generateFromPrompt(
     !climbPrimary &&
     !isPorchSwingFrame(lower) &&
     !isAdirondackChair(lower) &&
-    (!/\bchair\b|\bstool\b/.test(lower) || isSeatingLoungeClass(lower)) &&
+    (!namesSitChair(lower) || isSeatingLoungeClass(lower)) &&
     weekendMech !== "launcher" &&
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
     (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia)
   ) {
+    // Wonky pocket before parseBrief — the original survey is a trapezoid, not a fitted rectangle.
+    if (looksLikePocket(prompt)) {
+      const pocket = parsePocket(prompt);
+      if (pocket) return enforceHonesty(buildPocket(pocket, prompt));
+    }
     const brief = parseBrief(prompt);
     if (brief) return honestHouse(buildFitted(brief, prompt), prompt);
-    const pocket = parsePocket(prompt);
-    if (pocket) return enforceHonesty(buildPocket(pocket, prompt));
     return enforceHonesty(buildClosetFromPrompt(prompt, size));
   }
 

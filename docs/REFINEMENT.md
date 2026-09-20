@@ -30,4 +30,10 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Footer names the real sheet (4×8 / 4×10 + material). Thin backer stays off the 3/4" nest.
 - Linen 31.5 × 78 × 16 canary unchanged.
 
+**Bot speed (20 Sep 2026):**
+- Freeze #1 pocket was densifying as weekend House: `chair space` skipped fitted, then `cabinetry` matched the House form.
+- `namesSitChair` ignores “chair space”. `parsePocket` wins when `looksLikePocket`. House form no longer matches cabinetry.
+- Walk linen expect is **Linen** (product name), not Closet.
+- Bot first command: `scripts/walk-canary.ts`. Queue in `docs/BOT.md`. NEXT = cut A id, then D photo. Park lounge/desk.
+
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
