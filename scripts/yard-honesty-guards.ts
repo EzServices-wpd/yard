@@ -5235,3 +5235,45 @@ console.log("STRANGER PLAN OK", {
     failHonesty("densifyConfirmAssumedNotes must not duplicate Assumed talk", twice[0].description);
   }
 }
+
+// ── Door pulls densify with hinged doors (bench BarPull ↔ Buy/steps) ──
+{
+  const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
+  const vanityPlan = buildPlan(vanity);
+  if (!/36/.test(vanity.name) || !/32/.test(vanity.name) || !/21/.test(vanity.name)) {
+    failHonesty("two-door vanity typed dims protect", vanity.name);
+  }
+  if (!vanityPlan.bom.some((b) => /soft-?close|concealed.*hinge|cabinet hinges/i.test(b.name))) {
+    failHonesty("two-door vanity Buy missing cabinet hinges", vanityPlan.bom.map((b) => b.name));
+  }
+  if (!vanityPlan.bom.some((b) => /bar pulls|door pulls|cabinet pulls/i.test(b.name))) {
+    failHonesty("two-door vanity Buy missing door/bar pulls (bench shows BarPull)", vanityPlan.bom.map((b) => b.name));
+  }
+  const hang = vanityPlan.instructions.find((s) => /Hang .*door/i.test(s.title));
+  if (!hang || !/bar pull/i.test(hang.description) || !/open and close/i.test(hang.description)) {
+    failHonesty("two-door vanity hang step must install bar pulls + open/close test", {
+      title: hang?.title,
+      description: hang?.description,
+    });
+  }
+
+  // Nightstand drawers keep cup pulls — not bar-pull steal.
+  const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+  const nightPlan = buildPlan(night);
+  if (!nightPlan.bom.some((b) => /cup pulls/i.test(b.name))) {
+    failHonesty("nightstand drawer cup pulls protect", nightPlan.bom.map((b) => b.name));
+  }
+  if (nightPlan.bom.some((b) => /bar pulls|door pulls/i.test(b.name))) {
+    failHonesty("nightstand drawer must not buy door/bar pulls", nightPlan.bom.map((b) => b.name));
+  }
+
+  // Cedar hinged lid — piano hinge path, not cabinet bar pulls.
+  const cedar = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with hinged lid");
+  const cedarPlan = buildPlan(cedar);
+  if (!cedarPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
+    failHonesty("cedar hinged lid piano hinge protect", cedarPlan.bom.map((b) => b.name));
+  }
+  if (cedarPlan.bom.some((b) => /bar pulls|soft-?close concealed/i.test(b.name))) {
+    failHonesty("cedar hinged lid must not buy door bar pulls / cabinet hinges", cedarPlan.bom.map((b) => b.name));
+  }
+}

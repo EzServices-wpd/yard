@@ -952,8 +952,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             : "Hang the door — 2 concealed hinges",
         description:
           doors.length > 1
-            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening).`
-            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening).`,
+            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on each door. Open and close each door — gaps even.`
+            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on the door. Open and close — gaps even.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
         partsUsed: names(doors),
       },
@@ -1015,7 +1015,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
@@ -1943,7 +1943,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"} — 2 hinges each`,
-      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even.`,
+      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even. Screw one bar pull centered on each door. Open and close each door — gaps even, pulls solid, soft-close if you bought it.`,
       partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors]),
     });
   }

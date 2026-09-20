@@ -412,6 +412,15 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         estimatedCost: 8.99 * doors.length,
         notes: `Two hinges per door (${doors.length * 2} hinges / ${doors.length} pair${doors.length === 1 ? "" : "s"}).`,
       });
+      // Door pulls densify with hinged doors (bench shows BarPull) — not crate latch path.
+      bom.push({
+        name: "Cabinet bar pulls",
+        quantity: 1,
+        unit: "pack",
+        searchQuery: "cabinet bar pulls door handle",
+        estimatedCost: 12.98,
+        notes: `One bar pull centered on each door (${doors.length} door${doors.length === 1 ? "" : "s"}).`,
+      });
     }
   }
   if (medicine) {
