@@ -98,7 +98,7 @@ export const FORGE_CATALOG: CatalogItem[] = [
     dims: { length: 12, diameter: 0.125 },
     unitsPerPack: 100,
     unitCostUsd: 0.02,
-    aliases: ["skewer", "bamboo stick", "kebab stick"],
+    aliases: ["skewer", "skewers", "bamboo skewer", "bamboo skewers", "bamboo stick", "bamboo sticks", "kebab stick", "kebab sticks"],
     tags: ["bamboo", "thin", "pin"],
     preferredJoins: ["glue", "friction", "pin"],
     canCut: true,

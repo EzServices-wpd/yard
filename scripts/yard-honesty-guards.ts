@@ -353,7 +353,12 @@ expectStock("6 foot garden arch from 3/4 inch PVC pipe", "pvc-3-4-sch40");
 expectStock("4 foot bridge from plastic drinking straws", "straw-plastic");
 expectStock("garden arch from 2x4", "lumber-2x4-8");
 expectStock("tower from 1/4 dowel", "dowel-1-4-36");
+expectStock("tower from dowels", "dowel-1-4-36");
 expectStock("box from plywood", "plywood-3-4-4x8");
+// Plural craft nouns (skewers/dowels) must bind craft stock — not bare bamboo → lumber-1x4-8.
+expectStock("bridge from bamboo skewers", "bamboo-skewer-12");
+expectStock("bridge from bamboo skewer", "bamboo-skewer-12");
+expectStock("picture frame from bamboo skewers", "bamboo-skewer-12");
 expectStock("Eiffel Tower", "wire-frame");
 expectStock("garden arch", "wire-frame");
 expectStock("a bridge", "wire-frame");
@@ -661,6 +666,7 @@ const ladder6Plan = buildPlan(ladder6);
 const ladder6Inspect = inspectWeekendHonesty(ladder6, ladder6Plan);
 if (!ladder6Inspect.ok) failWeekend("6ft ladder inspect", ladder6Inspect.issues);
 
+// Soft leftover: plural "skewers" must densify bamboo-skewer-12 (not lumber-1x4-8 steal).
 const bambooBridge = generateFromPrompt("bridge from bamboo skewers");
 if (bambooBridge.kind !== "bridge" || bambooBridge.primaryMaterialId !== "bamboo-skewer-12") {
   failWeekend("bamboo bridge", { kind: bambooBridge.kind, stock: bambooBridge.primaryMaterialId });
@@ -1447,9 +1453,15 @@ expectNamedLumberBuy("walnut plant stand", "walnut");
 expectNamedLumberBuy("redwood two-step stool", "redwood");
 expectNamedLumberBuy("pine board shelf ladder", "pine");
 expectNamedLumberBuy("balsa stick tower", "balsa");
-// Bamboo skewer stays skewer; bare bamboo board densifies to lumber class pack.
+// Bamboo skewer stays skewer (singular + plural); bare bamboo board densifies to lumber class pack.
 if (detectMaterial("bamboo skewer warren bridge").id !== "bamboo-skewer-12") {
   failHonesty("bamboo skewer lost skewer bind", detectMaterial("bamboo skewer warren bridge").id);
+}
+if (detectMaterial("bamboo skewers warren bridge").id !== "bamboo-skewer-12") {
+  failHonesty("bamboo skewers plural lost skewer bind", detectMaterial("bamboo skewers warren bridge").id);
+}
+if (detectMaterial("bridge from bamboo skewers").id !== "bamboo-skewer-12") {
+  failHonesty("bridge from bamboo skewers stole lumber", detectMaterial("bridge from bamboo skewers").id);
 }
 expectNamedLumberBuy("bamboo board shelf", "bamboo");
 

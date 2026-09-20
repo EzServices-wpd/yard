@@ -355,27 +355,53 @@ export function isWireStock(item: CatalogItem | undefined | null): boolean {
   return !!item && (item.id === "wire-frame" || !!item.tags?.includes("wire"));
 }
 
-export function detectMaterial(prompt: string): CatalogItem {
-  const lower = prompt.toLowerCase();
-  const phrases: [RegExp, string][] = [
+/**
+ * Weekend / craft stock bind phrases that must run BEFORE named lumber.
+ * Spoken craft nouns accept singular OR plural (same class as straw `\bstraws?\b`).
+ * Bamboo skewer/sticks win over bare bamboo → lumber-1x4-8 from the named lumber pack.
+ */
+export function weekendCraftStockPhrases(): [RegExp, string][] {
+  return [
     [/jumbo (craft|popsicle)|jumbo stick|(?:lattice|tower).{0,24}jumbo|jumbo.{0,24}(?:lattice|tower)/, "popsicle-jumbo"],
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
-    [/popsicle|craft stick/, "popsicle-standard"],
-    // Bamboo skewer wins when "skewer" / kebab stick spoken — before bare bamboo → lumber.
-    [/\bskewer\b|bamboo stick|kebab stick/, "bamboo-skewer-12"],
-    // Named softwood/hardwood densify onto lumber-1x4 (spoken identity kept by namedStockDisplayName).
-    // Derived from NAMED_LUMBER_SPECIES pack — longest alias first (douglas fir / red oak before fir / oak).
-    ...namedLumberDetectPhrases(),
-    [/toothpick/, "toothpick"],
+    [/popsicle|craft sticks?/, "popsicle-standard"],
+    // Plural-safe: "bamboo skewers" must not fall through to bare bamboo lumber.
+    [/\bskewers?\b|bamboo sticks?|kebab sticks?/, "bamboo-skewer-12"],
+  ];
+}
+
+/** Size / tube / sheet stock after named lumber (also plural-safe for dowel/straw/toothpick). */
+export function weekendSizedStockPhrases(): [RegExp, string][] {
+  return [
+    [/toothpicks?/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
     [/1\s*[x×]\s*4|1x4/, "lumber-1x4-8"],
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
-    [/\bdowel\b/, "dowel-1-4-36"],
+    [/\bdowels?\b/, "dowel-1-4-36"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
     [/paper.?towel/, "paper-towel-roll"],
+  ];
+}
+
+/** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */
+export function spokenWeekendCraftStock(lower: string): boolean {
+  return /popsicle|craft sticks?|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?/.test(
+    lower,
+  );
+}
+
+export function detectMaterial(prompt: string): CatalogItem {
+  const lower = prompt.toLowerCase();
+  const phrases: [RegExp, string][] = [
+    ...weekendCraftStockPhrases(),
+    // Named softwood/hardwood densify onto lumber-1x4 (spoken identity kept by namedStockDisplayName).
+    // Derived from NAMED_LUMBER_SPECIES pack — longest alias first (douglas fir / red oak before fir / oak).
+    // Caller places weekendCraftStockPhrases (bamboo skewers) ahead so bare bamboo lumber does not steal.
+    ...namedLumberDetectPhrases(),
+    ...weekendSizedStockPhrases(),
   ];
   for (const [re, id] of phrases) {
     if (re.test(lower)) {
@@ -569,7 +595,7 @@ export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolea
 
 export function followOnNamesStock(prompt: string): boolean {
   const lower = prompt.toLowerCase();
-  if (/popsicle|craft stick|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straw|toothpick|dowel|\bskewer\b/.test(lower)) {
+  if (spokenWeekendCraftStock(lower)) {
     return true;
   }
   return promptNamesNamedLumber(lower);
