@@ -5740,6 +5740,144 @@ console.log("STRANGER PLAN OK", {
     if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) {
       failHonesty("picture ledge tip-rail protect", ledge.name);
     }
+
     console.log("PASS multi/lift-off/ledge protect");
+  }
+}
+
+// Media / TV console / sideboard open-front note vs spoken doors.
+// Soft leftover after cc6f50b: spoken doors densified Operate+Buy honest, but notes still said
+// "Open front / No leftover doors"; /door/ also matched inside "no doors" and densified leaves.
+{
+  const openFrontLie = (notes: string[]) =>
+    notes.some((n) => /Open front/i.test(n) || /No leftover doors/i.test(n));
+  const doorsEarn = (notes: string[]) => notes.some((n) => /doors that earn keep|Doors that earn keep/i.test(n));
+
+  for (const doorPrompt of [
+    "media console 60 wide 18 deep 24 tall with two doors",
+    "TV console 70 wide 18 deep 30 tall with two doors",
+    "TV stand 55 wide with two doors",
+    "sideboard 48 wide with two doors",
+    "buffet 60 wide with two doors",
+    "credenza 60 wide with doors",
+    "stereo cabinet with doors",
+  ]) {
+    const proj = generateFromPrompt(doorPrompt);
+    const plan = buildPlan(proj);
+    const doors = (proj.panels || []).filter((p) => p.type === "door");
+    if (doors.length < 1) {
+      failHonesty("spoken media doors must densify door leaves", { prompt: doorPrompt, doors: doors.map((d) => d.name) });
+    }
+    const kinds = operateFaceKinds(proj.panels || []);
+    if (kinds.doors < 1) {
+      failHonesty("spoken media doors must Operate doors", { prompt: doorPrompt, kinds });
+    }
+    if (!plan.bom.some((b) => /cabinet hinges|bar pulls/i.test(b.name))) {
+      failHonesty("spoken media doors must Buy hinges/pulls", {
+        prompt: doorPrompt,
+        bom: plan.bom.map((b) => b.name),
+      });
+    }
+    const notes = proj.notes || [];
+    if (openFrontLie(notes)) {
+      failHonesty("spoken media doors must not note Open front / No leftover doors", {
+        prompt: doorPrompt,
+        notes: notes.slice(0, 4),
+      });
+    }
+    if (!doorsEarn(notes)) {
+      failHonesty("spoken media doors must note doors that earn keep", {
+        prompt: doorPrompt,
+        notes: notes.slice(0, 4),
+      });
+    }
+    console.log("PASS media spoken doors note", doorPrompt.slice(0, 48));
+  }
+
+  for (const openPrompt of [
+    "media console 60 wide 18 deep 24 tall",
+    "TV console 70 wide 18 deep 30 tall",
+    "media console open front",
+    "media console with no doors",
+    "media console without doors",
+    "media console open shelves no doors",
+    "sideboard 48 wide 18 deep 32 tall",
+    "doorless media console",
+  ]) {
+    const proj = generateFromPrompt(openPrompt);
+    const plan = buildPlan(proj);
+    const doors = (proj.panels || []).filter((p) => p.type === "door");
+    if (doors.length !== 0) {
+      failHonesty("open-front / no-doors media must densify zero doors", {
+        prompt: openPrompt,
+        doors: doors.map((d) => d.name),
+      });
+    }
+    const kinds = operateFaceKinds(proj.panels || []);
+    if (kinds.doors > 0) {
+      failHonesty("open-front / no-doors media must not Operate doors", { prompt: openPrompt, kinds });
+    }
+    if (plan.bom.some((b) => /cabinet hinges|bar pulls/i.test(b.name))) {
+      failHonesty("open-front / no-doors media must not Buy door hardware", {
+        prompt: openPrompt,
+        bom: plan.bom.map((b) => b.name),
+      });
+    }
+    const notes = proj.notes || [];
+    if (!openFrontLie(notes) && !/stereo/i.test(openPrompt)) {
+      // bare / open / no-doors media class should keep Open front honesty note
+      if (!/AV tower|stereo/i.test(proj.name || "")) {
+        failHonesty("open-front / no-doors media missing Open front note", {
+          prompt: openPrompt,
+          notes: notes.slice(0, 4),
+        });
+      }
+    }
+    if (doorsEarn(notes)) {
+      failHonesty("open-front / no-doors must not claim doors that earn keep", {
+        prompt: openPrompt,
+        notes: notes.slice(0, 4),
+      });
+    }
+    console.log("PASS media open-front / no-doors", openPrompt.slice(0, 48));
+  }
+
+  // Protect prior softs + vanity doors + no-drawers + multi/lift-off/ledge/coat/round
+  {
+    const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
+    const vk = operateFaceKinds(vanity.panels || []);
+    if (vk.doors < 2) failHonesty("vanity doors protect after media open-front", vk);
+    const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
+    if ((noDr.panels || []).filter((p) => p.type === "drawer").length !== 0) {
+      failHonesty("no-drawers protect after media open-front", noDr.panels?.map((p) => p.name));
+    }
+    const multi = generateFromPrompt("hope chest with two hinged lids");
+    if (!(multi.notes || []).some((n) => /^Assumed one lid\b/i.test(n))) {
+      failHonesty("multi-lid Assumed protect after media open-front", (multi.notes || []).slice(0, 4));
+    }
+    const lift = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with lift-off lid");
+    if (hasOperableFaces(operateFaceKinds(lift.panels || []))) {
+      failHonesty("lift-off Operate protect after media open-front", operateFaceKinds(lift.panels || []));
+    }
+    const ledge = generateFromPrompt("picture ledge 36 wide");
+    if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) {
+      failHonesty("picture ledge protect after media open-front", ledge.name);
+    }
+    const coat = generateFromPrompt("wall coat rack with hooks");
+    const coatPlan = buildPlan(coat);
+    const coatLine = coatPlan.bom.find((b) => /coat.?hook/i.test(b.name));
+    const coatBest = coatLine?.offers?.find((o) => o.best) ?? coatLine?.offers?.[0];
+    if (coatBest && /coat-hooks/i.test(coatBest.title || "")) {
+      failHonesty("coat hooks Best title protect after media open-front", coatBest.title);
+    }
+    const round = generateFromPrompt("round dining table 40 diameter by 30 tall with 3 legs");
+    if (Math.abs(round.overall.width - 40) > 0.5 || Math.abs(round.overall.depth - 40) > 0.5) {
+      failHonesty("round Dia×H protect after media open-front", round.overall);
+    }
+    const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
+    if ((night.panels || []).filter((p) => p.type === "drawer").length !== 1) {
+      failHonesty("nightstand one drawer protect after media open-front", night.panels?.map((p) => p.name));
+    }
+    console.log("PASS media-open-front protect vanity/no-drawers/multi/lift/ledge/coat/round/nightstand");
   }
 }

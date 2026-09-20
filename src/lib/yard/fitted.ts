@@ -73,6 +73,21 @@ function isNoDrawersPrompt(lower: string): boolean {
   );
 }
 
+/**
+ * Soft leftover: /door/ matched inside "no doors" / "without doors" so media densified
+ * door leaves + Operate + Buy hinges while notes still said Open front / No leftover doors.
+ * Explicit open-front asks also force open (never silent door invent).
+ */
+function isNoDoorsPrompt(lower: string): boolean {
+  return (
+    /\b(?:no|zero|without|sans)\s+(?:any\s+)?doors?\b/.test(lower) ||
+    /\bdoorless\b/.test(lower) ||
+    /\b0\s*-?\s*doors?\b/.test(lower) ||
+    /\bdoors?\s*[:=]\s*0\b/.test(lower) ||
+    /\bopen\s*-?\s*front\b/.test(lower)
+  );
+}
+
 /** Spoken/typed drawer count — digits or words; overrides family defaults (nightstand=1, bank=3). */
 function spokenDrawerCount(text: string): number | null {
   const lower = text.toLowerCase();
@@ -1256,6 +1271,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     isStorageHutch(lower) ||
     !!house?.affordances.includes("door");
   const doorsFinal =
+    isNoDoorsPrompt(lower) ||
     isBunkBed(lower) ||
     isLoftBed(lower) ||
     isDaybed(lower) ||
@@ -4994,10 +5010,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   // Media defaults open-front (TV console), but stereo/cabinet prompts that ask for doors keep them.
+  // Spoken door negation / open-front never densifies leaves (isNoDoorsPrompt → u.doors false).
+  const mediaPromptLower = prompt.toLowerCase();
   const mediaWantsDoors =
     spec.program === "media" &&
     !!u.doors &&
-    (/\bdoors?\b/.test(prompt.toLowerCase()) || isStereoCabinet(prompt.toLowerCase()));
+    !isNoDoorsPrompt(mediaPromptLower) &&
+    (/\bdoors?\b/.test(mediaPromptLower) || isStereoCabinet(mediaPromptLower));
   if (u.doors && (spec.program !== "media" || mediaWantsDoors)) {
     // Storage-hutch class: lower cabinet doors + open upper shelves (china silhouette).
     // Vanity dual-zone keeps doors on the upper; hutch flips doors to the base.
@@ -5045,19 +5064,27 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : `Work surface at ${counterY}". Knee ${u.kneeW}" clear — open pedestals, no drawers.`
       : spec.program === "media"
         ? [
-            wantsSoundbarHold(prompt.toLowerCase()) || isMediaShelf(prompt.toLowerCase())
+            wantsSoundbarHold(mediaPromptLower) || isMediaShelf(mediaPromptLower)
               ? `Media shelf / ledge carcase with a real soundbar hold envelope — front lip cradles the bar, never a flat decal.`
-              : isAvTower(prompt.toLowerCase())
-                ? `AV tower floor carcase with three usable open bays matching the cut list. Open front. No leftover doors.`
-                : isStereoCabinet(prompt.toLowerCase())
-                  ? `Stereo cabinet floor carcase${u.doors ? " with doors that earn keep" : ""}.`
-                  : bayN >= 2
-                    ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". TV sits on top. No leftover doors.`
-                    : "Open front. TV sits on top. No leftover doors.",
-            isAvTower(prompt.toLowerCase()) || /\b(?:three|3)\s+(?:open\s+)?bays?\b/.test(prompt.toLowerCase())
+              : isAvTower(mediaPromptLower)
+                ? mediaWantsDoors
+                  ? `AV tower floor carcase with doors that earn keep.`
+                  : `AV tower floor carcase with three usable open bays matching the cut list. Open front. No leftover doors.`
+                : isStereoCabinet(mediaPromptLower)
+                  ? `Stereo cabinet floor carcase${mediaWantsDoors ? " with doors that earn keep" : ""}.`
+                  : mediaWantsDoors
+                    ? bayN >= 2
+                      ? `${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}". Doors that earn keep.${/\b(?:tv|media\s*console|console)\b/.test(mediaPromptLower) && !/\b(?:sideboard|buffet|credenza)\b/.test(mediaPromptLower) ? " TV sits on top." : ""}`
+                      : `Floor carcase with doors that earn keep.${/\b(?:tv|media\s*console|console)\b/.test(mediaPromptLower) && !/\b(?:sideboard|buffet|credenza)\b/.test(mediaPromptLower) ? " TV sits on top." : ""}`
+                    : bayN >= 2
+                      ? `Open front. ${bayN} bays with divider${bayN > 2 ? "s" : ""} so the top and shelves don't span the full ${W}".${/\b(?:sideboard|buffet|credenza)\b/.test(mediaPromptLower) ? "" : " TV sits on top."} No leftover doors.`
+                      : /\b(?:sideboard|buffet|credenza)\b/.test(mediaPromptLower)
+                        ? "Open front. No leftover doors."
+                        : "Open front. TV sits on top. No leftover doors.",
+            isAvTower(mediaPromptLower) || /\b(?:three|3)\s+(?:open\s+)?bays?\b/.test(mediaPromptLower)
               ? `${Math.max(3, shelves + 1)} usable open bays (stacked). Glue and screw the shelves; do not pin them.`
               : shelves
-                ? `${shelves} fixed open shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
+                ? `${shelves} fixed ${mediaWantsDoors ? "" : "open "}shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
                 : "Glue the shelves; do not pin them.",
           ].join(" ")
         : kitchenBase
