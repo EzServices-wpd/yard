@@ -9,7 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
-import { deskWidthFromPrompt, openingWidthFromPrompt } from "./voiceHonesty";
+import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -516,9 +516,25 @@ export function inspectHonesty(project: YardProject, plan?: BuildPlan | null): H
   return { ok: issues.length === 0, issues, typed };
 }
 
-function snapName(name: string, w: number, h: number, d: number) {
-  const cleaned = name.replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*$/, "").trim();
+function snapName(
+  name: string,
+  w: number,
+  h: number,
+  d: number,
+  typed?: TypedExtents | null,
+) {
+  const cleaned = name
+    .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
+    .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
+    .trim();
   const label = cleaned || name;
+  if (
+    typed &&
+    (typed.labeled.width || typed.labeled.height || typed.labeled.depth) &&
+    !(typed.labeled.width && typed.labeled.height && typed.labeled.depth)
+  ) {
+    return stampTypedAxesTitle(label, typed.labeled, { width: w, height: h, depth: d }, typed);
+  }
   return `${label} ${w}" × ${h}" × ${d}"`;
 }
 
@@ -593,7 +609,7 @@ function snapHud(project: YardProject, typed: TypedExtents): YardProject {
     !nearInch(project.overall.height, overall.height) ||
     !nearInch(project.overall.depth, overall.depth);
   if (!changed && !hudDrift) return project;
-  const name = snapName(project.fitted.name || project.name, overall.width, overall.height, overall.depth);
+  const name = snapName(project.fitted.name || project.name, overall.width, overall.height, overall.depth, typed);
   const opening = project.fitted.opening
     ? {
         ...project.fitted.opening,
@@ -646,7 +662,7 @@ function correctedSpec(project: YardProject, typed: TypedExtents | null): Fitted
   };
   return {
     ...project.fitted,
-    name: snapName(project.fitted.name || project.name, unit.width, unit.height, unit.depth),
+    name: snapName(project.fitted.name || project.name, unit.width, unit.height, unit.depth, typed),
     unit,
     opening,
   };

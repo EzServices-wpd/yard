@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
@@ -857,6 +857,18 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "vanity" &&
     /upper|to the ceiling|floor.?to.?ceiling|linen storage|towels to/.test(lower);
 
+  // Axes the stranger typed — storage class uses prompt densify (width-only linen ≠ stock H).
+  // Capture before height/depth class defaults so stock fills never flip labeled flags.
+  const storageTitleClass =
+    program === "closet" || program === "wardrobe" || program === "pantry";
+  const typedAxes = storageTitleClass
+    ? typedOpeningStorageAxes(prompt)
+    : {
+        width: Number.isFinite(width),
+        height: Number.isFinite(height) && height !== 0,
+        depth: Number.isFinite(depth),
+      };
+
   if (!Number.isFinite(height) || height === 0) {
     if (program === "table") {
       height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
@@ -950,7 +962,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 18
                   : program === "storage"
                     ? 30
-                    : 84);
+                    : /linen/.test(lower)
+                      ? 78
+                      : 84);
     }
   }
   if (!Number.isFinite(depth)) {
@@ -1461,6 +1475,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const displayName =
     tableShape === "round"
       ? `${shapePrefix}${titleStem} ${width}" × ${height}"`
+      : storageTitleClass && typedAxes && !(typedAxes.width && typedAxes.height && typedAxes.depth) &&
+          (typedAxes.width || typedAxes.height || typedAxes.depth)
+        ? stampTypedAxesTitle(
+            `${shapePrefix}${titleStem}`,
+            typedAxes,
+            { width, height, depth },
+          )
       : `${shapePrefix}${titleStem} ${width}" × ${height}" × ${depth}"`;
 
   return {
@@ -1478,6 +1499,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     rightClear: walls ? 0 : undefined,
     family: house?.family,
     affordances: house?.affordances,
+    typedAxes,
   };
 }
 
@@ -4962,6 +4984,19 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
   ];
 
+  if (
+    spec.typedAxes &&
+    !spec.typedAxes.height &&
+    (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry")
+  ) {
+    const linen = /linen/.test(prompt.toLowerCase());
+    notes.push(
+      linen
+        ? `Assumed ${H}" tall (linen class default) — type a height to lock it.`
+        : `Assumed ${H}" tall (closet class) — type a height to lock it.`,
+    );
+  }
+
   // Keep TV / Media console identity through Measure dim merges — never naked "Media",
   // and always stamp live W×H×D onto the title.
   const promptLower = prompt.toLowerCase();
@@ -4969,13 +5004,24 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     spec.program === "media"
       ? identityTitleStem(promptLower) || mediaIdentityLabel(promptLower) || "Media console"
       : identityTitleStem(promptLower);
+  const storageAxes = spec.typedAxes;
+  const storagePartial =
+    (spec.program === "closet" || spec.program === "wardrobe" || spec.program === "pantry") &&
+    storageAxes &&
+    (storageAxes.width || storageAxes.height || storageAxes.depth) &&
+    !(storageAxes.width && storageAxes.height && storageAxes.depth);
+  const stampFull = (stem: string) =>
+    storagePartial
+      ? stampTypedAxesTitle(stem, storageAxes!, { width: W, height: H, depth: D })
+      : `${stem} ${W}" × ${H}" × ${D}"`;
   const name = mediaStem
-    ? `${mediaStem} ${W}" × ${H}" × ${D}"`
+    ? stampFull(mediaStem)
     : kitchenBase && !/base|kitchen/i.test(spec.name)
-      ? `${/kitchen/.test(promptLower) ? "Kitchen base" : "Base cabinet"} ${W}" × ${H}" × ${D}"`
+      ? stampFull(/kitchen/.test(promptLower) ? "Kitchen base" : "Base cabinet")
       : (() => {
           const cleaned = spec.name
             .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
+            .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
             .trim();
           // Scrub leftover naked Media / naked Bench (named sit) from an older brief.
           let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
@@ -4983,7 +5029,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           if (/^Bench$/i.test(stem) && sitScrub) {
             stem = sitScrub;
           }
-          return `${stem} ${W}" × ${H}" × ${D}"`;
+          return stampFull(stem);
         })();
   const notesNamed = notes.map((n, i) => (i === 0 ? n.replace(spec.name, name) : n));
 

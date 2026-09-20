@@ -212,6 +212,11 @@ export type FittedSpec = {
   /** Shape family from detectHouseFamily — not a noun program. */
   family?: import("./family").HouseFamily;
   affordances?: import("./family").HouseAffordance[];
+  /**
+   * Axes the stranger typed into the prompt (not densified class defaults).
+   * Title/HUD must not present unlabeled axes as typed (width-only linen ≠ ×84).
+   */
+  typedAxes?: { width: boolean; height: boolean; depth: boolean };
 };
 
 export type LoadUse = "display" | "toy" | "person";

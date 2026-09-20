@@ -4797,3 +4797,47 @@ console.log("STRANGER PLAN OK", {
   }
 }
 
+
+// ── Width-only linen / closet title honesty (soft leftover after 84a37c9 / 94b5d11) ──
+{
+  const widthOnly = generateFromPrompt("31.5 inch linen closet");
+  if (Math.abs(widthOnly.overall.width - 31.5) > 0.15) {
+    failHonesty("width-only linen W 31.5", widthOnly.overall);
+  }
+  if (/×\s*84/.test(widthOnly.name)) {
+    failHonesty("width-only linen title invents stock H=84 as typed", widthOnly.name);
+  }
+  if (!/31\.5"\s*wide/.test(widthOnly.name)) {
+    failHonesty("width-only linen title should stamp typed W only", widthOnly.name);
+  }
+  // Linen class densify H=78 (CLOSET_STARTERS / bare linen), not silent stock 84 in geometry.
+  if (Math.abs(widthOnly.overall.height - 78) > 0.6) {
+    failHonesty("width-only linen densify H should be linen class 78", widthOnly.overall);
+  }
+  if (!(widthOnly.notes ?? []).some((n) => /Assumed 78" tall/i.test(n))) {
+    failHonesty("width-only linen missing Assumed 78 tall Voice note", widthOnly.notes);
+  }
+  const typedH = generateFromPrompt("31.5 inch linen closet 78 tall 16 deep");
+  if (
+    Math.abs(typedH.overall.width - 31.5) > 0.15 ||
+    Math.abs(typedH.overall.height - 78) > 0.15 ||
+    Math.abs(typedH.overall.depth - 16) > 0.15
+  ) {
+    failHonesty("typed linen H still honored", typedH.overall);
+  }
+  if (!/31\.5"\s*×\s*78"\s*×\s*16"/.test(typedH.name)) {
+    failHonesty("typed linen full stamp", typedH.name);
+  }
+  const twin = generateFromPrompt("36 inch linen closet");
+  if (Math.abs(twin.overall.width - 36) > 0.15) failHonesty("linen twin 36 W", twin.overall);
+  if (/×\s*84/.test(twin.name)) failHonesty("linen twin title invents H=84", twin.name);
+  const pantry = generateFromPrompt("24 inch pantry");
+  if (Math.abs(pantry.overall.width - 24) > 0.15) failHonesty("pantry width-only W", pantry.overall);
+  if (/×\s*84/.test(pantry.name) && !/Assumed 84" tall/i.test((pantry.notes ?? []).join(" "))) {
+    failHonesty("pantry width-only title invents H=84 without Assumed note", {
+      name: pantry.name,
+      notes: pantry.notes,
+    });
+  }
+  if (!/24"\s*wide/.test(pantry.name)) failHonesty("pantry width-only title", pantry.name);
+}

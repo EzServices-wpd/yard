@@ -629,6 +629,97 @@ export function deskWidthFromPrompt(prompt: string): number {
  * (halves welcome). Do not steal axis-labeled measures ("16 inch deep linen closet").
  * Returns NaN when no bare opening width is spoken.
  */
+
+/**
+ * Title stamp from axes the stranger actually typed — never invent stock H/D into the title.
+ * Width-only linen/closet → `Linen 31.5" wide` (overall may still densify H/D for geometry).
+ * Full typed triple keeps classic `Stem W" × H" × D"`.
+ */
+export function stampTypedAxesTitle(
+  stem: string,
+  labeled: { width: boolean; height: boolean; depth: boolean },
+  overall: { width: number; height: number; depth: number },
+  typed?: { width?: number; height?: number; depth?: number },
+): string {
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return "—";
+    const r = Math.round(n * 10) / 10;
+    return Number.isInteger(r) ? String(r) : String(r);
+  };
+  const w = typed?.width ?? overall.width;
+  const h = typed?.height ?? overall.height;
+  const d = typed?.depth ?? overall.depth;
+  const parts: string[] = [];
+  if (labeled.width) parts.push(`${fmt(w)}"`);
+  if (labeled.height) parts.push(`${fmt(h)}"`);
+  if (labeled.depth) parts.push(`${fmt(d)}"`);
+  const base = stem.trim() || "Unit";
+  if (parts.length === 0) {
+    return `${base} ${fmt(overall.width)}" × ${fmt(overall.height)}" × ${fmt(overall.depth)}"`;
+  }
+  if (parts.length === 1) {
+    if (labeled.width) return `${base} ${parts[0]} wide`;
+    if (labeled.height) return `${base} ${parts[0]} tall`;
+    return `${base} ${parts[0]} deep`;
+  }
+  return `${base} ${parts.join(" × ")}`;
+}
+
+/** Closet / linen / alcove / pantry / wardrobe — opening storage title class. */
+
+/**
+ * Which opening-storage axes the stranger typed (closet / linen / pantry / wardrobe / alcove).
+ * Used so title/HUD densify never presents stock H=84 (or D=16) as typed on width-only prompts.
+ */
+export function typedOpeningStorageAxes(prompt: string): {
+  width: boolean;
+  height: boolean;
+  depth: boolean;
+} {
+  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  const lower = t.toLowerCase();
+  const pick = (re: RegExp): number => {
+    const m = t.match(re);
+    if (!m) return NaN;
+    const n = parseFloat(m[1]);
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const labeledW = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)\b/i);
+  const labeledH = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)\b/i);
+  const labeledD = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)\b/i);
+  const openingW = openingWidthFromPrompt(prompt);
+  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
+  const trip = t.match(
+    /(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
+  );
+  let width = Number.isFinite(labeledW) || Number.isFinite(openingW);
+  let height = Number.isFinite(labeledH);
+  let depth = Number.isFinite(labeledD);
+  if (!saidAxis && trip) {
+    const a = parseFloat(trip[1]);
+    const b = parseFloat(trip[2]);
+    const c = trip[3] ? parseFloat(trip[3]) : NaN;
+    // Skip lumber-ish pairs
+    if (!(a <= 4 && b <= 12 && (!Number.isFinite(c) || c <= 16))) {
+      if (Number.isFinite(c)) {
+        width = true;
+        height = true;
+        depth = true;
+      } else {
+        // Closet opening order W×H
+        width = true;
+        height = true;
+        depth = false;
+      }
+    }
+  }
+  return { width, height, depth };
+}
+
+export function isOpeningStoragePrompt(prompt: string): boolean {
+  return /\b(?:linen|closet|alcove|pantry|wardrobe|armoire|hutch|locker)\b/i.test(prompt);
+}
+
 export function openingWidthFromPrompt(prompt: string): number {
   const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
   // Adjectives may sit between the measure and the noun (linen, tall, utility, broom…).
@@ -708,6 +799,20 @@ export function fmtUnitEnvelopeInches(
     let s = `${fmt(dia)}" dia × ${fmt(height)}" H`;
     if (opts?.legs && opts.legs > 0) s += ` · ${opts.legs} legs`;
     return s;
+  }
+  // Opening-storage partial typed axes — HUD must not present densified H/D as typed.
+  const prompt = opts?.prompt ?? "";
+  if (prompt && isOpeningStoragePrompt(prompt)) {
+    const axes = typedOpeningStorageAxes(prompt);
+    if (axes.width && !axes.height && !axes.depth) {
+      return `${fmt(width)}" wide`;
+    }
+    if (axes.width && axes.height && !axes.depth) {
+      return `${fmt(width)}" × ${fmt(height)}"`;
+    }
+    if (axes.width && !axes.height && axes.depth) {
+      return `${fmt(width)}" × ${fmt(depth)}" deep`;
+    }
   }
   return `${fmt(width)}" × ${fmt(height)}" × ${fmt(depth)}"`;
 }
