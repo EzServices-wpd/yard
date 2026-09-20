@@ -515,6 +515,22 @@ export function isRoundUnitEnvelope(opts: {
  * Honest unit envelope for HUD / PDF / plan chip.
  * Round tables: "40\" dia × 30\" H" — never "40 × 30 × 40" diameter echo.
  */
+/**
+ * Measure overlay / panel axis labels.
+ * Round tables: Dia × H only — never W×H×D diameter echo (40×30×40).
+ */
+export function measureChipAxisLabels(opts: {
+  width: number;
+  height: number;
+  depth: number;
+  shape?: string | null;
+  prompt?: string | null;
+  name?: string | null;
+}): { mode: "round" | "box"; labels: string[] } {
+  if (isRoundUnitEnvelope(opts)) return { mode: "round", labels: ["Dia", "H"] };
+  return { mode: "box", labels: ["W", "H", "D"] };
+}
+
 export function fmtUnitEnvelopeInches(
   width: number,
   height: number,

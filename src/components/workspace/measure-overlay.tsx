@@ -1,6 +1,7 @@
 "use client";
 
 import { useYard } from "@/lib/yard/store";
+import { isRoundUnitEnvelope, measureChipAxisLabels } from "@/lib/yard/voiceHonesty";
 
 /** On-bench tape: same numbers as the measure panel, sitting on the opening. */
 export function MeasureOverlay() {
@@ -23,30 +24,67 @@ export function MeasureOverlay() {
     }
   }
 
+  const w = parseFloat(measure.width);
+  const h = parseFloat(measure.height);
+  const d = parseFloat(measure.depth);
+  const envOpts = {
+    width: Number.isFinite(w) ? w : project.overall.width,
+    height: Number.isFinite(h) ? h : project.overall.height,
+    depth: Number.isFinite(d) ? d : project.overall.depth,
+    shape: project.fitted?.unit?.shape,
+    prompt: project.prompt,
+    name: project.name,
+  };
+  const chip = measureChipAxisLabels(envOpts);
+  const round = chip.mode === "round" || isRoundUnitEnvelope(envOpts);
+
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
-      <div className="pointer-events-auto flex max-w-lg flex-wrap items-end gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg backdrop-blur">
-        <Dim
-          label="W"
-          value={measure.width}
-          onChange={(v) => setMeasure({ width: v })}
-          onBlur={commitLive}
-        />
-        <span className="mb-2 text-faint">×</span>
-        <Dim
-          label="H"
-          value={measure.height}
-          onChange={(v) => setMeasure({ height: v })}
-          onBlur={commitLive}
-        />
-        <span className="mb-2 text-faint">×</span>
-        <Dim
-          label="D"
-          value={measure.depth}
-          onChange={(v) => setMeasure({ depth: v })}
-          onBlur={commitLive}
-        />
-        <span className="mb-2.5 text-xs text-faint">in</span>
+      <div
+        data-yard-measure-chip={chip.mode}
+        className="pointer-events-auto flex max-w-lg flex-wrap items-end gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg backdrop-blur"
+      >
+        {round ? (
+          <>
+            <Dim
+              label="Dia"
+              value={measure.width}
+              onChange={(v) => setMeasure({ width: v, depth: v })}
+              onBlur={commitLive}
+            />
+            <span className="mb-2 text-faint">×</span>
+            <Dim
+              label="H"
+              value={measure.height}
+              onChange={(v) => setMeasure({ height: v })}
+              onBlur={commitLive}
+            />
+          </>
+        ) : (
+          <>
+            <Dim
+              label="W"
+              value={measure.width}
+              onChange={(v) => setMeasure({ width: v })}
+              onBlur={commitLive}
+            />
+            <span className="mb-2 text-faint">×</span>
+            <Dim
+              label="H"
+              value={measure.height}
+              onChange={(v) => setMeasure({ height: v })}
+              onBlur={commitLive}
+            />
+            <span className="mb-2 text-faint">×</span>
+            <Dim
+              label="D"
+              value={measure.depth}
+              onChange={(v) => setMeasure({ depth: v })}
+              onBlur={commitLive}
+            />
+          </>
+        )}
+        <span className="mb-2.5 text-xs text-faint">{round ? "dia × H in" : "in"}</span>
         {project.windowPkg && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
             {project.windowPkg.window.brand} {project.windowPkg.window.line} {project.windowPkg.window.callW}×

@@ -6,6 +6,7 @@ import {
   glossaryForPlan,
   isRoundUnitEnvelope,
   fmtUnitEnvelopeInches,
+  measureChipAxisLabels,
   speciesStockHonestyTalk,
   speciesSubstituteNote,
 } from "../src/lib/yard/voiceHonesty";
@@ -4049,6 +4050,37 @@ console.log("STRANGER PLAN OK", {
     }
     if ((round.fitted?.unit?.legs ?? 0) !== 3 && !/\b3\s*legs?\b/i.test(`${round.name}`)) {
       failVoice2("round table lost 3 legs", { legs: round.fitted?.unit?.legs, name: round.name });
+    }
+    const chip = measureChipAxisLabels({
+      width: round.overall.width,
+      height: round.overall.height,
+      depth: round.overall.depth,
+      shape: round.fitted?.unit?.shape,
+      prompt: round.prompt,
+      name: round.name,
+    });
+    if (chip.mode !== "round" || chip.labels.join("×") !== "Dia×H") {
+      failVoice2("round measure chip labels not Dia×H", chip);
+    }
+    // Soft leftover: Measure overlay must not echo diameter as W×H×D / 40×30×40.
+    if (chip.labels.includes("W") && chip.labels.includes("D")) {
+      failVoice2("round measure chip still W×H×D diameter echo", chip);
+    }
+  }
+
+
+  {
+    const oval = generateFromPrompt('house: oval coffee table 42" long × 24" wide × 18" tall');
+    const chip = measureChipAxisLabels({
+      width: oval.overall.width,
+      height: oval.overall.height,
+      depth: oval.overall.depth,
+      shape: oval.fitted?.unit?.shape,
+      prompt: oval.prompt,
+      name: oval.name,
+    });
+    if (chip.mode === "round" || chip.labels.join("×") === "Dia×H") {
+      failVoice2("oval table wrongly got round Dia×H measure chip", { chip, shape: oval.fitted?.unit?.shape, name: oval.name });
     }
   }
 

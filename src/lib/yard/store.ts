@@ -13,6 +13,7 @@ import { defaultGhostFlags } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize } from "./space";
+import { isRoundUnitEnvelope } from "./voiceHonesty";
 import { detectWeekendMech } from "./weekendFamily";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
@@ -386,12 +387,33 @@ export const useYard = create<YardState>((set, get) => ({
   setMeasure: (patch) => set({ measure: { ...get().measure, ...patch } }),
   applyMeasure: () => {
     const { measure, project } = get();
-    const widthIn = parseFloat(measure.width);
+    let widthIn = parseFloat(measure.width);
     const heightIn = parseFloat(measure.height);
-    const depthIn = parseFloat(measure.depth);
+    let depthIn = parseFloat(measure.depth);
     if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn)) return;
+    // Round / diameter tables: Measure chip is Dia × H — keep plan axes equal (never W×H×W drift).
+    const roundUnit = isRoundUnitEnvelope({
+      width: widthIn,
+      height: heightIn,
+      depth: Number.isFinite(depthIn) ? depthIn : widthIn,
+      shape: project.fitted?.unit?.shape,
+      prompt: project.prompt,
+      name: project.name,
+    });
+    if (roundUnit) {
+      depthIn = widthIn;
+    }
     const depth = Number.isFinite(depthIn) ? depthIn : undefined;
-    const prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseFloat(measure.depth) || 16));
+    let prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseFloat(measure.depth) || 16));
+    if (roundUnit) {
+      const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(n));
+      const dia = fmt(widthIn);
+      const H = fmt(heightIn);
+      prompt = prompt
+        .replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(diameter|dia\b)/i, `${dia}$2$3`)
+        .replace(/(diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/i, `$1 ${dia}`)
+        .replace(/(\d+(?:\.\d+)?)(\s*(?:inch(?:es)?|in|")?\s*)(tall|high|height)\b/i, `${H}$2$3`);
+    }
     if (measure.kind === "window_rough_opening" || project.windowPkg) {
       const built = projectFromMeasurement(
         {

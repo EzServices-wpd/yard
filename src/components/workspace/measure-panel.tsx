@@ -5,6 +5,7 @@ import { useYard } from "@/lib/yard/store";
 import type { SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
+import { isRoundUnitEnvelope, measureChipAxisLabels } from "@/lib/yard/voiceHonesty";
 
 export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
@@ -37,6 +38,18 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   }
 
   const isPocket = Boolean(project.pocket);
+  const wNum = parseFloat(measure.width);
+  const hNum = parseFloat(measure.height);
+  const dNum = parseFloat(measure.depth);
+  const envOpts = {
+    width: Number.isFinite(wNum) ? wNum : project.overall.width,
+    height: Number.isFinite(hNum) ? hNum : project.overall.height,
+    depth: Number.isFinite(dNum) ? dNum : project.overall.depth,
+    shape: project.fitted?.unit?.shape,
+    prompt: project.prompt,
+    name: project.name,
+  };
+  const roundUnit = measureChipAxisLabels(envOpts).mode === "round" || isRoundUnitEnvelope(envOpts);
 
   return (
     <div className="p-4">
@@ -45,7 +58,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
         {isPocket
           ? "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls."
           : project.fitted
-            ? "W × H × D refits this unit. Drawers, knee, doors, and shelves stay."
+            ? roundUnit
+              ? "Dia × H refits this round table — diameter on both plan axes, never W×H×W."
+              : "W × H × D refits this unit. Drawers, knee, doors, and shelves stay."
             : "The opening is on the bench — type into the arrows or these fields."}
       </p>
 
@@ -87,34 +102,55 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       )}
 
       <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-faint">
-        {isPocket ? "Unit inside the pocket" : "Opening"}
+        {isPocket ? "Unit inside the pocket" : roundUnit ? "Round unit" : "Opening"}
       </p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <Field
-          label="W"
-          value={measure.width}
-          onChange={(v) => {
-            setMeasure({ width: v });
-            liveIfFitted();
-          }}
-        />
-        <Field
-          label="H"
-          value={measure.height}
-          onChange={(v) => {
-            setMeasure({ height: v });
-            liveIfFitted();
-          }}
-        />
-        <Field
-          label="D"
-          value={measure.depth}
-          onChange={(v) => {
-            setMeasure({ depth: v });
-            liveIfFitted();
-          }}
-        />
-      </div>
+      {roundUnit ? (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field
+            label="Dia"
+            value={measure.width}
+            onChange={(v) => {
+              setMeasure({ width: v, depth: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="H"
+            value={measure.height}
+            onChange={(v) => {
+              setMeasure({ height: v });
+              liveIfFitted();
+            }}
+          />
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <Field
+            label="W"
+            value={measure.width}
+            onChange={(v) => {
+              setMeasure({ width: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="H"
+            value={measure.height}
+            onChange={(v) => {
+              setMeasure({ height: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="D"
+            value={measure.depth}
+            onChange={(v) => {
+              setMeasure({ depth: v });
+              liveIfFitted();
+            }}
+          />
+        </div>
+      )}
       {!isPocket && (
         <label className="mt-3 block text-xs text-muted">
           This is a
