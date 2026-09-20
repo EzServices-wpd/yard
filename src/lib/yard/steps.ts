@@ -35,7 +35,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
-import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause } from "./voiceHonesty";
 
@@ -45,6 +45,13 @@ function dim(p: Panel) {
 
 function round(n: number) {
   return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(2);
+}
+
+
+/** Honest Confirm/plate "N parts" — same class as HUD chip / plan.totals.pieces (not raw panels.length). */
+function partsOnThisListPhrase(project: YardProject): string {
+  const n = woodCutPieceCount(project);
+  return n === 1 ? "1 part on this list" : `${n} parts on this list`;
 }
 
 function list(panels: Panel[]) {
@@ -647,7 +654,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. One sleep deck with a backrest — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Sit or sleep; not a bunk stack. ${panels.length} parts on this list.`,
+        description: `${project.name}. One sleep deck with a backrest — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Sit or sleep; not a bunk stack. ${partsOnThisListPhrase(project)}.`,
         tips: "A daybed is one deck you can sit on, with a backrest — not two bunks and not a loft. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -693,7 +700,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the sleep size — do not cut yet",
-        description: `${project.name}. One low sleep deck on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mattress on the platform; match the deck to your mattress. ${panels.length} parts on this list.`,
+        description: `${project.name}. One low sleep deck on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mattress on the platform; match the deck to your mattress. ${partsOnThisListPhrase(project)}.`,
         tips: "A platform bed is a low sleep deck on a frame — not a loft, not a bunk stack, not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -750,8 +757,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 1,
         title: "Confirm the sleep size — do not cut yet",
         description: loft
-          ? `${project.name}. One elevated sleep platform on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the deck to your mattress (twin is usually ~38×75). ${panels.length} parts on this list.`
-          : `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${panels.length} parts on this list.`,
+          ? `${project.name}. One elevated sleep platform on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the deck to your mattress (twin is usually ~38×75). ${partsOnThisListPhrase(project)}.`
+          : `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${partsOnThisListPhrase(project)}.`,
         tips: loft
           ? "A loft is one elevated deck on a frame — open floor under, not a hollow closet box. If a number disagrees with the cut list, trust the cut list."
           : "A bunk is two decks on a frame — not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
@@ -811,8 +818,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 1,
         title: "Confirm the size — do not cut yet",
         description: laminate
-          ? `${project.name}. Typed ${round(D)}" deep headboard from ${plyN}×¾" plywood plies laminated face-to-face (${round(W)}" × ${round(H)}" each) for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} parts on this list.`
-          : `${project.name}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${panels.length} part on this list.`,
+          ? `${project.name}. Typed ${round(D)}" deep headboard from ${plyN}×¾" plywood plies laminated face-to-face (${round(W)}" × ${round(H)}" each) for behind the mattress. Mark the wall width and how high you want it above the mattress. ${partsOnThisListPhrase(project)}.`
+          : `${project.name}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${partsOnThisListPhrase(project)}.`,
         tips: laminate
           ? "A headboard is a wall board, not a box. Laminate plies to the typed depth — the lumber aisle does not sell a magic thick sheet. If a number on this plan disagrees with the cut list, trust the cut list."
           : "A headboard is a wall board, not a box. If a number on this plan disagrees with the cut list, trust the cut list.",
@@ -919,7 +926,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted ${label} cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. ${hangHint} ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted ${label} cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. ${hangHint} ${partsOnThisListPhrase(project)}.`,
         tips: `This is a fold-down board in a shallow wall cabinet, not a freestanding folding table and not a storage box. If a number disagrees with the cut list, trust the cut list.`,
         partsUsed: ["*"],
       },
@@ -980,7 +987,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted medicine cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical center sits about 60–66" off the floor so it is at eye height. ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted medicine cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical center sits about 60–66" off the floor so it is at eye height. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a shallow wall cabinet with a mirrored door, not a bathroom vanity on the floor. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1034,7 +1041,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. Freestanding open-backed radiator cover ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with a top shelf and front grille slats. Mark the rectangle and check clearance around the radiator. ${panels.length} parts on this list.`,
+        description: `${project.name}. Freestanding open-backed radiator cover ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with a top shelf and front grille slats. Mark the rectangle and check clearance around the radiator. ${partsOnThisListPhrase(project)}.`,
         tips: "This is an open cover with grille slats, not a sealed cabinet. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1105,7 +1112,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       out.push({
         step: sn++,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. ${stem} ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Freestanding sit piece — mark the footprint on the floor and check it is square. ${panels.length} parts on this list.`,
+        description: `${project.name}. ${stem} ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Freestanding sit piece — mark the footprint on the floor and check it is square. ${partsOnThisListPhrase(project)}.`,
         tips: "If a number disagrees with the cut list, trust the cut list. Sit anatomy comes from the panels on the bench.",
         partsUsed: ["*"],
       });
@@ -1198,7 +1205,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. Freestanding sittable bench ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with open shoe bays under the seat. Mark the rectangle on the floor and check it is square. ${panels.length} parts on this list.`,
+        description: `${project.name}. Freestanding sittable bench ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with open shoe bays under the seat. Mark the rectangle on the floor and check it is square. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a bench people sit on, not a hollow storage box. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1242,7 +1249,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted spice rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 48–54" off the floor so jars are at counter height. ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted spice rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 48–54" off the floor so jars are at counter height. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1286,7 +1293,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1333,7 +1340,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 1,
           title: "Measure the toilet — do not cut yet",
-          description: `${project.name}. This stands over the toilet, ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Measure the tank: the ${round(W)}" unit must be wider than the tank, and the tank shelf must sit above it. ${panels.length} parts on this list. The bottom stays open so the toilet fits between the uprights.`,
+          description: `${project.name}. This stands over the toilet, ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Measure the tank: the ${round(W)}" unit must be wider than the tank, and the tank shelf must sit above it. ${partsOnThisListPhrase(project)}. The bottom stays open so the toilet fits between the uprights.`,
           tips: "This is not a closed floor box and not a vanity. If a number disagrees with the cut list, trust the cut list.",
           partsUsed: ["*"],
         },
@@ -1378,7 +1385,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high above the toilet tank. This hangs on the wall — do not mark a footprint on the floor. Typical bottom sits about 8–12" above the tank. ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted cabinet ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high above the toilet tank. This hangs on the wall — do not mark a footprint on the floor. Typical bottom sits about 8–12" above the tank. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a shallow wall cabinet over the toilet, not a floor vanity. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1480,7 +1487,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted plywood hood ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high, open on the bottom over the cooktop. Mark the center of the range and the height you want the bottom of the canopy. ${panels.length} parts on this list.`,
+        description: `${project.name}. Wall-mounted plywood hood ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high, open on the bottom over the cooktop. Mark the center of the range and the height you want the bottom of the canopy. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a wood canopy over the cooktop, not a closet. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1528,7 +1535,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the kennel — do not cut yet",
-        description: `${project.name}. Freestanding wooden dog crate ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. The dog goes inside. Mark the rectangle on the floor. ${panels.length} parts on this list. No shelves.`,
+        description: `${project.name}. Freestanding wooden dog crate ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. The dog goes inside. Mark the rectangle on the floor. ${partsOnThisListPhrase(project)}. No shelves.`,
         tips: "This is a kennel with a door, not a bookcase. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1579,7 +1586,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. Freestanding island ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. Check it is square. ${panels.length} parts on this list. Open both sides — there is no back.`,
+        description: `${project.name}. Freestanding island ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. Check it is square. ${partsOnThisListPhrase(project)}. Open both sides — there is no back.`,
         tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1635,7 +1642,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. Freestanding nightstand ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. One drawer over an open shelf — not a mini dresser. Mark the rectangle on the floor. ${panels.length} parts on this list.`,
+        description: `${project.name}. Freestanding nightstand ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. One drawer over an open shelf — not a mini dresser. Mark the rectangle on the floor. ${partsOnThisListPhrase(project)}.`,
         tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1701,7 +1708,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 1,
           title: "Confirm the footprint — do not cut yet",
-          description: `${project.name}. Freestanding hinged-lid chest ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. ${panels.length} parts on this list — the Lid stays off until it is hinged.`,
+          description: `${project.name}. Freestanding hinged-lid chest ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mark the rectangle on the floor. ${partsOnThisListPhrase(project)} — the Lid stays off until it is hinged.`,
           tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
           partsUsed: ["*"],
         },
@@ -1780,7 +1787,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           : wallHang
             ? "This hangs on the wall — do not mark a footprint on the floor. Find two studs."
             : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
-      } ${panels.length} parts on this list.`,
+      } ${partsOnThisListPhrase(project)}.`,
       tips: "If a number on this plan disagrees with the cut list, trust the cut list. Geometry is from the bench, not from the prompt's adjectives.",
       partsUsed: ["*"],
     });

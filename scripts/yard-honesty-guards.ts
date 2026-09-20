@@ -36,6 +36,7 @@ import {
 } from "../src/lib/yard/honesty";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
+import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
 import {
   inspectWeekendHonesty,
   namedStockDisplayName,
@@ -4096,6 +4097,7 @@ console.log("SOFT-TRUST OK", {
 
 // Soft leftover: plate/BOM Confirm "N parts on this list" must match honest cut wood
 // (chip / totals.pieces), not raw panels.length (bounding drawer envelopes).
+// Source: uniqueSteps / steps.ts partsOnThisListPhrase(woodCutPieceCount) — densify is defense-in-depth.
 {
   const failParts = (msg: string, detail?: unknown) => failHonesty(`partsCountPlate ${msg}`, detail);
   const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
@@ -4136,6 +4138,16 @@ console.log("SOFT-TRUST OK", {
   if (cutListWoodPieceCount(nsPlan.cutList) !== 11) {
     failParts("cutListWoodPieceCount ≠ 11", cutListWoodPieceCount(nsPlan.cutList));
   }
+  // Soft leftover source: uniqueSteps Confirm already honest (not densify-only rewrite).
+  {
+    const srcConfirm = uniqueSteps(ns).find((s) => /confirm/i.test(s.title));
+    if (!srcConfirm) failParts("nightstand uniqueSteps missing Confirm");
+    else if (!/\b11 parts on this list\b/i.test(srcConfirm.description)) {
+      failParts("nightstand uniqueSteps Confirm still raw panels.length", srcConfirm.description.slice(0, 320));
+    } else if (/\b8 parts on this list\b/i.test(srcConfirm.description)) {
+      failParts("nightstand uniqueSteps Confirm raw 8", srcConfirm.description.slice(0, 320));
+    }
+  }
   // Plate bleed unit: Drawer bottom keeps own letter; rhetorical open shelf — not plated.
   const bleed = densifyPartsPlateTalk(
     "one Drawer bottom — 15 × 14. One drawer over an open shelf — not a mini dresser. Shelf — 18.50 × 15.",
@@ -4160,6 +4172,15 @@ console.log("SOFT-TRUST OK", {
     }
     if (Number(m![1]) === dr.panels.length && dr.panels.length !== drCut) {
       failParts("dresser Confirm still raw panels.length", { raw: dr.panels.length, cut: drCut });
+    }
+    const drSrc = uniqueSteps(dr).find((s) => /confirm/i.test(s.title));
+    const drSrcM = drSrc?.description.match(/\b(\d+) parts on this list\b/i);
+    if (!drSrcM || Number(drSrcM[1]) !== drCut) {
+      failParts("dresser uniqueSteps Confirm parts ≠ cut", {
+        spoken: drSrcM?.[1],
+        cut: drCut,
+        desc: drSrc?.description.slice(-140),
+      });
     }
   }
   // Protect: desk title 60×29×30; round Dia×H; lounge; linen; catapult; Build explode held.
