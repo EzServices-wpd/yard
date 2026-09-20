@@ -2,6 +2,8 @@
 
 Yard is house-first. **Type it. Buy the parts. Build it.** You write voice, not SKUs.
 
+Full briefing (vision + queue + worked examples): [`docs/BOT-BRIEF.md`](BOT-BRIEF.md).
+
 ## First command (every fire)
 
 ```
@@ -16,7 +18,8 @@ Then `scripts/walk-launch.ts` should be 10/10. Linen name is **Linen**, not Clos
 ## NEXT (one at a time)
 
 1. **Cut A honesty** — linen backer is 0.25" but `materialId` is still `plywood-3-4`. Thin stay off the ¾" nest. Do not invent a size.
-2. **Slice D** — real alcove photo for landing heroes (linen / pocket / desk). SVGs already exist; swap for photographs.
+2. **Pocket stranger PDF** — freeze #1 routing is fixed; the printed plan is not yet linen-quality.
+3. **Slice D** — real alcove photo for landing heroes. Current jpgs are bench renders. Ask if you do not have photographs.
 
 ## Parked
 
