@@ -583,6 +583,56 @@ export function isLiftOffLidChest(lower: string) {
 }
 
 /**
+ * Spoken/typed lid count — digits or words (optional "hinged" bridge).
+ * null = no explicit count; callers use isMultiLidPrompt for plural/dual/split.
+ */
+export function spokenLidCount(lower: string): number | null {
+  // Allow attachment adjectives between count and lid: hinged / lift-off / removable / …
+  const bridge = "(?:(?:hinged|lift[\\s-]?off|removable|loose|unhinged|dual|split)\\s+)?";
+  const digit = lower.match(new RegExp(`\\b(\\d+)\\s*-?\\s*${bridge}lids?\\b`));
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 8) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    single: 1,
+  };
+  const word = lower.match(
+    new RegExp(
+      `\\b(one|two|three|four|five|six|seven|eight|single)\\s*-?\\s*${bridge}lids?\\b`,
+    ),
+  );
+  if (word && words[word[1]] != null) return words[word[1]];
+  if (/\b(?:a|the|one|single)\s+(?:hinged\s+|lift[\s-]?off\s+|removable\s+)?lid\b/.test(lower)) return 1;
+  return null;
+}
+
+/**
+ * Multi-lid / dual-lid / split-lid intent — engine still densifies one Lid panel.
+ * Callers must Assumed "one lid" honesty (never silent-collapse).
+ * Universal count densify — not cedar-noun-only.
+ */
+export function isMultiLidPrompt(lower: string): boolean {
+  const n = spokenLidCount(lower);
+  if (n != null && n >= 2) return true;
+  // dual/split/multi + optional attachment word + lid(s): "split lid", "dual hinged lids"
+  if (/\b(?:dual|split|multi)[\s-]+(?:(?:hinged|lift[\s-]?off|removable|loose|unhinged)[\s-]+)?lids?\b/.test(lower)) {
+    return true;
+  }
+  // Bare plural "lids" / "hinged lids" (no digit/word count) — multi intent.
+  if (/\blids\b/.test(lower) && !/\blid\s+stay|\blid\s+support/.test(lower)) return true;
+  return false;
+}
+
+/**
  * Storage-hutch class — tall floor carcase, china-hutch silhouette:
  * lower cabinet doors + upper open shelves. Never a dresser / chest-of-drawers
  * drawer bank. Universal mechanism on \bhutch\b (kitchen / china / buffet hutch).

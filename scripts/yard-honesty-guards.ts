@@ -24,7 +24,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -5565,5 +5565,91 @@ console.log("STRANGER PLAN OK", {
   }
   if (!buildPlan(hingedProtect).bom.some((b) => /piano hinge/i.test(b.name))) {
     failHonesty("hinged protect piano after lift-off class", buildPlan(hingedProtect).bom.map((b) => b.name));
+  }
+
+  // Multi-lid / dual / split — Assumed one lid honesty (never silent-collapse).
+  // True dual-lid geometry parked; densify stays single Lid + Operate/piano when hinged.
+  for (const multiPrompt of [
+    "hope chest with two hinged lids",
+    "cedar chest with two lids",
+    "cedar chest 36 wide 18 deep 20 tall with two hinged lids",
+    "blanket chest with dual lids",
+    "storage chest with split lid",
+    "hope chest with hinged lids",
+    "toy chest with two lids",
+  ]) {
+    if (!isMultiLidPrompt(multiPrompt.toLowerCase())) {
+      failHonesty("isMultiLidPrompt false", multiPrompt);
+    }
+    const multi = generateFromPrompt(multiPrompt);
+    const multiKinds = operateFaceKinds(multi.panels);
+    const lidPanels = multi.panels.filter((p) => /lid/i.test(p.name));
+    if (lidPanels.length !== 1) {
+      failHonesty("multi-lid densify must stay one lid panel", {
+        prompt: multiPrompt,
+        lids: lidPanels.map((p) => p.name),
+      });
+    }
+    const assumed = (multi.notes || []).filter((n) => /^Assumed one lid\b/i.test(n));
+    if (assumed.length < 1) {
+      failHonesty("multi-lid missing Assumed one lid honesty", {
+        prompt: multiPrompt,
+        notes: (multi.notes || []).slice(0, 6),
+      });
+    }
+    // Hinged multi-lid still Operate + piano (attachment class held); lift-off multi would not.
+    if (!isLiftOffLidPrompt(multiPrompt.toLowerCase())) {
+      if (multiKinds.lids !== 1) {
+        failHonesty("multi-lid hinged Operate count", { prompt: multiPrompt, kinds: multiKinds });
+      }
+      if (operateFacesLabel(false, multiKinds) !== "Open lid") {
+        failHonesty("multi-lid Operate label", {
+          prompt: multiPrompt,
+          label: operateFacesLabel(false, multiKinds),
+        });
+      }
+      if (!buildPlan(multi).bom.some((b) => /piano hinge/i.test(b.name))) {
+        failHonesty("multi-lid hinged must still Buy piano", multiPrompt);
+      }
+    }
+  }
+
+  // Single hinged / singular lid must NOT invent multi-lid Assumed.
+  for (const singlePrompt of [
+    "cedar chest 36 wide 18 deep 20 tall with hinged lid",
+    "cedar chest 36 wide 18 deep 20 tall with a hinged lid",
+    "toy chest 30 wide 16 deep 18 tall with hinged lid",
+  ]) {
+    if (isMultiLidPrompt(singlePrompt.toLowerCase())) {
+      failHonesty("singular lid must not gate isMultiLidPrompt", singlePrompt);
+    }
+    const single = generateFromPrompt(singlePrompt);
+    if ((single.notes || []).some((n) => /^Assumed one lid\b/i.test(n))) {
+      failHonesty("singular hinged must not Assumed one lid", {
+        prompt: singlePrompt,
+        notes: (single.notes || []).slice(0, 6),
+      });
+    }
+  }
+
+  // Lift-off protect — still no Operate/piano; multi lift-off still Assumed when typed.
+  const liftMulti = generateFromPrompt("cedar chest with two lift-off lids");
+  if (hasOperableFaces(operateFaceKinds(liftMulti.panels))) {
+    failHonesty("multi lift-off must not Operate", operateFaceKinds(liftMulti.panels));
+  }
+  if (buildPlan(liftMulti).bom.some((b) => /piano hinge/i.test(b.name))) {
+    failHonesty("multi lift-off must not Buy piano", buildPlan(liftMulti).bom.map((b) => b.name));
+  }
+  if (!(liftMulti.notes || []).some((n) => /^Assumed one lid\b/i.test(n))) {
+    failHonesty("multi lift-off missing Assumed one lid", (liftMulti.notes || []).slice(0, 6));
+  }
+
+  // Coat hooks title protect (prior soft).
+  const coatG = generateFromPrompt("wall coat rack with hooks");
+  const coatPlanG = buildPlan(coatG);
+  const coatLine = coatPlanG.bom.find((b) => /coat.?hook/i.test(b.name));
+  const coatBest = coatLine?.offers?.find((o) => o.best) ?? coatLine?.offers?.[0];
+  if (coatBest && /coat-hooks/i.test(coatBest.title || "")) {
+    failHonesty("coat hooks Best title protect", coatBest.title);
   }
 }
