@@ -17,7 +17,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
@@ -961,6 +961,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 65
                     : /shelf/.test(lower)
                       ? 18
+                    : isStorageHutch(lower)
+                      ? 72
                   : program === "storage"
                     ? 30
                     : /linen/.test(lower)
@@ -1112,6 +1114,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
       ? pick(t, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, 54)
       : program === "vanity" && height >= 72
         ? 54
+        : isStorageHutch(lower) && height >= 60
+          ? 36
         : undefined;
   const linen = /linen|towel/.test(lower);
   const rod =
@@ -1184,6 +1188,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 0
                 : isStandingShopTop(lower)
                   ? 0
+                : isStorageHutch(lower)
+                  ? 3
                 : /nightstand|bedside/.test(lower)
                   ? 1
                   : 0,
@@ -1209,7 +1215,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && !vanityDoorsSaid) ||
     (program === "desk" && !isStandingShopTop(lower)) ||
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
-    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|hutch|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower);
+    (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
   const doors =
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
@@ -1221,6 +1227,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54) ||
+    isStorageHutch(lower) ||
     !!house?.affordances.includes("door");
   const doorsFinal =
     isBunkBed(lower) ||
@@ -4929,8 +4936,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !!u.doors &&
     (/\bdoors?\b/.test(prompt.toLowerCase()) || isStereoCabinet(prompt.toLowerCase()));
   if (u.doors && (spec.program !== "media" || mediaWantsDoors)) {
-    const doorY = u.upperStart ?? 0;
-    const doorH = H - doorY;
+    // Storage-hutch class: lower cabinet doors + open upper shelves (china silhouette).
+    // Vanity dual-zone keeps doors on the upper; hutch flips doors to the base.
+    const hutchLowerDoors = isStorageHutch(prompt.toLowerCase()) && !!u.upperStart;
+    const doorY = hutchLowerDoors ? 0 : (u.upperStart ?? 0);
+    const doorH = hutchLowerDoors ? u.upperStart! : (H - doorY);
     const typedDoors = typedDoorCount(prompt);
     if (typedDoors != null) {
       const bayW = W / typedDoors;

@@ -182,6 +182,8 @@ export function wantsSoundbarHold(lower: string) {
 /** House media family nouns that must beat weekend craft steals. */
 export function isHouseMediaCarcase(lower: string) {
   if (isSofaConsoleTable(lower)) return false;
+  // Hutch is storage-hutch class (china silhouette) — never media buffet/sideboard steal.
+  if (isStorageHutch(lower)) return false;
   if (isWallMediaLedge(lower) || isMediaShelf(lower) || isStereoCabinet(lower) || isAvTower(lower)) return true;
   if (wantsSoundbarHold(lower) && /shelf|ledge|console|cabinet|media/.test(lower)) return true;
   if (/\bmedia\b|\btv\b/.test(lower) && /console|cabinet|sideboard|buffet|credenza|entertainment/.test(lower)) return true;
@@ -547,6 +549,15 @@ export function isHingedLidChest(lower: string) {
   // Aligns anatomy + title/Assumed with isClassDefaultDensifyPrompt chest gate (not per-noun).
   if (/\bchest\b/.test(lower)) return true;
   return false;
+}
+
+/**
+ * Storage-hutch class — tall floor carcase, china-hutch silhouette:
+ * lower cabinet doors + upper open shelves. Never a dresser / chest-of-drawers
+ * drawer bank. Universal mechanism on \bhutch\b (kitchen / china / buffet hutch).
+ */
+export function isStorageHutch(lower: string) {
+  return /\bhutch\b/.test(lower);
 }
 
 /** Lumber rack — arms hold stock; never naked Storage unit. */
@@ -1069,6 +1080,7 @@ export function mediaIdentityLabel(lower: string): string | null {
 }
 
 function programFromNoun(lower: string): FittedProgram {
+  if (isStorageHutch(lower)) return "storage";
   if (isPlanterBox(lower)) return "storage";
   if (isOttoman(lower)) return "bench";
   if (isLoungeChair(lower) || isRockingChair(lower)) return "bench";
@@ -1296,10 +1308,12 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     (isStandingShopTop(lower) && /drawer/.test(lower)) ||
     (/nightstand/.test(lower) && !isBedsideShelf(lower)) ||
     (/bedside/.test(lower) && !isBedsideShelf(lower)) ||
-    /dresser|hutch/.test(lower)
+    /dresser/.test(lower)
   ) {
     add("drawers");
   }
+  // Storage-hutch class densifies lower cabinet doors (not dresser drawer bank).
+  if (isStorageHutch(lower)) add("door");
   if (
     (/coat/.test(lower) && /rack|rail|rod|hook|peg|bench|tree/.test(lower)) ||
     /hook|peg rail|coat\s*rail|coat\s*rod/.test(lower) ||

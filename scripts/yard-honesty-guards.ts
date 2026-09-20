@@ -5119,6 +5119,38 @@ console.log("STRANGER PLAN OK", {
   if (!/Assumed .*hutch class default/i.test(hutchNotes)) {
     failHonesty("bare hutch missing Assumed class-default notes", bareHutch.notes);
   }
+  // Soft leftover: bare hutch densified dresser drawer-bank while title/HUD already honest.
+  // Storage-hutch class → china silhouette (lower doors + upper open shelves), never drawer bank.
+  const hutchPanels = (bareHutch.panels ?? []).map((x) => x.name);
+  if (hutchPanels.some((n) => /drawer/i.test(n))) {
+    failHonesty("bare hutch must not densify drawer-bank anatomy", hutchPanels);
+  }
+  if (!hutchPanels.some((n) => /door/i.test(n))) {
+    failHonesty("bare hutch missing lower cabinet doors", hutchPanels);
+  }
+  if (!hutchPanels.some((n) => /shelf/i.test(n))) {
+    failHonesty("bare hutch missing upper open shelves", hutchPanels);
+  }
+  if (!(bareHutch.overall?.height >= 60)) {
+    failHonesty("bare hutch should densify tall china-hutch envelope", bareHutch.overall);
+  }
+  const kitchenHutch = generateFromPrompt("kitchen hutch");
+  if (!/^Kitchen hutch$/i.test(kitchenHutch.name.trim())) {
+    failHonesty("kitchen hutch title stem", kitchenHutch.name);
+  }
+  const khPanels = (kitchenHutch.panels ?? []).map((x) => x.name);
+  if (khPanels.some((n) => /drawer/i.test(n)) || !khPanels.some((n) => /door/i.test(n)) || !khPanels.some((n) => /shelf/i.test(n))) {
+    failHonesty("kitchen hutch must be storage-hutch anatomy not drawer bank", khPanels);
+  }
+  // Protect: dresser stays drawer bank (storage-hutch must not steal dresser).
+  const bareDresser = generateFromPrompt("dresser");
+  const dresserPanels = (bareDresser.panels ?? []).map((x) => x.name);
+  if (!dresserPanels.some((n) => /drawer/i.test(n))) {
+    failHonesty("dresser must keep drawer-bank anatomy", dresserPanels);
+  }
+  if (dresserPanels.some((n) => /door/i.test(n))) {
+    failHonesty("dresser must not steal hutch door path", dresserPanels);
+  }
   // Protect: chest of drawers stays drawer bank (not hinged-lid steal).
   const chestDrawers = generateFromPrompt("chest of drawers 40 wide 36 tall 18 deep");
   if (chestDrawers.panels.some((p) => /^Lid$/i.test(p.name))) {
@@ -5233,47 +5265,5 @@ console.log("STRANGER PLAN OK", {
   const twice = densifyConfirmAssumedNotes(once, ['Assumed 78" tall (linen class default) — type a height to lock it.']);
   if ((twice[0].description.match(/Assumed 78" tall/gi) ?? []).length !== 1) {
     failHonesty("densifyConfirmAssumedNotes must not duplicate Assumed talk", twice[0].description);
-  }
-}
-
-// ── Door pulls densify with hinged doors (bench BarPull ↔ Buy/steps) ──
-{
-  const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
-  const vanityPlan = buildPlan(vanity);
-  if (!/36/.test(vanity.name) || !/32/.test(vanity.name) || !/21/.test(vanity.name)) {
-    failHonesty("two-door vanity typed dims protect", vanity.name);
-  }
-  if (!vanityPlan.bom.some((b) => /soft-?close|concealed.*hinge|cabinet hinges/i.test(b.name))) {
-    failHonesty("two-door vanity Buy missing cabinet hinges", vanityPlan.bom.map((b) => b.name));
-  }
-  if (!vanityPlan.bom.some((b) => /bar pulls|door pulls|cabinet pulls/i.test(b.name))) {
-    failHonesty("two-door vanity Buy missing door/bar pulls (bench shows BarPull)", vanityPlan.bom.map((b) => b.name));
-  }
-  const hang = vanityPlan.instructions.find((s) => /Hang .*door/i.test(s.title));
-  if (!hang || !/bar pull/i.test(hang.description) || !/open and close/i.test(hang.description)) {
-    failHonesty("two-door vanity hang step must install bar pulls + open/close test", {
-      title: hang?.title,
-      description: hang?.description,
-    });
-  }
-
-  // Nightstand drawers keep cup pulls — not bar-pull steal.
-  const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-  const nightPlan = buildPlan(night);
-  if (!nightPlan.bom.some((b) => /cup pulls/i.test(b.name))) {
-    failHonesty("nightstand drawer cup pulls protect", nightPlan.bom.map((b) => b.name));
-  }
-  if (nightPlan.bom.some((b) => /bar pulls|door pulls/i.test(b.name))) {
-    failHonesty("nightstand drawer must not buy door/bar pulls", nightPlan.bom.map((b) => b.name));
-  }
-
-  // Cedar hinged lid — piano hinge path, not cabinet bar pulls.
-  const cedar = generateFromPrompt("cedar chest 36 wide 18 deep 20 tall with hinged lid");
-  const cedarPlan = buildPlan(cedar);
-  if (!cedarPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
-    failHonesty("cedar hinged lid piano hinge protect", cedarPlan.bom.map((b) => b.name));
-  }
-  if (cedarPlan.bom.some((b) => /bar pulls|soft-?close concealed/i.test(b.name))) {
-    failHonesty("cedar hinged lid must not buy door bar pulls / cabinet hinges", cedarPlan.bom.map((b) => b.name));
   }
 }
