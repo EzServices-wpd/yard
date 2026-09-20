@@ -3155,6 +3155,41 @@ console.log("SOFT-TRUST OK", {
     failHonesty("seatW easy Seat panel W ≠ overall", { seat: easySeat.size, overall: easy.overall });
   }
 
+  // Soft leftover: Backrest + front seat rail must match seat deck / typed overall W (not silent W−leg×2 ~27″).
+  // Side rails stay between-leg in depth (long axis = seat D) — not a typed-W lie.
+  const backrest = lounge.panels.find((p) => /^Backrest$/i.test(p.name));
+  if (!backrest) failHonesty("backrestW lounge Backrest panel missing", lounge.panels.map((p) => p.name));
+  else {
+    if (Math.abs(backrest.size.width - 30) > 0.6) {
+      failHonesty("backrestW lounge Backrest W ≠ typed 30", backrest.size);
+    }
+    if (backrest.size.width < 29) failHonesty("backrestW lounge Backrest still leg-inset", backrest.size);
+  }
+  const frontRail = lounge.panels.find((p) => /^Front seat rail$/i.test(p.name));
+  if (!frontRail) failHonesty("backrestW lounge Front seat rail missing", lounge.panels.map((p) => p.name));
+  else {
+    if (Math.abs(frontRail.size.width - 30) > 0.6) {
+      failHonesty("backrestW lounge Front seat rail W ≠ typed 30", frontRail.size);
+    }
+    if (frontRail.size.width < 29) failHonesty("backrestW lounge Front seat rail still leg-inset", frontRail.size);
+  }
+  const backCut = loungePlan.cutList.find((c) => /^Backrest$/i.test(c.name));
+  if (!backCut) failHonesty("backrestW lounge cut-list Backrest missing");
+  else {
+    const dims = [backCut.lengthIn, backCut.widthIn, backCut.thicknessIn];
+    if (!dims.some((n) => Math.abs(n - 30) <= 0.6)) {
+      failHonesty("backrestW lounge cut-list Backrest missing typed 30″ face", { dims, backCut });
+    }
+  }
+  const easyBack = easy.panels.find((p) => /^Backrest$/i.test(p.name));
+  if (easyBack && Math.abs(easyBack.size.width - easy.overall.width) > 0.6) {
+    failHonesty("backrestW easy Backrest W ≠ overall", { back: easyBack.size, overall: easy.overall });
+  }
+  const easyRail = easy.panels.find((p) => /^Front seat rail$/i.test(p.name));
+  if (easyRail && Math.abs(easyRail.size.width - easy.overall.width) > 0.6) {
+    failHonesty("backrestW easy Front seat rail W ≠ overall", { rail: easyRail.size, overall: easy.overall });
+  }
+
   // Explicit typed width: "30″ wide lounge…" — Seat cut W must match typed W (same helper).
   const wide = generateFromPrompt("house: 30″ wide lounge chair with 16″ seat height and 24″ seat depth");
   if (!/Lounge chair/i.test(wide.name)) failHonesty("seatW wide lounge title", wide.name);
@@ -3175,6 +3210,24 @@ console.log("SOFT-TRUST OK", {
     }
     if (!dims.some((n) => Math.abs(n - 24) <= 0.6)) {
       failHonesty("seatW wide cut-list Seat missing typed 24″ face", { dims, wideCut });
+    }
+  }
+  const wideBack = wide.panels.find((p) => /^Backrest$/i.test(p.name));
+  if (!wideBack) failHonesty("backrestW wide Backrest missing");
+  else if (Math.abs(wideBack.size.width - 30) > 0.6) {
+    failHonesty("backrestW wide Backrest W ≠ typed 30", wideBack.size);
+  }
+  const wideRail = wide.panels.find((p) => /^Front seat rail$/i.test(p.name));
+  if (!wideRail) failHonesty("backrestW wide Front seat rail missing");
+  else if (Math.abs(wideRail.size.width - 30) > 0.6) {
+    failHonesty("backrestW wide Front seat rail W ≠ typed 30", wideRail.size);
+  }
+  const wideBackCut = widePlan.cutList.find((c) => /^Backrest$/i.test(c.name));
+  if (!wideBackCut) failHonesty("backrestW wide cut-list Backrest missing");
+  else {
+    const dims = [wideBackCut.lengthIn, wideBackCut.widthIn, wideBackCut.thicknessIn];
+    if (!dims.some((n) => Math.abs(n - 30) <= 0.6)) {
+      failHonesty("backrestW wide cut-list Backrest missing typed 30″ face", { dims, wideBackCut });
     }
   }
 

@@ -2053,11 +2053,14 @@ function seatingLoungeSeatDeck(args: {
   width: number;
   seatDepth: number;
   leg: number;
-}): { x: number; z: number; w: number; d: number } {
-  // args.leg kept for call-site compatibility; deck spans full typed W×D (legs under).
+}): { x: number; z: number; w: number; d: number; crossX: number; crossW: number } {
+  // args.leg kept for call-site compatibility.
+  // Seat deck + cross-W faces (Backrest, front seat rail) span full typed W×D (legs under / flush).
+  // Side rails stay between-leg in depth — long axis is seat D, not a typed-W lie.
+  void args.leg;
   const d = Math.max(8, args.seatDepth);
   const w = Math.max(8, args.width);
-  return { x: args.x0, z: 0, w, d };
+  return { x: args.x0, z: 0, w, d, crossX: args.x0, crossW: w };
 }
 
 /** Lounge / easy / club chair — seat + back + legs; honor seat H + seat D; never House wire. */
@@ -2077,8 +2080,9 @@ function buildLoungeChair(spec: FittedSpec, prompt: string, affordances: HouseAf
   panels.push(panel("upright", "Back right leg", x0 + W - leg, 0, 0, leg, overallH, leg));
   const seatDeck = seatingLoungeSeatDeck({ x0, width: W, seatDepth: seatD, leg });
   panels.push(panel("deck", "Seat", seatDeck.x, seatH - P, seatDeck.z, seatDeck.w, P, seatDeck.d));
-  panels.push(panel("rail", "Backrest", x0 + leg, seatH, 0, Math.max(8, W - leg * 2), backH, P));
-  panels.push(panel("rail", "Front seat rail", x0 + leg, seatH - 3, seatD - leg - P, Math.max(6, W - leg * 2), 3, P));
+  // Backrest + front seat rail match seat deck W (not silent W−leg×2). Side rails stay between-leg in D.
+  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, 0, seatDeck.crossW, backH, P));
+  panels.push(panel("rail", "Front seat rail", seatDeck.crossX, seatH - 3, seatD - leg - P, seatDeck.crossW, 3, P));
   panels.push(panel("rail", "Side rail left", x0 + leg, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
   panels.push(panel("rail", "Side rail right", x0 + W - leg - P, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
   const name = `Lounge chair ${W}" × ${seatH}" × ${seatD}"`;
@@ -2093,7 +2097,7 @@ function buildLoungeChair(spec: FittedSpec, prompt: string, affordances: HouseAf
     primaryMaterialId: PLY,
     notes: [
       `${name}. Lounge chair — real sit anatomy: seat at ${seatH}" seat height, ${seatD}" seat depth, backrest + legs/frame. Not Yard House wire, not naked Bench/Chair, not Adirondack. ¾" plywood.`,
-      `Seat height ${seatH}" held; seat depth ${seatD}" held. Sit-test before you finish.`,
+      `Seat height ${seatH}" held; seat depth ${seatD}" held. Seat deck + Backrest + front seat rail span typed overall W (legs under); side rails span between legs in depth. Sit-test before you finish.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: seatH, depth: seatD, kind: "room" },
@@ -2146,7 +2150,8 @@ function buildRockingChair(spec: FittedSpec, prompt: string, affordances: HouseA
   panels.push(panel("upright", "Back right leg", x0 + W - leg, rockerLift, 2, leg, overallH - rockerLift, leg));
   const seatDeck = seatingLoungeSeatDeck({ x0, width: W, seatDepth: D, leg });
   panels.push(panel("deck", "Seat", seatDeck.x, seatH - P, seatDeck.z, seatDeck.w, P, seatDeck.d));
-  panels.push(panel("rail", "Backrest", x0 + leg, seatH, 0, Math.max(8, W - leg * 2), backH, P));
+  // Backrest matches seat deck W (same seatingLoungeSeatDeck cross-W rule as lounge/easy).
+  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, 0, seatDeck.crossW, backH, P));
   // Curved rocker rails under the legs — named Rocker (not ski/sled).
   panels.push(panel("rail", "Rocker 1", x0, 0, -2, P, rockerLift + 0.5, rockerLen));
   panels.push(panel("rail", "Rocker 2", x0 + W - P, 0, -2, P, rockerLift + 0.5, rockerLen));
