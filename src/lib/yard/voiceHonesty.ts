@@ -866,6 +866,42 @@ export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined
 }
 
 /**
+ * Densify Assumed notes from project.notes — filter existing text only; do not invent.
+ * Universal (any Assumed … densify disclosure), not linen-only.
+ */
+export function assumedDensifyNotes(notes: readonly string[] | null | undefined): string[] {
+  return (notes ?? []).filter((n) => /^Assumed\b/i.test(String(n).trim()));
+}
+
+/** Stranger Confirm/Build Voice — join existing Assumed densify notes as-is. */
+export function assumedDensifyNotesTalk(notes: readonly string[] | null | undefined): string {
+  return assumedDensifyNotes(notes).join(" ");
+}
+
+/**
+ * Append Assumed densify notes onto the first Confirm* Build step description
+ * so densified size is disclosed in Confirm/Build (and PDF), not silent in notes[].
+ */
+export function densifyConfirmAssumedNotes(
+  instructions: AssemblyStep[],
+  notes: readonly string[] | null | undefined,
+): AssemblyStep[] {
+  const talk = assumedDensifyNotesTalk(notes);
+  if (!talk) return instructions;
+  let applied = false;
+  return instructions.map((s) => {
+    if (applied) return s;
+    if (!/^Confirm\b/i.test(s.title ?? "")) return s;
+    if (/Assumed\b/i.test(s.description ?? "")) {
+      applied = true;
+      return s;
+    }
+    applied = true;
+    return { ...s, description: `${s.description} ${talk}`.trim() };
+  });
+}
+
+/**
  * Named-lumber Buy lead Voice note — qty honesty when wood is split across
  * primary board line + separate leg stock (e.g. 2×2 legs).
  *

@@ -13,7 +13,7 @@ import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
-import { shopWordsChipTalk, fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
+import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -387,6 +387,16 @@ function PlanBody({
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
                 <p className="font-medium text-fg">Shop words used in this plan</p>
                 <p className="mt-1">{shopWordsChipTalk(`${project.prompt ?? ""} ${project.name}`)}</p>
+              </div>
+            )}
+            {assumedDensifyNotes(project.notes).length > 0 && (
+              <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <p className="font-medium text-fg">Assumed size</p>
+                {assumedDensifyNotes(project.notes).map((n) => (
+                  <p key={n} className="mt-1">
+                    {n}
+                  </p>
+                ))}
               </div>
             )}
             <ol className="mt-3 space-y-3">

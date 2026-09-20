@@ -13,7 +13,7 @@ import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honest
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
-import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote } from "./voiceHonesty";
+import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 
 function letterLabel(i: number) {
@@ -633,6 +633,7 @@ function packPlan(
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
   const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList);
+  const assumedInstructions = densifyConfirmAssumedNotes(kitInstructions, project.notes);
   const plainBom = bom.map((b) => ({
     ...b,
     notes: b.notes
@@ -651,7 +652,7 @@ function packPlan(
     },
     cutList: platedCutList,
     bom: plainBom,
-    instructions: kitInstructions,
+    instructions: assumedInstructions,
     totals: {
       pieces,
       estCostUsd: cost,

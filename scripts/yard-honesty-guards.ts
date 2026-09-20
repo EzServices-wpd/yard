@@ -15,7 +15,9 @@ import {
   cutListHasExplodedDrawers,
   densifyPartsCountTalk,
   densifyPartsPlateTalk,
-  cutListWoodPieceCount,
+  cutListWoodPieceCount,,
+  assumedDensifyNotesTalk,
+  densifyConfirmAssumedNotes
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
@@ -4922,5 +4924,65 @@ console.log("STRANGER PLAN OK", {
   }
   if (openingStorageMeasureEmptyTalk("60 inch desk with drawers")) {
     failHonesty("desk must not use opening-storage Measure empty talk");
+  }
+}
+
+// ── Assumed densify notes surface in Confirm/Build (soft leftover after 5d07304) ──
+{
+  const bare = generateFromPrompt("linen closet");
+  const barePlan = buildPlan(bare);
+  const assumedTalk = assumedDensifyNotesTalk(bare.notes);
+  if (!/Assumed 78" tall/i.test(assumedTalk)) {
+    failHonesty("bare linen Assumed densify talk missing tall note", { notes: bare.notes, assumedTalk });
+  }
+  const bareConfirm = barePlan.instructions.find((s) => /^Confirm\b/i.test(s.title));
+  if (!bareConfirm || !/Assumed 78" tall/i.test(bareConfirm.description)) {
+    failHonesty("bare linen Confirm must disclose Assumed tall densify note", {
+      title: bareConfirm?.title,
+      description: bareConfirm?.description,
+      notes: bare.notes,
+    });
+  }
+  // Title stays stem-only (protect bare-linen Critic lock)
+  if (/\d+(?:\.\d+)?"\s*×/.test(bare.name)) {
+    failHonesty("bare linen title must stay stem-only while Assumed notes surface", bare.name);
+  }
+
+  const widthOnly = generateFromPrompt("31.5 inch linen closet");
+  const widthPlan = buildPlan(widthOnly);
+  const widthConfirm = widthPlan.instructions.find((s) => /^Confirm\b/i.test(s.title));
+  if (!/Assumed 78" tall/i.test(widthConfirm?.description ?? "")) {
+    failHonesty("width-only linen Confirm must disclose Assumed tall densify note", {
+      description: widthConfirm?.description,
+      notes: widthOnly.notes,
+    });
+  }
+  if (!/31\.5"\s*wide/i.test(widthOnly.name)) {
+    failHonesty("width-only linen title protect", widthOnly.name);
+  }
+
+  // Typed full triple — no Assumed densify notes required on Confirm
+  const typed = generateFromPrompt("31.5 inch linen closet 78 tall 16 deep");
+  const typedAssumed = assumedDensifyNotesTalk(typed.notes);
+  if (typedAssumed) {
+    // If densify still emits Assumed when all axes typed, Confirm may show them;
+    // but notes should normally be empty for full typed.
+    failHonesty("fully typed linen should not invent Assumed densify notes", {
+      notes: typed.notes,
+      typedAssumed,
+    });
+  }
+
+  // Helper is idempotent / universal filter
+  const once = densifyConfirmAssumedNotes(
+    [{ step: 1, title: "Confirm the footprint — do not cut yet", description: 'Unit 36" wide × 16" deep × 78" high.', tips: "", partsUsed: ["*"] }],
+    ['Assumed 78" tall (linen class default) — type a height to lock it.'],
+  );
+  if (!/Assumed 78" tall/i.test(once[0].description)) {
+    failHonesty("densifyConfirmAssumedNotes appends Assumed talk", once[0].description);
+  }
+  const twice = densifyConfirmAssumedNotes(once, ['Assumed 78" tall (linen class default) — type a height to lock it.']);
+  if ((twice[0].description.match(/Assumed 78" tall/gi) ?? []).length !== 1) {
+    failHonesty("densifyConfirmAssumedNotes must not duplicate Assumed talk", twice[0].description);
   }
 }
