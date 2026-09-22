@@ -2105,6 +2105,13 @@ function cutStockGroups(
 function sheetCutTitle(panels: Panel[], fallbackItem?: CatalogItem | null): string {
   const groups = cutStockGroups(panels, fallbackItem);
   if (!groups.length) return `Cut the ${fallbackItem?.name ?? '3/4" plywood'}`;
+  const ply10 = groups.filter((g) => /3\/4/.test(g.label) && /4\s*[×x]\s*10/.test(g.label));
+  const ply8 = groups.filter((g) => /3\/4/.test(g.label) && /4\s*[×x]\s*8/.test(g.label));
+  const rest = groups.filter((g) => !ply10.includes(g) && !ply8.includes(g));
+  if (ply10.length && ply8.length) {
+    const head = '3/4" plywood (4×10 for full-height faces, 4×8 for the rest)';
+    return `Cut the ${[head, ...rest.map((g) => g.label)].join(" and ")}`;
+  }
   if (groups.length === 1) return `Cut the ${groups[0].label}`;
   return `Cut the ${groups.map((g) => g.label).join(" and ")}`;
 }

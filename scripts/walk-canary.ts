@@ -114,6 +114,16 @@ function ok(id: string, msg: string) {
   if (leftover102.length) {
     errs.push(`102" parts unplaced: ${leftover102.map((part) => part.label || part.name).join(", ")}`);
   }
+  const cutTitle = plan.instructions.find((s) => /^Cut the/i.test(s.title))?.title ?? "";
+  if (!/4\s*[×x]\s*10/.test(cutTitle)) {
+    errs.push(`cut title missing 4×10: ${cutTitle}`);
+  }
+  if (!/4\s*[×x]\s*8/.test(cutTitle)) {
+    errs.push(`cut title missing 4×8: ${cutTitle}`);
+  }
+  if (/sheet goods/i.test(cutTitle)) {
+    errs.push(`cut title smashed 4×8 to sheet goods: ${cutTitle}`);
+  }
   if (errs.length) fail("pocket", errs.join("; "));
   else
     ok(

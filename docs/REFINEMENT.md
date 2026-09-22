@@ -49,6 +49,7 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - `nestCutList` lays 4×8 then 4×10 so 102" uprights are on the printed nest, not unplaced.
 - Kick step title is "Kick strip on the banks only". Pocket feasibility says walls/flares, not Change W × H × D.
 - Freeze: pocket unit 38 × 102 × 17, linen 31.5 × 78 × 16. Routing untouched.
+- Cut step names both sheets: "4×10 for full-height faces, 4×8 for the rest" — honesty no longer smashes 4×8 to "sheet goods" when 4×10 is already in the title.
 - NEXT = Slice D photo.
 
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
