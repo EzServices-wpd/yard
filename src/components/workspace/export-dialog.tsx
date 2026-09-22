@@ -8,6 +8,7 @@ import { IsoPlate } from "@/components/workspace/iso-plate";
 import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
 import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
+import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 
 export function ExportDialog({
   project,
@@ -227,6 +228,9 @@ export function ExportDialog({
                       <td className="py-1.5">{c.name}</td>
                       <td className="py-1.5 font-mono text-ink-muted">
                         {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                        {c.material ? (
+                          <span className="mt-0.5 block text-[10px] text-ink-muted/80">{shortSheetTalk(c.material)}</span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

@@ -3,7 +3,7 @@ import { usd } from "@/lib/utils";
 import { nestCutList } from "./nesting";
 import type { BuildPlan, YardProject } from "./types";
 import { ACCENT, PHOTO_RULE } from "./pdfTheme";
-import { fmtDims, fmtDimsWHD, fmtUnitEnvelope } from "./pdfFormat";
+import { fmtDims, fmtDimsWHD, fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
 import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
 import { drawStepPlate } from "./pdfPlate";
@@ -230,16 +230,18 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         : "Same size is the same letter. Mark A on the first cut, then batch.",
     );
     for (const c of plan.cutList) {
-      ensure(16);
+      const sheet = shortSheetTalk(c.material);
+      const leftLine = `${c.label ? `${c.label}  ` : ""}${c.quantity}x  ${c.name}${sheet ? ` · ${sheet}` : ""}`;
+      const leftLines = doc.splitTextToSize(leftLine, width - 150);
+      ensure(Math.max(16, leftLines.length * 15));
       doc.setFont("times", "bold");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
-      const label = c.label ? `${c.label}  ` : "";
-      doc.text(`${label}${c.quantity}x  ${c.name}`, left, y);
+      doc.text(leftLines, left, y);
       doc.setFont("times", "normal");
       const dims = `${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`;
       doc.text(dims, right, y, { align: "right" });
-      y += 15;
+      y += Math.max(15, leftLines.length * 15);
     }
   } else if (plan.partsKind === "whole") {
     heading("Stick list");

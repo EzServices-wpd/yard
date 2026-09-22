@@ -969,7 +969,7 @@ export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
     plan.feasibility.summary,
     "",
     "## Cut list",
-    ...plan.cutList.map((c) => `- ${c.label ?? ""} ${c.quantity}x ${c.name} ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`),
+    ...plan.cutList.map((c) => `- ${c.label ?? ""} ${c.quantity}x ${c.name} ${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"${c.material ? ` · ${c.material}` : ""}`),
     "",
     "## Buy",
     ...plan.bom.map((b) => `- ${b.quantity} ${b.unit} ${b.name}`),

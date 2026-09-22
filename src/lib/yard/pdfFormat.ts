@@ -27,3 +27,14 @@ export function fmtUnitEnvelope(
 }
 
 export { isRoundUnitEnvelope };
+
+/** Lumber-aisle sheet talk: '1/4" Plywood 4×10' → '1/4" 4×10'. */
+export function shortSheetTalk(material: string | null | undefined): string {
+  if (!material) return "";
+  return material
+    .replace(/Plywood\s+/gi, "")
+    .replace(/plywood\s+/gi, "")
+    .replace(/\(\s*backer\s*\)/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

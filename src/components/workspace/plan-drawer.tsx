@@ -14,6 +14,7 @@ import { ExportDialog } from "@/components/workspace/export-dialog";
 import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
+import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -289,6 +290,9 @@ function PlanBody({
                       <td className="py-1.5">{c.name}</td>
                       <td className="py-1.5 font-mono text-muted">
                         {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                        {c.material ? (
+                          <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

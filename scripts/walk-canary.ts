@@ -89,6 +89,9 @@ function ok(id: string, msg: string) {
   if (backCut && /4\s*[×x]\s*8/.test(backCut.material ?? "") && !/4\s*[×x]\s*10/.test(backCut.material ?? "")) {
     errs.push(`102" back cut still 4×8: ${backCut.material}`);
   }
+  if (backCut && !/4\s*[×x]\s*10/.test(backCut.material ?? "")) {
+    errs.push(`cut list back missing 4×10 sheet name: ${backCut.material}`);
+  }
   const thinStill34 = plan.cutList.filter(
     (c) => (c.thicknessIn ?? 1) < 0.5 && /3\/4|0\.75/.test(c.material ?? ""),
   );

@@ -50,6 +50,7 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Kick step title is "Kick strip on the banks only". Pocket feasibility says walls/flares, not Change W × H × D.
 - Freeze: pocket unit 38 × 102 × 17, linen 31.5 × 78 × 16. Routing untouched.
 - Cut step names both sheets: "4×10 for full-height faces, 4×8 for the rest" — honesty no longer smashes 4×8 to "sheet goods" when 4×10 is already in the title.
+- Cut list (Get the plan + PDF + markdown) names the sheet on each line — 102" back is `1/4" 4×10`, not a bare 102×36.5×0.25.
 - NEXT = Slice D photo.
 
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
