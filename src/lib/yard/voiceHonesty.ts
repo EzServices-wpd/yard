@@ -81,7 +81,10 @@ export function strangerPlainShopTalk(text: string): string {
     .replace(/\btoekicks\b/gi, "kick strips")
     .replace(/\btoe[- ]?kick\b/gi, "kick strip")
     .replace(/\btoekick\b/gi, "kick strip")
-    .replace(/\borbit-?chrome\b/gi, "skeleton chrome");
+    .replace(/\borbit-?chrome\b/gi, "skeleton chrome")
+    .replace(/\bthe chair space\b/gi, "the knee")
+    .replace(/\bchair[\s-]+space\b/gi, "knee")
+    .replace(/\bchair bay\b/gi, "knee");
 }
 
 /** Short kit-style orientation cue when hinge/face direction matters. */

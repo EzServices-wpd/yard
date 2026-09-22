@@ -1876,7 +1876,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: n++,
         title: `Keep ${kneeClear}" knee clear — set the knee dividers`,
-        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the chair space.`,
+        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the knee.`,
         tips: "Hang drawer slides on these faces before the last divider goes in — you can still get a screwdriver in.",
         partsUsed: names(knee),
       });
@@ -1919,7 +1919,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Add the media shelf behind — do not eat the knee",
-      description: `${mediaBehind.map(cutLine).join("; ")}. Media shelf behind holds a laptop upright without eating the knee. Keep ${kneeClear}" knee clear under the desktop — the shelf sits behind the back edge, not in the chair bay.`,
+      description: `${mediaBehind.map(cutLine).join("; ")}. Media shelf behind holds a laptop upright without eating the knee. Keep ${kneeClear}" knee clear under the desktop — the shelf sits behind the back edge, not in the knee.`,
       tips: "Dry-fit a 13-inch laptop upright on the shelf before you screw it off.",
       partsUsed: names(mediaBehind),
     });

@@ -127,6 +127,10 @@ function ok(id: string, msg: string) {
   if (/sheet goods/i.test(cutTitle)) {
     errs.push(`cut title smashed 4×8 to sheet goods: ${cutTitle}`);
   }
+  const chairTalk = plan.instructions.filter((s) => /chair[\s-]+space|chair bay/i.test(`${s.title} ${s.description}`));
+  if (chairTalk.length) {
+    errs.push(`steps still say chair space: ${chairTalk.map((s) => s.title).join("; ")}`);
+  }
   if (errs.length) fail("pocket", errs.join("; "));
   else
     ok(
