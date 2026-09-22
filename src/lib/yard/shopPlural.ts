@@ -23,6 +23,11 @@ export function isBoundingDrawerPanel(name: string, type?: string): boolean {
   return type === "drawer" && !/drawer\s*front/i.test(name);
 }
 
+/** Glass vanity/door mirror — buy, do not cut from the plywood nest. */
+export function isBuyMirrorPanel(name: string, type?: string): boolean {
+  return type === "mirror" || /^vanity mirror$/i.test(name);
+}
+
 /**
  * Class pack: a type=drawer panel is a visual envelope, not a cuttable board.
  * Explode into ¾" sides + back and a ¼" bottom so sheetCutDims never treats
@@ -167,6 +172,7 @@ export function woodCutPieceCount(project: {
   const STOCK_T = 0.75;
   let n = project.instances?.length ?? 0;
   for (const p of project.panels) {
+    if (isBuyMirrorPanel(p.name, p.type)) continue;
     const w = Math.round(p.size.width * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;

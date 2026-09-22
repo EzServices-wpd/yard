@@ -7,7 +7,7 @@ import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10, plySheetCatalogId } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
@@ -112,6 +112,7 @@ function closetCuts(project: YardProject): CutLine[] {
     const materialName = item?.name ?? p.materialId;
     // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
     // Explode into sides/back/bottom so the cut list matches Build steps.
+    if (isBuyMirrorPanel(p.name, p.type)) continue;
     if (isBoundingDrawerPanel(p.name, p.type)) {
       for (const part of explodeDrawerBoxCuts(w, h, d)) {
         addCut(p.materialId, part.name, part.type, part.width, part.height, part.depth, materialName);
@@ -454,6 +455,20 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: "adhesive bathroom cabinet mirror",
       estimatedCost: 14.98,
       notes: "Glue to the outside of the door so the cabinet mirrors when closed. Order or cut close to the door size.",
+    });
+  }
+  const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type));
+  if (glassMirrors.length && !medicine) {
+    const m = glassMirrors[0];
+    const dims = sheetCutDims(m.size.width, m.size.height, m.size.depth);
+    bom.push({
+      name: `Vanity mirror ${dims.lengthIn}" × ${dims.widthIn}"`,
+      quantity: glassMirrors.length,
+      unit: glassMirrors.length === 1 ? "pc" : "pcs",
+      catalogId: "vanity-mirror",
+      searchQuery: `vanity wall mirror ${Math.round(dims.widthIn)}x${Math.round(dims.lengthIn)}`,
+      estimatedCost: 39.99 * glassMirrors.length,
+      notes: `Buy glass this size — do not cut from plywood. Hang over the knee.`,
     });
   }
   if (foldDown || ironing) {

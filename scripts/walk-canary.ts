@@ -131,6 +131,18 @@ function ok(id: string, msg: string) {
   if (chairTalk.length) {
     errs.push(`steps still say chair space: ${chairTalk.map((s) => s.title).join("; ")}`);
   }
+  const plyMirror = plan.cutList.filter((c) => /mirror/i.test(c.name));
+  if (plyMirror.length) {
+    errs.push(`mirror still on the plywood cut list: ${plyMirror.map((c) => `${c.label} ${c.name} ${c.material}`).join("; ")}`);
+  }
+  const buyMirror = plan.bom.find((b) => /mirror/i.test(b.name));
+  if (!buyMirror) errs.push("pocket missing buy-glass mirror");
+  else if (buyMirror.catalogId !== "vanity-mirror") {
+    errs.push(`mirror catalogId ${buyMirror.catalogId} ≠ vanity-mirror`);
+  }
+  if (!plan.instructions.some((s) => /bought mirror|buy glass/i.test(`${s.title} ${s.description}`))) {
+    errs.push("pocket steps never say buy the glass mirror");
+  }
   if (errs.length) fail("pocket", errs.join("; "));
   else
     ok(

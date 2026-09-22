@@ -35,7 +35,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
-import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause } from "./voiceHonesty";
 
@@ -2001,8 +2001,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (mirrors.length) {
     steps.push({
       step: n++,
-      title: "Hang the mirror",
-      description: `${mirrors.map(cutLine).join("; ")}. Over the knee, between the counter and the uppers. French cleat (two interlocking angled strips — one on the wall, one on the mirror) or mirror clips into studs — not into the plywood back alone.`,
+      title: "Hang the bought mirror",
+      description: `${mirrors.map((p) => `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`).join("; ")}. Buy glass this size — do not cut it from the plywood. Hang over the knee, between the counter and the uppers. French cleat (two interlocking angled strips — one on the wall, one on the mirror) or mirror clips into studs — not into the plywood back alone.`,
       partsUsed: names(mirrors),
     });
   }
@@ -2068,6 +2068,7 @@ function cutStockGroups(
   };
 
   for (const p of panels) {
+    if (isBuyMirrorPanel(p.name, p.type)) continue;
     // Expand drawer envelopes into cuttable parts before stock grouping.
     if (isBoundingDrawerPanel(p.name, p.type)) {
       for (const part of explodeDrawerBoxCuts(p.size.width, p.size.height, p.size.depth)) {

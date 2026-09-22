@@ -52,6 +52,7 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Cut step names both sheets: "4×10 for full-height faces, 4×8 for the rest" — honesty no longer smashes 4×8 to "sheet goods" when 4×10 is already in the title.
 - Cut list (Get the plan + PDF + markdown) names the sheet on each line — 102" back is `1/4" 4×10`, not a bare 102×36.5×0.25.
 - Printed steps say knee, not "chair space" (survey language stays in the prompt; assembly does not).
+- Pocket vanity mirror is Buy glass (`vanity-mirror`), not a ¼″ plywood cut. Bench still shows the panel. Linen unchanged.
 - NEXT = Slice D photo.
 
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.
