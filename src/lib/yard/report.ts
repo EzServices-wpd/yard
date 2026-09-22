@@ -254,6 +254,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         name: '1/4" plywood 4x8 (backer)',
         quantity: n,
         unit: n === 1 ? "sheet" : "sheets",
+        catalogId: "plywood-1-4-4x8",
         searchQuery: "1/4 inch sanded plywood 4x8",
         estimatedCost: 24.98 * n,
         notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,

@@ -17,9 +17,10 @@ Then `scripts/walk-launch.ts` should be 10/10. Linen name is **Linen**, not Clos
 
 ## NEXT (one at a time)
 
-1. **Cut A honesty** — linen backer is 0.25" but `materialId` is still `plywood-3-4`. Thin stay off the ¾" nest. Do not invent a size. Fix: `panel()` in `fitted.ts` / `pocket.ts` must tag 0.25" parts as `plywood-1-4-4x8`.
-2. **Pocket stranger PDF** — freeze #1 routing is fixed; the printed plan is not yet linen-quality.
-3. **Slice D** — real alcove photo for landing heroes. Current jpgs are bench renders. Ask if you do not have photographs.
+1. **Pocket stranger PDF** — freeze #1 routing is fixed; the printed plan is not yet linen-quality.
+2. **Slice D** — real alcove photo for landing heroes. Current jpgs are bench renders. Ask if you do not have photographs.
+
+**Shipped:** Cut A (20 Sep queue / 21 Sep) — 0.25" back `materialId` is `plywood-1-4-4x8`. Thin stays off the ¾" nest. Linen 31.5 × 78 × 16 unchanged.
 
 ## Parked
 

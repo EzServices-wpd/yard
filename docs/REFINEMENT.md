@@ -39,4 +39,9 @@ Working brief: freeze language in PRODUCTION.md is historical.
 **Bot field manual (20 Sep 2026):**
 - `docs/BOT-BRIEF.md` is the long brief for a new Grok session. PDF lives with Ezra (submit at session start). NEXT unchanged: Cut A, then D.
 
+**Cut A — thin backer id (21 Sep 2026):**
+- `panel()` tags type=back at ≤0.25" as `plywood-1-4-4x8` (fitted + pocket). Catalog SKU added. Buy catalogId on the ¼″ backer line.
+- Linen 31.5 × 78 × 16 unchanged. Nest still two ¾″ 4×8; thin off that nest.
+- NEXT = pocket stranger PDF, then Slice D photo.
+
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.

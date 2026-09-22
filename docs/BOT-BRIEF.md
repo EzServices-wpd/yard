@@ -118,11 +118,12 @@ Never invent a size these prompts did not give. If you change a number, you have
 
 ## 7. NEXT queue — one item at a time
 
-Copied from `docs/BOT.md`. If you ship item 1, check it off there. Do not start the next item in the same fire unless the one you shipped is on main, canary green, and Vercel READY.
+Copied from `docs/BOT.md`. If you ship an item, check it off there. Do not start the next item in the same fire unless the one you shipped is on main, canary green, and Vercel READY.
 
-1. **Cut A honesty** — linen (and pocket) backer is 0.25″ thick but `materialId` is still `plywood-3-4-4x8`. Thin stays off the ¾″ nest (already true in `nesting.ts`). Buy/cut list still talk ¾″ for a ¼″ part. Do not invent a size. Do not change 31.5 × 78 × 16.
-2. **Pocket stranger PDF** — freeze #1 routing is fixed (vanity, `project.pocket`, 38 × 102 × 17). The printed plan is not yet linen-quality. Make Get the plan / PDF followable: nest page 1, lettered parts, one-action steps with sizes, walls/knee/counter named, no generic titles. Do not reopen routing. Do not invent a size.
-3. **Slice D** — real alcove *photographs* for landing heroes (linen / pocket / desk). Rendered bench stills already exist at `public/heroes/{linen,pocket,desk}.jpg` (1280×960). Do not generate a fake bathroom. If you do not have Ezra’s photos, **ask and stop**.
+**Shipped 21 Sep:** Cut A — thin back `materialId` is `plywood-1-4-4x8`. Linen 31.5 × 78 × 16 unchanged.
+
+1. **Pocket stranger PDF** — freeze #1 routing is fixed (vanity, `project.pocket`, 38 × 102 × 17). The printed plan is not yet linen-quality. Make Get the plan / PDF followable: nest page 1, lettered parts, one-action steps with sizes, walls/knee/counter named, no generic titles. Do not reopen routing. Do not invent a size.
+2. **Slice D** — real alcove *photographs* for landing heroes (linen / pocket / desk). Rendered bench stills already exist at `public/heroes/{linen,pocket,desk}.jpg` (1280×960). Do not generate a fake bathroom. If you do not have Ezra’s photos, **ask and stop**.
 
 After those three, the product is closer to launch than another month of AABB. Then Ezra decides Amazon / accounts / a stranger walk (Stage 3.3).
 

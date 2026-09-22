@@ -22,6 +22,7 @@ import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, de
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
+const PLY_BACKER = "plywood-1-4-4x8";
 const P = 0.75;
 
 function isIroningCabinet(text: string) {
@@ -1564,13 +1565,14 @@ function panel(
   h: number,
   d: number,
 ): Panel {
+  const thinBack = type === "back" && Math.min(w, h, d) <= 0.26;
   return {
     id: createId(type.slice(0, 2)),
     type,
     name,
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
-    materialId: PLY,
+    materialId: thinBack ? PLY_BACKER : PLY,
   };
 }
 

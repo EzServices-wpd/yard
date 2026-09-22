@@ -40,6 +40,16 @@ function ok(id: string, msg: string) {
   if (!near(p.overall.depth, 16)) errs.push(`overall D ${p.overall.depth} ≠ 16`);
   if (p.kind === "house") errs.push("densified as House");
   if (!p.panels.length) errs.push("no panels");
+  const linenBack = p.panels.find((x) => x.type === "back");
+  if (!linenBack) errs.push("no back panel");
+  else {
+    if (Math.abs(Math.min(linenBack.size.width, linenBack.size.height, linenBack.size.depth) - 0.25) > 0.02) {
+      errs.push(`back thickness ${JSON.stringify(linenBack.size)} ≠ 0.25`);
+    }
+    if (linenBack.materialId !== "plywood-1-4-4x8") {
+      errs.push(`back materialId ${linenBack.materialId} ≠ plywood-1-4-4x8`);
+    }
+  }
   if (errs.length) fail("linen", errs.join("; "));
   else ok("linen", `${p.name}  ${p.overall.width}×${p.overall.height}×${p.overall.depth}  ${p.panels.length} panels`);
 }
@@ -62,6 +72,14 @@ function ok(id: string, msg: string) {
   }
   if (!p.panels.length) errs.push("no panels");
   if (!plan.cutList.length) errs.push("empty cut list");
+  const pocketBack = p.panels.find((x) => x.type === "back");
+  if (pocketBack && pocketBack.materialId !== "plywood-1-4-4x8") {
+    errs.push(`back materialId ${pocketBack.materialId} ≠ plywood-1-4-4x8`);
+  }
+  const backCut = plan.cutList.find((c) => /back/i.test(c.name) && (c.thicknessIn ?? 1) < 0.5);
+  if (backCut && /3\/4|0\.75/.test(backCut.material ?? "")) {
+    errs.push(`back cut material still 3/4: ${backCut.material}`);
+  }
   if (errs.length) fail("pocket", errs.join("; "));
   else
     ok(

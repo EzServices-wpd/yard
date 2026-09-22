@@ -8,6 +8,7 @@ import { createId } from "@/lib/utils";
 import type { Panel, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
+const PLY_BACKER = "plywood-1-4-4x8";
 const P = 0.75;
 
 /** Chip / everyday sentence. parsePocket fills Ezra's bathroom as the example pocket. */
@@ -129,15 +130,16 @@ function panel(
   w: number,
   h: number,
   d: number,
-  materialId = PLY,
+  materialId?: string,
 ): Panel {
+  const thinBack = type === "back" && Math.min(w, h, d) <= 0.26;
   return {
     id: createId(type.slice(0, 2)),
     type,
     name,
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
-    materialId,
+    materialId: materialId ?? (thinBack ? PLY_BACKER : PLY),
   };
 }
 
