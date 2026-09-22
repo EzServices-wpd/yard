@@ -162,8 +162,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     );
     y += 14;
     if (thinCuts.length) {
+      const tallThin = thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96);
       doc.text(
-        `Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on this sheet — buy 1/4\" separately.`,
+        `Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on this sheet — buy 1/4\" separately${tallThin ? " (4x10 for full-height backs)" : ""}.`,
         left,
         y,
       );

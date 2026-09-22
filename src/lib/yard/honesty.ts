@@ -821,7 +821,12 @@ export function honestPlan(project: YardProject, plan: BuildPlan): BuildPlan {
     }
   }
   // If the buy list includes 4×10, cut steps must not say everything comes from 4×8.
-  const buys10 = plan.bom.some((b) => /4\s*[×x]\s*10/i.test(b.name) || b.catalogId === "plywood-3-4-4x10");
+  const buys10 = plan.bom.some(
+    (b) =>
+      /4\s*[×x]\s*10/i.test(b.name) ||
+      b.catalogId === "plywood-3-4-4x10" ||
+      b.catalogId === "plywood-1-4-4x10",
+  );
   if (buys10) {
     instructions = instructions.map((s) => ({
       ...s,

@@ -6,6 +6,7 @@
  */
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
+import { nestCutList } from "../src/lib/yard/nesting";
 import { POCKET_DREAM } from "../src/lib/yard/pocket";
 
 function near(a: number, b: number, eps = 0.15) {
@@ -73,18 +74,51 @@ function ok(id: string, msg: string) {
   if (!p.panels.length) errs.push("no panels");
   if (!plan.cutList.length) errs.push("empty cut list");
   const pocketBack = p.panels.find((x) => x.type === "back");
-  if (pocketBack && pocketBack.materialId !== "plywood-1-4-4x8") {
-    errs.push(`back materialId ${pocketBack.materialId} ≠ plywood-1-4-4x8`);
+  if (pocketBack) {
+    if (Math.abs(Math.min(pocketBack.size.width, pocketBack.size.height, pocketBack.size.depth) - 0.25) > 0.02) {
+      errs.push(`back thickness ${JSON.stringify(pocketBack.size)} ≠ 0.25`);
+    }
+    if (pocketBack.materialId !== "plywood-1-4-4x10") {
+      errs.push(`back materialId ${pocketBack.materialId} ≠ plywood-1-4-4x10 (102" needs 4×10)`);
+    }
   }
   const backCut = plan.cutList.find((c) => /back/i.test(c.name) && (c.thicknessIn ?? 1) < 0.5);
   if (backCut && /3\/4|0\.75/.test(backCut.material ?? "")) {
     errs.push(`back cut material still 3/4: ${backCut.material}`);
   }
+  if (backCut && /4\s*[×x]\s*8/.test(backCut.material ?? "") && !/4\s*[×x]\s*10/.test(backCut.material ?? "")) {
+    errs.push(`102" back cut still 4×8: ${backCut.material}`);
+  }
+  const thinStill34 = plan.cutList.filter(
+    (c) => (c.thicknessIn ?? 1) < 0.5 && /3\/4|0\.75/.test(c.material ?? ""),
+  );
+  if (thinStill34.length) {
+    errs.push(`thin cuts still 3/4: ${thinStill34.map((c) => `${c.label} ${c.name} ${c.material}`).join("; ")}`);
+  }
+  const kick = plan.instructions.find((s) => /kick strip/i.test(s.title));
+  if (kick && /^kick strip/.test(kick.title)) {
+    errs.push(`kick title lowercase: ${kick.title}`);
+  }
+  const sug = plan.feasibility.issues.map((i) => i.suggestion ?? "").join(" ");
+  if (/Change W\s*×\s*H\s*×\s*D/i.test(sug)) {
+    errs.push(`pocket suggestion still W×H×D: ${sug}`);
+  }
+  const nest = nestCutList(plan.cutList);
+  if (!nest?.sheets.some((s) => Math.max(s.width, s.height) >= 120)) {
+    errs.push("pocket nest missing 4×10 sheet for 102\" faces");
+  }
+  const leftover102 = (nest?.unplaced ?? []).filter((part) => {
+    const long = Math.max(part.width, part.height);
+    return long > 96 && long <= 120;
+  });
+  if (leftover102.length) {
+    errs.push(`102" parts unplaced: ${leftover102.map((part) => part.label || part.name).join(", ")}`);
+  }
   if (errs.length) fail("pocket", errs.join("; "));
   else
     ok(
       "pocket",
-      `${p.name}  ${u?.width}×${u?.height}×${u?.depth}  ${p.panels.length} panels  ${plan.cutList.length} cuts`,
+      `${p.name}  ${u?.width}×${u?.height}×${u?.depth}  ${p.panels.length} panels  ${plan.cutList.length} cuts  nest ${nest?.sheets.length ?? 0}`,
     );
 }
 

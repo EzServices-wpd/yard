@@ -709,6 +709,30 @@ export const LISTINGS: ListingOffer[] = [
     thickIn: 0.25,
     checkedAt: CHECK,
   },
+  {
+    catalogId: "plywood-1-4-4x10",
+    retailer: "homedepot",
+    title: "1/4\" x 4x10 sanded plywood",
+    href: "https://www.homedepot.com/s/1%2F4%20inch%204x10%20plywood",
+    packQty: 1,
+    packPrice: 34.98,
+    lengthIn: 120,
+    widthIn: 48,
+    thickIn: 0.25,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "plywood-3-4-4x10",
+    retailer: "homedepot",
+    title: "3/4\" x 4x10 sanded plywood",
+    href: "https://www.homedepot.com/s/3%2F4%20inch%204x10%20plywood",
+    packQty: 1,
+    packPrice: 72,
+    lengthIn: 120,
+    widthIn: 48,
+    thickIn: 0.75,
+    checkedAt: CHECK,
+  },
 ];
 
 const RETAILER_LABEL: Record<ListingOffer["retailer"], string> = {
@@ -828,9 +852,15 @@ function guessCatalogId(line: BomLine): string | null {
   if (/cardboard/.test(hay)) return "cardboard-corrugated-sheet";
   // Edge banding before plywood — searchQuery may say "plywood birch" for the veneer match.
   if (/edge.?band|iron.?on.?band|\bbanding\b/.test(hay)) return "edge-banding";
-  // Thin backer before generic plywood
-  if (/1\/4|quarter.?inch|backer/.test(hay) && /ply/.test(hay)) return "plywood-1-4-4x8";
-  if (/plywood/.test(hay)) return "plywood-3-4-4x8";
+  // Thin backer before generic plywood. 4×10 before 4×8 so a 102" face is not sold as a 4×8.
+  if (/1\/4|quarter.?inch|backer/.test(hay) && /ply/.test(hay)) {
+    if (/4\s*[x×]\s*10/.test(hay)) return "plywood-1-4-4x10";
+    return "plywood-1-4-4x8";
+  }
+  if (/plywood/.test(hay)) {
+    if (/4\s*[x×]\s*10/.test(hay)) return "plywood-3-4-4x10";
+    return "plywood-3-4-4x8";
+  }
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
   if (/45/.test(hay) && /elbow|pvc/.test(hay)) return "pvc-elbow-45";

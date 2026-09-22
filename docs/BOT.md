@@ -17,10 +17,11 @@ Then `scripts/walk-launch.ts` should be 10/10. Linen name is **Linen**, not Clos
 
 ## NEXT (one at a time)
 
-1. **Pocket stranger PDF** — freeze #1 routing is fixed; the printed plan is not yet linen-quality.
-2. **Slice D** — real alcove photo for landing heroes. Current jpgs are bench renders. Ask if you do not have photographs.
+1. **Slice D** — real alcove photo for landing heroes. Current jpgs are bench renders. Ask if you do not have photographs.
 
-**Shipped:** Cut A (20 Sep queue / 21 Sep) — 0.25" back `materialId` is `plywood-1-4-4x8`. Thin stays off the ¾" nest. Linen 31.5 × 78 × 16 unchanged.
+**Shipped:** Cut A (21 Sep) — 0.25" back `materialId` is `plywood-1-4-4x8`. Thin stays off the ¾" nest. Linen 31.5 × 78 × 16 unchanged.
+
+**Shipped:** Pocket stranger PDF (21 Sep) — 102" faces stamp 4×10 (¼″ backer + ¾″ uprights). 0.25" mirror and drawer bottoms are ¼″, not ¾″. Nest includes the 4×10 sheet. Kick title is sentence-case. Pocket measure says walls/flares, not W × H × D. Unit still 38 × 102 × 17.
 
 ## Parked
 

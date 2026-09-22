@@ -46,7 +46,7 @@ Tip `3af4e7b` was READY on Vercel when this brief was written. Hard-refresh yard
 | Layer | Hold | Note |
 |---|---|---|
 | Engine | ~88–90% | Geometry for the freeze 10 is real. Routing bugs still steal (pocket was House until this morning). |
-| Stranger-finish | ~50% | Slice B + C shipped. Cut A still lies about ¼″ backer. Slice D is not a real photograph. |
+| Stranger-finish | ~55% | Slice B + C + Cut A + pocket PDF shipped. Slice D is not a real photograph. |
 | Catalog width | Treadmill | Lounge / desk / AABB FAIL classes. Do not feed it. |
 
 ### What is true on the bench right now
@@ -122,8 +122,9 @@ Copied from `docs/BOT.md`. If you ship an item, check it off there. Do not start
 
 **Shipped 21 Sep:** Cut A — thin back `materialId` is `plywood-1-4-4x8`. Linen 31.5 × 78 × 16 unchanged.
 
-1. **Pocket stranger PDF** — freeze #1 routing is fixed (vanity, `project.pocket`, 38 × 102 × 17). The printed plan is not yet linen-quality. Make Get the plan / PDF followable: nest page 1, lettered parts, one-action steps with sizes, walls/knee/counter named, no generic titles. Do not reopen routing. Do not invent a size.
-2. **Slice D** — real alcove *photographs* for landing heroes (linen / pocket / desk). Rendered bench stills already exist at `public/heroes/{linen,pocket,desk}.jpg` (1280×960). Do not generate a fake bathroom. If you do not have Ezra’s photos, **ask and stop**.
+**Shipped 21 Sep:** Pocket stranger PDF — freeze #1 printed plan stamps 4×10 for 102" faces, ¼″ on thin parts, nest page 1 includes the 4×10 sheet, kick title sentence-case, pocket measure is walls/flares. Unit 38 × 102 × 17 unchanged. Do not reopen routing.
+
+1. **Slice D** — real alcove *photographs* for landing heroes (linen / pocket / desk). Rendered bench stills already exist at `public/heroes/{linen,pocket,desk}.jpg` (1280×960). Do not generate a fake bathroom. If you do not have Ezra’s photos, **ask and stop**.
 
 After those three, the product is closer to launch than another month of AABB. Then Ezra decides Amazon / accounts / a stranger walk (Stage 3.3).
 

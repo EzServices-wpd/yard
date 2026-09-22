@@ -44,4 +44,11 @@ Working brief: freeze language in PRODUCTION.md is historical.
 - Linen 31.5 × 78 × 16 unchanged. Nest still two ¾″ 4×8; thin off that nest.
 - NEXT = pocket stranger PDF, then Slice D photo.
 
+**Pocket stranger PDF (21 Sep 2026):**
+- 102" ply faces stamp 4×10 (`plywood-3-4-4x10` / `plywood-1-4-4x10`). Catalog SKU + HD listing for ¼″ 4×10. Thin 0.25" (mirror, drawer bottoms) no longer sold as ¾″.
+- `nestCutList` lays 4×8 then 4×10 so 102" uprights are on the printed nest, not unplaced.
+- Kick step title is "Kick strip on the banks only". Pocket feasibility says walls/flares, not Change W × H × D.
+- Freeze: pocket unit 38 × 102 × 17, linen 31.5 × 78 × 16. Routing untouched.
+- NEXT = Slice D photo.
+
 Linen **31.5 × 78 × 16** stays a honesty canary. The original pocket survey remains as **Load the example pocket**.

@@ -970,6 +970,7 @@ export function measureRefitTalk(opts: {
   shape?: string | null;
   prompt?: string | null;
   name?: string | null;
+  pocket?: boolean;
 }): {
   round: boolean;
   panelBlurb: string;
@@ -982,6 +983,13 @@ export function measureRefitTalk(opts: {
       panelBlurb:
         "Dia × H refits this unit — diameter on both plan axes, never W×H×W.",
       checkSuggestion: "Measure is live. Change Dia × H to refit.",
+    };
+  }
+  if (opts.pocket) {
+    return {
+      round: false,
+      panelBlurb: "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls.",
+      checkSuggestion: "Measure is live. Change the walls and flares to refit.",
     };
   }
   return {

@@ -1928,7 +1928,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (kicks.length) {
     steps.push({
       step: n++,
-      title: pocket || u?.kneeW ? "Toekick on the banks only" : "Add the toekick",
+      title: pocket || u?.kneeW ? "Kick strip on the banks only" : "Add the kick strip",
       description: `${kicks.map(cutLine).join("; ")}. ${
         pocket || u?.kneeW
           ? "The kick strip is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."

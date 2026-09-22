@@ -2,7 +2,7 @@
 
 import { sheetSizeLabel, type NestSheet } from "@/lib/yard/nesting";
 
-/** On-plan sheet: same letters as the cut list, laid on a 4×8. */
+/** On-plan sheet: same letters as the cut list, laid on the matching 4×8 or 4×10. */
 export function NestPlate({ sheet, sheetCount }: { sheet: NestSheet; sheetCount?: number }) {
   const sw = sheet.width || 96;
   const sh = sheet.height || 48;

@@ -267,6 +267,14 @@ export function fitsOnSheet(
   return a <= sLong + 1e-6 && b <= sShort + 1e-6;
 }
 
+/** Catalog id for a ply face — ¼″ vs ¾″, 4×8 vs 4×10. Never invent a size; pick the sheet that fits. */
+export function plySheetCatalogId(lengthIn: number, widthIn: number, thicknessIn: number): string {
+  const thin = thicknessIn <= 0.26;
+  const on8 = fitsOnSheet(lengthIn, widthIn, DEFAULT_SHEET);
+  if (thin) return on8 ? "plywood-1-4-4x8" : "plywood-1-4-4x10";
+  return on8 ? "plywood-3-4-4x8" : "plywood-3-4-4x10";
+}
+
 function round8(n: number) {
   return Math.round(n * 8) / 8;
 }
@@ -438,13 +446,25 @@ export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
 }
 
 /**
- * Convenience: nest a BuildPlan cut list. Returns null when nothing to nest
- * (whole-pack crafts, empty, or no sheet parts).
+ * Nest a cut list onto 4×8, then 4×10 for faces that do not fit a 4×8.
+ * Thin backs stay off both (cutListToNestParts skips them).
  */
 export function nestCutList(cutList: CutLine[]): NestResult | null {
   const parts = cutListToNestParts(cutList);
   if (parts.length === 0) return null;
-  return nestParts(parts);
+  const on8 = parts.filter((p) => fitsOnSheet(p.width, p.height, DEFAULT_SHEET));
+  const on10 = parts.filter((p) => !fitsOnSheet(p.width, p.height, DEFAULT_SHEET));
+  const nest8 = on8.length ? nestParts(on8, DEFAULT_SHEET) : null;
+  const nest10 = on10.length ? nestParts(on10, SHEET_10) : null;
+  if (!nest8 && !nest10) return null;
+  if (!nest10) return nest8;
+  if (!nest8) return nest10;
+  const sheets = [...nest8.sheets, ...nest10.sheets].map((s, i) => ({ ...s, index: i + 1 }));
+  const unplaced = [...nest8.unplaced, ...nest10.unplaced];
+  const totalSheets = sheets.length;
+  const averageUtilization =
+    totalSheets === 0 ? 0 : sheets.reduce((sum, sh) => sum + sh.utilization, 0) / totalSheets;
+  return { sheets, unplaced, totalSheets, averageUtilization };
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;

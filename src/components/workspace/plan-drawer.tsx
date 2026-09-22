@@ -211,7 +211,9 @@ function PlanBody({
   const nestSheets = nest?.sheets ?? [];
   const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
   const houseNest = housePath && nestSheets.length > 0;
-  const nestSize = nestSheets[0] ? sheetSizeLabel(nestSheets[0]).replace("x", "×") : "4×8";
+  const nestSizes = [...new Set(nestSheets.map((s) => sheetSizeLabel(s).replace("x", "×")))];
+  const nestTitle =
+    nestSizes.length === 1 ? `Cut this ${nestSizes[0]} plywood` : nestSizes.length > 1 ? "Cut these sheets" : "Cut this plywood";
   const tone =
     plan.feasibility.status === "critical"
       ? "text-danger"
@@ -241,11 +243,11 @@ function PlanBody({
         <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 text-sm">
           {houseNest && (
             <section data-yard-nest-hero="1">
-              <h3 className="font-display text-lg text-fg">Cut this {nestSize} plywood</h3>
+              <h3 className="font-display text-lg text-fg">{nestTitle}</h3>
               <p className="mt-1 text-xs text-muted">
                 Letters match the cut list. 1/8" kerf included. Grain runs long.
                 {thinCuts.length
-                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately.`
+                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
                   : ""}
               </p>
               <div className="mt-3 space-y-3">
@@ -255,7 +257,7 @@ function PlanBody({
               </div>
               {nest && nest.unplaced.length > 0 && (
                 <p className="mt-2 text-xs text-warn">
-                  Could not fit {nest.unplaced.map((p) => p.label || p.name).join(", ")} on a {nestSize}. They need a
+                  Could not fit {nest.unplaced.map((p) => p.label || p.name).join(", ")} on these sheets. They need a
                   bigger sheet or a splice — not a guessed size.
                 </p>
               )}

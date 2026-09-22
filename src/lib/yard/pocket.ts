@@ -6,9 +6,9 @@
 
 import { createId } from "@/lib/utils";
 import type { Panel, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
+import { plySheetCatalogId } from "./nesting";
 
 const PLY = "plywood-3-4-4x8";
-const PLY_BACKER = "plywood-1-4-4x8";
 const P = 0.75;
 
 /** Chip / everyday sentence. parsePocket fills Ezra's bathroom as the example pocket. */
@@ -132,14 +132,16 @@ function panel(
   d: number,
   materialId?: string,
 ): Panel {
-  const thinBack = type === "back" && Math.min(w, h, d) <= 0.26;
+  const t = Math.min(w, h, d);
+  const long = Math.max(w, h, d);
+  const mid = w + h + d - t - long;
   return {
     id: createId(type.slice(0, 2)),
     type,
     name,
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
-    materialId: materialId ?? (thinBack ? PLY_BACKER : PLY),
+    materialId: materialId ?? plySheetCatalogId(long, mid, t),
   };
 }
 
@@ -185,7 +187,7 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
 
   // Mirror above the knee, below the uppers
   const mirrorH = Math.max(8, unit.upperStart - unit.vanityH - 3.5);
-  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.4, unit.kneeW, mirrorH, 0.2, "plywood-3-4-4x8"));
+  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.4, unit.kneeW, mirrorH, 0.2));
 
   // Upper carcase 54 → 102
   const u0 = unit.upperStart;

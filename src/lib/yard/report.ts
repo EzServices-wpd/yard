@@ -8,7 +8,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts } from "./shopPlural";
-import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
+import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10, plySheetCatalogId } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
@@ -81,7 +81,14 @@ function closetCuts(project: YardProject): CutLine[] {
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
       qty = plies;
     }
-    const key = `${materialId}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
+    let id = materialId;
+    let matName = materialName;
+    // 0.25" ply is ¼″ backer even when the envelope was stamped ¾″ (mirror, drawer bottoms).
+    if (isPly && dims.thicknessIn <= 0.26) {
+      id = "plywood-1-4-4x8";
+      matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
+    }
+    const key = `${id}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += qty;
@@ -94,7 +101,7 @@ function closetCuts(project: YardProject): CutLine[] {
       lengthIn: dims.lengthIn,
       widthIn: dims.widthIn,
       thicknessIn: dims.thicknessIn,
-      material: materialName,
+      material: matName,
     });
   };
   for (const p of project.panels) {
@@ -113,7 +120,19 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     addCut(p.materialId, p.name, p.type, w, h, d, materialName);
   }
-  return stampLabels(spliceCutListToSheet([...grouped.values()]));
+  return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()])));
+}
+
+/** After splice: name the sheet that actually fits the face. 102" stays whole on 4×10. */
+function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
+  return cuts.map((c) => {
+    if (!/ply/i.test(`${c.material ?? ""} ${c.name ?? ""}`)) return c;
+    if (Math.min(c.lengthIn, c.widthIn) <= 2) return c;
+    const id = plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75);
+    const name = getCatalogItem(id)?.name;
+    if (!name || name === c.material) return c;
+    return { ...c, material: name };
+  });
 }
 
 function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
@@ -265,6 +284,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         name: '1/4" plywood 4x10 (backer)',
         quantity: t10,
         unit: t10 === 1 ? "sheet" : "sheets",
+        catalogId: "plywood-1-4-4x10",
         searchQuery: "1/4 inch sanded plywood 4x10",
         estimatedCost: 34.98 * t10,
         notes: `${thin10.reduce((s, c) => s + c.quantity, 0)} tall thin back panel${thin10.length === 1 ? "" : "s"} on 4×10 — not nested on the 3/4" sheets.${spliceNote}`,
@@ -882,6 +902,7 @@ export function buildPlan(project: YardProject): BuildPlan {
           shape: project.fitted?.unit?.shape,
           prompt: project.prompt,
           name: project.name,
+          pocket: Boolean(project.pocket),
         }).checkSuggestion,
       },
       ...closetIssues(project),
