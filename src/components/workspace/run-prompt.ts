@@ -9,6 +9,7 @@ import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
+import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
 import type { FittedSpec } from "@/lib/yard/types";
 
 const HOUSE_HINT =
@@ -56,20 +57,21 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   const saidOval = promptShape === "oval";
   const saidSquare = promptShape === "square";
   const saidLegs = /\d+\s*-?\s*legs?/.test(lower);
+  const saidTableSpan = Number.isFinite(tableSpanFromPrompt(prompt));
   const tableShapeSaid = saidRound || saidOval || saidSquare || saidLong;
 
   const unit = { ...brief.unit };
   const opening = { ...brief.opening };
 
-  if (saidWide || saidRound || saidOval || saidLong || saidSquare) {
+  if (saidWide || saidRound || saidOval || saidLong || saidSquare || saidTableSpan) {
     unit.width = parsed.unit.width;
     opening.width = parsed.opening.width;
   }
-  if (saidDeep || saidRound || saidOval || saidLong || saidSquare) {
+  if (saidDeep || saidRound || saidOval || saidLong || saidSquare || saidTableSpan) {
     unit.depth = parsed.unit.depth;
     opening.depth = parsed.opening.depth;
   }
-  if (saidTall || saidOval || saidSquare || saidLong) {
+  if (saidTall || saidOval || saidSquare || saidLong || saidTableSpan) {
     unit.height = parsed.unit.height;
     opening.height = parsed.opening.height;
   }
@@ -245,7 +247,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
       : `${shapePrefix}${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   // Prefer local parseBrief table title when the prompt named a top shape / long axis.
   const tableLocalName =
-    parsed.program === "table" && tableShapeSaid && parsed.name ? parsed.name : null;
+    parsed.program === "table" && (tableShapeSaid || saidTableSpan) && parsed.name ? parsed.name : null;
   // AI few-shot sometimes returns naked "Media" / "Media unit" — never keep that over a positive stem.
   const briefNakedMedia = !!brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim());
   // AI few-shot sometimes returns naked "Bench" on a named sit (dining/hall/entry/…) — keep stem.
@@ -263,6 +265,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidOval &&
     !saidSquare &&
     !saidLong &&
+    !saidTableSpan &&
     !identity &&
     !mediaLabel &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&

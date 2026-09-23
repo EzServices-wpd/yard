@@ -50,6 +50,18 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
       `$1${W}$3`,
     );
   }
+  // Bare table span: "70 inch table" / "table 70\"" — Measure apply must not leave the 40" default.
+  const tableLike = /\btable\b/.test(p.toLowerCase()) && !/\bwork table\b/.test(p.toLowerCase());
+  if (tableLike) {
+    p = p.replace(
+      /(\d+(?:\.\d+)?)(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|")\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)((?:\S+\s+){0,6}?table\b)/i,
+      `${W}$2$3`,
+    );
+    p = p.replace(
+      /(\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+)?)(\d+(?:\.\d+)?)(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|"))(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)/i,
+      `$1${W}$3`,
+    );
+  }
   p = p.replace(
     /(\d+(?:\.\d+)?)\s*(x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(x|by|×)\s*(\d+(?:\.\d+)?))?/i,
     (m: string, a: string, sep1: string, b: string, sep2?: string, c?: string) => {

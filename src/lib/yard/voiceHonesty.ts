@@ -645,6 +645,42 @@ export function deskWidthFromPrompt(prompt: string): number {
 }
 
 /**
+ * Bare size beside a table noun — "give me a 70 inch table" / "table 70\"".
+ * That number is the plan span. It must replace the 40" class default, not vanish.
+ * Axis labels and round/diameter stay on their own parsers
+ * ("30 inch tall table", "40 inch round 3-leg table").
+ * Returns NaN when no bare table span is spoken.
+ */
+export function tableSpanFromPrompt(prompt: string): number {
+  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])|")`;
+  // Optional space so "table 70 inches wide" is an axis label, not a bare span.
+  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)`;
+  const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
+  const ahead = t.match(
+    new RegExp(
+      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
+      "i",
+    ),
+  );
+  if (ahead) {
+    const n = parseFloat(ahead[1]);
+    if (ok(n)) return n;
+  }
+  const after = t.match(
+    new RegExp(
+      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      "i",
+    ),
+  );
+  if (after) {
+    const n = parseFloat(after[1]);
+    if (ok(n)) return n;
+  }
+  return NaN;
+}
+
+/**
  * Typed overall width before a storage / opening noun — universal densify, not linen-only.
  * "31.5 inch linen closet" / "36\" tall pantry" / "24 inch bathroom alcove" must bind W
  * (halves welcome). Do not steal axis-labeled measures ("16 inch deep linen closet").

@@ -10,6 +10,7 @@ import {
   openingStorageMeasureEmptyTalk,
   measureChipAxisLabels,
   deskWidthFromPrompt,
+  tableSpanFromPrompt,
   speciesStockHonestyTalk,
   speciesSubstituteNote,
   densifyDrawerExplodeTalk,
@@ -226,6 +227,33 @@ function expectTableAprons(prompt: string, extra?: { legs?: number; round?: bool
 
 const laundryTable = expectTableAprons("laundry folding table 48 wide 36 high 24 deep", { legs: 4 });
 const round3 = expectTableAprons("40 inch round 3-leg table", { legs: 3, round: true });
+const seventy = expectTableAprons("give me a 70 inch table", { legs: 4 });
+if (!nearInch(seventy.overall.width, 70) || !nearInch(seventy.overall.depth, 70) || nearInch(seventy.overall.width, 40)) {
+  failHonesty("70 inch table collapsed to the 40 inch class default", seventy.overall);
+}
+if (seventy.fitted?.unit.shape === "round") {
+  failHonesty("70 inch table became the 40 inch round few-shot", seventy.fitted?.unit);
+}
+if (!/70/.test(seventy.name) || /(?<![0-9])40/.test(seventy.name)) {
+  failHonesty("70 inch table title still shows 40", seventy.name);
+}
+const seventyAfter = expectTableAprons("table 70 inches", { legs: 4 });
+if (!nearInch(seventyAfter.overall.width, 70)) {
+  failHonesty("table 70 inches missed the span", seventyAfter.overall);
+}
+const seventyDining = expectTableAprons('70" dining table', { legs: 4 });
+if (!nearInch(seventyDining.overall.width, 70) || !/^Dining table/i.test(seventyDining.name)) {
+  failHonesty('70" dining table span/title', { name: seventyDining.name, overall: seventyDining.overall });
+}
+if (!nearInch(round3.overall.width, 40) || round3.fitted?.unit.shape !== "round") {
+  failHonesty("40 inch round table drifted", { name: round3.name, overall: round3.overall, shape: round3.fitted?.unit.shape });
+}
+if (Number.isFinite(tableSpanFromPrompt("40 inch round 3-leg table"))) {
+  failHonesty("round diameter was stolen as a bare table span", tableSpanFromPrompt("40 inch round 3-leg table"));
+}
+if (!nearInch(tableSpanFromPrompt("give me a 70 inch table"), 70)) {
+  failHonesty("tableSpanFromPrompt missed 70 inch table", tableSpanFromPrompt("give me a 70 inch table"));
+}
 const coffee = expectTableAprons("coffee table 48 round", { legs: 3, round: true });
 const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
 

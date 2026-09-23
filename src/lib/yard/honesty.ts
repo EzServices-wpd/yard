@@ -9,7 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
-import { deskWidthFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes } from "./voiceHonesty";
+import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -72,7 +72,12 @@ function unlabeledTriple(text: string): { a: number; b: number; c?: number } | n
 
 /** Axes the prompt actually named. Defaults from parseBrief do not count. */
 export function typedExtents(prompt: string): TypedExtents | null {
-  if (!hasExplicitSize(prompt) && !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|width|height|depth)/i.test(prompt)) {
+  const bareTable = tableSpanFromPrompt(prompt);
+  if (
+    !hasExplicitSize(prompt) &&
+    !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|width|height|depth)/i.test(prompt) &&
+    !Number.isFinite(bareTable)
+  ) {
     const trip = unlabeledTriple(prompt);
     if (!trip) return null;
   }
@@ -101,6 +106,12 @@ export function typedExtents(prompt: string): TypedExtents | null {
   if (width == null && /\b(?:writing\s+)?desk\b/.test(lower)) {
     const deskW = deskWidthFromPrompt(t);
     if (Number.isFinite(deskW)) width = deskW;
+  }
+
+  // Bare table span — "70 inch table" is typed width, not the 40" class default.
+  if (width == null && program === "table") {
+    const span = tableSpanFromPrompt(t);
+    if (Number.isFinite(span)) width = span;
   }
 
   // Bare storage/opening width — "31.5 inch linen closet" must not fall through to stock bay 36.
