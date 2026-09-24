@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
@@ -40,6 +40,7 @@ import {
   mediaHoldStandOps,
   climbStepOps,
   climbTriangleOps,
+  slingshotOps,
   plantStandOps,
   catapultFrameOps,
   chairOps,
@@ -286,7 +287,9 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       : mech === "launcher"
         ? isLauncherRamp(prompt)
           ? rampLauncherOps(size, rampLen)
-          : launcherFrameOps(size)
+          : isSlingshot(prompt)
+            ? slingshotOps(size)
+            : launcherFrameOps(size)
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? plantStandOps(size, standDia)
           : mech === "media-hold" && wantsMediaTipHold(prompt)
@@ -333,7 +336,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 (marbleDia != null ? ` for a ${marbleDia < 1 ? `${Math.round(marbleDia * 8)}/8"` : `${marbleDia}"`} marble` : "") +
                 ` — side guides + floor ties; free projectile leaves the ramp; paper plane / marble leaves free (not glued on).`,
             ]
-          : [
+          : isSlingshot(prompt)
+            ? [
+                `${hit.name} · Y-fork and pouch — a handheld slingshot, not a catapult arm or axle.`,
+              ]
+            : [
               `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
               "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
             ]
@@ -366,9 +373,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)
             ? [
-                `${hit.name} · tipped lean` +
-                  (tip != null ? ` at ${tip}° tip` : "") +
-                  ` with a front lip — holds a real ${held}, never a flat decal.`,
+                `${hit.name} · tipped lean at ${mediaTipTalk(prompt)} with a front lip — holds a real ${held}, never a flat decal.`,
               ]
             : [
                 `${hit.name} · opening with a rabbet and same-stock backing so flat media stays put.`,

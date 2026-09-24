@@ -558,6 +558,21 @@ export function climbTriangleOps(s: Size3): FormOp[] {
   return ops;
 }
 
+/** Handheld Y-fork and pouch. Not a catapult arm. */
+export function slingshotOps(s: Size3): FormOp[] {
+  const H = Math.max(s.height || 8, 6);
+  const W = Math.max(Math.min(s.width || 5, 10), 3);
+  const handle = H * 0.55;
+  const x = W / 2;
+  return [
+    { op: "column", x: 0, z: 0, y0: 0, y1: handle, role: "leg" },
+    { op: "poly", role: "support", points: [{ x: 0, y: handle, z: 0 }, { x: -x, y: H, z: 0 }] },
+    { op: "poly", role: "support", points: [{ x: 0, y: handle, z: 0 }, { x, y: H, z: 0 }] },
+    { op: "poly", role: "deck", points: [{ x: -x * 0.85, y: H * 0.92, z: 0.4 }, { x: x * 0.85, y: H * 0.92, z: 0.4 }] },
+    { op: "poly", role: "brace", points: [{ x: -x * 0.35, y: handle * 0.4, z: 0 }, { x: x * 0.35, y: handle * 0.4, z: 0 }] },
+  ];
+}
+
 export function towerOps(s: Size3): FormOp[] {
   return [taper(0, s.height, s.width * 0.45, s.width * 0.18, 6, "leg")];
 }

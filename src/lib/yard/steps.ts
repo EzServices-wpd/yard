@@ -6,6 +6,8 @@ import {
   detectWeekendMech,
   isClimbSingleStep,
   isClimbStepStool,
+  isClimbTriangle,
+  isSlingshot,
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
@@ -28,6 +30,7 @@ import {
   launcherRampLengthIn,
   mediaHoldTipDeg,
   mediaHoldHeldLabel,
+  mediaTipTalk,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
@@ -128,7 +131,6 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     /picture|photo/i.test(subject) ||
     /picture frame/i.test(project.name);
   const tipHold = mediaHold && wantsMediaTipHold(prompt);
-  const tipDeg = mediaHoldTipDeg(prompt);
 
   steps.push({
     step: s++,
@@ -147,7 +149,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   });
 
   if (mediaHold && tipHold) {
-    const tipTalk = tipDeg != null ? `${tipDeg}° tip` : "the typed tip angle";
+    const tipTalk = mediaTipTalk(prompt);
     const held = mediaHoldHeldLabel(prompt);
     steps.push({
       step: s++,
@@ -2326,8 +2328,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       return ` Upright plant stand for a real ${potTalk} — densify keeps the whole stand at the named stock.`;
     }
     if (detectWeekendMech(p) === "media-hold" && wantsMediaTipHold(p)) {
-      const tip = mediaHoldTipDeg(p);
-      const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+      const tipTalk = mediaTipTalk(p);
       const held = mediaHoldHeldLabel(p);
       const printTalk = /8\s*[×x]\s*10/.test(p) ? "8×10 " : "";
       return ` Tipped lean at ${tipTalk} with a front lip — holds a real ${printTalk}${held} upright, never a flat decal.`;
@@ -2374,21 +2375,24 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   const mediaTip =
     detectWeekendMech(project.prompt ?? "") === "media-hold" &&
     wantsMediaTipHold(project.prompt ?? "");
-  const tipDegFoot = mediaTip ? mediaHoldTipDeg(project.prompt ?? "") : null;
-  const tipTalkFoot = tipDegFoot != null ? `${tipDegFoot}° tip` : "typed tip";
+  const tipTalkFoot = mediaTip ? mediaTipTalk(project.prompt ?? "") : "";
   const eightByTenFoot = /8\s*[×x]\s*10/.test(project.prompt ?? "");
+  const heldFoot = mediaTip ? mediaHoldHeldLabel(project.prompt ?? "") : "";
+  const pictureLedge = /picture\s*ledge|(?:photo|art)\s*ledge/.test((project.prompt ?? "").toLowerCase());
   steps.push({
     step: n++,
     title: "Lay out the footprint on the bench",
     description: launcherRamp
       ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Soft-launch ${launcherRampLengthIn(project.prompt ?? "") ?? ""}" run — free projectile leaves the ramp; ${planePrompt ? "paper plane leaves free" : "marble leaves free"}.`
       : mediaTip
-        ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Picture ledge densify: ${eightByTenFoot ? "8×10 print" : "typed print"} upright at ${tipTalkFoot} with a front lip.`
+        ? pictureLedge
+          ? `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Picture ledge: ${eightByTenFoot ? "8×10 print" : heldFoot} upright at ${tipTalkFoot} with a front lip.`
+          : `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. ${heldFoot} leans at ${tipTalkFoot} with a front lip.`
       : `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways.`,
     tips: launcherRamp
       ? "Soft-launch only — the projectile leaves free."
       : mediaTip
-        ? `Keep the ${tipTalkFoot} true under the print.`
+        ? `Keep the ${tipTalkFoot} true under the ${heldFoot}.`
       : "A crooked base cannot be fixed later.",
   });
 
@@ -2453,13 +2457,12 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
 
   const tipPrompt = project.prompt ?? "";
   if (detectWeekendMech(tipPrompt) === "media-hold" && wantsMediaTipHold(tipPrompt)) {
-    const tip = mediaHoldTipDeg(tipPrompt);
-    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const tipTalk = mediaTipTalk(tipPrompt);
     const held = mediaHoldHeldLabel(tipPrompt);
     const eightByTen = /8\s*[×x]\s*10/.test(tipPrompt);
     const sawTip =
       steps.some((st) => /\d+\s*°|tip/i.test(`${st.title} ${st.description}`)) ||
-      tip == null;
+      mediaHoldTipDeg(tipPrompt) == null;
     const sawPrint = steps.some((st) => /8\s*[×x]\s*10|8×10/.test(`${st.title} ${st.description}`));
     if (!sawTip || (eightByTen && !sawPrint)) {
       steps.push({
@@ -2489,6 +2492,14 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
   const prompt = project.prompt ?? "";
   const mech = detectWeekendMech(prompt);
   if (project.kind === "ladder" || mech === "climb") {
+    if (isClimbTriangle(prompt) && !isClimbStepStool(prompt)) {
+      return [
+        { role: "leg", title: "Cut the sloping side rails", why: "Four rails make two triangles. Both sides match." },
+        { role: "rail", title: "Screw the rungs", why: "Rungs span the triangle. Level each one. Predrill." },
+        { role: "brace", title: "Add the base stretchers", why: "The wide base keeps a toddler triangle from tipping." },
+        { role: "member", title: "Place remaining members", why: "No floating pieces." },
+      ];
+    }
     if (isClimbStepStool(prompt)) {
       const rr = climbRiseRun(prompt);
       const n = Math.max(1, climbStepCount(prompt));
@@ -2525,6 +2536,15 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     ];
   }
   if (mech === "launcher") {
+    if (isSlingshot(prompt)) {
+      return [
+        { role: "leg", title: "Glue the handle", why: "The handle is the grip." },
+        { role: "support", title: "Set the two forks", why: "The Y holds the band. This is not a throwing arm." },
+        { role: "deck", title: "Tie the pouch between the fork tips", why: "The pouch is the pocket." },
+        { role: "brace", title: "Brace the handle", why: "A short brace keeps the grip from splitting." },
+        { role: "member", title: "Place remaining members", why: "No floating pieces." },
+      ];
+    }
     if (isLauncherRamp(prompt)) {
       const rampLen = launcherRampLengthIn(prompt);
       const lenTalk = rampLen != null ? `${rampLen}" run` : "typed ramp length";
@@ -2564,8 +2584,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     ];
   }
   if (mech === "media-hold" && wantsMediaTipHold(prompt)) {
-    const tip = mediaHoldTipDeg(prompt);
-    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const tipTalk = mediaTipTalk(prompt);
     const held = mediaHoldHeldLabel(prompt);
     return [
       { role: "rail", title: "Glue the base footprint", why: "Base carries the lean stand." },
@@ -2582,6 +2601,34 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
           : `A real ${held} sits in the envelope; not a printed sticker face.`,
       },
       { role: "brace", title: "Brace the stand", why: `Keep the tip angle true under the ${held}.` },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
+  if (mech === "pot-hold" || wantsPotHold(prompt)) {
+    const held = isUmbrellaHold(prompt)
+      ? "umbrellas"
+      : isHoseReelHold(prompt)
+        ? "hose reel"
+        : isMonitorHold(prompt)
+          ? "monitor"
+          : isFloorLampHold(prompt)
+            ? "lamp"
+            : isHamperHold(prompt)
+              ? "basket"
+              : isFigurineHold(prompt)
+                ? "figurine"
+                : "pot";
+    return [
+      { role: "leg", title: "Stand the four legs", why: `The legs carry the ${held}.` },
+      { role: "rail", title: "Tie the lower rails", why: "Rails keep the legs from walking." },
+      { role: "deck", title: `Set the deck under the ${held}`, why: `The ${held} sits on this deck.` },
+      {
+        role: "ring",
+        title: `Set the collar around the ${held}`,
+        why: `The collar holds the ${held} upright — not an arch and not a pier.`,
+      },
+      { role: "support", title: "Brace up to the collar", why: "These struts tie the legs to the collar." },
+      { role: "brace", title: "Add the braces", why: "Braces kill racking." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
@@ -2611,6 +2658,16 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "brace", title: "Lace the Warren diagonals", why: "Zigzag diagonals are the truss." },
       { role: "rail", title: "Close the top chords and deck rails", why: "Top chords finish the truss." },
       { role: "splice", title: "Lap the long splices", why: "Overlap and glue both faces." },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
+  if (project.kind === "figure") {
+    const who = (project.name || "figure").toLowerCase();
+    return [
+      { role: "leg", title: `Stand the ${who} on its feet`, why: "The pose starts on the ground." },
+      { role: "support", title: "Set the body", why: "Body members carry the silhouette — not arches or piers." },
+      { role: "rail", title: "Tie the spine and rails", why: "Rails lock the pose." },
+      { role: "brace", title: "Add the braces", why: "Braces keep the figure from racking." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }

@@ -420,6 +420,20 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
           message: `Launcher ramp length ${rampLen}" must be stated clearly.`,
         });
       }
+    } else if (/\bslingshots?\b/.test(prompt.toLowerCase())) {
+      const forkTalk = /fork|pouch|band|slingshot/i.test(blobAll);
+      if (!hasPivot) {
+        issues.push({
+          guard: "anatomy",
+          message: "Slingshot needs a Y-fork and a pouch (support/deck) after densify — not a catapult arm.",
+        });
+      }
+      if (!forkTalk) {
+        issues.push({
+          guard: "anatomy",
+          message: "Slingshot steps must name the fork and the pouch.",
+        });
+      }
     } else {
       const talks = /axle|pivot|throwing arm|payload|cup|spoon|bucket/i.test(blobAll);
       if (!hasPivot) {

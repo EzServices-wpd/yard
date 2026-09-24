@@ -88,6 +88,12 @@ export function mediaHoldTipDeg(prompt: string): number | null {
   return Number.isFinite(n) && n > 0 && n < 90 ? n : null;
 }
 
+/** What the stand actually leans at. Typed degrees win; otherwise the 15° the stand is built at — never “typed” when they did not type one. */
+export function mediaTipTalk(prompt: string): string {
+  const tip = mediaHoldTipDeg(prompt);
+  return tip != null ? `${tip}° tip` : "15°";
+}
+
 /** Rise × run inches for a climb step when typed. */
 export function climbRiseRun(prompt: string): { rise: number; run: number } | null {
   const hay = looksHay(prompt);
@@ -301,19 +307,19 @@ export function reelEnvelopeTalk(prompt: string): string {
 export function umbrellaEnvelopeTalk(prompt: string): string {
   const hay = looksHay(prompt);
   const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
-  const count =
-    hay.match(/(\d+)\s*(?:real\s+)?umbrellas?/) ||
-    hay.match(/holds?\s+(?:four|4)\s+(?:real\s+)?umbrellas?/) ||
-    hay.match(/\b(four|4)\s+(?:real\s+)?umbrellas?/);
+  const count = hay.match(/\b(four|4|\d+)\s+(?:real\s+)?umbrellas?/);
   const nTalk = count
     ? count[1] === "four" || count[1] === "4"
       ? "four"
       : count[1]
-    : "typed";
-  if (basePair) {
-    return `${basePair[1]}″×${basePair[2]}″ upright umbrella envelope for ${nTalk} umbrellas`;
-  }
+    : null;
   const dia = potHoldDiameterIn(prompt);
+  if (!nTalk) {
+    if (basePair) return `${basePair[1]}″×${basePair[2]}″ upright umbrella envelope`;
+    if (dia != null) return `${dia}″×${dia}″ upright umbrella envelope`;
+    return "upright umbrella envelope";
+  }
+  if (basePair) return `${basePair[1]}″×${basePair[2]}″ upright umbrella envelope for ${nTalk} umbrellas`;
   if (dia != null) return `${dia}″×${dia}″ upright umbrella envelope for ${nTalk} umbrellas`;
   return `upright umbrella envelope for ${nTalk} umbrellas`;
 }
@@ -464,6 +470,11 @@ export function isCatapultClass(prompt: string): boolean {
     return true;
   }
   return false;
+}
+
+/** Handheld Y-fork. Not a catapult arm, even though both launch. */
+export function isSlingshot(prompt: string): boolean {
+  return /\bslingshots?\b/.test(looksHay(prompt));
 }
 
 /** Soft-launch / marble trough / plane ramp — U-channel incline. Never when catapult-class. */

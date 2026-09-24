@@ -5,7 +5,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount, isClimbStepStool, isClimbTriangle } from "./weekendFamily";
+import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isUmbrellaHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount, isClimbStepStool, isClimbTriangle } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -139,6 +139,24 @@ export function parseSize(lower: string): { height: number; width: number; depth
         width = Math.max(4, Math.min(span * 0.75, span));
       }
       depth = Math.max(3, span * Math.sin(rad) + 2);
+    } else if (width === 24 && height === 24) {
+      // No inch size — a phone / book, not a 24″ cube. A tip angle alone is not a size.
+      const tip = mediaHoldTipDeg(lower) ?? 15;
+      const rad = (tip * Math.PI) / 180;
+      if (/phone/.test(dimText)) {
+        height = 6;
+        width = 3;
+      } else if (/tablet|ipad|\bdevice\b/.test(dimText)) {
+        height = 10;
+        width = 7;
+      } else if (/cookbook|recipe\s+book|open\s+book|\beasel\b|\bbook\b/.test(dimText)) {
+        width = 12;
+        height = 9;
+      } else {
+        height = 8;
+        width = 6;
+      }
+      depth = Math.max(3, height * Math.sin(rad) + 1.5);
     }
   }
 
@@ -165,6 +183,18 @@ export function parseSize(lower: string): { height: number; width: number; depth
         depth = span;
       }
       if (h != null) height = h;
+    } else if (isUmbrellaHold(lower)) {
+      const dia = potHoldDiameterIn(lower);
+      const uh = potHoldHeightIn(lower);
+      if (dia != null) {
+        width = dia;
+        depth = dia;
+      } else if (width === 24 && depth === 24) {
+        width = 10;
+        depth = 10;
+      }
+      if (uh != null) height = uh;
+      else if (height === 24) height = 22;
     } else {
     const basket = isHamperHold(lower) ? basketEnvelopeWhd(lower) : null;
     if (basket) {
@@ -178,11 +208,14 @@ export function parseSize(lower: string): { height: number; width: number; depth
       if (dia != null || potH != null) {
         const d = dia ?? potH ?? 4;
         const h = potH ?? Math.max(d * 1.0, 4);
-        // Envelope for the pot itself is dia × tall; stand clears ~¾" around.
+        // Top clears the pot. A plant stand lifts it unless they typed a height.
         const span = Math.max(d + 1.5, d, 4);
         width = span;
         depth = span;
-        height = Math.max(h + 1.25, h, span * 0.85);
+        const figurine = /\bfigurines?\b/.test(lower);
+        if (potH != null) height = Math.max(potH + 1.25, potH);
+        else if (figurine) height = Math.max(h, span * 0.85);
+        else height = Math.max(18, span);
       }
     }
     }
@@ -287,6 +320,7 @@ export function defaultSizeFor(
     };
   }
   const explicit = hasExplicitSize(prompt);
+  if (/\bslingshot\b/.test(lower) && !explicit) return { width: 5, height: 8, depth: 2 };
   const ftLen = stripLumberStock(lower).match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
   const isTable = /table|desk|workbench|picnic/.test(lower);
   if (explicit && isTable && ftLen && !/tall|high|height/.test(lower)) {
@@ -519,7 +553,11 @@ export function toProject(
   // Weekend frame / ladder with typed N-foot: honor typed height when the wire
   // already lands on it (skip stock-face pad that pushed ladders to ~74" / catapults short).
   // Leave Eiffel / lattice / arch / bridge pad math alone — freeze chips.
-  if ((kind === "frame" || kind === "ladder") && hasExplicitSize(prompt)) {
+  const mediaClass =
+    detectWeekendMech(prompt) === "media-hold" &&
+    wantsMediaTipHold(prompt) &&
+    (parseSize(prompt.toLowerCase()).width !== 24 || parseSize(prompt.toLowerCase()).height !== 24);
+  if ((kind === "frame" || kind === "ladder") && (hasExplicitSize(prompt) || mediaClass)) {
     const typed = parseSize(prompt.toLowerCase());
     const typedH = typed.height;
     const typedW = typed.width;
@@ -559,6 +597,9 @@ export function toProject(
         width = typedW;
       } else if (widthTyped && typedW && Math.abs(spanX - typedW) <= 1.25) {
         width = typedW;
+      } else if (kind === "ladder" && !widthTyped && spanX >= 10) {
+        // Rung cut is the rail span. Stock-face pad was publishing 22″ for an 18″ rung.
+        width = Math.round(spanX * 10) / 10;
       }
       if (kind === "ladder" && heightTyped && typedH && !isClimbTriangle(prompt)) {
         height = typedH;
@@ -579,6 +620,11 @@ export function toProject(
         if (depth < 4) depth = 6;
       }
     }
+  }
+  if (/\bslingshot\b/.test(prompt.toLowerCase()) && !hasExplicitSize(prompt)) {
+    width = Math.max(spanX, 4);
+    height = Math.max(spanY, 6);
+    depth = Math.max(spanZ, 1.5);
   }
   if (kind === "eiffel") {
     const publishedBase = height * (125 / 324);

@@ -7,7 +7,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
-import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
+import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty } from "./weekendStockHonesty";
@@ -246,8 +246,7 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     );
   }
   if (wantsMediaTipHold(prompt)) {
-    const tip = mediaHoldTipDeg(prompt);
-    const tipTalk = tip != null ? `${tip}° tip` : "typed tip";
+    const tipTalk = mediaTipTalk(prompt);
     const held = mediaHoldHeldLabel(prompt);
     const printTalk = /8\s*[×x]\s*10/.test(prompt) ? "8×10 " : "";
     notes.unshift(
