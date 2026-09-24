@@ -154,7 +154,8 @@ export function generateFromPrompt(
   }
   const namedSpan = /golden gate|brooklyn|suspension/.test(lowerP);
   if (/bridge|span|overpass|viaduct/.test(lowerP) && !formOverride && !namedSpan) {
-    const span = Math.max(box.width, 24);
+    // A typed span under 24″ is the span. Untyped bridges still start at 24″ (parseSize lifts a blank to 96″).
+    const span = box.width < 24 ? Math.max(box.width, 6) : Math.max(box.width, 24);
     box = {
       height: Math.min(Math.max(box.height, 10), Math.max(10, span * 0.32)),
       width: span,

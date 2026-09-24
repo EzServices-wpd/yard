@@ -341,7 +341,9 @@ export function rampLauncherOps(s: Size3, rampLenIn?: number | null): FormOp[] {
 export function plantStandOps(s: Size3, potDia?: number | null): FormOp[] {
   const dia = Math.max(potDia ?? Math.min(s.width || 5, s.depth || 5) - 1.5, 3);
   const span = Math.max(s.width || dia + 1.5, dia + 1.25);
-  const H = Math.max(s.height || dia * 1.1, dia * 0.9);
+  // A typed rise shorter than the pot (monitor riser) is the height — don't grow the stand up to the pot.
+  const riseCapped = s.height > 0 && s.height + 0.01 < dia;
+  const H = riseCapped ? s.height : Math.max(s.height || dia * 1.1, dia * 0.9);
   const D = Math.max(s.depth || span, span * 0.9);
   const x0 = -span / 2;
   const x1 = span / 2;
@@ -501,6 +503,56 @@ export function climbStepOps(
     points: [
       { x: x1, y: 0, z: zFront + totalRun },
       { x: x1, y: totalRise, z: zFront },
+    ],
+  });
+  return ops;
+}
+
+/**
+ * Toddler climbing triangle / Pikler — A-frame with rungs, not an 8′ ladder.
+ * Width is the rung span. Depth is the wide base. Height is the apex.
+ */
+export function climbTriangleOps(s: Size3): FormOp[] {
+  const H = Math.max(s.height || 36, 18);
+  const W = Math.max(Math.min(s.width || 22, 28), 16);
+  const D = Math.max(s.depth || H * 0.9, 18);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -D / 2;
+  const z1 = D / 2;
+  const ops: FormOp[] = [];
+  for (const x of [x0, x1]) {
+    ops.push({ op: "poly", role: "leg", points: [{ x, y: 0, z: z0 }, { x, y: H, z: 0 }] });
+    ops.push({ op: "poly", role: "leg", points: [{ x, y: H, z: 0 }, { x, y: 0, z: z1 }] });
+    ops.push({ op: "poly", role: "rail", points: [{ x, y: 0, z: z0 }, { x, y: 0, z: z1 }] });
+  }
+  const rungs = Math.max(4, Math.round(H / 7));
+  for (let i = 1; i <= rungs; i++) {
+    const t = i / (rungs + 1);
+    const y = H * t;
+    ops.push({
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: x0, y, z: z0 * (1 - t) },
+        { x: x1, y, z: z0 * (1 - t) },
+      ],
+    });
+    ops.push({
+      op: "poly",
+      role: "rail",
+      points: [
+        { x: x0, y, z: z1 * (1 - t) },
+        { x: x1, y, z: z1 * (1 - t) },
+      ],
+    });
+  }
+  ops.push({
+    op: "poly",
+    role: "rail",
+    points: [
+      { x: x0, y: H, z: 0 },
+      { x: x1, y: H, z: 0 },
     ],
   });
   return ops;

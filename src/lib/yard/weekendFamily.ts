@@ -151,25 +151,37 @@ export function wantsPotHold(prompt: string): boolean {
   return POT_HOLD_NOUN.test(hay);
 }
 
+/** Drop board nominals so "from 1x2" is not read as a 1″ pot. "2×2 base" is captured first. */
+function withoutLumberNominals(s: string): string {
+  return s.replace(
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1\s*[x×]\s*3|1x2|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?\b/gi,
+    " ",
+  );
+}
+
+const INCH_GAP = String.raw`(?:in(?:ch(?:es)?)?|["″])`;
+
 /** Pot diameter inches when typed (plant / pot stand envelope). */
 export function potHoldDiameterIn(prompt: string): number | null {
   const hay = looksHay(prompt);
-  // Figurine / stand footprint: "2×2 base" → envelope base size.
+  // Figurine / stand footprint: "2×2 base" → envelope base size. Read this before lumber strip.
   const basePair = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*base/);
   if (basePair) {
     const a = parseFloat(basePair[1]);
     const b = parseFloat(basePair[2]);
     if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) return Math.max(a, b);
   }
+  const dim = withoutLumberNominals(hay);
+  const inch = INCH_GAP;
   const m =
-    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
-    hay.match(/(?:pot|planter|figurine|hose\s*reel|reel)[^\d]{0,16}(\d+(?:\.\d+)?)\s*"?\s*diameter/) ||
-    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:pot|planter)\b/) ||
-    hay.match(/(?:pot|planter)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
-    hay.match(/holds?\s+a\s+real\s+(?:hose\s*)?reel\s+(\d+(?:\.\d+)?)\s*"?/) ||
-    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*"?\s*(?:pot|hose\s*reel)?/) ||
-    hay.match(/lamp\s*base[^\d]{0,20}(\d+(?:\.\d+)?)\s*"?/) ||
-    hay.match(/holds?\s+a\s+real\s+lamp\s+base\s+(\d+(?:\.\d+)?)\s*"?/);
+    dim.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*diameter`)) ||
+    dim.match(new RegExp(`(?:pot|planter|figurine|hose\\s*reel|reel)[^\\d]{0,16}(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*diameter`)) ||
+    dim.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*(?:pot|planter)\\b`)) ||
+    dim.match(new RegExp(`(?:pot|planter)[^\\d]{0,12}(\\d+(?:\\.\\d+)?)\\s*${inch}?`)) ||
+    dim.match(new RegExp(`holds?\\s+a\\s+real\\s+(?:hose\\s*)?reel\\s+(\\d+(?:\\.\\d+)?)\\s*${inch}?`)) ||
+    dim.match(new RegExp(`holds?\\s+a\\s+real\\s+(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*(?:pot|hose\\s*reel)?`)) ||
+    dim.match(new RegExp(`lamp\\s*base[^\\d]{0,20}(\\d+(?:\\.\\d+)?)\\s*${inch}?`)) ||
+    dim.match(new RegExp(`holds?\\s+a\\s+real\\s+lamp\\s+base\\s+(\\d+(?:\\.\\d+)?)\\s*${inch}?`));
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -312,25 +324,36 @@ export function isMonitorHold(prompt: string): boolean {
   return /monitor\s*stand|monitor\s*riser|screen\s*stand/.test(hay) || (/\bmonitors?\b/.test(hay) && /stand|riser|rise|envelope|holds?/.test(hay));
 }
 
-/** Typed monitor / screen envelope width (e.g. holds a real 24″ monitor). */
+/** Typed monitor / screen envelope width (e.g. holds a real 24″ monitor). Not the rise number. */
 export function monitorEnvelopeIn(prompt: string): number | null {
   const hay = looksHay(prompt);
-  const m =
-    hay.match(/holds?\s+a\s+real\s+(\d+(?:\.\d+)?)\s*["″]?\s*(?:monitor|screen|display)/) ||
-    hay.match(/(\d+(?:\.\d+)?)\s*["″]?\s*(?:monitor|screen|display)/) ||
-    hay.match(/(?:monitor|screen|display)[^\d]{0,16}(\d+(?:\.\d+)?)\s*["″]?/);
-  if (!m) return null;
-  const n = parseFloat(m[1]);
-  return Number.isFinite(n) && n > 0 && n < 60 ? n : null;
+  const inch = INCH_GAP;
+  const bound =
+    hay.match(new RegExp(`holds?\\s+a\\s+real\\s+(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*(?:monitor|screen|display)`)) ||
+    hay.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*(?:monitor|screen|display)`));
+  if (bound) {
+    const n = parseFloat(bound[1]);
+    if (Number.isFinite(n) && n > 0 && n < 60) return n;
+  }
+  // "monitor stand 5 inch rise" is the rise, not a 5″ screen.
+  const trailing = hay.match(
+    /(?:monitor|screen|display)[^\d]{0,24}(\d+(?:\.\d+)?)(\s*(?:in(?:ch(?:es)?)?|["″])?)(\s*rise\b)?/,
+  );
+  if (trailing && !trailing[3]) {
+    const n = parseFloat(trailing[1]);
+    if (Number.isFinite(n) && n > 0 && n < 60) return n;
+  }
+  return null;
 }
 
-/** Typed stand rise inches (e.g. at 4″ rise) — honor typed rise, not pot-tall bleed. */
+/** Typed stand rise inches (e.g. at 4″ rise / 5 inch rise) — honor typed rise, not pot-tall bleed. */
 export function monitorRiseIn(prompt: string): number | null {
   const hay = looksHay(prompt);
+  const inch = INCH_GAP;
   const m =
-    hay.match(/(\d+(?:\.\d+)?)\s*["″]?\s*rise/) ||
-    hay.match(/rise\s*(?:of\s*)?(\d+(?:\.\d+)?)\s*["″]?/) ||
-    hay.match(/at\s+(\d+(?:\.\d+)?)\s*["″]?\s*rise/);
+    hay.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*rise\\b`)) ||
+    hay.match(new RegExp(`rise\\s*(?:of\\s*)?(\\d+(?:\\.\\d+)?)\\s*${inch}?`)) ||
+    hay.match(new RegExp(`at\\s+(\\d+(?:\\.\\d+)?)\\s*${inch}?\\s*rise\\b`));
   if (!m) return null;
   const n = parseFloat(m[1]);
   return Number.isFinite(n) && n > 0 && n < 24 ? n : null;
@@ -531,6 +554,11 @@ export function isClimbSingleStep(prompt: string): boolean {
   if (/\bladder\b/.test(hay) && !/step-?up|step\s*stool|climb\s+stool|rise\s*[×xby]/.test(hay)) return false;
   const n = climbStepCount(prompt);
   return n === 1;
+}
+
+/** Pikler / climbing triangle — not a step stool unless they also named treads or rise×run. */
+export function isClimbTriangle(prompt: string): boolean {
+  return /climb(?:ing)?\s*triangle|pikler|step\s*triangle/.test(looksHay(prompt));
 }
 
 /** One or more human climb treads (stool / step-shelf), not a multi-rung ladder. */

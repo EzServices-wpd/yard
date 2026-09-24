@@ -98,6 +98,30 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
   return { paper, subject: label, isFlat: true };
 }
 
+/** Print opening on a craft picture frame (5×7, 4×6, 8×10). Not 1×2 / 1×4 stock. */
+function pictureOpeningIn(prompt: string): { w: number; h: number } | null {
+  const lower = prompt.toLowerCase();
+  if (!/(?:picture|photo)\s*frame|craft\s*frame/.test(lower)) return null;
+  const m = lower.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const a = parseFloat(m[1]);
+  const b = parseFloat(m[2]);
+  const known =
+    (a === 4 && b === 6) ||
+    (a === 5 && b === 7) ||
+    (a === 8 && b === 10) ||
+    (a === 11 && b === 14) ||
+    (a === 6 && b === 4) ||
+    (a === 7 && b === 5) ||
+    (a === 10 && b === 8) ||
+    (a === 14 && b === 11);
+  if (known) return { w: a, h: b };
+  if (a < 3 || b < 3 || a > 24 || b > 24) return null;
+  if (a <= 4 && [2, 3, 4, 6, 8, 10, 12].includes(b)) return null;
+  if (b <= 4 && [2, 3, 4, 6, 8, 10, 12].includes(a)) return null;
+  return { w: a, h: b };
+}
+
 export function buildFlatProject(prompt: string, item: CatalogItem, intent: FlatIntent): YardProject {
   const paper = PAPER_IN[intent.paper];
   const edges = stickEdges(intent.subject);
@@ -114,13 +138,18 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
 
   const pictureFrame = /picture|photo/.test(prompt.toLowerCase()) || /picture frame/i.test(intent.subject);
   const edgesKey = /frame/i.test(intent.subject) ? "frame" : intent.subject;
+  const print = pictureFrame ? pictureOpeningIn(prompt) : null;
+  const border = 1;
+  const layoutW = print ? print.w + border * 2 : paper.w;
+  const layoutH = print ? print.h + border * 2 : paper.h;
   // Rebuild with edge key so "Picture frame" still uses the double-rectangle stick map.
   const edgeInstances =
     edgesKey !== intent.subject
-      ? segmentInstances(stickEdges(edgesKey), paper.w, paper.h, item)
+      ? segmentInstances(stickEdges(edgesKey), layoutW, layoutH, item)
       : instances;
   const useInstances = edgeInstances.length ? edgeInstances : instances;
   const useStats = edgeInstances.length ? analyzePieces(edgeInstances, item) : stats;
+  const stickLen = toPrimitive(item).length || 4.5;
 
   return {
     id: createId("proj"),
@@ -128,8 +157,8 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
     prompt,
     kind: "figure" as StructureKind,
     overall: {
-      width: pictureFrame ? Math.min(paper.w, Math.max(8, toPrimitive(item).length || 4.5)) : paper.w,
-      height: pictureFrame ? Math.min(paper.h, Math.max(10, (toPrimitive(item).length || 4.5) * 1.2)) : paper.h,
+      width: pictureFrame ? (print ? layoutW : Math.min(paper.w, Math.max(8, stickLen))) : paper.w,
+      height: pictureFrame ? (print ? layoutH : Math.min(paper.h, Math.max(10, stickLen * 1.2))) : paper.h,
       depth: Math.max(0.5, toPrimitive(item).height || 0.2),
     },
     instances: withHome(useInstances),
@@ -138,7 +167,9 @@ export function buildFlatProject(prompt: string, item: CatalogItem, intent: Flat
     joinMethod: item.preferredJoins?.[0],
     notes: [
       pictureFrame
-        ? `Picture frame · whole ${item.name} sticks — outer rectangle, mat opening, and same-stock backing behind the rabbet.`
+        ? print
+          ? `Picture frame · mat opening ${print.w}″×${print.h}″ · outer about ${layoutW}″×${layoutH}″ — whole ${item.name} sticks, mat opening, and same-stock backing.`
+          : `Picture frame · whole ${item.name} sticks — outer rectangle, mat opening, and same-stock backing behind the rabbet.`
         : `2D stick layout · ${paperLabel} paper · ${intent.subject.toLowerCase()} in ${item.name}.`,
       `${useInstances.length} whole sticks from the pack. Glue ends where sticks meet.`,
       useStats.components <= 1

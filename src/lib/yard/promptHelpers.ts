@@ -5,7 +5,7 @@ import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
-import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount } from "./weekendFamily";
+import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount, isClimbStepStool, isClimbTriangle } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
 export function parseSize(lower: string): { height: number; width: number; depth: number } {
@@ -19,14 +19,24 @@ export function parseSize(lower: string): { height: number; width: number; depth
 
   const ftTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|foot|feet)\s*(?:tall|high|height|tower)\b/);
   const inTall = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:in|inch|inches)\s*(?:tall|high)\b/);
+  // Apostrophe feet: 6' and 6'8". Not 6'' (inches). Lumber is already stripped.
+  const ftInPair = dimText.match(/(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})(?!\d)/);
+  const ftMark = ftInPair ? null : dimText.match(/(\d+(?:\.\d+)?)\s*'(?!')/);
   const ftAny = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|foot|feet)\b/);
   const inAny = dimText.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:in|inch|inches)\b/);
+  const feetInches = ftInPair
+    ? parseFloat(ftInPair[1]) * 12 + parseFloat(ftInPair[2])
+    : ftMark
+      ? parseFloat(ftMark[1]) * 12
+      : ftAny
+        ? parseFloat(ftAny[1]) * 12
+        : null;
 
   if (ftTall) height = parseFloat(ftTall[1]) * 12;
   else if (inTall) height = parseFloat(inTall[1]);
-  else if (ftAny && isBridge) width = parseFloat(ftAny[1]) * 12;
+  else if (feetInches != null && isBridge) width = feetInches;
   else if (inAny && isBridge && !/wide|width|deep|depth/.test(dimText)) width = parseFloat(inAny[1]);
-  else if (ftAny) height = parseFloat(ftAny[1]) * 12;
+  else if (feetInches != null) height = feetInches;
   else if (inAny) height = parseFloat(inAny[1]);
 
   const pair = dimText.match(
@@ -140,6 +150,9 @@ export function parseSize(lower: string): { height: number; width: number; depth
       if (env != null) {
         width = env + 0.4;
         depth = Math.max(8, Math.min(14, env * 0.45));
+      } else if (rise != null && depth === 24) {
+        // Rise-only riser: class-width deck, not a 24″ cube and not the rise stolen as width.
+        depth = 10;
       }
       if (rise != null) height = rise;
       else if (env != null) height = Math.max(4, Math.min(8, env * 0.2));
@@ -203,7 +216,7 @@ export function stripLumberStock(s: string): string {
     },
   );
   const stripped = masked.replace(
-    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
     " ",
   );
   return stripped.replace(/__CARDSIZE(\d+)__/g, (_, i) => held[Number(i)] ?? " ");
@@ -226,10 +239,11 @@ export function hasExplicitSize(prompt: string): boolean {
   if (/\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width|tall|high|height|deep|depth)\b/.test(dim)) return true;
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*'(?!')/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:popsicle\s+)?(?:ramp|run|trough)\b/.test(dim)) return true;
-  if (/\d+(?:\.\d+)?\s*["″]?\s*(?:pot|planter)\b/.test(dim)) return true;
-  if (/(?:pot|planter)[^\d]{0,16}\d+(?:\.\d+)?\s*["″]?\s*diameter/.test(dim)) return true;
-  if (/\d+(?:\.\d+)?\s*["″]?\s*diameter/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*(?:in|inch|inches|["″])?\s*(?:pot|planter)\b/.test(dim)) return true;
+  if (/(?:pot|planter)[^\d]{0,16}\d+(?:\.\d+)?\s*(?:in|inch|inches|["″])?\s*diameter/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*(?:in|inch|inches|["″])?\s*diameter/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:tall|high)\b/.test(dim) && /(?:pot|planter|stand)/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*["″]?\s*(?:laptop|tablet|phone|device)\b/.test(dim)) return true;
   if (/open\s+\d+(?:\.\d+)?\s*["″]?\s*laptop/.test(dim)) return true;
@@ -248,6 +262,30 @@ export function defaultSizeFor(
   prompt: string,
 ): { height: number; width: number; depth: number } {
   const lower = prompt.toLowerCase();
+  // Untyped climbing triangle / Pikler is a kid-scale A-frame, not an 8′ ladder.
+  // A triangle that also names treads or rise×run stays a step stool (batch-31).
+  if (isClimbTriangle(prompt) && climbStepCount(prompt) < 1 && climbRiseRun(lower) == null) {
+    const dim = stripLumberStock(lower);
+    const ftLen = dim.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
+    const ftMark = dim.match(/(\d+(?:\.\d+)?)\s*'(?!')/);
+    const heightWord =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|height)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:tall|high|height)\b/.test(dim);
+    const bareIn = dim.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
+    const heightTyped = !!(ftLen || ftMark || heightWord || bareIn);
+    const widthTyped =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:wide|width)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width)\b/.test(dim);
+    const depthTyped =
+      /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:deep|depth)\b/.test(dim) ||
+      /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(dim);
+    const H = heightTyped ? size.height : 36;
+    return {
+      width: widthTyped ? size.width : 22,
+      height: H,
+      depth: depthTyped ? size.depth : Math.round(Math.max(22, H * 0.9)),
+    };
+  }
   const explicit = hasExplicitSize(prompt);
   const ftLen = stripLumberStock(lower).match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
   const isTable = /table|desk|workbench|picnic/.test(lower);
@@ -383,6 +421,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*10|2x10/, "lumber-2x10-8"],
     [/2\s*[x×]\s*8(?!\d)|2x8(?!\d)/, "lumber-2x8-8"],
     [/2\s*[x×]\s*6|2x6/, "lumber-2x6-8"],
+    [/1\s*[x×]\s*3\b/, "lumber-1x3-8"],
+    [/1\s*[x×]\s*2\b/, "lumber-1x2-8"],
     [/1\s*[x×]\s*4|1x4/, "lumber-1x4-8"],
     [/4\s*[x×]\s*4|4x4/, "lumber-4x4-8"],
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
@@ -396,7 +436,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
 
 /** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */
 export function spokenWeekendCraftStock(lower: string): boolean {
-  return /popsicle|craft sticks?|1\s*[x×]\s*[46]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?/.test(
+  return /popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?/.test(
     lower,
   );
 }
@@ -520,10 +560,18 @@ export function toProject(
       } else if (widthTyped && typedW && Math.abs(spanX - typedW) <= 1.25) {
         width = typedW;
       }
-      if (kind === "ladder" && heightTyped && typedH) {
+      if (kind === "ladder" && heightTyped && typedH && !isClimbTriangle(prompt)) {
         height = typedH;
       }
-      if (kind === "ladder" && !depthTyped && spanZ < 1.25) {
+      // Step-stool run is the depth. Open ladders stay a lean ~6–8″.
+      const stepRun = isClimbStepStool(prompt) && climbRiseRun(prompt) != null;
+      const climbTri = isClimbTriangle(prompt) && !isClimbStepStool(prompt);
+      if (stepRun) {
+        height = typed.height;
+        depth = typed.depth;
+      } else if (climbTri) {
+        if (heightTyped && typedH) height = typedH;
+      } else if (kind === "ladder" && !depthTyped && spanZ < 1.25) {
         depth = 6;
       } else if (kind === "ladder" && !depthTyped) {
         // Lean depth soft even when stock faces slightly thicken Z.

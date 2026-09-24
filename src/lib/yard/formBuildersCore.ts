@@ -469,7 +469,8 @@ export function castleOps(s: Size3): FormOp[] {
  * Span is primary (X). Nothing floats.
  */
 export function bridgeOps(s: Size3): FormOp[] {
-  const span = Math.max(s.width, s.height * 1.8, 24);
+  // Typed spans under 24″ stay that span. Longer bridges keep the old 24″ floor and height proportion.
+  const span = s.width < 24 ? Math.max(s.width, 6) : Math.max(s.width, Math.min(s.height * 1.8, s.width * 4), 24);
   const pierH = Math.max(Math.min(s.height, span * 0.28), 8);
   const depth = Math.max(s.depth, Math.min(span * 0.12, pierH * 0.55), 6);
   const z0 = -depth / 2;

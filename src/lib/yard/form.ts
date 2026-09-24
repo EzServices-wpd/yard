@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
@@ -39,6 +39,7 @@ import {
   rampLauncherOps,
   mediaHoldStandOps,
   climbStepOps,
+  climbTriangleOps,
   plantStandOps,
   catapultFrameOps,
   chairOps,
@@ -277,9 +278,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const marbleDia = marbleDiameterIn(prompt);
   const frameOpsFor =
     mech === "climb"
-      ? isClimbStepStool(prompt)
-        ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps))
-        : ladderOps(size, spokenRungCount(prompt))
+      ? isClimbTriangle(prompt) && !isClimbStepStool(prompt)
+        ? climbTriangleOps(size)
+        : isClimbStepStool(prompt)
+          ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps))
+          : ladderOps(size, spokenRungCount(prompt))
       : mech === "launcher"
         ? isLauncherRamp(prompt)
           ? rampLauncherOps(size, rampLen)
@@ -295,7 +298,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   const held = mediaHoldHeldLabel(prompt);
   const notes =
     mech === "climb"
-      ? isClimbStepStool(prompt)
+      ? isClimbTriangle(prompt) && !isClimbStepStool(prompt)
+        ? [
+            `${hit.name} · climbing triangle with side rails and rungs — kid-scale wide base, not a full-height ladder.`,
+          ]
+        : isClimbStepStool(prompt)
         ? [
             (() => {
               const who = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
