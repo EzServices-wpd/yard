@@ -1,5 +1,5 @@
 import { buildClosetFromOpening } from "./closet";
-import { buildWindowProject, pickWindow, STOCK_WINDOWS } from "./windows";
+import { buildWindowProject, headerForSpan, pickWindow, STOCK_WINDOWS } from "./windows";
 import type { FittedProgram, SpaceKind, YardProject } from "./types";
 import { wantsShoes, isWorkbench, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman, type HouseFamily } from "./family";
 
@@ -129,13 +129,15 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
 }
 
 export function framingNotes(roW: number, roH: number): string[] {
-  const header = roW <= 36 ? "2×6 doubled header (heuristic)" : roW <= 48 ? "2×8 doubled header (heuristic)" : "engineered header — have a carpenter check";
+  const header = headerForSpan(roW);
   return [
-    `Rough opening ${roW}" × ${roH}". Frame to the unit's published RO.`,
+    `Rough opening ${roW}" × ${roH}". Frame to the size you typed, or the unit's published RO.`,
     `Kings: two full-height studs, one each side.`,
-    `Jacks: two trimmers supporting the header.`,
-    `Header: ${header}. Not stamped engineering.`,
-    "Sill + cripples. Wrap and pan-flash before the unit goes in.",
+    `Jacks: two trimmers supporting the header. The opening between them is ${roW}" wide.`,
+    `Header: ${header.plies}-ply ${header.nominal}, ${header.length}" long (heuristic). A 2×6 wall takes 3 plies. Not stamped engineering.`,
+    "Window: rough sill at the bottom of the opening, cripples under it. Door: cut the bottom plate — no sill.",
+    "½\" plywood spacer between header plies so the pack matches the wall thickness.",
+    "Wrap and pan-flash a window before the unit goes in.",
   ];
 }
 

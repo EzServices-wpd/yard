@@ -657,10 +657,26 @@ export function normalizeUserPrompt(prompt: string): string {
   s = s.replace(/~\s*(?=\d)/g, "");
   s = s.replace(/\btabel\b/gi, "table").replace(/\bcoffe\b/gi, "coffee");
   const house =
-    /\b(?:tables?|desks?|bench(?:es)?|bookcases?|bookshel(?:f|ves)|closets?|vanit(?:y|ies)|shel(?:f|ves)|ledges?|nightstands?|beds?|wardrobes?|pantr(?:y|ies)|consoles?|islands?|dressers?|cabinets?|headboards?|workbench(?:es)?)\b/i.test(
+    /\b(?:tables?|desks?|bench(?:es)?|bookcases?|bookshel(?:f|ves)|closets?|vanit(?:y|ies)|shel(?:f|ves)|ledges?|nightstands?|beds?|wardrobes?|pantr(?:y|ies)|consoles?|islands?|dressers?|cabinets?|headboards?|workbench(?:es)?|windows?|doors?)\b/i.test(
       s,
     );
   if (house) {
+    // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8.
+    s = s.replace(/(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})(?!\d)/g, (_, ft, inch) => {
+      const f = parseFloat(ft);
+      const i = parseFloat(inch);
+      if (!Number.isFinite(f) || f > 40 || i >= 12) return _;
+      return `${f * 12 + i} inch`;
+    });
+    s = s.replace(
+      /(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\s+(\d{1,2})(?!\d)(?!\s*[x×])/gi,
+      (_, ft, inch) => {
+        const f = parseFloat(ft);
+        const i = parseFloat(inch);
+        if (!Number.isFinite(f) || f > 40 || i >= 12) return _;
+        return `${f * 12 + i} inch`;
+      },
+    );
     s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*'(?!')/g, (_, n) => `${parseFloat(n) * 12} inch`);
     s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b/gi, (_, n) => {
       const v = parseFloat(n);

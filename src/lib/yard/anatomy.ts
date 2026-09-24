@@ -19,7 +19,12 @@ export type AnatomyHit = {
   named?: string;
 };
 
-const OPENING = /window|rough opening|\bro\b|andersen/;
+const WINDOW_OPENING =
+  /window|rough opening|\bro\b|andersen|pella|jeld-?wen|marvin|casement|double.?hung|single.?hung|awning|hopper/;
+/** Punched door openings — not a cabinet, closet, or vanity door. */
+const DOOR_FRAME =
+  /prehung|(?:exterior|entry|front|french|passage|interior|slab)\s+doors?|door\s+rough\s+opening|frame\s+(?:a\s+|the\s+)?door|door\s+frame|bypass\s+doors?|pocket\s+doors?/;
+const FURNITURE_WITH_DOOR = /cabinet|vanity|drawer|crate|ironing|closet|wardrobe|pantry|bookcase|cupboard|hutch/;
 const FITTED =
   /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b|\bbench\b|\bseat\b|cubb|\bledge\b|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
@@ -43,8 +48,22 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
   const hay = looks ? `${looks[1]} ${lower}` : lower;
 
-  if (OPENING.test(hay) && !/stained/.test(hay) && !/window seat/.test(hay))
+  const sliderWindow =
+    /\b(?:slider|glider)\b/.test(hay) &&
+    !/drawer|slide\s*rail/.test(hay) &&
+    /\d+\s*(?:x|×|by)\s*\d+/.test(hay);
+  if ((WINDOW_OPENING.test(hay) || sliderWindow) && !/stained/.test(hay) && !/window seat/.test(hay))
     return { anatomy: "opening", kind: "opening" };
+  if (
+    DOOR_FRAME.test(hay) &&
+    !/window seat/.test(hay) &&
+    !(
+      FURNITURE_WITH_DOOR.test(hay) &&
+      !/prehung|door\s+rough|frame\s+(?:a\s+|the\s+)?door|door\s+frame|(?:exterior|entry|front|french)\s+doors?/.test(hay)
+    )
+  ) {
+    return { anatomy: "opening", kind: "opening" };
+  }
   if (/\bladder\b/.test(hay)) return { anatomy: "carcase", kind: "ladder", named: "Ladder" };
   if (/stairs|staircase/.test(hay)) return { anatomy: "carcase", kind: "ladder" };
   if (/birdhouse/.test(hay)) return { anatomy: "carcase", kind: "house", named: "Birdhouse" };

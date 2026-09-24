@@ -143,7 +143,7 @@ export type Panel = {
   }[];
 };
 
-export type OpeningKind = "alcove" | "window" | "room" | "pocket";
+export type OpeningKind = "alcove" | "window" | "room" | "pocket" | "door";
 
 export type PocketWalls = {
   backWidth: number;
@@ -366,7 +366,7 @@ export type BuildPlan = {
 
 export type SpaceKind = "closet_niche" | "window_rough_opening" | "desk" | "workbench" | "media" | "table" | "bench" | "lounge_chair" | "ottoman" | "rocking_chair" | "shoe_rack" | "bookcase" | "wall_cabinet" | "shelving_alcove" | "general_volume";
 
-export type WindowStyle = "double_hung" | "casement" | "slider" | "picture" | "awning";
+export type WindowStyle = "double_hung" | "single_hung" | "casement" | "slider" | "picture" | "awning" | "hopper" | "door";
 
 export type StockWindow = {
   id: string;
@@ -390,9 +390,13 @@ export type WindowPackage = {
   wallHeight: number;
   stud: "2x4" | "2x6";
   sillHeight: number;
-  header: { nominal: "2x6" | "2x8" | "2x10"; plies: number; depth: number; length: number };
+  header: { nominal: "2x6" | "2x8" | "2x10" | "2x12"; plies: number; depth: number; length: number };
   shimW: number;
   shimH: number;
+  /** Door rough openings cut the bottom plate. Windows keep a sill. */
+  role?: "window" | "door";
+  slabW?: number;
+  slabH?: number;
 };
 
 export type MeasureDraft = {

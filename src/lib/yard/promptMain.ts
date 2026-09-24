@@ -11,7 +11,7 @@ import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, i
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty } from "./weekendStockHonesty";
-import { pickWindow, buildWindowProject } from "./windows";
+import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
@@ -90,8 +90,8 @@ export function generateFromPrompt(
   }
 
   if (kindHint === "opening") {
-    const unit = pickWindow(prompt, size.width, size.height);
-    return buildWindowProject(unit, prompt);
+    if (looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower)) return buildDoorProject(prompt);
+    return buildWindowProject(pickWindow(prompt), prompt);
   }
   const climbPrimary = !!climbIdentityLabel(lower);
   const weekendMech = detectWeekendMech(prompt);

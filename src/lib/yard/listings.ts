@@ -698,6 +698,59 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "lumber-2x12-8",
+    retailer: "homedepot",
+    title: "2x12x8 kiln-dried framing lumber",
+    href: "https://www.homedepot.com/s/2x12x8%20framing%20lumber",
+    packQty: 1,
+    packPrice: 22,
+    lengthIn: 96,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "lumber-2x10-10",
+    retailer: "homedepot",
+    title: "2x10x10 kiln-dried framing lumber",
+    href: "https://www.homedepot.com/s/2x10x10%20framing%20lumber",
+    packQty: 1,
+    packPrice: 24,
+    lengthIn: 120,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "lumber-2x12-10",
+    retailer: "homedepot",
+    title: "2x12x10 kiln-dried framing lumber",
+    href: "https://www.homedepot.com/s/2x12x10%20framing%20lumber",
+    packQty: 1,
+    packPrice: 32,
+    lengthIn: 120,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "plywood-1-2-4x8",
+    retailer: "homedepot",
+    title: '1/2" x 4x8 plywood',
+    href: "https://www.homedepot.com/s/1%2F2%20inch%204x8%20plywood",
+    packQty: 1,
+    packPrice: 42,
+    lengthIn: 96,
+    widthIn: 48,
+    thickIn: 0.5,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "prehung-door",
+    retailer: "homedepot",
+    title: "36x80 prehung interior door",
+    href: "https://www.homedepot.com/s/36x80%20prehung%20interior%20door",
+    packQty: 1,
+    packPrice: 189,
+    lengthIn: 80,
+    widthIn: 36,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "plywood-1-4-4x8",
     retailer: "homedepot",
     title: "1/4\" x 4x8 sanded plywood",
@@ -843,7 +896,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/skewer/.test(hay)) return "bamboo-skewer-12";
   if (/paper towel/.test(hay)) return "paper-towel-roll";
   if (/straw/.test(hay)) return "straw-plastic";
-  if (/2\s*[x×]\s*10/.test(hay)) return "lumber-2x10-8";
+  if (/2\s*[x×]\s*12/.test(hay)) return /2\s*[x×]\s*12\s*[x×]\s*10|10\s*(?:ft|foot|feet)|\b120\b/.test(hay) ? "lumber-2x12-10" : "lumber-2x12-8";
+  if (/2\s*[x×]\s*10/.test(hay)) return /2\s*[x×]\s*10\s*[x×]\s*10|10\s*(?:ft|foot|feet)|\b120\b/.test(hay) ? "lumber-2x10-10" : "lumber-2x10-8";
   if (/2\s*[x×]\s*2|two by two/.test(hay)) return "lumber-2x2-8";
   if (/2\s*[x×]\s*8/.test(hay)) return "lumber-2x8-8";
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
@@ -852,6 +906,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/cardboard/.test(hay)) return "cardboard-corrugated-sheet";
   // Edge banding before plywood — searchQuery may say "plywood birch" for the veneer match.
   if (/edge.?band|iron.?on.?band|\bbanding\b/.test(hay)) return "edge-banding";
+  if (/1\s*\/\s*2|½|half(?:\s|-)?inch|header\s*spacer/.test(hay) && /ply|spacer/.test(hay)) return "plywood-1-2-4x8";
   // Thin backer before generic plywood. 4×10 before 4×8 so a 102" face is not sold as a 4×8.
   if (/1\/4|quarter.?inch|backer/.test(hay) && /ply/.test(hay)) {
     if (/4\s*[x×]\s*10/.test(hay)) return "plywood-1-4-4x10";
@@ -890,7 +945,15 @@ function guessCatalogId(line: BomLine): string | null {
   if (/shim/.test(hay)) return "shims";
   if (/16d|framing nail/.test(hay)) return "framing-nails";
   if (/foam/.test(hay) && /window|expansion/.test(hay)) return "window-foam";
-  if (/\bwindow\b/.test(hay) && /andersen|pella|hung|casement|unit/.test(hay)) return "window-unit";
+  if (/\bwindow\b/.test(hay) && /andersen|pella|hung|casement|unit|awning|hopper|slider|picture/.test(hay)) {
+    if (/to order/.test(hay)) return line.catalogId ?? null;
+    return "window-unit";
+  }
+  if (/prehung|exterior door|interior door|french door|\bdoor\b/.test(hay) && !/cabinet|vanity|closet/.test(hay)) {
+    const sized = hay.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+    if (sized && (sized[1] !== "36" || sized[2] !== "80")) return line.catalogId ?? null;
+    return "prehung-door";
+  }
   if (/mirror/.test(hay)) return "vanity-mirror";
   return line.catalogId ?? null;
 }

@@ -53,7 +53,7 @@ const HOUSE_NOUN =
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
-  if (/andersen|rough opening/.test(lower)) return true;
+  if (/andersen|pella|jeld-?wen|marvin|rough opening|casement|double.?hung|single.?hung|awning|hopper/.test(lower)) return true;
   if (/\bwindow\b/.test(lower) && !/cabinet|box|seat/.test(lower)) return true;
   return false;
 }
