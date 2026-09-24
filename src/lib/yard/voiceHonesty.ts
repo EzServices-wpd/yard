@@ -626,7 +626,7 @@ export function isRoundUnitEnvelope(opts: {
  * Returns NaN when no bare desk width is spoken.
  */
 export function deskWidthFromPrompt(prompt: string): number {
-  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
   const ahead = t.match(
     /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
   );
@@ -645,6 +645,33 @@ export function deskWidthFromPrompt(prompt: string): number {
 }
 
 /**
+ * Clean the ways people actually type a size before any axis parser sees it.
+ * Idempotent. Feet become inches only when a house noun is present, so a
+ * "3 foot catapult" stays a weekend prompt.
+ */
+export function normalizeUserPrompt(prompt: string): string {
+  let s = prompt.replace(/[″”]/g, '"').replace(/[‘’]/g, "'");
+  s = s.replace(/(\d+(?:\.\d+)?)\s*''/g, '$1"');
+  s = s.replace(/(\d+(?:\.\d+)?)in\./gi, "$1 in");
+  s = s.replace(/(\d+(?:\.\d+)?)\s+in\./gi, "$1 in");
+  s = s.replace(/~\s*(?=\d)/g, "");
+  s = s.replace(/\btabel\b/gi, "table").replace(/\bcoffe\b/gi, "coffee");
+  const house =
+    /\b(?:tables?|desks?|bench(?:es)?|bookcases?|bookshel(?:f|ves)|closets?|vanit(?:y|ies)|shel(?:f|ves)|ledges?|nightstands?|beds?|wardrobes?|pantr(?:y|ies)|consoles?|islands?|dressers?|cabinets?|headboards?|workbench(?:es)?)\b/i.test(
+      s,
+    );
+  if (house) {
+    s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*'(?!')/g, (_, n) => `${parseFloat(n) * 12} inch`);
+    s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b/gi, (_, n) => {
+      const v = parseFloat(n);
+      if (!Number.isFinite(v) || v > 40) return _;
+      return `${v * 12} inch`;
+    });
+  }
+  return s;
+}
+
+/**
  * Bare size beside a table noun — "give me a 70 inch table" / "table 70\"".
  * That number is the plan span. It must replace the 40" class default, not vanish.
  * Axis labels and round/diameter stay on their own parsers
@@ -652,8 +679,8 @@ export function deskWidthFromPrompt(prompt: string): number {
  * Returns NaN when no bare table span is spoken.
  */
 export function tableSpanFromPrompt(prompt: string): number {
-  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
-  const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])|")`;
+  const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
+  const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])\.?|")`;
   // Optional space so "table 70 inches wide" is an axis label, not a bare span.
   const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)`;
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
@@ -669,7 +696,42 @@ export function tableSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      "i",
+    ),
+  );
+  if (after) {
+    const n = parseFloat(after[1]);
+    if (ok(n)) return n;
+  }
+  return NaN;
+}
+
+/**
+ * Bare width beside a house noun that is not a table — "36 inch nightstand",
+ * "60 inch bookshelf", "picture ledge 48", "workbench 72 inches".
+ * Shelf counts ("5 shelves") stay below the 12" floor.
+ */
+export function nounSpanFromPrompt(prompt: string): number {
+  const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
+  const noun =
+    "workbench|potting\\s+bench|(?:writing\\s+)?desk|nightstands?|bedside|bookcases?|bookshel(?:f|ves)|vanit(?:y|ies)|media\\s+consoles?|(?:tv|television)\\s+(?:stand|console)|floating\\s+shel(?:f|ves)|picture\\s+ledges?|headboards?|islands?|bench(?:es)?";
+  const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])\.?|")?`;
+  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)`;
+  const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
+  const ahead = t.match(
+    new RegExp(
+      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
+      "i",
+    ),
+  );
+  if (ahead) {
+    const n = parseFloat(ahead[1]);
+    if (ok(n)) return n;
+  }
+  const after = t.match(
+    new RegExp(
+      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}`,
       "i",
     ),
   );
@@ -748,11 +810,12 @@ export function typedOpeningStorageAxes(prompt: string): {
   const labeledH = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)\b/i);
   const labeledD = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)\b/i);
   const openingW = openingWidthFromPrompt(prompt);
+  const nounW = nounSpanFromPrompt(prompt);
   const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
   const trip = t.match(
     /(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
   );
-  let width = Number.isFinite(labeledW) || Number.isFinite(openingW);
+  let width = Number.isFinite(labeledW) || Number.isFinite(openingW) || Number.isFinite(nounW);
   let height = Number.isFinite(labeledH);
   let depth = Number.isFinite(labeledD);
   if (!saidAxis && trip) {

@@ -8,6 +8,7 @@ import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
+import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject } from "./windows";
@@ -75,6 +76,7 @@ export function generateFromPrompt(
     honorUnit?: boolean;
   } = {},
 ): YardProject {
+  prompt = normalizeUserPrompt(prompt);
   const lower = prompt.toLowerCase().trim();
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);

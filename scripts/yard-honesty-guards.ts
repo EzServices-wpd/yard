@@ -274,6 +274,27 @@ const top = pair70.panels.find((p) => p.type === "top");
 if (!top || !nearInch(top.size.width, 70) || !nearInch(top.size.depth, 28)) {
   failHonesty("70×28 top does not fill the typed plan", top?.size);
 }
+{
+  const voice: Array<[string, number, number, number]> = [
+    ["6 foot table", 72, 30, 72],
+    ["6' x 30\" table", 72, 30, 30],
+    ["8 foot bench", 96, 18, 16],
+    ["coffee table around 48 inches", 48, 18, 48],
+    ["bookcase 36x84x12", 36, 84, 12],
+    ["36 inch nightstand", 36, 24, 16],
+    ["60 inch bookshelf", 60, 84, 12],
+    ["queen headboard", 60, 48, 0.75],
+    ["counter height table 48 by 30", 48, 36, 30],
+    ["70 in. table", 70, 30, 70],
+  ];
+  for (const [p, w, h, d] of voice) {
+    const g = generateFromPrompt(p);
+    if (!nearInch(g.overall.width, w) || !nearInch(g.overall.height, h) || !nearInch(g.overall.depth, d)) {
+      failHonesty(`voice size ${p}`, g.overall);
+    }
+    if (/around/.test(p) && /round/i.test(g.name)) failHonesty("around became round", g.name);
+  }
+}
 const coffee = expectTableAprons("coffee table 48 round", { legs: 3, round: true });
 const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
 
@@ -1986,7 +2007,7 @@ if (openShelfPanels.length < 3) {
 const island = generateFromPrompt("house: kitchen island 60″ wide × 36″ deep × 36″ tall");
 if (!/^Kitchen island/i.test(island.name)) failHonesty("kitchen island title", island.name);
 const islandPlan = buildPlan(island);
-const islandChip = islandPlan.issues.map((i) => i.message).join("\n");
+const islandChip = (islandPlan.feasibility?.issues ?? []).map((i) => i.message).join("\n");
 if (/— storage\.?/i.test(islandChip)) failHonesty("island chip still storage", islandChip);
 
 const kbase = generateFromPrompt(
@@ -2341,11 +2362,11 @@ if (!nightProtectPlan.cutList.some((c) => /drawer side/i.test(c.name))) {
   if (Math.abs(pot.overall.width - 48) > 1.5 || Math.abs(pot.overall.depth - 24) > 1.5 || Math.abs(pot.overall.height - 36) > 1.5) {
     failHonesty("potting dims 48×24×36", pot.overall);
   }
-  if (measureKindFromProject(pot) !== "potting bench") {
+  if (measureKindFromProject(pot) !== "workbench") {
     failHonesty("potting measure kind", measureKindFromProject(pot));
   }
   const potPlan = buildPlan(pot);
-  const potText = potPlan.steps.map((s) => `${s.title} ${s.description}`).join("\n");
+  const potText = potPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
   if (/sit-test|shoe bay|entry/i.test(potText) && !/potting|work top|lower shelf/i.test(potText)) {
     failHonesty("potting sit-test voice", potText.slice(0, 500));
   }
@@ -2954,7 +2975,7 @@ console.log("SOFT-TRUST OK", {
   const serveShelves = serve.panels.filter((p) => p.type === "shelf" || /shelf/i.test(p.name));
   if (serveShelves.length < 2) failHonesty("b34 serving two shelves", serveShelves.map((p) => p.name));
   const servePlan = buildPlan(serve);
-  const serveBlob = [serve.name, ...(serve.notes ?? []), ...servePlan.issues.map((i) => i.message), ...servePlan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  const serveBlob = [serve.name, ...(serve.notes ?? []), ...(servePlan.feasibility?.issues ?? []).map((i) => i.message), ...servePlan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
   if (/butcher block cart/i.test(serveBlob) && !/Serving cart/i.test(serve.name)) {
     failHonesty("b34 serving plan butcher steal", serveBlob.slice(0, 500));
   }

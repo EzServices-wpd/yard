@@ -53,7 +53,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   const saidTall = /tall|high|height/.test(lower);
   const saidLong = /\blong\b|\blength\b/.test(lower);
   const promptShape = tableTopShape(lower);
-  const saidRound = promptShape === "round" || (/round|circular|diameter|\bdia\b/.test(lower) && promptShape !== "oval");
+  const saidRound = promptShape === "round" || (/\b(?:round|circular)\b|\bdiameter\b|\bdia\b/.test(lower) && promptShape !== "oval");
   const saidOval = promptShape === "oval";
   const saidSquare = promptShape === "square";
   const saidLegs = /\d+\s*-?\s*legs?/.test(lower);

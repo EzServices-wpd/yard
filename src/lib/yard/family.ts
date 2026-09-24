@@ -200,7 +200,7 @@ export type TableTopShape = "round" | "oval" | "square" | "rect";
 
 export function tableTopShape(lower: string): TableTopShape | null {
   if (/\boval\b|elliptical|\bellipse\b/.test(lower)) return "oval";
-  if (/round|circular|diameter|\bdia\b/.test(lower)) return "round";
+  if (/\b(?:round|circular)\b|\bdiameter\b|\bdia\b/.test(lower)) return "round";
   if (/\bsquare\b/.test(lower)) return "square";
   if (/\brect(?:angle)?\b|\brectangular\b/.test(lower)) return "rect";
   // Outdoor side table typed N×N×H (equal plan axes) → square footprint.
@@ -318,6 +318,8 @@ export function isStandingShopTop(lower: string) {
 
 /** Porch swing frame — hanging seat / clear swing frame; never naked Bench / Storage. */
 export function isPorchSwingFrame(lower: string) {
+  // "clear swing" on an ironing board is the board's arc, not a porch swing.
+  if (/ironing/.test(lower)) return false;
   if (/porch\s*swing|swing\s*frame/.test(lower)) return true;
   if (/\bswing\b/.test(lower) && /(?:hanging\s*seat|clear\s*swing|frame)/.test(lower)) return true;
   return false;

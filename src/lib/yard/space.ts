@@ -95,8 +95,8 @@ export function measureKindFromProject(project: YardProject): SpaceKind {
   const program = project.fitted?.program as FittedProgram | undefined;
   const family = project.fitted?.family as HouseFamily | undefined;
   const blob = `${project.name ?? ""} ${project.prompt ?? ""} ${project.fitted?.name ?? ""}`.toLowerCase();
-  // Workbench is its own measure kind — never collapse to Desk.
-  if (isWorkbench(blob) || /\bworkbench\b/.test(blob)) return "workbench";
+  // Workbench / potting bench are standing shop tops — never collapse to Desk.
+  if (isWorkbench(blob) || /\bworkbench\b/.test(blob) || /potting\s*bench/.test(blob)) return "workbench";
   if (program === "desk" || /\bdesk\b/.test(blob)) return "desk";
   if (program === "media" || /\btv\b|media console|entertainment\s*cent/.test(blob)) return "media";
   if (program === "table" || family === "table" || (/\btable\b/.test(blob) && !/work table/.test(blob))) return "table";

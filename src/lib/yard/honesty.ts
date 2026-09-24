@@ -9,7 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
-import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes } from "./voiceHonesty";
+import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -72,6 +72,7 @@ function unlabeledTriple(text: string): { a: number; b: number; c?: number } | n
 
 /** Axes the prompt actually named. Defaults from parseBrief do not count. */
 export function typedExtents(prompt: string): TypedExtents | null {
+  prompt = normalizeUserPrompt(prompt);
   const bareTable = tableSpanFromPrompt(prompt);
   if (
     !hasExplicitSize(prompt) &&
@@ -179,7 +180,7 @@ export function typedExtents(prompt: string): TypedExtents | null {
       out.depth = trip.b;
       out.height = undefined;
       out.labeled = { width: true, height: false, depth: true };
-    } else if (furniture && trip.b < 20) {
+    } else if (furniture && trip.b <= 36 && trip.a >= trip.b) {
       out.width = trip.a;
       out.depth = trip.b;
       out.labeled = { width: true, height: false, depth: true };
@@ -188,6 +189,27 @@ export function typedExtents(prompt: string): TypedExtents | null {
       out.height = trip.b;
       out.labeled = { width: true, height: true, depth: false };
     }
+  }
+
+  // Bookcase: the taller of the last two numbers is the height, not an 84" depth.
+  if (!saidAxis && program === "bookcase" && trip && trip.c != null) {
+    const taller = Math.max(trip.b, trip.c);
+    const shallower = Math.min(trip.b, trip.c);
+    if (taller >= 36 && shallower <= 24 && taller >= shallower + 12) {
+      out.width = trip.a;
+      out.height = taller;
+      out.depth = shallower;
+      out.labeled = { width: true, height: true, depth: true };
+    }
+  }
+
+  // "70 x 28 x 30h" — the h suffix is height, not the laundry middle slot.
+  const hSuffix = t.match(/(\d+(?:\.\d+)?)h\b/i);
+  if (program === "table" && trip && trip.c != null && hSuffix && Math.abs(parseFloat(hSuffix[1]) - trip.c) < 0.05) {
+    out.width = trip.a;
+    out.depth = trip.b;
+    out.height = trip.c;
+    out.labeled = { width: true, height: true, depth: true };
   }
 
   // Square/oval + labeled tall on a bare-looking triple: remaining slots are plan W×D.

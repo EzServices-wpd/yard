@@ -18,12 +18,19 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
 const PLY_BACKER = "plywood-1-4-4x8";
 const P = 0.75;
+
+function tableClassHeight(lower: string): number {
+  if (/coffee|cocktail/.test(lower)) return 18;
+  if (/bar\s*-?\s*height/.test(lower)) return 42;
+  if (/counter\s*-?\s*height/.test(lower)) return 36;
+  return 30;
+}
 
 function isIroningCabinet(text: string) {
   return /ironing/.test(text.toLowerCase());
@@ -399,7 +406,7 @@ export function looksLikeFitted(prompt: string) {
   const dimText = lower
     .replace(/\b(?:from\s+)?(?:[1-8]\s*[x×]\s*(?:2|3|4|6|8|10|12)|two by four|two by six|one by four|four by four)\b/gi, " ");
   const nums = (dimText.match(/\d+(?:\.\d+)?/g) ?? []).length;
-  if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower)) {
+  if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower) && !/\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|')/.test(lower)) {
     return false;
   }
   if (isPorchSwingFrame(lower)) return false;
@@ -476,6 +483,7 @@ function triple(text: string): { w?: number; h?: number; d?: number } {
 }
 
 export function parseBrief(prompt: string): FittedSpec | null {
+  prompt = normalizeUserPrompt(prompt);
   const craftLower = prompt.toLowerCase();
   // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — do not null brief.
   if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
@@ -516,7 +524,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const trip = triple(t);
   const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
   const topShape: TableTopShape | null = program === "table" ? tableTopShape(lower) : null;
-  const isRound = topShape === "round" || (program === "table" && /round|circular|diameter|\bdia\b/.test(lower) && topShape !== "oval");
+  const isRound = topShape === "round" || (program === "table" && /\b(?:round|circular)\b|\bdiameter\b|\bdia\b/.test(lower) && topShape !== "oval");
   const isOval = topShape === "oval";
   const isSquareTop = topShape === "square";
   // Prefer N diameter / N dia (Tail) over diameter N (Raw): Raw otherwise steals the
@@ -678,6 +686,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
     const openingW = openingWidthFromPrompt(t);
     if (Number.isFinite(openingW) && !(trip.w && trip.h)) width = openingW;
   }
+  if (!Number.isFinite(width)) {
+    const nounW = nounSpanFromPrompt(t);
+    if (Number.isFinite(nounW) && !(trip.w && trip.h)) width = nounW;
+  }
   if (!Number.isFinite(width) && /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(lower)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);
   }
@@ -724,6 +736,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     : /full|double/.test(lower)
                       ? 56
                       : 42
+                : /headboard/.test(lower)
+                  ? /king/.test(lower)
+                    ? 76
+                    : /queen/.test(lower)
+                      ? 60
+                      : /full|double/.test(lower)
+                        ? 54
+                        : /twin/.test(lower)
+                          ? 39
+                          : 36
                 : 36);
   }
 
@@ -760,10 +782,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
     width = trip.w;
     depth = trip.h;
     height = trip.d;
-  } else if (!saidAxis && furnitureTriple && trip.w && trip.h && !trip.d && trip.h < 20) {
+  } else if (!saidAxis && furnitureTriple && trip.w && trip.h && !trip.d && trip.h <= 36 && trip.w >= trip.h) {
     width = trip.w;
     depth = trip.h;
     unlabeledWd = true;
+  }
+
+  // A bookcase is never 84" deep and 12" tall. The bigger of the last two is the height.
+  if (program === "bookcase" && !saidAxis && trip.w && trip.h && trip.d) {
+    const taller = Math.max(trip.h, trip.d);
+    const shallower = Math.min(trip.h, trip.d);
+    if (taller >= 36 && shallower <= 24 && taller >= shallower + 12) {
+      width = trip.w;
+      height = taller;
+      depth = shallower;
+    }
   }
 
   // Fitted to a named opening: unlabeled triples are W×H×D (opening), not furniture W×D×H.
@@ -818,11 +851,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
       trip.w &&
       trip.h &&
       !trip.d &&
-      !/(?:wide|width|deep|depth|tall|high|height|long|length)/.test(lower)
+      !Number.isFinite(labeledWide) &&
+      !Number.isFinite(labeledTall) &&
+      !Number.isFinite(labeledDeep) &&
+      !Number.isFinite(labeledLong)
     ) {
       width = trip.w;
       depth = trip.h;
-      if (!Number.isFinite(labeledTall)) height = /coffee/.test(lower) ? 18 : 30;
+      height = tableClassHeight(lower);
     }
 
     // Bare oval/square triples: typed order is long×wide×tall (plan L×plan W×H), not laundry W×H×D.
@@ -945,7 +981,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
 
   if (!Number.isFinite(height) || height === 0) {
     if (program === "table") {
-      height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
+      const consumedAsDepth =
+        trip.h != null &&
+        !trip.d &&
+        Number.isFinite(depth) &&
+        Math.abs(depth - trip.h) < 0.05;
+      height = !consumedAsDepth && trip.h && trip.h < 42 ? trip.h : tableClassHeight(lower);
     } else if (program === "media") {
       if (trip.h && trip.d) height = trip.h;
       else height = 22;
@@ -1034,7 +1075,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 65
                     : isPictureLedge(lower)
                       ? 6
-                    : /shelf/.test(lower)
+                    : /shelf/.test(lower) && !/bookcase|bookshelf/.test(lower)
                       ? 18
                     : isStorageHutch(lower)
                       ? 72
