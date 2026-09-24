@@ -245,13 +245,16 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   if (legCuts.length) {
     const legQty = legCuts.reduce((s, c) => s + c.quantity, 0);
     const legLen = legCuts[0]?.lengthIn ?? 30;
+    const legId =
+      project.panels.find((p) => /^leg\b/i.test(p.name))?.materialId ?? "lumber-2x2-8";
+    const legItem = getCatalogItem(legId);
     bom.push({
-      name: '2x2 (1-1/2" actual)',
+      name: legItem?.name ?? '2x2 (1-1/2" actual)',
       quantity: legQty,
       unit: legQty === 1 ? "pc" : "pcs",
-      catalogId: "lumber-2x2-8",
-      searchQuery: "2x2x8 pine poplar",
-      estimatedCost: 6.5 * legQty,
+      catalogId: legItem?.id ?? "lumber-2x2-8",
+      searchQuery: legItem?.searchQuery ?? "2x2x8 pine poplar",
+      estimatedCost: (legItem?.unitCostUsd ?? 6.5) * legQty,
       notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
     });
   }
@@ -549,6 +552,22 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     (panel) => /hanging rod/i.test(panel.name),
   );
   if (hangingRods.length) {
+    const lengths = hangingRods.map((p) =>
+      Math.max(p.size.width, p.size.height, p.size.depth),
+    );
+    const longest = Math.max(...lengths);
+    const total = lengths.reduce((s, n) => s + n, 0);
+    const sticks = longest > 96 ? lengths.length : Math.max(1, Math.ceil(total / 96));
+    const rod = getCatalogItem("closet-rod");
+    bom.push({
+      name: rod?.name ?? 'Closet rod 1-1/4" (8 ft)',
+      quantity: sticks,
+      unit: sticks === 1 ? "pc" : "pcs",
+      catalogId: "closet-rod",
+      searchQuery: rod?.searchQuery ?? "1-1/4 inch closet rod 8 ft",
+      estimatedCost: (rod?.unitCostUsd ?? 14) * sticks,
+      notes: `Cut to ${lengths.map((n) => `${Math.round(n * 8) / 8}"`).join(", ")}. Not a plywood strip.`,
+    });
     bom.push({
       name: "Closet rod sockets",
       quantity: hangingRods.length,

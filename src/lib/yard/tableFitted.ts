@@ -15,6 +15,22 @@ import type { FittedSpec, Panel, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
 const TWO_BY_TWO = "lumber-2x2-8";
+
+function legStock(prompt: string): { id: string; face: number; note: string } {
+  const lower = prompt.toLowerCase();
+  if (/4\s*[x×]\s*4/.test(lower) && /leg|post/.test(lower)) {
+    return {
+      id: "lumber-4x4-8",
+      face: 3.5,
+      note: "Legs are 3-1/2\" square (4x4 actual), buy 4x4 posts. Aprons nest on the 3/4\" sheet.",
+    };
+  }
+  return {
+    id: TWO_BY_TWO,
+    face: 1.5,
+    note: "Legs are 1-1/2\" square (2x2 actual) — buy 2x2 lumber. Aprons nest on the 3/4\" sheet. Legs stay under the top.",
+  };
+}
 const P = 0.75;
 
 function panel(
@@ -51,7 +67,8 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const legN = Math.max(3, Math.min(4, u.legs ?? 4));
   const round = u.shape === "round";
   const oval = u.shape === "oval";
-  const legW = 1.5;
+  const stock = legStock(prompt);
+  const legW = stock.face;
   const topT = P;
   // Short coffee/side tables: a 3.5" apron eats the silhouette. Cap by height.
   const apronH = Math.min(3.5, Math.max(2.25, Math.round(H * 0.14 * 8) / 8));
@@ -103,7 +120,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
 
   centers.forEach((c, i) => {
     panels.push(
-      panel("upright", `Leg ${i + 1}`, c.x - legW / 2, 0, c.z - legW / 2, legW, legH, legW, 0, TWO_BY_TWO),
+      panel("upright", `Leg ${i + 1}`, c.x - legW / 2, 0, c.z - legW / 2, legW, legH, legW, 0, stock.id),
     );
   });
 
@@ -202,7 +219,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       : oval
         ? `Oval top: cut a ${W}" × ${D}" rectangular blank, then band-saw / jigsaw to an oval ${W}" long × ${D}" wide. Height ${H}".`
         : `Top ${W}" × ${D}". Height ${H}".`,
-    `Legs are 1-1/2" square (2x2 actual), ${legN}× — buy 2x2 lumber. Aprons nest on the 3/4" sheet. Legs stay under the top.`,
+    stock.note,
     "Guidance only — level the top; do not rack the legs.",
   ];
 

@@ -720,6 +720,18 @@ export function tableSpanFromPrompt(prompt: string): number {
     const n = parseFloat(after[1]);
     if (ok(n)) return n;
   }
+  // "table with 4x4 legs 36 inches" — lumber nominals are not the span.
+  const stripped = t.replace(
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    " ",
+  );
+  const leftover = stripped.match(
+    new RegExp(String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`, "i"),
+  );
+  if (leftover && /\btable\b/i.test(stripped)) {
+    const n = parseFloat(leftover[1]);
+    if (ok(n)) return n;
+  }
   return NaN;
 }
 

@@ -191,6 +191,28 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "lumber-4x4-8",
+    retailer: "homedepot",
+    title: "4x4x8 fir post (3-1/2\" actual)",
+    href: "https://www.homedepot.com/s/4x4x8%20post",
+    packQty: 1,
+    packPrice: 14.5,
+    lengthIn: 96,
+    widthIn: 3.5,
+    thickIn: 3.5,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "closet-rod",
+    retailer: "homedepot",
+    title: '1-1/4" closet rod, 8 ft',
+    href: "https://www.homedepot.com/s/1-1%2F4%20inch%20closet%20rod",
+    packQty: 1,
+    packPrice: 14,
+    lengthIn: 96,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "plywood-3-4-4x8",
     retailer: "homedepot",
     title: "3/4\" x 4x8 Sande sanded plywood",
@@ -896,6 +918,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/skewer/.test(hay)) return "bamboo-skewer-12";
   if (/paper towel/.test(hay)) return "paper-towel-roll";
   if (/straw/.test(hay)) return "straw-plastic";
+  if (/4\s*[x×]\s*4|four by four/.test(hay)) return "lumber-4x4-8";
   if (/2\s*[x×]\s*12/.test(hay)) return /2\s*[x×]\s*12\s*[x×]\s*10|10\s*(?:ft|foot|feet)|\b120\b/.test(hay) ? "lumber-2x12-10" : "lumber-2x12-8";
   if (/2\s*[x×]\s*10/.test(hay)) return /2\s*[x×]\s*10\s*[x×]\s*10|10\s*(?:ft|foot|feet)|\b120\b/.test(hay) ? "lumber-2x10-10" : "lumber-2x10-8";
   if (/2\s*[x×]\s*2|two by two/.test(hay)) return "lumber-2x2-8";
@@ -940,6 +963,7 @@ function guessCatalogId(line: BomLine): string | null {
   const hw = hardwareCatalogIdFromHay(hay);
   if (hw) return hw;
   if (/shelf pin/.test(hay)) return "shelf-pins";
+  if (/closet rod/.test(hay) && !/socket|flange/.test(hay)) return "closet-rod";
   if (/rod socket|rod flange|closet rod socket/.test(hay)) return "closet-rod-sockets";
   if (/flashing|sill pan/.test(hay)) return "flashing-tape";
   if (/shim/.test(hay)) return "shims";

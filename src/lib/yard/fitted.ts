@@ -474,12 +474,35 @@ function isBarePlanPair(lower: string): boolean {
 }
 
 function triple(text: string): { w?: number; h?: number; d?: number } {
+  // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
+  const stripped = text.replace(
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    " ",
+  );
   // Optional axis words between numbers so "42 long × 24 wide × 18 tall" still triples.
-  const m = text.match(
+  const m = stripped.match(
     /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length|wide|width|deep|depth|tall|high|height)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:long|length|wide|width|deep|depth|tall|high|height)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
   );
   if (!m) return {};
   return { w: parseFloat(m[1]), h: parseFloat(m[2]), d: m[3] ? parseFloat(m[3]) : undefined };
+}
+
+/** Mattress class. Width is across the sleeper, length is head to foot. */
+function mattressDeck(lower: string): { width: number; length: number } | null {
+  if (/cal(?:ifornia)?\s*king/.test(lower)) return { width: 72, length: 84 };
+  if (/\bking\b/.test(lower)) return { width: 76, length: 80 };
+  if (/\bqueen\b/.test(lower)) return { width: 60, length: 80 };
+  if (/\bfull\b|\bdouble\b/.test(lower)) return { width: 54, length: 75 };
+  if (/\btwin\b/.test(lower)) return { width: 39, length: 75 };
+  return null;
+}
+
+/** Bunk / loft frame is a couple inches wider than the mattress. An unnamed bunk stays the usual twin 42. */
+function framedSleep(lower: string): { width: number; length: number } {
+  const m = mattressDeck(lower);
+  if (!m) return { width: 42, length: 75 };
+  if (m.width <= 39) return { width: 42, length: m.length };
+  return { width: m.width + 2, length: m.length };
 }
 
 export function parseBrief(prompt: string): FittedSpec | null {
@@ -704,6 +727,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
             ? 40
             : program === "media"
               ? 60
+              : isDaybed(lower)
+                ? (mattressDeck(lower)?.length ?? 75)
               : program === "bench"
                 ? 48
               : isBedsideShelf(lower)
@@ -711,9 +736,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
               : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
                 ? 20
                 : isPlatformBed(lower)
-                  ? /queen/.test(lower)
-                    ? 60
-                    : 54
+                  ? (mattressDeck(lower)?.width ?? 54)
                 : isLaundryFoldDown(lower)
                   ? 48
                 : isIroningCabinet(lower)
@@ -726,16 +749,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 24
                 : /range\s*hood|\bhood\b/.test(lower)
                   ? 30
-                : isDaybed(lower)
-                  ? 75
                 : isSofaConsoleTable(lower)
                   ? 48
                 : isBunkBed(lower) || isLoftBed(lower)
-                  ? /queen/.test(lower)
-                    ? 62
-                    : /full|double/.test(lower)
-                      ? 56
-                      : 42
+                  ? framedSleep(lower).width
                 : /headboard/.test(lower)
                   ? /king/.test(lower)
                     ? 76
@@ -997,11 +1014,15 @@ export function parseBrief(prompt: string): FittedSpec | null {
         height = trip.d;
       } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
     } else if (program === "bench") {
-      height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 18;
-      if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
-        depth = trip.h;
-        height = trip.d;
-      } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+      if (isDaybed(lower) && !/(?:tall|high|height)\b/.test(lower)) {
+        height = 22;
+      } else {
+        height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 18;
+        if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
+          depth = trip.h;
+          height = trip.d;
+        } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+      }
     } else if (program === "vanity") {
       if (trip.h && trip.h >= 48) height = trip.h;
       else if (trip.h && trip.h < 42) {
@@ -1122,15 +1143,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     : isKitchenUpper(lower)
                       ? 12
                     : isDaybed(lower)
-                      ? 39
+                      ? (mattressDeck(lower)?.width ?? 39)
                     : isPlatformBed(lower)
-                      ? /queen/.test(lower)
-                        ? 80
-                        : 75
+                      ? (mattressDeck(lower)?.length ?? 75)
                     : isBunkBed(lower) || isLoftBed(lower)
-                      ? /queen/.test(lower)
-                        ? 80
-                        : 75
+                      ? framedSleep(lower).length
                     : isBedsideShelf(lower)
                       ? 8
                     : isPictureLedge(lower)
@@ -5073,9 +5090,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       for (let b = 0; b < bayN; b++) {
         const x = x0 + P + b * (clear + P);
         panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, rodY, D * 0.45, clear, 1.25, 1.25));
+        panels[panels.length - 1].materialId = "closet-rod";
       }
     } else {
       panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
+      panels[panels.length - 1].materialId = "closet-rod";
     }
   }
 
