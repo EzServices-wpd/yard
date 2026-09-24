@@ -58,20 +58,31 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   const saidSquare = promptShape === "square";
   const saidLegs = /\d+\s*-?\s*legs?/.test(lower);
   const saidTableSpan = Number.isFinite(tableSpanFromPrompt(prompt));
+  // "70 in by 28 in" is a footprint. A third number (48x36x24) is not.
+  const saidFootprintPair =
+    /\d+(?:\.\d+)?\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*\d+(?:\.\d+)?/i.test(prompt) &&
+    !/\d+(?:\.\d+)?\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*\d+/i.test(
+      prompt,
+    ) &&
+    !saidWide &&
+    !saidDeep &&
+    !saidTall &&
+    !saidLong;
+  const lockFootprint = saidFootprintPair && parsed.program === "table";
   const tableShapeSaid = saidRound || saidOval || saidSquare || saidLong;
 
   const unit = { ...brief.unit };
   const opening = { ...brief.opening };
 
-  if (saidWide || saidRound || saidOval || saidLong || saidSquare || saidTableSpan) {
+  if (saidWide || saidRound || saidOval || saidLong || saidSquare || saidTableSpan || lockFootprint) {
     unit.width = parsed.unit.width;
     opening.width = parsed.opening.width;
   }
-  if (saidDeep || saidRound || saidOval || saidLong || saidSquare || saidTableSpan) {
+  if (saidDeep || saidRound || saidOval || saidLong || saidSquare || saidTableSpan || lockFootprint) {
     unit.depth = parsed.unit.depth;
     opening.depth = parsed.opening.depth;
   }
-  if (saidTall || saidOval || saidSquare || saidLong || saidTableSpan) {
+  if (saidTall || saidOval || saidSquare || saidLong || saidTableSpan || lockFootprint) {
     unit.height = parsed.unit.height;
     opening.height = parsed.opening.height;
   }
@@ -247,7 +258,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
       : `${shapePrefix}${label} ${unit.width}" × ${unit.height}" × ${unit.depth}"`;
   // Prefer local parseBrief table title when the prompt named a top shape / long axis.
   const tableLocalName =
-    parsed.program === "table" && (tableShapeSaid || saidTableSpan) && parsed.name ? parsed.name : null;
+    parsed.program === "table" && (tableShapeSaid || saidTableSpan || lockFootprint) && parsed.name ? parsed.name : null;
   // AI few-shot sometimes returns naked "Media" / "Media unit" — never keep that over a positive stem.
   const briefNakedMedia = !!brief.name && /^Media(\s+unit)?(\s|\d|$)/i.test(brief.name.trim());
   // AI few-shot sometimes returns naked "Bench" on a named sit (dining/hall/entry/…) — keep stem.
@@ -266,6 +277,7 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
     !saidSquare &&
     !saidLong &&
     !saidTableSpan &&
+    !lockFootprint &&
     !identity &&
     !mediaLabel &&
     !(/coat/.test(lower) && /rack/.test(lower)) &&

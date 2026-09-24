@@ -59,7 +59,7 @@ function pickLabeled(text: string, axis: RegExp): number | undefined {
 
 function unlabeledTriple(text: string): { a: number; b: number; c?: number } | null {
   const m = stripLumber(text).match(
-    /(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
+    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
   );
   if (!m) return null;
   const a = parseFloat(m[1]);
@@ -173,6 +173,12 @@ export function typedExtents(prompt: string): TypedExtents | null {
         out.depth = trip.c;
       }
       out.labeled = { width: true, height: true, depth: true };
+    } else if (program === "table") {
+      // "70 in by 28 in" is the plan, not a 28" tall square. Height stays the class default.
+      out.width = trip.a;
+      out.depth = trip.b;
+      out.height = undefined;
+      out.labeled = { width: true, height: false, depth: true };
     } else if (furniture && trip.b < 20) {
       out.width = trip.a;
       out.depth = trip.b;

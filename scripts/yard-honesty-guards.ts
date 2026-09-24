@@ -254,6 +254,26 @@ if (Number.isFinite(tableSpanFromPrompt("40 inch round 3-leg table"))) {
 if (!nearInch(tableSpanFromPrompt("give me a 70 inch table"), 70)) {
   failHonesty("tableSpanFromPrompt missed 70 inch table", tableSpanFromPrompt("give me a 70 inch table"));
 }
+const pair70 = expectTableAprons("70 in by 28 in table", { legs: 4 });
+if (!nearInch(pair70.overall.width, 70) || !nearInch(pair70.overall.depth, 28) || !nearInch(pair70.overall.height, 30)) {
+  failHonesty("70 in by 28 in table is not a 70×28 footprint", pair70.overall);
+}
+const pairBare = expectTableAprons("70 in by 28 in", { legs: 4 });
+if (!nearInch(pairBare.overall.width, 70) || !nearInch(pairBare.overall.depth, 28) || !nearInch(pairBare.overall.height, 30)) {
+  failHonesty("bare 70 in by 28 in is not a 70×28 table", pairBare.overall);
+}
+const frontApron = pair70.panels.find((p) => /front apron/i.test(p.name));
+const sideApron = pair70.panels.find((p) => /left apron/i.test(p.name));
+if (!frontApron || frontApron.size.width < 50) {
+  failHonesty("70×28 front apron does not span the length void", frontApron?.size);
+}
+if (!sideApron || sideApron.size.depth < 14) {
+  failHonesty("70×28 side apron does not span the depth void", sideApron?.size);
+}
+const top = pair70.panels.find((p) => p.type === "top");
+if (!top || !nearInch(top.size.width, 70) || !nearInch(top.size.depth, 28)) {
+  failHonesty("70×28 top does not fill the typed plan", top?.size);
+}
 const coffee = expectTableAprons("coffee table 48 round", { legs: 3, round: true });
 const dining = expectTableAprons("table 48 wide 30 high 36 deep", { legs: 4 });
 

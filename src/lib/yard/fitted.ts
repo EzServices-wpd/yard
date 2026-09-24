@@ -417,6 +417,8 @@ export function looksLikeFitted(prompt: string) {
   if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
     return true;
   }
+  // "70 in by 28 in" with no other noun is a table footprint, not a craft wire.
+  if (isBarePlanPair(lower)) return true;
   if (!BUILDER.test(lower)) return false;
   if (/vanity|closet|desk|bookcase|bookshelf|pantry|wardrobe|linen|mudroom|media cons|console|\btv\b|sideboard|table|prep\s*table|butcher|cart|shelving|alcove|built-?in|system|nightstand|bedside|dresser|hutch|island|cabinet|shelves|shelf|\bledge\b|storage|\brack\b|crate|headboard|bunk|loft\s*bed|day\s*bed|platform\s*beds?|shoe|coat|towel|range\s*hood|\bhood\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|entertainment|ironing|laundry|sorter|drying|utility|folding\s*table/.test(lower)) {
     return true;
@@ -451,7 +453,17 @@ export function detectProgram(lower: string): FittedProgram {
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
   if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
+  if (isBarePlanPair(lower)) return "table";
   return "storage";
+}
+
+/** "70 in by 28 in" / "give me a 70 by 28" — two plan numbers, no other noun. */
+function isBarePlanPair(lower: string): boolean {
+  const t = lower
+    .replace(/^(?:please\s+)?(?:give me|make me|build me|i need|i want)\s+(?:a|an)?\s*/i, "")
+    .trim();
+  if (BUILDER.test(t) || MAKER.test(t) || CRAFT.test(t)) return false;
+  return /^\d+(?:\.\d+)?\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches|")?$/.test(t);
 }
 
 function triple(text: string): { w?: number; h?: number; d?: number } {
@@ -796,6 +808,22 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
     if (Number.isFinite(labeledTall)) height = labeledTall;
     if (Number.isFinite(labeledDeep)) depth = labeledDeep;
+
+    // Unlabeled pair is the footprint, not the height.
+    // "70 in by 28 in" → 70 wide × 30 high × 28 deep (fills that plan).
+    // A third number stays laundry W×H×D ("48x36x24").
+    if (
+      !isOval &&
+      !isSquareTop &&
+      trip.w &&
+      trip.h &&
+      !trip.d &&
+      !/(?:wide|width|deep|depth|tall|high|height|long|length)/.test(lower)
+    ) {
+      width = trip.w;
+      depth = trip.h;
+      if (!Number.isFinite(labeledTall)) height = /coffee/.test(lower) ? 18 : 30;
+    }
 
     // Bare oval/square triples: typed order is long×wide×tall (plan L×plan W×H), not laundry W×H×D.
     // "oval coffee table 42×24×18" → W42 × H18 × D24; "square dining 36×36×30" → W=D=36 H=30.
