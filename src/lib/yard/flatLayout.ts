@@ -75,8 +75,11 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
       ));
   // Bamboo / craft picture frame is a stick-native flat frame — not a densified 3D scaffold box.
   const craftPictureFrame =
-    /(?:picture|photo)\s*frame|craft\s*frame/.test(lower) &&
-    /bamboo|skewer|popsicle|craft\s*stick|jumbo/.test(lower);
+    ((/(?:picture|photo)\s*frame|craft\s*frame/.test(lower) &&
+      /bamboo|skewer|popsicle|craft\s*stick|jumbo/.test(lower)) ||
+      (/\bframe\b/.test(lower) &&
+        /bamboo|skewer/.test(lower) &&
+        /photo|picture|print|\d+\s*[x×]\s*\d+/.test(lower)));
 
   if (!flatCue && !craftPictureFrame) return null;
 
@@ -101,7 +104,8 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
 /** Print opening on a craft picture frame (5×7, 4×6, 8×10). Not 1×2 / 1×4 stock. */
 function pictureOpeningIn(prompt: string): { w: number; h: number } | null {
   const lower = prompt.toLowerCase();
-  if (!/(?:picture|photo)\s*frame|craft\s*frame/.test(lower)) return null;
+  if (!/(?:picture|photo)\s*frame|craft\s*frame|\bframe\b/.test(lower)) return null;
+  if (!/(?:picture|photo)\s*frame|craft\s*frame/.test(lower) && !/photo|picture|print/.test(lower)) return null;
   const m = lower.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
   if (!m) return null;
   const a = parseFloat(m[1]);

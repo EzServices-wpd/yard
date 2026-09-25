@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
@@ -174,8 +174,9 @@ export function typedExtents(prompt: string): TypedExtents | null {
         out.depth = trip.c;
       }
       out.labeled = { width: true, height: true, depth: true };
-    } else if (program === "table") {
-      // "70 in by 28 in" is the plan, not a 28" tall square. Height stays the class default.
+    } else if (program === "table" || isPlanterBox(lower)) {
+      // "70 in by 28 in" and "4 foot by 8 foot" raised bed are the plan, not a tall wall.
+      // Height stays the class default (dining 30 / coffee 18 / planter ~16).
       out.width = trip.a;
       out.depth = trip.b;
       out.height = undefined;

@@ -920,7 +920,23 @@ export function isDaybed(lower: string) {
 export function isPlatformBed(lower: string) {
   if (isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower)) return false;
   if (/raised (garden )?bed|garden box|flower bed|planter/.test(lower) && !/plant\s*stand|pot\s*stand/.test(lower)) return false;
-  return /platform\s*beds?\b/.test(lower) || (/\bplatform\b/.test(lower) && /\bbeds?\b/.test(lower));
+  const namedStock =
+    /popsicle|craft\s*sticks?|toothpicks?|\bskewers?\b|\bstraws?\b|\bdowels?\b|\bpvc\b|plywood|\b[124]\s*[x×]\s*\d+|\bpine\b|\boak\b|\bcedar\b|\bwalnut\b|\bmaple\b|\bcherry\b|\bfir\b|\bspruce\b|\bpoplar\b|\bbamboo\b/.test(
+      lower,
+    );
+  const mattressBed =
+    /\b(?:bed\s*frames?|beds?)\b/.test(lower) &&
+    /mattress|\bking\b|\bqueen\b|\btwin\b|\bfull\b|cal(?:ifornia)?\s*king/.test(lower) &&
+    !namedStock &&
+    !/doll|crib|headboard|\bdog\b|\bpet\b|\bcat\b|planter|garden/.test(lower);
+  return (
+    /platform\s*beds?\b/.test(lower) ||
+    (/\bplatform\b/.test(lower) && /\bbeds?\b/.test(lower)) ||
+    (/\bplatform\b/.test(lower) &&
+      /mattress|\bking\b|\bqueen\b|\btwin\b|\bfull\b|cal(?:ifornia)?\s*king/.test(lower) &&
+      !/plant|pot|monitor|umbrella|lamp|stand/.test(lower)) ||
+    mattressBed
+  );
 }
 
 /** Prompt asks to cradle a real book upright (envelope + lip, never a decal). */
@@ -1048,6 +1064,7 @@ export function identityTitleStem(lower: string): string | null {
     return "Kitchen cart";
   }
   if (isDiningTable(lower)) return "Dining table";
+  if (/changing(?:\s*pad)?\s*tables?/.test(lower)) return "Changing table";
   if (isSlotRack(lower)) return slotRackTitle(lower);
   if (isOpenKitchenShelving(lower)) {
     if (/open\s+kitchen\s+shelving|kitchen\s+shelving/.test(lower)) return "Open kitchen shelving";
@@ -1251,6 +1268,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isUtilityShelf(lower) &&
     !isIroningWallMount(lower) &&
     !isPlanterBox(lower) &&
+    !isPlatformBed(lower) &&
     !isSeatingLoungeClass(lower) &&
     !isOutdoorSideTable(lower) &&
     !isToyChest(lower) &&

@@ -260,7 +260,8 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     );
   }
   if (isAdirondackChair(pl)) {
-    const seatM = pl.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
+    const seatHay = pl.replace(/\b\d\s*[x×]\s*\d+\b/g, " ");
+    const seatM = seatHay.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″'])?\s*seat\s*height|seat\s*height[^\d]{0,16}(\d+(?:\.\d+)?)/);
     const seat = seatM ? seatM[1] || seatM[2] : null;
     notes.unshift(
       seat

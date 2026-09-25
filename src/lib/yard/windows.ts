@@ -104,12 +104,45 @@ export function matchStockWindows(roW: number, roH: number) {
   });
 }
 
-function windowSizeFromPrompt(prompt: string): { w: number; h: number } | null {
-  const m = prompt.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/i);
-  if (!m) return null;
-  const w = parseFloat(m[1]);
-  const h = parseFloat(m[2]);
-  if (w < 12 || h < 12) return null;
+/** Call size from the prompt. Feet become inches. "24 wide by 18 tall" is not a catalog snap. */
+export function windowSizeFromPrompt(prompt: string): { w: number; h: number } | null {
+  const lower = prompt.toLowerCase().replace(/[″]/g, '"').replace(/[′]/g, "'");
+  const unit = String.raw`(ft|foot|feet|in|inch|inches|"|')?`;
+  const asIn = (n: number, u?: string) => (u && /ft|foot|feet|'/.test(u) ? n * 12 : n);
+  const ok = (w: number, h: number) => w >= 12 && h >= 12 && w <= 240 && h <= 240;
+  const labeled = lower.match(
+    new RegExp(
+      String.raw`(\d+(?:\.\d+)?)\s*${unit}\s*(?:wide|width)\s*(?:and|by|x|×|,)?\s*(\d+(?:\.\d+)?)\s*${unit}\s*(?:tall|high|height)`,
+    ),
+  );
+  if (labeled) {
+    const w = asIn(parseFloat(labeled[1]), labeled[2]);
+    const h = asIn(parseFloat(labeled[3]), labeled[4]);
+    if (ok(w, h)) return { w, h };
+  }
+  const labeledHw = lower.match(
+    new RegExp(
+      String.raw`(\d+(?:\.\d+)?)\s*${unit}\s*(?:tall|high|height)\s*(?:and|by|x|×|,)?\s*(\d+(?:\.\d+)?)\s*${unit}\s*(?:wide|width)`,
+    ),
+  );
+  if (labeledHw) {
+    const h = asIn(parseFloat(labeledHw[1]), labeledHw[2]);
+    const w = asIn(parseFloat(labeledHw[3]), labeledHw[4]);
+    if (ok(w, h)) return { w, h };
+  }
+  const ftPair = lower.match(
+    /(\d+(?:\.\d+)?)\s*(?:ft|foot|feet|')\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:ft|foot|feet|')?/,
+  );
+  if (ftPair) {
+    const w = parseFloat(ftPair[1]) * 12;
+    const h = parseFloat(ftPair[2]) * 12;
+    if (ok(w, h)) return { w, h };
+  }
+  const pair = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/);
+  if (!pair) return null;
+  const w = parseFloat(pair[1]);
+  const h = parseFloat(pair[2]);
+  if (!ok(w, h)) return null;
   return { w, h };
 }
 
@@ -714,13 +747,27 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
   ];
 }
 
+/** A sized door ("32 inches wide by 80 tall", "36in by 80in") is a prehung opening, not a tower. */
+function bareSizedDoor(lower: string): boolean {
+  if (/\bwindows?\b/.test(lower)) return false;
+  if (!/\bdoors?\b/.test(lower)) return false;
+  if (
+    /cabinet|vanity|drawer|crate|ironing|cupboard|hutch|bookcase|wardrobe|pantry|closet/.test(lower) &&
+    !/prehung|(?:exterior|entry|front|french)\s+doors?/.test(lower)
+  ) {
+    return false;
+  }
+  return /\d/.test(lower);
+}
+
 export function looksLikeDoorFrame(prompt: string) {
   const lower = prompt.toLowerCase();
   if (/\bwindows?\b/.test(lower)) return false;
   if (
     !/prehung|(?:exterior|entry|front|french|passage|interior|slab)\s+doors?|door\s+rough\s+opening|frame\s+(?:a\s+|the\s+)?door|door\s+frame|bypass\s+doors?|pocket\s+doors?/.test(
       lower,
-    )
+    ) &&
+    !bareSizedDoor(lower)
   ) {
     return false;
   }

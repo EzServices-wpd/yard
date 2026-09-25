@@ -765,7 +765,10 @@ export function nounSpanFromPrompt(prompt: string): number {
   );
   if (after) {
     const n = parseFloat(after[1]);
-    if (ok(n)) return n;
+    const at = after.index ?? 0;
+    const tail = t.slice(at + after[0].length, at + after[0].length + 24);
+    // "bookshelf about 72 inch tall" is the height, not a 72" wide case.
+    if (!/^\s*(?:in|inch|inches|")?\s*(?:tall|high|height|deep|depth|long|length)\b/i.test(tail) && ok(n)) return n;
   }
   return NaN;
 }

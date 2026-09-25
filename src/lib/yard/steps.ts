@@ -2350,7 +2350,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       return ` Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`;
     }
     if (isAdirondackChair(pl)) {
-      const seatM = pl.match(/(\d+(?:\.\d+)?)\s*["″']?\s*seat\s*height|seat\s*height[^\d]{0,12}(\d+(?:\.\d+)?)/);
+      const seatHay = pl.replace(/\b\d\s*[x×]\s*\d+\b/g, " ");
+      const seatM = seatHay.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″'])?\s*seat\s*height|seat\s*height[^\d]{0,16}(\d+(?:\.\d+)?)/);
       const seat = seatM ? seatM[1] || seatM[2] : null;
       return seat
         ? ` Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`

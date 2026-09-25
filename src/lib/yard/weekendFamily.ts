@@ -37,7 +37,7 @@ const LAUNCHER_NOUN =
 
 /** Picture/easel/cookbook OR a real device/print lean-stand that binds tip angle + envelope. */
 const MEDIA_HOLD_NOUN =
-  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|phone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
+  /(?:picture|photo|poster|art)\s*(?:lean\s*)?frame|(?:picture|photo|art)\s*ledge|\bpicture\s*ledge\b|\bcraft\s*frame\b|lean\s*frame|\beasel\b|cookbook|recipe\s+book|recipe[- ]?card|\bphone\s*(?:lean\s*)?stand|lean\s*stand|laptop\s*lean|(?:tablet|device|book|photo|laptop|music\s*sheet|sheet\s*music|recipe[- ]?card)\s*(?:stand|lean)|music\s*sheet|sheet\s*music|tablet\s*lean|open\s+(?:book|laptop)|\b(?:phone|laptop)\b.{0,48}(?:\d+\s*°|\d+\s*deg(?:rees)?|tip|lean|hold|stand)|holds?\s+a\s+(?:real\s+)?(?:open\s+)?(?:phone|tablet|device|laptop|book|cookbook|\bprint\b|photo|sheet|music\s*sheet|card|4\s*[×x]\s*6|5\s*[×x]\s*7|8\s*[×x]\s*10)|(?:real\s+)?(?:4\s*[×x]\s*6\s*|5\s*[×x]\s*7\s*|8\s*[×x]\s*10\s*)?(?:\bprint\b|\bcard\b)|recipe\s+video|\d+\s*°\s*tip/;
 /** Plant / pot / hamper / umbrella / hose-reel / monitor / floor-lamp stand that holds a real pot, laundry basket, umbrellas, hose reel, monitor, or lamp base upright — envelope + densify, not a Tree / Storage / Lattice / Orbit silhouette. */
 const POT_HOLD_NOUN =
   /plant\s*stand|pot\s*stand|figurine\s*stand|hamper\s*stand|laundry\s*hamper\s*stand|basket\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|floor\s*lamp(?:\s*stand)?|lamp\s*stand|holds?\s+a\s+real\s+.{0,48}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?|lamp(?:\s*base)?)\b|\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|monitors?|screens?|lamp(?:\s*base)?)\b.{0,40}upright|upright.{0,40}\b(?:pot|figurine|(?:laundry\s*)?basket|hamper|umbrellas?|hose\s*reel|lamp(?:\s*base)?)\b|\bfigurine\b.{0,40}(?:stand|base|tall|upright)|\bhamper\b.{0,40}(?:stand|basket|upright)|\bumbrellas?\b.{0,40}(?:stand|base|upright|envelope)|\bhose\s*reel\b.{0,40}(?:stand|upright|envelope|diameter|dia)|\bmonitors?\b.{0,40}(?:stand|riser|rise|envelope)|(?:floor\s*)?\blamp\b.{0,40}(?:stand|base|envelope|upright)|\blamp\s*base\b.{0,40}(?:diameter|dia|envelope|stand|upright)|(?:at\s+)?\d+\s*["″]?\s*rise/;
@@ -112,8 +112,8 @@ export function climbRiseRun(prompt: string): { rise: number; run: number } | nu
 export function launcherRampLengthIn(prompt: string): number | null {
   const hay = looksHay(prompt);
   const m =
-    hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:popsicle\s+)?(?:ramp|run|trough)/) ||
-    hay.match(/(?:ramp|run|trough)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
+    hay.match(/(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|["″])?\s*(?:popsicle\s+)?(?:ramp|run|trough)/) ||
+    hay.match(/(?:ramp|run|trough)[^\d]{0,16}(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|["″])?/) ||
     hay.match(/(\d+(?:\.\d+)?)\s*"?\s*popsicle/);
   if (!m) return null;
   const n = parseFloat(m[1]);
@@ -122,7 +122,7 @@ export function launcherRampLengthIn(prompt: string): number | null {
 
 export function isMediaDeviceStand(prompt: string): boolean {
   const hay = looksHay(prompt);
-  return /phone|tablet|device|laptop|lean\s*stand|tablet\s*lean|laptop\s*lean|recipe\s+video|recipe[- ]?card|real\s+phone|music\s*sheet|sheet\s*music|\bcard\b/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
+  return /\bphones?\b|tablet|device|laptop|lean\s*stand|tablet\s*lean|laptop\s*lean|recipe\s+video|recipe[- ]?card|real\s+phone|music\s*sheet|sheet\s*music|\bcard\b/.test(hay) && !/(?:picture|photo|poster|art)\s*frame/.test(hay);
 }
 
 /**
@@ -249,13 +249,13 @@ export function basketEnvelopeWhd(prompt: string): { w: number; d: number; h: nu
   const hay = looksHay(prompt);
   const near =
     hay.match(
-      /(?:basket|hamper|envelope|upright)[^\d]{0,48}(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)/,
+      /(?:basket|hamper|envelope|upright)[^\d]{0,48}(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/,
     ) ||
     hay.match(
-      /(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)[^\d]{0,48}(?:basket|hamper|upright|envelope)/,
+      /(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)[^\d]{0,48}(?:basket|hamper|upright|envelope)/,
     );
   if (!near && /(?:basket|hamper)/.test(hay)) {
-    const any = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)\s*"?\s*[x×by]\s*(\d+(?:\.\d+)?)/);
+    const any = hay.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*"?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/);
     if (any) {
       const w = parseFloat(any[1]);
       const d = parseFloat(any[2]);
@@ -347,7 +347,10 @@ export function monitorEnvelopeIn(prompt: string): number | null {
   );
   if (trailing && !trailing[3]) {
     const n = parseFloat(trailing[1]);
-    if (Number.isFinite(n) && n > 0 && n < 60) return n;
+    const at = trailing.index ?? 0;
+    const after = hay.slice(at + trailing[0].length, at + trailing[0].length + 16);
+    // "monitor riser 24 wide" is the deck, not a 24″ screen.
+    if (!/^\s*(?:wide|width|deep|depth|tall|high)\b/.test(after) && Number.isFinite(n) && n > 0 && n < 60) return n;
   }
   return null;
 }
@@ -554,7 +557,8 @@ export function mediaHoldHeldLabel(prompt: string): string {
   if (/recipe[- ]?card|\bcard\b|4\s*[×x]\s*6/.test(hay) && !/phone|tablet/.test(hay)) return "recipe card";
   if (/print|photo|picture|5\s*[×x]\s*7|8\s*[×x]\s*10/.test(hay) && !/phone|tablet/.test(hay)) return "print";
   if (/laptop|open\s+laptop/.test(hay)) return "open laptop";
-  if (/phone/.test(hay)) return "phone";
+  if (/art\s*board|canvas|\beasel\b/.test(hay) && !/cookbook|recipe\s+book|open\s+book/.test(hay)) return "art board";
+  if (/\bphones?\b/.test(hay)) return "phone";
   if (/tablet|device/.test(hay)) return "device";
   if (/book/.test(hay)) return "open book";
   return "phone or tablet";
@@ -670,6 +674,10 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
 
   if (/garden\s*arch|arbor|arbour|pergola/.test(hay)) {
     return { family: "arch", override: "arch", kind: "arch", name: "Garden arch" };
+  }
+
+  if (/\btrellises?\b|\btrellis\b/.test(hay)) {
+    return { family: "frame", kind: "frame", name: "Trellis" };
   }
 
   if (/golden gate/.test(hay)) {

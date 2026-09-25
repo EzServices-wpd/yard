@@ -7,6 +7,7 @@
 import type { StructureKind } from "./types";
 import { detectHouseFamily, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
 import { detectWeekendFamily, detectWeekendMech, wantsPotHold } from "./weekendFamily";
+import { looksLikeDoorFrame } from "./windows";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
 
@@ -21,10 +22,6 @@ export type AnatomyHit = {
 
 const WINDOW_OPENING =
   /window|rough opening|\bro\b|andersen|pella|jeld-?wen|marvin|casement|double.?hung|single.?hung|awning|hopper/;
-/** Punched door openings — not a cabinet, closet, or vanity door. */
-const DOOR_FRAME =
-  /prehung|(?:exterior|entry|front|french|passage|interior|slab)\s+doors?|door\s+rough\s+opening|frame\s+(?:a\s+|the\s+)?door|door\s+frame|bypass\s+doors?|pocket\s+doors?/;
-const FURNITURE_WITH_DOOR = /cabinet|vanity|drawer|crate|ironing|closet|wardrobe|pantry|bookcase|cupboard|hutch/;
 const FITTED =
   /closet|wardrobe|pantry|built-?in|cabinet|shelv|linen|vanity|alcove|pocket space|bookcase|bookshelf|dresser|nightstand|mudroom|\bdesk\b|\btv\b|console|sideboard|\btable\b|media unit|storage system|\brack\b|crate|headboard|shoe|coat|island|hutch|range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b|\bbench\b|\bseat\b|cubb|\bledge\b|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
@@ -54,14 +51,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     /\d+\s*(?:x|×|by)\s*\d+/.test(hay);
   if ((WINDOW_OPENING.test(hay) || sliderWindow) && !/stained/.test(hay) && !/window seat/.test(hay))
     return { anatomy: "opening", kind: "opening" };
-  if (
-    DOOR_FRAME.test(hay) &&
-    !/window seat/.test(hay) &&
-    !(
-      FURNITURE_WITH_DOOR.test(hay) &&
-      !/prehung|door\s+rough|frame\s+(?:a\s+|the\s+)?door|door\s+frame|(?:exterior|entry|front|french)\s+doors?/.test(hay)
-    )
-  ) {
+  if (looksLikeDoorFrame(hay) && !/window seat/.test(hay)) {
     return { anatomy: "opening", kind: "opening" };
   }
   if (/\bladder\b/.test(hay)) return { anatomy: "carcase", kind: "ladder", named: "Ladder" };

@@ -27,6 +27,7 @@ const P = 0.75;
 
 function tableClassHeight(lower: string): number {
   if (/coffee|cocktail/.test(lower)) return 18;
+  if (/changing(?:\s*pad)?\s*tables?/.test(lower)) return 36;
   if (/bar\s*-?\s*height/.test(lower)) return 42;
   if (/counter\s*-?\s*height/.test(lower)) return 36;
   return 30;
@@ -375,6 +376,7 @@ export function looksLikeFitted(prompt: string) {
     isUtilityShelf(lower) ||
     isIroningWallMount(lower) ||
     isPlanterBox(lower) ||
+    isPlatformBed(lower) ||
     isOutdoorSideTable(lower) ||
     isSeatingLoungeClass(lower) ||
     isToyChest(lower) ||
@@ -716,6 +718,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!Number.isFinite(width) && /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(lower)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);
   }
+  if (!Number.isFinite(width) && (program === "media" || /\btv\b|television/.test(lower))) {
+    const diag = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tv|television)\b/i, NaN);
+    if (Number.isFinite(diag) && diag >= 32 && diag <= 120 && !/(?:wide|width)/.test(lower)) width = diag;
+  }
+  if (!Number.isFinite(width) && /\bcloset\b/.test(lower) && /\brod\b|\bpole\b/.test(lower)) {
+    const rodW = pick(t, /\brod\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?/i, NaN);
+    if (Number.isFinite(rodW) && rodW >= 18 && rodW <= 192) width = rodW;
+  }
   if (!Number.isFinite(width)) {
     width =
       trip.w ??
@@ -853,6 +863,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     if (Number.isFinite(labeledLong)) {
       width = labeledLong;
       if (Number.isFinite(labeledWide)) depth = labeledWide;
+      else if (trip.h && !trip.d && !Number.isFinite(labeledDeep)) depth = trip.h;
+      // "84 inches long" is one plan axis. Do not square it into an 84×84 top.
+      else if (!trip.h && !Number.isFinite(labeledDeep)) depth = /coffee/.test(lower) ? 22 : 36;
     } else if (Number.isFinite(labeledWide)) {
       width = labeledWide;
     }
@@ -876,6 +889,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
       width = trip.w;
       depth = trip.h;
       height = tableClassHeight(lower);
+    }
+
+    // "36 by 24 and 20 inches tall" — the pair is the top, the third number is height.
+    if (
+      trip.w &&
+      trip.h &&
+      !trip.d &&
+      Number.isFinite(height) &&
+      Math.abs(height - trip.w) > 0.05 &&
+      Math.abs(height - trip.h) > 0.05 &&
+      !Number.isFinite(labeledDeep) &&
+      !Number.isFinite(labeledWide)
+    ) {
+      width = trip.w;
+      depth = trip.h;
     }
 
     // Bare oval/square triples: typed order is long×wide×tall (plan L×plan W×H), not laundry W×H×D.
@@ -996,6 +1024,13 @@ export function parseBrief(prompt: string): FittedSpec | null {
         depth: Number.isFinite(depth),
       };
 
+  // A 4×8 raised bed is the footprint. The wall stays a bed height, not 8 feet tall.
+  if (isPlanterBox(lower) && trip.w && trip.h && !trip.d && !/(?:tall|high|height)\b/.test(lower)) {
+    width = trip.w;
+    depth = trip.h;
+    height = 16;
+  }
+
   if (!Number.isFinite(height) || height === 0) {
     if (program === "table") {
       const consumedAsDepth =
@@ -1008,11 +1043,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
       if (trip.h && trip.d) height = trip.h;
       else height = 22;
     } else if (program === "desk") {
-      height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
-      if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
-        depth = trip.h;
-        height = trip.d;
-      } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+      // "desk 4' by 20 inches deep" — 20 is depth. Desk height stays 29.
+      const pairIsDepth =
+        trip.h != null &&
+        !trip.d &&
+        Number.isFinite(depth) &&
+        Math.abs(depth - trip.h) < 0.05;
+      if (unlabeledWd || pairIsDepth) {
+        height = 29;
+      } else {
+        height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
+        if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
+          depth = trip.h;
+          height = trip.d;
+        } else if (trip.h && !Number.isFinite(depth)) depth = trip.h;
+      }
     } else if (program === "bench") {
       if (isDaybed(lower) && !/(?:tall|high|height)\b/.test(lower)) {
         height = 22;
@@ -4692,7 +4737,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           wantsLip
             ? `One cleat-mounted ${W}" × ${Df}" floating shelf with a front lip and Shelf backstop spanning ${outH}" — typed overall H, not a multi Floating shelves stack. ¾" plywood.`
             : /floating/.test(lowerPrompt)
-              ? `One cleat-mounted ${W}" × ${Df}" floating shelf on a Wall cleat — Shelf backstop spans typed ${outH}". ¾" plywood. No box — no uprights.`
+              ? `One cleat-mounted ${W}" × ${Df}" floating shelf on a Wall cleat — Shelf backstop is ${outH}"${/(?:tall|high|height)\b/.test(lowerPrompt) ? " (typed)" : ""}. ¾" plywood. No box — no uprights.`
               : `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`,
           "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
           "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",

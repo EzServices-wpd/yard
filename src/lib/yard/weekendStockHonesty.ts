@@ -89,6 +89,10 @@ export function namedStockDisplayName(prompt: string, item: CatalogItem | undefi
   if (!item) return "stock";
   // Lumber size row: prefer pack densifyLabel ("Oak 1×4") over bare catalog name / first-token alias.
   if (item.id === CATALOG_LUMBER_BIND || (/board|stud/i.test(item.name) && item.category === "lumber")) {
+    const species = namedLumberFromPrompt(prompt);
+    const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/gi, "×");
+    // Species default is 1×4. A spoken 2×4 / 1×3 keeps that size in the Buy name.
+    if (species && size && item.id !== CATALOG_LUMBER_BIND) return `${species.display} ${size}`;
     const packLabel = densifyLabelForPrompt(prompt);
     if (packLabel) return packLabel;
   }
@@ -357,10 +361,17 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       const tol = sizeTol(stock);
       const isBridge = /bridge|span|viaduct|overpass|trestle|golden gate|brooklyn/.test(prompt.toLowerCase());
       const bits: string[] = [];
-      if (isBridge && typed.width != null && Math.abs(project.overall.width - typed.width) > tol) {
+      const longOnly =
+        /\d+(?:\.\d+)?\s*(?:in|inch|inches|["″])?\s*long\b/.test(prompt.toLowerCase()) &&
+        !/(?:tall|high|height)\b/.test(prompt.toLowerCase());
+      const seatOnly =
+        /seat\s*height/.test(prompt.toLowerCase()) &&
+        !/(?:tall|high|height)\b/.test(prompt.toLowerCase().replace(/seat\s*height/g, " "));
+      if (longOnly && typed.width != null && Math.abs(project.overall.width - typed.width) > tol) {
+        bits.push(`length ${project.overall.width}" ≠ typed ${typed.width}"`);
+      } else if (isBridge && typed.width != null && Math.abs(project.overall.width - typed.width) > tol) {
         bits.push(`span ${project.overall.width}" ≠ typed ${typed.width}"`);
-      }
-      if (!isBridge && typed.height != null && Math.abs(project.overall.height - typed.height) > tol) {
+      } else if (!isBridge && !longOnly && !seatOnly && typed.height != null && Math.abs(project.overall.height - typed.height) > tol) {
         bits.push(`H ${project.overall.height}" ≠ typed ${typed.height}"`);
       }
       if (bits.length) {

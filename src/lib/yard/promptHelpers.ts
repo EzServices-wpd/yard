@@ -32,12 +32,17 @@ export function parseSize(lower: string): { height: number; width: number; depth
         ? parseFloat(ftAny[1]) * 12
         : null;
 
+  const feetArePlan = /(?:ft|foot|feet)\s*(?:wide|width|deep|depth|long|length)\b/.test(dimText);
   if (ftTall) height = parseFloat(ftTall[1]) * 12;
   else if (inTall) height = parseFloat(inTall[1]);
   else if (feetInches != null && isBridge) width = feetInches;
   else if (inAny && isBridge && !/wide|width|deep|depth/.test(dimText)) width = parseFloat(inAny[1]);
-  else if (feetInches != null) height = feetInches;
-  else if (inAny) height = parseFloat(inAny[1]);
+  else if (feetInches != null && !feetArePlan) height = feetInches;
+  else if (inAny) {
+    const after = dimText.slice((inAny.index ?? 0) + inAny[0].length, (inAny.index ?? 0) + inAny[0].length + 18);
+    // "60 inches wide" is width, not a 60" tall frame.
+    if (!/^\s*(?:wide|width|deep|depth|long|length)\b/.test(after)) height = parseFloat(inAny[1]);
+  }
 
   const pair = dimText.match(
     /(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/,
@@ -69,11 +74,30 @@ export function parseSize(lower: string): { height: number; width: number; depth
     width = 48;
     height = 84;
     depth = 16;
+  } else if (isArch && feetArePlan && height === 24) {
+    // "4 feet wide" is the span, not a 4-foot-tall arch.
+    height = 84;
+    if (depth === 24) depth = 16;
   }
   if (isBridge && width === 24 && height === 24) {
     width = 96;
     height = 24;
     depth = 18;
+  }
+
+  // A sandbox / cold frame pair is the footprint, not a tower.
+  if (/sandbox|cold\s*frame/.test(lower) && !/(?:tall|high|height)\b/.test(dimText)) {
+    const box = dimText.match(
+      /(\d+(?:\.\d+)?)\s*(ft|foot|feet|in|inch|inches)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\s*(ft|foot|feet|in|inch|inches)?/,
+    );
+    if (box) {
+      const feetish = (u?: string) => !!u && /^f/.test(u);
+      const mul = (n: string, u?: string, other?: string) =>
+        parseFloat(n) * (feetish(u) || (!u && feetish(other)) ? 12 : 1);
+      width = mul(box[1], box[2], box[4]);
+      depth = mul(box[3], box[4], box[2]);
+      height = /cold/.test(lower) ? 12 : 16;
+    }
   }
 
   // Soft-launch / marble trough: typed run length is the envelope long axis.
@@ -94,6 +118,8 @@ export function parseSize(lower: string): { height: number; width: number; depth
         // Keep typed axes; force the longest horizontal to the run length.
         if (depth >= width) depth = long;
         else width = long;
+        // "24 inch ramp" is the run, not the height.
+        if (Math.abs(height - rampLen) < 0.05 && !/(?:tall|high)\b/.test(dimText)) height = rise;
       }
     }
   }
@@ -107,8 +133,8 @@ export function parseSize(lower: string): { height: number; width: number; depth
     const tallM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tall|high)\b/);
     const wideM = dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:wide|width)\b/);
     const device =
-      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)/) ||
-      dimText.match(/(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)\s*"?/) ||
+      dimText.match(/(\d+(?:\.\d+)?)\s*"?\s*(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)(?!\s*(?:°|deg))/) ||
+      dimText.match(/(?:tablet|ipad|device|phone|laptop|sheet|print|photo|card)[^\d]{0,12}(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:°|deg))/) ||
       dimText.match(/open\s+(\d+(?:\.\d+)?)\s*"?\s*laptop/);
     // Phone / lean: honor labeled tall × wide (e.g. 6" tall × 3" wide at 20° tip).
     if (tallM && wideM && /phone|charging\s*lean|(?:phone|tablet).{0,24}lean|lean.{0,24}phone/.test(dimText)) {
@@ -158,6 +184,12 @@ export function parseSize(lower: string): { height: number; width: number; depth
       }
       depth = Math.max(3, height * Math.sin(rad) + 1.5);
     }
+    // Face already sized (16×20 art board). A leftover 24″ depth is the cube, not the lean.
+    if (depth === 24 && (width !== 24 || height !== 24)) {
+      const tip = mediaHoldTipDeg(lower) ?? 15;
+      const rad = (tip * Math.PI) / 180;
+      depth = Math.max(3, height * Math.sin(rad) + 1.5);
+    }
   }
 
   // Plant / pot / hamper / monitor / floor-lamp stand: typed envelope binds upright stand (monitor: width + rise; lamp: base dia + height).
@@ -194,7 +226,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
         depth = 10;
       }
       if (uh != null) height = uh;
-      else if (height === 24) height = 22;
+      else if (height === 24 || (dia != null && Math.abs(height - dia) < 0.2)) height = 22;
     } else {
     const basket = isHamperHold(lower) ? basketEnvelopeWhd(lower) : null;
     if (basket) {
@@ -230,6 +262,38 @@ export function parseSize(lower: string): { height: number; width: number; depth
       height = rr.rise * steps;
       depth = rr.run * steps;
       if (width === 24) width = Math.max(12, Math.min(18, rr.run + 6));
+    }
+  }
+
+  if (/(?:picture|photo|poster|art)\s*frame/.test(dimText) && depth === 24) depth = 1.5;
+  if (/\btrellis\b/.test(lower) && depth === 24) depth = 2;
+  // 4×6 / 5×7 / 8×10 on a photo frame is the mat, not lumber and not a 24″ cube.
+  if (/(?:picture|photo)\s*frame|\bframe\b/.test(lower) && /photo|picture|print/.test(lower)) {
+    const print = lower.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+    if (print) {
+      const a = parseFloat(print[1]);
+      const b = parseFloat(print[2]);
+      const known =
+        (a === 4 && b === 6) ||
+        (a === 5 && b === 7) ||
+        (a === 8 && b === 10) ||
+        (a === 6 && b === 4) ||
+        (a === 7 && b === 5) ||
+        (a === 10 && b === 8);
+      if (known) {
+        width = Math.min(a, b) + 2;
+        height = Math.max(a, b) + 2;
+        depth = 0.5;
+      }
+    }
+  }
+
+  const longM = dimText.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*long\b/);
+  if (longM && /\bbed\b|bench|doll/.test(lower)) {
+    const L = parseFloat(longM[1]);
+    if (Number.isFinite(L) && L > 0) {
+      width = L;
+      if (Math.abs(height - L) < 0.05 && !/(?:tall|high|height)\b/.test(dimText)) height = 24;
     }
   }
 
@@ -438,6 +502,7 @@ export function weekendCraftStockPhrases(): [RegExp, string][] {
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft sticks?/, "popsicle-standard"],
+    [/(?:picture|photo)\s*frame.{0,40}\bbamboo\b|\bbamboo\b.{0,40}(?:picture|photo)\s*frame|\bbamboo\b.{0,40}\bframe\b.{0,40}(?:photo|picture|print)/, "bamboo-skewer-12"],
     // Plural-safe: "bamboo skewers" must not fall through to bare bamboo lumber.
     [/\bskewers?\b|bamboo sticks?|kebab sticks?/, "bamboo-skewer-12"],
   ];
@@ -479,11 +544,10 @@ export function detectMaterial(prompt: string): CatalogItem {
   const lower = prompt.toLowerCase();
   const phrases: [RegExp, string][] = [
     ...weekendCraftStockPhrases(),
-    // Named softwood/hardwood densify onto lumber-1x4 (spoken identity kept by namedStockDisplayName).
-    // Derived from NAMED_LUMBER_SPECIES pack — longest alias first (douglas fir / red oak before fir / oak).
-    // Caller places weekendCraftStockPhrases (bamboo skewers) ahead so bare bamboo lumber does not steal.
+    // "pine 2x4" / "oak 1x3" is that stick, not the species default 1×4.
+    ...weekendSizedStockPhrases().filter(([, id]) => id.startsWith("lumber-")),
     ...namedLumberDetectPhrases(),
-    ...weekendSizedStockPhrases(),
+    ...weekendSizedStockPhrases().filter(([, id]) => !id.startsWith("lumber-")),
   ];
   for (const [re, id] of phrases) {
     if (re.test(lower)) {
@@ -563,12 +627,12 @@ export function toProject(
     const typedW = typed.width;
     const mech = detectWeekendMech(prompt);
     // Pot-hold / media-hold: honor typed envelope (pot dia×tall / open laptop+tip), not min-8 pad inflate.
-    if (mech === "pot-hold" || mech === "media-hold" || /porch\s*swing|swing\s*frame/.test(prompt.toLowerCase())) {
+    if (mech === "pot-hold" || mech === "media-hold" || (mech === "launcher" && isLauncherRamp(prompt)) || /porch\s*swing|swing\s*frame/.test(prompt.toLowerCase())) {
       width = typed.width;
       height = typed.height;
       // Swing frame depth soft — keep densified depth when not typed deep.
       const depthTyped = /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(stripLumberStock(prompt.toLowerCase()));
-      if (depthTyped || mech === "pot-hold" || mech === "media-hold") depth = typed.depth;
+      if (depthTyped || mech === "pot-hold" || mech === "media-hold" || (mech === "launcher" && isLauncherRamp(prompt))) depth = typed.depth;
     } else if (typedH && Math.abs(spanY - typedH) <= 1.25) {
       height = typedH;
     } else if (kind === "frame" || kind === "ladder") {
@@ -625,6 +689,19 @@ export function toProject(
     width = Math.max(spanX, 4);
     height = Math.max(spanY, 6);
     depth = Math.max(spanZ, 1.5);
+  }
+  const thin =
+    /(?:picture|photo|poster|art)\s*frame/.test(prompt.toLowerCase()) || /\btrellis\b/.test(prompt.toLowerCase());
+  if (thin && (kind === "frame" || kind === "figure")) {
+    const typed = parseSize(prompt.toLowerCase());
+    if (typed.width > 0 && typed.width !== 24) width = typed.width;
+    if (typed.height > 0 && typed.height !== 24) height = typed.height;
+    depth = typed.depth;
+  }
+  const longBit = prompt.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*long\b/);
+  if (longBit && (kind === "furniture" || kind === "figure") && /\bbed\b|doll/.test(prompt.toLowerCase())) {
+    const L = parseFloat(longBit[1]);
+    if (Number.isFinite(L) && L >= 6 && L <= 96) width = L;
   }
   if (kind === "eiffel") {
     const publishedBase = height * (125 / 324);
