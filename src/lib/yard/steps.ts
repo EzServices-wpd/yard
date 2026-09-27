@@ -1422,15 +1422,49 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const floatingShelves =
-    ((project.panels.some((p) => /cleat/i.test(p.name)) ||
+    ((project.panels.some((p) => /cleat/i.test(p.name) || /bracket/i.test(p.name)) ||
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
       /shel/i.test(`${project.name} ${project.prompt ?? ""}`) &&
       !uprights.length);
   if (floatingShelves) {
     const cleats = rails.filter((p) => /cleat/i.test(p.name));
+    const brackets = rails.filter((p) => /bracket/i.test(p.name));
     const shelfBoards = shelves.length ? shelves : panels.filter((p) => p.type === "shelf");
     const lips = rails.filter((p) => /front lip|backstop/i.test(p.name));
+    // Spoken brackets path — shelf + N brackets (not cleat densify).
+    if (brackets.length && !cleats.length) {
+      return [
+        {
+          step: 1,
+          title: "Confirm the wall span — do not cut yet",
+          description: `${project.name}. 1 shelf board and ${brackets.length} bracket${brackets.length === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. Bracket-mounted — not a Wall cleat and not a tall Shelf backstop. This is not a box — there are no uprights.`,
+          tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
+          partsUsed: ["*"],
+        },
+        {
+          step: 2,
+          title: "Cut the shelf and brackets",
+          description: `${tool.how} ${sheetCuts.join(" ")} ${shelfBoards.map(cutLine).join("; ")}. ${brackets.map(cutLine).join("; ")}. Label the waste face.`,
+          tips: tool.tip,
+          partsUsed: names([...shelfBoards, ...brackets]),
+        },
+        {
+          step: 3,
+          title: "Lag each bracket into studs",
+          description: `${brackets.map(cutLine).join("; ")}. Level each bracket on the wall across the ${round(W)}" span, hit a stud, and drive 3" structural screws through the bracket into the stud. Space the ${brackets.length} bracket${brackets.length === 1 ? "" : "s"} evenly under the shelf.`,
+          tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+          partsUsed: names(brackets),
+        },
+        {
+          step: 4,
+          title: "Sit the shelf on the brackets and screw down",
+          description: `${shelfBoards.map(cutLine).join("; ")}. Set the shelf on the brackets so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into each bracket. No pins, no uprights, no box to slide into an opening.`,
+          tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out if you add glue.",
+          partsUsed: names([...shelfBoards, ...brackets]),
+        },
+      ];
+    }
     const promptLower = (project.prompt ?? "").toLowerCase();
     const bedside = isBedsideShelf(promptLower) || /bedside\s*shelf/i.test(project.name);
     const printHold = bedside && wantsPrintHold(promptLower) && !wantsBookHold(promptLower);

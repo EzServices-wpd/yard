@@ -232,6 +232,33 @@ function spokenArmCount(text: string): number | null {
 }
 
 /** Spoken bin count for laundry sorters ("three bins" / "3 bins"). */
+
+/** Spoken bracket count for wall/floating shelves ("two brackets" / "2 brackets"). */
+function spokenBracketCount(text: string): number | null {
+  const lower = text.toLowerCase();
+  const digit = lower.match(/\b(\d+)\s*brackets?\b/);
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 8) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    pair: 2,
+  };
+  const word = lower.match(/\b(one|two|three|four|five|six|pair)\s+brackets?\b/);
+  if (word && words[word[1]] != null) return words[word[1]];
+  // Bare "with brackets" / "bracketed" without a count → two (common pair).
+  if (/\bwith\s+brackets\b|\bbracketed\b/.test(lower) && !/\bwithout\s+brackets\b/.test(lower)) {
+    return 2;
+  }
+  return null;
+}
+
 function spokenBinCount(text: string): number | null {
   const lower = text.toLowerCase();
   const digit = lower.match(/\b(\d+)\s*bins?\b/);
@@ -1142,6 +1169,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 65
                     : isPictureLedge(lower)
                       ? 6
+                    : spokenBracketCount(t) != null && /shel/.test(lower)
+                      ? Math.min(8, Math.max(6, Number.isFinite(depth) ? depth : 8))
+                    : /floating/.test(lower) && /shel/.test(lower)
+                      ? 3.25
                     : /shelf/.test(lower) && !/bookcase|bookshelf/.test(lower)
                       ? 18
                     : isStorageHutch(lower)
@@ -4686,6 +4717,82 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       },
     };
   }
+  // Spoken N brackets on a wall/floating shelf: shelf board + N ply brackets.
+  // Not a cleat + tall Shelf backstop (that lied when people typed "two brackets").
+  const bracketN = spokenBracketCount(prompt);
+  if (
+    bracketN != null &&
+    /shel/.test(lowerPrompt) &&
+    (/floating|wall-?mounted|wall\s+shel/.test(lowerPrompt) || wallShelfCleats) &&
+    !/cabinet|jar|spice|wine|bottle|media|picture|bedside|cubb|bookcase|bookshelf/.test(lowerPrompt)
+  ) {
+    const depthTyped =
+      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
+    const Df = depthTyped ? D : Math.min(D, 8);
+    const heightTyped = /(?:tall|high|height)\b/i.test(prompt);
+    // Bracket rise: typed tall wins; else ~6–8″ under the shelf (not a silent 18″ backstop).
+    const bracketH = heightTyped
+      ? Math.max(4, Math.min(H > P ? H - P : H, 16))
+      : Math.min(8, Math.max(6, Df));
+    const outH = bracketH + P;
+    const bracketD = Math.max(3, Math.min(Df - 0.25, Df));
+    // Shelf sits on the brackets; thin ply brackets are type=rail (Arm / cleat class).
+    panels.push(panel("shelf", "Shelf", x0, bracketH, 0, W, P, Df));
+    const inset = Math.min(4, Math.max(2, W * 0.08));
+    const span = Math.max(0, W - inset * 2 - P);
+    for (let i = 0; i < bracketN; i++) {
+      const t = bracketN === 1 ? 0.5 : i / (bracketN - 1);
+      const bx = x0 + inset + t * span;
+      const label = bracketN === 1 ? "Bracket" : `Bracket ${i + 1}`;
+      panels.push(panel("rail", label, bx, 0, 0, P, bracketH, bracketD));
+    }
+    const floatStem = /floating/.test(lowerPrompt) ? "Floating shelf" : "Wall shelf";
+    const name = classDefaultDensifyTitle(floatStem, prompt, { width: W, height: outH, depth: Df });
+    const assumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df });
+    return {
+      id: createId("proj"),
+      name,
+      prompt,
+      kind: "closet",
+      overall: { width: W, height: outH, depth: Df },
+      instances: [],
+      panels,
+      primaryMaterialId: PLY,
+      notes: [
+        `${name}. One ${W}" × ${Df}" shelf on ${bracketN} plywood bracket${bracketN === 1 ? "" : "s"} — not a Wall cleat, not a tall Shelf backstop, not a multi Wall shelves stack. ¾" plywood.`,
+        `Lag each bracket into studs; sit the shelf on the brackets and screw down. Guidance only — confirm the wall type.`,
+        "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
+        ...assumed,
+      ],
+      historic: false,
+      opening: { width: W, height: outH, depth: Df, kind: "room" },
+      fitted: {
+        ...spec,
+        name,
+        unit: {
+          ...u,
+          width: W,
+          height: outH,
+          depth: Df,
+          doors: false,
+          drawersPerBank: undefined,
+          shelfCount: 1,
+        },
+        opening: { width: W, height: outH, depth: Df, kind: "room" },
+        affordances: (spec.affordances ?? []).includes("brackets")
+          ? spec.affordances
+          : [...(spec.affordances ?? []), "brackets"],
+      },
+      assumptions: {
+        load: "medium",
+        units: "inches",
+        installMode: "wall",
+        wallType: "wood_stud",
+      },
+    };
+  }
+
   const floating =
     ((/floating|wall-?mounted/.test(lowerPrompt) || wallShelfCleats) && /shel/.test(lowerPrompt));
   if (floating) {
@@ -4715,7 +4822,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       : 0;
 
     if (n === 1) {
-      const useEnvelope = /floating/.test(lowerPrompt) || wantsLip || envelopeH > P + 0.1;
+      // Typed tall / lip / multi-stack envelope need a type=back face (rails drop out of AABB).
+      // Bare floating with untyped thin H stays shelf+cleat — no silent 18″ Shelf backstop.
+      const heightTypedFloat = /(?:tall|high|height)\b/i.test(lowerPrompt);
+      const useEnvelope =
+        wantsLip ||
+        heightTypedFloat ||
+        (n === 1 && envelopeH > cleatH0 + P + 0.5) ||
+        (n > 1 && envelopeH > P + 0.1);
       const outH = useEnvelope ? envelopeH : P;
       const cleatH = Math.min(cleatH0, Math.max(1.5, outH - P - (wantsLip ? lipH : 0)));
       panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));

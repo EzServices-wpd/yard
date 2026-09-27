@@ -1572,6 +1572,66 @@ if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
   }
 }
 
+// Spoken N brackets on floating/wall shelf — shelf + N brackets (not cleat + tall backstop).
+{
+  const bracketPrompt =
+    "floating wall shelf 36 wide 8 deep with two brackets";
+  const bracketed = generateFromPrompt(bracketPrompt);
+  if (!/^Floating shelf\b/i.test(bracketed.name) || /Floating shelves/i.test(bracketed.name)) {
+    failHonesty("bracketed floating shelf title", bracketed.name);
+  }
+  if (!nearInch(bracketed.overall.width, 36) || !nearInch(bracketed.overall.depth, 8)) {
+    failHonesty("bracketed floating shelf W×D", bracketed.overall);
+  }
+  // Untyped tall must not invent silent ~18″ backstop envelope.
+  if (bracketed.overall.height > 12) {
+    failHonesty("bracketed floating shelf invented tall H", bracketed.overall);
+  }
+  const shelves = bracketed.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
+  const brackets = bracketed.panels.filter((p) => /Bracket/i.test(p.name));
+  if (shelves.length !== 1) failHonesty("bracketed floating shelf shelf count", shelves.map((p) => p.name));
+  if (brackets.length !== 2) failHonesty("bracketed floating shelf bracket qty ≠ 2", brackets.map((p) => p.name));
+  if (bracketed.panels.some((p) => /Wall cleat/i.test(p.name))) {
+    failHonesty("bracketed floating shelf still has Wall cleat", bracketed.panels.map((p) => p.name));
+  }
+  if (bracketed.panels.some((p) => /Shelf backstop/i.test(p.name) && p.size.height > 12)) {
+    failHonesty("bracketed floating shelf tall Shelf backstop", bracketed.panels.map((p) => `${p.name}:${p.size.height}`));
+  }
+  const bracketPlan = buildPlan(bracketed);
+  const stepBlob = bracketPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/bracket/i.test(stepBlob)) failHonesty("bracketed floating shelf steps missing brackets", stepBlob.slice(0, 500));
+  if (/Lag each wall cleat/i.test(stepBlob) && !/Lag each bracket/i.test(stepBlob)) {
+    failHonesty("bracketed floating shelf still densifies cleat steps", stepBlob.slice(0, 500));
+  }
+  const buyBlob = (bracketPlan.bom ?? []).map((b) => `${b.name} ${b.notes ?? ""}`).join("\n");
+  if (/shelf into cleat/i.test(buyBlob) && !/shelf into brackets/i.test(buyBlob)) {
+    failHonesty("bracketed floating shelf Buy still says shelf into cleat", buyBlob.slice(0, 400));
+  }
+  if (!inspectHonesty(bracketed, bracketPlan).ok) {
+    failHonesty("bracketed floating shelf inspect", inspectHonesty(bracketed, bracketPlan).issues);
+  }
+
+  // Twin: three brackets + typed tall — honor count; overall H tracks typed tall.
+  const three = generateFromPrompt('house: floating shelf 48″ wide × 10″ deep × 8″ tall with three brackets');
+  const threeBr = three.panels.filter((p) => /Bracket/i.test(p.name));
+  if (threeBr.length !== 3) failHonesty("three brackets qty", threeBr.map((p) => p.name));
+  if (!nearInch(three.overall.width, 48) || !nearInch(three.overall.depth, 10)) {
+    failHonesty("three brackets W×D", three.overall);
+  }
+  if (three.overall.height < 7 || three.overall.height > 12) {
+    failHonesty("three brackets typed H band", three.overall);
+  }
+  // Protect: lip H6 + cleat-mounted singular wall shelf still green.
+  const lipProtect = generateFromPrompt('house: floating shelf with lip 36″ wide × 8″ deep × 6″ tall');
+  if (!nearInch(lipProtect.overall.height, 6) || !lipProtect.panels.some((p) => /Front lip/i.test(p.name))) {
+    failHonesty("bracket ship regress floating lip H6", lipProtect.overall, lipProtect.panels.map((p) => p.name));
+  }
+  const cleatProtect = generateFromPrompt("house: wall shelf 48″ wide × 8″ deep × 2″ thick, cleat-mounted");
+  if (!/^Wall shelf\b/i.test(cleatProtect.name) || !cleatProtect.panels.some((p) => /Wall cleat/i.test(p.name))) {
+    failHonesty("bracket ship regress cleat wall shelf", cleatProtect.name, cleatProtect.panels.map((p) => p.name));
+  }
+}
+
 
 
 // Soft leftover: tip-rail picture/photo/art ledge + picture/tip rail — hung-open envelope H

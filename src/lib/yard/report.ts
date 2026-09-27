@@ -318,8 +318,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       /nightstand/.test((project.prompt ?? "").toLowerCase()) ||
       (/bedside/.test((project.prompt ?? "").toLowerCase()) && !isBedsideShelf((project.prompt ?? "").toLowerCase())));
   const hasCleats = project.panels.some((p) => /cleat/i.test(p.name));
+  const hasBrackets = project.panels.some((p) => /bracket/i.test(p.name));
   const floating =
     hasCleats ||
+    hasBrackets ||
     ((/floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
       /shel/i.test(`${project.name} ${project.prompt ?? ""}`));
@@ -356,7 +358,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,
       notes: floating
-        ? `${joinScrews} screws shelf into cleat (no carcase joints).`
+        ? hasBrackets
+          ? `${joinScrews} screws shelf into brackets (no carcase joints).`
+          : `${joinScrews} screws shelf into cleat (no carcase joints).`
         : `${joinScrews} screws estimated at joints.`,
     });
   }
@@ -646,7 +650,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         : coatRack
           ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
           : floating
-            ? "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
+            ? hasBrackets
+              ? "2-3 screws per bracket into studs. Guidance only — confirm wall type."
+              : "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
           : ironing || foldDown
             ? "4-6 screws through the plywood back into studs. A person leaning on the fold-down board will rip it off drywall anchors. Guidance only — confirm wall type."
           : medicine
@@ -676,7 +682,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
     /headboard/i.test(project.name) ||
     /headboard/.test((project.prompt ?? "").toLowerCase());
   const floatingIssue =
-    (project.panels.some((p) => /cleat/i.test(p.name)) ||
+    (project.panels.some((p) => /cleat/i.test(p.name) || /bracket/i.test(p.name)) ||
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
