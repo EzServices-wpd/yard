@@ -4577,12 +4577,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (crate) {
     const innerW = W - P * 2;
     const doorGap = 1.5;
-    const doorH = Math.max(12, H - P - doorGap);
+    // Door sits on the floor (y = P); clear opening to top underside is H − 2P.
+    // Size the door for a real spoken top air gap (not H − P − gap, which only leaves T).
+    const doorH = Math.max(12, H - 2 * P - doorGap);
     panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
     panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, D - P));
-    panels.push(panel("top", "Top", x0 + P, H - P, 0, innerW, P, D));
+    // Inset top clears the full-height back — same D − T join as the floor (carcase class).
+    panels.push(panel("top", "Top", x0 + P, H - P, P, innerW, P, D - P));
     panels.push(panel("door", "Door", x0 + P + 0.06, P, D - P, innerW - 0.12, doorH, P));
     const name = `Crate ${W}" × ${H}" × ${D}"`;
     return {

@@ -1567,6 +1567,18 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (crate) {
     const door = doors[0];
     const floor = bottoms[0];
+    const top = of("top")[0];
+    // Honest top air gap from bench geometry (underside of inset top − top of door).
+    const gapIn =
+      top && door
+        ? Math.max(0, +(top.position.y - (door.position.y + door.size.height)).toFixed(2))
+        : 1.5;
+    const gapTalk =
+      Math.abs(gapIn - 1.5) < 0.05
+        ? '1½"'
+        : Math.abs(gapIn - Math.round(gapIn)) < 0.05
+          ? `${Math.round(gapIn)}"`
+          : `${gapIn}"`;
     return [
       {
         step: 1,
@@ -1592,14 +1604,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Screw the top on",
-        description: `${of("top").map(cutLine).join("; ")}. Glue and screw down into both sides and the back. Edges flush.`,
-        tips: "Wipe squeeze-out. The top is structural — it keeps the sides from kicking out.",
+        description: `${of("top").map(cutLine).join("; ")}. Top sits between the sides, tight to the back — same join as the floor. Glue and #8 × 1¼" screws through both sides into the top edges, and into the back. Front edge flush.`,
+        tips: "Wipe squeeze-out. The top is structural — it keeps the sides from kicking out. Do not treat it like a full-width lid sitting on the uprights.",
         partsUsed: names([...of("top"), ...uprights, ...backs]),
       },
       {
         step: 5,
         title: "Hang the door and latch it",
-        description: `${door ? cutLine(door) + "." : "Door."} Two 3" utility hinges on the left side of the door, into the left upright. A barrel bolt on the right, shooting into the right upright. The door sits above the floor and leaves a 1½" air gap at the top.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two 3" utility hinges on the left side of the door, into the left upright. A barrel bolt on the right, shooting into the right upright. The door sits above the floor and leaves a ${gapTalk} air gap at the top.`,
         tips: "A crate without a latch is just a box. Test that the bolt catches before you call it done.",
         partsUsed: names(doors),
       },
