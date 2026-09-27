@@ -9,6 +9,11 @@
  * - 3-leg chords inset toward the centroid so apron bulk stays inside the
  *   post triangle — a centerline chord reads as bars past the posts
  * - yaw is Three.js Y-up (atan2(-dz, dx)) so chords render post-to-post, not a radial Y
+ *
+ * Spoken lower shelf / N shelves (shelfCount ≥ 1, or prompt densify when the AI
+ * brief drops it): one plywood shelf per count under the top, clear of leg faces
+ * (same inset as aprons), seated on ¾" ply shelf rails matching apron style.
+ * Bare tables without a spoken shelf never invent one.
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
@@ -32,6 +37,51 @@ function legStock(prompt: string): { id: string; face: number; note: string } {
   };
 }
 const P = 0.75;
+
+/** Spoken shelf count for freestanding tables — never invent when the prompt is silent. */
+function spokenTableShelfCount(prompt: string): number | null {
+  const lower = prompt.toLowerCase();
+  const bridge = "(?:[\\w'-]+\\s+){0,3}";
+  const adj = "(?:lower|upper|bottom|top|open|middle|adjustable)\\s+";
+  const digit = lower.match(new RegExp(`\\b(\\d+)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`));
+  if (digit) {
+    const n = parseInt(digit[1], 10);
+    if (n >= 1 && n <= 4) return n;
+  }
+  const digitTight = lower.match(/\b(\d+)\s*shel(?:f|ves|ving)\b/);
+  if (digitTight) {
+    const n = parseInt(digitTight[1], 10);
+    if (n >= 1 && n <= 4) return n;
+  }
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    single: 1,
+  };
+  const word = lower.match(
+    new RegExp(
+      `\\b(one|two|three|four|single)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`,
+    ),
+  );
+  if (word && words[word[1]] != null) return words[word[1]];
+  if (/\b(?:a|the|one|single)\s+(?:lower|bottom)\s+shel(?:f|ves)\b/.test(lower)) return 1;
+  if (
+    /\blower\s+shel(?:f|ves)\b/.test(lower) &&
+    !/\b(?:[2-9]|two|three|four)\s+(?:lower\s+)?shel/.test(lower)
+  ) {
+    return 1;
+  }
+  // "with a shelf" / "with the shelf" — singular only.
+  if (
+    /\b(?:with\s+)?(?:a|the|one|single)\s+shel(?:f)\b/.test(lower) &&
+    !/\bshelves\b/.test(lower)
+  ) {
+    return 1;
+  }
+  return null;
+}
 
 function panel(
   type: Panel["type"],
@@ -74,6 +124,16 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   const apronH = Math.min(3.5, Math.max(2.25, Math.round(H * 0.14 * 8) / 8));
   const apronT = P;
   const legH = H - topT;
+  // Honor unit.shelfCount; densify from prompt when AI brief omits it.
+  const spokenShelves = spokenTableShelfCount(prompt);
+  const shelfN = Math.max(
+    0,
+    Math.min(
+      3,
+      (u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 0) ||
+        (spokenShelves != null ? spokenShelves : 0),
+    ),
+  );
 
   const topName = round
     ? `Top (cut round dia ${W}")`
@@ -143,6 +203,10 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     if (Math.abs(uz) > 1e-9) cands.push(half / Math.abs(uz));
     return cands.length ? Math.min(...cands) : half;
   };
+
+  type AxisFrame = { lx: number; rx: number; fz: number; bz: number; spanX: number; spanZ: number };
+  let axisFrame: AxisFrame | null = null;
+
   if (legN === 4 && centers.length === 4) {
     const lx = Math.min(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const rx = Math.max(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
@@ -150,6 +214,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     const bz = Math.max(centers[0].z, centers[1].z, centers[2].z, centers[3].z);
     const spanX = Math.max(4, rx - lx - legW);
     const spanZ = Math.max(4, bz - fz - legW);
+    axisFrame = { lx, rx, fz, bz, spanX, spanZ };
     panels.push(
       panel("rail", "Front apron", lx + legW / 2, apronY, fz + legW / 2, spanX, apronH, apronT),
     );
@@ -212,16 +277,181 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     }
   }
 
+  // Spoken lower shelf / N shelves — plywood shelf between the legs on ¾" shelf rails.
+  // Seat clear of the apron under the top. Never invent when shelfN is 0.
+  if (shelfN >= 1) {
+    const shelfT = P;
+    const railH = Math.min(2.5, apronH);
+    // Coffee/side (~H≤22): ~6–8" AFF. Dining/taller: ~H/3. Keep stack under apron.
+    const targetTop =
+      H <= 22
+        ? Math.min(8, Math.max(6, Math.round(H * 0.38 * 8) / 8))
+        : Math.round((H / 3) * 8) / 8;
+    const maxTop = Math.max(railH + shelfT + 2, apronY - 0.5);
+    const minTop = railH + shelfT + 1.5;
+    const bandLo = Math.min(minTop, maxTop);
+    const bandHi = Math.max(minTop, maxTop);
+
+    const shelfTops: number[] = [];
+    for (let i = 1; i <= shelfN; i++) {
+      const t =
+        shelfN === 1
+          ? Math.min(bandHi, Math.max(bandLo, targetTop))
+          : Math.round((bandLo + ((bandHi - bandLo) * i) / (shelfN + 1)) * 8) / 8;
+      shelfTops.push(t);
+    }
+
+    const pushAxisShelf = (frame: AxisFrame, shelfTop: number, label: string, railSuffix: string) => {
+      const shelfY = shelfTop - shelfT;
+      const railY = Math.max(0, shelfY - railH);
+      const { lx, rx, fz, bz, spanX, spanZ } = frame;
+      panels.push(
+        panel("shelf", label, lx + legW / 2, shelfY, fz + legW / 2, spanX, shelfT, spanZ),
+      );
+      panels.push(
+        panel(
+          "rail",
+          `Front shelf rail${railSuffix}`,
+          lx + legW / 2,
+          railY,
+          fz + legW / 2,
+          spanX,
+          railH,
+          apronT,
+        ),
+      );
+      panels.push(
+        panel(
+          "rail",
+          `Back shelf rail${railSuffix}`,
+          lx + legW / 2,
+          railY,
+          bz - legW / 2 - apronT,
+          spanX,
+          railH,
+          apronT,
+        ),
+      );
+      panels.push(
+        panel(
+          "rail",
+          `Left shelf rail${railSuffix}`,
+          lx + legW / 2,
+          railY,
+          fz + legW / 2,
+          apronT,
+          railH,
+          spanZ,
+        ),
+      );
+      panels.push(
+        panel(
+          "rail",
+          `Right shelf rail${railSuffix}`,
+          rx - legW / 2 - apronT,
+          railY,
+          fz + legW / 2,
+          apronT,
+          railH,
+          spanZ,
+        ),
+      );
+    };
+
+    const pushChordShelf = (shelfTop: number, label: string, railSuffix: string) => {
+      const shelfY = shelfTop - shelfT;
+      const railY = Math.max(0, shelfY - railH);
+      const lx = Math.min(...centers.map((c) => c.x)) - legW / 2;
+      const rx = Math.max(...centers.map((c) => c.x)) + legW / 2;
+      const fz = Math.min(...centers.map((c) => c.z)) - legW / 2;
+      const bz = Math.max(...centers.map((c) => c.z)) + legW / 2;
+      // Inset shelf clear of leg faces (same spirit as apron inner span).
+      const inset = legW;
+      const shelfW = Math.max(4, rx - lx - inset * 2);
+      const shelfD = Math.max(4, bz - fz - inset * 2);
+      panels.push(
+        panel(
+          "shelf",
+          label,
+          lx + inset,
+          shelfY,
+          fz + inset,
+          shelfW,
+          shelfT,
+          shelfD,
+        ),
+      );
+      for (let i = 0; i < centers.length; i++) {
+        const a = centers[i];
+        const b = centers[(i + 1) % centers.length];
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const span = Math.hypot(dx, dz);
+        const ux = dx / span;
+        const uz = dz / span;
+        const yaw = Math.atan2(-dz, dx);
+        const midX = (a.x + b.x) / 2;
+        const midZ = (a.z + b.z) / 2;
+        let nx = -uz;
+        let nz = ux;
+        if (nx * -midX + nz * -midZ < 0) {
+          nx = -nx;
+          nz = -nz;
+        }
+        const insetR = apronT / 2;
+        const cx = midX + nx * insetR;
+        const cz = midZ + nz * insetR;
+        const bite = 0.125;
+        const tA = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
+        const tB = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
+        const length = Math.max(4, span - tA - tB);
+        panels.push(
+          panel(
+            "rail",
+            `Shelf rail ${i + 1}${railSuffix}`,
+            cx - length / 2,
+            railY,
+            cz - apronT / 2,
+            length,
+            railH,
+            apronT,
+            yaw,
+          ),
+        );
+      }
+    };
+
+    shelfTops.forEach((shelfTop, idx) => {
+      const label = shelfN === 1 ? "Shelf" : `Shelf ${idx + 1}`;
+      const railSuffix = shelfN === 1 ? "" : ` ${idx + 1}`;
+      if (axisFrame) pushAxisShelf(axisFrame, shelfTop, label, railSuffix);
+      else pushChordShelf(shelfTop, label, railSuffix);
+    });
+  }
+
+  const shelfNote =
+    shelfN >= 1
+      ? ` + ${shelfN} shelf${shelfN === 1 ? "" : "ves"} on shelf rails`
+      : "";
   const notes = [
-    `${spec.name}. Freestanding table — top + ${legN} legs + ${legN} aprons.`,
+    `${spec.name}. Freestanding table — top + ${legN} legs + ${legN} aprons${shelfNote}.`,
     round
       ? `Round top: cut a ${W}" square blank, then band-saw / jigsaw to a ${W}" diameter circle. Height ${H}".`
       : oval
         ? `Oval top: cut a ${W}" × ${D}" rectangular blank, then band-saw / jigsaw to an oval ${W}" long × ${D}" wide. Height ${H}".`
         : `Top ${W}" × ${D}". Height ${H}".`,
     stock.note,
+    shelfN >= 1
+      ? "Lower shelf sits on 3/4\" shelf rails between the legs — screw rails to the posts, then the shelf down onto the rails."
+      : "",
     "Guidance only — level the top; do not rack the legs.",
-  ];
+  ].filter(Boolean);
+
+  // Persist densified shelfCount on the fitted unit so Buy/steps/HUD agree with panels.
+  const fitted: FittedSpec =
+    shelfN >= 1 && !(u.shelfCount && u.shelfCount > 0)
+      ? { ...spec, unit: { ...u, shelfCount: shelfN } }
+      : spec;
 
   return {
     id: createId("proj"),
@@ -235,7 +465,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     notes,
     historic: false,
     opening: spec.opening,
-    fitted: spec,
+    fitted,
     assumptions: {
       load: "medium",
       units: "inches",

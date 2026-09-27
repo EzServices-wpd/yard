@@ -1,4 +1,4 @@
-/** Table walkthrough — top + legs + aprons. Not a closet.
+/** Table walkthrough — top + legs + aprons (+ spoken lower shelf on shelf rails).
  * Round/oval footprint uses footprintConfirmTalk (round top is not a square).
  */
 
@@ -24,17 +24,25 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   const roundTop = u?.shape === "round";
   const ovalTop = u?.shape === "oval";
   const legs = panels.filter((p) => /^leg\b/i.test(p.name) || (p.type === "upright" && p.size.width <= 2));
-  const aprons = panels.filter((p) => p.type === "rail" || /^apron\b/i.test(p.name));
+  // Aprons only — shelf rails are a separate join under the spoken shelf.
+  const aprons = panels.filter((p) => /apron/i.test(p.name));
+  const shelfRails = panels.filter((p) => /shelf\s*rail/i.test(p.name));
+  const shelves = panels.filter((p) => p.type === "shelf" || /^Shelf(?:\s+\d+)?$/i.test(p.name));
   const tops = panels.filter((p) => p.type === "top");
   const legN = legs.length || u?.legs || 4;
   const item = getCatalogItem(project.primaryMaterialId);
   const steps: AssemblyStep[] = [];
   let n = 1;
 
+  const shelfBit =
+    shelves.length > 0
+      ? ` · ${shelves.length} shelf${shelves.length === 1 ? "" : "ves"} on shelf rails`
+      : "";
+
   steps.push({
     step: n++,
     title: "Confirm the footprint — do not cut yet",
-    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs. ${footprintConfirmTalk({
+    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs${shelfBit}. ${footprintConfirmTalk({
       shape: roundTop ? "round" : ovalTop ? "oval" : "rect",
       widthLabel: round(W),
       depthLabel: round(D),
@@ -43,10 +51,16 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
     partsUsed: ["*"],
   });
 
-  const plyBits = [...tops, ...aprons];
+  const plyBits = [...tops, ...aprons, ...shelves, ...shelfRails];
+  const plyTitleBits = [
+    "top",
+    aprons.length ? "aprons" : "",
+    shelves.length ? (shelves.length === 1 ? "shelf" : "shelves") : "",
+    shelfRails.length ? "shelf rails" : "",
+  ].filter(Boolean);
   steps.push({
     step: n++,
-    title: `Cut the ${item?.name ?? '3/4" plywood'} (top + aprons)`,
+    title: `Cut the ${item?.name ?? '3/4" plywood'} (${plyTitleBits.join(" + ")})`,
     description: `Circular saw and a straightedge. Face up, label the waste face. ${plyBits.map(cutLine).join("; ")}.${roundTop ? ` Cut the top as a ${round(W)}" square blank, then band-saw / jigsaw to a ${round(W)}" diameter circle.` : ovalTop ? ` Cut the top as a ${round(W)}" × ${round(D)}" rectangular blank, then band-saw / jigsaw to an oval ${round(W)}" long × ${round(D)}" wide.` : ""}`,
     tips: "Support the offcut so it does not break out. Iron-on edge banding on the top edge if people will see ply.",
     partsUsed: plyBits.map((p) => p.name),
@@ -73,6 +87,17 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
     });
   }
 
+  if (shelfRails.length && shelves.length && legs.length) {
+    const shelfY = round(shelves[0].position.y + shelves[0].size.height);
+    steps.push({
+      step: n++,
+      title: `Screw the shelf rails and set the ${shelves.length === 1 ? "shelf" : "shelves"}`,
+      description: `${shelfRails.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ")}. Keep the base upside-down. Screw each shelf rail to the inner faces of the legs at the marked height (shelf top face ~${shelfY}" AFF when standing). Sit each shelf on its rails and screw down into the rails — not up through the face. Glue + #8 × 1¼" screws.`,
+      tips: "Shelf rails match the apron style — 3/4\" ply on the inner faces, clear of the apron under the top.",
+      partsUsed: [...legs, ...shelfRails, ...shelves].map((p) => p.name),
+    });
+  }
+
   if (tops.length) {
     steps.push({
       step: n++,
@@ -96,7 +121,14 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
 
 export function tableCutBlurb(panels: Panel[]): string {
   const tops = panels.filter((p) => p.type === "top");
-  const aprons = panels.filter((p) => p.type === "rail");
-  const n = aprons.length;
-  return `${tops.length} ${shopPlural("top", tops.length)}, ${n} ${shopPlural("apron", n)}.`;
+  const aprons = panels.filter((p) => /apron/i.test(p.name));
+  const shelves = panels.filter((p) => p.type === "shelf" || /^Shelf(?:\s+\d+)?$/i.test(p.name));
+  const shelfRails = panels.filter((p) => /shelf\s*rail/i.test(p.name));
+  const parts = [
+    `${tops.length} ${shopPlural("top", tops.length)}`,
+    `${aprons.length} ${shopPlural("apron", aprons.length)}`,
+  ];
+  if (shelves.length) parts.push(`${shelves.length} ${shopPlural("shelf", shelves.length)}`);
+  if (shelfRails.length) parts.push(`${shelfRails.length} shelf rail${shelfRails.length === 1 ? "" : "s"}`);
+  return `${parts.join(", ")}.`;
 }

@@ -1632,6 +1632,64 @@ if (!inspectHonesty(bedsidePrint, bedsidePrintPlan).ok) {
   }
 }
 
+// Spoken lower shelf on freestanding leg tables — real Shelf + shelf rails (not coffee-noun).
+// Bare / round 3-leg tables without spoken shelf must not invent one.
+{
+  const prompt = "coffee table 48 wide 24 deep 18 tall with a lower shelf";
+  const coffee = generateFromPrompt(prompt);
+  if (!/coffee|table/i.test(coffee.name)) failHonesty("table lower shelf title", coffee.name);
+  if (
+    !nearInch(coffee.overall.width, 48) ||
+    !nearInch(coffee.overall.depth, 24) ||
+    !nearInch(coffee.overall.height, 18)
+  ) {
+    failHonesty("table lower shelf dims 48×24×18", coffee.overall);
+  }
+  const shelves = coffee.panels.filter((p) => p.type === "shelf" || /^Shelf(?:\s+\d+)?$/i.test(p.name));
+  if (shelves.length < 1) {
+    failHonesty("table lower shelf missing Shelf cut", coffee.panels.map((p) => `${p.type}:${p.name}`));
+  }
+  const shelfRails = coffee.panels.filter((p) => /shelf\s*rail/i.test(p.name));
+  if (shelfRails.length < 2) {
+    failHonesty("table lower shelf missing shelf rails", coffee.panels.map((p) => p.name));
+  }
+  const legs = coffee.panels.filter((p) => /^Leg\b/i.test(p.name) || (p.type === "upright" && p.size.width <= 2));
+  if (legs.length !== 4) failHonesty("table lower shelf legs qty ≠ 4", legs.map((p) => p.name));
+  if (legs.some((p) => p.materialId !== "lumber-2x2-8")) {
+    failHonesty(
+      "table lower shelf legs not 2x2",
+      legs.map((p) => `${p.name}:${p.materialId}`),
+    );
+  }
+  const coffeePlan = buildPlan(coffee);
+  const cutBlob = coffeePlan.cutList.map((c) => `${c.quantity}× ${c.name}`).join("; ");
+  if (!/Shelf/i.test(cutBlob)) failHonesty("table lower shelf cut list missing Shelf", cutBlob);
+  const stepBlob = coffeePlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/shelf/i.test(stepBlob)) failHonesty("table lower shelf steps never mention shelf", stepBlob.slice(0, 500));
+  const buyBlob = (coffeePlan.bom ?? []).map((b) => `${b.name} ${b.notes ?? ""}`).join("\n");
+  // Plywood Buy must cover the shelf panel (sheet stock), not legs-only.
+  if (!/plywood|shelf/i.test(buyBlob) && !/Shelf/i.test(cutBlob)) {
+    failHonesty("table lower shelf Buy missing shelf stock", buyBlob.slice(0, 400));
+  }
+  if (/shelf pin/i.test(buyBlob)) {
+    failHonesty("table lower shelf Buy still densifies shelf pins", buyBlob.slice(0, 400));
+  }
+  if (!inspectHonesty(coffee, coffeePlan).ok) {
+    failHonesty("table lower shelf inspect", inspectHonesty(coffee, coffeePlan).issues);
+  }
+
+  // Protect: bare rect / round 3-leg without spoken shelf — never invent a silent shelf.
+  const bare = generateFromPrompt("dining table 72 wide 36 deep 30 tall");
+  if (bare.panels.some((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name))) {
+    failHonesty("silent shelf on bare dining table", bare.panels.map((p) => p.name));
+  }
+  const round3 = generateFromPrompt("round dining table 40 diameter 30 tall with three legs");
+  if (round3.panels.some((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name))) {
+    failHonesty("invented shelf on round 3-leg dining", round3.panels.map((p) => p.name));
+  }
+  console.log("PASS table spoken lower shelf + protect bare/round3");
+}
+
 
 
 // Soft leftover: tip-rail picture/photo/art ledge + picture/tip rail — hung-open envelope H

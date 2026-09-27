@@ -277,6 +277,9 @@ export function wantsFixedGlueShelves(project: YardProject): boolean {
   if (project.fitted?.affordances?.includes("cubbies")) return true;
   // TV / media open consoles: dado/screw shelves, not pin-shelf bookcases.
   if (project.fitted?.program === "media") return true;
+  // Freestanding leg tables: spoken lower shelf sits on shelf rails (screwed), never pin-shelf.
+  if (project.fitted?.program === "table") return true;
+  if (project.panels.some((p) => /shelf\s*rail/i.test(p.name))) return true;
   if (mediaIdentityLabel(lower)) return true;
   // Wall hung cabinet with a door — fixed interior shelves, not "do not glue" pin language.
   // Bookcases stay pin-adjustable unless notes/affordances say otherwise.
