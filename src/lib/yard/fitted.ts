@@ -5035,23 +5035,36 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
-  const bayN = u.bays && u.bays >= 2 ? u.bays : 1;
-  if (bayN >= 2) {
-    for (let i = 1; i < bayN; i++) {
-      const x = x0 + (W * i) / bayN - P / 2;
-      panels.push(panel("divider", `Bay divider ${i}`, x, 0, 0, P, H, D));
-    }
-  }
-  panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, 0.25));
-  panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
-  panels.push(panel("bottom", "Bottom", x0 + P, 0, 0, W - P * 2, P, D));
+  const backT = 0.25;
+  const kickH = 3.5;
   const kitchenBase =
     isKitchenBase(prompt.toLowerCase()) ||
     (family === "floor-carcase" &&
       !!u.doors &&
       /(?:base\s+cabinet|kitchen\s+cabinet)/.test(prompt.toLowerCase()));
-  if (spec.program === "media" || kitchenBase) {
-    panels.push(panel("kick", "Toekick", x0 + P, 0, D - 3.5, W - P * 2, 3.5, P));
+  // Media / kitchen-base toekick is only honest with a raised bottom (island class).
+  // A kick strip in front of a floor-level bottom is fake — raise the bottom or omit the kick.
+  const wantKick = spec.program === "media" || kitchenBase;
+  const bottomY = wantKick ? kickH : 0;
+  const bayN = u.bays && u.bays >= 2 ? u.bays : 1;
+  // Equal bay clears: (innerW − divider stock) / bays. Floor-to-eighth shelf cuts never overtrue.
+  const bayClearExact = bayN >= 2 ? (W - P * (bayN + 1)) / bayN : W - P * 2;
+  const bayShelfW = bayN >= 2 ? Math.floor(bayClearExact * 8) / 8 : bayClearExact;
+  if (bayN >= 2) {
+    // Dividers seat BETWEEN bottom and top — never full-height twins of the uprights.
+    // Height clears top+bottom ply; depth clears ¼" back (same class as bay shelves).
+    const divY = bottomY + P;
+    const divH = Math.max(P, H - P - divY);
+    for (let i = 1; i < bayN; i++) {
+      const x = x0 + i * (bayClearExact + P);
+      panels.push(panel("divider", `Bay divider ${i}`, x, divY, backT, P, divH, D - backT));
+    }
+  }
+  panels.push(panel("back", "Back", x0 + P, 0, 0, W - P * 2, H, backT));
+  panels.push(panel("top", "Top", x0 + P, H - P, 0, W - P * 2, P, D));
+  panels.push(panel("bottom", "Bottom", x0 + P, bottomY, 0, W - P * 2, P, D));
+  if (wantKick) {
+    panels.push(panel("kick", "Toekick", x0 + P, 0, D - kickH, W - P * 2, kickH, P));
   }
 
   const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
@@ -5187,7 +5200,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     ? P
     : hasKnee
       ? (u.upperStart ?? counterY + 2)
-      : P;
+      : bottomY + P;
   const shelfZone1 = wbLowerShelf
     ? Math.max(P * 2, (u.counterH ?? counterY) - 2)
     : u.upperStart
@@ -5207,10 +5220,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     for (let i = 1; i <= shelves; i++) {
       const y = y0 + ((y1 - y0) * i) / (shelves + 1);
       if (bayN >= 2) {
-        const clear = (W - P * (bayN + 1)) / bayN;
         for (let b = 0; b < bayN; b++) {
-          const x = x0 + P + b * (clear + P);
-          panels.push(panel("shelf", `Bay ${b + 1} shelf ${i}`, x, y, 0.1, clear, P, D - 0.2));
+          const x = x0 + P + b * (bayClearExact + P);
+          panels.push(panel("shelf", `Bay ${b + 1} shelf ${i}`, x, y, backT, bayShelfW, P, D - backT));
         }
       } else if (u.upperStart && W >= 36) {
         const bay = (W - P * 3) / 2;
@@ -5262,10 +5274,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (rodY != null) {
     // One rod per bay. A single span through full-height dividers cannot be seated.
     if (bayN >= 2) {
-      const clear = (W - P * (bayN + 1)) / bayN;
       for (let b = 0; b < bayN; b++) {
-        const x = x0 + P + b * (clear + P);
-        panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, rodY, D * 0.45, clear, 1.25, 1.25));
+        const x = x0 + P + b * (bayClearExact + P);
+        panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, rodY, D * 0.45, bayClearExact, 1.25, 1.25));
         panels[panels.length - 1].materialId = "closet-rod";
       }
     } else {
