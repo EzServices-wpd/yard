@@ -7,7 +7,7 @@ import { binderBom, effectiveJoin } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10, plySheetCatalogId } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
@@ -63,15 +63,23 @@ function closetCuts(project: YardProject): CutLine[] {
     d: number,
     materialName: string,
   ) => {
-    const family = partFamily(name, type);
+    let family = partFamily(name, type);
     let dims = sheetCutDims(w, h, d);
     let qty = 1;
     const isPly =
       /plywood/i.test(materialId ?? "") ||
       /plywood/i.test(materialName ?? "");
-    // Class pack: sheet goods thicker than stock are laminated plies (island/desk
-    // 1½" counters), not a magic thick board the lumber aisle does not sell.
-    if (
+    let id = materialId;
+    let matName = materialName;
+    // Square stick posts (≈1½×1½) are solid 2x2 lumber — never laminated into
+    // thin ply strips. Fixes platform/bunk/daybed cut list ×8 0.75" vs steps ×4 1.5".
+    if (isPly && isSquareLumberStick(dims)) {
+      family = "Leg";
+      id = "lumber-2x2-8";
+      matName = getCatalogItem(id)?.name ?? '2x2 (1-1/2" actual)';
+    } else if (
+      // Class pack: sheet goods thicker than stock are laminated plies (island/desk
+      // 1½" counters), not a magic thick board the lumber aisle does not sell.
       isPly &&
       dims.thicknessIn > STOCK_T + 0.05 &&
       dims.thicknessIn <= 2.05 &&
@@ -81,10 +89,9 @@ function closetCuts(project: YardProject): CutLine[] {
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
       qty = plies;
     }
-    let id = materialId;
-    let matName = materialName;
     // 0.25" ply is ¼″ backer even when the envelope was stamped ¾″ (mirror, drawer bottoms).
-    if (isPly && dims.thicknessIn <= 0.26) {
+    // Skip when square-stick remap already bound solid lumber.
+    if (/plywood/i.test(id ?? "") && dims.thicknessIn <= 0.26) {
       id = "plywood-1-4-4x8";
       matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
     }

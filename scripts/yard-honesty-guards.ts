@@ -1277,6 +1277,26 @@ for (const [pp, w, h, d] of platformPrompts) {
     failHonesty("platform soft: — storage. subtitle", checkMsg.slice(0, 300));
   }
 }
+// Universal: sleep-frame corner posts are solid 2×2 legs (qty 4 × ~1½×1½) — never
+// laminated into 8×¾" ply strips that disagree with "Stand the four posts" steps.
+{
+  const king = generateFromPrompt("king platform bed");
+  const kingPlan = buildPlan(king);
+  const legCuts = kingPlan.cutList.filter((c) => /^leg$/i.test(c.name));
+  const legQty = legCuts.reduce((s, c) => s + c.quantity, 0);
+  if (legQty !== 4) failHonesty("king platform bed legs qty ≠ 4", { legQty, cuts: kingPlan.cutList.map((c) => `${c.quantity}× ${c.name} ${c.lengthIn}×${c.widthIn}×${c.thicknessIn}`) });
+  if (legCuts.some((c) => (c.thicknessIn ?? 0) < 1.4 || (c.widthIn ?? 0) < 1.4)) {
+    failHonesty("king platform bed legs still thin ply strips", legCuts);
+  }
+  if (kingPlan.cutList.some((c) => /^upright$/i.test(c.name) && (c.thicknessIn ?? 1) < 0.9 && (c.widthIn ?? 0) <= 1.6 && c.quantity >= 6)) {
+    failHonesty("king platform bed cut list still has laminated upright strips", kingPlan.cutList.map((c) => `${c.quantity}× ${c.name}`));
+  }
+  const stepBlob = kingPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  if (!/Stand the four posts/i.test(stepBlob)) failHonesty("king platform missing Stand the four posts", kingPlan.instructions.map((s) => s.title));
+  // Steps cut talk must not claim 8 upright strips while cut list has 4 legs.
+  if (/\b8\s+Uprights?\b/i.test(stepBlob)) failHonesty("king platform steps still say 8 Uprights", stepBlob.slice(0, 400));
+}
+
 // Protect headboard + nightstand freezes against platform routing.
 const hbFreeze = generateFromPrompt("house: headboard fitted to a 60″ wall span, 48″ tall");
 if (!/^Headboard/i.test(hbFreeze.name)) failHonesty("headboard freeze after platform", hbFreeze.name);

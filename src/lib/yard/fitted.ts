@@ -23,6 +23,7 @@ import { namedStockFromPrompt } from "./weekendStockHonesty";
 
 const PLY = "plywood-3-4-4x8";
 const PLY_BACKER = "plywood-1-4-4x8";
+const TWO_BY_TWO = "lumber-2x2-8";
 const P = 0.75;
 
 function tableClassHeight(lower: string): number {
@@ -1702,6 +1703,7 @@ function panel(
   w: number,
   h: number,
   d: number,
+  materialId?: string,
 ): Panel {
   const thinBack = type === "back" && Math.min(w, h, d) <= 0.26;
   return {
@@ -1710,8 +1712,20 @@ function panel(
     name,
     position: { x, y, z },
     size: { width: w, height: h, depth: d },
-    materialId: thinBack ? PLY_BACKER : PLY,
+    materialId: materialId ?? (thinBack ? PLY_BACKER : PLY),
   };
+}
+
+/** Sleep-frame corner post — solid 2x2 (name starts with Leg so cut list + Buy match tables). */
+function sleepFrameLeg(
+  name: string,
+  x: number,
+  y: number,
+  z: number,
+  face: number,
+  height: number,
+): Panel {
+  return panel("upright", name, x, y, z, face, height, face, TWO_BY_TWO);
 }
 
 /** Drawer box + its own cut-list front (not a hinged door — no cabinet-hinge BOM). */
@@ -2555,10 +2569,10 @@ function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAfforda
   const innerW = Math.max(12, W - post * 2);
   const innerD = Math.max(20, D - post * 2);
   const panels: Panel[] = [];
-  panels.push(panel("upright", "Front left post", x0, 0, D - post, post, deckY + P, post));
-  panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, deckY + P, post));
-  panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
-  panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
+  panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, deckY + P));
+  panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, deckY + P));
+  panels.push(sleepFrameLeg("Leg back left", x0, 0, 0, post, H));
+  panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
   panels.push(panel("deck", "Sleep deck", x0 + post, deckY, post, innerW, P, innerD));
   panels.push(panel("rail", "Front apron", x0 + post, Math.max(0, deckY - 3.5), D - post - P, innerW, 3.5, P));
   panels.push(panel("rail", "Backrest", x0 + post, deckY + P, post, innerW, backH, P));
@@ -2577,7 +2591,7 @@ function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAfforda
     primaryMaterialId: PLY,
     notes: [
       `${name}. One sleep deck at ~${deckY}" with a backrest — sit or sleep. Not a bunk stack, not a loft, not a hollow box.`,
-      `¾" plywood posts and deck. Side rails keep a mattress on the platform. Guidance only — confirm twin/full mattress size before you cut.`,
+      `2×2 posts + ¾" plywood deck. Side rails keep a mattress on the platform. Guidance only — confirm twin/full mattress size before you cut.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -2625,11 +2639,11 @@ function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAf
   const innerW = Math.max(12, W - post * 2);
   const innerD = Math.max(24, D - post * 2);
   const panels: Panel[] = [];
-  // Low corner posts — platform frame (not a House wire skeleton).
-  panels.push(panel("upright", "Front left post", x0, 0, D - post, post, H, post));
-  panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, H, post));
-  panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
-  panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
+  // Low corner posts — solid 2x2 (not laminated ply strips, not a House wire skeleton).
+  panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, H));
+  panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, H));
+  panels.push(sleepFrameLeg("Leg back left", x0, 0, 0, post, H));
+  panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
   // Sleep deck — mattress sits on this platform.
   panels.push(panel("deck", "Sleep deck", x0 + post, deckY - P, post, innerW, P, innerD));
   // Side rails keep a mattress on the platform.
@@ -2651,7 +2665,7 @@ function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAf
     primaryMaterialId: PLY,
     notes: [
       `${name}. Sleep deck at ~${Math.round(deckY - P)}" — mattress on the platform. Side rails keep a mattress on the sleep surface. Not a hollow box, not a Yard House wire skeleton.`,
-      `¾" plywood posts and sleep deck. Platform sits ~${H}" tall × ${W}" wide × ${D}" long. Guidance only — confirm mattress size before you cut.`,
+      `2×2 posts + ¾" plywood sleep deck. Platform sits ~${H}" tall × ${W}" wide × ${D}" long. Guidance only — confirm mattress size before you cut.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -2703,11 +2717,11 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
   const innerW = Math.max(12, W - post * 2);
   const innerD = Math.max(24, D - post * 2);
   const panels: Panel[] = [];
-  // Four corner posts — the frame.
-  panels.push(panel("upright", "Front left post", x0, 0, D - post, post, H, post));
-  panels.push(panel("upright", "Front right post", x0 + W - post, 0, D - post, post, H, post));
-  panels.push(panel("upright", "Back left post", x0, 0, 0, post, H, post));
-  panels.push(panel("upright", "Back right post", x0 + W - post, 0, 0, post, H, post));
+  // Four corner posts — solid 2x2 (same class as platform/daybed; not laminated ply strips).
+  panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, H));
+  panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, H));
+  panels.push(sleepFrameLeg("Leg back left", x0, 0, 0, post, H));
+  panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
   if (!loft) {
     panels.push(panel("deck", "Lower bunk", x0 + post, lowerY, post, innerW, P, innerD));
   }
@@ -2738,7 +2752,7 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
       loft
         ? `${name}. One elevated sleep platform on a post frame at ~${upperY}" — open floor under. Not a hollow box, not a twin bunk.`
         : `${name}. Two sleep platforms on a post frame — lower at ~${lowerY}", upper at ~${upperY}". Not a hollow box.`,
-      `¾" plywood posts and decks. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
+      `2×2 posts + ¾" plywood decks. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
       "Guidance only — person load is heuristic, not stamped engineering. Confirm mattress size before you cut.",
     ],
     historic: false,

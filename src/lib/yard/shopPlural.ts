@@ -85,6 +85,23 @@ export function drawerBoxFromOpening(
   return { boxW, boxH, boxD, frontW };
 }
 
+
+/** Square stick ≈1½×1½ (or up to ~2") with a longer length — solid lumber post/leg,
+ * not a thick sheet face. Used so sleep-frame posts never laminate into thin ply strips. */
+export function isSquareLumberStick(dims: {
+  lengthIn: number;
+  widthIn: number;
+  thicknessIn: number;
+}): boolean {
+  const STOCK_T = 0.75;
+  return (
+    dims.thicknessIn > STOCK_T + 0.05 &&
+    dims.thicknessIn <= 2.05 &&
+    Math.abs(dims.widthIn - dims.thicknessIn) < 0.06 &&
+    dims.lengthIn >= dims.widthIn + 2
+  );
+}
+
 export function sheetCutDims(w: number, h: number, d: number) {
   const a = Math.round(w * 8) / 8;
   const b = Math.round(h * 8) / 8;
@@ -183,7 +200,10 @@ export function woodCutPieceCount(project: {
     const dims = sheetCutDims(w, h, d);
     const isPly = /plywood/i.test(p.materialId ?? "");
     const family = cutListName(p.name, p.type);
-    if (
+    // Square stick posts/legs are solid lumber (1 count) — never laminated plies.
+    if (isPly && isSquareLumberStick(dims)) {
+      n += 1;
+    } else if (
       isPly &&
       dims.thicknessIn > STOCK_T + 0.05 &&
       dims.thicknessIn <= 2.05 &&
