@@ -868,6 +868,34 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   const S = toPrimitiveG(it).length;
   if (lh.instances.some((i) => i.cutLength == null && Math.hypot(i.to!.x - i.from!.x, i.to!.y - i.from!.y, i.to!.z - i.from!.z) < S * 0.6)) failWeekend("lighthouse short pieces listed as whole sticks");
 }
+// Humanoid class (figure): head, torso, two-segment arms and legs in human proportion, 8 paper-fastener
+// pivots on the Buy list, pivot steps never say glue, one connected piece standing on its base.
+{
+  for (const p of [
+    "figure from popsicle sticks",
+    "stick figure from bamboo skewers",
+    "person from 1x2",
+    "doll from jumbo craft sticks",
+    "figure from 1/4 inch dowels",
+    "gingerbread man from popsicle sticks",
+  ]) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "humanoid" || b.name !== "Figure") { failWeekend(`humanoid: ${p} → ${b.name}`, b.shape?.classId); continue; }
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`humanoid: ${p}`, iss);
+    const plan = buildPlan(b);
+    const fast = plan.bom.find((l) => l.catalogId === "paper-fasteners");
+    if (!fast || !/\b8\b/.test(fast.notes ?? "")) failWeekend(`humanoid: ${p} no paper fasteners on Buy`);
+    for (const st of plan.instructions.filter((s0) => /^Pivot/.test(s0.title))) if (/Wood glue|craft glue/i.test(st.description)) failWeekend(`humanoid: ${p} pivot step says glue`, st.title);
+    if (b.notes.some((n) => /Do not cut/.test(n)) && b.instances.some((i) => i.cutLength != null)) failWeekend(`humanoid: ${p} says do not cut but cuts`);
+  }
+  const tall = generateFromPrompt("man from popsicle sticks, 30 inches tall");
+  if (Math.abs(tall.overall.height - 30) > 3.5) failWeekend("humanoid: 30in typed", tall.overall);
+  if (inspectTemplate(tall).length) failWeekend("humanoid 30in", inspectTemplate(tall));
+  for (const p of ["robot from popsicle sticks", "figure 8 marble track", "statue of liberty from popsicle sticks", "action figure shelf"]) {
+    if (generateFromPrompt(p).shape?.classId === "humanoid") failWeekend(`humanoid stole: ${p}`);
+  }
+}
 // Launcher class (catapult): low base, A-frames, crossbar stop, pivot axle, arm cocked, cup at the tip — and the
 // swing simulation reaches the crossbar first, leaning back, so the payload flies forward and up. Rubber bands bought.
 {

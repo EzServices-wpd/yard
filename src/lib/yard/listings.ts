@@ -308,6 +308,16 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "paper-fasteners",
+    retailer: "amazon",
+    title: "Brass paper fasteners (brads), 1/2\", 100 pack",
+    href: "https://www.amazon.com/s?k=brass+paper+fasteners+brads",
+    packQty: 1,
+    packPrice: 6.49,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "tape-packing",
     retailer: "homedepot",
     title: "Scotch 1.88\" packing tape",
@@ -1009,6 +1019,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/dowel/.test(hay)) return "dowel-1-2-36";
   if (/titebond|wood glue|\bglue\b/.test(hay)) return "glue";
   if (/rubber\s*bands?/.test(hay)) return "rubber-bands";
+  if (/paper\s*fasteners?/.test(hay)) return "paper-fasteners";
   if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
   // Structural / lag BEFORE generic wood screws ("Structural wood screws / lag" contains both)
   if (/grk|structural|lag|rss|tapcon|masonry/.test(hay)) {

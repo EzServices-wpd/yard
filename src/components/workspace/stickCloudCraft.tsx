@@ -54,7 +54,9 @@ export function StickCloud({
       const prim = visualPrimitive(item, inst.cutLength, span);
       const row: Row = { inst, index, item, prim };
       const k = meshKind(item);
-      if (k === "flatBar") flatBars.push(row);
+      // A cut piece has square sawn ends; only whole craft sticks keep their rounded factory ends.
+      if (k === "flatBar" && inst.cutLength == null) flatBars.push(row);
+      else if (k === "flatBar") boxes.push(row);
       else if (k === "box") boxes.push(row);
       else if (k === "cylinder") solidCyls.push(row);
       else hollowCyls.push(row);

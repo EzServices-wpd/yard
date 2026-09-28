@@ -2569,7 +2569,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `${spec.title} — ${listI.length} ${roleWord}${listI.length === 1 ? "" : "s"}`,
-      description: `${listI.length} ${roleWord} members. ${hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
+      description: `${listI.length} ${roleWord} members. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
       partsUsed: [spec.role],
       tips: spec.why,
     });

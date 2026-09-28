@@ -731,8 +731,8 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
       notes.push(`Honesty: ${namedStockDisplayName(project.prompt ?? "", item)} used whole. Do not cut.`);
     }
     // A member drawn well under one stick (a short lattice web) is a cut piece: the stick list says so.
-    // (Tower-class builds; the frozen Eiffel keeps its whole-stick contract.)
-    if (isWholeStock(item) && project.kind === "tower") {
+    // (Tower-class builds and figures; the frozen Eiffel keeps its whole-stick contract.)
+    if (isWholeStock(item) && (project.kind === "tower" || project.shape?.classId === "humanoid")) {
       const S = Math.max(0.5, toPrimitive(item).length);
       let cut = 0;
       instances = instances.map((i) => {
@@ -742,6 +742,7 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
         cut++;
         return { ...i, cutLength: Math.max(0.25, Math.round(L * 16) / 16) };
       });
+      if (cut) for (let k = notes.length - 1; k >= 0; k--) if (/Do not cut\.?$/.test(notes[k])) notes.splice(k, 1);
       if (cut) notes.push(`${cut} short members are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
     }
   }

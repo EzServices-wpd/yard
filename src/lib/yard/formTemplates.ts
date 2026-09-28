@@ -47,7 +47,9 @@ export type TemplateBuild = {
   notes: string[];
 };
 
-export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string };
+export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string; /** Replaces the stock join text (a pivot is not glued). */ hold?: string };
+
+const PIVOT_HOLD = "No glue at this joint: pierce both overlapping ends with an awl (or a 3/32\" bit), push a paper fastener through from the front and spread its prongs behind. Snug, so the limb holds a pose.";
 
 const v3 = (x: number, y: number, z: number): Vec3 => ({ x, y, z });
 
@@ -739,6 +741,156 @@ export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { w
   return { classId: "platform-tower", subject: "cat tree", label: "Cat tree", kind: "figure", segs, params, notes };
 }
 
+// ============================================================== humanoid (articulated figure)
+
+export function isHumanoid(prompt: string): boolean {
+  const l = prompt.toLowerCase();
+  if (/figure\s*-?\s*(?:8|eight)|\b(?:shelf|shelves|stand|display|rack|case|cabinet|holder|box|house|cave|hole)\b|robot|android|snow\s*man|iron\s*man|liberty|statue/.test(l)) return false;
+  return /\b(?:stick\s*)?figures?\b|\bhumanoids?\b|\bperson\b|\bhuman\b|\bman\b|\bwoman\b|\bboy\b|\bgirl\b|\bdoll\b|\bpuppet\b|\bgingerbread\s+man\b|\bscarecrow\b|\bmannequin\b/.test(l);
+}
+
+/**
+ * Articulated figure: head, torso, two arms (upper arm + forearm) and two legs (thigh + shin),
+ * each limb segment one member pivoting on a paper fastener at the shoulder, elbow, hip and knee.
+ * Proportions: head ≈ 1/7.5 of the height, legs ≈ half, torso ≈ 0.29. A stand post behind the
+ * torso holds it upright on a crossed base, so the limbs stay free to pose.
+ */
+function humanoidLinear(item: CatalogItem, whole: boolean, typedH?: number): TemplateBuild {
+  const prim = toPrimitive(item);
+  const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
+  const f = prim.width;
+  const t = round ? prim.width : prim.height;
+  const S0 = Math.max(1, prim.length);
+  const lap = Math.min(S0 * 0.45, Math.max(2 * f, 0.3 * S0));
+  const lapLen = (m: number) => m * S0 - (m - 1) * lap;
+  // Limb member: one whole stick (lapped whole sticks to reach a typed height); cut stock sizes to the height.
+  let S: number;
+  if (whole) {
+    let m = 1;
+    if (typedH) while (m < 8 && Math.abs((lapLen(m + 1) - f) / 0.245 - typedH) < Math.abs((lapLen(m) - f) / 0.245 - typedH)) m++;
+    S = lapLen(m);
+  } else S = 0.245 * (typedH ?? Math.max(18, Math.round(25 * f))) + f; // default: the stock reads as a limb, not a slab
+  const d = S - f; // pivot to pivot
+  const Hn = d / 0.245;
+  const Wt = whole && S <= S0 + 1e-6 ? S : Math.max(4 * f, 0.26 * Hn); // shoulder width
+  const segs: TSeg[] = [];
+  const Z = v3(0, 0, 1), Y = v3(0, 1, 0);
+  const put = (a: Vec3, b: Vec3, role: string, face: Vec3, sub: Vec3) => {
+    const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (!whole || L <= S0 + 1e-6) { segs.push({ a, b, role, face }); return; }
+    const u = v3((b.x - a.x) / L, (b.y - a.y) / L, (b.z - a.z) / L);
+    for (const q of lappedRun(L, S0, lap)) {
+      const o = q.layer * t;
+      const at = (dd: number) => v3(a.x + u.x * (dd + L / 2) + sub.x * o, a.y + u.y * (dd + L / 2) + sub.y * o, a.z + u.z * (dd + L / 2) + sub.z * o);
+      segs.push({ a: at(q.a), b: at(q.b), role, face });
+    }
+  };
+  const lay = whole && S > S0 + 1e-6 ? 2 : 1; // sublayers a lapped member takes
+  // Layers (z): torso and head 0; arms in front; battens, neck, post, thighs behind; shins behind those.
+  const zArm = (lay - 0.5) * t + t / 2, zFore = zArm + lay * t;
+  const zBack = -(t / 2 + t / 2), zShin = zBack - lay * t;
+  const hipX = Math.max(f * 1.2, Wt * 0.28);
+  // Base: two sticks front-to-back on the bench, three across on top.
+  const Wb = Math.max(Wt, 2 * hipX + 3 * f, whole ? Math.min(S0, 2 * hipX + 3 * f) : 0);
+  const zc = (zBack + zShin) / 2;
+  const Db = Math.max(Wb, 0.25 * Hn);
+  for (const xs of [-1, 1]) put(v3(xs * (Wb / 2 - f / 2), t / 2, zc - Db / 2), v3(xs * (Wb / 2 - f / 2), t / 2, zc + Db / 2), "base", Y, Y);
+  const nBase = Math.max(3, Math.ceil((Math.abs(zShin - zBack) + 2 * t) / f) + 1);
+  for (let k = 0; k < nBase; k++) {
+    const z = zc + (k - (nBase - 1) / 2) * f;
+    put(v3(-Wb / 2, 1.5 * t, z), v3(Wb / 2, 1.5 * t, z), "base", Y, Y);
+  }
+  const yb = 2 * t;
+  // Legs: shin from the base up to the knee, thigh from the knee up into the torso's bottom row.
+  const kneeY = yb + S - f / 2;
+  const hipY = kneeY + d;
+  for (const xs of [-1, 1]) {
+    put(v3(xs * hipX, yb, zShin), v3(xs * hipX, yb + S, zShin), "shin", Z, v3(0, 0, -1));
+    put(v3(xs * hipX, kneeY - f / 2, zBack), v3(xs * hipX, kneeY - f / 2 + S, zBack), "thigh", Z, v3(0, 0, -1));
+  }
+  // Torso: rows across, bottom row carries the hip pivots, top row the shoulders.
+  const tb = hipY - f / 2;
+  const Th = 0.58 * 2 * d;
+  const nRows = Math.max(3, Math.min(14, Math.round(Th / f)));
+  const pitch = nRows > 1 ? (Th - f) / (nRows - 1) : 0;
+  const rowY: number[] = [];
+  for (let k = 0; k < nRows; k++) {
+    const y = tb + f / 2 + k * pitch;
+    rowY.push(y);
+    put(v3(-Wt / 2, y, 0), v3(Wt / 2, y, 0), "torso", Z, Z);
+  }
+  const tt = tb + Th;
+  const shoulderY = tt - f / 2;
+  // Two battens behind the torso tie every row.
+  const bl = whole ? Math.min(S0, Th) : Th;
+  for (const xs of [-1, 1]) put(v3(xs * (Wt / 2 - f / 2), tb + (Th - bl) / 2, zBack), v3(xs * (Wt / 2 - f / 2), tb + (Th + bl) / 2, zBack), "batten", Z, v3(0, 0, -1));
+  // Arms: upper arm angled out from the shoulder, forearm continuing from the elbow.
+  const a1 = 20 * DEG, a2 = 10 * DEG;
+  const armEnds: Vec3[] = [];
+  for (const xs of [-1, 1]) {
+    const sh = v3(xs * (Wt / 2 - f / 2), shoulderY, zArm);
+    const u1 = v3(xs * Math.sin(a1), -Math.cos(a1), 0);
+    put(v3(sh.x - u1.x * f / 2, sh.y - u1.y * f / 2, zArm), v3(sh.x + u1.x * (S - f / 2), sh.y + u1.y * (S - f / 2), zArm), "arm", Z, Z);
+    const el = v3(sh.x + u1.x * d, sh.y + u1.y * d, zFore);
+    const u2 = v3(xs * Math.sin(a2), -Math.cos(a2), 0);
+    put(v3(el.x - u2.x * f / 2, el.y - u2.y * f / 2, zFore), v3(el.x + u2.x * (S - f / 2), el.y + u2.y * (S - f / 2), zFore), "forearm", Z, Z);
+    armEnds.push(v3(el.x + u2.x * d, el.y + u2.y * d, zFore));
+  }
+  // Head: short rows across above the torso, every row glued to the neck stick behind.
+  const gap = Math.max(f * 0.6, 0.02 * Hn);
+  const headH = (tt + gap - yb) / 6.5;
+  const hb = tt + gap;
+  let hw: number;
+  if (round) {
+    // Round stock: short rows across, every row crosses the neck stick behind.
+    hw = headH * 0.78;
+    const nh = Math.max(3, Math.min(8, Math.round(headH / f)));
+    const hp = (headH - f) / (nh - 1);
+    for (let k = 0; k < nh; k++) put(v3(-hw / 2, hb + f / 2 + k * hp, 0), v3(hw / 2, hb + f / 2 + k * hp, 0), "head", Z, Z);
+  } else {
+    // Flat stock: pieces stood edge to edge make a solid face block; an odd count centres one on the neck.
+    let nh = Math.max(3, Math.round((headH * 0.78) / f));
+    if (nh % 2 === 0) nh += 1;
+    hw = nh * f;
+    for (let k = 0; k < nh; k++) { const x = -hw / 2 + f / 2 + k * f; put(v3(x, hb, 0), v3(x, hb + headH, 0), "head", Z, Z); }
+    // A mouth bar across the front ties the face pieces together (the neck behind carries the middle one).
+    put(v3(-hw / 2, hb + headH * 0.3, t), v3(hw / 2, hb + headH * 0.3, t), "head", Z, Z);
+  }
+  const neckTop = hb + headH - f / 2;
+  const neckL = whole ? Math.min(S0, neckTop - tb - f) : headH * 0.8 + gap + Th * 0.35;
+  put(v3(0, neckTop - neckL, zBack), v3(0, neckTop, zBack), "neck", Z, v3(0, 0, -1));
+  // Stand post: from the base up behind the torso, stopping short of the neck.
+  const postTop = Math.min(tb + Th * 0.45, neckTop - neckL - Math.max(f, 0.2));
+  put(v3(0, yb, zBack), v3(0, postTop, zBack), "post", Z, v3(0, 0, -1));
+  const H = hb + headH;
+  return {
+    classId: "humanoid",
+    subject: "figure",
+    label: "Figure",
+    kind: "figure",
+    segs,
+    params: {
+      height: H, headH, torsoH: Th, legLen: hipY - yb + f / 2, armLen: 2 * d + f / 2, shoulderW: Wt, hipX, pivots: 8,
+      shoulderY, hipY, kneeY, headBottom: hb, torsoTop: tt, stickW: f, stickT: t, reachL: armEnds[0].x, reachR: armEnds[1].x,
+    },
+    notes: [
+      `Figure · ${fmt(H)}" tall: head, torso, two arms and two legs in human proportion (head about 1/7 of the height, legs about half).`,
+      `Shoulders, elbows, hips and knees pivot on paper fasteners (8) pushed through a hole drilled where the two members overlap, so the figure poses.`,
+      `A stand post glued behind the torso holds it upright on the crossed base; the limbs stay free.`,
+    ],
+  };
+}
+
+export function buildHumanoid(prompt: string, item: CatalogItem, typed0: { width?: number; height?: number; depth?: number }, whole: boolean): TemplateBuild | null {
+  const said = typedSizeIn(prompt);
+  // Only a typed overall size (stock sizes like "1/4 inch dowel" are not the figure's height).
+  const h = said.height ?? said.length;
+  void typed0;
+  if (item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard") return null;
+  const kind = templateStock(item);
+  return humanoidLinear(item, kind === "thin" && whole && isWholeStock(item), h);
+}
+
 // ============================================================== registry
 
 export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
@@ -768,7 +920,19 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "cup", word: "cup stick", title: "Glue the cup at the arm tip", why: "Three sticks across the tip, two lips on top: the payload cup. Then loop the spring band from the arm over the crossbar." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
-  humanoid: [],
+  humanoid: [
+    { role: "base", word: "base stick", title: "Glue the crossed base", why: "Two sticks front to back on the bench, the rest across on top: the figure stands on it." },
+    { role: "shin", word: "shin", title: "Set the two shins on the base", why: "Lower legs, feet on the base." },
+    { role: "thigh", word: "thigh", title: "Pivot the thighs on the shins at the knees", why: "The thigh overlaps the top of the shin; the knee bends here.", hold: PIVOT_HOLD },
+    { role: "torso", word: "torso row", title: "Glue the torso rows side by side, then pivot the hips", why: "Rows across make the body. The bottom row overlaps the top of each thigh: fasten each hip with a paper fastener (no glue there)." },
+    { role: "batten", word: "batten", title: "Glue the two battens down the back of the torso", why: "They tie every row together." },
+    { role: "post", word: "stand post", title: "Glue the stand post from the base up behind the torso", why: "It holds the figure upright so the limbs stay free to pose." },
+    { role: "arm", word: "upper arm", title: "Pivot the upper arms at the shoulders", why: "The arm end overlaps the top torso row at the corner.", hold: PIVOT_HOLD },
+    { role: "forearm", word: "forearm", title: "Pivot the forearms at the elbows", why: "The forearm overlaps the lower end of the upper arm.", hold: PIVOT_HOLD },
+    { role: "neck", word: "neck stick", title: "Glue the neck stick behind the torso top", why: "It reaches up past the shoulders and carries the head." },
+    { role: "head", word: "head piece", title: "Glue the head pieces side by side on the neck", why: "The head sits just above the shoulders." },
+    { role: "member", title: "Place remaining members", why: "No floating pieces." },
+  ],
   "platform-tower": [
     { role: "post", word: "post stick", title: "Build the four corner posts", why: "Whole sticks lapped face to face up to the full height." },
     { role: "rail", word: "rail", title: "Glue two rails inside the posts at each platform height", why: "Base, two perches and the top: level rails on both faces." },
@@ -792,6 +956,7 @@ export function buildTemplate(
   if (id === "flat-frame") return buildFlatFrame(prompt, item, whole);
   if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
   if (id === "platform-tower") return buildPlatformTower(prompt, item, typed, whole);
+  if (id === "humanoid") return buildHumanoid(prompt, item, typed, whole);
   return null;
 }
 
@@ -800,6 +965,7 @@ export function detectTemplate(prompt: string): TemplateClassId | null {
   if (isFlatFrame(prompt)) return "flat-frame";
   if (isLauncher(prompt)) return "launcher";
   if (isPlatformTower(prompt)) return "platform-tower";
+  if (isHumanoid(prompt)) return "humanoid";
   return null;
 }
 
@@ -920,6 +1086,29 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       for (const r of project.panels.filter((p) => /roof/i.test(p.name))) if (r.position.y + r.size.height < eave) issues.push({ code: "roof", detail: `${r.name} below the eaves` });
     }
     if (wantsPerch(prompt) && !roles.get("perch")?.length && !project.panels.some((p) => p.name === "Perch")) issues.push({ code: "missing-part", detail: "perch" });
+  }
+  if (shape.classId === "humanoid") {
+    // Every body part present, in human proportion, symmetric, pivots bought, head on top.
+    const need: [string, number][] = [["head", 3], ["torso", 3], ["arm", 2], ["forearm", 2], ["thigh", 2], ["shin", 2], ["neck", 1], ["post", 1], ["base", 3]];
+    for (const [r, n] of need) if ((roles.get(r)?.length ?? 0) < n) issues.push({ code: "missing-part", detail: `${r} ×${roles.get(r)?.length ?? 0}` });
+    const H = P.height ?? 0;
+    const ratio = (k: string, lo: number, hi: number) => {
+      const v = (P[k] ?? 0) / H;
+      if (!(v >= lo && v <= hi)) issues.push({ code: "proportion", detail: `${k}/height ${v.toFixed(2)} outside ${lo}–${hi}` });
+    };
+    ratio("headH", 0.11, 0.17);
+    ratio("legLen", 0.42, 0.58);
+    ratio("torsoH", 0.24, 0.34);
+    ratio("armLen", 0.35, 0.56);
+    ratio("shoulderW", 0.2, 0.34);
+    if (!((P.headBottom ?? 0) > (P.torsoTop ?? 0) && (P.torsoTop ?? 0) > (P.hipY ?? 0) && (P.hipY ?? 0) > (P.kneeY ?? 0))) issues.push({ code: "order", detail: "head / torso / hips / knees out of order" });
+    if (Math.abs((P.reachL ?? 0) + (P.reachR ?? 0)) > 0.01) issues.push({ code: "symmetry", detail: "arms not mirrored" });
+    if ((P.pivots ?? 0) !== 8) issues.push({ code: "pivots", detail: `pivots ${P.pivots}` });
+    if (project.instances.length) {
+      const topY = Math.max(...project.instances.flatMap((i) => [i.from!.y, i.to!.y]));
+      const headTop = Math.max(...(roles.get("head") ?? []).flatMap((i) => [i.from!.y, i.to!.y]));
+      if (headTop < topY - 0.01) issues.push({ code: "order", detail: "something sits above the head" });
+    }
   }
   if (shape.classId === "platform-tower") {
     const H = P.height ?? 0;

@@ -753,6 +753,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           : undefined,
     });
   }
+  // Template pivots (figure joints): one paper fastener per joint.
+  if (project.shape?.params?.pivots) bom.push(pivotLine(project.shape.params.pivots));
   // Template spring (catapult arm): the rubber band is part of the build.
   if (project.shape?.params?.rubberBands) {
     bom.push({
@@ -1159,10 +1161,12 @@ function buildPlanCore(project: YardProject): BuildPlan {
         notes: `${project.shape.params.rubberBands} bands: one hinges the arm on the axle, one is the spring from the arm over the crossbar.`,
       }]
     : [];
+  const pivots = project.shape?.params?.pivots ? [pivotLine(project.shape.params.pivots)] : [];
   const bom = decorateBom([
     ...bomLinesFromForge(forge),
     ...glue,
     ...spring,
+    ...pivots,
   ]);
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
   const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
@@ -1209,4 +1213,17 @@ export function planToMarkdown(project: YardProject, plan: BuildPlan): string {
     "## Build",
     ...plan.instructions.map((s) => `${s.step}. ${s.title} — ${s.description}`),
   ].join("\n");
+}
+
+/** Paper fasteners for a figure's pivot joints (shoulders, elbows, hips, knees). */
+function pivotLine(n: number) {
+  return {
+    name: "Brass paper fasteners",
+    quantity: 1,
+    unit: "pack",
+    catalogId: "paper-fasteners",
+    searchQuery: "brass paper fasteners brads",
+    estimatedCost: 6.49,
+    notes: `${n} used: one through each shoulder, elbow, hip and knee overlap so the figure poses.`,
+  };
 }
