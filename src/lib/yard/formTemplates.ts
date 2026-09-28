@@ -385,8 +385,12 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
   const S = whole ? Math.max(1, prim.length) : Math.max(photo.w, photo.h) + 4 * f;
   const lap = Math.min(S * 0.3, Math.max(f * 2, 0.75));
   const { w, h } = photo;
-  const Wo = w + 2 * f;
-  const Ho = h + 2 * f;
+  // Universal border standard: a frame's border must read as a band, not a line. Stock thinner than
+  // 0.3" (skewers, wire) lays several sticks side by side per side until the band is ≥ 0.35" wide.
+  const band = f < 0.3 ? Math.ceil(0.35 / f) : 1;
+  const Fb = band * f;
+  const Wo = w + 2 * Fb;
+  const Ho = h + 2 * Fb;
   const segs: TSeg[] = [];
   const Z = v3(0, 0, 1);
   // Layers from the front face back: rails, stiles, backer bars.
@@ -396,9 +400,9 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
   const stileLayers = Math.max(...stileRun.map((r) => r.layer)) + 1;
   let z = 0;
   const zOf = (layer: number) => -(layer + 0.5) * t;
-  for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, ys * (h / 2 + f / 2), zOf(z + r.layer)), b: v3(r.b, ys * (h / 2 + f / 2), zOf(z + r.layer)), role: "rail", face: Z });
+  for (let k = 0; k < band; k++) for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), b: v3(r.b, ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), role: "rail", face: Z });
   z += railLayers;
-  for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2), r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2), r.b, zOf(z + r.layer)), role: "stile", face: Z });
+  for (let k = 0; k < band; k++) for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2 + k * f), r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2 + k * f), r.b, zOf(z + r.layer)), role: "stile", face: Z });
   z += stileLayers;
   // Backer bars across the back: they hold the photo in the opening and tie the stiles.
   const barRun = lappedRun(Wo, S, lap);
@@ -438,6 +442,7 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
         ? `Each side is whole ${item.name}s lapped face to face (no cutting); rails in front, stiles behind, lapped at the corners.`
         : `Rails in front, stiles behind, lapped and glued at the four corners.`,
       `${nb} backer bars across the back hold the photo in the opening.${withStand ? " One stand stick behind makes it stand on a shelf." : " Hang it, or lean it on a shelf."}`,
+      ...(band > 1 ? [`Each side is ${band} ${item.name}s glued side by side so the border reads as a band.`] : []),
     ],
   };
 }
@@ -977,8 +982,13 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const f = ((P.outerW ?? 0) - (P.openW ?? 0)) / 2;
       const sx = stiles.map((i) => i.from!.x);
       const ry = rails.map((i) => i.from!.y);
-      const gapW = Math.max(...sx) - Math.min(...sx) - f;
-      const gapH = Math.max(...ry) - Math.min(...ry) - f;
+      // Inner edges: the stick rows nearest the opening (a border may be several sticks side by side).
+      const cx = (Math.max(...sx) + Math.min(...sx)) / 2;
+      const cy = (Math.max(...ry) + Math.min(...ry)) / 2;
+      const rows = (v: number[], c: number) => new Set(v.filter((x) => x > c).map((x) => x.toFixed(3))).size || 1;
+      const inner = (v: number[], c: number) => Math.min(...v.filter((x) => x > c)) - Math.max(...v.filter((x) => x < c));
+      const gapW = inner(sx, cx) - f / rows(sx, cx);
+      const gapH = inner(ry, cy) - f / rows(ry, cy);
       if (!near(gapW, photo.w) || !near(gapH, photo.h)) issues.push({ code: "opening", detail: `opening ${gapW.toFixed(2)}×${gapH.toFixed(2)} vs photo ${photo.w}×${photo.h}` });
       // Corners meet: rails reach across both stiles, stiles reach across both rails.
       const xs = rails.flatMap((i) => [i.from!.x, i.to!.x]);
