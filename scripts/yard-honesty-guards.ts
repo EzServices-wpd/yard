@@ -6316,3 +6316,19 @@ console.log("STRANGER PLAN OK", {
   if (!(tiersOnly.notes || []).some((n) => /tall — from your 5 shelves/.test(n))) failHonesty("corner height note should cite shelf count", tiersOnly.notes);
   console.log("PASS odd-shape class pack: L-footprint / diagonal corner / sloped / wrap / angled / outside / polygon / honeycomb keep their shape + notes + angle steps; protect rectangles & 90° corner class");
 }
+
+// Odd-shape polish: triangles are spoken by side length; odd-N polygons never claim the typed
+// "across" as the HUD width; shaped builds say the saw-tilt limit when a bevel passes 45°.
+{
+  const tri = generateFromPrompt("triangle planter 24 wide");
+  const triSide = buildPlan(tri).cutList.find((c) => c.name === "Planter side");
+  if (!triSide || !nearInch(Math.max(triSide.lengthIn, triSide.widthIn) === 16 ? Math.min(triSide.lengthIn, triSide.widthIn) : Math.max(triSide.lengthIn, triSide.widthIn), 24)) failHonesty("triangle planter side length = typed width", triSide);
+  if (!/45°/.test(triSide?.notes ?? "")) failHonesty("triangle planter 60° bevel needs saw-tilt note", triSide?.notes);
+  const pent = generateFromPrompt("pentagon planter 20 wide");
+  if (pent.fitted?.typedAxes?.width) failHonesty("pentagon planter claims typed HUD width", { overall: pent.overall, ta: pent.fitted?.typedAxes });
+  if (!/20" across/.test(pent.name)) failHonesty("pentagon planter title keeps typed across", pent.name);
+  const ang = generateFromPrompt("corner shelf for a 120 degree corner 10 inches along each wall 4 shelves");
+  if (ang.fitted?.unit?.odd?.kind !== "angled-corner" || ang.panels.filter((p) => p.type === "shelf").length !== 4) failHonesty("120° corner shelf tiers", ang.name);
+  if (!/^120° corner shelf 10" along the walls/.test(ang.name)) failHonesty("120° corner title typed legs", ang.name);
+  console.log("PASS odd-shape polish: triangle side length, odd-N HUD honesty, saw-tilt note, 120° corner");
+}

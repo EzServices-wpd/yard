@@ -243,9 +243,12 @@ function CameraRig({
       : table
         ? fit * 1.72
         : fitted
-          ? fit * 1.42
+          ? fit * (project.fitted?.unit?.odd ? 1.7 : 1.42)
           : fit * (isFlat ? 1.35 : 1.55);
-    const focus = focusOf(project, stepIds);
+    const focus0 = focusOf(project, stepIds);
+    // Odd shapes / corner units fill their footprint (z 0…depth), not a slab against the back wall.
+    const shaped = !!project.fitted?.unit?.odd || !!project.fitted?.unit?.corner;
+    const focus = shaped && !stepIds.length ? { ...focus0, z: project.overall.depth / 2 } : focus0;
     const fy = isFlat
       ? Math.max(focus.y, h * 0.35)
       : eiffel

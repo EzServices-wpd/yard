@@ -389,7 +389,7 @@ function buildSloped(lower: string): Build {
   const under = (x: number) => yTop(x) - tv;
   const panels: Panel[] = [];
   const zb = 0.25;
-  panels.push(facePlate("back", "Sloped back", 0, 0.25, [[0, 0], [W, 0], [W, yTop(W)], [0, yTop(0)]], `Trapezoid: ${tape(W)} wide, ${tape(hL)} tall on the left edge, ${tape(hR)} on the right. Mark both heights and snap a straight line.`, BACKER));
+  panels.push(facePlate("back", "Sloped back", 0, 0.25, [[0, 0], [W, 0], [W, yTop(W)], [0, yTop(0)]], `Whole back is one trapezoid: ${tape(W)} wide, ${tape(hL)} tall on the left edge, ${tape(hR)} on the right. Mark both heights and snap a straight line${W > 48 && Math.max(hL, hR) > 48 ? " — if it comes as two halves, butt them edge to edge first and mark the slope across both" : ""}.`, BACKER));
   const bays = Math.max(1, Math.round((W - 2 * T) / 24));
   const xs: number[] = [];
   for (let i = 0; i <= bays; i++) xs.push(i === 0 ? 0 : i === bays ? W - T : r8((i * (W - T)) / bays));
@@ -616,7 +616,8 @@ function buildPolyPlanter(lower: string): Build {
   const shapeWord = POLY_NAME[n] ?? `${n}-sided`;
   const W0 = typedAxis(lower, "wide|width|across|diameter");
   const H0 = typedAxis(lower, "tall|high|height");
-  const W = W0 ?? 24;
+  // Triangles are spoken by side length; other polygons across the flats.
+  const W = n === 3 ? (W0 ?? 24) / Math.sqrt(3) : W0 ?? 24;
   const H = H0 ?? 16;
   const side = r8(W * Math.tan(Math.PI / n));
   const bevel = 180 / n;
@@ -628,10 +629,10 @@ function buildPolyPlanter(lower: string): Build {
     const cx = r * Math.cos(phi);
     const cz = r * Math.sin(phi);
     // Board runs along the tangent (perpendicular to phi).
-    panels.push(angledBoard("upright", `Planter side ${k + 1}`, cx, 0, cz, side, H, T, phi + Math.PI / 2, `${tape(side)} on the outside face × ${tape(H)} tall. Bevel both long edges at ${deg(bevel)} so ${n} sides close into ${/^[aeiou]/i.test(shapeWord) ? "an" : "a"} ${shapeWord.toLowerCase()}.`));
+    panels.push(angledBoard("upright", `Planter side ${k + 1}`, cx, 0, cz, side, H, T, phi + Math.PI / 2, `${tape(side)} on the outside face × ${tape(H)} tall. Bevel both long edges at ${deg(bevel)} so ${n} sides close into ${/^[aeiou]/i.test(shapeWord) ? "an" : "a"} ${shapeWord.toLowerCase()}.${bevel > 45 ? " Most saws tilt only to 45° — have the lumber desk cut the bevels, or butt the corners and plane them flush." : ""}`));
   }
   const inner = ngon(n, W - 2 * T, 0, 0);
-  panels.push(planPlate("bottom", "Planter bottom", 2, T, inner, `${shapeWord}: ${tape(W - 2 * T)} across the flats. Trace it inside the assembled ring, cut on the line, drill 5 drainage holes.`));
+  panels.push(planPlate("bottom", "Planter bottom", 2, T, inner, `${shapeWord}: ${tape((W - 2 * T) * Math.tan(Math.PI / n))} each side${n === 3 ? "" : `, ${tape(W - 2 * T)} across the flats`}. Trace it inside the assembled ring, cut on the line, drill 5 drainage holes.`));
   const cleatL = r8(Math.max(3, (W - 2 * T) * Math.tan(Math.PI / n) - 2));
   for (let k = 0; k < n; k++) {
     const phi = (2 * Math.PI * k) / n;
@@ -640,15 +641,15 @@ function buildPolyPlanter(lower: string): Build {
   }
   const stem = `${shapeWord} planter box`;
   const notes: string[] = [];
-  notes.push(`${stem}: ${n} sides, each ${tape(side)} wide on the outside, beveled ${deg(bevel)} on both edges (miter = 180 ÷ ${n}), ${fmtIn(W)}" across the flats.`);
-  if (W0 == null) notes.push(`Assumed ${fmtIn(W)}" across the flats — type "24 wide" to lock it.`);
+  notes.push(`${stem}: ${n} sides, each ${tape(side)} wide on the outside, beveled ${deg(bevel)} on both edges (miter = 180 ÷ ${n})${n === 3 ? "" : `, ${fmtIn(W)}" across the flats`}.`);
+  if (W0 == null) notes.push(n === 3 ? `Assumed ${tape(side)} sides — type "24 wide" to lock the side length.` : `Assumed ${fmtIn(W)}" across the flats — type "24 wide" to lock it.`);
   if (H0 == null) notes.push(`Assumed ${fmtIn(H)}" tall — type "18 tall" to lock it.`);
   notes.push("Outdoors: use cedar or exterior plywood and exterior screws; line the inside with landscape fabric.");
   return {
     kind: "polygon-planter",
     stem,
     program: "storage",
-    titleBits: [W0 != null ? `${fmtIn(W)}" across` : "", H0 != null ? `${fmtIn(H)}" tall` : ""],
+    titleBits: [W0 != null ? (n === 3 ? `${fmtIn(W0)}" sides` : `${fmtIn(W)}" across`) : "", H0 != null ? `${fmtIn(H)}" tall` : ""],
     panels,
     notes,
     overall: (() => {
@@ -657,7 +658,8 @@ function buildPolyPlanter(lower: string): Build {
       const zs = o.map((p) => p[1]);
       return { width: r8(Math.max(...xs) - Math.min(...xs)), height: H, depth: r8(Math.max(...zs) - Math.min(...zs)) };
     })(),
-    typed: { width: W0 != null, height: H0 != null, depth: W0 != null && n % 4 === 0 },
+    // The HUD box only equals the typed size when the polygon's flats face x (even n) / z (n % 4 = 0).
+    typed: { width: W0 != null && n % 2 === 0, height: H0 != null, depth: W0 != null && n % 4 === 0 },
     install: "freestanding",
     params: { n, W, H, side, bevel },
   };
