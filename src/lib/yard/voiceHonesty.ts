@@ -663,6 +663,51 @@ export function isRoundUnitEnvelope(opts: {
  * Round tables: "40\" dia × 30\" H" — never "40 × 30 × 40" diameter echo.
  */
 /**
+ * Spoken axes, both orders, plus paper letters.
+ * "36 wide", "width 36", "79\" W", "the ceiling is 96 inches".
+ * Lumber nominals (2x4s) are not a size. NaN when that axis was not spoken.
+ */
+export function spokenAxisInches(prompt: string, axis: "w" | "h" | "d"): number {
+  const raw = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
+  const t = raw.replace(
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/gi,
+    " ",
+  );
+  const num = String.raw`(\d+(?:\.\d+)?)`;
+  const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])|"|″)?`;
+  const take = (re: RegExp) => {
+    const m = t.match(re);
+    if (!m) return NaN;
+    const g = m.slice(1).find((x) => x != null && /\d/.test(x));
+    const n = g ? parseFloat(g) : NaN;
+    return Number.isFinite(n) && n > 0 && n < 400 ? n : NaN;
+  };
+  if (axis === "h") {
+    const seat = take(new RegExp(String.raw`\bseat\s*(?:height|high|tall)\s*(?:of|is|:|=)?\s*${num}`, "i"));
+    if (Number.isFinite(seat)) return seat;
+  }
+  if (axis === "d") {
+    const seat = take(new RegExp(String.raw`\bseat\s*(?:depth|deep)\s*(?:of|is|:|=)?\s*${num}`, "i"));
+    if (Number.isFinite(seat)) return seat;
+  }
+  const words = axis === "w" ? "wide|width" : axis === "h" ? "tall|high|height" : "deep|depth";
+  const letter = axis;
+  const after = take(new RegExp(String.raw`${num}\s*${unit}\s*(?:seat\s*)?(?:${words}|${letter})(?![a-z])`, "i"));
+  if (Number.isFinite(after)) return after;
+  const before = take(new RegExp(String.raw`\b(?:${words})\s*(?:of|is|:|=)?\s*${num}\s*${unit}`, "i"));
+  if (Number.isFinite(before)) return before;
+  const letterFirst = take(new RegExp(String.raw`(?:^|[^a-z])${letter}\s*(?:of|is|:|=)\s*${num}\s*${unit}`, "i"));
+  if (Number.isFinite(letterFirst)) return letterFirst;
+  if (axis === "h") {
+    const ceiling = take(new RegExp(String.raw`\bceilings?\s*(?:height\s*)?(?:is|of|:|=)?\s*${num}\s*${unit}`, "i"));
+    if (Number.isFinite(ceiling)) return ceiling;
+    const ceilingAfter = take(new RegExp(String.raw`${num}\s*(?:inches|inch(?![a-z])|in(?![a-z])|")\s+ceilings?\b`, "i"));
+    if (Number.isFinite(ceilingAfter)) return ceilingAfter;
+  }
+  return NaN;
+}
+
+/**
  * Bare size beside a desk / writing-desk noun.
  * "60\" desk with drawers 30\" deep × 29\" tall" must bind W=60 — never let the
  * deep×tall pair echo as title 30×29×30 (same axis-honesty class as round Dia×H).
@@ -766,7 +811,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   }
   // "table with 4x4 legs 36 inches" — lumber nominals are not the span.
   const stripped = t.replace(
-    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/gi,
     " ",
   );
   const leftover = stripped.match(
@@ -876,15 +921,9 @@ export function typedOpeningStorageAxes(prompt: string): {
 } {
   const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
   const lower = t.toLowerCase();
-  const pick = (re: RegExp): number => {
-    const m = t.match(re);
-    if (!m) return NaN;
-    const n = parseFloat(m[1]);
-    return Number.isFinite(n) ? n : NaN;
-  };
-  const labeledW = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)\b/i);
-  const labeledH = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height)\b/i);
-  const labeledD = pick(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:deep|depth)\b/i);
+  const labeledW = spokenAxisInches(prompt, "w");
+  const labeledH = spokenAxisInches(prompt, "h");
+  const labeledD = spokenAxisInches(prompt, "d");
   const openingW = openingWidthFromPrompt(prompt);
   const nounW = nounSpanFromPrompt(prompt);
   const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);

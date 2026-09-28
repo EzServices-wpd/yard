@@ -923,10 +923,14 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   const cases: [string, "sticks" | "panels", number, number][] = [
     ["picture frame from bamboo skewers", "sticks", 8, 10],
     ["picture frame from bamboo skewers for a 5x7 photo", "sticks", 5, 7],
+    ["picture frame from bamboo skewers for an 8 by 10 photo", "sticks", 8, 10],
     ["picture frame from popsicle sticks for a 4x6 photo", "sticks", 4, 6],
+    ["picture frame from popsicle sticks for a 4 by 6 photo", "sticks", 4, 6],
     ["picture frame from jumbo craft sticks 5x7", "sticks", 5, 7],
     ["picture frame from 1x2 for an 8x10 photo", "panels", 8, 10],
+    ["picture frame from 1x2 for an 8 by 10 photo", "panels", 8, 10],
     ["picture frame from plywood for a 5x7 photo", "panels", 5, 7],
+    ["picture frame from plywood for a 5 by 7 photo", "panels", 5, 7],
   ];
   for (const [p, mode, w, h] of cases) {
     const b = generateFromPrompt(p);

@@ -49,7 +49,7 @@ export type HouseHit = {
 
 /** Nouns that belong on the fitted / house path — not a figure, not a window. */
 const HOUSE_NOUN =
-  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|buffet|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|lounge\s*chair|easy\s*chair|club\s*chair|rocking\s*chair|\bottoman\b|\bpouf\b|foot\s*stool|footstool|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
+  /vanity|closet|cabinet|cabinetry|desk|bookcase|bookshelf|pantry|wardrobe|built-?in|alcove|linen|mudroom|workbench|potting\s*bench|nightstand|bedside|dresser|media cons|console|\btv\b|sideboard|buffet|credenza|hutch|island|\btable\b|prep\s*table|butcher|cart|shelving|shelves|\bshelf\b|\bledge\b|drawer|storage|\bbench\b|\bseat\b|banquette|\brack\b|crate|dog\s*-?\s*house|doghouse|kennel|headboard|bunk|loft\s*bed|platform\s*beds?|shoe|coat|hall\s*tree|coat\s*tree|entry\s*tree|range\s*hood|kitchen\s*hood|\bhood\b|cubb|organizer|etagere|étagère|space[- ]?saver|over[- ]?(the[- ]?)?toilet|fold[- ]?down|drop[- ]?down|\blaundry\b|radiator|\bday\s*beds?\b|\bstereo\b|soundbar|(?:\bav\b|a\.?\s*v\.?)\s*tower|media\s*tower|entertainment|pegboard|peg\s*board|tool\s*rail|leash\s*rail|peg\s*rail|printer\s*stand|filing\s*shelf|file\s*cabinet|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|\bsorter\b|drying\s*rack|utility\s*shel|folding\s*table|umbrella\s*stand|boot\s*tray|key\s*(?:and|&)\s*mail|mail\s*shelf|planter|adirondack|porch\s*swing|outdoor\s*side\s*table|side\s*table|lounge\s*chair|easy\s*chair|club\s*chair|rocking\s*chair|\bottoman\b|\bpouf\b|foot\s*stool|footstool|\bchest\b|toy\s*box|hinged\s*lid|book\s*bin/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;
@@ -1398,7 +1398,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     isMedicine(lower) ||
     isIroning(lower) ||
     fold ||
-    /crate/.test(lower) ||
+    /crate|dog\s*-?\s*house|doghouse|kennel/.test(lower) ||
     (/cabinet/.test(lower) && !isOverToilet(lower) && !/spice|wine/.test(lower)) ||
     (/closet|pantry|wardrobe/.test(lower) && !/coat/.test(lower));
   const opening: HouseOpening = isBunkBed(lower) ? "open" : fold ? "fold-down" : door ? "door" : "open";

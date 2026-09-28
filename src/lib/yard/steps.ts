@@ -1639,8 +1639,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
 
   const crate =
-    /crate/i.test(project.name) ||
-    /crate/.test((project.prompt ?? "").toLowerCase());
+    /crate|dog\s*house|kennel/i.test(project.name) ||
+    /crate|dog\s*-?\s*house|doghouse|kennel/.test((project.prompt ?? "").toLowerCase());
   if (crate) {
     const door = doors[0];
     const floor = bottoms[0];

@@ -106,7 +106,7 @@ function pictureOpeningIn(prompt: string): { w: number; h: number } | null {
   const lower = prompt.toLowerCase();
   if (!/(?:picture|photo)\s*frame|craft\s*frame|\bframe\b/.test(lower)) return null;
   if (!/(?:picture|photo)\s*frame|craft\s*frame/.test(lower) && !/photo|picture|print/.test(lower)) return null;
-  const m = lower.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+  const m = lower.match(/(\d+(?:\.\d+)?)\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)/);
   if (!m) return null;
   const a = parseFloat(m[1]);
   const b = parseFloat(m[2]);

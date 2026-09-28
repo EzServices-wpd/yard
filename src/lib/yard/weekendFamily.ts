@@ -160,7 +160,7 @@ export function wantsPotHold(prompt: string): boolean {
 /** Drop board nominals so "from 1x2" is not read as a 1″ pot. "2×2 base" is captured first. */
 function withoutLumberNominals(s: string): string {
   return s.replace(
-    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1\s*[x×]\s*3|1x2|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?\b/gi,
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1\s*[x×]\s*3|1x2|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:'s|s)?\b/gi,
     " ",
   );
 }

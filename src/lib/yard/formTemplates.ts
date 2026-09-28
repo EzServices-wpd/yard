@@ -356,14 +356,29 @@ export function isFlatFrame(prompt: string): boolean {
 /** Typed photo size (portrait: w ≤ h). Default 5×7. */
 export function framePhotoIn(prompt: string): { w: number; h: number; typed: boolean } {
   const l = prompt.toLowerCase();
-  const ctx = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic|poster|frame)/);
-  // Any other A×B that is not a lumber nominal (1x2, 2x4…).
-  const any = [...l.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*[x×]\s*(\d+(?:\.\d+)?)/g)].find((q) => !(parseFloat(q[1]) <= 2 && [2, 3, 4, 6, 8, 10, 12].includes(parseFloat(q[2]))));
+  const ctx = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic|poster|frame)/);
+  // Any other A×B that is not a lumber nominal (1x2, 2x4…). "8 by 10" is a photo; "1 by 2" is not.
+  const any = [...l.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/g)].find((q) => !(parseFloat(q[1]) <= 2 && [2, 3, 4, 6, 8, 10, 12].includes(parseFloat(q[2]))));
   const m = ctx ?? any;
   if (m) {
     const a = parseFloat(m[1]);
     const b = parseFloat(m[2]);
     if (a >= 2 && b >= 2 && a <= 36 && b <= 48) return { w: Math.min(a, b), h: Math.max(a, b), typed: true };
+  }
+  const wide = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|width)\b/);
+  const tall = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b/);
+  if (wide && tall) {
+    const a = parseFloat(wide[1]);
+    const b = parseFloat(tall[1]);
+    if (a >= 4 && b >= 4 && a <= 120 && b <= 120) return { w: a, h: b, typed: true };
+  }
+  const opening = l.match(
+    /(?:opening|hole)\s+is\s+(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)/,
+  );
+  if (opening) {
+    const a = parseFloat(opening[1]);
+    const b = parseFloat(opening[2]);
+    if (a >= 4 && b >= 4 && a <= 120 && b <= 120) return { w: Math.min(a, b), h: Math.max(a, b), typed: true };
   }
   return { w: 5, h: 7, typed: false };
 }

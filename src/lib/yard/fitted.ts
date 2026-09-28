@@ -18,7 +18,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
@@ -680,7 +680,7 @@ function isBarePlanPair(lower: string): boolean {
 function triple(text: string): { w?: number; h?: number; d?: number } {
   // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
   const stripped = text.replace(
-    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi,
+    /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/gi,
     " ",
   );
   // Optional axis words between numbers so "42 long × 24 wide × 18 tall" still triples.
@@ -773,11 +773,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
     Math.min(4, Math.round(pick(t, /(\d+)\s*(?:-?\s*)legs?/i, program === "table" ? (isRound ? 3 : 4) : 4))),
   );
 
-  let width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
+  let width = spokenAxisInches(t, "w");
   // Paper/HUD/Measure teach Dia×H and W×H×D — bare H is a height axis label
   // (same honesty class as round envelope "40\" dia × 30\" H"). tall|high|height still win.
-  let height = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:tall|high|height|H)\b/i, NaN);
-  let depth = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:seat\s*)?(?:deep|depth)/i, NaN);
+  let height = spokenAxisInches(t, "h");
+  let depth = spokenAxisInches(t, "d");
   // Table plan length — "42 long × 24 wide" is length × plan-width, not a dropped axis.
   const labeledLong = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:long|length)\b/i, NaN);
   // Headboard / slab wall-fit: "60\" wall span" is the typed width.
@@ -1001,7 +1001,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     // height already from "seat height" / tall|high|height pick when present
   }
 
-  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length|(?:^|[^a-z])h(?:$|[^a-z])/.test(lower);
+  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length|ceiling|(?:^|[^a-z])[hwd](?:$|[^a-z])/.test(lower);
   // Casegoods (desk, media, storage…) read unlabeled triples as W×D×H.
   // Tables are W×H×D — "laundry folding table 48x36x24" means 36 tall × 24 deep,
   // not a 24" coffee height with a 36" deep top.
@@ -1037,6 +1037,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Fitted to a named opening: unlabeled triples are W×H×D (opening), not furniture W×D×H.
   const openingFit =
     /fitted\s+to/.test(lower) ||
+    /\b(?:the\s+)?opening\s+is\b/.test(lower) ||
+    /\b(?:the\s+)?hole\s+is\b/.test(lower) ||
     (/\bopening\b/.test(lower) && /fitted|bookcase|bookshelf|closet|alcove|niche|built-?in/.test(lower));
   if (openingFit && trip.w && trip.h && trip.d) {
     const labeledAll =
@@ -4410,6 +4412,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         `${name}. Wall-mounted coat hook board with ${hooks} hooks — clear wall mount, not a Coat rack / Tool rail / portal steal. Board densify.`,
         `Mount height from the wall: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the board.`,
         `Screw ${hooks} coat hooks into the board, about 6" on center. Hit studs. Guidance only — coat hook board, not a Bridge / Tool / portal.`,
+        ...(H > boardH + 0.4
+          ? [`You typed ${Math.round(H * 10) / 10}" tall. A hook board is a plate, so this one is ${boardH}" tall — not a cabinet that height.`]
+          : []),
+        ...(D > boardD + 0.4
+          ? [`You typed ${Math.round(D * 10) / 10}" deep. The board is ${boardD}" thick plywood, not a ${Math.round(D * 10) / 10}" deep case.`]
+          : []),
       ],
       historic: false,
       opening: { width: boardW, height: boardH, depth: boardD, kind: "room" },
@@ -4794,7 +4802,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  const crate = /crate/.test(prompt.toLowerCase());
+  const crate = /crate|dog\s*-?\s*house|doghouse|kennel/.test(prompt.toLowerCase());
   if (crate) {
     const innerW = W - P * 2;
     const doorGap = 1.5;
@@ -4808,7 +4816,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     // Inset top clears the full-height back — same D − T join as the floor (carcase class).
     panels.push(panel("top", "Top", x0 + P, H - P, P, innerW, P, D - P));
     panels.push(panel("door", "Door", x0 + P + 0.06, P, D - P, innerW - 0.12, doorH, P));
-    const name = `Crate ${W}" × ${H}" × ${D}"`;
+    const dog = /dog/.test(prompt.toLowerCase());
+    const name = dog ? `Dog house ${W}" × ${H}" × ${D}"` : /kennel/.test(prompt.toLowerCase()) ? `Kennel ${W}" × ${H}" × ${D}"` : `Crate ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
       name,
@@ -4900,7 +4909,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (singularCleatShelf) {
     const cleatH = 2.5;
     const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
       /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
     const Df = depthTyped ? D : Math.min(D, 8);
     const T = shelfThick != null ? shelfThick : P;
@@ -4951,7 +4960,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !/cabinet|jar|spice|wine|bottle|media|picture|bedside|cubb|bookcase|bookshelf/.test(lowerPrompt)
   ) {
     const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
       /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
     const Df = depthTyped ? D : Math.min(D, 8);
     const heightTyped = /(?:tall|high|height)\b/i.test(prompt);
@@ -5032,7 +5041,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     );
     const cleatH0 = 2.5;
     const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|")?\s*deep|\bdeep[^\d]{0,16}\d/i.test(prompt) ||
+      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
       /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
     const Df = depthTyped ? D : Math.min(D, 8);
     // Typed overall H wins — densify lip/backstop/spacers so envelope AABB == typed H

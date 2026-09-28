@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
-import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox } from "./family";
+import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox, isCoatHookBoard } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
@@ -39,7 +39,7 @@ export type HonestyReport = {
 const P = 0.75;
 
 const LUMBER_STOCK =
-  /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?\b/gi;
+  /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/gi;
 
 function stripLumber(s: string) {
   return s.replace(LUMBER_STOCK, " ");
@@ -139,6 +139,8 @@ export function typedExtents(prompt: string): TypedExtents | null {
     // Fitted-to-opening unlabeled triples are also W×H×D (bookshelf 36×84×12 opening).
     const openingFit =
       /fitted\s+to/.test(lower) ||
+      /\b(?:the\s+)?opening\s+is\b/.test(lower) ||
+      /\b(?:the\s+)?hole\s+is\b/.test(lower) ||
       (/\bopening\b/.test(lower) &&
         /bookcase|bookshelf|closet|alcove|niche|built-?in|fitted/.test(lower));
     const furniture =
@@ -737,7 +739,7 @@ function applyLocalFixes(project: YardProject): YardProject {
   const tableLie = tableBraceIssues(next).length > 0;
   const typed = typedExtents(next.prompt ?? "");
   // Do not snap HUD to hide a table apron/brace geometry lie — rebuild instead.
-  if (typed && next.fitted && !tableLie) next = snapHud(next, typed);
+  if (typed && next.fitted && !tableLie && !isCoatHookBoard(next.prompt ?? "")) next = snapHud(next, typed);
   next = forceWallMount(next);
   next = injectRackRails(next);
   return next;
