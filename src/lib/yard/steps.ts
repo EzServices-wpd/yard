@@ -2629,6 +2629,11 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
 
 function roleScript(project: YardProject): { role: string; title: string; why: string; extra?: string }[] {
   const prompt = project.prompt ?? "";
+  // Template classes own their step script (before any noun/mech scripts).
+  if (project.shape && project.shape.classId !== "quadruped") {
+    const script = templateSteps(project.shape.classId);
+    if (script && script.length) return script;
+  }
   const mech = detectWeekendMech(prompt);
   if (project.kind === "ladder" || mech === "climb") {
     if (isClimbTriangle(prompt) && !isClimbStepStool(prompt)) {
@@ -2799,10 +2804,6 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "splice", title: "Lap the long splices", why: "Overlap and glue both faces." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
-  }
-  if (project.shape && project.shape.classId !== "quadruped") {
-    const script = templateSteps(project.shape.classId);
-    if (script && script.length) return script;
   }
   if (project.shape || project.instances.some((i) => i.role === "body")) {
     // Subject-class shape template: one step per named part, body first.

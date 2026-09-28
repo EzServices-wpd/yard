@@ -753,6 +753,18 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           : undefined,
     });
   }
+  // Template spring (catapult arm): the rubber band is part of the build.
+  if (project.shape?.params?.rubberBands) {
+    bom.push({
+      name: "Rubber bands",
+      quantity: 1,
+      unit: "pack",
+      catalogId: "rubber-bands",
+      searchQuery: "rubber bands assorted",
+      estimatedCost: 5.99,
+      notes: `${project.shape.params.rubberBands} bands: one hinges the arm on the axle, one is the spring from the arm over the crossbar.`,
+    });
+  }
   if (project.assumptions.installMode !== "freestanding") {
     bom.push({
       name: project.assumptions.wallType === "masonry"
@@ -1136,9 +1148,21 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
   const glue = item ? binderBom(item, project.instances, project.joinMethod) : [];
+  const spring = project.shape?.params?.rubberBands
+    ? [{
+        name: "Rubber bands",
+        quantity: 1,
+        unit: "pack",
+        catalogId: "rubber-bands",
+        searchQuery: "rubber bands assorted",
+        estimatedCost: 5.99,
+        notes: `${project.shape.params.rubberBands} bands: one hinges the arm on the axle, one is the spring from the arm over the crossbar.`,
+      }]
+    : [];
   const bom = decorateBom([
     ...bomLinesFromForge(forge),
     ...glue,
+    ...spring,
   ]);
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
   const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);

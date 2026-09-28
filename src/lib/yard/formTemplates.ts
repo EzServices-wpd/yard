@@ -481,6 +481,163 @@ export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean
   return null;
 }
 
+
+// ============================================================== launcher (catapult)
+
+export function isLauncher(prompt: string): boolean {
+  const l = prompt.toLowerCase();
+  if (/trebuchet|ballista|slingshot|sling\s*shot|soft-?launch|\bramp\b|trough|marble\s*run/.test(l)) return false;
+  return /\bcatapults?\b|\bmangonels?\b|\bonager\b/.test(l);
+}
+
+const DEG = Math.PI / 180;
+
+/**
+ * Catapult (mangonel): low base, two A-frames, a crossbar across the apexes that stops the arm,
+ * a pivot axle across the front legs, the throwing arm cocked back onto the rear tie, cup at the tip.
+ * A rubber band from the arm to the crossbar is the spring. Front legs lean at the arm's stop angle,
+ * so the arm stops leaning back (115°) and throws the payload forward and up.
+ */
+function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): TemplateBuild {
+  const prim = toPrimitive(item);
+  const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
+  const f = prim.width;
+  const t = round ? prim.width : prim.height;
+  const S0 = Math.max(1, prim.length);
+  const lap = Math.min(S0 * 0.45, Math.max(2 * f, 0.3 * S0));
+  const lapLen = (m: number) => m * S0 - (m - 1) * lap;
+  // Member length: one whole stick, or whole sticks lapped end to end to reach a typed height; cut stock scales freely.
+  let S: number;
+  if (whole) {
+    let m = 1;
+    if (typedH) while (lapLen(m) * 0.93 < typedH - lap / 2 && m < 12) m++;
+    S = lapLen(m);
+  } else S = Math.max(6, (typedH ?? 12) / 0.95, typedH ? 0 : 10 * f);
+  let L2 = S * 1.7;
+  if (whole) { let m = 2; while (lapLen(m) < 1.6 * S && m < 20) m++; L2 = lapLen(m); }
+  const zr = S / 2 - f; // A-frames and rails, inside the tie ends
+  const W = whole ? S : 2 * zr + 2 * f; // tie / crossbar / axle length
+  const Y = v3(0, 1, 0), Zf = v3(0, 0, 1);
+  const segs: TSeg[] = [];
+  /** One member from a to b: whole sticks lapped face to face (sublayer along +face) when longer than a stick. */
+  const put = (a: Vec3, b: Vec3, role: string, face: Vec3, sub = 1) => {
+    const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (!whole || L <= S0 + 1e-6) { segs.push({ a, b, role, face }); return; }
+    const u = v3((b.x - a.x) / L, (b.y - a.y) / L, (b.z - a.z) / L);
+    for (const q of lappedRun(L, S0, lap)) {
+      const o = q.layer * t * sub;
+      const at = (d: number) => v3(a.x + u.x * (d + L / 2) + face.x * o, a.y + u.y * (d + L / 2) + face.y * o, a.z + u.z * (d + L / 2) + face.z * o);
+      segs.push({ a: at(q.a), b: at(q.b), role, face });
+    }
+  };
+  const ta = t; // axle lies flat
+  const oLead = whole ? ta / 2 + 2 * t : ta / 2 + t; // axle centre to the arm's leading face
+  const railLayers = whole && (S > S0 + 1e-6 || S0 < 12) ? 2 : 1;
+  const railTop = t * railLayers;
+  const e = Math.max(f, 0.08 * S); // arm tail past the pivot
+  // Axle height: the arm tail swings down past the front tie without touching it.
+  const yp = railTop + Math.max(t + f, 0.1 * S, t + e + t);
+  // A-frame: pick the leg spread (and, for cut stock, leg length) so the arm's leading face meets the
+  // crossbar's rear edge nearest 115° (leaning back), with feet spread at least half the rise.
+  const geom = (sp: number, Lg: number) => {
+    const R = Math.sqrt(Math.max(0.01, Lg * Lg - sp * sp));
+    const yA = railTop + R;
+    const xp = sp * (1 - (yp - railTop) / R);
+    const dx = -f / 2 - xp, dy = yA - yp;
+    const h = (th: number) => dx * Math.sin(th) - dy * Math.cos(th) - oLead;
+    let lo = 90 * DEG, hi = 180 * DEG, th: number | null = null;
+    if (Math.sign(h(lo)) !== Math.sign(h(hi))) {
+      for (let k = 0; k < 50; k++) { const m = (lo + hi) / 2; if (Math.sign(h(m)) === Math.sign(h(lo))) lo = m; else hi = m; }
+      th = (lo + hi) / 2;
+    }
+    return { R, yA, xp, th };
+  };
+  let best: { sp: number; Lg: number; g: ReturnType<typeof geom> } | null = null;
+  for (const Lg of whole ? [S] : Array.from({ length: 21 }, (_, k) => S * (1 + k * 0.05))) {
+    for (let k = 0; k <= 70; k++) {
+      const sp = Lg * (0.2 + k * 0.006);
+      const g = geom(sp, Lg);
+      if (g.th == null || sp / g.R < 0.25) continue;
+      if (!best || Math.abs(g.th - 115 * DEG) < Math.abs(best.g.th! - 115 * DEG)) best = { sp, Lg, g };
+    }
+  }
+  if (!best) best = { sp: 0.42 * S, Lg: S, g: { ...geom(0.42 * S, S), th: 115 * DEG } };
+  const sA = best.sp;
+  const { R, yA, xp } = best.g;
+  const thS = best.g.th!;
+  // A-frames: two legs per side meeting at the apex, flat against the side plane, standing on the rails.
+  for (const zs of [1, -1]) {
+    put(v3(sA, railTop, zs * (zr + t / 2)), v3(0, yA, zs * (zr + t / 2)), "leg", v3(0, 0, zs));
+    put(v3(-sA, railTop, zs * (zr - t / 2)), v3(0, yA, zs * (zr - t / 2)), "leg", v3(0, 0, -zs));
+  }
+  // Crossbar across the apexes: the arm stops against it.
+  put(v3(0, yA + t / 2, -W / 2), v3(0, yA + t / 2, W / 2), "stop", Y);
+  // Pivot axle across the front legs.
+  put(v3(xp, yp, -W / 2), v3(xp, yp, W / 2), "support", v3(0, -1, 0));
+  // Arm, cocked: rests on the rear tie just inboard of the cup.
+  const rRest = L2 - e - 3.5 * f;
+  const tieTop = railTop + t;
+  const thC = Math.PI + Math.asin(Math.min(0.9, Math.max(-0.9, (yp + (whole ? ta / 2 + t : ta / 2) - tieTop) / rRest)));
+  const dC = { x: Math.cos(thC), y: Math.sin(thC) };
+  const nC = { x: Math.sin(thC), y: -Math.cos(thC) };
+  const along = (r: number, off: number) => v3(xp + dC.x * r + nC.x * off, yp + dC.y * r + nC.y * off, 0);
+  const face = v3(nC.x, nC.y, 0);
+  const o1 = ta / 2 + t / 2;
+  put(along(-e, o1), along(L2 - e, o1), "arm", face);
+  const topOff = whole ? o1 + t : o1;
+  // Cup: three pad sticks across the tip, two rims on top (front and back lips).
+  // Cut stock: the cup is cut to fit between the A-frames so it swings clear of the legs.
+  const Wc = whole ? W : 2 * (zr - 1.5 * t) - 0.25;
+  const cupLayers = whole && Wc > S0 + 1e-6 ? 2 : 1;
+  const cupR: number[] = [];
+  for (let k = 0; k < 3; k++) {
+    const r = L2 - e - f / 2 - k * f;
+    cupR.push(r);
+    const c = along(r, topOff + t);
+    put(v3(c.x, c.y, -Wc / 2), v3(c.x, c.y, Wc / 2), "cup", face);
+  }
+  for (const k of [0, 2]) {
+    const c = along(cupR[k], topOff + (1 + cupLayers) * t);
+    put(v3(c.x, c.y, -Wc / 2), v3(c.x, c.y, Wc / 2), "cup", face);
+  }
+  const xRest = xp + dC.x * rRest + nC.x * (topOff - t / 2);
+  // Base: rails from behind the rest tie to past the front feet; ties on top.
+  const xFront = sA + 2 * f;
+  const xRear = Math.min(xRest - f, -sA - 2 * f);
+  const L = xFront - xRear + f;
+  const mid0 = (xFront + xRear) / 2;
+  const rr = whole ? lappedRun(L, S0, lap) : [{ a: -L / 2, b: L / 2, layer: 0 as 0 | 1 }];
+  for (const zs of [1, -1]) for (const q of rr) segs.push({ a: v3(mid0 + q.a, t / 2 + q.layer * t, zs * zr), b: v3(mid0 + q.b, t / 2 + q.layer * t, zs * zr), role: "rail", face: Y });
+  for (const x of [xRest, 0, xFront - f / 2]) put(v3(x, tieTop - t / 2, -W / 2), v3(x, tieTop - t / 2, W / 2), "tie", v3(0, -1, 0));
+  const cupMid = L2 - e - 1.5 * f;
+  return {
+    classId: "launcher",
+    subject: "catapult",
+    label: "Catapult",
+    kind: "frame",
+    segs,
+    params: {
+      pivotX: xp, pivotY: yp, armLen: L2 - e, armTail: e, cockedDeg: thC / DEG, stopDeg: thS / DEG, stickT: t, stickW: f, crossbarX: 0, crossbarY: yA + t / 2,
+      cupR: cupMid, cupInnerR: cupR[2] - f / 2, apexY: yA, legSpread: sA, legRise: R, zr, leadOffset: oLead, baseTop: tieTop, rubberBands: 2,
+    },
+    notes: [
+      `Catapult · base ${fmt(L)}" long, A-frames ${fmt(yA)}" tall, arm ${fmt(L2)}" with a cup at the tip.`,
+      `The arm pivots on the axle across the front legs, cocks back onto the rear tie, and stops against the crossbar leaning back ${Math.round(thS / DEG - 90)}° so the payload flies forward and up.`,
+      `Spring: loop a rubber band from the arm (just below the crossbar) up over the crossbar. Pull the cup back to the rear tie, load a pom-pom or marble, let go.`,
+    ],
+  };
+}
+
+export function buildLauncher(prompt: string, item: CatalogItem, typed0: { width?: number; height?: number; depth?: number }, whole: boolean): TemplateBuild | null {
+  const kind = templateStock(item);
+  // A single typed size on a catapult is its height.
+  const typed = { height: typed0.height ?? (typed0.width && !typed0.depth ? typed0.width : undefined) };
+  if (item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard") return null;
+  if (kind === "thin") return launcherSticks(item, whole && isWholeStock(item), typed.height);
+  // Boards / dowels: same silhouette from cut members.
+  return launcherSticks(item, false, typed.height);
+}
+
 // ============================================================== registry
 
 export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
@@ -500,7 +657,16 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "stand", word: "stand stick", title: "Glue the stand behind", why: "One stick from the backer down to the shelf stands the frame up." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
-  launcher: [],
+  launcher: [
+    { role: "rail", word: "base rail stick", title: "Glue the two base rails", why: "Flat on the bench; whole sticks lap face to face where a rail runs longer than one stick." },
+    { role: "tie", word: "tie", title: "Glue the ties across the rails", why: "Front, middle and rear ties square the base. The rear tie is where the cocked arm rests." },
+    { role: "leg", word: "A-frame leg", title: "Stand the two A-frames on the rails", why: "Two legs per side meet at the apex. The front leg leans back at the arm's stop angle." },
+    { role: "stop", word: "crossbar", title: "Glue the crossbar across the apexes", why: "It ties the A-frames and stops the arm." },
+    { role: "support", word: "axle", title: "Glue the pivot axle across the front legs", why: "The arm pivots here." },
+    { role: "arm", word: "arm stick", title: "Build the throwing arm and hinge it on the axle", why: "Lap the arm sticks face to face. Hinge the arm over the axle with a rubber band loop so it swings freely." },
+    { role: "cup", word: "cup stick", title: "Glue the cup at the arm tip", why: "Three sticks across the tip, two lips on top: the payload cup. Then loop the spring band from the arm over the crossbar." },
+    { role: "member", title: "Place remaining members", why: "No floating pieces." },
+  ],
   humanoid: [],
 };
 
@@ -517,13 +683,76 @@ export function buildTemplate(
 ): TemplateBuild | null {
   if (id === "small-house") return buildSmallHouse(prompt, item, typed, whole);
   if (id === "flat-frame") return buildFlatFrame(prompt, item, whole);
+  if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
   return null;
 }
 
 export function detectTemplate(prompt: string): TemplateClassId | null {
   if (isSmallHouse(prompt)) return "small-house";
   if (isFlatFrame(prompt)) return "flat-frame";
+  if (isLauncher(prompt)) return "launcher";
   return null;
+}
+
+
+type P3 = { x: number; y: number; z: number };
+/** Closest distance between segments p1q1 and p2q2 (3D). */
+export function segSegDist(p1: P3, q1: P3, p2: P3, q2: P3): number {
+  const sub = (a: P3, b: P3) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+  const dot = (a: P3, b: P3) => a.x * b.x + a.y * b.y + a.z * b.z;
+  const d1 = sub(q1, p1), d2 = sub(q2, p2), r = sub(p1, p2);
+  const a = dot(d1, d1), e = dot(d2, d2), f = dot(d2, r);
+  let s = 0, t = 0;
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  if (a <= 1e-9 && e <= 1e-9) return Math.sqrt(dot(r, r));
+  if (a <= 1e-9) t = clamp(f / e);
+  else {
+    const c = dot(d1, r);
+    if (e <= 1e-9) s = clamp(-c / a);
+    else {
+      const b = dot(d1, d2), den = a * e - b * b;
+      s = den > 1e-9 ? clamp((b * f - c * e) / den) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = clamp(-c / a); } else if (t > 1) { t = 1; s = clamp((b - c) / a); }
+    }
+  }
+  const c1 = { x: p1.x + d1.x * s, y: p1.y + d1.y * s, z: p1.z + d1.z * s };
+  const c2 = { x: p2.x + d2.x * t, y: p2.y + d2.y * t, z: p2.z + d2.z * t };
+  const w = sub(c1, c2);
+  return Math.sqrt(dot(w, w));
+}
+
+export type LaunchSim = { hitRole: string | null; hitDeg: number | null; cockedDeg: number; releaseDir: { x: number; y: number } | null; blockedBy: string | null };
+
+/**
+ * Swing the arm + cup rigidly about the axle from the cocked pose toward the front.
+ * A real launch: the first thing the moving parts meet is the crossbar (stop), past vertical-back
+ * (100°–130°), so the cup's release direction is forward and up. Anything else first = jammed.
+ */
+export function simulateLaunch(project: YardProject, halfT: number): LaunchSim {
+  const P = project.shape?.params ?? {};
+  const px = P.pivotX ?? 0, py = P.pivotY ?? 0;
+  const moving = project.instances.filter((i) => i.role === "arm" || i.role === "cup");
+  const still = project.instances.filter((i) => i.role !== "arm" && i.role !== "cup" && i.role !== "support");
+  const rot = (q: P3, d: number) => {
+    const c = Math.cos(d), sn = Math.sin(d), x = q.x - px, y = q.y - py;
+    return { x: px + x * c - y * sn, y: py + x * sn + y * c, z: q.z };
+  };
+  const cocked = P.cockedDeg ?? 180;
+  for (let deg = -1; deg >= -(cocked - 60); deg -= 0.25) {
+    const d = deg * DEG;
+    for (const m of moving) {
+      const a = rot(m.from!, d), b = rot(m.to!, d);
+      for (const st of still) {
+        if (segSegDist(a, b, st.from!, st.to!) < 2 * halfT - 0.002) {
+          const th = cocked + deg;
+          const release = { x: Math.sin(th * DEG), y: -Math.cos(th * DEG) };
+          return { hitRole: st.role ?? "?", hitDeg: th, cockedDeg: cocked, releaseDir: release, blockedBy: m.role === "arm" ? null : `${m.role} hit ${st.role}` };
+        }
+      }
+    }
+  }
+  return { hitRole: null, hitDeg: null, cockedDeg: cocked, releaseDir: null, blockedBy: "nothing stops the arm" };
 }
 
 // ============================================================== guard
@@ -545,7 +774,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
   const ys: number[] = [];
   for (const i of project.instances) for (const q of [i.from, i.to]) if (q) ys.push(q.y);
   for (const p of project.panels) ys.push(p.position.y);
-  if (ys.length && Math.min(...ys) > 0.3) issues.push({ code: "floating", detail: `lowest piece ${Math.min(...ys).toFixed(2)}" above the bench` });
+  if (ys.length && Math.min(...ys) > Math.max(0.3, (P.stickT ?? 0) / 2 + 0.05)) issues.push({ code: "floating", detail: `lowest piece ${Math.min(...ys).toFixed(2)}" above the bench` });
   if (project.instances.length) {
     const st = project.buildStats;
     if (!st || st.components !== 1 || st.loose !== 0) issues.push({ code: "connected", detail: JSON.stringify(st) });
@@ -582,6 +811,38 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       for (const r of project.panels.filter((p) => /roof/i.test(p.name))) if (r.position.y + r.size.height < eave) issues.push({ code: "roof", detail: `${r.name} below the eaves` });
     }
     if (wantsPerch(prompt) && !roles.get("perch")?.length && !project.panels.some((p) => p.name === "Perch")) issues.push({ code: "missing-part", detail: "perch" });
+  }
+  if (shape.classId === "launcher") {
+    const need: [string, number][] = [["rail", 2], ["tie", 3], ["leg", 4], ["stop", 1], ["support", 1], ["arm", 1], ["cup", 3]];
+    for (const [r, n] of need) if ((roles.get(r)?.length ?? 0) < n) issues.push({ code: "missing-part", detail: `${r} ×${roles.get(r)?.length ?? 0}` });
+    const topOf = (r: string) => Math.max(...(roles.get(r) ?? []).flatMap((i) => [i.from!.y, i.to!.y]));
+    const H = Math.max(...project.instances.flatMap((i) => [i.from!.y, i.to!.y]));
+    if (!(topOf("tie") < 0.15 * H)) issues.push({ code: "base", detail: `base top ${topOf("tie").toFixed(2)} vs height ${H.toFixed(2)} — not low` });
+    // A-frames: each side's two legs meet at the apex and spread at the feet.
+    const legs = roles.get("leg") ?? [];
+    for (const zs of [1, -1]) {
+      const pts = legs.filter((l) => Math.sign(l.from!.z) === zs).flatMap((l) => [l.from!, l.to!]);
+      const front = pts.filter((q) => q.x > 0.01), rear = pts.filter((q) => q.x < -0.01), apex = pts.filter((q) => Math.abs(q.x) <= 0.01);
+      const topY = Math.max(...pts.map((q) => q.y));
+      const lowF = front.reduce((m, q) => (q.y < m.y ? q : m), front[0] ?? { x: 0, y: 0, z: 0 });
+      const lowR = rear.reduce((m, q) => (q.y < m.y ? q : m), rear[0] ?? { x: 0, y: 0, z: 0 });
+      if (!front.length || !rear.length || apex.length < 2 || Math.abs(Math.max(...apex.map((q) => q.y)) - topY) > 0.01 || lowF.x - lowR.x < 0.5 * (topY - lowF.y)) issues.push({ code: "a-frame", detail: `side ${zs}` });
+    }
+    const P0 = { x: P.pivotX ?? 0, y: P.pivotY ?? 0 };
+    const axle = (roles.get("support") ?? [])[0];
+    if (!axle || Math.hypot(axle.from!.x - P0.x, axle.from!.y - P0.y) > 0.01 || Math.abs(axle.from!.z - axle.to!.z) < 1) issues.push({ code: "pivot", detail: "axle not across the frame at the pivot" });
+    const cockedDeg = P.cockedDeg ?? 0;
+    if (!(cockedDeg > 150 && cockedDeg < 200)) issues.push({ code: "cocked", detail: `arm at ${cockedDeg.toFixed(1)}°` });
+    const cups = roles.get("cup") ?? [];
+    const armLen = P.armLen ?? 0;
+    for (const c of cups) {
+      const r = Math.hypot(c.from!.x - P0.x, c.from!.y - P0.y);
+      if (r < armLen - 3.6 * (P.stickW ?? 0)) issues.push({ code: "cup", detail: `cup stick at r=${r.toFixed(2)} not at the tip (${armLen.toFixed(2)})` });
+    }
+    if (!P.rubberBands) issues.push({ code: "spring", detail: "no rubber band spring" });
+    const sim = simulateLaunch(project, (P.stickT ?? 0.1) / 2);
+    if (sim.hitRole !== "stop" || sim.blockedBy) issues.push({ code: "launch", detail: `arm first meets ${sim.hitRole ?? "nothing"} at ${sim.hitDeg?.toFixed(1)}° ${sim.blockedBy ?? ""}` });
+    else if (!(sim.hitDeg! >= 100 && sim.hitDeg! <= 130) || !(sim.releaseDir!.x > 0.5 && sim.releaseDir!.y > 0.1)) issues.push({ code: "launch", detail: `stops at ${sim.hitDeg!.toFixed(1)}°, release ${JSON.stringify(sim.releaseDir)}` });
   }
   if (shape.classId === "flat-frame") {
     const typed = framePhotoIn(prompt);

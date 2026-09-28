@@ -298,6 +298,16 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "rubber-bands",
+    retailer: "amazon",
+    title: "Rubber bands, assorted sizes",
+    href: "https://www.amazon.com/s?k=rubber+bands+assorted",
+    packQty: 1,
+    packPrice: 5.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "tape-packing",
     retailer: "homedepot",
     title: "Scotch 1.88\" packing tape",
@@ -998,6 +1008,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/pvc|schedule 40/.test(hay)) return "pvc-3-4-sch40";
   if (/dowel/.test(hay)) return "dowel-1-2-36";
   if (/titebond|wood glue|\bglue\b/.test(hay)) return "glue";
+  if (/rubber\s*bands?/.test(hay)) return "rubber-bands";
   if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
   // Structural / lag BEFORE generic wood screws ("Structural wood screws / lag" contains both)
   if (/grk|structural|lag|rss|tapcon|masonry/.test(hay)) {

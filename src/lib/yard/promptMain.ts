@@ -259,7 +259,7 @@ function buildTemplateProject(
   // Hole / photo / opening sizes are part sizes, not the overall — strip them before reading a typed size.
   const sized = lower.replace(/\d[\d\s\/.x×-]*\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:diameter\s+|dia\.?\s+|round\s+)?(?:entry\s+|entrance\s+)?hole/g, "hole").replace(/(?:for\s+(?:an?\s+)?)?\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic)/g, "photo");
   const raw = hasExplicitSize(sized) ? parseSize(sized) : undefined;
-  const said = (n: number) => (n !== 24 || /\b24\b/.test(sized) ? n : undefined);
+  const said = (n: number) => (n !== 24 || /\b24\b|\b2\s*-?\s*(?:foot|feet|ft)\b|\btwo\s*-?\s*(?:foot|feet)\b/.test(sized) ? n : undefined);
   const typed = opts.sizeOverride ?? (raw ? { width: said(raw.width), height: said(raw.height), depth: said(raw.depth) } : {});
   const built: TemplateBuild | null = buildTemplate(id, prompt, item, typed, whole);
   if (!built) return null;

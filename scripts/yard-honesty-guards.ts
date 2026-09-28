@@ -783,6 +783,28 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
   if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
 }
+// Launcher class (catapult): low base, A-frames, crossbar stop, pivot axle, arm cocked, cup at the tip — and the
+// swing simulation reaches the crossbar first, leaning back, so the payload flies forward and up. Rubber bands bought.
+{
+  for (const p of [
+    "catapult from popsicle sticks",
+    "catapult from jumbo craft sticks",
+    "catapult from bamboo skewers",
+    "catapult from 1x2",
+    "2 foot catapult from popsicle sticks",
+    "weekend craft: popsicle stick catapult that launches a marble",
+    "catapult",
+  ]) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "launcher") failWeekend(`launcher: ${p} class`, b.shape?.classId);
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`launcher: ${p}`, iss);
+    if (/popsicle|craft|bamboo/.test(p) && b.instances.some((i) => i.cutLength != null)) failWeekend(`launcher: ${p} cut craft sticks`);
+    const plan = buildPlan(b);
+    if (!plan.bom.some((x) => /rubber band/i.test(x.name))) failWeekend(`launcher: ${p} no rubber bands on the Buy list`);
+  }
+  if (!/trebuchet/i.test(generateFromPrompt("popsicle stick trebuchet").name)) failWeekend("launcher: trebuchet stolen");
+}
 // Flat-frame class (picture frame): inner opening = typed photo size, corners meet, backer drawn, sticks flat.
 {
   const cases: [string, "sticks" | "panels", number, number][] = [
@@ -894,7 +916,7 @@ if (catapult.kind !== "frame" || catapult.primaryMaterialId !== "popsicle-standa
 }
 if (catapult.name !== "Catapult") failWeekend("catapult name", catapult.name);
 if (catapult.instances.some((i) => i.cutLength != null)) failWeekend("catapult cut popsicle sticks");
-if (catapult.instances.length < 180) failWeekend("catapult too sparse", catapult.instances.length);
+if (catapult.shape?.classId !== "launcher" || catapult.instances.length < 15) failWeekend("catapult not the launcher template", { cls: catapult.shape?.classId, n: catapult.instances.length });
 const catapultPlan = buildPlan(catapult);
 if (catapultPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("catapult buy list has wood screws", catapultPlan.bom.map((b) => b.name));
@@ -914,8 +936,8 @@ if (Math.abs(catapult2.overall.height - 24) > 2.5) {
   failWeekend("2ft catapult height drifted", catapult2.overall);
 }
 if (catapult2.instances.some((i) => i.cutLength != null)) failWeekend("2ft catapult cut popsicle");
-if (catapult2.instances.length < 180) {
-  failWeekend("2ft catapult still sparse", catapult2.instances.length);
+if (catapult2.shape?.classId !== "launcher" || catapult2.instances.length <= catapult.instances.length) {
+  failWeekend("2ft catapult not scaled from whole sticks", catapult2.instances.length);
 }
 const catapult2Inspect = inspectWeekendHonesty(catapult2, buildPlan(catapult2));
 if (!catapult2Inspect.ok) failWeekend("2ft catapult inspect", catapult2Inspect.issues);
@@ -6970,6 +6992,7 @@ console.log("STRANGER PLAN OK", {
     "birdhouse from plywood with a 1 1/4 inch hole and a perch",
     "picture frame from popsicle sticks for a 4x6 photo",
     "picture frame from 1x2 for an 8x10 photo",
+    "catapult from popsicle sticks",
   ];
   const T = 1 / 32;
   const PART_NOUN = /\b(bottom|top|shel(?:f|ves)|divider|door|drawer|counter|kick|apron|leg|upright|stretcher|cleat|lid|seat|backrest|batten|mirror)s?\b/gi;
@@ -7107,6 +7130,7 @@ console.log("STRANGER PLAN OK", {
     "birdhouse from plywood with a 1 1/4 inch hole and a perch",
     "picture frame from popsicle sticks for a 4x6 photo",
     "picture frame from 1x2 for an 8x10 photo",
+    "catapult from popsicle sticks",
   ];
   let cases = 0;
   for (const prompt of prompts) {
