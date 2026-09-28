@@ -49,6 +49,8 @@ import {
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
+import { buildPlanPdf } from "../src/lib/yard/pdf";
+import { partLetters } from "../src/lib/yard/pdfDraw";
 import {
   inspectWeekendHonesty,
   namedStockDisplayName,
@@ -3547,11 +3549,14 @@ console.log("SOFT-TRUST OK", {
     "bathroom vanity for a pocket space: left wall 26\", right wall 33.5\", depth 22\", back wall 38.5\"",
   );
   if (!/pocket|vanity/i.test(pocket.name)) failHonesty("b-day-push protect pocket title", pocket.name);
-  if (pocket.fitted?.unit.kneeW == null || (pocket.fitted.unit.kneeW as number) < 8) {
-    failHonesty("b-day-push protect pocket knee", pocket.fitted?.unit);
+  // The pocket vanity lives on project.pocket (trapezoid spec), not project.fitted.
+  const pocketKnee = pocket.fitted?.unit.kneeW ?? pocket.pocket?.unit.kneeW;
+  if (pocketKnee == null || pocketKnee < 8) {
+    failHonesty("b-day-push protect pocket knee", pocket.fitted?.unit ?? pocket.pocket?.unit);
   }
-  if (!pocket.fitted?.unit.drawersPerBank) {
-    failHonesty("b-day-push protect pocket drawers", pocket.fitted?.unit);
+  const pocketDrawers = pocket.panels.filter((p) => /drawer/i.test(`${p.type} ${p.name}`)).length;
+  if (!pocket.fitted?.unit.drawersPerBank && pocketDrawers < 2) {
+    failHonesty("b-day-push protect pocket drawers", pocket.panels.map((p) => p.name));
   }
 
   // Protect desk 60×30×29 knee 24.
@@ -6331,4 +6336,33 @@ console.log("STRANGER PLAN OK", {
   if (ang.fitted?.unit?.odd?.kind !== "angled-corner" || ang.panels.filter((p) => p.type === "shelf").length !== 4) failHonesty("120° corner shelf tiers", ang.name);
   if (!/^120° corner shelf 10" along the walls/.test(ang.name)) failHonesty("120° corner title typed legs", ang.name);
   console.log("PASS odd-shape polish: triangle side length, odd-N HUD honesty, saw-tilt note, 120° corner");
+}
+
+// Kit-manual PDF: every page type present, every cut letter drawn, steps name their parts.
+{
+  for (const prompt of [
+    "bathroom vanity 36 wide with two doors",
+    "popsicle stick catapult",
+    "40 diameter round dining table 30 tall with three legs",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+  ]) {
+    const proj = generateFromPrompt(prompt);
+    const plan = buildPlan(proj);
+    const doc = buildPlanPdf(proj, plan);
+    const raw = doc.output();
+    const craft = plan.partsKind === "whole";
+    for (const want of ["Before you start", craft ? "Parts" : "Parts plate", "Build", "Check it", craft ? "Stick list" : "Cut list"]) {
+      if (!raw.includes(`(${want})`)) failHonesty("pdf kit page missing", { prompt, want });
+    }
+    if (!craft && !raw.includes("(Cut diagrams)")) failHonesty("pdf cut diagrams missing", prompt);
+    if (plan.bom.some((b) => /screw|hinge|glue/i.test(b.name)) && !raw.includes("(Hardware)")) failHonesty("pdf hardware plate missing", prompt);
+    if (/[″×—]/.test(raw)) failHonesty("pdf leaks glyphs the base fonts cannot print", prompt);
+    const letters = new Set(partLetters(proj, plan.cutList).values());
+    const missing = plan.cutList.filter((c) => c.label && !letters.has(c.label) && !/drawer/i.test(c.name));
+    if (!craft && missing.length) failHonesty("pdf part letters not tied to geometry", { prompt, missing: missing.map((c) => c.label) });
+  }
+  const slope = generateFromPrompt("bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side");
+  const slopeSteps = buildPlan(slope).instructions;
+  if (slopeSteps.filter((s) => (s.partsUsed ?? []).length).length < 4) failHonesty("odd-shape steps must name their parts", slopeSteps.map((s) => s.partsUsed));
+  console.log("PASS kit-manual PDF: pages, hardware, cut diagrams, geometry letters, odd-shape step parts");
 }

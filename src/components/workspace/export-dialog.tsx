@@ -38,11 +38,9 @@ export function ExportDialog({
       url = URL.createObjectURL(blob);
       setPdfUrl(url);
       setDlNote(
-        photoCount
-          ? `Ready · nest on page 1 · ${photoCount} bench photo${photoCount === 1 ? "" : "s"}. Tap Save PDF when you want the file.`
-          : plan.partsKind === "whole"
-            ? "Ready. Save PDF for the shop copy. Open a step on the bench first if you want photos in the plan."
-            : "Ready · nest on page 1. Save PDF for the lumber aisle. Open a step on the bench first if you want photos in the plan.",
+        plan.partsKind === "whole"
+          ? "Ready · every step drawn from the model, with the parts at actual size. Tap Save PDF for the shop copy."
+          : "Ready · every step drawn from the model, plus a parts plate, cut diagrams, and a check-it page. Tap Save PDF when you want the file.",
       );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
@@ -97,9 +95,7 @@ export function ExportDialog({
       a.click();
       a.remove();
       setDlNote(
-        photoCount
-          ? `Saved · ${photoCount} bench photo${photoCount === 1 ? "" : "s"} in the file.`
-          : "Saved. View steps on the bench first next time to capture photos into the plan.",
+        "Saved. Every step picture in the file is drawn from the same model as the cut list.",
       );
     } catch (err) {
       setDlNote(err instanceof Error ? err.message : "Could not build the PDF.");
@@ -263,7 +259,7 @@ export function ExportDialog({
             <h2 className="font-display text-xl text-ink">Build</h2>
             {!photoCount && (
               <p className="mt-2 text-xs text-ink-muted">
-                No bench photos yet. In the plan drawer, click a step to view it on the bench — that captures the photo into the plan and PDF.
+                The PDF draws every step from the model. Click a step in the plan drawer to add a bench photo to this preview too.
               </p>
             )}
             <ol className="mt-4 space-y-6">
