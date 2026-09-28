@@ -7,6 +7,7 @@ import { fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
 import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
 import { planStepParts, stepKindOf } from "./stepParts";
+import { affiliateActive, affiliateConfig, affiliateDisclosure, outboundHref } from "./outbound";
 import { stepPlacements } from "./placement";
 import { cutListName } from "./shopPlural";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
@@ -113,6 +114,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const title = sizing.title;
   const craft = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
   const letters = partLetters(project, plan.cutList);
+  const aff = affiliateConfig();
+  const affOn = affiliateActive(aff);
   const sections: string[] = [""];
   let y = TOP;
 
@@ -323,6 +326,10 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     font(10, "bold");
     qtyLines.forEach((ln, i) => doc.text(ln, L, y + 12 + i * 13));
     nameLines.forEach((ln, i) => doc.text(ln, L + qtyW, y + 12 + i * 13));
+    // Clickable item name → best offer, through the same outbound door as the site. Only once an
+    // affiliate ID is live, so the inert PDF stays exactly as it was.
+    const bestOffer = b.offers?.find((o) => o.best) ?? b.offers?.[0];
+    if (affOn && bestOffer?.href) doc.link(L + qtyW, y + 2, nameW - 10, nameLines.length * 13, { url: outboundHref(bestOffer.href, aff) });
     font(8.5, "normal", KIT.muted);
     noteLines.forEach((ln, i) => doc.text(ln, L + qtyW, y + 12 + nameLines.length * 13 + i * 11));
     font(10, "normal");
@@ -335,6 +342,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   font(9, "normal", KIT.muted);
   y += 4;
   if (plan.totals.estCostUsd) y += textBlock(`About ${usd(plan.totals.estCostUsd)} all-in, cheapest same-size listing first.`, L, y, W, 9, "normal", KIT.muted) + 8;
+  if (affOn) y += textBlock(affiliateDisclosure(aff), L, y, W, 8.5, "italic", KIT.muted) + 8;
   if (room() < 110) newPage("Before you start");
   subTitle("Tools");
   const cols = Math.min(tools.length, 8);
@@ -848,6 +856,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.line(L, pageH - 40, R, pageH - 40);
     font(7.5, "normal", KIT.muted);
     doc.text("Yard · guidance only, not stamped engineering. Check sizes against your space before you cut.", L, pageH - 28);
+    if (affOn) doc.text(affiliateDisclosure(aff), L, pageH - 18);
     font(8, "bold", KIT.ink);
     doc.text(`${i} / ${pages}`, R, pageH - 28, { align: "right" });
   }

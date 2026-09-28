@@ -1,8 +1,9 @@
 /**
  * Stage 2 — every buy click.
- * Set VITE_PUBLIC_AMAZON_ASSOCIATE_TAG on Vercel and every Amazon URL
- * already carries the tag. No other switch.
+ * URL builders for the Buy list. Affiliate tagging/wrapping lives in outbound.ts (outboundHref).
  */
+
+import { affiliateConfig, amazonTagged, storeOf } from "./outbound";
 
 export type ShopRetailer = "amazon" | "homedepot" | "lowes" | "walmart";
 
@@ -13,41 +14,14 @@ export type ShopLink = {
   affiliate: boolean;
 };
 
-function readViteTag(): string {
-  try {
-    const vite = (import.meta as { env?: Record<string, string | undefined> }).env
-      ?.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG;
-    if (vite && vite.trim() && vite !== "undefined") return vite.trim();
-  } catch {
-    /* node */
-  }
-  return "";
-}
-
-function readProcessTag(): string {
-  if (typeof process === "undefined") return "";
-  return (
-    process.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG ||
-    process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG ||
-    ""
-  ).trim();
-}
-
 export function amazonAssociateTag(): string {
-  return readViteTag() || readProcessTag();
+  return affiliateConfig().amazonTag;
 }
 
-/** Stamp any Amazon URL with the Associates tag when one is set. */
+/** Stamp an Amazon URL with the Associates tag when one is set (the central outbound rule). */
 export function stampAmazon(href: string, tag = amazonAssociateTag()): string {
-  if (!href || !/amazon\./i.test(href)) return href;
-  if (!tag) return href;
-  try {
-    const u = new URL(href);
-    u.searchParams.set("tag", tag);
-    return u.toString();
-  } catch {
-    return href.includes("tag=") ? href : `${href}${href.includes("?") ? "&" : "?"}tag=${encodeURIComponent(tag)}`;
-  }
+  if (!href || storeOf(href) !== "amazon") return href;
+  return amazonTagged(href, tag);
 }
 
 export function amazonSearchUrl(query: string, tag = amazonAssociateTag()): string {

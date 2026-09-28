@@ -8,6 +8,7 @@ import { planToMarkdown } from "@/lib/yard/report";
 import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type PaperSize } from "@/lib/yard/flat";
 import { usd } from "@/lib/utils";
 import { tagNote } from "@/lib/yard/listings";
+import { outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET } from "@/lib/yard/outbound";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
@@ -313,7 +314,12 @@ function PlanBody({
                   : `${plan.totals.pieces} pieces`}{" "}
                 · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
               </p>
-              <p className="mt-1 text-[11px] text-faint">{tagNote()} Prices checked 19 Aug 2026.</p>
+              <p className="mt-1 text-[11px] text-faint">Prices checked 19 Aug 2026.</p>
+              {tagNote() && (
+                <p className="mt-1 text-[11px] text-faint" data-yard-affiliate-disclosure="1">
+                  {tagNote()}
+                </p>
+              )}
               <ul className="mt-3 space-y-3">
                 {plan.bom.map((b, i) => (
                   <li key={i} className="border-b border-rule/60 pb-3 last:border-0">
@@ -331,12 +337,12 @@ function PlanBody({
                         {b.offers.map((o) => (
                           <li key={o.href} className="flex items-baseline justify-between gap-2">
                             <a
-                              href={o.href}
-                              target="_blank"
-                              rel="noreferrer sponsored"
+                              href={outboundHref(o.href)}
+                              target={OUTBOUND_TARGET}
+                              rel={OUTBOUND_REL}
                               className={`text-xs underline-offset-2 hover:underline ${o.best ? "text-fg" : "text-muted hover:text-fg"}`}
                               data-yard-shop={o.retailer}
-                              data-yard-affiliate={o.retailer === "amazon" ? "1" : "0"}
+                              data-yard-affiliate={outboundIsAffiliate(o.href) ? "1" : "0"}
                               data-yard-best={o.best ? "1" : "0"}
                             >
                               {o.best ? "Best · " : ""}

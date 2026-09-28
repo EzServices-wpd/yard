@@ -2,7 +2,7 @@
  * Buyable listings for catalog stock.
  * Same measurements only. Sorted by price per piece, any seller.
  * Prices are last checked on the product page — not a live API.
- * Amazon hrefs pick up the Associates tag when it is set.
+ * Every offer href goes through outboundHref (outbound.ts) — inert until an affiliate ID is set.
  */
 
 import type { BomLine, ShopOffer } from "./types";
@@ -10,12 +10,11 @@ import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import {
   affiliateUrl,
-  amazonAssociateTag,
   shopLinks,
-  stampAmazon,
   type ShopRetailer,
 } from "./shop";
 import { hardwareCatalogIdFromHay } from "./voiceHonesty";
+import { affiliateDisclosure, outboundHref } from "./outbound";
 
 export type ListingOffer = {
   catalogId: string;
@@ -894,7 +893,7 @@ export function offersFor(
   const priced = rows
     .map((o) => {
       const packsNeeded = Math.max(1, Math.ceil(piecesNeeded / Math.max(1, o.packQty)));
-      const href = stampAmazon(
+      const href = outboundHref(
         o.retailer === "amazon"
           ? o.asin
             ? affiliateUrl({ query: o.title, asin: o.asin, retailer: "amazon" })
@@ -924,10 +923,9 @@ export function retailerLabel(id: ListingOffer["retailer"]) {
   return RETAILER_LABEL[id];
 }
 
+/** Affiliate disclosure for the Buy list — empty string when no affiliate ID is active. */
 export function tagNote() {
-  return amazonAssociateTag()
-    ? "Amazon links use your Associates tag."
-    : "Amazon links are plain product pages until VITE_PUBLIC_AMAZON_ASSOCIATE_TAG is set.";
+  return affiliateDisclosure();
 }
 
 function guessCatalogId(line: BomLine): string | null {
@@ -1024,7 +1022,7 @@ function searchOffers(
     retailer: l.retailer,
     label: l.label,
     title,
-    href: stampAmazon(l.href),
+    href: outboundHref(l.href),
     packQty,
     packPrice,
     unitPrice: packPrice / packQty,
@@ -1057,7 +1055,7 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
       retailer: o.retailer,
       label: retailerLabel(o.retailer as ShopRetailer),
       title: o.title,
-      href: stampAmazon(o.href),
+      href: outboundHref(o.href),
       packQty: o.packQty,
       packPrice: o.packPrice,
       unitPrice: o.unitPrice,
