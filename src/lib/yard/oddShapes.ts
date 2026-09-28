@@ -877,7 +877,7 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
     .join(" ");
   const steps: Omit<AssemblyStep, "step">[] = [];
   const add = (title: string, description: string, panelIds: string[], tips?: string) =>
-    steps.push({ title, description, panelIds, instanceIds: [], tips } as Omit<AssemblyStep, "step">);
+    steps.push({ title, description, partsUsed: panelIds.length ? P.filter((p) => panelIds.includes(p.id)).map((p) => p.name) : undefined, tips });
   const studs = "Find the studs with a stud finder and mark them with painter's tape.";
   switch (odd.kind) {
     case "l-footprint": {
