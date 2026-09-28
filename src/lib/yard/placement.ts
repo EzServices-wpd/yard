@@ -362,7 +362,8 @@ function dividerTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
   const on = base ? nameOf(ctx, base) : b.min.y < 0.1 && ctx.floor ? "the floor" : null;
   const cue = `Square a pencil line across ${on} at each mark and stand the divider on it.`;
   if (on && !out.sentences.includes(cue)) out.sentences.push(cue);
-  const y = b.max.y;
+  // Low on the divider (near where it stands) so the part's letter callout up top never covers the label.
+  const y = b.min.y + Math.min(3, (b.max.y - b.min.y) / 4);
   const z = b.max.z + 1;
   if (l) out.arrows.push({ a: { x: ctx.box.get(l.q.id)!.max.x, y, z }, b: { x: b.min.x, y, z }, label: f(l.d) });
   if (r && !(l && Math.abs(l.d - r.d) < 1 / 16)) out.arrows.push({ a: { x: b.max.x, y, z }, b: { x: ctx.box.get(r.q.id)!.min.x, y, z }, label: f(r.d) });
