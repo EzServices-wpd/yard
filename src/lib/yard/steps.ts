@@ -33,6 +33,8 @@ import {
   mediaTipTalk,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
+import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
+import { glueUpTalk, planSolidBoards } from "./solidStock";
 import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -94,12 +96,41 @@ function cutHow(item?: CatalogItem | null) {
   };
 }
 
+/** Prompt of the panel project being written (named solid stock labels / glue-up). */
+let stepStockPrompt = "";
+
+/** Named solid stock drives the parts (Pine / Oak 1×4 …, no ¾" plywood left). */
+function solidStockVoice(project: YardProject): boolean {
+  return (
+    project.primaryMaterialId === CATALOG_LUMBER_BIND &&
+    !!namedLumberFromPrompt(project.prompt ?? "") &&
+    !project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""))
+  );
+}
+
+function solidWordsInStep(st: AssemblyStep): AssemblyStep {
+  const fix = (t?: string) =>
+    t
+      ?.replace(/so the ply does not split/g, "so the wood does not split")
+      .replace(/the ply does not split/g, "the wood does not split")
+      .replace(/Iron-on edge banding on the top edge if people will see ply\.?/g, "Ease the edges with sandpaper.");
+  const title = /Glue-up first/.test(st.description ?? "") ? st.title.replace(/^Cut the /, "Glue up and cut the ") : st.title;
+  return { ...st, title: fix(title) ?? title, description: fix(st.description) ?? st.description, tips: fix(st.tips) };
+}
+
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
   if (project.flat && !project.flat.lifted) {
     return uniqueFlatSteps(project);
   }
   if (project.panels.length && !project.instances.length) {
-    return uniquePanelSteps(project);
+    const prev = stepStockPrompt;
+    stepStockPrompt = project.prompt ?? "";
+    try {
+      const steps = uniquePanelSteps(project);
+      return solidStockVoice(project) ? steps.map(solidWordsInStep) : steps;
+    } finally {
+      stepStockPrompt = prev;
+    }
   }
   if (project.instances.length) return uniqueForgeSteps(project);
   return [
@@ -1303,43 +1334,69 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     (/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   if (wineRack) {
     const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
-    return [
+    const dividers = panels.filter((p) => p.type === "divider");
+    const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
+    const capShelves = sortedShelves.length > 1 ? [sortedShelves[0], sortedShelves[sortedShelves.length - 1]] : sortedShelves;
+    const midShelves = sortedShelves.filter((p) => !capShelves.includes(p));
+    const hang = {
+      title: "Hang it on studs",
+      description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
+      tips: "Guidance only — hit a stud. Confirm the hang height so you can reach a bottle.",
+      partsUsed: names(backs),
+    };
+    const railsStep = {
+      title: "Glue the bottle rails",
+      description: `${rails.map(cutLine).join("; ") || '1.5" bottle rails.'}. Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off. #8 × 1¼" screws from behind the rail into the shelf front edge.`,
+      tips: "The rail stands on the front edge of the shelf. Wipe squeeze-out before it skins. Bottles lie on their sides, necks facing out.",
+      partsUsed: names(rails),
+    };
+    const confirm = {
+      title: "Confirm the hang — do not cut yet",
+      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
+      tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
+      partsUsed: ["*"],
+    };
+    const cut = {
+      title: sheetCutTitle(panels, item),
+      description: sheetCutDescription(panels, item),
+      tips: tool.tip,
+      partsUsed: names(panels),
+    };
+    const numbered = (list: Omit<AssemblyStep, "step">[]): AssemblyStep[] => list.map((st, i) => ({ ...st, step: i + 1 }));
+    if (dividers.length && midShelves.length) {
+      const dNote = dividers[0].cutNote?.match(/Egg-crate half-lap:[^]*?bottom end\./)?.[0] ?? "";
+      const sNote = midShelves[0].cutNote?.match(/Egg-crate half-lap:[^]*?left end\./)?.[0] ?? "";
+      return numbered([
+        confirm,
+        cut,
+        {
+          title: "Notch and slot the bottle grid",
+          description: `${dividers.map(cutLine).join("; ")}. ${midShelves.map(cutLine).join("; ")}. Dividers: ${dNote.replace(/^Egg-crate half-lap: /, "")} Middle shelves: ${sNote.replace(/^Egg-crate half-lap: /, "")} Saw both sides of each notch and chisel out the waste. Slot every divider down over the middle shelves so the front edges line up — an egg-crate grid. Dry-fit, then glue the laps.`,
+          tips: "Cut one notch, test it on a scrap of the same board, then cut the rest. A snug hand-press fit is right — no hammering.",
+          partsUsed: names([...dividers, ...midShelves]),
+        },
+        {
+          title: "Stand the rack",
+          description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${capShelves.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(sortedShelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into the bottom shelf, the top cap and each middle shelf of the grid at those marked heights. Then screw the top cap and bottom shelf down into the divider ends and the back onto the shelf edges. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
+          tips: "Check both diagonals before the glue skins. Every opening should take a bottle with room to spare.",
+          partsUsed: names([...uprights, ...backs, ...capShelves]),
+        },
+        railsStep,
+        hang,
+      ]);
+    }
+    return numbered([
+      confirm,
+      cut,
       {
-        step: 1,
-        title: "Confirm the hang — do not cut yet",
-        description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
-        tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
-        partsUsed: ["*"],
-      },
-      {
-        step: 2,
-        title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item),
-        tips: tool.tip,
-        partsUsed: names(panels),
-      },
-      {
-        step: 3,
         title: "Stand the rack",
         description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
         tips: "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first rack.",
         partsUsed: names([...uprights, ...backs, ...shelves]),
       },
-      {
-        step: 4,
-        title: "Glue the bottle rails",
-        description: `${rails.map(cutLine).join("; ") || '1.5" bottle rails.'}. Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off. #8 × 1¼" screws from behind the rail into the shelf front edge.`,
-        tips: "The rail stands on the front edge of the shelf. Wipe squeeze-out before it skins. Bottles lie on their sides, necks facing out.",
-        partsUsed: names(rails),
-      },
-      {
-        step: 5,
-        title: "Hang it on studs",
-        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
-        tips: "Guidance only — hit a stud. Confirm the hang height so you can reach a bottle.",
-        partsUsed: names(backs),
-      },
-    ];
+      railsStep,
+      hang,
+    ]);
   }
 
   const overToilet =
@@ -2120,8 +2177,9 @@ function cutStockGroups(
       return;
     }
     const cat = item ?? fallbackItem;
+    const solid = cat?.id === CATALOG_LUMBER_BIND && !!namedLumberFromPrompt(stepStockPrompt);
     byKey.set(key, {
-      label: cat?.name ?? '3/4" plywood',
+      label: solid ? namedStockDisplayName(stepStockPrompt, cat) : (cat?.name ?? '3/4" plywood'),
       panels: [p],
       tool: cutHow(cat),
     });
@@ -2146,6 +2204,21 @@ function cutStockGroups(
   }
 
   const groups = [...byKey.values()];
+  // Named solid stock: say how the wide parts are glued up from boards before cutting.
+  for (const g of groups) {
+    if (g.panels[0]?.materialId !== CATALOG_LUMBER_BIND || !namedLumberFromPrompt(stepStockPrompt)) continue;
+    const parts = new Map<string, { name: string; lengthIn: number; widthIn: number; qty: number }>();
+    for (const p of g.panels) {
+      const d = sheetCutDims(p.size.width, p.size.height, p.size.depth);
+      const name = cutListName(p.name, p.type);
+      const k = `${name}|${d.lengthIn}|${d.widthIn}`;
+      const e = parts.get(k);
+      if (e) e.qty += 1;
+      else parts.set(k, { name, lengthIn: d.lengthIn, widthIn: d.widthIn, qty: 1 });
+    }
+    const talk = glueUpTalk(planSolidBoards([...parts.values()]), g.label);
+    if (talk) g.tool = { how: `${talk} ${g.tool.how}`, tip: g.tool.tip };
+  }
   if (thin.length) {
     groups.push({
       label: '1/4" plywood (backer)',

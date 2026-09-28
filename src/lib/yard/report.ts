@@ -12,7 +12,8 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
-import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
+import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
+import { planSolidBoards } from "./solidStock";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
@@ -54,6 +55,7 @@ function effortLabel(project: YardProject, pieces: number): string {
 
 function closetCuts(project: YardProject): CutLine[] {
   const STOCK_T = 0.75;
+  const namedSolid = !!namedLumberFromPrompt(project.prompt ?? "");
   const grouped = new Map<string, CutLine>();
   const addCut = (
     materialId: string,
@@ -71,6 +73,9 @@ function closetCuts(project: YardProject): CutLine[] {
     const isPly =
       /plywood/i.test(materialId ?? "") ||
       /plywood/i.test(materialName ?? "");
+    // Named solid boards follow the same shop rules as ¾" sheet parts: a 1½" top is
+    // two laminated layers, a ¼" drawer bottom / backer stays ¼" plywood.
+    const isSolidBoard = materialId === CATALOG_LUMBER_BIND;
     let id = materialId;
     let matName = materialName;
     // Square stick posts (≈1½×1½) are solid 2x2 lumber — never laminated into
@@ -82,7 +87,7 @@ function closetCuts(project: YardProject): CutLine[] {
     } else if (
       // Class pack: sheet goods thicker than stock are laminated plies (island/desk
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
-      isPly &&
+      (isPly || isSolidBoard) &&
       dims.thicknessIn > STOCK_T + 0.05 &&
       dims.thicknessIn <= 2.05 &&
       !/^leg$/i.test(family)
@@ -93,11 +98,13 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     // 0.25" ply is ¼″ backer even when the envelope was stamped ¾″ (mirror, drawer bottoms).
     // Skip when square-stick remap already bound solid lumber.
-    if (/plywood/i.test(id ?? "") && dims.thicknessIn <= 0.26) {
+    if ((/plywood/i.test(id ?? "") || id === CATALOG_LUMBER_BIND) && dims.thicknessIn <= 0.26) {
       id = "plywood-1-4-4x8";
       matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
     }
-    const key = `${id}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}`;
+    // A notched (half-lapped) board is a different cut from its plain twin.
+    const lapKey = note && /Egg-crate half-lap/.test(note) ? `|${note}` : "";
+    const key = `${id}|${family}|${dims.lengthIn}|${dims.widthIn}|${dims.thicknessIn}${lapKey}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += qty;
@@ -120,7 +127,10 @@ function closetCuts(project: YardProject): CutLine[] {
     const w = Math.round(p.size.width * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
-    const materialName = item?.name ?? p.materialId;
+    const materialName =
+      p.materialId === CATALOG_LUMBER_BIND && namedSolid
+        ? namedStockDisplayName(project.prompt ?? "", item)
+        : (item?.name ?? p.materialId);
     // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
     // Explode into sides/back/bottom so the cut list matches Build steps.
     if (isBuyMirrorPanel(p.name, p.type)) continue;
@@ -232,9 +242,32 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     const densifyNestsOnSheet = structural.some((c) =>
       /ply|sheet/i.test(`${c.material ?? ""}`),
     );
+    const solidNamed = isNamedLumberPrimary && !densifyNestsOnSheet;
     const nestSheetQty = sheets8 + sheetsFallback;
     const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
-    if (isNamedLumberPrimary && densifyNestsOnSheet) {
+    if (solidNamed) {
+      // Named solid stock drives every ¾" part: Buy the 8-ft boards the parts
+      // actually need (edge-glue strips + rips packed with kerf) — no unused boards.
+      const boardPlan = planSolidBoards(
+        structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
+      );
+      const label = namedStockDisplayName(project.prompt ?? "", namedLumber!);
+      const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
+      bom.push({
+        name: label,
+        quantity: boardPlan.boards,
+        unit: boardPlan.boards === 1 ? "board" : "boards",
+        catalogId: namedLumber!.id,
+        searchQuery: namedLumber!.searchQuery ?? label,
+        estimatedCost: (namedLumber!.unitCostUsd ?? 4) * boardPlan.boards,
+        notes:
+          `${boardPlan.boards} × 8 ft ${label} (¾" × 3½") for ${legQtyForNote ? "the" : "all"} ${structuralQty} ${label} part${structuralQty === 1 ? "" : "s"} on the cut list` +
+          (legQtyForNote ? ` (excluding the ${legQtyForNote} leg${legQtyForNote === 1 ? "" : "s"} listed below)` : "") +
+          (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued from boards` : "") +
+          `. Packed from the cut list with 1/8" kerf${glued ? ' and 1" trim on each glue-up' : ""}.` +
+          "",
+      });
+    } else if (isNamedLumberPrimary && densifyNestsOnSheet) {
       const plyItem = getCatalogItem("plywood-3-4-4x8");
       const plyName = plyItem?.name ?? '3/4" Plywood 4×8';
       const nestNote =
@@ -301,7 +334,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       });
     }
   }
-  if (!buyNamedBoard && sheets10 > 0) {
+  const solidNamedBuy =
+    project.primaryMaterialId === CATALOG_LUMBER_BIND &&
+    !!namedLumber &&
+    !structural.some((c) => /ply|sheet/i.test(`${c.material ?? ""}`));
+  if (!buyNamedBoard && !solidNamedBuy && sheets10 > 0) {
     bom.push({
       name: sheet10?.name ?? '3/4" plywood 4x10',
       quantity: sheets10,
@@ -476,7 +513,10 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       estimatedCost: 6,
       notes: `Nail each drawer (sides, back, and bottom) square (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
     });
-    bom.push({
+    const solidFronts =
+      project.primaryMaterialId === CATALOG_LUMBER_BIND &&
+      !project.panels.some((pp) => /^plywood-3-4/i.test(pp.materialId ?? ""));
+    if (!solidFronts) bom.push({
       name: "Iron-on edge banding",
       quantity: 1,
       unit: "roll",
@@ -736,15 +776,15 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
               ? "2-3 screws per bracket into studs. Guidance only — confirm wall type."
               : "2-3 screws per wall cleat into studs. Guidance only — confirm wall type."
           : ironing || foldDown
-            ? "4-6 screws through the plywood back into studs. A person leaning on the fold-down board will rip it off drywall anchors. Guidance only — confirm wall type."
+            ? "4-6 screws through the back into studs. A person leaning on the fold-down board will rip it off drywall anchors. Guidance only — confirm wall type."
           : medicine
-            ? "4 screws through the plywood back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
+            ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
           : overToilet
             ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
           : spice
-            ? "4 screws through the plywood back into studs. A loaded spice rack will rip off drywall anchors. Guidance only — confirm wall type."
+            ? "4 screws through the back into studs. A loaded spice rack will rip off drywall anchors. Guidance only — confirm wall type."
           : wine
-            ? "4-6 screws through the plywood back into studs. A loaded wine rack will rip off drywall anchors. Guidance only — confirm wall type."
+            ? "4-6 screws through the back into studs. A loaded wine rack will rip off drywall anchors. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
             ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",

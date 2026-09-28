@@ -183,6 +183,9 @@ function containedIn(a: Panel, b: Panel): boolean {
  * half-lap — a ¾" notch halfway into each board so they slot together. The model
  * declares the joint on both parts and each cut line says where the notch goes.
  */
+/** Notch stations per lapped panel for the current solve. */
+const lapStations = new WeakMap<Panel, number[]>();
+
 function crossLap(v: Panel, h: Panel): boolean {
   if (v.type !== "divider" || !["shelf", "deck"].includes(h.type)) return false;
   if (v.yaw || shaped(v) || h.yaw || shaped(h)) return false;
@@ -192,12 +195,33 @@ function crossLap(v: Panel, h: Panel): boolean {
   if (!(H.y0 > V.y0 + t && H.y1 < V.y1 - t && V.x0 > H.x0 + t && V.x1 < H.x1 - t)) return false;
   const depth = Math.min(V.z1, H.z1) - Math.max(V.z0, H.z0);
   const half = fmt16(depth / 2);
-  v.joints = [...(v.joints ?? []), { with: h.id, kind: "lap" }];
-  h.joints = [...(h.joints ?? []), { with: v.id, kind: "lap" }];
-  const vNote = `Egg-crate half-lap: cut a ${fmt16(H.y1 - H.y0)}" wide notch ${half}" deep from the front edge where the shelf crosses, ${fmt16(H.y0 - V.y0)}" up from the bottom end.`;
-  const hNote = `Egg-crate half-lap: cut a ${fmt16(V.x1 - V.x0)}" wide notch ${half}" deep from the back edge at each divider crossing.`;
-  if (!v.cutNote?.includes("Egg-crate")) v.cutNote = v.cutNote ? `${v.cutNote} ${vNote}` : vNote;
-  if (!h.cutNote?.includes("Egg-crate")) h.cutNote = h.cutNote ? `${h.cutNote} ${hNote}` : hNote;
+  if (!(v.joints ?? []).some((j) => j.with === h.id && j.kind === "lap")) {
+    v.joints = [...(v.joints ?? []), { with: h.id, kind: "lap" }];
+  }
+  if (!(h.joints ?? []).some((j) => j.with === v.id && j.kind === "lap")) {
+    h.joints = [...(h.joints ?? []), { with: v.id, kind: "lap" }];
+  }
+  // One notch per crossing: the divider lists every shelf height it crosses,
+  // the shelf lists every divider position along its length.
+  const addAt = (p: Panel, at: number) => {
+    const list = lapStations.get(p) ?? [];
+    if (!list.some((x) => Math.abs(x - at) < 1 / 32)) list.push(at);
+    list.sort((a, b) => a - b);
+    lapStations.set(p, list);
+    return list;
+  };
+  const vAt = addAt(v, H.y0 - V.y0);
+  const hAt = addAt(h, V.x0 - H.x0);
+  const list = (xs: number[]) =>
+    xs.length === 1 ? `${fmt16(xs[0])}"` : `${xs.slice(0, -1).map((x) => `${fmt16(x)}"`).join(", ")} and ${fmt16(xs[xs.length - 1])}"`;
+  const vNote = `Egg-crate half-lap: cut ${vAt.length === 1 ? "a notch" : `${vAt.length} notches`} ${fmt16(H.y1 - H.y0)}" wide × ${half}" deep from the front edge, one where each shelf crosses, at ${list(vAt)} up from the bottom end.`;
+  const hNote = `Egg-crate half-lap: cut ${hAt.length === 1 ? "a notch" : `${hAt.length} notches`} ${fmt16(V.x1 - V.x0)}" wide × ${half}" deep from the back edge, one at each divider crossing, at ${list(hAt)} from the left end.`;
+  const setNote = (p: Panel, note: string) => {
+    const base = (p.cutNote ?? "").replace(/\s*Egg-crate half-lap:[^]*?(?:bottom end|left end|divider crossing)\./, "").trim();
+    p.cutNote = base ? `${base} ${note}` : note;
+  };
+  setNote(v, vNote);
+  setNote(h, hNote);
   return true;
 }
 

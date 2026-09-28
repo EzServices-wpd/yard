@@ -172,7 +172,7 @@ export function applyNamedLumberPrimaryHonesty(
   };
 
   if (primary === CATALOG_LUMBER_BIND) {
-    return honorTitle(project);
+    return honorTitle(solidNamedPanels(project, species.display));
   }
 
   if (!isSheetPrimaryId(primary)) return project;
@@ -187,19 +187,29 @@ export function applyNamedLumberPrimaryHonesty(
     return honorTitle(project);
   }
 
-  // Bind primary to named lumber catalog id; title speaks species.
-  // Structural panels may still nest on ply — Buy lead speaks densifyLabel, not silent plywood-only.
-  const label = densifyLabelForPrompt(prompt) ?? `${species.display} 1×4`;
-  const bindNote = `Prompt names ${species.display} — primary stock binds ${label} (not silent plywood). Sheet panels may still nest on plywood as structural parts; buy ${species.display} boards or lining/finish for the named-species story.`;
-  const nextNotes = notes.some((n) => /primary stock binds/i.test(n))
-    ? notes
-    : [...notes, bindNote];
+  // Bind primary to named lumber; the named solid stock drives every ¾" part
+  // (edge-glued where wider than a board) so chip, cut list and Buy agree.
+  return honorTitle(
+    solidNamedPanels({ ...project, primaryMaterialId: CATALOG_LUMBER_BIND }, species.display),
+  );
+}
 
-  return honorTitle({
-    ...project,
-    primaryMaterialId: CATALOG_LUMBER_BIND,
-    notes: nextNotes,
+/** ¾" sheet parts → the named solid board. Thin (¼") backers stay plywood. */
+function solidNamedPanels(project: YardProject, speciesName: string): YardProject {
+  const panels = project.panels.map((p) => {
+    if (!/^plywood-3-4/i.test(p.materialId ?? "")) return p;
+    const t = Math.min(p.size.width, p.size.height, p.size.depth);
+    if (t < 0.5) return p;
+    return { ...p, materialId: CATALOG_LUMBER_BIND };
   });
+  const prompt = project.prompt ?? "";
+  const label = densifyLabelForPrompt(prompt) ?? `${speciesName} 1×4`;
+  const thinPly = panels.some((p) => /^plywood-/i.test(p.materialId ?? "") || p.type === "drawer");
+  const bindNote = `Named stock: every ¾" part is solid ${label} (true ¾" × 3½" boards). Parts wider than one board are edge-glued from boards, then cut to size — ${thinPly ? "only ¼\" backers and drawer bottoms stay ¼\" plywood" : "no plywood"}.`;
+  const notes = (project.notes ?? [])
+    .filter((n) => !/primary stock binds/i.test(n) && !/^Named stock:/.test(n))
+    .map((n) => n.replace(/\s*¾" plywood\.?/g, "").trim());
+  return { ...project, panels, notes: [...notes, bindNote] };
 }
 
 

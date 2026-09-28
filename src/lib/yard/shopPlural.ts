@@ -132,6 +132,7 @@ export function cutListName(name: string, type?: string): string {
   if (/hanging rod/i.test(name)) return "Hanging rod";
   if (/jar lip/i.test(name)) return "Jar lip";
   if (/bottle rail/i.test(name)) return "Bottle rail";
+  if (/^grid shelf/i.test(name)) return "Grid shelf";
   if (/shoe peg/i.test(name)) return "Shoe peg";
   if (/shoe cubb/i.test(name)) return "Shoe cubbies";
   if (/shoe rail/i.test(name)) return "Shoe rail";

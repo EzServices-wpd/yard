@@ -1,3 +1,4 @@
+import { planSolidBoards } from "../src/lib/yard/solidStock";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { BENCH_VIEWPORTS, benchModelBox, benchView, fitBench, projectCorners } from "../src/lib/yard/benchFrame";
 import { planOverviewSvg, planStepSvg, pictureFramed } from "../src/lib/yard/planStepPicture";
@@ -3418,6 +3419,95 @@ console.log("SOFT-TRUST OK", {
 
 
 
+// Wine / bottle rack class: board thickness counts in the grid, every opening ≥3.5"
+// clear measured from the scene, asked capacity binds ("N slots" / "holds N bottles" /
+// "rack for N bottles"), openings = asked or the notes say the real capacity, one
+// half-lap notch per crossed shelf, a named solid stock drives every part and Buy.
+// Plate rack: N slots = N−1 dividers, no extra panel against the right upright.
+{
+  const failWine = (msg: string, detail?: unknown) => failHonesty(`wine-class ${msg}`, detail);
+  const openings = (p: ReturnType<typeof generateFromPrompt>) => {
+    const shelves = p.panels.filter((x) => x.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+    const posts = p.panels
+      .filter((x) => x.type === "upright" || x.type === "divider")
+      .sort((a, b) => a.position.x - b.position.x);
+    const vGaps = shelves.slice(1).map((s, i) => s.position.y - (shelves[i].position.y + shelves[i].size.height));
+    const hGaps = posts.slice(1).map((s, i) => s.position.x - (posts[i].position.x + posts[i].size.width));
+    return { vGaps, hGaps, rows: vGaps.length, cols: hGaps.length, dividers: posts.length - 2 };
+  };
+  const capacityOf = (p: ReturnType<typeof generateFromPrompt>) => {
+    const m = (p.notes ?? []).join(" ").match(/Holds (?:about )?(\d+) bottles/);
+    return m ? parseInt(m[1], 10) : null;
+  };
+  type Case = { prompt: string; asked: number | null; width?: number; cols?: number; capacity?: number; stock?: RegExp; capped?: boolean };
+  const cases: Case[] = [
+    { prompt: "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots", asked: 12, width: 24, cols: 5, capacity: 15 },
+    { prompt: "wine rack that holds 8 bottles", asked: 8 },
+    { prompt: "wine rack that holds 12 bottles, 30 inches wide", asked: 12, width: 30, cols: 6, capacity: 12 },
+    { prompt: "oak wine rack for 10 bottles, 18 inches wide", asked: 10, width: 18, cols: 4, capacity: 12, stock: /^Oak 1×4$/ },
+    { prompt: "pine wine rack with 15 slots, 20 inches wide", asked: 15, width: 20, cols: 4, capacity: 16, stock: /^Pine 1×4$/ },
+    { prompt: "pine wine rack 30 wide with 20 slots", asked: 20, width: 30, cols: 6, capacity: 24, stock: /^Pine 1×4$/ },
+    { prompt: "wine rack 24 wide 12 tall 12 deep with 30 slots", asked: 30, width: 24, capped: true },
+  ];
+  for (const c of cases) {
+    const p = generateFromPrompt(c.prompt);
+    const plan = buildPlan(p);
+    const o = openings(p);
+    const blob = (p.notes ?? []).join(" ");
+    if (!/^(\w+ )?Wine rack/i.test(p.name)) failWine("title", { prompt: c.prompt, name: p.name });
+    if (c.width != null && Math.abs(p.overall.width - c.width) > 0.01) failWine("typed width wins", { prompt: c.prompt, W: p.overall.width });
+    for (const g of [...o.vGaps, ...o.hGaps]) {
+      if (g < 3.5 - 1e-6) failWine("opening under 3.5in clear", { prompt: c.prompt, vGaps: o.vGaps, hGaps: o.hGaps });
+    }
+    if (c.asked != null && o.dividers < 1) failWine("asked count built no grid", { prompt: c.prompt, panels: p.panels.map((x) => x.name) });
+    const cap = capacityOf(p);
+    const openN = o.rows * o.cols;
+    if (cap !== openN) failWine("notes capacity ≠ openings in the scene", { prompt: c.prompt, cap, openN, blob: blob.slice(0, 300) });
+    if (c.cols != null && o.cols !== c.cols) failWine("columns", { prompt: c.prompt, cols: o.cols, want: c.cols });
+    if (c.capacity != null && cap !== c.capacity) failWine("capacity", { prompt: c.prompt, cap, want: c.capacity });
+    if (c.asked != null && cap != null) {
+      if (cap > c.asked && !new RegExp(`room for the ${c.asked} bottles you asked for`).test(blob)) failWine("round-up voice", { prompt: c.prompt, blob: blob.slice(0, 300) });
+      if (cap < c.asked && !/at this height/.test(blob)) failWine("height-capped voice", { prompt: c.prompt, blob: blob.slice(0, 300) });
+      if (c.capped && !(cap < c.asked)) failWine("expected a height cap", { prompt: c.prompt, cap });
+    }
+    // One notch per crossed shelf on every divider cut line.
+    const div = plan.cutList.find((l) => /^Divider$/i.test(l.name));
+    if (div && o.rows > 1) {
+      const heights = (div.notes ?? "").match(/at ([^]*?) up from the bottom end/)?.[1] ?? "";
+      const n = heights.split(/,| and /).filter((x) => /\d/.test(x)).length;
+      if (n !== o.rows - 1) failWine("divider notch list ≠ crossed shelves", { prompt: c.prompt, notes: div.notes, crossed: o.rows - 1 });
+    }
+    if (c.stock) {
+      const wood = plan.cutList.filter((l) => !/^leg$/i.test(l.name));
+      if (wood.some((l) => !c.stock!.test(l.material ?? ""))) failWine("named stock not on every cut line", { prompt: c.prompt, mats: wood.map((l) => l.material) });
+      if (plan.bom.some((b) => /plywood/i.test(b.name))) failWine("named solid stock still buys plywood", { prompt: c.prompt, bom: plan.bom.map((b) => b.name) });
+      const boards = plan.bom.find((b) => c.stock!.test(b.name));
+      const expect = planSolidBoards(wood.map((l) => ({ name: l.name, lengthIn: l.lengthIn, widthIn: l.widthIn, qty: l.quantity }))).boards;
+      if (!boards || boards.quantity !== expect) failWine("Buy boards ≠ packed cut list", { prompt: c.prompt, buy: boards?.quantity, expect });
+      const chip = namedStockDisplayName(p.prompt ?? "", getCatalogItem(p.primaryMaterialId));
+      if (!c.stock.test(chip)) failWine("chip ≠ named stock", { prompt: c.prompt, chip });
+      const cutStep = plan.instructions.find((st) => /cut the/i.test(st.title));
+      if (!cutStep || !c.stock.test(cutStep.title.replace(/^.*the /, "")) || !/edge-glued/.test(cutStep.description)) {
+        failWine("cut step must glue up the named stock", { prompt: c.prompt, title: cutStep?.title });
+      }
+    }
+  }
+  // Default rack states bottle capacity (rows × about 6), never the row count as slots.
+  const def = generateFromPrompt("wine rack");
+  const defBlob = (def.notes ?? []).join(" ");
+  if (!/Holds about 42 bottles/.test(defBlob) || /\b7 bottle slots\b/.test(defBlob)) failWine("default capacity voice", defBlob.slice(0, 300));
+  // Asked-count parse binds the same way for every phrasing.
+  const holds8 = generateFromPrompt("wine rack that holds 8 bottles");
+  if ((capacityOf(holds8) ?? 0) < 8 || !holds8.panels.some((x) => x.type === "divider")) failWine("holds 8 bottles did not bind", holds8.notes);
+  const rack10 = generateFromPrompt("rack for 10 bottles of wine");
+  if (/Wine rack/i.test(rack10.name) && (capacityOf(rack10) ?? 0) < 10) failWine("rack for N bottles did not bind", rack10.notes);
+  // Plate rack 6 slots: 5 dividers, no Slot 6 panel against the right upright.
+  const plate6 = generateFromPrompt("plate rack with 6 slots");
+  if (plate6.panels.some((x) => /^Slot 6$/i.test(x.name))) failWine("plate 6 still has a Slot 6 panel", plate6.panels.map((x) => x.name));
+  if (plate6.panels.filter((x) => x.type === "divider").length !== 5) failWine("plate 6 dividers", plate6.panels.map((x) => x.name));
+  console.log("PASS wine-class: grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
+}
+
 // Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
 {
   // A) Cleat-mounted singular wall shelf: ONE shelf thick 2, title Wall shelf, cleat-mounted voice.
@@ -4941,7 +5031,13 @@ console.log("SOFT-TRUST OK", {
   }
   const teakLegBom = teakPlan.bom.find((b) => /2x2|2×2/i.test(b.name));
   const teakLegQty = teakLegBom?.quantity ?? 0;
-  const teakStructuralExpect = Math.max(1, teakCut - teakLegQty);
+  // Named solid stock drives the parts: Buy = the 8-ft boards the structural cuts
+  // pack into (edge-glue strips + rips, kerf), never pieces-as-boards or nest sheets.
+  const teakStructuralExpect = planSolidBoards(
+    teakPlan.cutList
+      .filter((c) => /teak/i.test(c.material ?? ""))
+      .map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
+  ).boards;
   const teakBuy = teakPlan.bom.find(
     (b) => /teak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2/i.test(b.name),
   );
@@ -4958,6 +5054,9 @@ console.log("SOFT-TRUST OK", {
         unit: teakBuy.unit,
         notes: teakBuy.notes?.slice(0, 140),
       });
+    }
+    if (teakPlan.cutList.some((c) => /ply/i.test(c.material ?? ""))) {
+      failBom("teak cut list still plywood under a named solid stock", teakPlan.cutList.map((c) => c.material));
     }
     if (teakBuy.quantity === 1 && teakStructuralExpect > 1) {
       failBom("teak Buy still nest-sheet undercount (1 pc vs multi structural)", {
@@ -4977,8 +5076,8 @@ console.log("SOFT-TRUST OK", {
         cut: teakCut,
       });
     }
-    if (!/pc/i.test(teakBuy.unit ?? "")) {
-      failBom("teak Buy unit should be pc/pcs (named lumber)", teakBuy.unit);
+    if (!/board/i.test(teakBuy.unit ?? "")) {
+      failBom("teak Buy unit should be boards (named solid lumber)", teakBuy.unit);
     }
     // Soft leftover: when 2×2 legs split out, Buy note must NOT claim Confirm/chip
     // total parity (primary qty is structural-only). Prefer densify that names
@@ -5002,9 +5101,9 @@ console.log("SOFT-TRUST OK", {
     }
   }
 
-  // Named lumber + sheet densify (oak/teak tables): Buy must keep the plywood nest
-  // when tops/aprons still cut as plywood — never sell a 40" round blank as 1×4 alone.
-  // Species boards stay on Buy for the named-species story; cut step names plywood.
+  // Named solid stock drives the parts (oak/teak tables): the 40" round top is
+  // edge-glued from Oak 1×4 boards — chip, cut list, cut step and Buy all say Oak,
+  // no plywood line and no unused "species story" boards.
   {
     const oakRound = generateFromPrompt("round coffee table 40 diameter three legs oak");
     const oakPlan = buildPlan(oakRound);
@@ -5012,11 +5111,12 @@ console.log("SOFT-TRUST OK", {
     const oakBoards = oakPlan.bom.find(
       (b) => /oak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2|ply/i.test(b.name),
     );
-    if (!oakPly || (oakPly.quantity ?? 0) < 1) {
-      failBom("oak round missing plywood nest Buy", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
-    }
-    if (!oakBoards) {
-      failBom("oak round missing Oak boards Buy", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+    if (oakPly) failBom("oak round still buys plywood under named solid oak", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+    const oakCuts = oakPlan.cutList.filter((c) => !/^leg$/i.test(c.name));
+    if (oakCuts.some((c) => !/oak/i.test(c.material ?? ""))) failBom("oak round cut list not Oak", oakCuts.map((c) => c.material));
+    const oakExpect = planSolidBoards(oakCuts.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity }))).boards;
+    if (!oakBoards || oakBoards.quantity !== oakExpect) {
+      failBom("oak round Buy boards ≠ packed cut list", { buy: oakBoards?.quantity, expect: oakExpect });
     }
     if (oakRound.fitted?.unit?.shape !== "round" || (oakRound.fitted?.unit?.legs ?? 0) !== 3) {
       failBom("oak round shape/legs", oakRound.fitted?.unit);
@@ -5025,16 +5125,13 @@ console.log("SOFT-TRUST OK", {
       failBom("oak round envelope", oakRound.overall);
     }
     const oakCutStep = oakPlan.instructions.find((s) => /Cut the/i.test(s.title) && /top/i.test(s.title));
-    if (!oakCutStep || !/plywood|sheet/i.test(oakCutStep.title)) {
-      failBom("oak round cut step must name plywood nest", oakCutStep?.title);
+    if (!oakCutStep || !/Glue up/i.test(oakCutStep.title) || !/Oak 1×4/.test(oakCutStep.title)) {
+      failBom("oak round cut step must glue up Oak 1×4", oakCutStep?.title);
     }
-    if (/1\s*[×x]\s*4/i.test(oakCutStep?.title ?? "")) {
-      failBom("oak round cut step still claims 1×4 blank for sheet top", oakCutStep?.title);
-    }
+    if (!/edge-glued/i.test(oakCutStep?.description ?? "")) failBom("oak round glue-up talk", oakCutStep?.description?.slice(0, 200));
+    if (/plywood/i.test(oakCutStep?.title ?? "")) failBom("oak round cut step still plywood", oakCutStep?.title);
     const teakPly = teakPlan.bom.find((b) => /plywood|sheet/i.test(b.name) && !/screw|glue|banding/i.test(b.name));
-    if (!teakPly || (teakPly.quantity ?? 0) < 1) {
-      failBom("teak outdoor missing plywood nest Buy after named-lumber+sheet densify", teakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
-    }
+    if (teakPly) failBom("teak outdoor still buys plywood under named solid teak", teakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
   }
 
   // Protect: nightstand effort/screws/Confirm 11-class; linen 31.5; banding; ledge; desk; lounge; catapult.
