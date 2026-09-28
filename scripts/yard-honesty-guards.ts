@@ -50,7 +50,8 @@ import {
   operateFacesLabel,
 } from "../src/lib/yard/operateFaces";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
-import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
+import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount, isBuyMirrorPanel, isBoundingDrawerPanel } from "../src/lib/yard/shopPlural";
+import { findInterference } from "../src/lib/yard/interference";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
 import { buildPlanPdf, planStepParts, typedAxesTalk } from "../src/lib/yard/pdf";
 import { partLetters } from "../src/lib/yard/pdfDraw";
@@ -6384,7 +6385,8 @@ console.log("STRANGER PLAN OK", {
   const van = generateFromPrompt("bathroom vanity 36 wide with two doors");
   const vanPlan = buildPlan(van);
   const talk = typedAxesTalk(van);
-  if (!/^36" wide · 34" tall and 21" deep assumed, measure to lock$/.test(talk.subtitle)) failHonesty("pdf cover must mark untyped vanity axes assumed", talk);
+  // Tail comes from the solved model: overlay doors stand 3/4" proud of the 21" box (same as the cover arrow).
+  if (!/^36" wide · 34" tall and 21" deep assumed, measure to lock · 21 3\/4" deep with the doors on$/.test(talk.subtitle)) failHonesty("pdf cover must mark untyped vanity axes assumed", talk);
   if (talk.assumed.width || !talk.assumed.height || !talk.assumed.depth) failHonesty("pdf vanity assumed axes", talk.assumed);
   const linenTalk = typedAxesTalk(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep"));
   if (/assumed/.test(linenTalk.subtitle)) failHonesty("pdf linen fully typed must not say assumed", linenTalk.subtitle);
@@ -6500,6 +6502,8 @@ console.log("STRANGER PLAN OK", {
           const b = box(byId.get(m.id)!);
           const n = box(byId.get(m.neighborId)!);
           geo = m.side === "left" ? b.min.x - n.max.x : n.min.x - b.max.x;
+        } else if (m.kind === "frontBottom") {
+          geo = box(byId.get(m.id)!).min.y;
         } else if (m.kind === "pull") {
           const b = box(byId.get(m.id)!);
           geo = (b.max.y - b.min.y) / 2;
@@ -6521,8 +6525,9 @@ console.log("STRANGER PLAN OK", {
   }
   // Pocket vanity: shelf G (the upper bottom) says how high, from the floor, in fractions.
   const pv = buildPlan(generateFromPrompt("pocket vanity"));
-  const gStep = pv.instructions.find((s) => /Attach G Bottom/i.test(s.title));
-  if (!gStep || !/Top of G Bottom sits 54 3\/4" up from the floor/.test(gStep.description)) failHonesty("placement: pocket vanity G step lost its height", gStep?.description);
+  // Letter-agnostic: the upper bottom's letter follows the cut-list order (it was G before the interference solve).
+  const gStep = pv.instructions.find((s) => /Attach [A-Z]{1,2} Bottom/i.test(s.title));
+  if (!gStep || !/Top of [A-Z]{1,2} Bottom sits 54 3\/4" up from the floor/.test(gStep.description)) failHonesty("placement: pocket vanity G step lost its height", gStep?.description);
   const pinStep = pv.instructions.find((s) => /adjustable shelves/i.test(s.title));
   if (!pinStep || !/11 1\/2" apart, measured top to top/.test(pinStep.description) || !/Adjustable: /.test(pinStep.description)) {
     failHonesty("placement: pocket vanity shelves need spacing + adjustable range", pinStep?.description);
@@ -6530,3 +6535,128 @@ console.log("STRANGER PLAN OK", {
   console.log(`PASS placement: every attach/position step says where; ${checked} numbers match geometry within 1/16"`);
 }
 
+// Tracking round: ONE source of truth — the solved 3D model. Parts never share space, and the
+// cut list, steps and pictures all read the same parts at the same sizes.
+{
+  const prompts = [
+    "40 inch round table with 3 legs",
+    "house: bathroom vanity 36\" wide × 21\" deep × 32\" tall with two doors",
+    "bathroom vanity 36 wide with two doors",
+    "nightstand 20 wide 16 deep 24 tall with one drawer",
+    "cedar chest with a hinged lid",
+    "house: linen closet 31.5×78×16",
+    "popsicle stick catapult",
+    "bookcase 36 wide 12 deep 72 tall with three shelves",
+    "floating shelf with brackets",
+    "coffee table with lower shelf",
+    "TV console 70x30x18",
+    "desk 60x30x29 with 24 knee",
+    "corner shelf unit 24 on each wall 60 tall",
+    "bookcase 36 wide in the corner",
+    "prehung door 32 wide",
+    "36 by 80 door",
+    "pocket vanity",
+    "nightstand with one drawer",
+    "cedar chest with hinged lid",
+    "linen closet 31.5 wide 78 tall 16 deep",
+    "40 diameter round dining table 30 tall with three legs",
+    "dining table 72 by 36 30 tall",
+    "corner bookshelf, 6 inches along each wall, 60 tall, five shelves",
+    "L-shaped corner desk 60 by 48 30 tall",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+    "workbench 60 by 24 36 tall with lower shelf",
+    "mudroom bench 48 wide with cubbies",
+    "window seat 60 wide",
+    "kitchen island 48 by 30",
+    "wall cabinet 30 wide 30 tall 12 deep with two doors",
+    "dresser 36 wide with 4 drawers",
+    "closet organizer 72 wide 84 tall",
+    "shoe rack 30 wide 3 shelves",
+    "spice rack",
+    "wine rack",
+    "medicine cabinet",
+    "outdoor side table",
+    "step stool",
+  ];
+  const T = 1 / 32;
+  const PART_NOUN = /\b(bottom|top|shel(?:f|ves)|divider|door|drawer|counter|kick|apron|leg|upright|stretcher|cleat|lid|seat|backrest|batten|mirror)s?\b/gi;
+  let rows = 0;
+  let parts = 0;
+  for (const prompt of prompts) {
+    const proj = generateFromPrompt(prompt);
+    const plan = buildPlan(proj);
+    // 1. Interference: no two solid parts share space unless the model declares the joint.
+    const ids = new Set(proj.panels.map((p) => p.id));
+    for (const p of proj.panels) for (const j of p.joints ?? []) if (!ids.has(j.with)) failHonesty(`tracking: ${prompt} ${p.name} declares a joint with a missing part`, j);
+    const hits = findInterference(proj);
+    if (hits.length) failHonesty(`interference: ${prompt} has ${hits.length} undeclared overlaps`, hits.slice(0, 6).map((h) => `${h.a.name} x ${h.b.name} ${h.depth.toFixed(3)}`));
+    if (proj.kind === "opening") continue; // door/window framing cut lists come from the framing package (parked)
+    if (!proj.panels.length) {
+      // Stick crafts: the model is instances of one stock stick — one cut piece per instance.
+      // No cut table (stock bought cut-to-length): the Buy line carries the piece count instead.
+      const buyPieces = plan.bom.map((b) => Number((b.notes ?? "").match(/^(\d+) pieces/)?.[1] ?? 0)).reduce((a, b) => a + b, 0);
+      const pieces = plan.cutList.length ? plan.cutList.reduce((n, c) => n + c.quantity, 0) : buyPieces;
+      if (pieces !== proj.instances.length) failHonesty(`tracking: ${prompt} cut pieces ${pieces} vs model sticks ${proj.instances.length}`);
+      rows += plan.cutList.length;
+      parts += proj.instances.length;
+      continue;
+    }
+    // 2. Cut list == model: every part's cut rows at the part's own size, and nothing else.
+    const want = new Map<string, number>();
+    const add = (dims: number[], q: number) => {
+      const k = dims.map((v) => Math.round(v / T)).sort((a, b) => b - a).join("x");
+      want.set(k, (want.get(k) ?? 0) + q);
+    };
+    for (const p of proj.panels) {
+      if (isBuyMirrorPanel(p.name, p.type)) continue;
+      parts++;
+      const { width: w, height: h, depth: d } = p.size;
+      if (isBoundingDrawerPanel(p.name, p.type)) {
+        for (const c of explodeDrawerBoxCuts(w, h, d)) add([c.width, c.height, c.depth], 1);
+        continue;
+      }
+      const dims = p.blank ? [p.blank.lengthIn, p.blank.widthIn, p.blank.thicknessIn] : [w, h, d];
+      const thin = Math.min(...dims);
+      const ply = /plywood/i.test(p.materialId) && !/^leg\b/i.test(cutListName(p.name, p.type)) && !(Math.abs(dims.sort((a, b) => b - a)[1] - 1.5) < 0.1 && Math.abs(thin - 1.5) < 0.1);
+      if (ply && thin > 0.8 && thin <= 2.05) add(dims.map((v) => (v === thin ? 0.75 : v)), Math.max(2, Math.round(thin / 0.75)));
+      else add(dims, 1);
+    }
+    const got = new Map<string, number>();
+    for (const c of plan.cutList) {
+      rows++;
+      const k = [c.lengthIn, c.widthIn, c.thicknessIn].map((v) => Math.round(v / T)).sort((a, b) => b - a).join("x");
+      got.set(k, (got.get(k) ?? 0) + c.quantity);
+    }
+    // A part too big for one sheet is cut as n equal strips (spliceCutListToSheet) — still the same part.
+    for (const [k, q] of [...want]) {
+      if ((got.get(k) ?? 0) >= q) continue;
+      const [a, b, t] = k.split("x").map(Number);
+      for (const n of [2, 3, 4]) {
+        const alts = [[a, Math.round(b / n), t], [Math.round(a / n), b, t]].map((x) => x.sort((m, o) => o - m).join("x"));
+        const alt = alts.find((x) => (got.get(x) ?? 0) - (want.get(x) ?? 0) >= q * n);
+        if (alt) {
+          want.set(k, (want.get(k) ?? 0) - q);
+          want.set(alt, (want.get(alt) ?? 0) + q * n);
+          break;
+        }
+      }
+    }
+    const diff = [...new Set([...want.keys(), ...got.keys()])].filter((k) => (want.get(k) ?? 0) !== (got.get(k) ?? 0));
+    if (diff.length) failHonesty(`tracking: ${prompt} cut list does not equal the model (sizes in 1/32")`, diff.map((k) => `${k}: model ${want.get(k) ?? 0} cut ${got.get(k) ?? 0}`));
+    // 3. Every picture letter lands on a model part, and every model part has a letter.
+    const letters = partLetters(proj, plan.cutList);
+    // Drawer boxes are drawn whole; their sides/back/bottom rows are checked in step 2.
+    const unlabeled = proj.panels.filter((p) => !isBuyMirrorPanel(p.name, p.type) && !isBoundingDrawerPanel(p.name, p.type) && !letters.has(p.id));
+    if (unlabeled.length) failHonesty(`tracking: ${prompt} parts drawn without a cut-list letter`, unlabeled.map((p) => p.name));
+    // 4. Every part a step title names exists in the model (no ghost "attach bottom").
+    const pool = [...proj.panels.map((p) => `${p.type} ${p.name}`), ...plan.cutList.map((c) => c.name)].join(" | ").toLowerCase();
+    for (const s of plan.instructions) {
+      const title = s.title.replace(/\([^)]*\)/g, "");
+      for (const m of title.matchAll(PART_NOUN)) {
+        const n = m[1].toLowerCase().replace(/ves$/, "f");
+        if (!pool.includes(n)) failHonesty(`tracking: ${prompt} step "${s.title}" names a ${n} the model does not have`, pool.slice(0, 300));
+      }
+    }
+  }
+  console.log(`PASS tracking: ${prompts.length} builds — 0 overlaps, ${parts} model parts = ${rows} cut rows, every step names real parts`);
+}
