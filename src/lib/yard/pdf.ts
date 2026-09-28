@@ -626,7 +626,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
             return partLines.filter((c) => all || want.has(c.label ?? ""));
           })()
         : [];
-    if (kind === "cut") cutLines.forEach((c) => counts.set(c.label ?? "?", c.quantity));
+    // The cut plate already shows letter, count, and name. A second chip row collides with it.
     const chips = hwChips(s);
     const side = tallBuild && kind !== "cut";
     const picW = side ? Math.round(W * 0.5) : W;
@@ -638,23 +638,31 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const textH = sentLines.reduce((a, l) => a + l.length * 14 + 3, 0) + (tipLines.length ? tipLines.length * 13 + 6 : 0);
     const calloutRows = side ? Math.ceil((counts.size + chips.length + (refLetters.length ? refLetters.length / 2 + 0.5 : 0)) / 4) : 1;
     const calloutH = counts.size || chips.length || refLetters.length ? 30 * calloutRows : 0;
-    const headH = 34;
+    font(26, "bold", KIT.accent);
+    const nw = doc.getTextWidth(String(s.step));
+    const titleLines = wrap(s.title, W - nw - 16, 13, "bold");
+    const headH = Math.max(34, 22 + Math.max(0, titleLines.length - 1) * 16 + 14);
     let picH = side ? 280 : 250;
+    if (kind === "cut" && cutLines.length) {
+      const plate = compactPlateHeight(project, cutLines, letters, picW - 20, craft);
+      // Keep the whole legend on this page. Words that do not fit continue underneath.
+      picH = Math.min(BOTTOM - TOP - headH - 96, Math.max(120, plate + 22));
+    }
     const bodyH = (h: number) => (side ? Math.max(h, calloutH + textH) : h + 8 + calloutH + textH);
     let need = headH + bodyH(picH) + 16;
-    if (need > BOTTOM - TOP) {
+    if (kind !== "cut" && need > BOTTOM - TOP) {
       picH = Math.max(150, picH - (need - (BOTTOM - TOP)));
       need = headH + bodyH(picH) + 16;
     }
-    if (need > room()) newPage("Build");
+    // A step taller than one page still starts here — do not insert a blank page first.
+    if (Math.min(need, BOTTOM - TOP) > room() + 1) newPage("Build");
     const top = y;
+    const pageOfStep = doc.getNumberOfPages();
     // Step header
     font(26, "bold", KIT.accent);
     doc.text(String(s.step), L, top + 24);
-    const nw = doc.getTextWidth(String(s.step));
-    const titleLines = wrap(s.title, W - nw - 16, 13, "bold");
     font(13, "bold");
-    doc.text(titleLines[0] ?? "", L + nw + 12, top + 22);
+    titleLines.forEach((ln, i) => doc.text(ln, L + nw + 12, top + 22 + i * 16));
     y = top + headH;
     // Picture
     const frame: Frame = { x: L, y, w: picW, h: picH };
@@ -712,23 +720,53 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       }
       y = cy + 30;
     }
-    // Words: one short sentence per line.
-    for (const lines of sentLines) {
-      doc.setFillColor(...KIT.accent);
-      doc.circle(tx + 3, y + 7, 1.8, "F");
-      font(10.5, "normal");
-      lines.forEach((ln, i) => doc.text(ln, tx + 12, y + 10.5 + i * 14));
-      y += lines.length * 14 + 3;
-    }
-    if (tipLines.length) {
+    // Words: one short sentence per line. A step that runs past the footer continues on the next page.
+    const spill = () => {
+      newPage("Build");
+      font(26, "bold", KIT.accent);
+      doc.text(String(s.step), L, y + 24);
+      font(13, "bold");
+      titleLines.forEach((ln, i) => doc.text(ln, L + nw + 12, y + 22 + i * 16));
+      font(10, "italic", KIT.muted);
+      doc.text("continued", L + nw + 12, y + 22 + titleLines.length * 16);
+      y += 30 + titleLines.length * 16 + 12;
+    };
+    let sentAt = 0;
+    let tipDone = tipLines.length === 0;
+    let spills = 0;
+    while ((sentAt < sentLines.length || !tipDone) && spills < 8) {
+      if (sentAt < sentLines.length) {
+        const h = sentLines[sentAt].length * 14 + 3;
+        if (y + h > BOTTOM && y > TOP + 48) {
+          spills++;
+          spill();
+          continue;
+        }
+        const lines = sentLines[sentAt];
+        doc.setFillColor(...KIT.accent);
+        doc.circle(tx + 3, y + 7, 1.8, "F");
+        font(10.5, "normal");
+        lines.forEach((ln, i) => doc.text(ln, tx + 12, y + 10.5 + i * 14));
+        y += lines.length * 14 + 3;
+        sentAt++;
+        continue;
+      }
+      const th = tipLines.length * 13 + 6;
+      if (y + th > BOTTOM && y > TOP + 48) {
+        spills++;
+        spill();
+        continue;
+      }
       y += 3;
       doc.setFillColor(...KIT.accentSoft);
       doc.rect(tx, y, 3, tipLines.length * 13, "F");
       font(9.5, "italic", KIT.muted);
       tipLines.forEach((ln, i) => doc.text(ln, tx + 12, y + 9.5 + i * 13));
       y += tipLines.length * 13 + 3;
+      tipDone = true;
     }
-    y = Math.max(y, top + need - 10) + 10;
+    if (doc.getNumberOfPages() === pageOfStep) y = Math.max(y, Math.min(top + need - 10, BOTTOM)) + 10;
+    else y += 10;
     if (room() > 60) {
       doc.setDrawColor(...KIT.rule);
       doc.setLineWidth(0.5);
@@ -866,6 +904,60 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
 // ───────────────────────── parts plate ─────────────────────────
 
+type PlateItem = { c: CutLine; sh: Shape2D };
+
+/** Largest scale that fits the box. Pass maxScale to measure a legend (small swatches); drawing fits the box it is given. */
+function arrangePlate(items: PlateItem[], boxW: number, boxH: number, craft: boolean, compact: boolean, maxScale?: number) {
+  const labelH = compact ? 26 : 32;
+  let gap = compact ? 12 : 18;
+  const textW = compact ? 92 : 118;
+  const layout = (s: number) => {
+    const rows: { items: { c: CutLine; sh: Shape2D; x: number; w: number; h: number }[]; h: number }[] = [];
+    let row: (typeof rows)[number] = { items: [], h: 0 };
+    let x = 0;
+    for (const it of items) {
+      const w = Math.max(it.sh.w * s, 3);
+      const h = Math.max(it.sh.h * s, 3);
+      const cell = Math.max(w, textW);
+      if (x > 0 && x + cell > boxW) {
+        rows.push(row);
+        row = { items: [], h: 0 };
+        x = 0;
+      }
+      row.items.push({ ...it, x, w, h });
+      row.h = Math.max(row.h, h + labelH);
+      x += cell + gap;
+    }
+    if (row.items.length) rows.push(row);
+    const total = rows.reduce((a, r) => a + r.h + gap, 0);
+    const wide = items.length ? Math.max(...items.map((it) => it.sh.w * s)) : 0;
+    return { rows, total, ok: total <= boxH - (compact ? 0 : 24) && wide <= boxW };
+  };
+  if (!items.length) return { s: 1, rows: [], total: 0, ok: true, labelH, gap, textW };
+  let s = 72;
+  if (!(craft && layout(72).ok)) {
+    let hi = compact ? 30 : 72;
+    if (maxScale != null) hi = Math.min(hi, maxScale);
+    let lo = hi < 0.2 ? hi * 0.25 : 0.2;
+    if (hi < lo) hi = lo;
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2;
+      if (layout(mid).ok) lo = mid;
+      else hi = mid;
+    }
+    s = lo;
+  }
+  return { s, labelH, gap, textW, ...layout(s) };
+}
+
+function compactPlateHeight(project: YardProject, lines: CutLine[], letters: Map<string, string>, width: number, craft: boolean) {
+  const items = lines.map((c) => ({ c, sh: partShape(project, c, letters) }));
+  items.sort((a, b) => b.sh.w * b.sh.h - a.sh.w * a.sh.h);
+  const maxDim = Math.max(1, ...items.map((it) => Math.max(it.sh.w, it.sh.h)));
+  // Legend scale: the longest edge is about 18pt, so 21 parts stay a grid instead of one giant row.
+  return arrangePlate(items, width, 4000, craft, true, Math.min(30, 18 / maxDim)).total;
+}
+
 export function drawPartsPlate(
   doc: jsPDF,
   project: YardProject,
@@ -877,46 +969,11 @@ export function drawPartsPlate(
 ) {
   const items = lines.map((c) => ({ c, sh: partShape(project, c, letters) }));
   items.sort((a, b) => b.sh.w * b.sh.h - a.sh.w * a.sh.h);
-  const labelH = compact ? 26 : 32;
-  const gap = compact ? 12 : 18;
-  const textW = compact ? 92 : 118;
-  const layout = (s: number) => {
-    const rows: { items: { c: CutLine; sh: Shape2D; x: number; w: number; h: number }[]; h: number }[] = [];
-    let row: (typeof rows)[number] = { items: [], h: 0 };
-    let x = 0;
-    for (const it of items) {
-      const w = Math.max(it.sh.w * s, 3);
-      const h = Math.max(it.sh.h * s, 3);
-      const cell = Math.max(w, textW);
-      if (x > 0 && x + cell > box.w) {
-        rows.push(row);
-        row = { items: [], h: 0 };
-        x = 0;
-      }
-      row.items.push({ ...it, x, w, h });
-      row.h = Math.max(row.h, h + labelH);
-      x += cell + gap;
-    }
-    if (row.items.length) rows.push(row);
-    const total = rows.reduce((a, r) => a + r.h + gap, 0);
-    const wide = Math.max(...items.map((it) => it.sh.w * s));
-    return { rows, total, ok: total <= box.h - (compact ? 0 : 24) && wide <= box.w };
-  };
-  // Craft sticks: actual size when they fit.
-  let s = 72;
-  if (!(craft && layout(72).ok)) {
-    let lo = 0.2;
-    let hi = compact ? 30 : 72;
-    for (let k = 0; k < 30; k++) {
-      const mid = (lo + hi) / 2;
-      if (layout(mid).ok) lo = mid;
-      else hi = mid;
-    }
-    s = lo;
-  }
-  const { rows } = layout(s);
+  const { s, rows, labelH, gap, textW } = arrangePlate(items, box.w, box.h, craft, compact);
   let y = box.y;
   for (const r of rows) {
+    // Never paint a row past the frame — a short box clips instead of running into the words below.
+    if (compact && y + r.h > box.y + box.h + 0.5) break;
     for (const it of r.items) {
       const x = box.x + it.x;
       const cy = y + (r.h - labelH - it.h) / 2;
