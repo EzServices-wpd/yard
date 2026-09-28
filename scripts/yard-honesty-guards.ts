@@ -49,7 +49,7 @@ import {
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount } from "../src/lib/yard/shopPlural";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
-import { buildPlanPdf } from "../src/lib/yard/pdf";
+import { buildPlanPdf, planStepParts, typedAxesTalk } from "../src/lib/yard/pdf";
 import { partLetters } from "../src/lib/yard/pdfDraw";
 import {
   inspectWeekendHonesty,
@@ -6379,4 +6379,30 @@ console.log("STRANGER PLAN OK", {
   const slopeSteps = buildPlan(slope).instructions;
   if (slopeSteps.filter((s) => (s.partsUsed ?? []).length).length < 4) failHonesty("odd-shape steps must name their parts", slopeSteps.map((s) => s.partsUsed));
   console.log("PASS kit-manual PDF: pages, hardware, cut diagrams, geometry letters, odd-shape step parts");
+}
+
+// PDF round 2: typed-axes honesty on the cover/header, and step highlights follow the step's words.
+{
+  const van = generateFromPrompt("bathroom vanity 36 wide with two doors");
+  const vanPlan = buildPlan(van);
+  const talk = typedAxesTalk(van);
+  if (!/^36" wide · 34" tall and 21" deep assumed, measure to lock$/.test(talk.subtitle)) failHonesty("pdf cover must mark untyped vanity axes assumed", talk);
+  if (talk.assumed.width || !talk.assumed.height || !talk.assumed.depth) failHonesty("pdf vanity assumed axes", talk.assumed);
+  const linenTalk = typedAxesTalk(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep"));
+  if (/assumed/.test(linenTalk.subtitle)) failHonesty("pdf linen fully typed must not say assumed", linenTalk.subtitle);
+  const nsTalk = typedAxesTalk(generateFromPrompt("nightstand with one drawer"));
+  if (/\d/.test(nsTalk.title) || !/assumed/.test(nsTalk.subtitle)) failHonesty("pdf bare nightstand must not stamp stock size as typed", nsTalk);
+  const letters = partLetters(van, vanPlan.cutList);
+  const sp = planStepParts(van, vanPlan.instructions, letters);
+  const lt = (ids: string[]) => ids.map((id) => letters.get(id)).sort().join("");
+  const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
+  const bottom = vanPlan.instructions.findIndex((s) => /attach b bottom/i.test(s.title));
+  if (stand < 0 || lt(sp[stand].fresh) !== "AEF") failHonesty("pdf vanity stand step must light only A, E, F", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (bottom < 0 || lt(sp[bottom].fresh) !== "B" || lt(sp[bottom].onto) !== "EF") failHonesty("pdf vanity bottom step lights B onto E, F", bottom >= 0 ? sp[bottom] : "missing");
+  const seen = new Set<string>();
+  for (const st of sp) for (const id of st.fresh) {
+    if (seen.has(id)) failHonesty("pdf part lit as new twice", id);
+    seen.add(id);
+  }
+  console.log("PASS pdf round 2: typed-axes cover/header + step highlights follow the words");
 }
