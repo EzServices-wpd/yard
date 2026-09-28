@@ -69,6 +69,17 @@ function AboutPage() {
           </p>
         </section>
 
+        <section className="mt-10">
+          <h2 className="font-display text-xl text-ink">Contact</h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+            Questions, a plan that came out wrong, or a store link that broke? Write to{" "}
+            <a href="mailto:hello.yardwiki@gmail.com" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+              hello.yardwiki@gmail.com
+            </a>
+            .
+          </p>
+        </section>
+
         <p className="mt-10 text-sm text-ink-muted">
           Look at the{" "}
           <Link to="/gallery" className="underline decoration-rule underline-offset-4 hover:decoration-ink">

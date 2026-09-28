@@ -116,6 +116,17 @@ function PrivacyPage() {
               If this policy changes, the date at the top changes with it.
             </p>
           </section>
+
+          <section>
+            <h2 className="font-display text-xl text-ink">Contact</h2>
+            <p className="mt-2">
+              Questions about this policy? Write to{" "}
+              <a href="mailto:hello.yardwiki@gmail.com" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+                hello.yardwiki@gmail.com
+              </a>
+              .
+            </p>
+          </section>
         </div>
       </main>
     </SiteChrome>
