@@ -29,6 +29,7 @@ import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
+import { modelProudTalk } from "@/lib/yard/modelSize";
 import { isLockedForm } from "@/lib/yard/form";
 import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
@@ -646,6 +647,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   return (
                     <>
                       {envelope}
+                      {(() => {
+                        // Same model-derived depth as the PDF cover: doors / drawer fronts proud of the box.
+                        const proud = modelProudTalk(project.panels, project.overall.depth);
+                        return proud ? ` · ${proud}` : "";
+                      })()}
                       {companion}
                     </>
                   );

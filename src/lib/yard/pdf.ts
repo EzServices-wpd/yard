@@ -1,4 +1,4 @@
-import { aabbOfPanels } from "./geometry";
+import { modelProudTalk } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
 import { nestCutList, nestParts, sheetSizeLabel, type NestPart, type NestSheet } from "./nesting";
@@ -78,11 +78,7 @@ export function typedAxesTalk(project: YardProject, craft = false) {
       : `${list(assumedList)} assumed, measure to lock`;
   // The built model is the truth: overlay doors and drawer fronts stand proud of the box, so when
   // the model runs deeper than the box size, the subtitle says so (same number as the cover arrow).
-  const box3 = aabbOfPanels(project.panels ?? []);
-  const hasDoor = (project.panels ?? []).some((p) => p.type === "door");
-  const hasFront = (project.panels ?? []).some((p) => /drawer\s*front/i.test(p.name));
-  const faceWord = hasDoor && hasFront ? "the doors and drawer fronts" : hasDoor ? "the doors" : "the drawer fronts";
-  const proud = box3 && (hasDoor || hasFront) && box3.maxZ - box3.minZ > o.depth + 1 / 16 ? `${frac(box3.maxZ - box3.minZ)} deep with ${faceWord} on` : "";
+  const proud = modelProudTalk(project.panels, o.depth);
   const subtitle =
     craft && stock
       ? `About ${guessed.join(" x ")} · ${assumedTalk}`
