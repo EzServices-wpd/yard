@@ -269,7 +269,18 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
       }
     }
   } else {
-    const same = group.length > uniq.length ? " — the same in each bay" : "";
+    // How many shelves sit at each height: equal counts mean every bay matches; uneven counts are said as such.
+    const counts = uniq.map((u) => tops.filter((t) => Math.abs(t - u) < 1 / 32).length);
+    const most = Math.max(...counts);
+    let same = "";
+    if (most > 1 && counts.every((c) => c === most)) same = " — the same in each bay";
+    else if (most > 1) {
+      const all = uniq.filter((_, i) => counts[i] === most).map((t) => f(t - ry));
+      const some = uniq.map((t, i) => ({ t, c: counts[i] })).filter((x) => x.c < most);
+      const byC = [...new Set(some.map((x) => x.c))].sort((a, b) => b - a);
+      const parts = byC.map((c) => `${listTalk(some.filter((x) => x.c === c).map((x) => f(x.t - ry)))} in ${c === 1 ? "one bay" : `${c} bays`} only`);
+      same = ` (${listTalk(all)} in ${most === 2 ? "both" : `all ${most}`} bays; ${parts.join("; ")})`;
+    }
     const vals = uniq.map((t) => f(t - ry));
     let s = `Tops of the ${L ? `${L} ` : ""}${plural(fam)} sit ${listTalk(vals)} up from ${refTalk(ctx, ref)}`;
     if (ref && ctx.floor) s += ` (${listTalk(uniq.map((t) => f(t)))} from the floor)`;
