@@ -1,5 +1,8 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
+import { frac } from "../src/lib/yard/pdfKit";
+import { stepPlacements, placeRole, POSITIONED_ROLES } from "../src/lib/yard/placement";
+import { panelWorldCorners } from "../src/lib/yard/geometry";
 import {
   wantsCabinetryShopWords,
   shopWordsChipTalk,
@@ -4040,17 +4043,12 @@ console.log("SOFT-TRUST OK", {
     );
     if (!pinStep) failVoice("shelfHeight bookcase missing pin/glue shelf step", bookPlan.instructions.map((s) => s.title));
     const pinBlob = `${pinStep!.title} ${pinStep!.description}`;
-    if (!/Marked heights?:/i.test(pinBlob)) failVoice("shelfHeight bookcase step missing Marked height(s)", pinBlob.slice(0, 400));
-    if (!/\bAFF\b/.test(pinBlob)) failVoice("shelfHeight bookcase freestanding missing AFF", pinBlob.slice(0, 400));
-    // Every engine shelf y must appear as a marked inch — no invented heights.
+    // Placement round: the WHERE talk replaces the old bottom-face "Marked heights … AFF" clause.
+    if (!/Marked heights?:|Where: /i.test(pinBlob)) failVoice("shelfHeight bookcase step missing Marked height(s)", pinBlob.slice(0, 400));
+    if (!/\bAFF\b|from the floor/.test(pinBlob)) failVoice("shelfHeight bookcase freestanding missing AFF", pinBlob.slice(0, 400));
+    // Every engine shelf top face must appear as a marked fraction from the floor — no invented heights.
     for (const sp of shelfPanels) {
-      const y = Math.round(sp.position.y * 8) / 8;
-      const inch =
-        Number.isInteger(y)
-          ? String(y)
-          : Math.abs(y - Math.floor(y) - 0.5) < 1e-6
-            ? `${Math.floor(y)}½`
-            : String(y);
+      const inch = frac(sp.position.y + sp.size.height, "");
       if (!pinBlob.includes(`${inch}"`)) {
         failVoice(`shelfHeight bookcase missing engine y ${inch}" for ${sp.name}`, {
           y: sp.position.y,
@@ -4070,7 +4068,7 @@ console.log("SOFT-TRUST OK", {
     const wallPlan = buildPlan(wall);
     const lag = wallPlan.instructions.find((s) => /Lag each wall cleat/i.test(s.title) || /Sit each shelf/i.test(s.title));
     const wallBlob = wallPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
-    if (!/Marked heights?:/i.test(wallBlob)) failVoice("shelfHeight wall shelves missing Marked height(s)", wallBlob.slice(0, 500));
+    if (!/Marked heights?:|Where: /i.test(wallBlob)) failVoice("shelfHeight wall shelves missing Marked height(s)", wallBlob.slice(0, 500));
     if (!/from the bottom/i.test(wallBlob)) failVoice("shelfHeight wall shelves missing from-the-bottom marks", wallBlob.slice(0, 500));
     if (/\bAFF\b/.test(lag?.description ?? "") && /Lag each wall cleat/i.test(lag?.title ?? "")) {
       failVoice("shelfHeight wall cleat step wrongly uses AFF", lag?.description?.slice(0, 300));
@@ -4085,7 +4083,7 @@ console.log("SOFT-TRUST OK", {
     }
     const linenHP = buildPlan(linenH);
     const linenPin = linenHP.instructions.find((s) => /Pin \d+ adjustable shel|Glue \d+ fixed shel/i.test(s.title));
-    if (linenPin && !/Marked heights?:/i.test(linenPin.description)) {
+    if (linenPin && !/Marked heights?:|Where: /i.test(linenPin.description)) {
       failVoice("shelfHeight linen shelf step missing marked heights", linenPin.description.slice(0, 300));
     }
     const loungeH = generateFromPrompt("house: lounge chair with 16″ seat height and 24″ seat depth");
@@ -6406,3 +6404,129 @@ console.log("STRANGER PLAN OK", {
   }
   console.log("PASS pdf round 2: typed-axes cover/header + step highlights follow the words");
 }
+
+// Placement round: every attach/position step says WHERE, and the number matches the geometry.
+{
+  const prompts = [
+    "pocket vanity",
+    "bathroom vanity 36 wide with two doors",
+    'house: bathroom vanity 36" wide × 21" deep × 32" tall with two doors',
+    "nightstand with one drawer",
+    "nightstand 20 wide 16 deep 24 tall with one drawer",
+    "cedar chest with hinged lid",
+    "linen closet 31.5 wide 78 tall 16 deep",
+    "house: linen closet 31.5×78×16",
+    "bookcase 36 wide 12 deep 72 tall with three shelves",
+    "bookcase 36 wide in the corner",
+    "floating shelf with brackets",
+    "coffee table with lower shelf",
+    "TV console 70x30x18",
+    "desk 60x30x29 with 24 knee",
+    "40 diameter round dining table 30 tall with three legs",
+    "dining table 72 by 36 30 tall",
+    "corner shelf unit 24 on each wall 60 tall",
+    "corner bookshelf, 6 inches along each wall, 60 tall, five shelves",
+    "L-shaped corner desk 60 by 48 30 tall",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+    "workbench 60 by 24 36 tall with lower shelf",
+    "mudroom bench 48 wide with cubbies",
+    "window seat 60 wide",
+    "kitchen island 48 by 30",
+    "wall cabinet 30 wide 30 tall 12 deep with two doors",
+    "dresser 36 wide with 4 drawers",
+    "closet organizer 72 wide 84 tall",
+    "shoe rack 30 wide 3 shelves",
+    "spice rack",
+    "wine rack",
+    "medicine cabinet",
+    "outdoor side table",
+    "step stool",
+    "popsicle stick catapult",
+  ];
+  const parse = (t: string) => {
+    const m = t.trim().match(/^(\d+)?(?:\s*(\d+)\/(\d+))?$/);
+    if (!m) return NaN;
+    return (m[1] ? parseInt(m[1], 10) : 0) + (m[2] ? parseInt(m[2], 10) / parseInt(m[3], 10) : 0);
+  };
+  const box = (p: import("../src/lib/yard/types").Panel) => {
+    const pts = panelWorldCorners(p);
+    return {
+      min: { x: Math.min(...pts.map((q) => q.x)), y: Math.min(...pts.map((q) => q.y)), z: Math.min(...pts.map((q) => q.z)) },
+      max: { x: Math.max(...pts.map((q) => q.x)), y: Math.max(...pts.map((q) => q.y)), z: Math.max(...pts.map((q) => q.z)) },
+    };
+  };
+  let checked = 0;
+  for (const prompt of prompts) {
+    const proj = generateFromPrompt(prompt);
+    const plan = buildPlan(proj);
+    const pls = stepPlacements(proj, plan.instructions, plan.cutList, plan.partsKind === "whole");
+    const byId = new Map(proj.panels.map((p) => [p.id, p]));
+    plan.instructions.forEach((s, i) => {
+      const pl = pls[i];
+      const text = `${s.title} ${s.description}`;
+      // 1. Every positioned part the step installs has a measurement, and the words carry it.
+      for (const id of pl.positioned) {
+        const p = byId.get(id)!;
+        if (!POSITIONED_ROLES.includes(placeRole(p))) continue;
+        if (!pl.measures.some((m) => ("id" in m && m.id === id) || ("ids" in m && m.ids.includes(id)))) {
+          failHonesty("placement: attach/position step has no measurement for a positioned part", { prompt, step: s.title, part: p.name });
+        }
+      }
+      if (pl.sentences.length && !/Where: /.test(s.description)) failHonesty("placement: WHERE talk missing from step text", { prompt, step: s.title });
+      for (const t of pl.sentences) if (!s.description.includes(t)) failHonesty("placement: sentence not in step text", { prompt, step: s.title, t });
+      // 2. Hardware steps state the hardware spot.
+      if (/\bhinges?\b/i.test(text) && !/piano/i.test(text) && proj.panels.some((p) => placeRole(p) === "door") && !pl.hardware.includes("hinge")) {
+        failHonesty("placement: hinge step without hinge positions", { prompt, step: s.title });
+      }
+      if (/\bslides?\b/i.test(text) && proj.panels.some((p) => p.type === "drawer") && !pl.hardware.includes("slide")) {
+        failHonesty("placement: slide step without slide heights", { prompt, step: s.title });
+      }
+      if (/\bpulls?\b/i.test(text) && proj.panels.some((p) => ["door", "drawer", "front"].includes(placeRole(p))) && !pl.hardware.includes("pull")) {
+        failHonesty("placement: pull step without pull position", { prompt, step: s.title });
+      }
+      // 3. Each stated number matches the geometry, recomputed here from the raw panels, within 1/16".
+      for (const m of pl.measures) {
+        let geo: number | null = null;
+        if (m.kind === "top") {
+          const p = byId.get(m.id)!;
+          const b = box(p);
+          const ref = m.refId ? box(byId.get(m.refId)!).max.y : m.refY;
+          geo = (p.type === "mirror" ? b.min.y : b.max.y) - ref;
+        } else if (m.kind === "slide") {
+          const b = box(byId.get(m.id)!);
+          const ref = m.refId ? box(byId.get(m.refId)!).max.y : m.refY;
+          geo = (b.min.y + b.max.y) / 2 - ref;
+        } else if (m.kind === "across") {
+          const b = box(byId.get(m.id)!);
+          const n = box(byId.get(m.neighborId)!);
+          geo = m.side === "left" ? b.min.x - n.max.x : n.min.x - b.max.x;
+        } else if (m.kind === "pull") {
+          const b = box(byId.get(m.id)!);
+          geo = (b.max.y - b.min.y) / 2;
+        } else if (m.kind === "hingeHeight") {
+          const b = box(byId.get(m.id)!);
+          const inset = pl.measures.find((q) => q.kind === "hinge" && q.id === m.id)?.value ?? 3;
+          geo = b.min.y + inset;
+        }
+        if (geo == null) continue;
+        checked++;
+        if (Math.abs(geo - m.value) > 1 / 16) failHonesty("placement: measure drifts from geometry", { prompt, step: s.title, m, geo });
+        const said = frac(Math.max(0, m.value), "");
+        if (Math.abs(parse(said) - geo) > 1 / 16) failHonesty("placement: printed fraction off the geometry by more than 1/16", { prompt, step: s.title, said, geo });
+        if (m.kind !== "hingeHeight" && m.kind !== "pull" && !s.description.includes(`${said}"`)) {
+          failHonesty("placement: stated number missing from the step words", { prompt, step: s.title, said, kind: m.kind });
+        }
+      }
+    });
+  }
+  // Pocket vanity: shelf G (the upper bottom) says how high, from the floor, in fractions.
+  const pv = buildPlan(generateFromPrompt("pocket vanity"));
+  const gStep = pv.instructions.find((s) => /Attach G Bottom/i.test(s.title));
+  if (!gStep || !/Top of G Bottom sits 54 3\/4" up from the floor/.test(gStep.description)) failHonesty("placement: pocket vanity G step lost its height", gStep?.description);
+  const pinStep = pv.instructions.find((s) => /adjustable shelves/i.test(s.title));
+  if (!pinStep || !/11 1\/2" apart, measured top to top/.test(pinStep.description) || !/Adjustable: /.test(pinStep.description)) {
+    failHonesty("placement: pocket vanity shelves need spacing + adjustable range", pinStep?.description);
+  }
+  console.log(`PASS placement: every attach/position step says where; ${checked} numbers match geometry within 1/16"`);
+}
+
