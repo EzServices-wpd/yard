@@ -30,7 +30,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted } from "../src/lib/yard/fitted";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -3746,6 +3746,112 @@ console.log("SOFT-TRUST OK", {
     // soft — operate path may use different verbs
   }
 }
+
+
+// Batch39 ladder-shelf FAIL class — ladder+shelf stays house carcase with spoken shelves (≠ wire Ladder).
+{
+  const failPrompt = "leaning ladder shelf 24 wide 72 tall with five shelves";
+  if (!isLadderShelfFurniture(failPrompt.toLowerCase())) {
+    failHonesty("b39 isLadderShelfFurniture", failPrompt);
+  }
+  if (ladderShelfTitleStem(failPrompt.toLowerCase()) !== "Ladder shelf") {
+    failHonesty("b39 ladderShelfTitleStem", ladderShelfTitleStem(failPrompt.toLowerCase()));
+  }
+  if (identityTitleStem(failPrompt.toLowerCase()) !== "Ladder shelf") {
+    failHonesty("b39 identityTitleStem Ladder shelf", identityTitleStem(failPrompt.toLowerCase()));
+  }
+  if (climbIdentityLabel(failPrompt.toLowerCase())) {
+    failHonesty("b39 climb must not claim ladder shelf", climbIdentityLabel(failPrompt.toLowerCase()));
+  }
+  const house = detectHouseFamily(failPrompt);
+  if (!house) failHonesty("b39 detectHouseFamily null — still craft eject", house);
+  if (house && house.program !== "bookcase" && house.program !== "storage") {
+    failHonesty("b39 house program bookcase/storage", house.program);
+  }
+  const fail = generateFromPrompt(failPrompt);
+  if (!/^Ladder shelf\b/i.test(fail.name) && !/^Leaning shelf\b/i.test(fail.name)) {
+    failHonesty("b39 FAIL title Ladder shelf", fail.name);
+  }
+  if (/^Ladder\b/i.test(fail.name) && !/shelf/i.test(fail.name)) {
+    failHonesty("b39 FAIL naked Ladder form name", fail.name);
+  }
+  if (/Storage unit/i.test(fail.name)) failHonesty("b39 FAIL naked Storage", fail.name);
+  if (fail.kind === "ladder") failHonesty("b39 FAIL kind still ladder wire", fail.kind);
+  if (!fail.panels.length) failHonesty("b39 FAIL no panels — wire path", { kind: fail.kind, name: fail.name });
+  if (Math.abs(fail.overall.width - 24) > 1.5) failHonesty("b39 FAIL W24", fail.overall);
+  if (Math.abs(fail.overall.height - 72) > 2.5) failHonesty("b39 FAIL H72", fail.overall);
+  if (fail.overall.depth < 8) failHonesty("b39 FAIL depth still ladder lean <8", fail.overall);
+  const shelves = fail.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
+  if (shelves.length !== 5) {
+    failHonesty("b39 FAIL Shelf×5", { n: shelves.length, panels: fail.panels.map((p) => p.name) });
+  }
+  const failPlan = buildPlan(fail);
+  const failBlob = [
+    fail.name,
+    ...(fail.notes ?? []),
+    ...failPlan.cutList.map((c) => `${c.quantity} ${c.name}`),
+    ...failPlan.instructions.map((s) => `${s.title} ${s.description}`),
+    ...failPlan.bom.map((b) => `${b.quantity} ${b.name}`),
+  ].join("\n");
+  if (/Wire frame|popsicle|craft glue/i.test(failBlob) && !/plywood|¾|3\/4|lumber|pin/i.test(failBlob)) {
+    failHonesty("b39 FAIL still wire/popsicle Buy", failBlob.slice(0, 600));
+  }
+  if (!/Where:|AFF|from the floor|up from/i.test(failBlob)) {
+    failHonesty("b39 FAIL steps missing Where: placement", failBlob.slice(0, 800));
+  }
+  // shelf ladder synonym → Ladder shelf house
+  const syn = generateFromPrompt("shelf ladder 24 wide 72 tall with five shelves");
+  if (!/^Ladder shelf\b/i.test(syn.name)) failHonesty("b39 shelf ladder title", syn.name);
+  if (syn.kind === "ladder") failHonesty("b39 shelf ladder kind wire", syn.kind);
+  const synShelves = syn.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
+  if (synShelves.length !== 5) failHonesty("b39 shelf ladder Shelf×5", synShelves.length);
+  // Leaning shelf without ladder word
+  const lean = generateFromPrompt("leaning shelf 24 wide 72 tall with five shelves");
+  if (!/^Leaning shelf\b/i.test(lean.name) && !/^Ladder shelf\b/i.test(lean.name)) {
+    failHonesty("b39 leaning shelf title", lean.name);
+  }
+  if (lean.kind === "ladder") failHonesty("b39 leaning shelf wire kind", lean.kind);
+  const leanShelves = lean.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
+  if (leanShelves.length !== 5) failHonesty("b39 leaning shelf Shelf×5", leanShelves.length);
+
+  // Protect: pine towel ladder four rungs stays ladder
+  const towelPrompt =
+    "weekend craft: pine towel ladder — four rungs, 60″ tall × 18″ wide; leans at wall";
+  if (isLadderShelfFurniture(towelPrompt.toLowerCase())) {
+    failHonesty("b39 towel must NOT be ladder-shelf furniture", towelPrompt);
+  }
+  const towelFam = detectWeekendFamily(towelPrompt);
+  if (!towelFam || towelFam.kind !== "ladder") failHonesty("b39 protect towel weekend ladder kind", towelFam);
+  if (!/^Towel ladder/i.test(towelFam?.name || "")) failHonesty("b39 protect towel title stem", towelFam?.name);
+  const towel = generateFromPrompt(towelPrompt);
+  if (!/^Towel ladder/i.test(towel.name)) failHonesty("b39 protect towel title", towel.name);
+  if (towel.kind !== "ladder") failHonesty("b39 protect towel kind", towel.kind);
+  // Protect: bare 6 foot ladder from 2x4 stays ladder
+  const bare = generateFromPrompt("6 foot ladder from 2x4");
+  if (bare.kind !== "ladder") failHonesty("b39 protect 6ft ladder kind", bare.kind);
+  if (!/^Ladder\b/i.test(bare.name) || /shelf/i.test(bare.name)) {
+    failHonesty("b39 protect 6ft ladder name", bare.name);
+  }
+  // Protect: drying rack ≠ towel ladder
+  const drying = generateFromPrompt("house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs");
+  if (!/^Drying rack/i.test(drying.name)) failHonesty("b39 protect drying title", drying.name);
+  if (/Towel\s*ladder/i.test(drying.name)) failHonesty("b39 drying ≠ towel", drying.name);
+  // Protect linen freeze / bookcase 36×12×72 three shelves
+  const linen = generateFromPrompt("house: linen closet 31.5×78×16");
+  if (!/Linen/i.test(linen.name)) failHonesty("b39 protect linen", linen.name);
+  if (Math.abs(linen.overall.width - 31.5) > 0.6 || Math.abs(linen.overall.height - 78) > 1.5 || Math.abs(linen.overall.depth - 16) > 0.6) {
+    failHonesty("b39 protect linen envelope", linen.overall);
+  }
+  const book = generateFromPrompt("bookcase 36 wide 12 deep 72 tall with three shelves");
+  if (!/Bookcase/i.test(book.name)) failHonesty("b39 protect bookcase title", book.name);
+  const bookShelves = book.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
+  if (bookShelves.length !== 3) failHonesty("b39 protect bookcase Shelf×3", bookShelves.length);
+  if (Math.abs(book.overall.width - 36) > 1.0 || Math.abs(book.overall.height - 72) > 2.0 || Math.abs(book.overall.depth - 12) > 1.0) {
+    failHonesty("b39 protect bookcase envelope", book.overall);
+  }
+  console.log("PASS b39 ladder-shelf class: house Ladder shelf Shelf×5; towel/6ft ladder/drying/linen/bookcase protect");
+}
+
 
 
 

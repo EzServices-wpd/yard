@@ -74,11 +74,14 @@ function isNotHouse(lower: string) {
     /* keep house path */
   } else if (/\bchair\b|\bstool\b/.test(lower) && !/desk|vanity|\btable\b/.test(lower)) return true;
   // Climb step-shelf on a linen/closet stays house — not a free ladder eject.
+  // Ladder/stairs WITH shelf-furniture language (ladder shelf / leaning ladder shelf)
+  // stays house carcase — towel/blanket ladders without shelf nouns stay craft.
   if (
     /ladder|stairs|staircase/.test(lower) &&
     !isBunkBed(lower) &&
     !isLoftBed(lower) &&
-    !(HOUSE_NOUN.test(lower) && /step-?shelf|climb\s+step/.test(lower))
+    !(HOUSE_NOUN.test(lower) && /step-?shelf|climb\s+step/.test(lower)) &&
+    !isLadderShelfFurniture(lower)
   ) {
     return true;
   }
@@ -675,6 +678,29 @@ export function isDryingRack(lower: string) {
   return false;
 }
 
+
+/** Shelf-furniture language that keeps ladder/stairs on the house carcase path. */
+const LADDER_SHELF_FURN =
+  /shelves|\bshelf\b|shelving|bookcase|bookshelf|etagere|étagère/;
+
+/**
+ * Ladder / stairs / staircase WITH shelf-furniture language → house Ladder shelf
+ * (or Leaning shelf without the ladder word). Towel/blanket/quilt ladders without
+ * those nouns stay weekend wire ladder. Bare "ladder" / climb stools stay craft.
+ */
+export function isLadderShelfFurniture(lower: string): boolean {
+  if (!LADDER_SHELF_FURN.test(lower)) return false;
+  return /ladder|stairs|staircase/.test(lower);
+}
+
+/** Title stem for ladder+shelf / leaning+shelf furniture — never naked Storage or Ladder. */
+export function ladderShelfTitleStem(lower: string): string | null {
+  if (!LADDER_SHELF_FURN.test(lower)) return null;
+  if (/\bladder\b/.test(lower)) return "Ladder shelf";
+  if (/leaning/.test(lower)) return "Leaning shelf";
+  return null;
+}
+
 /** Utility shelf / utility shelving — never naked Storage unit. */
 export function isUtilityShelf(lower: string) {
   if (isOpenKitchenShelving(lower) || isLaundrySorter(lower) || isDryingRack(lower)) return false;
@@ -972,6 +998,8 @@ export function isBedsideShelf(lower: string) {
 export function climbIdentityLabel(lower: string): string | null {
   // Floor lamp / lamp stand is pot-hold — never climb lace / Step stool steal.
   if (isFloorLampStand(lower)) return null;
+  // Ladder shelf / leaning ladder shelf is house carcase — never climb Ladder stem.
+  if (isLadderShelfFurniture(lower) || ladderShelfTitleStem(lower)) return null;
   // House carcase + mid climb step-shelf is an add-on — keep Closet / linen / desk titles.
   if (
     /linen|closet|wardrobe|pantry|bookcase|\bdesk\b|\bvanity\b|cabinet|mudroom|nightstand|dresser|alcove|built-?in|sideboard|buffet|credenza/.test(
@@ -1117,6 +1145,9 @@ export function identityTitleStem(lower: string): string | null {
   if (/\bdresser\b/.test(lower)) return "Dresser";
   // Nightstand only when not a bedside shelf (shelf / book envelope stays Bedside shelf).
   if (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))) return "Nightstand";
+  // Ladder shelf / Leaning shelf before climb Ladder / naked Storage steals.
+  const ladderShelfStem = ladderShelfTitleStem(lower);
+  if (ladderShelfStem) return ladderShelfStem;
   // Climb/step stools before media — "reach a shelf" must not become Media/Bench.
   const climb = climbIdentityLabel(lower);
   if (climb) return climb;
@@ -1189,6 +1220,8 @@ function programFromNoun(lower: string): FittedProgram {
   if (isPottingBench(lower) || /\bdesk\b|workbench|work table/.test(lower)) return "desk";
   if (isMedicine(lower) || isOverToilet(lower) || isSpiceRack(lower) || isWineRack(lower)) return "storage";
   if (/\bvanity\b|\bsink\b/.test(lower)) return "vanity";
+  // Ladder shelf / leaning shelf with shelf-furniture language → bookcase carcase.
+  if (isLadderShelfFurniture(lower) || ladderShelfTitleStem(lower)) return "bookcase";
   if (/bookcase|bookshelf|\bbooks\b/.test(lower)) return "bookcase";
   if (/pantry/.test(lower)) return "pantry";
   if (/wardrobe/.test(lower)) return "wardrobe";
