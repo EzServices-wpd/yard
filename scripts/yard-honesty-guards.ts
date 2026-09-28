@@ -1,4 +1,5 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
+import { BENCH_VIEWPORTS, benchModelBox, benchView, fitBench, projectCorners } from "../src/lib/yard/benchFrame";
 import { buildPlan } from "../src/lib/yard/report";
 import { frac } from "../src/lib/yard/pdfKit";
 import { stepPlacements, placeRole, POSITIONED_ROLES } from "../src/lib/yard/placement";
@@ -6659,4 +6660,79 @@ console.log("STRANGER PLAN OK", {
     }
   }
   console.log(`PASS tracking: ${prompts.length} builds — 0 overlaps, ${parts} model parts = ${rows} cut rows, every step names real parts`);
+}
+
+// Framing: every build's camera must show the whole model clear of the UI cards.
+// Same fitBench the live canvas uses — a new build that can't fit fails here.
+{
+  const prompts = [
+    "40 inch round table with 3 legs",
+    "house: bathroom vanity 36\" wide × 21\" deep × 32\" tall with two doors",
+    "bathroom vanity 36 wide with two doors",
+    "nightstand 20 wide 16 deep 24 tall with one drawer",
+    "cedar chest with a hinged lid",
+    "house: linen closet 31.5×78×16",
+    "popsicle stick catapult",
+    "bookcase 36 wide 12 deep 72 tall with three shelves",
+    "floating shelf with brackets",
+    "coffee table with lower shelf",
+    "TV console 70x30x18",
+    "desk 60x30x29 with 24 knee",
+    "corner shelf unit 24 on each wall 60 tall",
+    "bookcase 36 wide in the corner",
+    "prehung door 32 wide",
+    "36 by 80 door",
+    "pocket vanity",
+    "nightstand with one drawer",
+    "cedar chest with hinged lid",
+    "linen closet 31.5 wide 78 tall 16 deep",
+    "40 diameter round dining table 30 tall with three legs",
+    "dining table 72 by 36 30 tall",
+    "corner bookshelf, 6 inches along each wall, 60 tall, five shelves",
+    "L-shaped corner desk 60 by 48 30 tall",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+    "workbench 60 by 24 36 tall with lower shelf",
+    "mudroom bench 48 wide with cubbies",
+    "window seat 60 wide",
+    "kitchen island 48 by 30",
+    "wall cabinet 30 wide 30 tall 12 deep with two doors",
+    "dresser 36 wide with 4 drawers",
+    "closet organizer 72 wide 84 tall",
+    "shoe rack 30 wide 3 shelves",
+    "spice rack",
+    "wine rack",
+    "medicine cabinet",
+    "outdoor side table",
+    "step stool",
+    "3 foot Eiffel Tower from popsicle sticks",
+    "6 foot garden arch from 3/4 inch PVC pipe",
+    "4 foot bridge from plastic drinking straws",
+    "Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
+  ];
+  let cases = 0;
+  for (const prompt of prompts) {
+    const proj = generateFromPrompt(prompt);
+    if (!proj.panels.length && !proj.instances.length) continue;
+    const box = benchModelBox(proj);
+    const view = benchView(proj, box);
+    for (const v of BENCH_VIEWPORTS) {
+      const frame = fitBench({ box, view, viewport: v.viewport, overlays: v.overlays });
+      const bad = projectCorners(frame, v.viewport, box).filter(
+        (p) =>
+          p.x < frame.safe.left - 8 ||
+          p.x > frame.safe.right + 8 ||
+          p.y < frame.safe.top - 8 ||
+          p.y > frame.safe.bottom + 8 ||
+          p.depth <= 0,
+      );
+      if (bad.length) failHonesty(`framing: ${prompt} overflows ${v.name}`, bad.slice(0, 2).map((p) => `(${p.x.toFixed(0)},${p.y.toFixed(0)})`));
+      // …and is not a speck: it fills most of the free rect along its tighter axis.
+      const pts = projectCorners(frame, v.viewport, box);
+      const fw = (Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x))) / (frame.safe.right - frame.safe.left);
+      const fh = (Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y))) / (frame.safe.bottom - frame.safe.top);
+      if (Math.max(fw, fh) < 0.6) failHonesty(`framing: ${prompt} is too small on ${v.name}`, { fw, fh });
+      cases += 1;
+    }
+  }
+  console.log(`PASS framing: ${prompts.length} builds × ${BENCH_VIEWPORTS.length} viewports (${cases} cases) — whole model clear of UI`);
 }
