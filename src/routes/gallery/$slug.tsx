@@ -1,7 +1,11 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { SiteChrome } from "@/components/site/chrome";
+import { useMemo } from "react";
 import { GALLERY, galleryBySlug } from "@/lib/yard/gallery";
+import { generateFromPrompt } from "@/lib/yard/prompt";
+import { buildPlan } from "@/lib/yard/report";
+import { planOverviewSvg } from "@/lib/yard/planStepPicture";
 
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 
@@ -31,6 +35,21 @@ export const Route = createFileRoute("/gallery/$slug")({
 function GalleryPlanPage() {
   const plan = Route.useLoaderData();
   const others = GALLERY.filter((g) => g.slug !== plan.slug).slice(0, 6);
+  // Same deterministic engine as the bench: the picture and step titles are the real plan.
+  const built = useMemo(() => {
+    try {
+      const project = generateFromPrompt(plan.prompt);
+      const bp = buildPlan(project);
+      return {
+        svg: planOverviewSvg(project, 480, 300).svg,
+        parts: bp.cutList.reduce((a, c) => a + c.quantity, 0),
+        steps: bp.instructions.map((s) => s.title),
+        whole: bp.partsKind === "whole",
+      };
+    } catch {
+      return null;
+    }
+  }, [plan.prompt]);
   return (
     <SiteChrome active="gallery">
       <main className="mx-auto max-w-2xl px-4 pb-20 pt-10 sm:pt-14">
@@ -46,7 +65,21 @@ function GalleryPlanPage() {
         </h1>
         <p className="mt-2 font-mono text-sm tracking-tight text-ink">{plan.size}</p>
         <p className="mt-5 text-base leading-relaxed text-ink-muted sm:text-lg">{plan.blurb}</p>
-        <p className="mt-4 text-sm leading-relaxed text-ink-muted">
+        {built && (
+          <figure className="mt-8">
+            <span
+              className="block aspect-[16/10] w-full overflow-hidden rounded-xl border border-rule bg-paper [&>svg]:h-full [&>svg]:w-full"
+              role="img"
+              aria-label={`${plan.label} — finished piece`}
+              dangerouslySetInnerHTML={{ __html: built.svg }}
+            />
+            <figcaption className="mt-2 text-xs text-ink-muted">
+              Finished piece, drawn from the model · {built.parts} {built.whole ? "pieces" : "cut parts"} ·{" "}
+              {built.steps.length} steps
+            </figcaption>
+          </figure>
+        )}
+        <p className="mt-6 text-sm leading-relaxed text-ink-muted">
           This is a real Yard plan — cut list, buy list, and steps from the same model the bench
           shows. Open it to edit the size, swap stock, or print the plan.
         </p>
@@ -67,6 +100,20 @@ function GalleryPlanPage() {
             All plans
           </Link>
         </div>
+
+        {built && built.steps.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">The steps</h2>
+            <ol className="mt-3 space-y-1.5 text-sm text-ink">
+              {built.steps.map((s, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="w-6 shrink-0 font-mono text-xs leading-5 text-ink-muted">{String(i + 1).padStart(2, "0")}</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         <p className="mt-6 rounded-md border border-rule/80 bg-rule/25 px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-muted">
           Prompt · {plan.prompt}
