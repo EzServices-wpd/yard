@@ -207,7 +207,11 @@ function PlanBody({
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const nest = useMemo(
-    () => (plan.partsKind === "whole" || !plan.cutList.length ? null : nestCutList(plan.cutList)),
+    () => {
+      // Named solid boards (Pine 1×4, Oak 1×4 …) are not sheet goods — no sheet layout for them.
+      const sheetCuts = plan.cutList.filter((c) => !/^[A-Z][a-z]+ 1×\d+$/.test(c.material ?? ""));
+      return plan.partsKind === "whole" || !sheetCuts.length ? null : nestCutList(sheetCuts);
+    },
     [plan.cutList, plan.partsKind],
   );
   const nestSheets = nest?.sheets ?? [];

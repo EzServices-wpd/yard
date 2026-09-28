@@ -494,7 +494,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
   // ═════════════════════════ CUT DIAGRAMS
   if (!craft && partLines.length) {
-    const nest = nestCutList(partLines);
+    // Named solid boards (Pine 1×4, Oak 1×4 …) are not sheet goods — no sheet diagram for them.
+    const nest = nestCutList(partLines.filter((c) => !/^[A-Z][a-z]+ 1×\d+$/.test(c.material ?? "")));
     const sheets: NestSheet[] = [...(nest?.sheets ?? [])];
     const thin = partLines.filter((c) => !c.whole && (c.thicknessIn ?? 0.75) < 0.5 && Math.min(c.lengthIn, c.widthIn) > 2);
     if (thin.length) {
