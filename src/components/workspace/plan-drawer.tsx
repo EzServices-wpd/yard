@@ -312,9 +312,11 @@ function PlanBody({
                 {plan.partsKind === "whole"
                   ? `${plan.totals.pieces} full pieces · glue · do not cut`
                   : `${plan.totals.pieces} pieces`}{" "}
-                · {usd(plan.totals.estCostUsd)} estimated · cheapest listing first, same size only
+                · {usd(plan.totals.estCostUsd)} estimated · cheapest first for the amount you need, any store, same size only
               </p>
-              <p className="mt-1 text-[11px] text-faint">Prices checked 19 Aug 2026.</p>
+              <p className="mt-1 text-[11px] text-faint">
+                Prices checked 19 Aug 2026. Best is the cheapest checked listing; rows with search links only show an estimate.
+              </p>
               {tagNote() && (
                 <p className="mt-1 text-[11px] text-faint" data-yard-affiliate-disclosure="1">
                   {tagNote()}

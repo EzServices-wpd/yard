@@ -341,7 +341,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
   font(9, "normal", KIT.muted);
   y += 4;
-  if (plan.totals.estCostUsd) y += textBlock(`About ${usd(plan.totals.estCostUsd)} all-in, cheapest same-size listing first.`, L, y, W, 9, "normal", KIT.muted) + 8;
+  if (plan.totals.estCostUsd) y += textBlock(`About ${usd(plan.totals.estCostUsd)} all-in, pricing each item at its cheapest same-size listing for the amount you need, any store.`, L, y, W, 9, "normal", KIT.muted) + 8;
   if (affOn) y += textBlock(affiliateDisclosure(aff), L, y, W, 8.5, "italic", KIT.muted) + 8;
   if (room() < 110) newPage("Before you start");
   subTitle("Tools");

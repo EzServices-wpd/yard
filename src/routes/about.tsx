@@ -55,8 +55,10 @@ function AboutPage() {
             Yard may earn a commission from qualifying purchases. As an Amazon Associate, Yard earns
             from qualifying purchases. We may also earn from Home Depot, Walmart, and other retailers
             through Impact, CJ, or similar partner programs when those links are live. A commission
-            never changes the price, quantity, or product shown on the Buy list — you pay the
-            retailer&apos;s normal price.
+            never changes the price, quantity, product, or order shown on the Buy list. Each item
+            lists its offers cheapest first for the amount you need, whatever the store, and
+            &ldquo;Best&rdquo; is simply the cheapest checked listing. You pay the retailer&apos;s
+            normal price.
           </p>
           <p className="mt-3 text-sm text-ink-muted">
             See the{" "}

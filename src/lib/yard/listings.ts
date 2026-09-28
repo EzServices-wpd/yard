@@ -1,6 +1,6 @@
 /**
  * Buyable listings for catalog stock.
- * Same measurements only. Sorted by price per piece, any seller.
+ * Same measurements only. Sorted cheapest first for the amount needed, any store (sortOffersByPrice).
  * Prices are last checked on the product page — not a live API.
  * Every offer href goes through outboundHref (outbound.ts) — inert until an affiliate ID is set.
  */
@@ -857,6 +857,36 @@ export function humanizeCatalogSlug(id: string): string {
     .join(" ");
 }
 
+/**
+ * Cheapest first, any store: total for the amount needed, then price per piece, then the smaller
+ * pack, then product title. Only when every one of those ties (same product, same price at several
+ * stores) does the store name decide, A to Z, so the order is stable. Never a store preference.
+ */
+export function compareOffersByPrice(
+  a: Pick<ShopOffer, "lineTotal" | "unitPrice" | "packQty" | "title" | "retailer">,
+  b: Pick<ShopOffer, "lineTotal" | "unitPrice" | "packQty" | "title" | "retailer">,
+): number {
+  return (
+    a.lineTotal - b.lineTotal ||
+    a.unitPrice - b.unitPrice ||
+    a.packQty - b.packQty ||
+    a.title.localeCompare(b.title, "en") ||
+    RETAILER_LABEL[a.retailer as ListingOffer["retailer"]].localeCompare(
+      RETAILER_LABEL[b.retailer as ListingOffer["retailer"]],
+      "en",
+    )
+  );
+}
+
+export function sortOffersByPrice<T extends Pick<ShopOffer, "lineTotal" | "unitPrice" | "packQty" | "title" | "retailer">>(
+  offers: T[],
+): T[] {
+  return offers
+    .map((o, i) => ({ o, i }))
+    .sort((x, y) => compareOffersByPrice(x.o, y.o) || x.i - y.i)
+    .map((x) => x.o);
+}
+
 export function offersFor(
   catalogId: string,
   piecesNeeded: number,
@@ -865,6 +895,7 @@ export function offersFor(
   let rows = LISTINGS.filter((o) => o.catalogId === catalogId).filter((o) =>
     dims ? sameSize(o, dims) : true,
   );
+  const fromListings = rows.length > 0;
   if (!rows.length) {
     const item = getCatalogItem(catalogId);
     const q = item?.searchQuery || item?.name || humanizeCatalogSlug(catalogId);
@@ -890,33 +921,29 @@ export function offersFor(
       checkedAt: CHECK,
     }));
   }
-  const priced = rows
-    .map((o) => {
-      const packsNeeded = Math.max(1, Math.ceil(piecesNeeded / Math.max(1, o.packQty)));
-      const href = outboundHref(
-        o.retailer === "amazon"
-          ? o.asin
-            ? affiliateUrl({ query: o.title, asin: o.asin, retailer: "amazon" })
-            : o.href
-          : o.href,
-      );
-      return {
-        ...o,
-        href,
-        unitPrice: o.packPrice / Math.max(1, o.packQty),
-        packsNeeded,
-        lineTotal: packsNeeded * o.packPrice,
-        best: false,
-      };
-    })
-    .sort((a, b) => {
-      const aAm = a.retailer === "amazon" ? 0 : 1;
-      const bAm = b.retailer === "amazon" ? 0 : 1;
-      if (aAm !== bAm) return aAm - bAm;
-      return a.unitPrice - b.unitPrice || a.lineTotal - b.lineTotal;
-    });
-  if (priced[0]) priced[0].best = true;
-  return priced;
+  const priced = rows.map((o) => {
+    const packsNeeded = Math.max(1, Math.ceil(piecesNeeded / Math.max(1, o.packQty)));
+    const href = outboundHref(
+      o.retailer === "amazon"
+        ? o.asin
+          ? affiliateUrl({ query: o.title, asin: o.asin, retailer: "amazon" })
+          : o.href
+        : o.href,
+    );
+    return {
+      ...o,
+      href,
+      unitPrice: o.packPrice / Math.max(1, o.packQty),
+      packsNeeded,
+      lineTotal: packsNeeded * o.packPrice,
+      best: false,
+    };
+  });
+  const ordered = sortOffersByPrice(priced);
+  // "Best" means the cheapest checked listing for the amount needed. Rows priced from a catalog
+  // estimate (every store the same number, search links only) have no real cheapest, so no Best.
+  if (fromListings && ordered[0]) ordered[0].best = true;
+  return ordered;
 }
 
 export function retailerLabel(id: ListingOffer["retailer"]) {
@@ -1018,7 +1045,8 @@ function searchOffers(
   const packQty = Math.max(1, qty);
   const title =
     /^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(query.trim()) ? humanizeCatalogSlug(query.trim()) : query;
-  return links.map((l, i) => ({
+  // Search links only: every store shows the same estimate, so none is marked Best.
+  const offers: ShopOffer[] = links.map((l) => ({
     retailer: l.retailer,
     label: l.label,
     title,
@@ -1028,9 +1056,10 @@ function searchOffers(
     unitPrice: packPrice / packQty,
     packsNeeded: 1,
     lineTotal: packPrice,
-    best: i === 0,
+    best: false,
     checkedAt: CHECK,
   }));
+  return sortOffersByPrice(offers);
 }
 
 export function decorateBom(lines: BomLine[]): BomLine[] {

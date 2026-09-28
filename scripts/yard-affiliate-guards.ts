@@ -249,11 +249,12 @@ if (fs.existsSync(snapPath)) {
       rows.map((r) => ({ name: r.name, q: r.q, cost: r.cost, offers: r.offers.map((o) => ({ r: o.r, t: o.t, h: o.h, pp: o.pp, pq: o.pq })) }));
     if (JSON.stringify(slim(now)) !== JSON.stringify(slim(frozen[p]))) {
       // Soft: log but only fail if a shared row's href drifted
+      // Same links per row regardless of order — the Buy order is cheapest-first (buy-order guard).
       for (let i = 0; i < Math.min(now.length, frozen[p].length); i++) {
-        for (let j = 0; j < Math.min(now[i].offers.length, frozen[p][i].offers.length); j++) {
-          if (now[i].offers[j].h !== frozen[p][i].offers[j].h) {
-            fail(`baseline href drift ${p}`, { now: now[i].offers[j], was: frozen[p][i].offers[j] });
-          }
+        const a = now[i].offers.map((o) => o.h).sort();
+        const b = frozen[p][i].offers.map((o) => o.h).sort();
+        if (JSON.stringify(a) !== JSON.stringify(b)) {
+          fail(`baseline href drift ${p}`, { row: now[i].name, now: a, was: b });
         }
       }
     }
