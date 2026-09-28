@@ -3727,6 +3727,72 @@ console.log("SOFT-TRUST OK", {
   console.log("PASS wine-class: bottle-pitch rows (3.5–5.5in clear, height from rows or top shelf from leftover), grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
 }
 
+// Named wood tables: the species drives every part including legs (laminated from the
+// leg species' boards); a species typed for the legs wins for the legs only; side / end
+// tables default ~20" across × 22" tall and say so; coffee / dining defaults stay; no
+// sheet-only wording on a board build.
+{
+  const failTab = (msg: string, detail?: unknown) => failHonesty(`named-table ${msg}`, detail);
+  type T = { prompt: string; body: RegExp; leg: RegExp; W?: number; H?: number; assumed?: boolean };
+  const cases: T[] = [
+    { prompt: "maple end table", body: /^Maple 1×4$/, leg: /^Maple 1×4$/, W: 20, H: 22, assumed: true },
+    { prompt: "teak side table", body: /^Teak 1×4$/, leg: /^Teak 1×4$/, W: 20, H: 22, assumed: true },
+    { prompt: "teak outdoor side table", body: /^Teak 1×4$/, leg: /^Teak 1×4$/, W: 20, H: 22, assumed: true },
+    { prompt: "walnut end table", body: /^Walnut 1×4$/, leg: /^Walnut 1×4$/, W: 20, H: 22, assumed: true },
+    { prompt: "oak table with walnut legs", body: /^Oak 1×4$/, leg: /^Walnut 1×4$/ },
+    { prompt: "40 inch round oak table", body: /^Oak 1×4$/, leg: /^Oak 1×4$/, W: 40, H: 30 },
+    { prompt: "oak coffee table", body: /^Oak 1×4$/, leg: /^Oak 1×4$/, W: 40, H: 18 },
+    { prompt: "teak dining table", body: /^Teak 1×4$/, leg: /^Teak 1×4$/, W: 40, H: 30 },
+  ];
+  for (const c of cases) {
+    const p = generateFromPrompt(c.prompt);
+    const plan = buildPlan(p);
+    const legs = plan.cutList.filter((l) => /^leg$/i.test(l.name));
+    const rest = plan.cutList.filter((l) => !/^leg$/i.test(l.name));
+    if (!legs.length || legs.some((l) => !c.leg.test(l.material ?? ""))) failTab("leg species on the cut list", { prompt: c.prompt, legs });
+    if (rest.some((l) => !c.body.test(l.material ?? ""))) failTab("body species on the cut list", { prompt: c.prompt, mats: rest.map((l) => l.material) });
+    if (plan.bom.some((b) => /2x2|2×2|plywood/i.test(b.name))) failTab("plain 2x2 / plywood still on Buy", { prompt: c.prompt, bom: plan.bom.map((b) => b.name) });
+    // Buy boards = packed cut list (legs as two ripped 1½" strips each), per species.
+    const labels = [...new Set(plan.cutList.map((l) => l.material ?? ""))];
+    for (const lab of labels) {
+      const parts = plan.cutList
+        .filter((l) => l.material === lab)
+        .map((l) =>
+          /^leg$/i.test(l.name)
+            ? { name: "Leg strip", lengthIn: l.lengthIn + 1, widthIn: 1.5, qty: 2 * l.quantity }
+            : { name: l.name, lengthIn: l.lengthIn, widthIn: l.widthIn, qty: l.quantity },
+        );
+      const want = planSolidBoards(parts).boards;
+      const buy = plan.bom.find((b) => b.name === lab);
+      if (!buy || buy.quantity !== want) failTab("Buy boards ≠ packed cut list", { prompt: c.prompt, lab, buy: buy?.quantity, want });
+    }
+    const words = [...(p.notes ?? []), ...plan.instructions.flatMap((st) => [st.title, st.description, st.tips ?? ""]), ...plan.bom.map((b) => b.notes ?? "")].join(" ");
+    if (/nest on the 3\/4" sheet|buy 2x2|from 2x2|the ply does not split|Buy 2x2/i.test(words)) failTab("sheet / 2x2 wording on a board build", { prompt: c.prompt, hit: words.match(/.{60}(?:nest on the 3\/4" sheet|buy 2x2|from 2x2|the ply does not split).{20}/i)?.[0] });
+    if (/excluding the \d+ legs?/.test(words)) failTab("Buy still excludes named legs", { prompt: c.prompt });
+    if (c.W != null && (Math.abs(p.overall.width - c.W) > 0.01 || Math.abs(p.overall.height - (c.H ?? 0)) > 0.01)) failTab("default size", { prompt: c.prompt, overall: p.overall, want: [c.W, c.H] });
+    if (c.assumed && !/Assumed 20" across × 22" tall/.test((p.notes ?? []).join(" "))) failTab("assumed side-table size not stated", { prompt: c.prompt, notes: p.notes });
+  }
+  // A typed size wins over the side-table default and drops the assumed note.
+  const typed = generateFromPrompt("side table 24 inches wide");
+  if (Math.abs(typed.overall.width - 24) > 0.01 || /Assumed 20"/.test((typed.notes ?? []).join(" "))) failTab("typed side-table width", { overall: typed.overall, notes: typed.notes });
+  // Board carcases: no sheet-only wording in steps / Buy.
+  for (const prompt of ["oak bookcase", "cherry nightstand", "walnut media console", "maple dresser"]) {
+    const p = generateFromPrompt(prompt);
+    const plan = buildPlan(p);
+    const words = [...(p.notes ?? []), ...plan.instructions.flatMap((st) => [st.description, st.tips ?? ""]), ...plan.bom.map((b) => b.notes ?? "")].join(" ");
+    if (/the ply does not split|not nested on the 3\/4" sheets|same ¾" plywood|edge-band the plywood|\.,/.test(words)) failTab("sheet-only wording on a board carcase", { prompt, hit: words.match(/.{50}(?:the ply does not split|not nested on the 3\/4" sheets|same ¾" plywood|edge-band the plywood|\.,).{20}/)?.[0] });
+  }
+  // Nightstand stays a plywood stock design.
+  const ns = generateFromPrompt("nightstand");
+  if (ns.overall.width !== 20 || ns.overall.height !== 24 || ns.overall.depth !== 16 || ns.primaryMaterialId !== "plywood-3-4-4x8") failTab("nightstand changed", { overall: ns.overall, mat: ns.primaryMaterialId });
+  // Plate rack: every bay the same clear width (end bays included).
+  const plate = generateFromPrompt("plate rack with 6 slots");
+  const posts = plate.panels.filter((x) => x.type === "upright" || x.type === "divider").sort((a, b) => a.position.x - b.position.x);
+  const bays = posts.slice(1).map((q, i) => q.position.x - (posts[i].position.x + posts[i].size.width));
+  if (Math.max(...bays) - Math.min(...bays) > 1 / 32) failTab("plate rack bays unequal", bays);
+  console.log("PASS named-table: species drives legs (laminated) + body, leg species wins for legs, Buy = packed boards per species, side/end 20×22 assumed, coffee/dining/nightstand unchanged, no sheet wording on board builds, plate bays equal");
+}
+
 // Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
 {
   // A) Cleat-mounted singular wall shelf: ONE shelf thick 2, title Wall shelf, cleat-mounted voice.
@@ -5255,11 +5321,20 @@ console.log("SOFT-TRUST OK", {
   const teakLegQty = teakLegBom?.quantity ?? 0;
   // Named solid stock drives the parts: Buy = the 8-ft boards the structural cuts
   // pack into (edge-glue strips + rips, kerf), never pieces-as-boards or nest sheets.
-  const teakStructuralExpect = planSolidBoards(
-    teakPlan.cutList
-      .filter((c) => /teak/i.test(c.material ?? ""))
-      .map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
-  ).boards;
+  // Named wood drives the legs too: each leg is two 1½" strips ripped from the species boards.
+  const solidParts = (cuts: typeof teakPlan.cutList) =>
+    cuts.map((c) =>
+      /^leg$/i.test(c.name)
+        ? { name: "Leg strip", lengthIn: c.lengthIn + 1, widthIn: 1.5, qty: 2 * c.quantity }
+        : { name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity },
+    );
+  const teakStructuralExpect = planSolidBoards(solidParts(teakPlan.cutList.filter((c) => /teak/i.test(c.material ?? "")))).boards;
+  if (teakLegQty > 0) failBom("teak legs still plain 2x2 on Buy", teakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+  const teakLegCut = teakPlan.cutList.find((c) => /^leg$/i.test(c.name));
+  if (!teakLegCut || !/^Teak 1×4$/.test(teakLegCut.material ?? "") || !/Laminated leg/.test(teakLegCut.notes ?? "")) {
+    failBom("teak legs must be laminated teak on the cut list", teakLegCut);
+  }
+  if (/excluding the \d+ legs?/.test(teakPlan.bom.map((b) => b.notes ?? "").join(" "))) failBom("teak Buy still excludes legs that are now teak", teakPlan.bom.map((b) => b.notes));
   const teakBuy = teakPlan.bom.find(
     (b) => /teak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2/i.test(b.name),
   );
@@ -5334,9 +5409,10 @@ console.log("SOFT-TRUST OK", {
       (b) => /oak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2|ply/i.test(b.name),
     );
     if (oakPly) failBom("oak round still buys plywood under named solid oak", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
-    const oakCuts = oakPlan.cutList.filter((c) => !/^leg$/i.test(c.name));
-    if (oakCuts.some((c) => !/oak/i.test(c.material ?? ""))) failBom("oak round cut list not Oak", oakCuts.map((c) => c.material));
-    const oakExpect = planSolidBoards(oakCuts.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity }))).boards;
+    const oakCuts = oakPlan.cutList;
+    if (oakCuts.some((c) => !/oak/i.test(c.material ?? ""))) failBom("oak round cut list not Oak (legs included)", oakCuts.map((c) => c.material));
+    if (oakPlan.bom.some((b) => /2x2|2×2/i.test(b.name))) failBom("oak round legs still plain 2x2 on Buy", oakPlan.bom.map((b) => b.name));
+    const oakExpect = planSolidBoards(solidParts(oakCuts)).boards;
     if (!oakBoards || oakBoards.quantity !== oakExpect) {
       failBom("oak round Buy boards ≠ packed cut list", { buy: oakBoards?.quantity, expect: oakExpect });
     }

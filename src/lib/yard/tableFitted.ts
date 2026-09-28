@@ -17,26 +17,46 @@
  */
 import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
+import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
+import { isSideEndTable } from "./family";
 
 const PLY = "plywood-3-4-4x8";
 const TWO_BY_TWO = "lumber-2x2-8";
 
 function legStock(prompt: string): { id: string; face: number; note: string } {
   const lower = prompt.toLowerCase();
+  // Notes come from the real stock: named wood builds have no sheet to nest on.
+  const body = namedLumberFromPrompt(prompt);
+  const leg = namedLegLumberFromPrompt(prompt);
+  const bodyVoice = body ? `The top and aprons are cut from ${body.densifyLabel} boards.` : "Aprons nest on the 3/4\" sheet.";
   if (/4\s*[x×]\s*4/.test(lower) && /leg|post/.test(lower)) {
     return {
       id: "lumber-4x4-8",
       face: 3.5,
-      note: "Legs are 3-1/2\" square (4x4 actual), buy 4x4 posts. Aprons nest on the 3/4\" sheet.",
+      note: `Legs are 3-1/2" square (4x4 actual), buy 4x4 posts. ${bodyVoice}`,
+    };
+  }
+  if (leg) {
+    return {
+      id: TWO_BY_TWO,
+      face: 1.5,
+      note: `Legs are 1-1/2" square ${leg.display.toLowerCase()} — each one is two 1-1/2" strips ripped from ${leg.densifyLabel} boards and face-glued. ${bodyVoice} Legs stay under the top.`,
     };
   }
   return {
     id: TWO_BY_TWO,
     face: 1.5,
-    note: "Legs are 1-1/2\" square (2x2 actual) — buy 2x2 lumber. Aprons nest on the 3/4\" sheet. Legs stay under the top.",
+    note: `Legs are 1-1/2" square (2x2 actual) — buy 2x2 lumber. ${bodyVoice} Legs stay under the top.`,
   };
 }
 const P = 0.75;
+
+/** Side/end table class default (~20" across × 22" tall) — say so when nothing was typed. */
+function sideTableAssumedNote(prompt: string, W: number, H: number): string[] {
+  const lower = prompt.toLowerCase();
+  if (!isSideEndTable(lower) || /\d/.test(lower.replace(/\b\d+\s*(?:legs?|shel(?:f|ves))\b/g, ""))) return [];
+  return [`Assumed ${W}" across × ${H}" tall — side / end table size (18–22" tall sits at sofa-arm height). Type a size to change it.`];
+}
 
 /** Spoken shelf count for freestanding tables — never invent when the prompt is silent. */
 function spokenTableShelfCount(prompt: string): number | null {
@@ -455,6 +475,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         ? `Oval top: cut a ${W}" × ${D}" rectangular blank, then band-saw / jigsaw to an oval ${W}" long × ${D}" wide. Height ${H}".`
         : `Top ${W}" × ${D}". Height ${H}".`,
     stock.note,
+    ...sideTableAssumedNote(prompt, W, H),
     shelfN >= 1
       ? "Lower shelf sits on 3/4\" shelf rails between the legs — screw rails to the posts, then the shelf down onto the rails."
       : "",

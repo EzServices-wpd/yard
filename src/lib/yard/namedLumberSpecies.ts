@@ -596,13 +596,40 @@ export function promptNamesNamedLumber(prompt: string): boolean {
   return SPOKEN_TEST.test((prompt || "").toLowerCase());
 }
 
-/** Match spoken alias → pack row (longest alias wins). */
-export function namedLumberFromPrompt(prompt: string): NamedLumberSpecies | null {
+/** "walnut legs" / "legs of walnut" / "with walnut table legs" — the species typed for the legs. */
+function legPhraseFor(alias: string): RegExp {
+  const src = aliasToRegExp(alias).source;
+  return new RegExp(`${src}\\s+(?:table\\s+)?legs?\\b|\\blegs?\\s+(?:in|of|made\\s+of|from)\\s+${src}`);
+}
+
+/** Species typed specifically for the legs ("oak table with walnut legs" → walnut), else null. */
+export function spokenLegSpecies(prompt: string): { species: NamedLumberSpecies; phrase: string } | null {
   const lower = (prompt || "").toLowerCase();
   for (const { alias, species } of ALIAS_INDEX) {
-    if (aliasToRegExp(alias).test(lower)) return species;
+    const m = lower.match(legPhraseFor(alias));
+    if (m) return { species, phrase: m[0] };
   }
   return null;
+}
+
+/**
+ * Match spoken alias → pack row (longest alias wins). A species typed for the legs
+ * only ("oak table with walnut legs") does not take over the body — oak drives the
+ * rest; the leg species wins only when it is the only species named.
+ */
+export function namedLumberFromPrompt(prompt: string): NamedLumberSpecies | null {
+  const lower = (prompt || "").toLowerCase();
+  const leg = spokenLegSpecies(lower);
+  const body = leg ? lower.replace(leg.phrase, " ") : lower;
+  for (const { alias, species } of ALIAS_INDEX) {
+    if (aliasToRegExp(alias).test(body)) return species;
+  }
+  return leg?.species ?? null;
+}
+
+/** Species for the legs: the one typed for the legs, else the body species. */
+export function namedLegLumberFromPrompt(prompt: string): NamedLumberSpecies | null {
+  return spokenLegSpecies(prompt)?.species ?? namedLumberFromPrompt(prompt);
 }
 
 export function densifyLabelForPrompt(prompt: string): string | null {

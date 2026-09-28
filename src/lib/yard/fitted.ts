@@ -17,7 +17,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
@@ -30,6 +30,8 @@ const P = 0.75;
 
 function tableClassHeight(lower: string): number {
   if (/coffee|cocktail/.test(lower)) return 18;
+  // Side / end tables sit at sofa-arm height: ~22" (class range 18–22").
+  if (isSideEndTable(lower)) return 22;
   if (/changing(?:\s*pad)?\s*tables?/.test(lower)) return 36;
   if (/bar\s*-?\s*height/.test(lower)) return 42;
   if (/counter\s*-?\s*height/.test(lower)) return 36;
@@ -938,7 +940,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
         : program === "vanity"
           ? 36
           : program === "table"
-            ? 40
+            ? isSideEndTable(lower)
+              ? 20
+              : 40
             : program === "media"
               ? 60
               : isDaybed(lower)
@@ -1751,6 +1755,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? "Ottoman"
       : isPlanterBox(lower)
         ? "Planter box"
+      : isSideEndTable(lower)
+        ? sideEndTableStem(lower)
       : isOutdoorSideTable(lower)
         ? /outdoor/.test(lower) ? "Outdoor side table" : "Side table"
       : isWorkbench(lower)
@@ -3354,11 +3360,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
     // N slots → N−1 vertical dividers (open-cubby / open-shelving slot densify class).
+    // Equal bays: every slot (end bays included) is the same clear width.
+    const bay = (innerW - (slotN - 1) * P) / slotN;
     for (let i = 1; i < slotN; i++) {
-      const x = x0 + (W * i) / slotN - P / 2;
+      const x = x0 + P + i * bay + (i - 1) * P;
       panels.push(panel("divider", `Slot ${i}`, x, P, backT, P, H - 2 * P, D - backT));
     }
-    const bayW = Math.round(((W - P * (slotN + 1)) / slotN) * 10) / 10;
+    const bayW = inch16(bay);
     const name = `${stem} ${W}" × ${H}" × ${D}"`;
     const slotWord = slotN === 3 ? "three" : slotN === 2 ? "two" : String(slotN);
     return {

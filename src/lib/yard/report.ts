@@ -12,7 +12,7 @@ import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsO
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
-import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
+import { CATALOG_LUMBER_BIND, namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { planSolidBoards } from "./solidStock";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
@@ -56,6 +56,8 @@ function effortLabel(project: YardProject, pieces: number): string {
 function closetCuts(project: YardProject): CutLine[] {
   const STOCK_T = 0.75;
   const namedSolid = !!namedLumberFromPrompt(project.prompt ?? "");
+  // Named wood drives the legs too: laminated from two ripped strips of the leg species.
+  const legSpecies = namedSolid ? namedLegLumberFromPrompt(project.prompt ?? "") : null;
   const grouped = new Map<string, CutLine>();
   const addCut = (
     materialId: string,
@@ -134,6 +136,20 @@ function closetCuts(project: YardProject): CutLine[] {
     // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
     // Explode into sides/back/bottom so the cut list matches Build steps.
     if (isBuyMirrorPanel(p.name, p.type)) continue;
+    if (legSpecies && /^leg\b/i.test(p.name) && p.materialId === "lumber-2x2-8") {
+      const len = Math.max(w, h, d);
+      addCut(
+        CATALOG_LUMBER_BIND,
+        p.name,
+        p.type,
+        w,
+        h,
+        d,
+        legSpecies.densifyLabel,
+        `Laminated leg: rip two 1 1/2" strips from ${legSpecies.densifyLabel}, face-glue them into a 1 1/2" × 1 1/2" square, then cut to ${len}".`,
+      );
+      continue;
+    }
     if (isBoundingDrawerPanel(p.name, p.type)) {
       for (const part of explodeDrawerBoxCuts(w, h, d)) {
         addCut(p.materialId, part.name, part.type, part.width, part.height, part.depth, materialName);
@@ -190,7 +206,14 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const coatHookBoard =
     isCoatHookBoard((project.prompt ?? "").toLowerCase()) || /Coat hook board/i.test(project.name || "");
   const buyNamedBoard = !!(coatHookBoard && namedLumber && namedLumber.category === "lumber");
-  const legCuts = cuts.filter((c) => /^leg$/i.test(c.name));
+  const allLegCuts = cuts.filter((c) => /^leg$/i.test(c.name));
+  // Named-wood legs are laminated from the leg species' 1×4 boards (cut line id carries the bind).
+  const namedLegCuts = allLegCuts.filter((c) => c.id.startsWith(`${CATALOG_LUMBER_BIND}|`));
+  const legCuts = allLegCuts.filter((c) => !namedLegCuts.includes(c));
+  const namedLegLabel = namedLegCuts[0]?.material ?? "";
+  const namedLegQty = namedLegCuts.reduce((s, c) => s + c.quantity, 0);
+  const legStripParts = namedLegCuts.map((c) => ({ name: "Leg strip", lengthIn: c.lengthIn + 1, widthIn: 1.5, qty: 2 * c.quantity }));
+  let legsMerged = false;
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
   );
@@ -248,10 +271,13 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     if (solidNamed) {
       // Named solid stock drives every ¾" part: Buy the 8-ft boards the parts
       // actually need (edge-glue strips + rips packed with kerf) — no unused boards.
-      const boardPlan = planSolidBoards(
-        structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
-      );
       const label = namedStockDisplayName(project.prompt ?? "", namedLumber!);
+      legsMerged = namedLegQty > 0 && namedLegLabel === label;
+      const boardPlan = planSolidBoards([
+        ...structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
+        ...(legsMerged ? legStripParts : []),
+      ]);
+      const partsQty = structuralQty + (legsMerged ? namedLegQty : 0);
       const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
       bom.push({
         name: label,
@@ -261,9 +287,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         searchQuery: namedLumber!.searchQuery ?? label,
         estimatedCost: (namedLumber!.unitCostUsd ?? 4) * boardPlan.boards,
         notes:
-          `${boardPlan.boards} × 8 ft ${label} (¾" × 3½") for ${legQtyForNote ? "the" : "all"} ${structuralQty} ${label} part${structuralQty === 1 ? "" : "s"} on the cut list` +
+          `${boardPlan.boards} × 8 ft ${label} (¾" × 3½") for ${legQtyForNote || (namedLegQty && !legsMerged) ? "the" : "all"} ${partsQty} ${label} part${partsQty === 1 ? "" : "s"} on the cut list` +
           (legQtyForNote ? ` (excluding the ${legQtyForNote} leg${legQtyForNote === 1 ? "" : "s"} listed below)` : "") +
+          (namedLegQty && !legsMerged ? ` (the ${namedLegQty} ${namedLegLabel} leg${namedLegQty === 1 ? "" : "s"} are listed below)` : "") +
           (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued from boards` : "") +
+          (legsMerged ? `, ${namedLegQty} leg${namedLegQty === 1 ? "" : "s"} laminated from two ripped 1 1/2" strips each` : "") +
           `. Packed from the cut list with 1/8" kerf${glued ? ' and 1" trim on each glue-up' : ""}.` +
           "",
       });
@@ -351,6 +379,18 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         const species = speciesStockHonestyTalk(project.prompt ?? "", sheet10?.name ?? '3/4" plywood 4x10');
         return species ? `${base} ${species}` : base;
       })(),
+    });
+  }
+  if (namedLegQty && !legsMerged) {
+    const legPlan = planSolidBoards(legStripParts);
+    bom.push({
+      name: namedLegLabel,
+      quantity: legPlan.boards,
+      unit: legPlan.boards === 1 ? "board" : "boards",
+      catalogId: CATALOG_LUMBER_BIND,
+      searchQuery: `${namedLegLabel.replace(/ 1×4$/, "")} 1x4 board`,
+      estimatedCost: (getCatalogItem(CATALOG_LUMBER_BIND)?.unitCostUsd ?? 4) * legPlan.boards,
+      notes: `${legPlan.boards} × 8 ft ${namedLegLabel} (¾" × 3½") for the ${namedLegQty} leg${namedLegQty === 1 ? "" : "s"} — each laminated from two 1 1/2" strips ripped from the board. Packed from the cut list with 1/8" kerf and 1" trim.`,
     });
   }
   if (legCuts.length) {
@@ -970,7 +1010,39 @@ export function strangerWoodPieceCount(project: YardProject): number {
 
 /** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
 export function buildPlan(project: YardProject): BuildPlan {
-  return withPlacementTalk(project, buildPlanCore(project));
+  return boardStockWording(project, withPlacementTalk(project, buildPlanCore(project)));
+}
+
+/**
+ * Named solid-wood builds have no ¾" sheet: steps, tips and Buy notes speak about the
+ * real boards (wood splits, edges get eased) — never sheet-only ply / nest / banding talk.
+ */
+function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
+  const species = namedLumberFromPrompt(project.prompt ?? "");
+  if (
+    !species ||
+    project.primaryMaterialId !== CATALOG_LUMBER_BIND ||
+    !project.panels.length ||
+    project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""))
+  ) {
+    return plan;
+  }
+  const label = species.densifyLabel;
+  const fix = (t?: string) =>
+    t
+      ?.replace(/\bthe ply does not split/g, "the wood does not split")
+      .replace(/\bthe ply d(?:oes)? not split/g, "the wood does not split")
+      .replace(/Iron-on edge banding on the top edge if people will see ply\.?/g, "Ease the edges with sandpaper.")
+      .replace(/Iron-on edge banding \(thin veneer strip that covers the raw plywood edge\) on the (?:edges people will see|front if people will see it)\./g, "Ease the edges people will see with sandpaper.")
+      .replace(/edge-band the plywood edge people see \(thin veneer strip over the raw edge\)(?: if the carcase is ply)?/g, "ease the front edges with sandpaper")
+      .replace(/Cut it from the same ¾" plywood/g, `Cut it from the same ${label} boards`)
+      .replace(/Aprons nest on the 3\/4" sheet\.\s*/g, "")
+      .replace(/ — not nested on the 3\/4" sheets\./g, ` — the only sheet good here; every ¾" part is ${label}.`);
+  return {
+    ...plan,
+    instructions: plan.instructions.map((st) => ({ ...st, title: fix(st.title) ?? st.title, description: fix(st.description) ?? st.description, tips: fix(st.tips) })),
+    bom: plan.bom.map((b) => ({ ...b, notes: fix(b.notes) })),
+  };
 }
 
 function buildPlanCore(project: YardProject): BuildPlan {

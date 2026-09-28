@@ -378,6 +378,18 @@ export function namesSitChair(lower: string) {
 }
 
 /** Outdoor side table — positive Outdoor side table stem (not naked Table). */
+/** Side / end / accent / lamp table class: ~20" across × 22" tall by default. */
+export function isSideEndTable(lower: string) {
+  return /\b(?:side|end|accent|lamp)\s*tables?\b/.test(lower) && !/nightstand|bedside/.test(lower);
+}
+
+/** Title stem for the side/end table class — the noun the stranger typed. */
+export function sideEndTableStem(lower: string): string {
+  if (/outdoor/.test(lower)) return "Outdoor side table";
+  const m = lower.match(/\b(side|end|accent|lamp)\s*tables?\b/);
+  return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)} table` : "Side table";
+}
+
 export function isOutdoorSideTable(lower: string) {
   if (/outdoor\s*side\s*table|side\s*table/.test(lower)) return true;
   if (/outdoor/.test(lower) && /\btable\b/.test(lower) && !/prep|folding|sofa|console|coffee|dining|work\s*table/.test(lower)) {
@@ -1130,6 +1142,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isOttoman(lower)) return "Ottoman";
   if (isAdirondackChair(lower)) return "Adirondack chair";
   // Only say "Outdoor" when the stranger typed it — a bare side table is not stamped outdoor.
+  if (isSideEndTable(lower)) return sideEndTableStem(lower);
   if (isOutdoorSideTable(lower)) return /outdoor/.test(lower) ? "Outdoor side table" : "Side table";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
   if (isWorkbench(lower)) return "Workbench";

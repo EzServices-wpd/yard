@@ -4,6 +4,7 @@
 
 import { getCatalogItem } from "./catalog";
 import { namedStockDisplayName } from "./weekendStockHonesty";
+import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { glueUpTalk, planSolidBoards } from "./solidStock";
 import { shopPlural } from "./shopPlural";
 import type { AssemblyStep, Panel, YardProject } from "./types";
@@ -95,22 +96,35 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
     partsUsed: plyBits.map((p) => p.name),
   });
 
+  // Named wood drives the legs: laminated from two ripped strips of the leg species.
+  const legSpecies = namedLumberFromPrompt(project.prompt ?? "") ? namedLegLumberFromPrompt(project.prompt ?? "") : null;
+  const laminatedLegs = !!legSpecies && legs.some((p) => p.materialId === "lumber-2x2-8");
   if (legs.length) {
     const legLen = round(legs[0].size.height);
-    steps.push({
-      step: n++,
-      title: `Cut ${legN} legs from 2x2`,
-      description: `${legs.map(cutLine).join("; ")}. Buy 2x2 (1-1/2" actual). Square both ends. All ${legN} the same length (${legLen}") so the top sits level.`,
-      tips: "A stop-block on the saw keeps every leg identical. Do not nest 2x2 on the plywood sheet.",
-      partsUsed: legs.map((p) => p.name),
-    });
+    steps.push(
+      laminatedLegs
+        ? {
+            step: n++,
+            title: `Glue up ${legN} ${legSpecies!.display.toLowerCase()} legs`,
+            description: `${legs.map(cutLine).join("; ")}. Rip ${legN * 2} strips 1 1/2" wide × ${round(legs[0].size.height + 1)}" long from the ${legSpecies!.densifyLabel} boards. Face-glue them in pairs into 1 1/2" × 1 1/2" legs and clamp every 6"; let them cure, then square both ends. All ${legN} the same length (${legLen}") so the top sits level.`,
+            tips: "Keep the glue line on the inside faces so it hides under the aprons. A stop-block on the saw keeps every leg identical.",
+            partsUsed: legs.map((p) => p.name),
+          }
+        : {
+            step: n++,
+            title: `Cut ${legN} legs from 2x2`,
+            description: `${legs.map(cutLine).join("; ")}. Buy 2x2 (1-1/2" actual). Square both ends. All ${legN} the same length (${legLen}") so the top sits level.`,
+            tips: "A stop-block on the saw keeps every leg identical. Do not nest 2x2 on the plywood sheet.",
+            partsUsed: legs.map((p) => p.name),
+          },
+    );
   }
 
   if (aprons.length && legs.length) {
     steps.push({
       step: n++,
       title: `Screw the ${aprons.length} aprons to the legs`,
-      description: `Build the base upside-down on the bench. ${aprons.map(cutLine).join("; ")}. Each apron spans two legs, flush with the top of the posts. Glue + #8 × 1¼" screws, two per end. Predrill so the 2x2 does not split.`,
+      description: `Build the base upside-down on the bench. ${aprons.map(cutLine).join("; ")}. Each apron spans two legs, flush with the top of the posts. Glue + #8 × 1¼" screws, two per end. Predrill so the ${laminatedLegs ? "legs do" : "2x2 does"} not split.`,
       tips: "Check both diagonals of the base before the glue skins. A 1/8 in difference will show as a wobble.",
       partsUsed: [...legs, ...aprons].map((p) => p.name),
     });

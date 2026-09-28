@@ -209,7 +209,12 @@ function solidNamedPanels(project: YardProject, speciesName: string): YardProjec
   const bindNote = `Named stock: every ¾" part is solid ${label} (true ¾" × 3½" boards). Parts wider than one board are edge-glued from boards, then cut to size — ${thinPly ? "only ¼\" backers and drawer bottoms stay ¼\" plywood" : "no plywood"}.`;
   const notes = (project.notes ?? [])
     .filter((n) => !/primary stock binds/i.test(n) && !/^Named stock:/.test(n))
-    .map((n) => n.replace(/\s*¾" plywood\.?/g, "").trim());
+    .map((n) =>
+      n
+        .replace(/\s*¾" plywood,\s*/g, " ")
+        .replace(/\s*¾" plywood\.?/g, "")
+        .trim(),
+    );
   return { ...project, panels, notes: [...notes, bindNote] };
 }
 
