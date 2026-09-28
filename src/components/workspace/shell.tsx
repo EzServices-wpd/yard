@@ -304,6 +304,23 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                       }}
                     />
                   ))}
+                <div className="my-1 border-t border-border/70" />
+                {(
+                  [
+                    ["/gallery", "Gallery"],
+                    ["/about", "About"],
+                    ["/privacy", "Privacy"],
+                  ] as const
+                ).map(([to, label]) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    className="block rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-elevated hover:text-fg"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    {label}
+                  </Link>
+                ))}
                 {authEnabled && !user && !isPending && (
                   <Link to="/login" className="block rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-elevated hover:text-fg" onClick={() => setMoreOpen(false)}>
                     Sign in

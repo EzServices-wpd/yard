@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { ArrowRight, Box, Ruler, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
 
 export const Route = createFileRoute("/")({
@@ -93,6 +94,9 @@ function LandingPage() {
             <Logo inverted className="h-7 w-auto" />
           </Link>
           <nav className="flex items-center gap-5">
+            <Link to="/gallery" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+              Gallery
+            </Link>
             <Link to="/ideas" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
               Ideas
             </Link>
@@ -260,6 +264,7 @@ function LandingPage() {
           />
         </section>
       </main>
+      <SiteFooter active="home" />
     </div>
   );
 }

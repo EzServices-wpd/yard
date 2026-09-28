@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { SiteFooter } from "@/components/site/chrome";
 import { IDEAS, IDEA_SECTIONS } from "@/lib/yard/ideas";
 
 export const Route = createFileRoute("/ideas")({
@@ -24,6 +25,9 @@ function IdeasPage() {
             <Logo inverted className="h-7 w-auto" />
           </Link>
           <nav className="flex items-center gap-5">
+            <Link to="/gallery" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+              Gallery
+            </Link>
             <Link to="/ideas" className="text-sm text-ink">
               Ideas
             </Link>
@@ -95,6 +99,7 @@ function IdeasPage() {
           );
         })}
       </main>
+      <SiteFooter active="ideas" />
     </div>
   );
 }
