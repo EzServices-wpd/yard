@@ -3374,23 +3374,51 @@ console.log("SOFT-TRUST OK", {
   const shelfCount = shelf.panels.filter((p) => /^Shelf\b/i.test(p.name) || p.type === "shelf").length;
   if (shelfCount !== 1) failHonesty("b37 wall shelf singular count", shelfCount, shelf.panels.map((p) => p.name));
 
-  // B) Wine rack typed slot count densify (slot-rack class — any spoken digit/word, not only 12).
+  // B) Wine rack typed slot count = bottle CAPACITY at bottle pitch (rows×cols), not N jammed shelves.
+  // Marker: b37 wine twelve slots densify (capacity + clear + silhouette)
   const winePrompt = "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots";
   const wine = generateFromPrompt(winePrompt);
   if (!/^Wine rack/i.test(wine.name)) failHonesty("b37 wine title", wine.name);
+  if (Math.abs(wine.overall.width - 24) > 1.2 || Math.abs(wine.overall.height - 36) > 1.2 || Math.abs(wine.overall.depth - 12) > 1.2) {
+    failHonesty("b37 wine dims 24×36×12", wine.overall);
+  }
+  if (wine.fitted?.unit.doors) failHonesty("b37 wine doors false", wine.fitted?.unit);
+  const wineShelves = wine.panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
   const rails = wine.panels.filter((p) => /Bottle rail/i.test(p.name));
-  if (rails.length < 11) failHonesty("b37 wine twelve slots densify", rails.length, wine.panels.map((p) => p.name));
+  if (rails.length < 1) failHonesty("b37 wine bottle rails present", wine.panels.map((p) => p.name));
+  // Bottle clear ≥ 3.25" between consecutive shelves (standard bottle OD).
+  for (let i = 0; i < wineShelves.length - 1; i++) {
+    const clear = wineShelves[i + 1].position.y - (wineShelves[i].position.y + wineShelves[i].size.height);
+    if (clear < 3.25) failHonesty("b37 wine bottle clear", clear, i);
+  }
+  // Rails stay inside overall H (no top-cap overhang).
+  for (const r of rails) {
+    const top = r.position.y + r.size.height;
+    if (top > wine.overall.height + 0.15) failHonesty("b37 wine rail silhouette", top, wine.overall.height, r.name);
+  }
   const wineBlob = [wine.name, ...(wine.notes ?? [])].join("\n");
-  if (!/12\s*bottle slots|twelve slots|12 bottle/i.test(wineBlob) && rails.length < 12) {
+  if (!/12\s*bottle slots|twelve slots|12 bottle/i.test(wineBlob)) {
     failHonesty("b37 wine slot voice", wineBlob.slice(0, 400));
+  }
+  // Capacity densify: notes claim 12, and grid (rows×cols or dividers) can hold ≥12.
+  if (!/\d+\s*rows\s*×\s*\d+/i.test(wineBlob) && wine.panels.filter((p) => /Bottle divider/i.test(p.name)).length < 1) {
+    failHonesty("b37 wine capacity grid voice", wineBlob.slice(0, 400));
   }
   const wine16Prompt = "house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots";
   const wine16 = generateFromPrompt(wine16Prompt);
   if (!/^Wine rack/i.test(wine16.name)) failHonesty("b37b wine16 title", wine16.name);
+  const wine16Shelves = wine16.panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+  for (let i = 0; i < wine16Shelves.length - 1; i++) {
+    const clear = wine16Shelves[i + 1].position.y - (wine16Shelves[i].position.y + wine16Shelves[i].size.height);
+    if (clear < 3.25) failHonesty("b37b wine16 bottle clear", clear, i);
+  }
   const rails16 = wine16.panels.filter((p) => /Bottle rail/i.test(p.name));
-  if (rails16.length < 15) failHonesty("b37b wine sixteen slots densify", rails16.length, wine16.panels.map((p) => p.name));
+  for (const r of rails16) {
+    const top = r.position.y + r.size.height;
+    if (top > wine16.overall.height + 0.15) failHonesty("b37b wine16 rail silhouette", top, wine16.overall.height);
+  }
   const wine16Blob = [wine16.name, ...(wine16.notes ?? [])].join("\n");
-  if (!/16\s*bottle slots|sixteen slots|16 bottle/i.test(wine16Blob) && rails16.length < 16) {
+  if (!/16\s*bottle slots|sixteen slots|16 bottle/i.test(wine16Blob)) {
     failHonesty("b37b wine sixteen slot voice", wine16Blob.slice(0, 400));
   }
 
@@ -6879,3 +6907,50 @@ console.log("STRANGER PLAN OK", {
   }
   console.log(`PASS plan-panel: ${prompts.length} builds, ${pics} pictures — non-blank and framed`);
 }
+
+// Day-push 2026-09-28 wine/slot-rack bottle-pitch FAIL class pack.
+// Marker: b-day-push wine bottle pitch capacity grid
+{
+  const winePrompt = "wine rack 24 wide 36 tall 12 deep with twelve slots";
+  const wine = generateFromPrompt(winePrompt);
+  if (!/^Wine rack/i.test(wine.name)) failHonesty("b-day-push wine title", wine.name);
+  if (Math.abs(wine.overall.width - 24) > 1.2 || Math.abs(wine.overall.height - 36) > 1.2 || Math.abs(wine.overall.depth - 12) > 1.2) {
+    failHonesty("b-day-push wine dims", wine.overall);
+  }
+  if (wine.fitted?.unit.doors) failHonesty("b-day-push wine doors false", wine.fitted?.unit);
+  if (wine.assumptions.installMode !== "wall") failHonesty("b-day-push wine wall", wine.assumptions);
+  const shelves = wine.panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+  const rails = wine.panels.filter((p) => /Bottle rail/i.test(p.name));
+  if (rails.length < 1) failHonesty("b-day-push wine rails", wine.panels.map((p) => p.name));
+  for (let i = 0; i < shelves.length - 1; i++) {
+    const clear = shelves[i + 1].position.y - (shelves[i].position.y + shelves[i].size.height);
+    if (clear < 3.25) failHonesty("b-day-push wine bottle clear", clear);
+  }
+  for (const r of rails) {
+    if (r.position.y + r.size.height > wine.overall.height + 0.15) {
+      failHonesty("b-day-push wine rail silhouette", r.position.y + r.size.height, wine.overall.height);
+    }
+  }
+  const blob = [wine.name, ...(wine.notes ?? []), ...wine.panels.map((p) => p.name)].join("\n");
+  if (!/12\s*bottle slots|twelve slots|12 bottle/i.test(blob)) failHonesty("b-day-push wine 12 slot voice", blob.slice(0, 500));
+  // Nearby slot-rack protect: plate / magazine vertical densify unchanged.
+  const plate = generateFromPrompt("house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots");
+  if (!/Plate rack/i.test(plate.name)) failHonesty("b-day-push protect plate", plate.name);
+  const plateSlots = plate.panels.filter((p) => /^Slot\s+\d+/i.test(p.name));
+  if (plateSlots.length < 2) failHonesty("b-day-push protect plate slots", plate.panels.map((p) => p.name));
+  const mag = generateFromPrompt("house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots");
+  if (!/Magazine rack/i.test(mag.name)) failHonesty("b-day-push protect magazine", mag.name);
+  // Default wine (no spoken slots) still bottle-clear + silhouette.
+  const wineDef = generateFromPrompt("wine rack 24 wide 36 high 12 deep");
+  const defShelves = wineDef.panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+  for (let i = 0; i < defShelves.length - 1; i++) {
+    const clear = defShelves[i + 1].position.y - (defShelves[i].position.y + defShelves[i].size.height);
+    if (clear < 3.25) failHonesty("b-day-push wine default clear", clear);
+  }
+  for (const r of wineDef.panels.filter((p) => /Bottle rail/i.test(p.name))) {
+    if (r.position.y + r.size.height > wineDef.overall.height + 0.15) {
+      failHonesty("b-day-push wine default silhouette", r.position.y + r.size.height);
+    }
+  }
+}
+

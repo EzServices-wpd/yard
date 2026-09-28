@@ -3287,23 +3287,66 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const backT = P;
     const spokenSlots = spokenSlotCount(prompt);
     const saidShelves = /\d+\s*shel/i.test(prompt);
-    // Slot-rack densify class: spoken/typed slot count (twelve/sixteen/12/16 → N bottle rails).
-    const shelfN =
-      spokenSlots != null
-        ? Math.max(2, Math.min(24, spokenSlots))
-        : saidShelves && u.shelfCount && u.shelfCount > 0
-          ? Math.max(2, Math.min(12, u.shelfCount))
-          : Math.max(3, Math.min(10, Math.round((H - P) / 4.5)));
+    // Wine / bottle-rail class: bottles need ~3.5" clear (pitch ~4.5" incl. shelf).
+    // Spoken N slots = bottle CAPACITY (rows × cols across width) — never N shelves
+    // jammed into H so bottles cannot fit. Top-cap shelf gets no rail (silhouette).
+    const BOTTLE_SPAN = 3.75;
+    const BOTTLE_PITCH = 4.5;
+    const bottlesPerRow = Math.max(1, Math.floor(innerW / BOTTLE_SPAN));
+    // Max shelves at bottle pitch (includes top cap). Bottle rows = shelfN - 1 when shelfN > 1.
+    const maxShelfN = Math.max(3, Math.min(12, Math.round((H - P) / BOTTLE_PITCH)));
+    let shelfN: number;
+    let cols = 1;
+    let slotCapacity: number;
+    if (spokenSlots != null) {
+      cols = Math.min(bottlesPerRow, Math.max(1, spokenSlots));
+      const wantRows = Math.max(1, Math.ceil(spokenSlots / cols));
+      // shelfN = bottle rows + top cap (rail skipped on cap). Clamp to pitch.
+      const wantShelfN = wantRows + 1;
+      shelfN = Math.max(2, Math.min(maxShelfN, wantShelfN));
+      const bottleRows = Math.max(1, shelfN - 1);
+      // Re-pack cols if height clamped rows below what spoken slots need.
+      if (bottleRows * cols < spokenSlots && bottlesPerRow > cols) {
+        cols = Math.min(bottlesPerRow, Math.max(cols, Math.ceil(spokenSlots / bottleRows)));
+      }
+      slotCapacity = bottleRows * cols;
+      // Prefer stated spoken count in voice when the grid holds it.
+      if (slotCapacity >= spokenSlots) slotCapacity = spokenSlots;
+    } else if (saidShelves && u.shelfCount && u.shelfCount > 0) {
+      shelfN = Math.max(2, Math.min(maxShelfN, u.shelfCount));
+      cols = bottlesPerRow;
+      slotCapacity = Math.max(1, shelfN - 1) * cols;
+    } else {
+      shelfN = maxShelfN;
+      cols = bottlesPerRow;
+      slotCapacity = Math.max(1, shelfN - 1) * cols;
+    }
+    const bottleRows = Math.max(1, shelfN - 1);
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
     for (let i = 0; i < shelfN; i++) {
       const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
       panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
-      // Every shelf is a bottle slot with a front rail (typed slot count densify).
-      panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+      // Front rail on every bottle shelf except the top cap — keeps rails inside overall H.
+      if (i < shelfN - 1) {
+        panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+      }
+    }
+    // Vertical bottle dividers densify individual slots across the width (slot-rack family).
+    if (cols >= 2 && spokenSlots != null) {
+      for (let c = 1; c < cols; c++) {
+        const x = x0 + (W * c) / cols - P / 2;
+        panels.push(
+          panel("divider", `Bottle divider ${c}`, x, P, backT, P, H - 2 * P, D - backT),
+        );
+      }
     }
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
     const name = `Wine rack ${W}" × ${H}" × ${D}"`;
+    const slotVoice =
+      spokenSlots != null
+        ? `${slotCapacity} bottle slots (${bottleRows} rows × ${cols} across)`
+        : `${bottleRows} bottle slots`;
     return {
       id: createId("proj"),
       name,
@@ -3314,8 +3357,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wall-mounted open wine rack with ${shelfN} bottle slots — not a bookcase and not a hollow box. ¾" plywood.`,
-        `Bottles lie on their sides, necks facing out. Glue a 1.5" rail on the front of every shelf so bottles cannot roll off — ${shelfN} bottle slots densify. Glue the shelves; do not pin them — a loaded row is heavy.`,
+        `${name}. Wall-mounted open wine rack with ${slotVoice} — not a bookcase and not a hollow box. ¾" plywood.`,
+        `Bottles lie on their sides, necks facing out. Clear opening between shelves is ≥3.5" so a bottle fits. Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off — ${slotVoice} densify. Glue the shelves; do not pin them — a loaded row is heavy.`,
         "Hang the rack on studs through the back. Typical bottom sits about 36–42\" off the floor, or sit it on a counter and still lag it so it cannot tip. Guidance only.",
       ],
       historic: false,
