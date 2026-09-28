@@ -405,12 +405,44 @@ export function sydneyOps(s: Size3): FormOp[] {
 }
 
 export function lighthouseOps(s: Size3): FormOp[] {
+  // Vertical class · lighthouse: tapered tower → gallery deck (overhangs) + rail → glazed lantern room → cap + finial.
   const H = s.height;
-  return [
-    taper(0, H * 0.82, H * 0.16, H * 0.08, 8, "leg"),
-    { op: "ring", y: H * 0.86, rx: H * 0.12, n: 8, role: "rail" },
-    { op: "column", x: 0, z: 0, y0: H * 0.82, y1: H, role: "tip" },
+  const yG = H * 0.7; // gallery deck
+  const yRail = yG + H * 0.04;
+  const yL = H * 0.84; // lantern top / roof eave
+  const yR = H * 0.95; // roof peak
+  const rTop = H * 0.075; // tower half-width at the gallery
+  const g = H * 0.115; // gallery half-width (overhang)
+  const l = H * 0.055; // lantern room half-width
+  const eave = H * 0.07;
+  const sq = (y: number, h: number) => [
+    { x: h, y, z: h },
+    { x: -h, y, z: h },
+    { x: -h, y, z: -h },
+    { x: h, y, z: -h },
+    { x: h, y, z: h },
   ];
+  const ops: FormOp[] = [
+    taper(0, yG, H * 0.13, rTop, 8, "leg"),
+    { op: "poly", points: sq(yG, g), role: "rail" },
+    { op: "poly", points: sq(yRail, g), role: "rail" },
+    { op: "taper", y0: yG, y1: yL, r0: l, r1: l, sides: 4, role: "ring" },
+    taper(yL, yR, eave, H * 0.012, 4, "tip"),
+    { op: "column", x: 0, z: 0, y0: yR - H * 0.01, y1: H, role: "tip" },
+  ];
+  for (const [sx, sz] of [
+    [1, 1],
+    [-1, 1],
+    [-1, -1],
+    [1, -1],
+  ] as const) {
+    // Deck joists run the diagonal from the lantern corner, past the tower corner, out to the gallery corner.
+    ops.push({ op: "poly", points: [{ x: sx * l, y: yG, z: sz * l }, { x: sx * rTop, y: yG, z: sz * rTop }, { x: sx * g, y: yG, z: sz * g }], role: "rail" });
+    ops.push({ op: "column", x: sx * g, z: sz * g, y0: yG, y1: yRail, role: "leg" });
+    ops.push({ op: "poly", points: [{ x: sx * l, y: yL, z: sz * l }, { x: sx * eave, y: yL, z: sz * eave }], role: "ring" });
+    ops.push({ op: "poly", points: [{ x: sx * H * 0.012, y: yR, z: sz * H * 0.012 }, { x: 0, y: yR, z: 0 }], role: "tip" });
+  }
+  return ops;
 }
 
 export function windmillOps(s: Size3): FormOp[] {

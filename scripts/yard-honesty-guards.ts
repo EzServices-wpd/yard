@@ -34,6 +34,9 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackC
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
+import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
+import { analyzePieces } from "../src/lib/yard/connect";
+import { getCatalogItem } from "../src/lib/yard/catalog";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
   enforceHonesty,
@@ -715,6 +718,46 @@ if (jumboTower.instances.some((i) => i.cutLength != null)) failWeekend("jumbo to
 if (novelTower.instances.some((i) => i.cutLength != null)) {
   failWeekend("novel tower cut popsicle sticks");
 }
+// Vertical class: every "tower" is taller than wide in any stock, narrows upward, and the typed height wins.
+for (const [p, h] of [
+  ["4 foot lattice tower from jumbo craft sticks", 48],
+  ["4 foot tower from 2x4", 48],
+  ["6 foot tower from 1x2", 72],
+  ["4 foot tower from pvc pipe", 48],
+  ["3 foot tower from popsicle sticks", 36],
+] as const) {
+  const t = generateFromPrompt(p);
+  if (t.kind !== "lattice") failWeekend(`tower class: ${p} kind`, t.kind);
+  if (Math.abs(t.overall.height - h) > 1.5) failWeekend(`tower class: ${p} typed height ${h} lost`, t.overall);
+  if (t.overall.height < t.overall.width * 2) failWeekend(`tower class: ${p} not taller than wide`, t.overall);
+  const ys = t.instances.map((i) => i.position.y);
+  const top = Math.max(...ys);
+  const r = (i: (typeof t.instances)[number]) => Math.hypot(i.position.x, i.position.z);
+  const low = t.instances.filter((i) => i.position.y < top * 0.25).map(r);
+  const high = t.instances.filter((i) => i.position.y > top * 0.75).map(r);
+  if (Math.max(...high) > Math.max(...low) + 0.5) failWeekend(`tower class: ${p} widens upward (inverted)`, { low: Math.max(...low), high: Math.max(...high) });
+  if (!bindsDeterministically(p, t)) failWeekend(`tower class: ${p} not locked from the LLM form swap`);
+}
+// Lighthouse (vertical class): tapers, gallery deck overhangs the tower top with a rail, lantern room + cap above, one piece.
+for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthouse from dowels"]) {
+  const t = generateFromPrompt(p);
+  const H = t.overall.height;
+  const r = (i: (typeof t.instances)[number]) => Math.max(Math.abs(i.position.x), Math.abs(i.position.z));
+  const band = (a: number, b: number) => t.instances.filter((i) => i.position.y >= a * H && i.position.y <= b * H).map(r);
+  const base = Math.max(...band(0, 0.1));
+  const shaft = Math.max(...band(0.55, 0.65));
+  const gallery = Math.max(...band(0.68, 0.76));
+  const lantern = band(0.76, 0.84);
+  if (!(base > shaft * 1.2)) failWeekend(`lighthouse: ${p} does not taper`, { base, shaft });
+  if (!(gallery > shaft * 1.15)) failWeekend(`lighthouse: ${p} gallery does not overhang`, { gallery, shaft });
+  if (!lantern.length || Math.max(...lantern) > gallery * 0.8) failWeekend(`lighthouse: ${p} lantern room missing / not inset`, { lantern: lantern.length });
+  if (!t.instances.some((i) => i.position.y > 0.9 * H)) failWeekend(`lighthouse: ${p} no cap`);
+  const st = analyzePieces(t.instances, getCatalogItem(t.primaryMaterialId)!, { full: true });
+  if (st.components !== 1 || st.loose) failWeekend(`lighthouse: ${p} not one connected piece`, st);
+  if (Math.abs(H - (p.startsWith("4") ? 48 : 36)) > 1.5) failWeekend(`lighthouse: ${p} typed height lost`, t.overall);
+}
+if (bindsDeterministically("bookcase 36 wide", generateFromPrompt("bookcase 36 wide"))) failWeekend("bookcase must stay open to the LLM form");
+if (!bindsDeterministically("dog from popsicle sticks", generateFromPrompt("dog from popsicle sticks"))) failWeekend("shape template not locked");
 const novelTowerPlan = buildPlan(novelTower);
 if (novelTowerPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("novel tower buy list has wood screws", novelTowerPlan.bom.map((b) => b.name));

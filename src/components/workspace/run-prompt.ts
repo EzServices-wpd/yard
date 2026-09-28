@@ -8,7 +8,7 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, 
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
-import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
+import { bindsDeterministically, detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
 import type { FittedSpec } from "@/lib/yard/types";
 
@@ -375,7 +375,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     const hint = await hintSubject({ data: { prompt } });
+    const bound = bindsDeterministically(prompt, useYard.getState().project);
     if (
+      !bound &&
       hint.summary &&
       hint.summary !== hint.subject &&
       !wantsMediaTipHold(prompt) &&
@@ -401,7 +403,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       !!after.flat ||
       // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.
       wantsMediaTipHold(prompt) ||
-      !!detectWeekendMech(prompt);
+      !!detectWeekendMech(prompt) ||
+      bound ||
+      bindsDeterministically(prompt, after);
     // Named stock from the prompt binds like CatalogPanel. Unnamed stays wire-frame —
     // LLM must not silently pick popsicle.
     if (interp.ok && interp.form && !locked) {

@@ -847,3 +847,18 @@ export function weekendUsesLatticeGraph(prompt: string, kind: StructureKind): bo
   const hit = detectWeekendFamily(prompt);
   return hit?.family === "lattice" && (kind === "tower" || kind === "lattice" || kind === "eiffel");
 }
+
+/**
+ * Deterministic binding: a typed subject the engine already builds from its own template
+ * (shape class like quadruped, or a named craft structure family — tower / Eiffel / bridge / arch)
+ * keeps that geometry. The LLM hint/interp may add notes but must not swap the form
+ * (e.g. "4 foot lattice tower" must never come back as a Bridge).
+ */
+export function bindsDeterministically(prompt: string, project: { kind: StructureKind; shape?: unknown }): boolean {
+  if (project.shape) return true;
+  const hit = detectWeekendFamily(prompt);
+  if (!hit) return false;
+  if (hit.family === "lattice") return project.kind === "lattice" || project.kind === "eiffel" || project.kind === "tower";
+  if (hit.override && hit.kind === project.kind) return true;
+  return false;
+}

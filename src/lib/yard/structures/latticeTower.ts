@@ -64,10 +64,12 @@ function characterRise(publishedRatio: number, H: number): number {
 }
 
 export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGraph {
-  const H = Math.max(6, opts.targetHeightIn);
   const eiffel = opts.eiffel !== false;
   const dens = stockDensity(opts.item, opts.grain ?? 1);
   const stock = dens.stock;
+  // Typed height wins: a generic tower's finial lands AT the typed height (Eiffel keeps its frozen profile).
+  const H0 = Math.max(6, opts.targetHeightIn);
+  const H = eiffel ? H0 : H0 - Math.min(stock * 0.2, H0 * 0.03);
   const thick = dens.thick;
   const fat = dens.fat;
   // Popsicle / craft-stick Eiffel at 3 ft used to emit ~790 members and freeze the bench.
@@ -101,8 +103,10 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
         const u = Math.min(1, Math.max(0, t));
         // Obelisk mast — base ~0.24 H face, tip ~0.06 H. Not Eiffel splay (0.39→0.01).
         // Ease^1.6 pulls the shaft in sooner so craft densify stays under freeze.
-        const base = Math.max(H * 0.12, dens.bay * 1.5);
-        const tip = Math.max(H * 0.03, dens.faceStep * 0.8);
+        // Vertical class: a tower is always taller than wide (face ≤ ~0.32 H) whatever the stock bay.
+        const base = Math.min(Math.max(H * 0.12, dens.bay * 1.5), H * 0.16);
+        // Taper always narrows upward — a fat-stock face step must never invert the mast.
+        const tip = Math.min(Math.max(H * 0.03, dens.faceStep * 0.8), base * 0.5);
         const ease = Math.pow(u, 1.6);
         return base + (tip - base) * ease;
       };
@@ -366,7 +370,9 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   }
 
   const last = mains[mains.length - 1];
-  const tipId = addNode(createId("tip"), { x: 0, y: H + stock * 0.2, z: 0 }, "tip");
+  // Finial rise scales with the tower, not the stick: a 96" stud must not add 19" to a typed 48".
+  const tipRise = Math.min(stock * 0.2, H * 0.03);
+  const tipId = addNode(createId("tip"), { x: 0, y: H + tipRise, z: 0 }, "tip");
   if (!simple) {
     const lanternY = H - Math.min(stock * 1.1, H * 0.05);
     const lanternR = Math.max(thick * 3, eiffelHalfAt(0.97, H) * 0.85);
@@ -414,7 +420,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   return {
     id: createId("graph"),
     name,
-    envelope: { width: baseW, height: H + stock * 0.4, depth: baseW },
+    envelope: { width: baseW, height: H + tipRise * 2, depth: baseW },
     materialId: opts.materialId,
     nodes,
     edges,
