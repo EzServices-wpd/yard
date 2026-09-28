@@ -3,8 +3,11 @@
 import { useYard } from "@/lib/yard/store";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
-/** On-bench tape: same numbers as the measure panel, sitting on the opening. */
-export function MeasureOverlay() {
+/**
+ * Size fields for the bench Options menu: same numbers as the measure panel. Typing a size and
+ * leaving the field refits a house build live. Renders nothing when there is no opening to size.
+ */
+export function MeasureFields() {
   const open = useYard((s) => s.measureOpen);
   const measure = useYard((s) => s.measure);
   const setMeasure = useYard((s) => s.setMeasure);
@@ -40,12 +43,8 @@ export function MeasureOverlay() {
   const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
-      <div
-        data-yard-measure-chip={chip.mode}
-        data-bench-overlay="measure"
-        className="pointer-events-auto flex max-w-lg flex-wrap items-end gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg backdrop-blur"
-      >
+    <div>
+      <div data-yard-measure-chip={chip.mode} className="flex flex-wrap items-end gap-2">
         {round ? (
           <>
             <Dim
@@ -101,7 +100,7 @@ export function MeasureOverlay() {
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
             Pocket back {project.pocket.walls.backWidth}" · L {project.pocket.walls.leftDepth}" @{" "}
             {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {project.pocket.walls.rightDepth}" @{" "}
-            {project.pocket.walls.rightAngleDeg.toFixed(1)}° · tap Measure for the walls
+            {project.pocket.walls.rightAngleDeg.toFixed(1)}°
           </span>
         )}
       </div>

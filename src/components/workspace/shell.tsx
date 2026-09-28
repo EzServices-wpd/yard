@@ -12,7 +12,6 @@ import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
-import { MeasureOverlay } from "@/components/workspace/measure-overlay";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
@@ -28,19 +27,12 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { modelProudTalk } from "@/lib/yard/modelSize";
 import { isLockedForm } from "@/lib/yard/form";
 import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
-import {
-  hasOperableFaces,
-  operateFaceKinds,
-  operateFacesLabel,
-} from "@/lib/yard/operateFaces";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
-import type { WorkMode } from "@/lib/yard/types";
 
 export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const [ready, setReady] = useState(false);
@@ -54,13 +46,6 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const makePlan = useYard((s) => s.makePlan);
   const undo = useYard((s) => s.undo);
   const redo = useYard((s) => s.redo);
-  const reset = useYard((s) => s.reset);
-  const explode = useYard((s) => s.explode);
-  const setExplode = useYard((s) => s.setExplode);
-  const facesOpen = useYard((s) => s.facesOpen);
-  const setFacesOpen = useYard((s) => s.setFacesOpen);
-  const camera = useYard((s) => s.camera);
-  const setCamera = useYard((s) => s.setCamera);
   const deleteSelected = useYard((s) => s.deleteSelected);
   const selectedId = useYard((s) => s.selectedId);
   const history = useYard((s) => s.history);
@@ -68,17 +53,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const workMode = useYard((s) => s.workMode);
   const setWorkMode = useYard((s) => s.setWorkMode);
   const detail = useYard((s) => s.detail);
-  const setDetail = useYard((s) => s.setDetail);
   const buildScale = useYard((s) => s.buildScale);
-  const setBuildScale = useYard((s) => s.setBuildScale);
-  const cutMode = useYard((s) => s.cutMode);
-  const setCutMode = useYard((s) => s.setCutMode);
   const showLoad = useYard((s) => s.showLoad);
-  const setShowLoad = useYard((s) => s.setShowLoad);
   const showHull = useYard((s) => s.showHull);
   const showHistoric = useYard((s) => s.showHistoric);
   const setShowHull = useYard((s) => s.setShowHull);
-  const setShowHistoric = useYard((s) => s.setShowHistoric);
   const toggleLockSelected = useYard((s) => s.toggleLockSelected);
   const lockedIds = useYard((s) => s.lockedIds);
   const plan = useYard((s) => s.plan);
@@ -160,28 +139,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   // Prefer plan.totals.pieces when built (includes splice); else woodCutPieceCount
   // (instances + exploded panels + laminated plies). Buy-only hardware stays BOM.
   const pieceCount = plan?.totals.pieces ?? woodCutPieceCount(project);
-  const historicOk = hasHistoricProfile(project.kind) || !!project.historic;
   const locked = selectedId ? lockedIds.includes(selectedId) : false;
   const steps = plan?.instructions ?? [];
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
-  const canWalk = Boolean(project.traverse) && !housePath;
-  const stickModel = !housePath && (project.instances.some((i) => i.role === "skin") || project.instances.length > 40);
-  const makerJob = !housePath && project.instances.length > 0 && project.kind !== "closet" && project.kind !== "opening";
   const showLoadBtn = !housePath && Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
-  const faceKinds = operateFaceKinds(project.panels);
-  const hasFaces = hasOperableFaces(faceKinds);
-  const facesLabel = operateFacesLabel(facesOpen, faceKinds);
-  const sheetOnly = project.panels.length > 0 && project.instances.length === 0;
-  const cutChoice = !housePath && (paperCraft || project.instances.length > 0 || sheetOnly);
-  const wholeOn =
-    paperCraft ||
-    (!sheetOnly &&
-      (cutMode === "whole" ||
-        (cutMode === "auto" &&
-          project.instances.length > 0 &&
-          project.instances.every((i) => i.cutLength == null))));
-  const cutOn = !wholeOn;
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -270,40 +232,6 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     />
                   </>
                 )}
-                <MoreItem
-                  label={explode ? "Put it back" : "See inside"}
-                  onClick={() => {
-                    setExplode(!explode);
-                    setMoreOpen(false);
-                  }}
-                />
-                {hasFaces && (
-                  <MoreItem
-                    label={facesLabel}
-                    onClick={() => {
-                      setFacesOpen(!facesOpen);
-                      setMoreOpen(false);
-                    }}
-                  />
-                )}
-                <MoreItem
-                  label="Stock"
-                  onClick={() => {
-                    setSide((s) => (s === "catalog" ? null : "catalog"));
-                    setMoreOpen(false);
-                  }}
-                />
-                {!housePath &&
-                  (["iso", "front", "side", "top"] as const).map((c) => (
-                    <MoreItem
-                      key={c}
-                      label={`Camera ${c}`}
-                      onClick={() => {
-                        setCamera(c);
-                        setMoreOpen(false);
-                      }}
-                    />
-                  ))}
                 <div className="my-1 border-t border-border/70" />
                 {(
                   [
@@ -337,7 +265,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
         </div>
       </header>
 
-      <PromptBar onBuilt={() => setPlanOpen(false)} onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))} />
+      <PromptBar
+        onBuilt={() => setPlanOpen(false)}
+        onStock={() => setSide("catalog")}
+        onMeasure={() => setSide("measure")}
+      />
 
       <div className="relative flex min-h-0 flex-1">
         {side && (
@@ -356,7 +288,6 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
-          <MeasureOverlay />
           {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
           {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && (
             <div
@@ -416,97 +347,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             </div>
           )}
 
-          {!pending && !housePath && (
-          <div data-bench-overlay="modes" className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
-            <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
-            {stickModel && (
-            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              {(["frame", "full", "fill"] as const).map((d) => (
-                <GhostBtn
-                  key={d}
-                  on={detail === d}
-                  onClick={() => setDetail(d)}
-                  label={d === "frame" ? "Frame" : d === "full" ? "Full" : "Fill"}
-                  title={
-                    d === "frame"
-                      ? "Skeleton"
-                      : d === "full"
-                        ? "Every structural course"
-                        : "Faces packed in this stock — the finished thing"
-                  }
-                />
-              ))}
-            </div>
-            )}
-            {makerJob && (
-            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              {(["tabletop", "weekend", "full"] as const).map((s) => (
-                <GhostBtn
-                  key={s}
-                  on={buildScale === s}
-                  onClick={() => setBuildScale(s)}
-                  label={s === "tabletop" ? "Tabletop" : s === "weekend" ? "Weekend" : "Full"}
-                  title={
-                    s === "tabletop"
-                      ? "About a foot high — a Saturday model"
-                      : s === "weekend"
-                        ? "Same size, coarser stock mapping"
-                        : "Honest density for the size you named"
-                  }
-                />
-              ))}
-            </div>
-            )}
-            {cutChoice && (
-            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              <GhostBtn
-                on={cutOn}
-                onClick={() => setCutMode("cut")}
-                label="Cut"
-                disabled={paperCraft}
-                title={paperCraft ? "Paper craft is whole sticks — no cutting" : "Saw stock to the list"}
-              />
-              <GhostBtn
-                on={wholeOn}
-                onClick={() => setCutMode("whole")}
-                label="Don't cut"
-                disabled={sheetOnly}
-                title={
-                  sheetOnly
-                    ? "Sheet goods are ripped to the opening"
-                    : "Full pieces from the pack. Glue. Do not cut."
-                }
-              />
-            </div>
-            )}
-            {(historicOk || showLoadBtn) && (
-            <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-              {historicOk && (
-              <GhostBtn
-                on={showHistoric}
-                onClick={() => setShowHistoric(!showHistoric)}
-                label="Form"
-                title="Published monument proportions"
-              />
-              )}
-              {showLoadBtn && (
-                <GhostBtn
-                  on={showLoad}
-                  onClick={() => setShowLoad(!showLoad)}
-                  label="Load"
-                  title="What this stock can honestly carry"
-                />
-              )}
-            </div>
-            )}
-          </div>
-          )}
-
           {showLoad && showLoadBtn && !pending && (
             <div
               data-yard-load-panel="1"
               data-bench-overlay="load"
-              className="absolute left-3 top-36 z-20 w-[min(18rem,calc(100%-1.5rem))] rounded-md border border-border bg-surface/95 px-3 py-2 text-xs shadow-lg sm:left-4"
+              className="absolute left-3 top-3 z-20 w-[min(18rem,calc(100%-1.5rem))] rounded-md border border-border bg-surface/95 px-3 py-2 text-xs shadow-lg sm:left-4"
             >
               <p className="font-medium text-fg">
                 {project.assumptions.use === "person"
@@ -620,7 +465,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               >
                 <p>
                   {wire
-                    ? "Choose stock · open Stock panel"
+                    ? "Choose stock · Options, then Material"
                     : nestSheetLabel
                       ? nestSheetLabel
                       : stockLabel !== "stock"
@@ -679,19 +524,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     );
                   })()}
                 </p>
-                {hasFaces && (
-                  <button
-                    type="button"
-                    onClick={() => setFacesOpen(!facesOpen)}
-                    className="mt-1.5 rounded border border-border px-2 py-1 text-[11px] text-fg hover:bg-elevated"
-                  >
-                    {facesLabel}
-                  </button>
-                )}
               </div>
-              <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
-                Clear bench
-              </button>
             </div>
           </div>
         </div>
@@ -726,36 +559,6 @@ function MoreItem({
   );
 }
 
-function ModeSwitch({
-  value,
-  onChange,
-  canWalk,
-}: {
-  value: WorkMode;
-  onChange: (v: WorkMode) => void;
-  canWalk: boolean;
-}) {
-  const modes: { id: WorkMode; label: string }[] = [
-    { id: "look", label: "Look" },
-    ...(canWalk ? [{ id: "walk" as const, label: "Walk" }] : []),
-    { id: "free", label: "Free" },
-  ];
-  return (
-    <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
-      {modes.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          onClick={() => onChange(m.id)}
-          className={`h-11 min-w-11 px-3 sm:h-8 sm:px-2.5 ${value === m.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
-        >
-          {m.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function WalkKey({ code, label }: { code: string; label: string }) {
   return (
     <button
@@ -769,32 +572,6 @@ function WalkKey({ code, label }: { code: string; label: string }) {
       onPointerUp={() => holdWalkKey(code, false)}
       onPointerCancel={() => holdWalkKey(code, false)}
       onPointerLeave={() => holdWalkKey(code, false)}
-    >
-      {label}
-    </button>
-  );
-}
-
-function GhostBtn({
-  on,
-  onClick,
-  label,
-  title,
-  disabled,
-}: {
-  on: boolean;
-  onClick: () => void;
-  label: string;
-  title: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={`h-11 px-3 disabled:opacity-30 sm:h-8 sm:px-2.5 ${on ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
     >
       {label}
     </button>

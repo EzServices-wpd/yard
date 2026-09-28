@@ -6,7 +6,8 @@ import { deleteLocalYard, listLocalYards, loadLocalYard, type YardCard } from "@
 import { deleteRemoteYard, listRemoteYards, loadRemoteYard, saveRemoteYard } from "@/lib/yard/yards-api";
 import { useYard } from "@/lib/yard/store";
 
-export function YardsMenu() {
+/** Saved yards. `inline` renders the list straight into the bench Options menu (no toggle). */
+export function YardsMenu({ inline = false, onOpened }: { inline?: boolean; onOpened?: () => void } = {}) {
   const project = useYard((s) => s.project);
   const setProject = useYard((s) => s.setProject);
   const { user, isPending } = useCurrentUserState();
@@ -35,6 +36,7 @@ export function YardsMenu() {
     if (!loaded) return;
     setProject(loaded);
     setOpen(false);
+    onOpened?.();
   }
 
   async function pushCloud() {
@@ -47,6 +49,74 @@ export function YardsMenu() {
       /* signed out or no db */
     }
   }
+
+  const list = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted">On this device</p>
+        {user && (
+          <button type="button" onClick={() => void pushCloud()} className="text-xs text-muted underline">
+            Save to account
+          </button>
+        )}
+      </div>
+      <ul className="mt-2 max-h-48 space-y-1 overflow-auto">
+        {local.length === 0 && <li className="text-xs text-faint">Nothing saved yet.</li>}
+        {local.map((c) => (
+          <li key={c.id} className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => void openYard(c.id, "local")}
+              className="truncate text-left text-xs text-fg hover:underline"
+            >
+              {c.name || c.prompt || "Untitled"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                deleteLocalYard(c.id);
+                refresh();
+              }}
+              className="text-[10px] text-faint hover:text-muted"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+      {user && remote.length > 0 && (
+        <>
+          <p className="mt-3 text-xs text-muted">On your account</p>
+          <ul className="mt-2 max-h-32 space-y-1 overflow-auto">
+            {remote.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => void openYard(c.id, "remote")}
+                  className="truncate text-left text-xs text-fg hover:underline"
+                >
+                  {c.name || c.prompt}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void deleteRemoteYard({ data: c.id }).then(() =>
+                      setRemote((rows) => rows.filter((r) => r.id !== c.id)),
+                    );
+                  }}
+                  className="text-[10px] text-faint hover:text-muted"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+
+  if (inline) return <div data-yard-yards>{list}</div>;
 
   return (
     <div className="relative">
@@ -63,67 +133,7 @@ export function YardsMenu() {
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-72 rounded-md border border-border bg-surface p-3 shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted">On this device</p>
-            {user && (
-              <button type="button" onClick={() => void pushCloud()} className="text-xs text-muted underline">
-                Save to account
-              </button>
-            )}
-          </div>
-          <ul className="mt-2 max-h-48 space-y-1 overflow-auto">
-            {local.length === 0 && <li className="text-xs text-faint">Nothing saved yet.</li>}
-            {local.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => void openYard(c.id, "local")}
-                  className="truncate text-left text-xs text-fg hover:underline"
-                >
-                  {c.name || c.prompt || "Untitled"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    deleteLocalYard(c.id);
-                    refresh();
-                  }}
-                  className="text-[10px] text-faint hover:text-muted"
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-          {user && remote.length > 0 && (
-            <>
-              <p className="mt-3 text-xs text-muted">On your account</p>
-              <ul className="mt-2 max-h-32 space-y-1 overflow-auto">
-                {remote.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void openYard(c.id, "remote")}
-                      className="truncate text-left text-xs text-fg hover:underline"
-                    >
-                      {c.name || c.prompt}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void deleteRemoteYard({ data: c.id }).then(() =>
-                          setRemote((rows) => rows.filter((r) => r.id !== c.id)),
-                        );
-                      }}
-                      className="text-[10px] text-faint hover:text-muted"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {list}
         </div>
       )}
     </div>

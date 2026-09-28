@@ -181,26 +181,28 @@ export function fitBench(opts: {
 }
 
 /**
- * Representative UI overlays (canvas px) at the two widths we ship for — the measure card on top,
- * the step pill and the stock/size card at the bottom. Used by the framing guard.
+ * Representative UI overlays (canvas px) at the two widths we ship for. The prompt bar carries one
+ * Options dropdown, so nothing sits on the bench top except the step card while stepping; the step
+ * pill and the stock/size card sit at the bottom. Canvas heights are the window minus the header
+ * and the one-row prompt bar. Used by the framing guard.
  */
 export const BENCH_VIEWPORTS: { name: string; viewport: { w: number; h: number }; overlays: Rect[] }[] = [
   {
     name: "desktop 1280×800",
-    viewport: { w: 1280, h: 638 },
+    viewport: { w: 1280, h: 675 },
     overlays: [
-      { left: 384, top: 16, right: 896, bottom: 150 }, // measure / step card
-      { left: 16, top: 522, right: 210, bottom: 622 }, // stock + size card
-      { left: 444, top: 512, right: 836, bottom: 558 }, // step pill
+      { left: 384, top: 16, right: 896, bottom: 150 }, // step card (step view)
+      { left: 16, top: 600, right: 390, bottom: 659 }, // stock + size card
+      { left: 444, top: 549, right: 836, bottom: 595 }, // step pill
     ],
   },
   {
     name: "mobile 390×844",
-    viewport: { w: 390, h: 664 },
+    viewport: { w: 390, h: 735 },
     overlays: [
-      { left: 12, top: 12, right: 378, bottom: 190 },
-      { left: 16, top: 540, right: 200, bottom: 648 },
-      { left: 34, top: 520, right: 356, bottom: 580 },
+      { left: 12, top: 12, right: 378, bottom: 190 }, // step card (step view)
+      { left: 16, top: 660, right: 374, bottom: 719 }, // stock + size card
+      { left: 34, top: 596, right: 356, bottom: 659 }, // step pill
     ],
   },
 ];
