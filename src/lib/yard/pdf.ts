@@ -350,8 +350,10 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   // ═════════════════════════ CUT LIST TABLE
   if (partLines.length) {
     const listNeed = 80 + partLines.reduce((a, c) => a + 30 + (c.notes ? 24 : 0), 0);
-    if (craft && listNeed < room()) y += 12;
-    else newPage(craft ? "Parts" : "Cut list");
+    if (listNeed < room()) {
+      y += 12;
+      sections[sections.length - 1] += craft ? "" : " · Cut list";
+    } else newPage(craft ? "Parts" : "Cut list");
     sectionTitle(
       craft ? "Stick list" : "Cut list",
       craft ? "Full pieces from the pack. Glue them as they come." : "Same size is the same letter. Mark each part with its letter in pencil as you cut it.",
@@ -451,7 +453,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const boards = partLines.filter((c) => !c.whole && !nested.has(c.label) && !(thin.includes(c)));
     const blocks: { h: number; draw: (top: number) => void }[] = [];
     for (const s of sheets) {
-      const sc = Math.min(W / s.width, 250 / s.height);
+      const sc = Math.min(W / s.width, 196 / s.height);
       const h = s.height * sc + 60;
       blocks.push({ h, draw: (top) => drawSheet(doc, project, s, partLines, letters, L, top, W, sc, sheets.length) });
     }
