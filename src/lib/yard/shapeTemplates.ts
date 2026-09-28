@@ -963,19 +963,28 @@ function addUseSheet(panels: Panel[], model: ShapeModel, item: CatalogItem, use:
     const x0 = fx0 - ext, x1 = fx1 + ext, Lr = x1 - x0;
     const arc = rockerArc(x0, x1, Lr * 0.1);
     const bw = r(Math.max(3, T * 5));
-    const lift = r(arc.y(fx1) + bw);
+    // Legs stand on two ties that bridge the rockers; the rockers spread wide enough that it rocks
+    // fore-and-aft without tipping sideways (track ≥ 45% of the overall height).
+    const lift = r(arc.y(fx1) + bw + T);
     for (const p of out) p.position = { ...p.position, y: r(p.position.y + lift) };
+    const topAll = Math.max(...out.map((p) => p.position.y + p.size.height));
+    const legZ0 = Math.min(...legs.map((p) => p.position.z)), legZ1 = Math.max(...legs.map((p) => p.position.z + p.size.depth));
+    const zc = (legZ0 + legZ1) / 2;
+    const track = r(Math.max(legZ1 - legZ0 + 2 * T, topAll * 0.45));
     const N = 16;
     const pts: [number, number][] = [];
     for (let i = 0; i <= N; i++) { const x = x0 + (Lr * i) / N; pts.push([r(x - x0), r(arc.y(x) + bw)]); }
     for (let i = N; i >= 0; i--) { const x = x0 + (Lr * i) / N; pts.push([r(x - x0), r(arc.y(x))]); }
-    const legZ = [...new Set(legs.map((p) => p.position.z))];
-    for (const z of legZ) {
-      out.push(mk({ type: "upright", name: "Rocker", position: { x: r(x0), y: 0, z }, size: { width: r(Lr), height: r(arc.y(x1) + bw), depth: T }, polygon: { plane: "xy", pts }, cutNote: "Curved rocker: trace the arc from the plan, cut with a jigsaw, sand the curve smooth." }));
+    const zMin = r(zc - track / 2), zMax = r(zc + track / 2);
+    for (const z of [zMin, zMax - T]) {
+      out.push(mk({ type: "upright", name: "Rocker", position: { x: r(x0), y: 0, z: r(z) }, size: { width: r(Lr), height: r(arc.y(x1) + bw), depth: T }, polygon: { plane: "xy", pts }, cutNote: "Curved rocker: trace the arc from the plan, cut with a jigsaw, sand the curve smooth." }));
     }
-    const zMin = Math.min(...legZ), zMax = Math.max(...legZ) + T;
-    for (const x of [x0 + Lr * 0.12, x1 - Lr * 0.12 - bw]) {
-      out.push(mk({ type: "rail", name: "Rocker tie", position: { x: r(x), y: r(arc.y(x) + bw), z: r(zMin) }, size: { width: r(bw), height: T, depth: r(zMax - zMin) } }));
+    const legXs = [...new Set(legs.map((p) => r(p.position.x)))].sort((m, n) => m - n);
+    const tieXs = legXs.length >= 2 ? [legXs[0], legXs[legXs.length - 1]] : [x0 + Lr * 0.12, x1 - Lr * 0.12 - bw];
+    const legW = legs[0]?.size.width ?? bw;
+    for (const x of tieXs) {
+      const w = r(Math.max(bw, legW));
+      out.push(mk({ type: "rail", name: "Rocker tie", position: { x: r(x), y: r(lift - T), z: zMin }, size: { width: w, height: T, depth: r(zMax - zMin) }, cutNote: "Tie bridges both rockers; the leg stands on it." }));
     }
     return out;
   }

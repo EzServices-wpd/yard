@@ -848,6 +848,19 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     const plan = buildPlan(b);
     if (b.primaryMaterialId === "wire-frame" || !plan.bom.length || !plan.cutList.length || !(b.instances.length || b.panels.length)) failWeekend(`stockless: ${p}`, b.primaryMaterialId);
   }
+  // Functional builds with no stock typed default to real lumber, at a size that does the job.
+  for (const [p, mat] of [["rocking horse for a toddler", /lumber-2x4/], ["cat tree", /plywood/], ["dog bookend", /plywood/], ["dog", /popsicle/], ["lattice tower", /popsicle/]] as [string, RegExp][]) {
+    const b = generateFromPrompt(p);
+    if (!mat.test(b.primaryMaterialId)) failWeekend(`default stock: ${p} → ${b.primaryMaterialId}`);
+  }
+  {
+    const be = generateFromPrompt("plywood cat bookend");
+    if (be.overall.height > 12) failWeekend("bookend default taller than a book", be.overall);
+    const pl = generateFromPrompt("2x4 scrap dog planter");
+    if (pl.overall.width > 30) failWeekend("planter default oversize", pl.overall);
+    const rp = generateFromPrompt("rocking horse from plywood");
+    if (rp.overall.depth < rp.overall.height * 0.44) failWeekend("plywood rocker track too narrow to rock without tipping", rp.overall);
+  }
   const t72 = generateFromPrompt("6 foot tower from 2x4");
   if (Math.abs(t72.overall.height - 72) > 1.5) failWeekend("2x4 tower 72 height", t72.overall);
   const lh = generateFromPrompt("lighthouse from popsicle sticks");

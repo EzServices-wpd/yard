@@ -75,9 +75,23 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
   const picked = materialOverride ? getCatalogItem(materialOverride) : undefined;
   if (picked) return picked;
   const named = detectMaterial(prompt);
-  if (isWireStock(named) && !/\bwire\b/i.test(prompt)) return getCatalogItem("popsicle-standard") ?? named;
+  if (isWireStock(named) && !/\bwire\b/i.test(prompt)) {
+    // No stock typed: a build a child rides, a cat climbs, or that holds books or soil defaults to real
+    // lumber (2x4 for a rocker, 3/4" plywood for the rest); craft pieces default to popsicle sticks.
+    const use = detectShapeClass(prompt)?.profile.use;
+    const fn = use === "rocker" ? "lumber-2x4-8" : use || detectTemplate(prompt) === "platform-tower" ? "plywood-3-4-4x8" : null;
+    return (fn && getCatalogItem(fn)) || getCatalogItem("popsicle-standard") || named;
+  }
   return named;
 }
+
+/** Default size for an animal with a use, when none is typed: a bookend is book height, a planter a patio pot. */
+const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
+  bookend: { height: 9 },
+  planter: { length: 24 },
+  shelf: { length: 30 },
+  rocker: { height: 24 },
+};
 
 /** Built → solved: every caller gets the interference-solved model (the one source of truth). */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
@@ -381,6 +395,8 @@ function buildShapeProject(
   const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
   let typed = shapeTyped(prompt, opts.sizeOverride);
   if (opts.scale === "tabletop" && !typed.length && !typed.height) typed = { length: 12 };
+  const use = detectShapeClass(prompt)?.profile.use;
+  if (use && !typed.length && !typed.height) typed = { ...USE_DEFAULT_SIZE[use] };
   const built = materializeShape(prompt, item, whole, typed);
   if (!built) return null;
   const shape = shapeSummary(built.model);
