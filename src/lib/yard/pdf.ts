@@ -500,7 +500,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const blocks: { h: number; draw: (top: number) => void }[] = [];
     for (const s of sheets) {
       const sc = Math.min(W / s.width, 196 / s.height);
-      const h = s.height * sc + 60;
+      const h = s.height * sc + 70;
       blocks.push({ h, draw: (top) => drawSheet(doc, project, s, partLines, letters, L, top, W, sc, sheets.length) });
     }
     const boardGroups = new Map<string, CutLine[]>();
@@ -758,26 +758,47 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   // ═════════════════════════ SHOP WORDS
   const glossary = craft ? CRAFT_GLOSSARY : glossaryForPlan(`${project.prompt ?? ""} ${project.name}`, SHOP_GLOSSARY);
   if (glossary.length) {
-    const colW0 = (W - GRID.gutter) / 2;
-    const glossH = 30 + glossary.reduce((a, g) => a + 18 + wrap(g.def, colW0, 8.5).length * 11, 0) / 2 + 20;
-    if (room() < glossH + 18) newPage("Shop words");
+    const colW = (W - GRID.gutter) / 2;
+    const itemH = (g: { def: string }) => 12 + wrap(g.def, colW, 8.5).length * 11 + 6;
+    const glossH = 30 + glossary.reduce((a, g) => a + itemH(g), 0) / 2 + 12;
+    // Share the Check it page when the words fit, or when at least a solid block fits and the rest
+    // carries on with a "continued" heading. Never leave a page holding only a word or two.
+    const firstFits = (() => {
+      let a = 0;
+      let b = 0;
+      let n = 0;
+      for (const g of glossary) {
+        const h = itemH(g);
+        if (a <= b && y + 18 + 22 + a + h <= BOTTOM) a += h;
+        else if (y + 18 + 22 + b + h <= BOTTOM) b += h;
+        else break;
+        n++;
+      }
+      return n;
+    })();
+    const share = room() >= glossH + 18 || (firstFits >= 6 && glossary.length - firstFits >= 4);
+    if (!share) newPage("Shop words");
     else {
       y += 18;
       sections[sections.length - 1] = "Check it · Shop words";
     }
     subTitle("Shop words");
-    const colW = (W - GRID.gutter) / 2;
     let colY = [y, y];
     glossary.forEach((g) => {
-      const c = colY[0] <= colY[1] ? 0 : 1;
-      const x = L + c * (colW + GRID.gutter);
+      let c = colY[0] <= colY[1] ? 0 : 1;
+      const x0 = () => L + c * (colW + GRID.gutter);
       const def = wrap(g.def, colW, 8.5);
       const h = 12 + def.length * 11 + 6;
       if (colY[c] + h > BOTTOM) {
-        if (colY[1 - c] + h <= BOTTOM) return;
-        newPage("Shop words");
-        colY = [y, y];
+        if (colY[1 - c] + h <= BOTTOM) c = 1 - c;
+        else {
+          newPage("Shop words");
+          subTitle("Shop words (continued)");
+          colY = [y, y];
+          c = 0;
+        }
       }
+      const x = x0();
       font(9, "bold");
       doc.text(clean(g.term), x, colY[c] + 9);
       font(8.5, "normal", KIT.muted);
@@ -1041,7 +1062,8 @@ function drawSheet(
   doc.setTextColor(...KIT.muted);
   doc.text(`${Math.round((sheet.utilization ?? 0) * 100)}% used`, left + width, top + 11, { align: "right" });
   const x0 = left + 16;
-  const y0 = top + 30;
+  // Room under the sheet heading so the overall width label never crowds it.
+  const y0 = top + 40;
   const sw = sheet.width * sc;
   const sh = sheet.height * sc;
   const s2 = Math.min((width - 16) / sheet.width, sc);
@@ -1078,15 +1100,41 @@ function drawSheet(
       if (shp.angled && (shp.pts.length || shp.circle)) drawShapeInRect(doc, shp, px, py, pw, ph, KIT.accent);
     }
     const big = Math.min(pw, ph) > 30;
-    if (Math.min(pw, ph) > 14) {
-      drawBubble(doc, px + pw / 2, py + ph / 2 - (big ? 6 : 0), p.label ?? "?", big ? 8.5 : 6.5);
-    }
-    if (big || (pw > 60 && ph > 18)) {
+    const roomy = big || (pw > 60 && ph > 34);
+    const bubbled = Math.min(pw, ph) > 14;
+    const sized = `${frac(p.width)} x ${frac(p.height)}`;
+    // Small parts: move the bubble to one end so the size fits beside it.
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    const tw6 = doc.getTextWidth(sized);
+    const slide = !roomy && bubbled ? (pw >= ph ? (tw6 < pw - 19 ? "left" : "") : tw6 < ph - 22 ? "top" : "") : "";
+    const bx = slide === "left" ? px + 9 : px + pw / 2;
+    const by = slide === "top" ? py + 10 : py + ph / 2 - (big ? 6 : 0);
+    if (bubbled) drawBubble(doc, bx, by, p.label ?? "?", big ? 8.5 : 6.5);
+    if (roomy) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(...KIT.ink);
-      const t = `${frac(p.width)} x ${frac(p.height)}`;
-      if (doc.getTextWidth(t) < pw - 4) doc.text(t, px + pw / 2, py + ph / 2 + (big ? 13 : 10), { align: "center" });
+      const tw = doc.getTextWidth(sized);
+      const cy = by;
+      if (tw < pw - 4) doc.text(sized, px + pw / 2, py + ph / 2 + (big ? 13 : 10), { align: "center" });
+      // Tall narrow part: run the size down the part under its bubble.
+      else if (ph > pw && cy + 12 + tw < py + ph - 2) doc.text(sized, px + pw / 2 + 2.5, cy + 12 + tw, { angle: 90 });
+      // …or beside the bubble when the part is too short below it.
+      else if (ph > pw && pw / 2 >= 20 && tw < ph - 6) doc.text(sized, px + pw / 2 + 14, py + ph / 2 + tw / 2, { angle: 90 });
+    } else {
+      // Tiny parts still carry their size (and their letter when there is no room for a bubble).
+      doc.setFont("helvetica", bubbled ? "normal" : "bold");
+      doc.setFontSize(6);
+      doc.setTextColor(...KIT.ink);
+      if (slide === "left") doc.text(sized, px + 17, py + ph / 2 + 2);
+      else if (slide === "top") doc.text(sized, px + pw / 2 + 2, py + 20 + tw6, { angle: 90 });
+      else if (!bubbled) {
+        const t = `${p.label ?? "?"}  ${sized}`;
+        const tw = doc.getTextWidth(t);
+        if (pw >= ph && tw < pw - 4 && ph >= 6) doc.text(t, px + pw / 2, py + ph / 2 + 2, { align: "center" });
+        else if (ph > pw && tw < ph - 4 && pw >= 6) doc.text(t, px + pw / 2 + 2, py + ph / 2 + tw / 2, { angle: 90 });
+      }
     }
   }
   // Angle notes under the sheet
