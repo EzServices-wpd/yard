@@ -12,7 +12,7 @@ import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHou
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -21,6 +21,7 @@ import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
 import type { BuildScale, CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock } from "./promptHelpers";
+import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
@@ -59,12 +60,58 @@ function withWireNote(project: YardProject, item: CatalogItem): YardProject {
 }
 
 
-function honestHouse(project: YardProject, prompt: string, honorUnit = false): YardProject {
-  const bound = applyNamedLumberPrimaryHonesty(project, prompt);
-  return enforceHonesty(bound, {
-    rebuild: (spec) => applyNamedLumberPrimaryHonesty(buildFitted(spec, prompt), prompt),
+function honestHouse(project: YardProject, prompt: string, honorUnit = false, materialOverride?: string): YardProject {
+  return finishHouse(project, prompt, honorUnit, materialOverride);
+}
+
+/** The stock the user just asked for: a catalog pick, else the last "from …" clause. */
+function requestedStock(prompt: string, materialOverride?: string): CatalogItem | null {
+  const picked = materialOverride ? getCatalogItem(materialOverride) : undefined;
+  if (picked && !isWireStock(picked)) return picked;
+  if (!bodyStockClauses(prompt).length) return null;
+  const named = detectMaterial(prompt);
+  return isWireStock(named) ? null : named;
+}
+
+function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
+  if (!item) return null;
+  if (item.category === "sheet_goods") return "sheet";
+  if (item.category === "lumber" && item.formFactor === "board") return "board";
+  return null;
+}
+
+/**
+ * House carcase, then the stock the user actually switched to.
+ * A species clause still binds solid 1×4. A later plywood / 2×4 / 1×4 clause replaces it.
+ * Popsicle, PVC, and other stick stocks do not come through here — they skip the house branch.
+ */
+function finishHouse(
+  project: YardProject,
+  prompt: string,
+  honorUnit: boolean,
+  materialOverride?: string,
+): YardProject {
+  const stock = requestedStock(prompt, materialOverride);
+  const kind = carcaseKind(stock);
+  const allowSpecies = !stock || stock.id === CATALOG_LUMBER_BIND;
+  let next = allowSpecies ? applyNamedLumberPrimaryHonesty(project, prompt) : project;
+  next = enforceHonesty(next, {
+    rebuild: (spec) => {
+      const built = buildFitted(spec, prompt);
+      return allowSpecies ? applyNamedLumberPrimaryHonesty(built, prompt) : built;
+    },
     honorUnit,
   });
+  if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
+    next = applyExplicitBoardCarcase(next, stock);
+  } else if (kind === "sheet" && stock && stock.id !== next.primaryMaterialId && stock.id !== "plywood-3-4-4x8") {
+    const thin = (stock.dims.thickness ?? 0.75) < 0.7;
+    const note = thin
+      ? `${stock.name} is thinner than this carcase. The drawing and the cut list stay ¾" plywood — a thinner sheet would change the joinery.`
+      : `${stock.name} does not replace the sheet each face fits. Faces that fit a 4×8 stay on a 4×8; a face taller than 8 ft stays on a 4×10.`;
+    if (!next.notes.includes(note)) next = { ...next, notes: [...next.notes, note] };
+  }
+  return next;
 }
 
 /**
@@ -126,13 +173,16 @@ function generateRaw(
   }
   // Climb/step stool identity beats a stolen Bench fittedOverride from house-brief / Measure.
   // Linen/closet with climb step-shelf still accepts fitted (climbIdentityLabel is null).
-  if (opts.fittedOverride && !climbIdentityLabel(lower)) {
-    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit);
+  // A stick/pipe pick (popsicle, PVC, dowel) is not a plywood carcase — fall through and densify.
+  const stockAsk = requestedStock(prompt, materialOverride);
+  const craftAsk = !!stockAsk && !carcaseKind(stockAsk);
+  if (opts.fittedOverride && !climbIdentityLabel(lower) && !craftAsk) {
+    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit, materialOverride);
   }
 
   // Odd-shape pack beats window/door/pocket steals ("shelves around a window", "corner cabinet with angled front").
-  if (isOddShapePrompt(prompt) && !climbIdentityLabel(lower)) {
-    return honestHouse(buildOddShape(null, prompt), prompt);
+  if (isOddShapePrompt(prompt) && !climbIdentityLabel(lower) && !craftAsk) {
+    return honestHouse(buildOddShape(null, prompt), prompt, false, materialOverride);
   }
 
   if (kindHint === "opening") {
@@ -160,16 +210,17 @@ function generateRaw(
     weekendMech !== "launcher" &&
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
-    (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia)
+    (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia) &&
+    !craftAsk
   ) {
     // Wonky pocket before parseBrief — the original survey is a trapezoid, not a fitted rectangle.
     if (looksLikePocket(prompt)) {
       const pocket = parsePocket(prompt);
-      if (pocket) return enforceHonesty(buildPocket(pocket, prompt));
+      if (pocket) return finishHouse(enforceHonesty(buildPocket(pocket, prompt)), prompt, false, materialOverride);
     }
     const brief = parseBrief(prompt);
-    if (brief) return honestHouse(buildFitted(brief, prompt), prompt);
-    return enforceHonesty(buildClosetFromPrompt(prompt, size));
+    if (brief) return honestHouse(buildFitted(brief, prompt), prompt, false, materialOverride);
+    return finishHouse(enforceHonesty(buildClosetFromPrompt(prompt, size)), prompt, false, materialOverride);
   }
 
   // Flat-frame template (picture frames) owns its build before the 2D paper layouts.

@@ -218,6 +218,41 @@ function solidNamedPanels(project: YardProject, speciesName: string): YardProjec
   return { ...project, panels, notes: [...notes, bindNote] };
 }
 
+/** Catalog or "from 2x4" / "from 1x4" — the carcase is that board. ¼" backs and 2×2 posts stay put. */
+export function applyExplicitBoardCarcase(project: YardProject, item: CatalogItem): YardProject {
+  if (item.category !== "lumber" || item.formFactor !== "board") return project;
+  const panels = project.panels.map((p) => {
+    const dims = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
+    const t = dims[0];
+    const w = dims[1];
+    const len = dims[2];
+    if (t <= 0.26) {
+      if (/^plywood-3-4/i.test(p.materialId ?? "")) return { ...p, materialId: "plywood-1-4-4x8" };
+      return p;
+    }
+    const post = t > 0.8 && t <= 2.05 && Math.abs(w - t) < 0.06 && len >= w + 2;
+    if (post && item.id !== "lumber-2x2-8" && item.id !== "lumber-4x4-8") return p;
+    if (p.materialId === "closet-rod") return p;
+    if (p.materialId === "lumber-2x2-8" && item.id !== p.materialId) return p;
+    return { ...p, materialId: item.id };
+  });
+  const label = namedStockDisplayName(project.prompt ?? "", item);
+  const thick = item.dims.thickness ?? item.dims.height ?? 0.75;
+  const face = item.dims.width ?? 3.5;
+  const note = [
+    `Stock: every ¾" part is ${label}.`,
+    thick > 0.9
+      ? `That board is ${thick}" thick and the drawing is still ¾" — rip to ¾" or the box will be thicker than drawn.`
+      : `Parts wider than one board are edge-glued, then cut to size.`,
+    face < 3.2 ? `This board is only ${face}" wide, so buy extra when a part is wider than the face.` : "",
+    `¼" backs stay plywood.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const notes = (project.notes ?? []).filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n));
+  return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
+}
+
 
 
 

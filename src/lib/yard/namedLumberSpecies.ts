@@ -526,6 +526,56 @@ function aliasIndex(): { alias: string; species: NamedLumberSpecies }[] {
 
 const ALIAS_INDEX = aliasIndex();
 
+const STOCK_CLAUSE = /\b(?:made\s+of|made\s+from|using|from)\s+/gi;
+
+/** A lumber nominal (2x4, 1x4s) — not a 36x48 window or a 60x30 desk. */
+const LUMBER_NOMINAL =
+  /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/i;
+
+/** Craft / sheet / pipe words that are a stock pick even when no species is named. */
+const OTHER_STOCK =
+  /\b(?:plywood|sheet goods|popsicles?|craft sticks?|jumbo(?:\s+(?:craft|popsicle))?|mini(?:\s+(?:craft|popsicle))?|giant(?:\s+(?:craft|popsicle))?|pvc|schedule\s*40|straws?|toothpicks?|dowels?|skewers?|bamboo sticks?|kebab sticks?)\b/i;
+
+export type StockClause = { start: number; end: number; tail: string };
+
+/**
+ * Every "from / made of / made from / using …" clause, in order.
+ * The tail stops at a period, semicolon, or "then" so a later sentence is its own clause.
+ */
+export function stockClauses(prompt: string): StockClause[] {
+  const text = prompt || "";
+  const re = new RegExp(STOCK_CLAUSE.source, "gi");
+  const out: StockClause[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const tailStart = m.index + m[0].length;
+    const rest = text.slice(tailStart);
+    const cut = rest.search(/[.\n;]|\bthen\b/i);
+    const raw = cut >= 0 ? rest.slice(0, cut) : rest;
+    const tail = raw.trim();
+    const end = tailStart + raw.length;
+    if (tail) out.push({ start: m.index, end, tail });
+  }
+  return out;
+}
+
+function speciesInText(text: string, legPrompt = text): NamedLumberSpecies | null {
+  const lower = (text || "").toLowerCase();
+  const leg = spokenLegSpecies(legPrompt);
+  const body = leg ? lower.replace(leg.phrase, " ") : lower;
+  for (const { alias, species } of ALIAS_INDEX) {
+    if (aliasToRegExp(alias).test(body)) return species;
+  }
+  return null;
+}
+
+/** True when this clause actually names a stock, not "from the back wall". */
+export function tailLooksLikeStock(tail: string): boolean {
+  const t = tail || "";
+  if (LUMBER_NOMINAL.test(t) || OTHER_STOCK.test(t)) return true;
+  return speciesInText(t) != null;
+}
+
 /** Catalog aliases for lumber-1x4-8: size codes + every pack alias (longest first). */
 export function catalogLumberAliases(sizeAliases: string[] = ["1x4", "one by four"]): string[] {
   const seen = new Set<string>();
@@ -612,19 +662,27 @@ export function spokenLegSpecies(prompt: string): { species: NamedLumberSpecies;
   return null;
 }
 
+/** Stock clauses that name the body, not "legs from walnut". */
+export function bodyStockClauses(prompt: string): StockClause[] {
+  const leg = spokenLegSpecies(prompt);
+  const lower = (prompt || "").toLowerCase();
+  const legAt = leg ? lower.indexOf(leg.phrase) : -1;
+  return stockClauses(prompt).filter((c) => {
+    if (!tailLooksLikeStock(c.tail)) return false;
+    if (legAt >= 0 && c.start >= legAt && c.end <= legAt + (leg?.phrase.length ?? 0) + 1) return false;
+    return true;
+  });
+}
+
 /**
- * Match spoken alias → pack row (longest alias wins). A species typed for the legs
- * only ("oak table with walnut legs") does not take over the body — oak drives the
- * rest; the leg species wins only when it is the only species named.
+ * Match spoken alias → pack row (longest alias wins).
+ * The last stock clause wins: "pine desk from oak" is oak, "oak desk from plywood" is not a species.
+ * A species typed only for the legs ("oak table with walnut legs", "legs from walnut") does not take the body.
  */
 export function namedLumberFromPrompt(prompt: string): NamedLumberSpecies | null {
-  const lower = (prompt || "").toLowerCase();
-  const leg = spokenLegSpecies(lower);
-  const body = leg ? lower.replace(leg.phrase, " ") : lower;
-  for (const { alias, species } of ALIAS_INDEX) {
-    if (aliasToRegExp(alias).test(body)) return species;
-  }
-  return leg?.species ?? null;
+  const clauses = bodyStockClauses(prompt);
+  if (clauses.length) return speciesInText(clauses[clauses.length - 1].tail, prompt);
+  return speciesInText(prompt) ?? spokenLegSpecies(prompt)?.species ?? null;
 }
 
 /** Species for the legs: the one typed for the legs, else the body species. */

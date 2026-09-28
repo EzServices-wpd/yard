@@ -58,13 +58,18 @@ function LandingPage() {
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
 
+  function stripChipStock(text: string) {
+    return text
+      .replace(/\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function withStock(text: string) {
     const q = text.trim();
     if (!q) return "";
     if (!stock) return q;
-    const hay = q.toLowerCase();
-    if (hay.includes(stock.append.toLowerCase()) || hay.includes(stock.label.toLowerCase())) return q;
-    return `${q} ${stock.append}`;
+    return `${stripChipStock(q)} ${stock.append}`.replace(/\s+/g, " ").trim();
   }
 
   function go(text: string) {
@@ -79,8 +84,7 @@ function LandingPage() {
     const chosen = STOCKS.find((s) => s.id === next);
     const t = prompt.trim();
     if (!t || !chosen) return;
-    const stripped = t.replace(/\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC)\s*$/i, "").trim();
-    setPrompt(`${stripped} ${chosen.append}`);
+    setPrompt(`${stripChipStock(t)} ${chosen.append}`.replace(/\s+/g, " ").trim());
   }
 
   const featured = HEROES.find((h) => h.featured) ?? HEROES[0];

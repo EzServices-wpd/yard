@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CATALOG_CATEGORIES, FORGE_CATALOG, searchCatalog, getCatalogItem } from "@/lib/yard/catalog";
 import { JOIN_LABELS } from "@/lib/yard/joints";
 import { useYard } from "@/lib/yard/store";
+import { promptNamingStock, speakCatalogStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import type { JoinMethod } from "@/lib/yard/types";
 
@@ -77,7 +78,8 @@ export function CatalogPanel() {
                         type="button"
                         onClick={() => {
                           if (project.prompt.trim()) {
-                            generate(project.prompt, item.id, undefined, {
+                            const nextPrompt = promptNamingStock(project.prompt, speakCatalogStock(item));
+                            generate(nextPrompt, item.id, undefined, {
                               includeSpine: project.supportOffer?.included,
                               joinMethod: project.joinMethod,
                             });

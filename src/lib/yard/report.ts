@@ -129,8 +129,10 @@ function closetCuts(project: YardProject): CutLine[] {
     const w = Math.round(p.size.width * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
+    const boardRow = !!item && item.category === "lumber" && item.formFactor === "board";
     const materialName =
-      p.materialId === CATALOG_LUMBER_BIND && namedSolid
+      (p.materialId === CATALOG_LUMBER_BIND && namedSolid) ||
+      (boardRow && p.materialId !== "lumber-2x2-8" && p.materialId !== "lumber-4x4-8")
         ? namedStockDisplayName(project.prompt ?? "", item)
         : (item?.name ?? p.materialId);
     // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
@@ -235,6 +237,12 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         ? 1
         : 0;
 
+  const boardPrimary =
+    !!sheet &&
+    sheet.category === "lumber" &&
+    sheet.formFactor === "board" &&
+    project.primaryMaterialId !== CATALOG_LUMBER_BIND;
+
   const bom: BuildPlan["bom"] = [];
   // Honest Buy wood qty: cut-list quantity sum (same class as Confirm/chip/effort
   // woodPieces). Never last-resort to raw panels.length — bounding envelopes
@@ -253,6 +261,31 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       searchQuery: namedLumber.searchQuery ?? label,
       estimatedCost: (namedLumber.unitCostUsd ?? 4) * qty,
       notes: `${qty} piece${qty === 1 ? "" : "s"} · Cut to: ${cutTo}"`,
+    });
+  } else if (boardPrimary && sheet) {
+    const label = namedStockDisplayName(project.prompt ?? "", sheet);
+    const boardPlan = planSolidBoards(
+      structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
+    );
+    const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
+    const thick = sheet.dims.thickness ?? sheet.dims.height ?? 0.75;
+    const face = sheet.dims.width ?? 3.5;
+    const qty = boardPlan.boards;
+    const partsQty = structural.reduce((s, c) => s + c.quantity, 0);
+    const feet = Math.round((sheet.dims.length ?? 96) / 12);
+    bom.push({
+      name: label,
+      quantity: qty,
+      unit: qty === 1 ? "board" : "boards",
+      catalogId: sheet.id,
+      searchQuery: sheet.searchQuery ?? label,
+      estimatedCost: (sheet.unitCostUsd ?? 4) * qty,
+      notes:
+        `${qty} × ${feet} ft ${label} for the ${partsQty} carcase part${partsQty === 1 ? "" : "s"}` +
+        (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued` : "") +
+        (thick > 0.9 ? `. Rip to ¾" (this board is ${thick}" thick; the drawing is still ¾")` : "") +
+        (face < 3.2 ? `. The face is only ${face}" — buy extra when a part is wider` : "") +
+        `. ¼" backs stay plywood.`,
     });
   } else if (sheets8 + sheetsFallback > 0) {
     const isNamedLumberPrimary =
@@ -366,7 +399,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     project.primaryMaterialId === CATALOG_LUMBER_BIND &&
     !!namedLumber &&
     !structural.some((c) => /ply|sheet/i.test(`${c.material ?? ""}`));
-  if (!buyNamedBoard && !solidNamedBuy && sheets10 > 0) {
+  if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0) {
     bom.push({
       name: sheet10?.name ?? '3/4" plywood 4x10',
       quantity: sheets10,
@@ -1018,16 +1051,16 @@ export function buildPlan(project: YardProject): BuildPlan {
  * real boards (wood splits, edges get eased) — never sheet-only ply / nest / banding talk.
  */
 function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
-  const species = namedLumberFromPrompt(project.prompt ?? "");
+  const item = getCatalogItem(project.primaryMaterialId);
+  const board = !!item && item.category === "lumber" && item.formFactor === "board";
   if (
-    !species ||
-    project.primaryMaterialId !== CATALOG_LUMBER_BIND ||
+    !board ||
     !project.panels.length ||
     project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""))
   ) {
     return plan;
   }
-  const label = species.densifyLabel;
+  const label = namedStockDisplayName(project.prompt ?? "", item);
   const fix = (t?: string) =>
     t
       ?.replace(/\bthe ply does not split/g, "the wood does not split")

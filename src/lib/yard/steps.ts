@@ -34,7 +34,6 @@ import {
   mediaTipTalk,
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
-import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { glueUpTalk, planSolidBoards } from "./solidStock";
 import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
 import { getCatalogItem } from "./catalog";
@@ -102,11 +101,12 @@ let stepStockPrompt = "";
 
 /** Named solid stock drives the parts (Pine / Oak 1×4 …, no ¾" plywood left). */
 function solidStockVoice(project: YardProject): boolean {
-  return (
-    project.primaryMaterialId === CATALOG_LUMBER_BIND &&
-    !!namedLumberFromPrompt(project.prompt ?? "") &&
-    !project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""))
-  );
+  const item = getCatalogItem(project.primaryMaterialId);
+  const board = !!item && item.category === "lumber" && item.formFactor === "board";
+  if (!board) return false;
+  if (project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""))) return false;
+  if (item.id === "lumber-2x2-8" || item.id === "lumber-4x4-8") return false;
+  return true;
 }
 
 function solidWordsInStep(st: AssemblyStep): AssemblyStep {
@@ -2185,9 +2185,14 @@ function cutStockGroups(
       return;
     }
     const cat = item ?? fallbackItem;
-    const solid = cat?.id === CATALOG_LUMBER_BIND && !!namedLumberFromPrompt(stepStockPrompt);
+    const boardCut =
+      !!cat &&
+      cat.category === "lumber" &&
+      cat.formFactor === "board" &&
+      cat.id !== "lumber-2x2-8" &&
+      cat.id !== "lumber-4x4-8";
     byKey.set(key, {
-      label: solid ? namedStockDisplayName(stepStockPrompt, cat) : (cat?.name ?? '3/4" plywood'),
+      label: boardCut ? namedStockDisplayName(stepStockPrompt, cat) : (cat?.name ?? '3/4" plywood'),
       panels: [p],
       tool: cutHow(cat),
     });
@@ -2214,7 +2219,15 @@ function cutStockGroups(
   const groups = [...byKey.values()];
   // Named solid stock: say how the wide parts are glued up from boards before cutting.
   for (const g of groups) {
-    if (g.panels[0]?.materialId !== CATALOG_LUMBER_BIND || !namedLumberFromPrompt(stepStockPrompt)) continue;
+    const gid = g.panels[0]?.materialId;
+    const gItem = getCatalogItem(gid);
+    const boardCut =
+      !!gItem &&
+      gItem.category === "lumber" &&
+      gItem.formFactor === "board" &&
+      gItem.id !== "lumber-2x2-8" &&
+      gItem.id !== "lumber-4x4-8";
+    if (!boardCut) continue;
     const parts = new Map<string, { name: string; lengthIn: number; widthIn: number; qty: number }>();
     for (const p of g.panels) {
       const d = sheetCutDims(p.size.width, p.size.height, p.size.depth);

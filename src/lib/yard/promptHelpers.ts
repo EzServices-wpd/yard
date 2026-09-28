@@ -1,6 +1,6 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
-import { namedLumberDetectPhrases, promptNamesNamedLumber } from "./namedLumberSpecies";
+import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
 import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
@@ -540,8 +540,8 @@ export function spokenWeekendCraftStock(lower: string): boolean {
   );
 }
 
-export function detectMaterial(prompt: string): CatalogItem {
-  const lower = prompt.toLowerCase();
+function detectMaterialPhrases(text: string): CatalogItem {
+  const lower = text.toLowerCase();
   const phrases: [RegExp, string][] = [
     ...weekendCraftStockPhrases(),
     // "pine 2x4" / "oak 1x3" is that stick, not the species default 1×4.
@@ -570,6 +570,45 @@ export function detectMaterial(prompt: string): CatalogItem {
     color: "#a8a296",
     searchQuery: "",
   };
+}
+
+/**
+ * The stock a sentence names. The last real stock clause wins
+ * ("from popsicle sticks from 3/4 plywood" is plywood, "pine desk from oak" is oak).
+ * A prompt with no stock clause keeps first-match ("pine 2x4", "jumbo stick tower").
+ */
+export function detectMaterial(prompt: string): CatalogItem {
+  const clauses = bodyStockClauses(prompt);
+  for (let i = clauses.length - 1; i >= 0; i--) {
+    const item = detectMaterialPhrases(clauses[i].tail);
+    if (!isWireStock(item)) return item;
+  }
+  return detectMaterialPhrases(prompt);
+}
+
+/** Drop earlier stock clauses and append one "from {phrase}" so the next generate agrees with the pick. */
+export function promptNamingStock(prompt: string, phrase: string): string {
+  const clauses = bodyStockClauses(prompt);
+  let t = prompt;
+  for (let i = clauses.length - 1; i >= 0; i--) {
+    const c = clauses[i];
+    t = `${t.slice(0, c.start)} ${t.slice(c.end)}`;
+  }
+  t = t.replace(/\s+/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+  const spoken = phrase.replace(/^\s*from\s+/i, "").trim();
+  if (!spoken) return t;
+  return `${t} from ${spoken}`.replace(/\s+/g, " ").trim();
+}
+
+/** A phrase detectMaterial binds back to this catalog row. Species rows stay a size, not a guessed wood. */
+export function speakCatalogStock(item: CatalogItem): string {
+  const candidates = [...(item.aliases ?? []), item.name.replace(/×/g, "x").replace(/"/g, " ")];
+  for (const raw of candidates) {
+    const phrase = raw.replace(/×/g, "x").trim();
+    if (phrase.length < 2) continue;
+    if (detectMaterial(`build from ${phrase}`).id === item.id) return phrase;
+  }
+  return (item.aliases?.[0] ?? item.name).replace(/×/g, "x");
 }
 
 export function toProject(
