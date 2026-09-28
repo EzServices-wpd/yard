@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { planToMarkdown } from "@/lib/yard/report";
 import { buildPlanPdf, slugPlan } from "@/lib/yard/pdf";
-import { IsoPlate } from "@/components/workspace/iso-plate";
+import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
 import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
@@ -26,10 +26,6 @@ export function ExportDialog({
   const [moreOpen, setMoreOpen] = useState(false);
   const render = plan.render ?? project.render;
   const md = planToMarkdown(project, plan);
-  const photoCount = plan.instructions.filter(
-    (s) => s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
-  ).length;
-
   // Build a preview blob only — never auto-download.
   useEffect(() => {
     let url: string | null = null;
@@ -48,7 +44,7 @@ export function ExportDialog({
     return () => {
       if (url) URL.revokeObjectURL(url);
     };
-  }, [project, plan, photoCount]);
+  }, [project, plan]);
 
   async function copyMd() {
     try {
@@ -257,39 +253,25 @@ export function ExportDialog({
 
           <section className="mt-8">
             <h2 className="font-display text-xl text-ink">Build</h2>
-            {!photoCount && (
-              <p className="mt-2 text-xs text-ink-muted">
-                The PDF draws every step from the model. Click a step in the plan drawer to add a bench photo to this preview too.
-              </p>
-            )}
+            <p className="mt-2 text-xs text-ink-muted">
+              Same pictures as the printed plan — orange is what you add, grey is already built.
+            </p>
+            <div className="mt-4">
+              <PlanStepPlate project={project} plan={plan} overview className="aspect-[16/10] w-full" />
+            </div>
             <ol className="mt-4 space-y-6">
-              {plan.instructions.map((s) => {
-                const hasPhoto = Boolean(
-                  s.imageDataUrl && s.imageDataUrl.startsWith("data:image") && s.imageDataUrl.length > 800,
-                );
-                return (
-                  <li key={s.step} className="border-t border-rule pt-4">
-                    {hasPhoto && s.imageDataUrl ? (
-                      <img
-                        src={s.imageDataUrl}
-                        alt={`Bench view — step ${s.step}`}
-                        className="mb-3 w-full border border-rule object-cover"
-                      />
-                    ) : (
-                      <div className="mb-3 flex gap-4">
-                        <IsoPlate project={project} step={s} className="hidden h-24 w-28 shrink-0 sm:block" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium">
-                        <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
-                      {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
-                    </div>
-                  </li>
-                );
-              })}
+              {plan.instructions.map((s) => (
+                <li key={s.step} className="border-t border-rule pt-4">
+                  <PlanStepPlate project={project} plan={plan} step={s} className="mb-3 aspect-[16/9] w-full" />
+                  <div>
+                    <p className="font-medium">
+                      <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
+                    {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
+                  </div>
+                </li>
+              ))}
             </ol>
           </section>
 

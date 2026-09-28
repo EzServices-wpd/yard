@@ -1,5 +1,6 @@
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { BENCH_VIEWPORTS, benchModelBox, benchView, fitBench, projectCorners } from "../src/lib/yard/benchFrame";
+import { planOverviewSvg, planStepSvg, pictureFramed } from "../src/lib/yard/planStepPicture";
 import { buildPlan } from "../src/lib/yard/report";
 import { frac } from "../src/lib/yard/pdfKit";
 import { stepPlacements, placeRole, POSITIONED_ROLES } from "../src/lib/yard/placement";
@@ -6735,4 +6736,40 @@ console.log("STRANGER PLAN OK", {
     }
   }
   console.log(`PASS framing: ${prompts.length} builds × ${BENCH_VIEWPORTS.length} viewports (${cases} cases) — whole model clear of UI`);
+}
+
+// Plan panel: every step picture (and the overview) is non-blank and framed in the shared SVG path.
+{
+  const prompts = [
+    "pocket vanity",
+    "house: linen closet 31.5×78×16",
+    "nightstand with one drawer",
+    "house: bathroom vanity 36\" wide × 21\" deep × 32\" tall with two doors",
+    "L-shaped corner desk 60 by 48 30 tall",
+    "corner bookshelf, 6 inches along each wall, 60 tall, five shelves",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+    "40 inch round table with 3 legs",
+    "cedar chest with a hinged lid",
+    "popsicle stick catapult",
+    "Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
+    "3 foot Eiffel Tower from popsicle sticks",
+  ];
+  const FW = 480, FH = 270, OW = 480, OH = 300;
+  let pics = 0;
+  for (const prompt of prompts) {
+    const proj = generateFromPrompt(prompt);
+    if (!proj.panels.length && !proj.instances.length) continue;
+    const plan = buildPlan(proj);
+    const ov = planOverviewSvg(proj, OW, OH);
+    const of = pictureFramed(ov.stats, { x: 0, y: 0, w: OW, h: OH });
+    if (!of.ok) failHonesty(`plan-panel overview blank/unframed: ${prompt}`, of);
+    pics += 1;
+    for (let i = 0; i < plan.instructions.length; i++) {
+      const s = planStepSvg(proj, plan, i, FW, FH);
+      const f = pictureFramed(s.stats, { x: 0, y: 0, w: FW, h: FH });
+      if (!f.ok) failHonesty(`plan-panel step ${i + 1} blank/unframed: ${prompt}`, { kind: s.kind, ...f });
+      pics += 1;
+    }
+  }
+  console.log(`PASS plan-panel: ${prompts.length} builds, ${pics} pictures — non-blank and framed`);
 }

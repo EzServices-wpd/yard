@@ -1,35 +1,16 @@
-/** Silent bench photo pass for house plans — stranger path, no tutorial required. */
+/** Bench photo pass — retired. Plan drawer and print preview use the shared vector step pictures (same as the PDF). */
 
 export type CaptureStep = { step: number; imageDataUrl?: string };
 
-/**
- * Cycle activeStep so StepCapture can grab JPEGs. Caller must keep the plan drawer closed
- * so the canvas is visible. Settles ~1.6s per step (mobile WebGL + opacity paint).
- */
+/** No-op: step pictures come from planStepPicture, not canvas JPEGs. */
 export async function autoCaptureSteps(
-  steps: CaptureStep[],
-  setActiveStep: (n: number | null) => void,
-  opts?: { max?: number; settleMs?: number },
+  _steps: CaptureStep[],
+  _setActiveStep: (n: number | null) => void,
+  _opts?: { max?: number; settleMs?: number },
 ): Promise<number> {
-  const max = opts?.max ?? 6;
-  const settleMs = opts?.settleMs ?? 1600;
-  const targets = steps
-    .filter((s) => !s.imageDataUrl || s.imageDataUrl.length < 1200)
-    .slice(0, max);
-  if (!targets.length) return 0;
-
-  for (const s of targets) {
-    setActiveStep(s.step);
-    await new Promise((r) => setTimeout(r, settleMs));
-  }
-  setActiveStep(null);
-  // Final settle so last attachStepImage lands before makePlan re-merge.
-  await new Promise((r) => setTimeout(r, 700));
-  return targets.length;
+  return 0;
 }
 
-export function needsAutoCapture(steps: CaptureStep[]): boolean {
-  if (!steps.length) return false;
-  const withPhoto = steps.filter((s) => s.imageDataUrl && s.imageDataUrl.length > 1200).length;
-  return withPhoto < Math.min(6, steps.length);
+export function needsAutoCapture(_steps: CaptureStep[]): boolean {
+  return false;
 }

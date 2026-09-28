@@ -856,7 +856,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
 // ───────────────────────── parts plate ─────────────────────────
 
-function drawPartsPlate(
+export function drawPartsPlate(
   doc: jsPDF,
   project: YardProject,
   lines: CutLine[],

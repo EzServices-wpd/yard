@@ -8,7 +8,7 @@ import { planToMarkdown } from "@/lib/yard/report";
 import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type PaperSize } from "@/lib/yard/flat";
 import { usd } from "@/lib/utils";
 import { tagNote } from "@/lib/yard/listings";
-import { IsoPlate } from "@/components/workspace/iso-plate";
+import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
@@ -390,7 +390,7 @@ function PlanBody({
             {grokError && <p className="mt-2 text-xs text-danger">{grokError}</p>}
             {plan.grokNotes && <p className="mt-2 text-xs text-muted">{plan.grokNotes}</p>}
             <p className="mt-2 text-[11px] text-faint print:hidden">
-              View a step on the bench to capture its photo into the plan and PDF. Auto-capture runs for the first 4 steps after Get the plan.
+              Orange is what you add in the step. Grey is already built. Same pictures as the printed plan. Click a step to view it on the bench.
             </p>
             {housePath && (
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
@@ -408,10 +408,13 @@ function PlanBody({
                 ))}
               </div>
             )}
+            <div className="mt-3">
+              <PlanStepPlate project={project} plan={plan} overview className="aspect-[16/10] w-full" />
+              <p className="mt-1 text-center font-mono text-[10px] text-faint">Finished piece</p>
+            </div>
             <ol className="mt-3 space-y-3">
               {plan.instructions.map((s) => {
                 const on = activeStep === s.step;
-                const hasPhoto = Boolean(s.imageDataUrl && s.imageDataUrl.startsWith("data:image"));
                 return (
                   <li key={s.step}>
                     <button
@@ -428,39 +431,17 @@ function PlanBody({
                         on ? "border-fg/40 bg-elevated" : "border-transparent hover:border-border"
                       }`}
                     >
-                      {hasPhoto ? (
-                        <img
-                          src={s.imageDataUrl}
-                          alt={`Bench view — step ${s.step}`}
-                          className="h-40 w-full rounded border border-rule object-cover sm:h-48"
-                        />
-                      ) : (
-                        <div className="flex gap-3">
-                          <IsoPlate project={project} step={s} className="h-32 w-32 shrink-0 border border-rule sm:h-36 sm:w-40" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium text-fg">
-                              <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
-                            </span>
-                            <span className="mt-1 block text-muted">{s.description}</span>
-                            {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
-                            <span className="mt-2 block text-xs text-faint print:hidden">
-                              {on ? "On the bench now — click again to leave" : "View this step on the bench (captures photo)"}
-                            </span>
-                          </span>
-                        </div>
-                      )}
-                      {hasPhoto && (
-                        <span className="min-w-0">
-                          <span className="block font-medium text-fg">
-                            <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
-                          </span>
-                          <span className="mt-1 block text-muted">{s.description}</span>
-                          {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
-                          <span className="mt-2 block text-xs text-faint print:hidden">
-                            {on ? "On the bench now — click again to leave" : "View this step on the bench"}
-                          </span>
+                      <PlanStepPlate project={project} plan={plan} step={s} className="aspect-[16/9] w-full" />
+                      <span className="min-w-0">
+                        <span className="block font-medium text-fg">
+                          <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
                         </span>
-                      )}
+                        <span className="mt-1 block text-muted">{s.description}</span>
+                        {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                        <span className="mt-2 block text-xs text-faint print:hidden">
+                          {on ? "On the bench now — click again to leave" : "View this step on the bench"}
+                        </span>
+                      </span>
                     </button>
                   </li>
                 );
