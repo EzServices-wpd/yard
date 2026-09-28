@@ -141,6 +141,12 @@ function generateRaw(
     return enforceHonesty(buildClosetFromPrompt(prompt, size));
   }
 
+  // Flat-frame template (picture frames) owns its build before the 2D paper layouts.
+  if (detectTemplate(prompt) === "flat-frame") {
+    const fItem = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
+    const framed = buildTemplateProject(prompt, fItem, opts, "flat-frame");
+    if (framed) return framed;
+  }
   // Phase B: prompt-native 2D paper layouts (kids / printable)
   const flatIntent = detectFlatPrompt(prompt);
   if (flatIntent && !formOverride) {
@@ -288,7 +294,7 @@ function buildTemplateProject(
       kind: built.kind,
       panels: built.panels ?? [],
       primaryMaterialId: item.id,
-      joinMethod: item.category === "cardboard" ? "glue" : "screw",
+      joinMethod: item.category === "cardboard" || built.params?.glueOnly ? "glue" : "screw",
       notes: [],
       assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
     };

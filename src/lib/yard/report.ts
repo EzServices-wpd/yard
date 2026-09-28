@@ -454,7 +454,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     (/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   // Single-slab headboard has no carcase joints — skip join screws.
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
-  if (!headboard) {
+  // Template builds that declare glue-only joinery (mitered frames) take no screws.
+  const glueOnly = !!project.shape?.params?.glueOnly;
+  if (!headboard && !glueOnly) {
     const cornerUnit = project.fitted?.unit?.corner;
     const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
     const cornerWallPanelScrews = cornerUnit && !cornerUnit.wallHung ? Math.max(4, Math.ceil(cornerUnit.height / 8)) : 0;

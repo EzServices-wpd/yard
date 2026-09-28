@@ -732,7 +732,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
   }
 
   const panels = project.panels.map((p) =>
-    lumberTableTop({ ...project, primaryMaterialId: primaryId }, item, p.materialId)
+    lumberTableTop({ ...project, primaryMaterialId: primaryId }, item, p.materialId) ||
+    // Thin (¼") plywood backers stay plywood whatever the named frame stock.
+    (p.type === "back" && /^plywood-1-4/.test(p.materialId ?? "") && Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26)
       ? p
       : { ...p, materialId: item.id },
   );

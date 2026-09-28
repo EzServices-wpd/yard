@@ -321,6 +321,166 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
   return null;
 }
 
+
+// ============================================================== flat frame (picture frame)
+
+export function isFlatFrame(prompt: string): boolean {
+  const l = prompt.toLowerCase();
+  if (/\b(?:bed|door|window|mirror\s+door|tent|truck|bike|bicycle|loom|swing|climbing|a-)\s*frame|\bframe\s*(?:tent|house|swing)|ledge|\brail\b|\btip(?:ped|ping)?\b|\blean(?:s|ing)?\b|\beasel\s+stand\b/.test(l)) return false;
+  return /\b(?:picture|photo|poster|art|print|selfie)\s*frame\b|\bframe\s+for\s+(?:an?\s+|my\s+|the\s+)?(?:\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*)?(?:photo|picture|print|poster|pic)\b|\bframe\b[^.]*\b\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic)/.test(l);
+}
+
+/** Typed photo size (portrait: w ≤ h). Default 5×7. */
+export function framePhotoIn(prompt: string): { w: number; h: number; typed: boolean } {
+  const l = prompt.toLowerCase();
+  const ctx = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic|poster|frame)/);
+  // Any other A×B that is not a lumber nominal (1x2, 2x4…).
+  const any = [...l.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*[x×]\s*(\d+(?:\.\d+)?)/g)].find((q) => !(parseFloat(q[1]) <= 2 && [2, 3, 4, 6, 8, 10, 12].includes(parseFloat(q[2]))));
+  const m = ctx ?? any;
+  if (m) {
+    const a = parseFloat(m[1]);
+    const b = parseFloat(m[2]);
+    if (a >= 2 && b >= 2 && a <= 36 && b <= 48) return { w: Math.min(a, b), h: Math.max(a, b), typed: true };
+  }
+  return { w: 5, h: 7, typed: false };
+}
+
+/** Whole-stick run of length L in lapped sub-layers: stick i at offset, alternate layer. */
+function lappedRun(L: number, S: number, lap: number): { a: number; b: number; layer: 0 | 1 }[] {
+  if (S >= L - 1e-6) return [{ a: -S / 2, b: S / 2, layer: 0 }];
+  let n = 2;
+  while ((L - S) / (n - 1) > S - lap && n < 30) n++;
+  const step = (L - S) / (n - 1);
+  return Array.from({ length: n }, (_, i) => ({ a: -L / 2 + i * step, b: -L / 2 + i * step + S, layer: (i % 2) as 0 | 1 }));
+}
+
+function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }): TemplateBuild {
+  const prim = toPrimitive(item);
+  const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
+  const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
+  const f = wire ? 0.5 : prim.width;
+  const fr = prim.width;
+  const t = round || wire ? prim.width : prim.height;
+  const S = whole ? Math.max(1, prim.length) : Math.max(photo.w, photo.h) + 4 * f;
+  const lap = Math.min(S * 0.3, Math.max(f * 2, 0.75));
+  const { w, h } = photo;
+  const Wo = w + 2 * f;
+  const Ho = h + 2 * f;
+  const segs: TSeg[] = [];
+  const Z = v3(0, 0, 1);
+  // Layers from the front face back: rails, stiles, backer bars.
+  const railRun = lappedRun(Wo, S, lap);
+  const stileRun = lappedRun(Ho, S, lap);
+  const railLayers = Math.max(...railRun.map((r) => r.layer)) + 1;
+  const stileLayers = Math.max(...stileRun.map((r) => r.layer)) + 1;
+  let z = 0;
+  const zOf = (layer: number) => -(layer + 0.5) * t;
+  for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, ys * (h / 2 + f / 2), zOf(z + r.layer)), b: v3(r.b, ys * (h / 2 + f / 2), zOf(z + r.layer)), role: "rail", face: Z });
+  z += railLayers;
+  for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2), r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2), r.b, zOf(z + r.layer)), role: "stile", face: Z });
+  z += stileLayers;
+  // Backer bars across the back: they hold the photo in the opening and tie the stiles.
+  const barRun = lappedRun(Wo, S, lap);
+  const barLayers = Math.max(...barRun.map((r) => r.layer)) + 1;
+  // Bars sit inside the opening's height, evenly spaced (not doubled against the rails).
+  const nb = Math.max(2, Math.ceil(h / 3.5));
+  for (let i = 0; i < nb; i++) {
+    const y = -h / 2 + (h * (i + 1)) / (nb + 1);
+    for (const r of barRun) segs.push({ a: v3(r.a, y, zOf(z + r.layer)), b: v3(r.b, y, zOf(z + r.layer)), role: "backer", face: Z });
+  }
+  z += barLayers;
+  const zBack = -z * t;
+  // Easel stand: one stick from high on the backer down to the bench behind — it stands the frame up.
+  // A stick much longer than the frame would sprawl; that frame hangs or leans instead.
+  const standL = whole ? S : Math.max(3, Ho * 0.8);
+
+  // The lowest stick end sits on the bench (crossing ends of long sticks stand the frame).
+  const lift = -Math.min(...segs.flatMap((q) => [q.a.y, q.b.y])) + (round || wire ? t / 2 : f / 2);
+  const all: TSeg[] = segs.map((s0) => ({ ...s0, a: v3(s0.a.x, s0.a.y + lift, s0.a.z), b: v3(s0.b.x, s0.b.y + lift, s0.b.z) }));
+  // Stand only when it reaches a backer bar at a steep lean (foot no more than ~0.6 of its length back).
+  const ay = all.filter((q) => q.role === "backer").map((q) => q.a.y).sort((m, n) => n - m).find((y) => y <= standL * 0.97 && y >= standL * 0.8);
+  const withStand = ay != null;
+  if (ay != null) {
+    all.push({ a: v3(0, ay, zBack - t / 2), b: v3(0, 0, zBack - t / 2 - Math.sqrt(Math.max(0.25, standL * standL - ay * ay))), role: "stand" });
+  }
+  void fr;
+  return {
+    classId: "flat-frame",
+    subject: "picture frame",
+    label: "Picture frame",
+    kind: "figure",
+    segs: all,
+    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack },
+    notes: [
+      `Picture frame · opening ${fmt(w)}" × ${fmt(h)}" (the photo size) · outer ${fmt(Wo)}" × ${fmt(Ho)}".`,
+      railRun.length > 1 || stileRun.length > 1
+        ? `Each side is whole ${item.name}s lapped face to face (no cutting); rails in front, stiles behind, lapped at the corners.`
+        : `Rails in front, stiles behind, lapped and glued at the four corners.`,
+      `${nb} backer bars across the back hold the photo in the opening.${withStand ? " One stand stick behind makes it stand on a shelf." : " Hang it, or lean it on a shelf."}`,
+    ],
+  };
+}
+
+function flatFramePanels(item: CatalogItem, photo: { w: number; h: number }): TemplateBuild {
+  const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.75, 0.25);
+  const bw = item.formFactor === "board" || item.category === "lumber" ? Math.min(item.dims.width ?? 1.5, 2.5) : 1.5;
+  const { w, h } = photo;
+  const Wo = w + 2 * bw;
+  const Ho = h + 2 * bw;
+  const r = (n: number) => Math.round(n * 16) / 16;
+  const rab = 0.375;
+  const backT = Math.min(0.25, T / 3);
+  const panels: Panel[] = [];
+  const mk = (p: Omit<Panel, "id" | "materialId"> & { materialId?: string }): Panel => ({ id: createId("fr"), materialId: item.id, ...p });
+  const x0 = -Wo / 2;
+  // Mitered members: trapezoids in the face plane, long edge outside.
+  const top = mk({ type: "rail", name: "Frame rail", position: { x: r(x0), y: r(h + bw), z: 0 }, size: { width: r(Wo), height: r(bw), depth: r(T) }, polygon: { plane: "xy", pts: [[0, r(bw)], [r(Wo), r(bw)], [r(Wo - bw), 0], [r(bw), 0]] } });
+  const bot = mk({ type: "rail", name: "Frame rail", position: { x: r(x0), y: 0, z: 0 }, size: { width: r(Wo), height: r(bw), depth: r(T) }, polygon: { plane: "xy", pts: [[0, 0], [r(Wo), 0], [r(Wo - bw), r(bw)], [r(bw), r(bw)]] } });
+  const left = mk({ type: "upright", name: "Frame stile", position: { x: r(x0), y: 0, z: 0 }, size: { width: r(bw), height: r(Ho), depth: r(T) }, polygon: { plane: "xy", pts: [[0, 0], [r(bw), r(bw)], [r(bw), r(Ho - bw)], [0, r(Ho)]] } });
+  const right = mk({ type: "upright", name: "Frame stile", position: { x: r(Wo / 2 - bw), y: 0, z: 0 }, size: { width: r(bw), height: r(Ho), depth: r(T) }, polygon: { plane: "xy", pts: [[r(bw), 0], [r(bw), r(Ho)], [0, r(Ho - bw)], [0, r(bw)]] } });
+  const members = [top, bot, left, right];
+  const railNote = `45° miters both ends; ${fmt(rab)}" × ${fmt(backT + 0.125)}" rabbet on the back inside edge for the photo, glass and backer.`;
+  for (const m of members) m.cutNote = railNote;
+  top.blank = bot.blank = { lengthIn: Math.round(Wo * 8) / 8, widthIn: Math.round(bw * 8) / 8, thicknessIn: T };
+  left.blank = right.blank = { lengthIn: Math.round(Ho * 8) / 8, widthIn: Math.round(bw * 8) / 8, thicknessIn: T };
+  panels.push(...members);
+  const backer = mk({
+    materialId: "plywood-1-4-4x8",
+    type: "back",
+    name: "Backer",
+    position: { x: r(-w / 2 - rab), y: r(bw - rab), z: 0 },
+    size: { width: r(w + 2 * rab), height: r(h + 2 * rab), depth: r(backT) },
+    joints: members.map((m) => ({ with: m.id, kind: "rabbet" as const })),
+    cutNote: `Backer ${fmt(w + 2 * rab)}" × ${fmt(h + 2 * rab)}" drops into the rabbet behind the photo; hold with glazier points.`,
+  });
+  panels.push(backer);
+  return {
+    classId: "flat-frame",
+    subject: "picture frame",
+    label: "Picture frame",
+    kind: "figure",
+    panels,
+    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, rabbet: rab, glueOnly: 1 },
+    notes: [
+      `Picture frame · ${item.name}: four mitered members, opening ${fmt(w)}" × ${fmt(h)}" (the photo size), outer ${fmt(Wo)}" × ${fmt(Ho)}".`,
+      `A ${fmt(rab)}" rabbet on the back carries the photo and a backer. Hang it on a sawtooth hanger.`,
+    ],
+  };
+}
+
+export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean): TemplateBuild | null {
+  const kind = templateStock(item);
+  let photo = framePhotoIn(prompt);
+  // Untyped photo: long whole sticks frame an 8×10 (short crossing ends) instead of a 5×7 with long ones.
+  if (!photo.typed && kind === "thin" && whole && isWholeStock(item)) {
+    const pr = toPrimitive(item);
+    if (pr.length >= 10 + 2 * pr.width + 1) photo = { w: 8, h: 10, typed: false };
+  }
+  if (kind === "thin") return flatFrameThin(item, whole && isWholeStock(item), photo);
+  if (kind === "panel") return flatFramePanels(item, photo);
+  return null;
+}
+
 // ============================================================== registry
 
 export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
@@ -333,7 +493,13 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "perch", title: "Glue the perch on the entrance sill", why: "It sticks out in front, just under the entrance." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
-  "flat-frame": [],
+  "flat-frame": [
+    { role: "rail", word: "rail stick", title: "Glue the top and bottom rails", why: "Rails set the opening width; lapped sticks overlap face to face." },
+    { role: "stile", word: "stile stick", title: "Glue the stiles behind the rails", why: "Stiles set the opening height; they lap over the rails at the four corners." },
+    { role: "backer", word: "backer bar", title: "Glue the backer bars across the back", why: "They close the back and hold the photo in the opening." },
+    { role: "stand", word: "stand stick", title: "Glue the stand behind", why: "One stick from the backer down to the shelf stands the frame up." },
+    { role: "member", title: "Place remaining members", why: "No floating pieces." },
+  ],
   launcher: [],
   humanoid: [],
 };
@@ -350,11 +516,13 @@ export function buildTemplate(
   whole: boolean,
 ): TemplateBuild | null {
   if (id === "small-house") return buildSmallHouse(prompt, item, typed, whole);
+  if (id === "flat-frame") return buildFlatFrame(prompt, item, whole);
   return null;
 }
 
 export function detectTemplate(prompt: string): TemplateClassId | null {
   if (isSmallHouse(prompt)) return "small-house";
+  if (isFlatFrame(prompt)) return "flat-frame";
   return null;
 }
 
@@ -415,6 +583,44 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     }
     if (wantsPerch(prompt) && !roles.get("perch")?.length && !project.panels.some((p) => p.name === "Perch")) issues.push({ code: "missing-part", detail: "perch" });
   }
+  if (shape.classId === "flat-frame") {
+    const typed = framePhotoIn(prompt);
+    const photo = typed.typed ? typed : { w: P.openW ?? 0, h: P.openH ?? 0 };
+    if (!typed.typed && !["5x7", "8x10"].includes(`${photo.w}x${photo.h}`)) issues.push({ code: "opening", detail: `untyped photo ${photo.w}×${photo.h} is not a standard print` });
+    const near = (a: number, b: number, tol = 0.07) => Math.abs(a - b) <= tol;
+    if (project.instances.length) {
+      const rails = roles.get("rail") ?? [];
+      const stiles = roles.get("stile") ?? [];
+      const bars = roles.get("backer") ?? [];
+      if (rails.length < 2 || stiles.length < 2) issues.push({ code: "missing-part", detail: `rails ${rails.length} stiles ${stiles.length}` });
+      if (bars.length < 2) issues.push({ code: "backer", detail: `backer bars ${bars.length}` });
+      for (const i of [...rails, ...stiles, ...bars]) if (!near(i.from!.z, i.to!.z, 0.01) || !i.face) issues.push({ code: "flat", detail: `${i.role} not lying flat in the frame face` });
+      const f = ((P.outerW ?? 0) - (P.openW ?? 0)) / 2;
+      const sx = stiles.map((i) => i.from!.x);
+      const ry = rails.map((i) => i.from!.y);
+      const gapW = Math.max(...sx) - Math.min(...sx) - f;
+      const gapH = Math.max(...ry) - Math.min(...ry) - f;
+      if (!near(gapW, photo.w) || !near(gapH, photo.h)) issues.push({ code: "opening", detail: `opening ${gapW.toFixed(2)}×${gapH.toFixed(2)} vs photo ${photo.w}×${photo.h}` });
+      // Corners meet: rails reach across both stiles, stiles reach across both rails.
+      const xs = rails.flatMap((i) => [i.from!.x, i.to!.x]);
+      const ys2 = stiles.flatMap((i) => [i.from!.y, i.to!.y]);
+      if (Math.min(...xs) > Math.min(...sx) + 0.01 || Math.max(...xs) < Math.max(...sx) - 0.01) issues.push({ code: "corner", detail: "rails stop short of the stiles" });
+      if (Math.min(...ys2) > Math.min(...ry) + 0.01 || Math.max(...ys2) < Math.max(...ry) - 0.01) issues.push({ code: "corner", detail: "stiles stop short of the rails" });
+    } else {
+      const rails = project.panels.filter((p) => p.name === "Frame rail");
+      const stiles = project.panels.filter((p) => p.name === "Frame stile");
+      if (rails.length !== 2 || stiles.length !== 2) issues.push({ code: "missing-part", detail: `rails ${rails.length} stiles ${stiles.length}` });
+      if (!project.panels.some((p) => p.name === "Backer")) issues.push({ code: "backer", detail: "no backer" });
+      if (stiles.length === 2 && rails.length === 2) {
+        const [l, r] = [...stiles].sort((a, b) => a.position.x - b.position.x);
+        const [b, t] = [...rails].sort((a, b2) => a.position.y - b2.position.y);
+        const gapW = r.position.x - (l.position.x + l.size.width);
+        const gapH = t.position.y - (b.position.y + b.size.height);
+        if (!near(gapW, photo.w) || !near(gapH, photo.h)) issues.push({ code: "opening", detail: `opening ${gapW}×${gapH} vs photo ${photo.w}×${photo.h}` });
+        if (!near(t.size.width, r.position.x + r.size.width - l.position.x) || !near(l.size.height, t.position.y + t.size.height - b.position.y)) issues.push({ code: "corner", detail: "miters do not meet" });
+      }
+    }
+  }
   return issues;
 }
 
@@ -425,6 +631,10 @@ export function templateCutName(name: string): string | null {
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
 const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = {
+  "flat-frame": [
+    { match: /^Frame (rail|stile)$/, title: "Glue and clamp the four mitered members", why: "Dry-fit, then glue the miters and band-clamp; check the diagonals match." },
+    { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Photo, then backer, held with glazier points." },
+  ],
   "small-house": [
     { match: /^Front gable$/, title: "Drill the entrance hole in the front gable", why: "Drill before assembly with a spade or Forstner bit, from the face side, backed by scrap so it does not tear out." },
     { match: /^(Side wall|Floor)$/, title: "Screw the side walls to the floor", why: "Floor sits between the side walls, flush at the bottom. Predrill near the ends." },

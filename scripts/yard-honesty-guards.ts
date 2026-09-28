@@ -783,6 +783,30 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
   if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
 }
+// Flat-frame class (picture frame): inner opening = typed photo size, corners meet, backer drawn, sticks flat.
+{
+  const cases: [string, "sticks" | "panels", number, number][] = [
+    ["picture frame from bamboo skewers", "sticks", 8, 10],
+    ["picture frame from bamboo skewers for a 5x7 photo", "sticks", 5, 7],
+    ["picture frame from popsicle sticks for a 4x6 photo", "sticks", 4, 6],
+    ["picture frame from jumbo craft sticks 5x7", "sticks", 5, 7],
+    ["picture frame from 1x2 for an 8x10 photo", "panels", 8, 10],
+    ["picture frame from plywood for a 5x7 photo", "panels", 5, 7],
+  ];
+  for (const [p, mode, w, h] of cases) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "flat-frame") failWeekend(`flat-frame: ${p} class`, b.shape);
+    if (mode === "sticks" ? !b.instances.length : !b.panels.length) failWeekend(`flat-frame: ${p} not ${mode}`);
+    if (b.shape?.params?.openW !== w || b.shape?.params?.openH !== h) failWeekend(`flat-frame: ${p} photo size`, b.shape?.params);
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`flat-frame: ${p}`, iss);
+    if (b.instances.some((i) => i.cutLength != null) && /popsicle|craft|bamboo/.test(p)) failWeekend(`flat-frame: ${p} cut craft sticks`);
+    if ((b.overall?.depth ?? 0) > 6) failWeekend(`flat-frame: ${p} not flat`, b.overall);
+  }
+  const wf = generateFromPrompt("picture frame from 1x2 for an 8x10 photo");
+  if (buildPlan(wf).bom.some((x) => /screw/i.test(x.name))) failWeekend("flat-frame: mitered frame buys screws");
+  if (wf.panels.find((q) => q.name === "Backer")?.materialId !== "plywood-1-4-4x8") failWeekend("flat-frame: backer not 1/4 plywood");
+}
 if (bindsDeterministically("bookcase 36 wide", generateFromPrompt("bookcase 36 wide"))) failWeekend("bookcase must stay open to the LLM form");
 if (!bindsDeterministically("dog from popsicle sticks", generateFromPrompt("dog from popsicle sticks"))) failWeekend("shape template not locked");
 const novelTowerPlan = buildPlan(novelTower);
@@ -6943,6 +6967,8 @@ console.log("STRANGER PLAN OK", {
     "dog from plywood",
     "birdhouse from popsicle sticks with a perch",
     "birdhouse from plywood with a 1 1/4 inch hole and a perch",
+    "picture frame from popsicle sticks for a 4x6 photo",
+    "picture frame from 1x2 for an 8x10 photo",
   ];
   const T = 1 / 32;
   const PART_NOUN = /\b(bottom|top|shel(?:f|ves)|divider|door|drawer|counter|kick|apron|leg|upright|stretcher|cleat|lid|seat|backrest|batten|mirror)s?\b/gi;
@@ -7078,6 +7104,8 @@ console.log("STRANGER PLAN OK", {
     "dog from plywood",
     "birdhouse from popsicle sticks with a perch",
     "birdhouse from plywood with a 1 1/4 inch hole and a perch",
+    "picture frame from popsicle sticks for a 4x6 photo",
+    "picture frame from 1x2 for an 8x10 photo",
   ];
   let cases = 0;
   for (const prompt of prompts) {
