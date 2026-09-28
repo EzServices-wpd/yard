@@ -145,6 +145,19 @@ export function partsPlateEntries(cutList: CutLine[]): PlateEntry[] {
     }));
 }
 
+/**
+ * Upright letters as spoken: one cut line of 2 → "two E" / "E"; a mirrored
+ * Left/Right pair on two lines → "E and F" (never the first letter for both).
+ */
+function uprightPairTalk(entries: PlateEntry[]): { two: string; both: string } | null {
+  const ups = entries.filter((e) => e.family === "upright");
+  if (!ups.length) return null;
+  if (ups.length === 1) return { two: `two ${ups[0].label}`, both: ups[0].label };
+  const letters = ups.map((e) => e.label);
+  const talk = `${letters.slice(0, -1).join(", ")} and ${letters[letters.length - 1]}`;
+  return { two: talk, both: talk };
+}
+
 function plateRef(entry: PlateEntry, spoken?: string): string {
   const word = (spoken ?? entry.name).replace(/\s+/g, " ").trim();
   // Avoid "A A Lid" if already lettered.
@@ -154,7 +167,10 @@ function plateRef(entry: PlateEntry, spoken?: string): string {
 
 function findPlate(entries: PlateEntry[], spoken: string): PlateEntry | undefined {
   const fam = plateFamily(spoken);
-  const exact = entries.find((e) => e.family === fam || e.name.toLowerCase() === spoken.toLowerCase());
+  // A mirrored pair (Left upright E / Right upright F) keeps each side's own letter.
+  const named = entries.find((e) => e.name.toLowerCase() === spoken.trim().toLowerCase());
+  if (named) return named;
+  const exact = entries.find((e) => e.family === fam);
   if (exact) return exact;
   return entries.find((e) => e.family === fam || e.name.toLowerCase().startsWith(fam));
 }
@@ -198,11 +214,11 @@ export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string 
   }
 
   // Synonym families for uprights / sides that cut-list groups as Upright.
-  const upright = entries.find((e) => e.family === "upright");
-  if (upright) {
-    out = out.replace(/\b([Ll]ay the)\s+two uprights\b/g, `$1 two ${upright.label} uprights`);
-    out = out.replace(/\b([Tt]he)\s+two uprights\b/g, `$1 two ${upright.label} uprights`);
-    out = out.replace(/\bboth uprights\b/gi, `both ${upright.label} uprights`);
+  const pair = uprightPairTalk(entries);
+  if (pair) {
+    out = out.replace(/\b([Ll]ay the)\s+two uprights\b/g, `$1 ${pair.two} uprights`);
+    out = out.replace(/\b([Tt]he)\s+two uprights\b/g, `$1 ${pair.two} uprights`);
+    out = out.replace(/\bboth uprights\b/gi, `both ${pair.both} uprights`);
   }
 
   return out;
@@ -257,11 +273,11 @@ function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFi
 
 function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string, coda: string): string {
   const partPlate = findPlate(entries, bit.part);
-  const upright = entries.find((e) => e.family === "upright");
+  const pair = uprightPairTalk(entries);
   const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
   const ontoRaw = bit.onto.replace(/^both\s+/i, "");
-  const ontoTalk = upright && /upright/i.test(ontoRaw)
-    ? `both ${upright.label} uprights`
+  const ontoTalk = pair && /upright/i.test(ontoRaw)
+    ? `both ${pair.both} uprights`
     : bit.onto;
   const count = bit.hardware || `4 × ${SCREW_HW} (2 per upright)`;
   // Prefer exact screw class from source when present.
@@ -698,7 +714,8 @@ export function tableSpanFromPrompt(prompt: string): number {
   const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
   const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])\.?|")`;
   // Optional space so "table 70 inches wide" is an axis label, not a bare span.
-  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)`;
+  // Paper axis letters ("22\" H", "36 W") are labels too, not a bare span.
+  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round|[hwdl])\b)`;
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
@@ -745,7 +762,8 @@ export function nounSpanFromPrompt(prompt: string): number {
   const noun =
     "workbench|potting\\s+bench|(?:writing\\s+)?desk|nightstands?|bedside|bookcases?|bookshel(?:f|ves)|vanit(?:y|ies)|media\\s+consoles?|(?:tv|television)\\s+(?:stand|console)|floating\\s+shel(?:f|ves)|picture\\s+ledges?|headboards?|islands?|bench(?:es)?";
   const unit = String.raw`(?:inches|inch(?![a-z])|in(?![a-z])\.?|")?`;
-  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)`;
+  // Paper axis letters ("22\" H", "36 W") are labels too, not a bare span.
+  const notAxis = String.raw`(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round|[hwdl])\b)`;
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
@@ -956,13 +974,14 @@ export function openingWidthFromPrompt(prompt: string): number {
     String.raw`(?:alcove|opening|niche|closet|wardrobe|pantry|cabinet|cupboard|armoire|hutch|locker|linen)\b`;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
+      // "48x18 opening" is a W×H pair — the width is the first number, never the trailing 18.
+      String.raw`(?:(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
         storageNoun,
       "i",
     ),
   );
   if (ahead) {
-    const n = parseFloat(ahead[1]);
+    const n = parseFloat(ahead[1] ?? ahead[2]);
     // Opening / carcase widths — reject hardware ("2 inch closet rod").
     if (Number.isFinite(n) && n >= 12 && n <= 120) return n;
   }

@@ -3974,7 +3974,8 @@ console.log("SOFT-TRUST OK", {
 
   const vanity = generateFromPrompt('house: bathroom vanity 36" wide × 21" deep × 32" tall with two doors');
   if (!/Vanity/i.test(vanity.name)) failVoice("protect vanity title", vanity.name);
-  if (!vanity.panels.some((p) => /^Door\b/i.test(p.name))) failVoice("protect vanity doors", vanity.panels.map((p) => p.name));
+  // Doors are named by side ("Left door" / "Right door") since the mirrored-pair naming pass.
+  if (vanity.panels.filter((p) => /\bdoor\b/i.test(p.name)).length !== 2) failVoice("protect vanity doors", vanity.panels.map((p) => p.name));
   const vanityPlan = buildPlan(vanity);
   const vanitySteps = vanityPlan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
   if (/\bcarcase\b/i.test(vanitySteps)) failVoice("vanity stranger path still says carcase");
@@ -4553,9 +4554,17 @@ console.log("SOFT-TRUST OK", {
     if (pieces <= 20) return "1-day";
     return "weekend";
   };
+  // Box model: Buy counts boxes and says the count inside ("2 boxes (50 ct each)");
+  // the note carries the honest screw count. Return that count, and fail if the boxes can't hold it.
   const joinScrewQty = (plan: ReturnType<typeof buildPlan>) => {
     const row = plan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name));
-    return row?.quantity ?? null;
+    if (!row) return null;
+    const per = Number(row.unit.match(/(\d+)\s*ct/)?.[1] ?? NaN);
+    const count = Number(row.notes?.match(/(\d+)\s+screws/)?.[1] ?? NaN);
+    if (!Number.isFinite(per) || !Number.isFinite(count) || row.quantity !== Math.ceil(count / per)) {
+      failEff("wood screw Buy must be boxes with a count inside", { qty: row.quantity, unit: row.unit, notes: row.notes });
+    }
+    return count;
   };
 
   const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
@@ -4797,8 +4806,13 @@ console.log("SOFT-TRUST OK", {
   const nsPlan = buildPlan(ns);
   if (nsPlan.totals.pieces !== 11) failBom("protect nightstand pieces 11", nsPlan.totals.pieces);
   if (nsPlan.effort !== "1-day") failBom("protect nightstand effort 1-day", nsPlan.effort);
-  const nsScrews = nsPlan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name))?.quantity;
-  if (nsScrews !== 66) failBom("protect nightstand screws 66", nsScrews);
+  // Box model: 66 screws → 2 boxes (50 ct each); the note keeps the 66 count.
+  const nsScrewRow = nsPlan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name));
+  const nsScrews = Number(nsScrewRow?.notes?.match(/(\d+)\s+screws/)?.[1] ?? NaN);
+  if (nsScrews !== 66) failBom("protect nightstand screws 66", nsScrewRow);
+  if (nsScrewRow?.quantity !== 2 || !/boxes \(50 ct each\)/.test(nsScrewRow?.unit ?? "")) {
+    failBom("protect nightstand screws 2 boxes (50 ct each)", nsScrewRow);
+  }
   const linen = generateFromPrompt("house: linen closet 31.5×78×16");
   if (Math.abs(linen.overall.width - 31.5) > 0.2) failBom("protect linen 31.5", linen.overall);
   const band = nsPlan.bom.find((b) => /edge banding|banding/i.test(b.name));

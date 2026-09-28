@@ -1586,7 +1586,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       : isPlanterBox(lower)
         ? "Planter box"
       : isOutdoorSideTable(lower)
-        ? "Outdoor side table"
+        ? /outdoor/.test(lower) ? "Outdoor side table" : "Side table"
       : isWorkbench(lower)
         ? "Workbench"
       : isPegboard(lower)

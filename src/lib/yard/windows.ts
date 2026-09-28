@@ -747,12 +747,20 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
   ];
 }
 
+/**
+ * Furniture nouns whose "doors" are cabinet leaves, never a house door. A door count
+ * on any of these ("media console with two doors", "sideboard 48 wide with two doors")
+ * stays furniture unless the stranger names a house door class outright.
+ */
+const FURNITURE_LEAF_NOUN =
+  /cabinet|vanity|drawer|crate|ironing|cupboard|hutch|bookcase|bookshel|shel(?:f|ves)|wardrobe|armoire|pantry|closet|console|sideboard|buffet|credenza|stereo|media|tv\s*(?:stand|unit)|entertainment|dresser|nightstand|chest|trunk|locker|desk|bench|table|cubby|organizer|stand\b/;
+
 /** A sized door ("32 inches wide by 80 tall", "36in by 80in") is a prehung opening, not a tower. */
 function bareSizedDoor(lower: string): boolean {
   if (/\bwindows?\b/.test(lower)) return false;
   if (!/\bdoors?\b/.test(lower)) return false;
   if (
-    /cabinet|vanity|drawer|crate|ironing|cupboard|hutch|bookcase|wardrobe|pantry|closet/.test(lower) &&
+    FURNITURE_LEAF_NOUN.test(lower) &&
     !/prehung|(?:exterior|entry|front|french)\s+doors?/.test(lower)
   ) {
     return false;
@@ -772,7 +780,7 @@ export function looksLikeDoorFrame(prompt: string) {
     return false;
   }
   if (
-    /cabinet|vanity|drawer|crate|ironing|cupboard|hutch|closet|wardrobe|pantry|bookcase/.test(lower) &&
+    FURNITURE_LEAF_NOUN.test(lower) &&
     !/prehung|door\s+rough|frame\s+(?:a\s+|the\s+)?door|door\s+frame|(?:exterior|entry|front|french)\s+doors?/.test(lower)
   ) {
     return false;

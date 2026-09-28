@@ -3,7 +3,7 @@ import { isWholeStock, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom } from "./listings";
-import { binderBom, effectiveJoin } from "./joints";
+import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
@@ -385,8 +385,8 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       : floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : screws;
     bom.push({
       name: '#8 x 1-1/4" wood screws',
-      quantity: Math.ceil(joinScrews / 50),
-      unit: "box",
+      quantity: Math.ceil(joinScrews / SCREWS_PER_BOX),
+      unit: screwBoxUnit(Math.ceil(joinScrews / SCREWS_PER_BOX)),
       catalogId: "screws-8",
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,

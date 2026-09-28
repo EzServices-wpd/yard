@@ -5,6 +5,12 @@
 import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
 
+/** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
+export const SCREWS_PER_BOX = 50;
+export function screwBoxUnit(boxes: number): string {
+  return boxes === 1 ? `box (${SCREWS_PER_BOX} ct)` : `boxes (${SCREWS_PER_BOX} ct each)`;
+}
+
 export type BinderKind = "slip" | "glue" | "tape" | "fastener" | "friction";
 
 export type JointClass = "ground" | "cap" | "coupling" | "elbow45" | "elbow90" | "tee" | "cross";
@@ -165,8 +171,8 @@ export function binderBom(
     return [
       {
         name: '#8 × 1-1/4" wood screws',
-        quantity: Math.ceil(screws / 50),
-        unit: "box",
+        quantity: Math.ceil(screws / SCREWS_PER_BOX),
+        unit: screwBoxUnit(Math.ceil(screws / SCREWS_PER_BOX)),
         catalogId: "screws-8",
         searchQuery: "#8 1-1/4 wood screws",
         estimatedCost: 8,

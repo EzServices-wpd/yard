@@ -1101,7 +1101,8 @@ export function identityTitleStem(lower: string): string | null {
   if (isLoungeChair(lower)) return "Lounge chair";
   if (isOttoman(lower)) return "Ottoman";
   if (isAdirondackChair(lower)) return "Adirondack chair";
-  if (isOutdoorSideTable(lower)) return "Outdoor side table";
+  // Only say "Outdoor" when the stranger typed it — a bare side table is not stamped outdoor.
+  if (isOutdoorSideTable(lower)) return /outdoor/.test(lower) ? "Outdoor side table" : "Side table";
   // Garage / shop class — positive stems before Desk / Storage / portal steals.
   if (isWorkbench(lower)) return "Workbench";
   if (isPegboard(lower)) return "Pegboard";
