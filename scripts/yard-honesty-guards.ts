@@ -4959,6 +4959,41 @@ console.log("SOFT-TRUST OK", {
     }
   }
 
+  // Named lumber + sheet densify (oak/teak tables): Buy must keep the plywood nest
+  // when tops/aprons still cut as plywood — never sell a 40" round blank as 1×4 alone.
+  // Species boards stay on Buy for the named-species story; cut step names plywood.
+  {
+    const oakRound = generateFromPrompt("round coffee table 40 diameter three legs oak");
+    const oakPlan = buildPlan(oakRound);
+    const oakPly = oakPlan.bom.find((b) => /plywood|sheet/i.test(b.name) && !/screw|glue|banding/i.test(b.name));
+    const oakBoards = oakPlan.bom.find(
+      (b) => /oak/i.test(b.name) && !/screw|banding|glue|finish|oil|2x2|2×2|ply/i.test(b.name),
+    );
+    if (!oakPly || (oakPly.quantity ?? 0) < 1) {
+      failBom("oak round missing plywood nest Buy", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+    }
+    if (!oakBoards) {
+      failBom("oak round missing Oak boards Buy", oakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+    }
+    if (oakRound.fitted?.unit?.shape !== "round" || (oakRound.fitted?.unit?.legs ?? 0) !== 3) {
+      failBom("oak round shape/legs", oakRound.fitted?.unit);
+    }
+    if (!nearInch(oakRound.overall.width, 40) || !nearInch(oakRound.overall.height, 18)) {
+      failBom("oak round envelope", oakRound.overall);
+    }
+    const oakCutStep = oakPlan.instructions.find((s) => /Cut the/i.test(s.title) && /top/i.test(s.title));
+    if (!oakCutStep || !/plywood|sheet/i.test(oakCutStep.title)) {
+      failBom("oak round cut step must name plywood nest", oakCutStep?.title);
+    }
+    if (/1\s*[×x]\s*4/i.test(oakCutStep?.title ?? "")) {
+      failBom("oak round cut step still claims 1×4 blank for sheet top", oakCutStep?.title);
+    }
+    const teakPly = teakPlan.bom.find((b) => /plywood|sheet/i.test(b.name) && !/screw|glue|banding/i.test(b.name));
+    if (!teakPly || (teakPly.quantity ?? 0) < 1) {
+      failBom("teak outdoor missing plywood nest Buy after named-lumber+sheet densify", teakPlan.bom.map((b) => `${b.quantity} ${b.name}`));
+    }
+  }
+
   // Protect: nightstand effort/screws/Confirm 11-class; linen 31.5; banding; ledge; desk; lounge; catapult.
   const ns = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
   const nsPlan = buildPlan(ns);

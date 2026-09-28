@@ -3,6 +3,7 @@
  */
 
 import { getCatalogItem } from "./catalog";
+import { namedStockDisplayName } from "./weekendStockHonesty";
 import { shopPlural } from "./shopPlural";
 import type { AssemblyStep, Panel, YardProject } from "./types";
 import { footprintConfirmTalk } from "./voiceHonesty";
@@ -58,11 +59,24 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
     shelves.length ? (shelves.length === 1 ? "shelf" : "shelves") : "",
     shelfRails.length ? "shelf rails" : "",
   ].filter(Boolean);
+  // Cut-step stock follows panel materialIds — never "Cut the 1×4 Board" for a
+  // plywood-nested top/apron when named lumber only bound the primary label.
+  const sheetPanel = plyBits.find((p) => /^(plywood-|sheet-)/i.test(p.materialId));
+  const cutStockName = sheetPanel
+    ? (getCatalogItem(sheetPanel.materialId)?.name ?? '3/4" plywood')
+    : (item?.name ?? '3/4" plywood');
+  const namedBoundOverSheet =
+    !!sheetPanel && project.primaryMaterialId === "lumber-1x4-8" && !!item;
+  const speciesBoardLabel = namedBoundOverSheet
+    ? namedStockDisplayName(project.prompt ?? "", item!)
+    : "";
   steps.push({
     step: n++,
-    title: `Cut the ${item?.name ?? '3/4" plywood'} (${plyTitleBits.join(" + ")})`,
-    description: `Circular saw and a straightedge. Face up, label the waste face. ${plyBits.map(cutLine).join("; ")}.${roundTop ? ` Cut the top as a ${round(W)}" square blank, then band-saw / jigsaw to a ${round(W)}" diameter circle.` : ovalTop ? ` Cut the top as a ${round(W)}" × ${round(D)}" rectangular blank, then band-saw / jigsaw to an oval ${round(W)}" long × ${round(D)}" wide.` : ""}`,
-    tips: "Support the offcut so it does not break out. Iron-on edge banding on the top edge if people will see ply.",
+    title: `Cut the ${cutStockName} (${plyTitleBits.join(" + ")})`,
+    description: `Circular saw and a straightedge. Face up, label the waste face. ${plyBits.map(cutLine).join("; ")}.${roundTop ? ` Cut the top as a ${round(W)}" square blank, then band-saw / jigsaw to a ${round(W)}" diameter circle.` : ovalTop ? ` Cut the top as a ${round(W)}" × ${round(D)}" rectangular blank, then band-saw / jigsaw to an oval ${round(W)}" long × ${round(D)}" wide.` : ""}${namedBoundOverSheet ? ` Do not try to cut a sheet-sized top from a single ${speciesBoardLabel} — the blank comes from the plywood nest on the Buy list.` : ""}`,
+    tips: namedBoundOverSheet
+      ? `Support the offcut so it does not break out. Iron-on edge banding on the top edge if people will see ply. ${speciesBoardLabel} on the Buy list are the species story (face/finish), not the blank width.`
+      : "Support the offcut so it does not break out. Iron-on edge banding on the top edge if people will see ply.",
     partsUsed: plyBits.map((p) => p.name),
   });
 

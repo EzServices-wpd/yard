@@ -225,41 +225,81 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     const isNamedLumberPrimary =
       project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber;
     // Solid named lumber (teak outdoor etc.): Buy pcs = honest cut wood qty, not
-    // 4×8 nest sheet count (silent undercount vs Confirm/chip). Plywood stays nest.
+    // 4×8 nest sheet count (silent undercount vs Confirm/chip).
+    // When densify still nests sheet faces (table tops/aprons stay plywood-*),
+    // Buy the nest sheets too — never pretend a 40" round top comes from 1×4 alone.
     const structuralQty = structural.reduce((s, c) => s + c.quantity, 0);
-    const n = isNamedLumberPrimary
-      ? honestBuyWoodQty(structuralQty)
-      : sheets8 + sheetsFallback;
-    // Named-species primary bind: Buy lead speaks densifyLabel (Teak 1×4), not bare board / silent ply.
-    const sheetName = isNamedLumberPrimary
-      ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber!)
-      : (sheet?.name ?? '3/4" plywood 4x8');
-    bom.push({
-      name: sheetName,
-      quantity: n,
-      unit: isNamedLumberPrimary
-        ? n === 1
-          ? "pc"
-          : "pcs"
-        : n === 1
-          ? "sheet"
-          : "sheets",
-      catalogId: sheet?.id ?? "plywood-3-4-4x8",
-      searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
-      estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
-      notes: (() => {
-        const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
-        const base = isNamedLumberPrimary
-          ? honestNamedLumberBuyWoodNote({ qty: n, legQty: legQtyForNote })
-          : `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
-              cuts.some((c) => / · /.test(c.name))
-                ? " Some faces are splice segments — butt-join before assembly."
-                : ""
-            }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
-        const species = speciesStockHonestyTalk(project.prompt ?? "", sheet?.name ?? '3/4" plywood');
-        return species ? `${base} ${species}` : base;
-      })(),
-    });
+    const densifyNestsOnSheet = structural.some((c) =>
+      /ply|sheet/i.test(`${c.material ?? ""}`),
+    );
+    const nestSheetQty = sheets8 + sheetsFallback;
+    const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
+    if (isNamedLumberPrimary && densifyNestsOnSheet) {
+      const plyItem = getCatalogItem("plywood-3-4-4x8");
+      const plyName = plyItem?.name ?? '3/4" Plywood 4×8';
+      const nestNote =
+        `From nest · ${nestSheetQty} sheet${nestSheetQty === 1 ? "" : "s"} · 1/8" kerf included.` +
+        (cuts.some((c) => / · /.test(c.name))
+          ? " Some faces are splice segments — butt-join before assembly."
+          : "") +
+        (unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : "");
+      const species = speciesStockHonestyTalk(project.prompt ?? "", plyName);
+      bom.push({
+        name: plyName,
+        quantity: nestSheetQty,
+        unit: nestSheetQty === 1 ? "sheet" : "sheets",
+        catalogId: plyItem?.id ?? "plywood-3-4-4x8",
+        searchQuery: plyItem?.searchQuery ?? '3/4" x 4x8 sanded plywood',
+        estimatedCost: (plyItem?.unitCostUsd ?? 38.43) * nestSheetQty,
+        notes: species ? `${nestNote} ${species}` : nestNote,
+      });
+      const boardQty = honestBuyWoodQty(structuralQty);
+      const label = namedStockDisplayName(project.prompt ?? "", namedLumber!);
+      bom.push({
+        name: label,
+        quantity: boardQty,
+        unit: boardQty === 1 ? "pc" : "pcs",
+        catalogId: namedLumber!.id,
+        searchQuery: namedLumber!.searchQuery ?? label,
+        estimatedCost: (namedLumber!.unitCostUsd ?? 4) * boardQty,
+        notes:
+          `${honestNamedLumberBuyWoodNote({ qty: boardQty, legQty: legQtyForNote })} ` +
+          `Cut the top/aprons from the plywood nest above; these boards are the named-species story (face/finish), not a silent 1×4 blank for a sheet-sized top.`,
+      });
+    } else {
+      const n = isNamedLumberPrimary
+        ? honestBuyWoodQty(structuralQty)
+        : nestSheetQty;
+      // Named-species primary bind (board densify): Buy lead speaks densifyLabel.
+      const sheetName = isNamedLumberPrimary
+        ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber!)
+        : (sheet?.name ?? '3/4" plywood 4x8');
+      bom.push({
+        name: sheetName,
+        quantity: n,
+        unit: isNamedLumberPrimary
+          ? n === 1
+            ? "pc"
+            : "pcs"
+          : n === 1
+            ? "sheet"
+            : "sheets",
+        catalogId: sheet?.id ?? "plywood-3-4-4x8",
+        searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
+        estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
+        notes: (() => {
+          const base = isNamedLumberPrimary
+            ? honestNamedLumberBuyWoodNote({ qty: n, legQty: legQtyForNote })
+            : `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf included.${
+                cuts.some((c) => / · /.test(c.name))
+                  ? " Some faces are splice segments — butt-join before assembly."
+                  : ""
+              }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
+          const species = speciesStockHonestyTalk(project.prompt ?? "", sheet?.name ?? '3/4" plywood');
+          return species ? `${base} ${species}` : base;
+        })(),
+      });
+    }
   }
   if (!buyNamedBoard && sheets10 > 0) {
     bom.push({
