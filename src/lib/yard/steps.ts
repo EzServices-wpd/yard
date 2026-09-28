@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { templatePanelSteps, templateSteps } from "./formTemplates";
 import {
   climbRiseRun,
   climbStepCount,
@@ -345,6 +346,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (project.fitted?.unit?.corner) {
     const corner = cornerSteps(project);
     if (corner.length) return corner;
+  }
+  if (project.shape && project.shape.classId !== "quadruped") {
+    const tmpl = templatePanelSteps(project);
+    if (tmpl.length) return tmpl;
   }
 
   const item = getCatalogItem(panels[0]?.materialId ?? project.primaryMaterialId);
@@ -2558,7 +2563,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     const roleWord =
       ladderRungVoice && spec.role === "rail"
         ? "rung"
-        : spec.role;
+        : (spec as { word?: string }).word ?? spec.role;
     steps.push({
       step: n++,
       title: `${spec.title} — ${listI.length} ${roleWord}${listI.length === 1 ? "" : "s"}`,
@@ -2792,6 +2797,10 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "splice", title: "Lap the long splices", why: "Overlap and glue both faces." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
+  }
+  if (project.shape && project.shape.classId !== "quadruped") {
+    const script = templateSteps(project.shape.classId);
+    if (script && script.length) return script;
   }
   if (project.shape || project.instances.some((i) => i.role === "body")) {
     // Subject-class shape template: one step per named part, body first.

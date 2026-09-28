@@ -106,6 +106,8 @@ export type YardInstance = {
   home?: Vec3;
   from?: Vec3;
   to?: Vec3;
+  /** Stick lies flat against this face normal (slatted walls, roof decks, frame faces). */
+  face?: Vec3;
 };
 
 export type PanelType =
@@ -142,7 +144,7 @@ export type Panel = {
    * Odd-shape plate: real polygon outline, points relative to `position` (min corner).
    * plane "xz" = plan outline extruded up by size.height; "xy" = front outline extruded by size.depth.
    */
-  polygon?: { plane: "xz" | "xy"; pts: [number, number][] };
+  polygon?: { plane: "xz" | "xy"; pts: [number, number][]; /** Round through-holes (drilled), same local frame as pts. */ holes?: { x: number; y: number; r: number }[] };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */

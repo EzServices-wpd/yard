@@ -52,11 +52,13 @@ export type ShapeModel = {
 export type FormClassId = "quadruped";
 
 export type ShapeSummary = {
-  classId: FormClassId;
+  classId: FormClassId | import("./formTemplates").TemplateClassId;
   subject: string;
   pose: "stand" | "sit";
   bodyLength: number;
-  parts: { name: ShapePartName; count: number }[];
+  parts: { name: ShapePartName | import("./formTemplates").TemplatePartName; count: number }[];
+  /** Named measurements from the model (hole diameter, opening…) the guards read back. */
+  params?: Record<string, number>;
 };
 
 type QuadProfile = {

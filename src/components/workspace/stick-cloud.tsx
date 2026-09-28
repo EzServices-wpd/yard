@@ -141,7 +141,12 @@ export function PanelMesh({
       }
       poly.pts.forEach(([px, py], i) => (i ? shape.lineTo(px - w / 2, py - h / 2) : shape.moveTo(px - w / 2, py - h / 2)));
       shape.closePath();
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+      for (const hole of poly.holes ?? []) {
+        const path = new THREE.Path();
+        path.absarc(hole.x - w / 2, hole.y - h / 2, hole.r, 0, Math.PI * 2, true);
+        shape.holes.push(path);
+      }
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false, curveSegments: 24 });
       geo.translate(0, 0, -d / 2);
       geo.computeVertexNormals();
       return geo;

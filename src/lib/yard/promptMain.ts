@@ -2,7 +2,7 @@ import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
-import { graphToInstances } from "./structureGraph";
+import { graphToInstances, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
@@ -25,6 +25,7 @@ import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
+import { buildTemplate, detectTemplate, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { hasExplicitSize } from "./promptHelpers";
 
 export function emptyProject(): YardProject {
@@ -153,6 +154,11 @@ function generateRaw(
     const shaped = buildShapeProject(prompt, item, opts);
     if (shaped) return shaped;
   }
+  const tmpl = detectTemplate(prompt);
+  if (tmpl) {
+    const built = buildTemplateProject(prompt, item, opts, tmpl);
+    if (built) return built;
+  }
   const recipe0 = formOverride ?? detectForm(prompt, size);
   let box = defaultSizeFor(recipe0.kind, size, prompt);
   if (opts.sizeOverride) {
@@ -232,6 +238,98 @@ function generateRaw(
     box,
     scale,
   );
+}
+
+function buildTemplateProject(
+  prompt: string,
+  item: CatalogItem,
+  opts: { joinMethod?: JoinMethod; sizeOverride?: { width: number; height: number; depth: number }; cutStock?: boolean },
+  id: TemplateClassId,
+): YardProject | null {
+  const lower = prompt.toLowerCase();
+  const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
+  const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
+  const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
+  // Hole / photo / opening sizes are part sizes, not the overall — strip them before reading a typed size.
+  const sized = lower.replace(/\d[\d\s\/.x×-]*\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:diameter\s+|dia\.?\s+|round\s+)?(?:entry\s+|entrance\s+)?hole/g, "hole").replace(/(?:for\s+(?:an?\s+)?)?\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic)/g, "photo");
+  const raw = hasExplicitSize(sized) ? parseSize(sized) : undefined;
+  const said = (n: number) => (n !== 24 || /\b24\b/.test(sized) ? n : undefined);
+  const typed = opts.sizeOverride ?? (raw ? { width: said(raw.width), height: said(raw.height), depth: said(raw.depth) } : {});
+  const built: TemplateBuild | null = buildTemplate(id, prompt, item, typed, whole);
+  if (!built) return null;
+  let project: YardProject;
+  if (built.segs) {
+    const join = (item.preferredJoins && item.preferredJoins[0]) || "glue";
+    const nodes: StructureGraph["nodes"] = [];
+    const edges: StructureGraph["edges"] = [];
+    for (const s of built.segs) {
+      const a = createId("n");
+      const b = createId("n");
+      nodes.push({ id: a, position: s.a, role: "support" }, { id: b, position: s.b, role: "support" });
+      edges.push({ id: createId("e"), from: a, to: b, join, role: s.role as StructureGraph["edges"][number]["role"], critical: true, face: s.face });
+    }
+    const graph: StructureGraph = {
+      id: createId("graph"),
+      name: built.label,
+      envelope: { width: 1, height: 1, depth: 1 },
+      materialId: item.id,
+      nodes,
+      edges,
+      assumptions: [],
+      notes: [],
+      structureClass: "generic",
+    };
+    project = projectFromGraph(prompt, item, built.kind, graph, false, undefined, opts.joinMethod, built.label, whole);
+  } else {
+    project = {
+      ...emptyProject(),
+      name: built.label,
+      prompt,
+      kind: built.kind,
+      panels: built.panels ?? [],
+      primaryMaterialId: item.id,
+      joinMethod: item.category === "cardboard" ? "glue" : "screw",
+      notes: [],
+      assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
+    };
+  }
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const zs: number[] = [];
+  for (const i of project.instances) for (const q of [i.from, i.to]) if (q) { xs.push(q.x); ys.push(q.y); zs.push(q.z); }
+  for (const p of project.panels) {
+    xs.push(p.position.x, p.position.x + p.size.width);
+    ys.push(p.position.y, p.position.y + p.size.height);
+    zs.push(p.position.z, p.position.z + p.size.depth);
+  }
+  const pad = project.instances.length ? Math.max(toPrimitive(item).width, 0.1) : 0;
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const overall = {
+    width: r1(Math.max(...xs) - Math.min(...xs) + pad),
+    height: r1(Math.max(...ys) + pad / 2),
+    depth: r1(Math.max(...zs) - Math.min(...zs) + pad),
+  };
+  const counts = new Map<string, number>();
+  for (const i of project.instances) if (i.role) counts.set(i.role, (counts.get(i.role) ?? 0) + 1);
+  for (const p of project.panels) {
+    const n = /wall/i.test(p.name) ? "wall" : /roof/i.test(p.name) ? "roof" : p.name.toLowerCase().split(" ").pop()!;
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  project = {
+    ...project,
+    name: built.label,
+    overall,
+    shape: {
+      classId: built.classId,
+      subject: built.subject,
+      pose: "stand",
+      bodyLength: 0,
+      parts: [...counts].map(([name, count]) => ({ name: name as never, count })),
+      params: built.params,
+    },
+    notes: [...built.notes, ...project.notes.filter((n) => !/^Form:|^Proportions from/.test(n))],
+  };
+  return enforceWeekendHonesty(withWireNote(project, item));
 }
 
 /** Typed size for a shape template: "tall/high" is height; any other typed size is the length. */
@@ -439,6 +537,7 @@ function projectFromGraph(
     join: g.join,
     from: g.from ? { x: g.from[0], y: g.from[1], z: g.from[2] } : undefined,
     to: g.to ? { x: g.to[0], y: g.to[1], z: g.to[2] } : undefined,
+    ...(g.face ? { face: { x: g.face[0], y: g.face[1], z: g.face[2] } } : {}),
   }));
   const stats = analyzePieces(instances, item);
   const useWhole = whole ?? isWholeStock(item);

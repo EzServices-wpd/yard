@@ -118,6 +118,25 @@ export function applyMemberPose(
     dummy.position.set(((from.x + to.x) / 2) * explode, (from.y + to.y) / 2, ((from.z + to.z) / 2) * explode);
     const axis = cylindrical ? _axisY : _axisX;
     const dot = axis.dot(_dir);
+    if (!cylindrical && inst.face) {
+      // Lay flat against the named face: thickness axis on the face normal, width in the face.
+      const n = new THREE.Vector3(inst.face.x, inst.face.y, inst.face.z);
+      n.addScaledVector(_dir, -n.dot(_dir));
+      if (n.lengthSq() > 1e-6) {
+        n.normalize();
+        const thickAxis = n;
+        const widthAxis = new THREE.Vector3().crossVectors(_dir, thickAxis);
+        // Scale below maps local Y → prim.height (thickness) for boxes, local Z → thickness for flat bars.
+        const m4 = new THREE.Matrix4();
+        if (flatBar) m4.makeBasis(_dir, widthAxis.clone().negate(), thickAxis);
+        else m4.makeBasis(_dir, thickAxis, widthAxis);
+        dummy.quaternion.setFromRotationMatrix(m4);
+        const length = span + pad * 2;
+        if (flatBar) dummy.scale.set(length, prim.width, prim.height);
+        else dummy.scale.set(length, prim.height, prim.width);
+        return;
+      }
+    }
     if (dot < -0.999) dummy.quaternion.setFromAxisAngle(_flip, Math.PI);
     else dummy.quaternion.setFromUnitVectors(axis, _dir);
     const length = span + pad * 2;

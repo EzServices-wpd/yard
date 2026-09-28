@@ -36,6 +36,7 @@ import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
+import { inspectTemplate } from "../src/lib/yard/formTemplates";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { isoCaption } from "../src/lib/yard/iso";
@@ -756,6 +757,31 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   const st = analyzePieces(t.instances, getCatalogItem(t.primaryMaterialId)!, { full: true });
   if (st.components !== 1 || st.loose) failWeekend(`lighthouse: ${p} not one connected piece`, st);
   if (Math.abs(H - (p.startsWith("4") ? 48 : 36)) > 1.5) failWeekend(`lighthouse: ${p} typed height lost`, t.overall);
+}
+// Small-house class (birdhouse): walls, floor, gable roof above the walls, entrance at the typed size, perch when asked.
+{
+  const cases: [string, "sticks" | "panels"][] = [
+    ["birdhouse from popsicle sticks", "sticks"],
+    ["birdhouse from popsicle sticks with a perch", "sticks"],
+    ["birdhouse from jumbo craft sticks with a 1 1/2 inch hole", "sticks"],
+    ["birdhouse from plywood with a 1 1/4 inch hole and a perch", "panels"],
+    ["cedar birdhouse from 1x6", "panels"],
+    ["birdhouse", "sticks"],
+  ];
+  const counts: number[] = [];
+  for (const [p, mode] of cases) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "small-house") failWeekend(`small-house: ${p} class`, b.shape);
+    if (mode === "sticks" ? !b.instances.length : !b.panels.length) failWeekend(`small-house: ${p} not ${mode}`);
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`small-house: ${p}`, iss);
+    if (b.instances.some((i) => i.cutLength != null) && /popsicle|craft/.test(p)) failWeekend(`small-house: ${p} cut craft sticks`);
+    counts.push(b.instances.length || b.panels.length);
+  }
+  const ply = generateFromPrompt("birdhouse from plywood with a 1 1/4 inch hole and a perch");
+  const hole = ply.panels.find((q) => q.name === "Front gable")?.polygon?.holes?.[0];
+  if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
+  if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
 }
 if (bindsDeterministically("bookcase 36 wide", generateFromPrompt("bookcase 36 wide"))) failWeekend("bookcase must stay open to the LLM form");
 if (!bindsDeterministically("dog from popsicle sticks", generateFromPrompt("dog from popsicle sticks"))) failWeekend("shape template not locked");
@@ -6915,6 +6941,8 @@ console.log("STRANGER PLAN OK", {
     "horse from popsicle sticks",
     "dog from 2x4",
     "dog from plywood",
+    "birdhouse from popsicle sticks with a perch",
+    "birdhouse from plywood with a 1 1/4 inch hole and a perch",
   ];
   const T = 1 / 32;
   const PART_NOUN = /\b(bottom|top|shel(?:f|ves)|divider|door|drawer|counter|kick|apron|leg|upright|stretcher|cleat|lid|seat|backrest|batten|mirror)s?\b/gi;
@@ -7048,6 +7076,8 @@ console.log("STRANGER PLAN OK", {
     "dog from popsicle sticks",
     "horse from popsicle sticks",
     "dog from plywood",
+    "birdhouse from popsicle sticks with a perch",
+    "birdhouse from plywood with a 1 1/4 inch hole and a perch",
   ];
   let cases = 0;
   for (const prompt of prompts) {

@@ -1,4 +1,5 @@
 import { oddCutName } from "./oddShapes";
+import { templateCutName } from "./formTemplates";
 /** Shop-plan plurals — avoid "shelfs" on a cut list. */
 export function shopPlural(label: string, qty: number): string {
   if (qty === 1) return label;
@@ -125,6 +126,8 @@ export function cutListName(name: string, type?: string): string {
   // Corner-unit class keeps its shape words on the cut list.
   const odd = oddCutName(name);
   if (odd) return odd;
+  const tmpl = templateCutName(name);
+  if (tmpl) return tmpl;
   if (/^triangle shelf/i.test(name)) return "Triangle shelf";
   if (/^quarter-round shelf/i.test(name)) return "Quarter-round shelf";
   if (/^wall panel\s+[ab]\b/i.test(name)) return name.replace(/^wall panel\s+([ab])\b.*$/i, (_m, l: string) => `Wall panel ${l.toUpperCase()}`);

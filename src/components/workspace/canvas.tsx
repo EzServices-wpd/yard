@@ -294,7 +294,7 @@ function CameraRig({
       const box = benchModelBox(projectRef.current);
       const base = benchView(projectRef.current, box);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
-      const faceX = !!projectRef.current.shape;
+      const faceX = projectRef.current.shape?.classId === "quadruped";
       const view =
         preset === "front"
           ? { azimuthDeg: faceX ? 90 : 0, elevationDeg: 8 }

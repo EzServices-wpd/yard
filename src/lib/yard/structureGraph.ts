@@ -24,7 +24,9 @@ export interface StructureEdge {
   join: JoinMethod;
   /** Structural importance for sequencing / warnings */
   critical?: boolean;
-  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support" | "skin" | import("./shapeTemplates").ShapePartName;
+  /** Lay the stick flat against this face (normal of the wall it belongs to). Omitted = default pose. */
+  face?: Vec3;
+  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support" | "skin" | import("./shapeTemplates").ShapePartName | import("./formTemplates").TemplatePartName;
 }
 
 export interface StructureGraph {
@@ -58,6 +60,7 @@ export interface GraphInstance {
   role?: string;
   from?: [number, number, number];
   to?: [number, number, number];
+  face?: [number, number, number];
 }
 
 function dist(a: Vec3, b: Vec3): number {
@@ -156,6 +159,7 @@ export function graphToInstances(
     id: string,
     cut?: number,
     critical = false,
+    faceN?: Vec3,
   ) => {
     const segLen = dist(a, b);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
@@ -176,6 +180,7 @@ export function graphToInstances(
       role,
       from: [a.x, a.y, a.z],
       to: [b.x, b.y, b.z],
+      ...(faceN ? { face: [faceN.x, faceN.y, faceN.z] as [number, number, number] } : {}),
     });
   };
 
@@ -186,6 +191,7 @@ export function graphToInstances(
     role: StructureEdge["role"],
     id: string,
     critical = false,
+    faceN?: Vec3,
   ) => {
     const length = dist(p0, p1);
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
@@ -208,7 +214,7 @@ export function graphToInstances(
       // joints — that is what made one popsicle pierce through another.
       // Canvas pad still seats the tip into the joint hub for a readable seam.
       if (length <= stock * 1.02) {
-        pushPiece(p0, p1, join, role, `${id}-s0`, undefined, critical);
+        pushPiece(p0, p1, join, role, `${id}-s0`, undefined, critical, faceN);
         return;
       }
 
@@ -222,7 +228,7 @@ export function graphToInstances(
         const a = along(p0, start);
         const b = along(p0, start + stock);
         if (s > 0) spliceCount += 1;
-        pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, undefined, critical);
+        pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, undefined, critical, faceN);
       }
       return;
     }
@@ -243,7 +249,7 @@ export function graphToInstances(
       const segLen = dist(a, b);
       const cut = canCut ? Math.min(segLen, stock) : undefined;
       if (s > 0) spliceCount += 1;
-      pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, cut, critical);
+      pushPiece(a, b, s > 0 ? "glue" : join, role, `${id}-s${s}`, cut, critical, faceN);
     }
   };
 
@@ -260,7 +266,7 @@ export function graphToInstances(
     const a = nodeMap.get(edge.from);
     const b = nodeMap.get(edge.to);
     if (!a || !b) continue;
-    emitRun(a.position, b.position, edge.join || defaultJoin, edge.role, edge.id, !!edge.critical);
+    emitRun(a.position, b.position, edge.join || defaultJoin, edge.role, edge.id, !!edge.critical, edge.face);
   }
 
   const joinSummary = [...joinCounts.entries()]
