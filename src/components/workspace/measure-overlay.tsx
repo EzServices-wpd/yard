@@ -43,6 +43,7 @@ export function MeasureOverlay() {
     <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
       <div
         data-yard-measure-chip={chip.mode}
+        data-bench-overlay="measure"
         className="pointer-events-auto flex max-w-lg flex-wrap items-end gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg backdrop-blur"
       >
         {round ? (

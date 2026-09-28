@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
+import { Edges } from "@react-three/drei";
 import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
@@ -42,29 +43,29 @@ export function PanelMesh({
   const item = getCatalogItem(panel.materialId);
   const look = stockLook(item);
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
-  const opacity = hasStep && !inStep ? 0.28 : glass ? 0.42 : 1;
-  const color =
-    hasStep && !inStep
-      ? "#b5a690"
-      : selected || inStep
-        ? "#fff6e6"
-        : look.map
-          ? "#f3e6cc"
-          : item?.color ?? "#c4a06a";
+  // Step view: this step's parts keep their real wood tone with a warm glow and orange edges;
+  // everything else steps back to a faint ghost so the lit parts read at a glance.
+  const ghost = hasStep && !inStep;
+  const opacity = ghost ? 0.16 : glass ? 0.42 : 1;
+  const color = ghost ? "#8a7c68" : look.map ? "#e9d6b4" : item?.color ?? "#c4a06a";
+  const glow = inStep ? 0.22 : selected ? 0.14 : 0;
+  const edgeColor = inStep ? "#e0782f" : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
   const isLid = isHingedLidPanel(panel);
-  if (hasStep && !inStep && (isDoor || isDrawer || isLid)) return null;
+  // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
+  const hiddenInStep = hasStep && !inStep && (isDoor || isDrawer || isLid);
 
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
   const fittedShape = useYard((s) => s.project.fitted?.unit?.shape);
   const stepTitle = plan?.instructions.find((s) => s.step === activeStep)?.title ?? "";
-  const allowSwing =
-    facesOpen &&
-    (activeStep == null || /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle));
+  // Doors, drawers and lids sit shut on the bench by default (the model as built). They swing open
+  // when you ask ("Open doors") or in the step that hangs them, so the hinge side reads.
+  const faceStep = activeStep != null && /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle);
+  const allowSwing = facesOpen ? activeStep == null || faceStep : faceStep && inStep;
   const open = allowSwing && !panel.yaw && (isDoor || isDrawer || isLid) && (!hasStep || inStep);
   const isLeft =
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
@@ -166,6 +167,7 @@ export function PanelMesh({
   }, [panel.outline, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
+  if (hiddenInStep) return null;
 
   return (
     <group position={groupPos} rotation={groupRot}>
@@ -194,8 +196,22 @@ export function PanelMesh({
             roughness={glass ? 0.08 : look.roughness}
             metalness={glass ? 0.22 : look.metalness}
             envMapIntensity={glass ? 1.4 : look.env}
+            emissive={glow ? "#ff8a3d" : "#000000"}
+            emissiveIntensity={glow}
             depthWrite={opacity > 0.5}
           />
+          {/* Thin dark outline on every panel so neighbouring parts read as separate pieces. */}
+          {!glass && (
+            <Edges
+              threshold={25}
+              color={edgeColor}
+              lineWidth={inStep ? 1.8 : 1}
+              transparent
+              opacity={ghost ? 0.35 : inStep ? 0.95 : 0.55}
+              depthWrite={false}
+              layers={1}
+            />
+          )}
         </mesh>
         {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
             scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}

@@ -337,12 +337,13 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           </>
         )}
 
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
           <MeasureOverlay />
           {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
           {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && (
             <div
+              data-bench-overlay="offer"
               className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg ${
                 grokBusy ? "top-14" : "top-4"
               }`}
@@ -364,6 +365,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             <div
               className="absolute left-1/2 top-3 z-20 w-[min(32rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-lg sm:top-4 sm:px-4 sm:py-3"
               data-yard-step-view={activeStep}
+              data-bench-overlay="step-card"
             >
               <p className="font-mono text-[11px] text-faint">
                 Viewing step {String(activeStep).padStart(2, "0")} of {String(steps.length).padStart(2, "0")}
@@ -398,7 +400,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           )}
 
           {!pending && !housePath && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
+          <div data-bench-overlay="modes" className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-2 sm:left-4">
             <ModeSwitch value={workMode} onChange={setWorkMode} canWalk={canWalk} />
             {stickModel && (
             <div className="pointer-events-auto flex overflow-hidden rounded-md border border-border bg-surface/90 text-xs backdrop-blur">
@@ -486,6 +488,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           {showLoad && showLoadBtn && !pending && (
             <div
               data-yard-load-panel="1"
+              data-bench-overlay="load"
               className="absolute left-3 top-36 z-20 w-[min(18rem,calc(100%-1.5rem))] rounded-md border border-border bg-surface/95 px-3 py-2 text-xs shadow-lg sm:left-4"
             >
               <p className="font-medium text-fg">
@@ -531,145 +534,148 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             </>
           )}
 
-          {steps.length > 0 && !pending && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-3 sm:bottom-20">
-              <div className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
-                <button
-                  type="button"
-                  className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30 sm:size-8"
-                  disabled={!steps.length}
-                  onClick={() => {
-                    const i = stepIndex < 0 ? 0 : Math.max(0, stepIndex - 1);
-                    setActiveStep(steps[i].step);
-                  }}
-                  aria-label="Previous step"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlanOpen(true)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <span className="font-mono text-faint">
-                    {activeStep ? String(activeStep).padStart(2, "0") : "—"} / {String(steps.length).padStart(2, "0")}
-                  </span>
-                  <span className="ml-2 truncate text-fg">
-                    {activeStep
-                      ? steps.find((s) => s.step === activeStep)?.title
-                      : "Step through the build"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="grid size-8 place-items-center text-muted hover:text-fg"
-                  onClick={() => {
-                    const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
-                    setActiveStep(steps[i].step);
-                  }}
-                  aria-label="Next step"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
+          {/* Bottom cards: on phones the step pill stacks above the size card instead of covering it. */}
+          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2 text-xs text-muted sm:block">
+            {steps.length > 0 && !pending && (
+              <div className="pointer-events-none z-10 flex justify-center sm:absolute sm:inset-x-0 sm:bottom-16 sm:px-3">
+                <div data-bench-overlay="step-pill" className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
+                  <button
+                    type="button"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30 sm:size-8"
+                    disabled={!steps.length}
+                    onClick={() => {
+                      const i = stepIndex < 0 ? 0 : Math.max(0, stepIndex - 1);
+                      setActiveStep(steps[i].step);
+                    }}
+                    aria-label="Previous step"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlanOpen(true)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="font-mono text-faint">
+                      {activeStep ? String(activeStep).padStart(2, "0") : "—"} / {String(steps.length).padStart(2, "0")}
+                    </span>
+                    <span className="ml-2 truncate text-fg">
+                      {activeStep
+                        ? steps.find((s) => s.step === activeStep)?.title
+                        : "Step through the build"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="grid size-8 place-items-center text-muted hover:text-fg"
+                    onClick={() => {
+                      const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
+                      setActiveStep(steps[i].step);
+                    }}
+                    aria-label="Next step"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
               </div>
+            )}
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div
+                data-yard-house={housePath ? "1" : "0"}
+                data-yard-pieces={pieceCount}
+                data-yard-kind={project.kind}
+                data-yard-mode={workMode}
+                data-yard-hull={showHull ? "1" : "0"}
+                data-yard-joints={project.buildStats?.joints ?? 0}
+                data-yard-loose={project.buildStats?.loose ?? 0}
+                data-yard-components={project.buildStats?.components ?? 0}
+                data-yard-form={showHistoric ? "1" : "0"}
+                data-yard-detail={detail}
+                data-yard-scale={buildScale}
+                data-yard-join={project.joinMethod ?? material?.preferredJoins?.[0] ?? ""}
+                data-yard-traverse={project.traverse?.kind ?? ""}
+                data-yard-load={project.assumptions.use ?? ""}
+                data-yard-deck={project.panels.some((p) => p.type === "deck") ? "1" : "0"}
+                data-yard-wire={wire ? "1" : "0"}
+                data-yard-flat={paperCraft ? "1" : "0"}
+                data-bench-overlay="hud"
+                className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
+              >
+                <p>
+                  {wire
+                    ? "Choose stock · open Stock panel"
+                    : nestSheetLabel
+                      ? nestSheetLabel
+                      : stockLabel !== "stock"
+                        ? stockLabel
+                        : material?.name ?? "No stock"}
+                  {pieceCount
+                    ? paperCraft
+                      ? ` · ${pieceCount} whole sticks · glue ends`
+                      : ` · ${pieceCount} pieces`
+                    : ""}
+                </p>
+                <p className="mt-0.5 text-faint">
+                  {(() => {
+                    const envelope = fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
+                      shape: project.fitted?.unit?.shape,
+                      prompt: project.prompt,
+                      name: project.name,
+                      legs: project.fitted?.unit?.legs,
+                    });
+                    const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
+                    // Bare opening-storage HUD: keep dash honesty; companion must not say "the unit".
+                    const companion = emptyTalk
+                      ? emptyTalk.hudCompanion
+                      : housePath
+                        ? " · the unit"
+                        : wire
+                          ? " · Skeleton only — pick a real material to densify"
+                          : workMode === "look"
+                            ? (() => {
+                                const mech = detectWeekendMech(project.prompt ?? "");
+                                // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
+                                return (
+                                  mech === "launcher" ||
+                                  mech === "media-hold" ||
+                                  mech === "climb" ||
+                                  mech === "pot-hold"
+                                )
+                                  ? ""
+                                  : " · Orbit";
+                              })()
+                            : workMode === "walk"
+                              ? " · On the road"
+                              : workMode === "build"
+                                ? " · Snap to the glow"
+                                : " · Drag · snap home";
+                    return (
+                      <>
+                        {envelope}
+                        {(() => {
+                          // Same model-derived depth as the PDF cover: doors / drawer fronts proud of the box.
+                          const proud = modelProudTalk(project.panels, project.overall.depth);
+                          return proud ? ` · ${proud}` : "";
+                        })()}
+                        {companion}
+                      </>
+                    );
+                  })()}
+                </p>
+                {hasFaces && (
+                  <button
+                    type="button"
+                    onClick={() => setFacesOpen(!facesOpen)}
+                    className="mt-1.5 rounded border border-border px-2 py-1 text-[11px] text-fg hover:bg-elevated"
+                  >
+                    {facesLabel}
+                  </button>
+                )}
+              </div>
+              <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
+                Clear bench
+              </button>
             </div>
-          )}
-
-          <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-2 text-xs text-muted">
-            <div
-              data-yard-house={housePath ? "1" : "0"}
-              data-yard-pieces={pieceCount}
-              data-yard-kind={project.kind}
-              data-yard-mode={workMode}
-              data-yard-hull={showHull ? "1" : "0"}
-              data-yard-joints={project.buildStats?.joints ?? 0}
-              data-yard-loose={project.buildStats?.loose ?? 0}
-              data-yard-components={project.buildStats?.components ?? 0}
-              data-yard-form={showHistoric ? "1" : "0"}
-              data-yard-detail={detail}
-              data-yard-scale={buildScale}
-              data-yard-join={project.joinMethod ?? material?.preferredJoins?.[0] ?? ""}
-              data-yard-traverse={project.traverse?.kind ?? ""}
-              data-yard-load={project.assumptions.use ?? ""}
-              data-yard-deck={project.panels.some((p) => p.type === "deck") ? "1" : "0"}
-              data-yard-wire={wire ? "1" : "0"}
-              data-yard-flat={paperCraft ? "1" : "0"}
-              className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
-            >
-              <p>
-                {wire
-                  ? "Choose stock · open Stock panel"
-                  : nestSheetLabel
-                    ? nestSheetLabel
-                    : stockLabel !== "stock"
-                      ? stockLabel
-                      : material?.name ?? "No stock"}
-                {pieceCount
-                  ? paperCraft
-                    ? ` · ${pieceCount} whole sticks · glue ends`
-                    : ` · ${pieceCount} pieces`
-                  : ""}
-              </p>
-              <p className="mt-0.5 text-faint">
-                {(() => {
-                  const envelope = fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
-                    shape: project.fitted?.unit?.shape,
-                    prompt: project.prompt,
-                    name: project.name,
-                    legs: project.fitted?.unit?.legs,
-                  });
-                  const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
-                  // Bare opening-storage HUD: keep dash honesty; companion must not say "the unit".
-                  const companion = emptyTalk
-                    ? emptyTalk.hudCompanion
-                    : housePath
-                      ? " · the unit"
-                      : wire
-                        ? " · Skeleton only — pick a real material to densify"
-                        : workMode === "look"
-                          ? (() => {
-                              const mech = detectWeekendMech(project.prompt ?? "");
-                              // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
-                              return (
-                                mech === "launcher" ||
-                                mech === "media-hold" ||
-                                mech === "climb" ||
-                                mech === "pot-hold"
-                              )
-                                ? ""
-                                : " · Orbit";
-                            })()
-                          : workMode === "walk"
-                            ? " · On the road"
-                            : workMode === "build"
-                              ? " · Snap to the glow"
-                              : " · Drag · snap home";
-                  return (
-                    <>
-                      {envelope}
-                      {(() => {
-                        // Same model-derived depth as the PDF cover: doors / drawer fronts proud of the box.
-                        const proud = modelProudTalk(project.panels, project.overall.depth);
-                        return proud ? ` · ${proud}` : "";
-                      })()}
-                      {companion}
-                    </>
-                  );
-                })()}
-              </p>
-              {hasFaces && (
-                <button
-                  type="button"
-                  onClick={() => setFacesOpen(!facesOpen)}
-                  className="mt-1.5 rounded border border-border px-2 py-1 text-[11px] text-fg hover:bg-elevated"
-                >
-                  {facesLabel}
-                </button>
-              )}
-            </div>
-            <button type="button" onClick={reset} className="pointer-events-auto text-faint hover:text-muted">
-              Clear bench
-            </button>
           </div>
         </div>
       </div>

@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Grid, Line, OrbitControls, ContactShadows, Environment } from "@react-three/drei";
+import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
-import { hasHistoricProfile, historicStrokes, homeOf, hullStrokes } from "@/lib/yard/ghost";
+import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/ghost";
+import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
@@ -14,6 +15,13 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
+const BENCH_BG = "#1a1612";
+/**
+ * Fat lines (ghost opening, panel outlines) live on their own layer: the main camera sees them,
+ * but the contact-shadow camera does not. Rendered with its depth material a line mesh becomes big
+ * solid quads, which drew a hard dark square on the floor.
+ */
+export const LINE_LAYER = 1;
 const HIST = "#d7cbb6";
 
 function StudioLights({
@@ -29,13 +37,16 @@ function StudioLights({
   const span = Math.max(W, H, D);
   const fitted = project.panels.length > 0;
   const camSpan = Math.max(span * 0.75, 36);
+  // Key light from front-left and high, a cool fill from the right, a warm rim from behind:
+  // front faces read bright, the side you see from the 3/4 camera sits a step darker, so
+  // shelves, dividers and edges separate instead of washing into one flat tone.
   return (
     <>
-      <ambientLight intensity={fitted ? 0.28 : 0.28} />
-      <hemisphereLight args={["#ffe8c8", "#2a2218", fitted ? 0.36 : 0.48]} />
+      <ambientLight intensity={0.12} />
+      <hemisphereLight args={["#fff1dc", "#1a140e", fitted ? 0.3 : 0.4]} />
       <directionalLight
-        position={[span * 0.55, Math.max(H * 1.25, 48), span * 0.42]}
-        intensity={fitted ? 1.55 : 1.35}
+        position={[-span * 0.62, Math.max(H * 1.35, 48), span * 0.95]}
+        intensity={fitted ? 2.1 : 1.8}
         color="#fff3e0"
         castShadow={useShadows}
         shadow-mapSize={fitted ? [2048, 2048] : [1024, 1024]}
@@ -48,17 +59,42 @@ function StudioLights({
         shadow-camera-top={camSpan}
         shadow-camera-bottom={-camSpan}
       />
-      <directionalLight position={[-span * 0.65, H * 0.42, -span * 0.35]} intensity={fitted ? 0.38 : 0.28} color="#a8c0dc" />
-      <directionalLight position={[span * 0.12, H * 0.85, -span * 0.75]} intensity={0.22} color="#ffd7a8" />
-      <ContactShadows
-        position={[0, 0.015, 0]}
-        opacity={fitted ? 0.56 : 0.42}
-        scale={Math.max(W, D) * 2.6 + 18}
-        blur={fitted ? 1.55 : 2.3}
-        far={Math.max(H * 0.35, 20)}
-        color="#0c0a08"
-      />
+      <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? 0.42 : 0.34} color="#b4c6de" />
+      <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={0.3} color="#ffd7a8" />
+      <FootprintShadow project={project} />
     </>
+  );
+}
+
+/** Soft grounding shadow under the model's footprint (from the solved model's box). */
+let footprintTex: THREE.CanvasTexture | null = null;
+function footprintTexture() {
+  if (footprintTex || typeof document === "undefined") return footprintTex;
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  if (!g) return null;
+  const grad = g.createRadialGradient(64, 64, 10, 64, 64, 64);
+  grad.addColorStop(0, "rgba(0,0,0,1)");
+  grad.addColorStop(0.55, "rgba(0,0,0,0.75)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  footprintTex = new THREE.CanvasTexture(c);
+  return footprintTex;
+}
+
+function FootprintShadow({ project }: { project: YardProject }) {
+  const box = useMemo(() => benchModelBox(project), [project]);
+  const tex = footprintTexture();
+  if (!tex) return null;
+  const w = box.maxX - box.minX, d = box.maxZ - box.minZ;
+  const pad = Math.max(6, Math.min(w, d) * 0.35);
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(box.minX + box.maxX) / 2, 0.02, (box.minZ + box.maxZ) / 2]} renderOrder={1}>
+      <planeGeometry args={[w + pad * 2, d + pad * 2]} />
+      <meshBasicMaterial map={tex} transparent opacity={0.62} depthWrite={false} color="#000000" />
+    </mesh>
   );
 }
 
@@ -89,8 +125,19 @@ function StepCapture() {
       if (cancelled) return;
       tries.current += 1;
       try {
+        // The live camera is shifted so the model clears the UI cards; a photo has no cards,
+        // so render it centred, then put the shift back.
+        const cam = camera as THREE.PerspectiveCamera;
+        const view = cam.view ? { ...cam.view } : null;
+        if (view?.enabled) {
+          cam.clearViewOffset();
+        }
         gl.render(scene, camera);
         const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.92);
+        if (view?.enabled) {
+          cam.setViewOffset(view.fullWidth, view.fullHeight, view.offsetX, view.offsetY, view.width, view.height);
+          gl.render(scene, camera);
+        }
         if (dataUrl?.startsWith("data:image") && dataUrl.length > 1200) {
           attachStepImage(activeStep!, dataUrl);
           last.current = activeStep!;
@@ -154,7 +201,7 @@ export function WorkspaceCanvas() {
           preserveDrawingBuffer: true,
           powerPreference: "default",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.08,
+          toneMappingExposure: 0.98,
         }}
         frameloop="always"
         dpr={[1, 1.75]}
@@ -164,15 +211,17 @@ export function WorkspaceCanvas() {
           gl.outputColorSpace = THREE.SRGBColorSpace;
           scene.background = new THREE.Color("#1a1612");
           cam.lookAt(0, 14, 0);
+          cam.layers.enable(LINE_LAYER);
         }}
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        <Environment preset="warehouse" environmentIntensity={0.88} background={false} />
+        <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
         <StudioLights project={project} useShadows={useShadows} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-          <planeGeometry args={[240, 240]} />
-          <meshStandardMaterial color="#2a241c" roughness={0.9} metalness={0} />
+        {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+          <planeGeometry args={[6000, 6000]} />
+          <meshStandardMaterial color="#231d17" roughness={0.95} metalness={0} />
         </mesh>
         <BenchScene
           project={project}
@@ -197,7 +246,7 @@ export function WorkspaceCanvas() {
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} />
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
       </Canvas>
@@ -205,102 +254,89 @@ export function WorkspaceCanvas() {
   );
 }
 
-function focusOf(project: YardProject, stepIds?: string[]) {
-  const hot = new Set(stepIds ?? []);
-  if (project.instances.length) {
-    const list = hot.size ? project.instances.filter((i) => hot.has(i.id)) : project.instances;
-    const use = list.length ? list : project.instances;
-    let x = 0, y = 0, z = 0;
-    for (const i of use) {
-      const p = homeOf(i);
-      x += p.x; y += p.y; z += p.z;
-    }
-    const n = use.length;
-    return { x: x / n, y: y / n, z: z / n };
-  }
-  return { x: 0, y: Math.max(project.overall.height, 12) * 0.4, z: 0 };
+/** Canvas-relative rects of the UI cards floating over the bench (marked data-bench-overlay). */
+function overlayRects(canvas: HTMLCanvasElement): Rect[] {
+  const host = canvas.closest("[data-bench-host]") ?? canvas.parentElement?.parentElement?.parentElement;
+  if (!host) return [];
+  const c = canvas.getBoundingClientRect();
+  const out: Rect[] = [];
+  host.querySelectorAll<HTMLElement>("[data-bench-overlay]").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return;
+    const st = window.getComputedStyle(el);
+    if (st.visibility === "hidden" || st.display === "none" || Number(st.opacity) === 0) return;
+    out.push({ left: r.left - c.left, top: r.top - c.top, right: r.right - c.left, bottom: r.bottom - c.top });
+  });
+  return out;
 }
 
 function CameraRig({
-  project, preset, stepIds, locked,
+  project, preset, stepIds, locked, overlayKey,
 }: {
   project: YardProject;
   preset: "iso" | "front" | "side" | "top";
   stepIds: string[];
   locked: boolean;
+  overlayKey: string;
 }) {
-  const { camera, controls } = useThree();
+  const { camera, controls, gl, size, scene } = useThree();
+  const projectRef = useRef(project);
+  projectRef.current = project;
   useEffect(() => {
     if (locked) return;
-    const isFlat = !!project.flat && !project.flat.lifted;
-    const eiffel = project.kind === "eiffel";
-    const table = project.fitted?.program === "table";
-    const fitted = project.panels.length > 0 && !eiffel && !isFlat;
-    const h = Math.max(project.overall.height, isFlat ? 6 : 12);
-    const fit = Math.max(h, project.overall.width, project.overall.depth, isFlat ? 8 : 12);
-    const dist = eiffel
-      ? Math.max(h * 0.62, project.overall.width * 1.15) * 2.05
-      : table
-        ? fit * 1.72
-        : fitted
-          ? fit * (project.fitted?.unit?.odd ? 1.7 : 1.42)
-          : fit * (isFlat ? 1.35 : 1.55);
-    const focus0 = focusOf(project, stepIds);
-    // Odd shapes / corner units fill their footprint (z 0…depth), not a slab against the back wall.
-    const shaped = !!project.fitted?.unit?.odd || !!project.fitted?.unit?.corner;
-    const focus = shaped && !stepIds.length ? { ...focus0, z: project.overall.depth / 2 } : focus0;
-    const fy = isFlat
-      ? Math.max(focus.y, h * 0.35)
-      : eiffel
-        ? h * 0.28
-        : table
-          ? h * 0.48
-          : fitted
-            ? h * 0.42
-            : focus.y;
-    // Corner builds (inside/outside corner, L-footprint, diagonal front) open toward +x/+z —
-    // look straight down the corner diagonal (≈45°) so both walls' runs read.
-    const oddKind = project.fitted?.unit?.odd?.kind;
-    const cornerish =
-      !!project.fitted?.unit?.corner ||
-      oddKind === "l-footprint" ||
-      oddKind === "corner-diagonal" ||
-      oddKind === "angled-corner" ||
-      oddKind === "outside-corner";
-    const presets: Record<typeof preset, [number, number, number]> = {
-      iso: cornerish && fitted
-        ? [focus.x + dist * 0.9, Math.max(h * 0.62, fy + dist * 0.32), focus.z + dist * 0.9]
-        : isFlat
-        ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
-        : eiffel
-          ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]
-          : table
-            ? [focus.x + dist * 0.78, fy + dist * 0.28, focus.z + dist * 0.78]
-            : fitted
-              ? [focus.x + dist * 0.55, h * 0.42, focus.z + dist * 1.18]
-              : [focus.x + dist * 0.92, focus.y * 0.55 + 8, focus.z + dist * 0.92],
-      front: [
-        focus.x,
-        table ? Math.max(h * 0.22, fy * 0.55) : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
-        focus.z + dist * (isFlat ? 1.05 : table ? 1.12 : eiffel ? 1.05 : 1.28),
-      ],
-      side: [
-        focus.x + dist * (isFlat ? 1.05 : table ? 1.05 : eiffel ? 1.05 : 1.28),
-        table ? Math.max(h * 0.22, fy * 0.55) : eiffel ? h * 0.22 : fitted ? h * 0.45 : fy,
-        focus.z,
-      ],
-      top: [focus.x, fy + fit * (isFlat ? 1.15 : table ? 1.05 : 1.35), focus.z + 0.01],
+    let cancelled = false;
+    const fit = () => {
+      if (cancelled) return;
+      const cam = camera as THREE.PerspectiveCamera;
+      const viewport = { w: size.width, h: size.height };
+      if (viewport.w < 10 || viewport.h < 10) return;
+      // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
+      const box = benchModelBox(projectRef.current);
+      const base = benchView(projectRef.current, box);
+      const view =
+        preset === "front"
+          ? { azimuthDeg: 0, elevationDeg: 8 }
+          : preset === "side"
+            ? { azimuthDeg: 90, elevationDeg: 8 }
+            : preset === "top"
+              ? { azimuthDeg: 0.01, elevationDeg: 89 }
+              : base;
+      const overlays = overlayRects(gl.domElement);
+      const frame = fitBench({ box, view, viewport, overlays, fovDeg: cam.fov });
+      cam.setViewOffset(viewport.w, viewport.h, frame.viewOffset.x, frame.viewOffset.y, viewport.w, viewport.h);
+      cam.near = Math.max(0.1, frame.distance / 200);
+      cam.far = frame.distance * 30;
+      cam.position.set(...frame.position);
+      const tgt = new THREE.Vector3(...frame.target);
+      cam.lookAt(tgt);
+      cam.updateProjectionMatrix();
+      const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void; minDistance?: number; maxDistance?: number } | null;
+      if (orbit?.target) {
+        orbit.target.copy(tgt);
+        orbit.minDistance = Math.max(2, frame.distance * 0.15);
+        orbit.maxDistance = frame.distance * 4;
+        orbit.update?.();
+      }
+      // Floor fades into the background well past the model — no hard floor edge.
+      const bg = new THREE.Color(BENCH_BG);
+      scene.fog = new THREE.Fog(bg, frame.distance * 1.6, frame.distance * 4.2);
+      // Live framing report (read by the bench sweep): real camera projection of the model box.
+      const pts = boxCorners(box).map(([x, y, z]) => {
+        const v = new THREE.Vector3(x, y, z).project(cam);
+        return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
+      });
+      (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset };
     };
-    const [x, y, z] = presets[preset];
-    camera.position.set(x, y, z);
-    const tgt = new THREE.Vector3(focus.x, fy, focus.z);
-    camera.lookAt(tgt);
-    const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
-    if (orbit?.target) {
-      orbit.target.copy(tgt);
-      orbit.update?.();
-    }
-  }, [preset, project.id, project.overall, project.instances.length, project.fitted?.program, project.flat, stepIds.join("|"), camera, controls, locked]);
+    // Let the overlay cards lay out first, then fit.
+    const t1 = window.setTimeout(fit, 60);
+    const t2 = window.setTimeout(fit, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+    // stepIds drive the step card (an overlay), so re-fit when the step changes.
+  }, [preset, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey]);
   return null;
 }
 
@@ -308,7 +344,7 @@ function GhostLines({ strokes, color }: { strokes: ReturnType<typeof hullStrokes
   return (
     <group>
       {strokes.map((s, i) => (
-        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.4 : 0.8} transparent opacity={s.weight === "main" ? 0.55 : 0.32} depthWrite={false} />
+        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.1 : 0.7} transparent opacity={s.weight === "main" ? 0.18 : 0.08} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
@@ -327,7 +363,7 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   return (
     <group>
       {pts.map((p, i) => (
-        <Line key={i} points={p} color="#c4b49a" lineWidth={1.2} transparent opacity={0.7} depthWrite={false} />
+        <Line key={i} points={p} color="#c4b49a" lineWidth={1} transparent opacity={0.38} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );

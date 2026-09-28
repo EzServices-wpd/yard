@@ -106,7 +106,7 @@ export const useYard = create<YardState>((set, get) => ({
   plan: null,
   selectedId: null,
   explode: false,
-  facesOpen: true,
+  facesOpen: false,
   camera: "iso",
   showDims: true,
   showHull: false,
@@ -180,6 +180,7 @@ export const useYard = create<YardState>((set, get) => ({
     }
     const next = generateFromPrompt(used, materialId, form, genOpts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
+    // The wall opening stays as a faint outline (context for where the unit sits).
     if (next.pocket) flags.showHull = true;
     if (next.fitted?.opening.kind === "alcove") flags.showHull = true;
     get().commit(next);
@@ -193,7 +194,7 @@ export const useYard = create<YardState>((set, get) => ({
       lockedIds: [],
       dragPos: null,
       selectedId: null,
-      facesOpen: true,
+      facesOpen: false,
       measure: next.pocket
         ? {
             width: String(next.pocket.unit.width),
