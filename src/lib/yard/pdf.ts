@@ -34,6 +34,53 @@ export function slugPlan(name: string) {
 
 type StepKind = "prep" | "cut" | "build";
 
+type Axis = "width" | "height" | "depth";
+const AXIS_WORD: Record<Axis, string> = { width: "wide", height: "tall", depth: "deep" };
+
+/**
+ * Typed-axes honesty for the PDF (same rule as the engine's class-default densify):
+ * typed axes print plainly; untyped axes read from the build's "Assumed …" notes are marked assumed.
+ * A prompt with no numbers at all (stock design size) is all assumed.
+ */
+export function typedAxesTalk(project: YardProject, craft = false) {
+  const o = project.overall;
+  const prompt = project.prompt ?? "";
+  const name = clean(project.name) || "Yard plan";
+  const assumed: Partial<Record<Axis, boolean>> = {};
+  const extra: string[] = [];
+  const axisOf = (w: string): Axis => (/wide/i.test(w) ? "width" : /tall/i.test(w) ? "height" : "depth");
+  for (const n of project.notes ?? []) {
+    const m = String(n).trim().match(/^Assumed\s+(\d+(?:\.\d+)?)\s*(?:"|″|in)?\s*(wide|tall|deep)\b(?:\s*\(([^)]*)\))?/i);
+    if (!m) continue;
+    const axis = axisOf(m[2]);
+    const v = parseFloat(m[1]);
+    if (Math.abs(v - o[axis]) < 0.5) assumed[axis] = true;
+    // An assumed part size that is not the overall (L-desk wing depth) names its part: "desk 24" deep".
+    else extra.push(`${m[3] ? `${clean(m[3]).replace(/\s*(?:class\s+)?default$/i, "")} ` : ""}${frac(v)} ${AXIS_WORD[axis]}`);
+  }
+  const noDigits = !/\d/.test(prompt);
+  const stock = noDigits && !Object.keys(assumed).length && !extra.length;
+  if (stock) (["width", "height", "depth"] as Axis[]).forEach((a) => (assumed[a] = true));
+  const axes: Axis[] = ["width", "height", "depth"];
+  const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(o[a])} ${AXIS_WORD[a]}`);
+  const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(o[a])} ${AXIS_WORD[a]}`);
+  const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+  const assumedList = [...guessed, ...extra];
+  const assumedTalk = !assumedList.length
+    ? ""
+    : craft && stock
+      ? "design size, nothing typed"
+      : `${list(assumedList)} assumed, measure to lock`;
+  const subtitle =
+    craft && stock
+      ? `About ${guessed.join(" x ")} · ${assumedTalk}`
+      : [typed.join(" x "), assumedTalk].filter(Boolean).join(" · ");
+  // Title never stamps an untyped stock size: "Nightstand 20" × 24" × 16"" from a bare prompt → "Nightstand".
+  const title = stock && /\d/.test(name) ? name.replace(/\s*\d.*$/, "").trim() || name : name;
+  const assumedShort = assumedList.length ? (craft && stock ? "design size" : `${list(assumedList)} assumed`) : "";
+  return { title, subtitle: clean(subtitle), assumed, assumedTalk, assumedShort };
+}
+
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
   { term: "Dry-fit", def: "Assemble without glue first to check fit and square before you commit." },
@@ -53,7 +100,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const W = R - L;
   const TOP = GRID.top;
   const BOTTOM = pageH - GRID.bottom;
-  const title = clean(project.name) || "Yard plan";
+  const craft0 = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
+  const sizing = typedAxesTalk(project, craft0);
+  const title = sizing.title;
   const craft = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
   const letters = partLetters(project, plan.cutList);
   const sections: string[] = [""];
@@ -117,9 +166,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       legs: project.fitted?.unit?.legs,
     }),
   );
-  const envelope = /dia|round/i.test(envelopeTalk)
-    ? envelopeTalk
-    : `${frac(project.overall.width)} wide x ${frac(project.overall.height)} tall x ${frac(project.overall.depth)} deep`;
+  // Typed axes print plainly; axes the stranger never typed are marked assumed (shared densify rule).
+  const envelope = /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
 
   // ── what the build needs, read from the plan itself
   const hay = `${project.prompt ?? ""} ${project.name} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
@@ -173,16 +221,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   font(28, "bold");
   tl.forEach((ln, i) => doc.text(ln, L, y + 26 + i * 32));
   y += tl.length * 32 + 8;
-  font(13, "normal", KIT.muted);
-  doc.text(envelope, L, y + 12);
-  y += 22;
+  y += textBlock(envelope, L, y, W, 13, "normal", KIT.muted, 16) + 6;
   const speciesTalk = speciesStockHonestyTalk(project.prompt ?? "", '3/4" plywood');
   if (speciesTalk) y += textBlock(speciesTalk, L, y, W, 9, "italic", KIT.muted) + 2;
   const heroH = Math.max(250, 470 - y + 72);
   const hero: Frame = { x: L, y: y + 6, w: W, h: heroH };
   doc.setFillColor(...KIT.paper);
   doc.roundedRect(hero.x, hero.y, hero.w, hero.h, 6, 6, "F");
-  renderProject(doc, project, hero, { tones: allTones("built"), dims: true, pad: 30 });
+  renderProject(doc, project, hero, { tones: allTones("built"), dims: true, assumedAxes: sizing.assumed, pad: 30 });
   y = hero.y + hero.h + 14;
   // Info boxes
   const info: [string, string][] = [
@@ -485,14 +531,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   // ═════════════════════════ BUILD STEPS
   const placed = new Set<string>();
   const tallBuild = projectAspect(project) < 1.3;
-  const stepKind = (s: AssemblyStep, ids: string[]): StepKind => {
-    const t = clean(s.title).toLowerCase();
-    if (/^(confirm|read|measure|check the|mark|lay out)\b|do not cut yet|before you/.test(t)) return "prep";
-    if (/^(cut|rip|trim)\b|\bcut (the|all|every|\d)|stay whole|\bdo not cut\b/.test(t) && !/^(screw|glue|attach)/.test(t)) return "cut";
-    if (!ids.length) return "prep";
-    if ((s.partsUsed ?? []).includes("*") && /confirm|read|measure|check|lay out|mark|before/.test(t)) return "prep";
-    return "build";
-  };
+  const stepParts = planStepParts(project, plan.instructions, letters);
   const hwChips = (s: AssemblyStep) => {
     const out: string[] = [];
     const re = /(\d+)\s+(?:structural\s+|wood\s+|pocket\s+|concealed\s+)?(screws?|hinges?|nails?|brads?|pulls?|knobs?|slides?|pins?|brackets?|clamps?)\b/gi;
@@ -513,14 +552,17 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     newPage("Build");
     sectionTitle("Build", craft ? "Orange is what you add in the step. Grey is already glued." : "Orange is what you add in the step. Grey is already built. Letters match the parts plate.");
   }
-  for (const s of steps) {
-    const ids = stepInstanceIds(project, s);
-    const kind = stepKind(s, ids);
+  steps.forEach((s, si) => {
+    const sp = stepParts[si];
+    const ids = sp.ids;
+    const kind = sp.kind;
     const tones = new Map<string, Tone>();
     const hotIds: string[] = [];
+    let refIds: string[] = [];
     if (kind === "build") {
-      let hot = ids.filter((id) => !placed.has(id));
-      if (!hot.length) {
+      let hot = sp.fresh;
+      if (!sp.said && !hot.length) {
+        // Words name nothing new: light the parts the title names, if any.
         const t = clean(s.title).toLowerCase();
         hot = ids.filter((id) => {
           const p = project.panels.find((q) => q.id === id);
@@ -529,12 +571,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
           return t.includes(fam) || t.includes(p.name.toLowerCase());
         });
       }
-      for (const id of placed) tones.set(id, "ghost");
-      for (const id of ids) if (!tones.has(id)) tones.set(id, "ghost");
+      const drawn = sp.said ? new Set([...placed, ...sp.fresh, ...sp.onto]) : new Set([...placed, ...ids]);
+      for (const id of drawn) tones.set(id, "ghost");
       for (const id of hot) tones.set(id, "hot");
       if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
       hotIds.push(...hot);
-      ids.forEach((id) => placed.add(id));
+      // Grey "to" bubbles only when the step adds something onto them.
+      if (hot.length) refIds = sp.onto;
+      drawn.forEach((id) => placed.add(id));
     }
     // Callout row: part letters with counts.
     const counts = new Map<string, number>();
@@ -549,6 +593,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         }
       }
     }
+    const refLetters = [...new Set(refIds.map((id) => letters.get(id)).filter((x): x is string => !!x && !counts.has(x)))].sort();
     const cutLines =
       kind === "cut"
         ? (() => {
@@ -567,8 +612,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const sentLines = sents.map((t) => wrap(t, bodyW - 14, 10.5));
     const tipLines = s.tips ? wrap(`Tip: ${s.tips}`, bodyW - 14, 9.5, "italic") : [];
     const textH = sentLines.reduce((a, l) => a + l.length * 14 + 3, 0) + (tipLines.length ? tipLines.length * 13 + 6 : 0);
-    const calloutRows = side ? Math.ceil((counts.size + chips.length) / 4) : 1;
-    const calloutH = counts.size || chips.length ? 30 * calloutRows : 0;
+    const calloutRows = side ? Math.ceil((counts.size + chips.length + (refLetters.length ? refLetters.length / 2 + 0.5 : 0)) / 4) : 1;
+    const calloutH = counts.size || chips.length || refLetters.length ? 30 * calloutRows : 0;
     const headH = 34;
     let picH = side ? 280 : 250;
     const bodyH = (h: number) => (side ? Math.max(h, calloutH + textH) : h + 8 + calloutH + textH);
@@ -594,7 +639,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     if (kind === "cut") {
       drawPartsPlate(doc, project, cutLines, letters, { x: frame.x + 10, y: frame.y + 8, w: frame.w - 20, h: frame.h - 14 }, craft, true);
     } else if (kind === "prep") {
-      renderProject(doc, project, frame, { tones: allTones("built"), dims: true, pad: 26 });
+      renderProject(doc, project, frame, { tones: allTones("built"), dims: true, assumedAxes: sizing.assumed, pad: 26 });
     } else {
       renderProject(doc, project, frame, { tones, fitIds: allIds, letters, pad: 26 });
     }
@@ -617,6 +662,19 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
         font(11, "bold");
         doc.text(`x${n}`, cx + 21, cy + 15);
         cx += w;
+      }
+      if (refLetters.length) {
+        // Parts already built that this step joins onto: grey bubbles after a small "to".
+        font(9, "normal", KIT.muted);
+        const tw0 = doc.getTextWidth("to") + 6;
+        wrapRow(tw0 + refLetters.length * 22);
+        doc.text("to", cx, cy + 15);
+        cx += tw0;
+        for (const Lt of refLetters) {
+          drawBubble(doc, cx + 9, cy + 11, Lt, 8.5, true);
+          cx += 22;
+        }
+        cx += 8;
       }
       for (const chip of chips) {
         font(9, "bold");
@@ -652,7 +710,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       doc.setLineWidth(0.5);
       doc.line(L, y - 6, R, y - 6);
     }
-  }
+  });
 
   // ═════════════════════════ CHECK IT
   newPage("Check it");
@@ -660,7 +718,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const finish: Frame = { x: L, y, w: W, h: 200 };
   doc.setFillColor(...KIT.paper);
   doc.roundedRect(finish.x, finish.y, finish.w, finish.h, 6, 6, "F");
-  renderProject(doc, project, finish, { tones: allTones("built"), dims: true, pad: 22 });
+  renderProject(doc, project, finish, { tones: allTones("built"), dims: true, assumedAxes: sizing.assumed, pad: 22 });
   y += finish.h + 16;
   const tests: [string, string][] = [];
   if (craft) {
@@ -732,11 +790,17 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const pages = doc.getNumberOfPages();
   for (let i = 2; i <= pages; i++) {
     doc.setPage(i);
-    font(8, "bold", KIT.muted);
-    const head = title.length > 70 ? `${title.slice(0, 68)}...` : title;
-    doc.text(head.toUpperCase(), L, 40);
+    const sec = (sections[i - 1] || "").toUpperCase();
     font(8, "normal", KIT.muted);
-    doc.text((sections[i - 1] || "").toUpperCase(), R, 40, { align: "right" });
+    const room0 = W - doc.getTextWidth(sec) - 24;
+    font(8, "bold", KIT.muted);
+    // Running header: honest title, plus the assumed axes so no page reads them as typed.
+    let head = (sizing.assumedShort ? `${title} · ${sizing.assumedShort}` : title).toUpperCase();
+    if (doc.getTextWidth(head) > room0) head = title.toUpperCase();
+    while (head.length > 8 && doc.getTextWidth(head) > room0) head = `${head.slice(0, -4).trimEnd()}...`;
+    doc.text(head, L, 40);
+    font(8, "normal", KIT.muted);
+    doc.text(sec, R, 40, { align: "right" });
     doc.setDrawColor(...KIT.rule);
     doc.setLineWidth(0.6);
     doc.line(L, 47, R, 47);
@@ -752,6 +816,99 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(`${i} / ${pages}`, R, pageH - 28, { align: "right" });
   }
   return doc;
+}
+
+// ───────────────────────── step mentions ─────────────────────────
+
+const singular = (w: string) => w.toLowerCase().replace(/ies$/, "y").replace(/ves$/, "f").replace(/(?<=[a-z]{3})s$/, "");
+const escapeRe = (x: string) => x.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
+
+export function stepKindOf(s: AssemblyStep, ids: string[]): StepKind {
+  const t = clean(s.title).toLowerCase();
+  if (/^(confirm|read|measure|check the|mark|lay out)\b|do not cut yet|before you/.test(t)) return "prep";
+  if (/^(cut|rip|trim)\b|\bcut (the|all|every|\d)|stay whole|\bdo not cut\b/.test(t) && !/^(screw|glue|attach)/.test(t)) return "cut";
+  if (!ids.length) return "prep";
+  if ((s.partsUsed ?? []).includes("*") && /confirm|read|measure|check|lay out|mark|before/.test(t)) return "prep";
+  return "build";
+}
+
+type StepParts = { ids: string[]; kind: StepKind; fresh: string[]; onto: string[]; said: boolean };
+
+/**
+ * Which parts each build step's words install (fresh, drawn orange) and which placed parts it
+ * joins onto (onto, drawn grey). A part is new only in the step whose words install it:
+ * lettered talk ("A Back", "E and F uprights", "E Left upright"), full part names, and the
+ * "attach X to Y with" join clause decide it. A part the words list but a later join installs
+ * waits for that step; a part no step ever names is installed in the first step that holds it.
+ */
+export function planStepParts(project: YardProject, steps: AssemblyStep[], letters: Map<string, string>): StepParts[] {
+  const byId = new Map(project.panels.map((p) => [p.id, p]));
+  const base = (name: string) => name.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+\d+$/, "").replace(/\s+/g, " ").trim();
+  const head = (name: string) => singular(base(name).replace(/\s+[A-Z]$/, "").split(/\s+/).pop() ?? "");
+  const info = steps.map((s) => {
+    const ids = stepInstanceIds(project, s);
+    const kind = stepKindOf(s, ids);
+    const panels = ids.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+    const text = clean(`${s.title}. ${s.description}`);
+    const letteredRe = /\b([A-Z]{1,2})((?:\s*(?:,|and|&)\s*[A-Z]{1,2}\b)*)\s+([A-Za-z]+)(?:\s+([A-Za-z]+))?/g;
+    const letteredHits = (chunk: string) => {
+      const hit = new Set<string>();
+      let m: RegExpExecArray | null;
+      letteredRe.lastIndex = 0;
+      while ((m = letteredRe.exec(chunk))) {
+        const group = [m[1], ...(m[2].match(/[A-Z]{1,2}/g) ?? [])];
+        const words = [m[3], m[4]].filter((w): w is string => !!w).map(singular);
+        for (const p of panels) {
+          const Lt = letters.get(p.id);
+          const fam = head(cutListName(p.name, p.type));
+          if (Lt && group.includes(Lt) && words.some((w) => w === fam || w === head(p.name))) hit.add(p.id);
+        }
+      }
+      return hit;
+    };
+    const lettered = letteredHits(text);
+    const textHasLetters = lettered.size > 0;
+    const named = (chunk: string) => {
+      const hit = letteredHits(chunk);
+      const low = chunk.toLowerCase();
+      for (const p of panels) {
+        const nm = base(p.name).toLowerCase();
+        const multi = nm.includes(" ");
+        if ((multi || !textHasLetters) && nm.length > 2 && new RegExp(`\\b${escapeRe(nm)}s?\\b`).test(low)) hit.add(p.id);
+        // Head-noun talk ("the two tops", "the back") only for parts the step never letters.
+        const neverLettered = !letters.get(p.id) || !lettered.has(p.id);
+        const h = head(p.name);
+        if (neverLettered && (multi || !textHasLetters || !letters.get(p.id)) && h.length > 2 && new RegExp(`\\b${escapeRe(h)}(?:s|es)?\\b`, "i").test(chunk)) hit.add(p.id);
+      }
+      return hit;
+    };
+    const all = kind === "build" && panels.length === ids.length ? named(text) : new Set<string>();
+    const jm = text.match(/One join(?: class| per \w+)?:\s*(?:attach|screw|glue|set|hang)\s+(.+?)\s+(?:to|onto|into|between)\s+(.+?)\s+with\b/i);
+    const join = jm && all.size ? { moving: named(jm[1]), target: named(jm[2]), rest: named(text.replace(jm[0], " ")) } : null;
+    return { ids, kind, all, join };
+  });
+  const placed = new Set<string>();
+  return info.map((st, k) => {
+    if (st.kind !== "build") return { ids: st.ids, kind: st.kind, fresh: [], onto: [], said: false };
+    if (!st.all.size) {
+      const fresh = st.ids.filter((id) => !placed.has(id));
+      st.ids.forEach((id) => placed.add(id));
+      return { ids: st.ids, kind: st.kind, fresh, onto: [], said: false };
+    }
+    const later = info.slice(k + 1).filter((x) => x.kind === "build");
+    const laterSaid = new Set(later.flatMap((x) => [...x.all]));
+    const laterMoved = new Set(later.flatMap((x) => (x.join ? [...x.join.moving] : [])));
+    const fresh = st.ids.filter((id) => {
+      if (placed.has(id)) return false;
+      if (!st.all.has(id)) return !laterSaid.has(id);
+      if (!st.join) return true;
+      if (st.join.moving.has(id) || st.join.target.has(id)) return true;
+      return !laterMoved.has(id);
+    });
+    const onto = st.ids.filter((id) => placed.has(id) && st.all.has(id));
+    fresh.forEach((id) => placed.add(id));
+    return { ids: st.ids, kind: st.kind, fresh, onto, said: true };
+  });
 }
 
 // ───────────────────────── parts plate ─────────────────────────

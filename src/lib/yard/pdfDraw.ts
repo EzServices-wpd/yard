@@ -283,6 +283,8 @@ export type RenderOpts = {
   /** Only these letters get bubbles (defaults to hot parts). */
   bubbleIds?: Set<string>;
   dims?: boolean;
+  /** Axes the stranger never typed — their dimension labels say "assumed". */
+  assumedAxes?: Partial<Record<"width" | "height" | "depth", boolean>>;
   pad?: number;
 };
 
@@ -394,7 +396,7 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     }
   }
 
-  if (dimsOn) drawDims(doc, project, bb, off, map, s);
+  if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes);
 
   if (opts.letters) {
     const want = opts.bubbleIds ?? new Set([...opts.tones.entries()].filter(([, t]) => t === "hot").map(([id]) => id));
@@ -417,11 +419,15 @@ function drawDims(
   off: number,
   map: (p: V3) => { x: number; y: number },
   s: number,
+  assumed: Partial<Record<"width" | "height" | "depth", boolean>> = {},
 ) {
   const round = project.fitted?.unit?.shape === "round";
   const W = bb.max.x - bb.min.x;
   const H = bb.max.y - bb.min.y;
   const D = bb.max.z - bb.min.z;
+  // Only the overall size can be assumed; a label that measures something else stays plain.
+  const tag = (axis: "width" | "height" | "depth", v: number, text: string) =>
+    assumed[axis] && Math.abs(v - project.overall[axis]) < 0.5 ? `${text} assumed` : text;
   const line = (a: V3, b: V3, label: string, side: V3) => {
     const A = map(a);
     const B = map(b);
@@ -450,23 +456,23 @@ function drawDims(
   if (round) {
     // Diameter across the top face, through the center.
     const zc = (bb.min.z + bb.max.z) / 2;
-    line({ x: bb.min.x, y: bb.max.y + 0.05, z: zc }, { x: bb.max.x, y: bb.max.y + 0.05, z: zc }, `${frac(W)} dia`, { x: 0, y: 0, z: 1 });
+    line({ x: bb.min.x, y: bb.max.y + 0.05, z: zc }, { x: bb.max.x, y: bb.max.y + 0.05, z: zc }, tag("width", W, `${frac(W)} dia`), { x: 0, y: 0, z: 1 });
   } else {
-    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.max.x, y: bb.min.y, z: zf }, frac(W), { x: 0, y: 0, z: 1 });
-    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.max.z }, frac(D), { x: 1, y: 0, z: 0 });
+    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.max.x, y: bb.min.y, z: zf }, tag("width", W, frac(W)), { x: 0, y: 0, z: 1 });
+    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.max.z }, tag("depth", D, frac(D)), { x: 1, y: 0, z: 0 });
   }
-  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.max.y, z: bb.min.z }, frac(H), { x: 1, y: 0, z: 0 });
+  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.max.y, z: bb.min.z }, tag("height", H, frac(H)), { x: 1, y: 0, z: 0 });
 }
 
-export function drawBubble(doc: jsPDF, x: number, y: number, letter: string, r = 8.5) {
+export function drawBubble(doc: jsPDF, x: number, y: number, letter: string, r = 8.5, muted = false) {
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(...KIT.accent);
+  doc.setDrawColor(...(muted ? KIT.ghostEdge : KIT.accent));
   doc.setLineWidth(1.1);
   const rr = letter.length > 1 ? r + 2 : r;
   doc.circle(x, y, rr, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(letter.length > 1 ? 8.5 : 10);
-  doc.setTextColor(...KIT.ink);
+  doc.setTextColor(...(muted ? KIT.muted : KIT.ink));
   doc.text(letter, x, y + 3.5, { align: "center" });
 }
 

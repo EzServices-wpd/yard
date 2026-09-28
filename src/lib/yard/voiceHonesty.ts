@@ -115,7 +115,7 @@ export function stampPartsPlate(lines: CutLine[]): CutLine[] {
   return sorted.map((line, i) => ({ ...line, label: line.label && /^[A-Z]+$/.test(line.label) ? line.label : letterLabel(i) }));
 }
 
-type PlateEntry = { label: string; name: string; quantity: number; family: string };
+type PlateEntry = { label: string; name: string; quantity: number; family: string; lengthIn?: number; widthIn?: number };
 
 function plateFamily(name: string): string {
   const bare = name.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
@@ -142,6 +142,8 @@ export function partsPlateEntries(cutList: CutLine[]): PlateEntry[] {
       name: c.name,
       quantity: c.quantity,
       family: plateFamily(c.name),
+      lengthIn: c.lengthIn,
+      widthIn: c.widthIn,
     }));
 }
 
@@ -156,6 +158,28 @@ function uprightPairTalk(entries: PlateEntry[]): { two: string; both: string } |
   const letters = ups.map((e) => e.label);
   const talk = `${letters.slice(0, -1).join(", ")} and ${letters[letters.length - 1]}`;
   return { two: talk, both: talk };
+}
+
+/**
+ * Plural family talk with every cut-list letter in that family: one line → "C Aprons";
+ * two sizes of apron on two lines → "C and D Aprons" (never one letter for both).
+ */
+function familyRef(entries: PlateEntry[], family: string, spoken: string): string | null {
+  const fam = entries.filter((e) => e.family === family);
+  if (!fam.length) return null;
+  const letters = [...new Set(fam.map((e) => e.label))];
+  const talk = letters.length === 1 ? letters[0] : `${letters.slice(0, -1).join(", ")} and ${letters[letters.length - 1]}`;
+  return `${talk} ${spoken}`;
+}
+
+/** Same family on several lines (two apron sizes): pick the line whose size matches the spoken dims. */
+function sizedPlate(entries: PlateEntry[], plate: PlateEntry, firstDim: number): PlateEntry {
+  if (!Number.isFinite(firstDim)) return plate;
+  const same = entries.filter((e) => e.family === plate.family && e.name.toLowerCase() === plate.name.toLowerCase());
+  if (same.length < 2) return plate;
+  const off = (e: PlateEntry) => Math.min(Math.abs((e.lengthIn ?? NaN) - firstDim), Math.abs((e.widthIn ?? NaN) - firstDim));
+  const best = [...same].sort((a, b) => (off(a) || 0) - (off(b) || 0))[0];
+  return best && off(best) < 0.3 ? best : plate;
 }
 
 function plateRef(entry: PlateEntry, spoken?: string): string {
@@ -189,9 +213,11 @@ export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string 
   // Prefer Drawer bottom/front/back/side before bare Bottom/Front/Back (avoids "Drawer C bottom").
   out = out.replace(
     /(?<![A-Z]\s)\b((?:Left|Right)\s+(?:side|upright|door)|Drawer\s+(?:side|front|back|bottom)|Uprights?|Sides?|Lid|(?<!\bDrawer\s)Back|(?<!\bDrawer\s)Front|(?<!\bDrawer\s)Bottom|Top(?:\s*\([^)]*\))?|Counter|Doors?|Legs?|Aprons?|Shelf|Shelves)(\s+\d+)?(\s*—\s*(?=\d|\())/gi,
-    (full, rawName: string, qty: string | undefined, dash: string) => {
-      const plate = findPlate(entries, rawName);
-      if (!plate) return full;
+    (full, rawName: string, qty: string | undefined, dash: string, offset: number, whole: string) => {
+      const found = findPlate(entries, rawName);
+      if (!found) return full;
+      const dim = parseFloat(whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)/)?.[1] ?? "");
+      const plate = sizedPlate(entries, found, dim);
       if (new RegExp(`\\b${plate.label}\\s+${rawName}`, "i").test(full)) return full;
       return `${plateRef(plate, rawName)}${qty ?? ""}${dash}`;
     },
@@ -382,9 +408,9 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
     const apron = entries.find((e) => e.family === "apron");
     const leg = entries.find((e) => e.family === "leg");
     const hw = `2 × ${SCREW_HW} per end`;
-    const aTalk = apron ? plateRef(apron, "Aprons") : "aprons";
-    const lTalk = leg ? plateRef(leg, "Legs") : "legs";
-    d = `One join class: attach each ${aTalk} to ${lTalk} with ${hw}. ${d}`;
+    const aTalk = apron ? familyRef(entries, "apron", "Aprons") ?? plateRef(apron, "Aprons") : "aprons";
+    const lTalk = leg ? familyRef(entries, "leg", "Legs") ?? plateRef(leg, "Legs") : "legs";
+    d = `One join class: attach ${/ and /.test(aTalk) ? "the" : "each"} ${aTalk} to ${lTalk} with ${hw}. ${d}`;
   }
 
   // Doors — "2 hinges each" / "Two concealed hinges".
@@ -400,7 +426,7 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
   if (/center the (round |oval )?top|set the top on the base/i.test(hayTitle) && !/one join:/i.test(d)) {
     const top = entries.find((e) => e.family === "top");
     const apron = entries.find((e) => e.family === "apron");
-    d = `One join: attach ${top ? plateRef(top, "Top") : "the top"} to ${apron ? plateRef(apron, "Aprons") : "the aprons"} with ${SCREW_HW} up through the aprons (not down through the face). ${d}`;
+    d = `One join: attach ${top ? plateRef(top, "Top") : "the top"} to ${apron ? familyRef(entries, "apron", "Aprons") ?? plateRef(apron, "Aprons") : "the aprons"} with ${SCREW_HW} up through the aprons (not down through the face). ${d}`;
   }
 
   return d;
