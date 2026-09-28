@@ -121,8 +121,8 @@ function PrivacyPage() {
             <h2 className="font-display text-xl text-ink">Contact</h2>
             <p className="mt-2">
               Questions about this policy? Write to{" "}
-              <a href="mailto:hello.yardwiki@gmail.com" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
-                hello.yardwiki@gmail.com
+              <a href="mailto:hello@yard.wiki" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+                hello@yard.wiki
               </a>
               .
             </p>

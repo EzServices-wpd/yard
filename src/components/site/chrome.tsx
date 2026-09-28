@@ -77,7 +77,7 @@ export function SiteFooter({ active }: { active?: "gallery" | "ideas" | "about" 
               {n.label}
             </Link>
           ))}
-          <a href="mailto:hello.yardwiki@gmail.com" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+          <a href="mailto:hello@yard.wiki" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
             Contact
           </a>
         </nav>

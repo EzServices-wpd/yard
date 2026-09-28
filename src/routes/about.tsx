@@ -73,8 +73,8 @@ function AboutPage() {
           <h2 className="font-display text-xl text-ink">Contact</h2>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
             Questions, a plan that came out wrong, or a store link that broke? Write to{" "}
-            <a href="mailto:hello.yardwiki@gmail.com" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
-              hello.yardwiki@gmail.com
+            <a href="mailto:hello@yard.wiki" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+              hello@yard.wiki
             </a>
             .
           </p>
