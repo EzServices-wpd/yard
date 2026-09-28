@@ -29,7 +29,8 @@ export type PlacementMeasure =
   | { kind: "pull"; id: string; value: number }
   | { kind: "slide"; id: string; refId: string | null; refY: number; value: number }
   | { kind: "spacing"; ids: string[]; value: number }
-  | { kind: "bracket"; ids: string[]; value: number };
+  | { kind: "bracket"; ids: string[]; value: number }
+  | { kind: "frontBottom"; id: string; value: number };
 
 /** Dimension arrow a→b; ea/eb are extension-line feet on the reference and on the part. */
 export type PlacementArrow = { a: V3; b: V3; label: string; ea?: V3; eb?: V3 };
@@ -342,7 +343,8 @@ function dividerTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
   const near = (dir: -1 | 1) => {
     let best: { q: Panel; d: number } | null = null;
     for (const q of ctx.panels) {
-      if (q.id === p.id || !isVertical(q)) continue;
+      // Measure to the walls a divider stands between (sides, other dividers) — not kick strips or rails.
+      if (q.id === p.id || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
       const c = ctx.box.get(q.id)!;
       if (ov(b.min.y, b.max.y, c.min.y, c.max.y) <= EPS || ov(b.min.z, b.max.z, c.min.z, c.max.z) <= EPS) continue;
       const d = dir < 0 ? b.min.x - c.max.x : c.min.x - b.max.x;
@@ -561,7 +563,8 @@ function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
   const side = (dir: -1 | 1) => {
     let best: { q: Panel; d: number } | null = null;
     for (const q of ctx.panels) {
-      if (q.id === p.id || !isVertical(q)) continue;
+      // Measure to the walls a divider stands between (sides, other dividers) — not kick strips or rails.
+      if (q.id === p.id || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
       const c = ctx.box.get(q.id)!;
       if (ov(b.min.y, b.max.y, c.min.y, c.max.y) <= EPS) continue;
       const d = dir < 0 ? b.min.x - c.max.x : c.min.x - b.max.x;
@@ -637,6 +640,44 @@ function pullTalk(ctx: Ctx, fronts: Panel[], label: string, out: StepPlacement) 
     const who = n > 1 ? `each ${f(w)} × ${f(h)} ${label}` : `the ${f(w)} × ${f(h)} ${label}`;
     out.sentences.push(`Pull centered on ${who}: ${f(w / 2)} from each side and ${f(h / 2)} down from the top edge — mark the center with crossed diagonals.`);
   }
+}
+
+/**
+ * Drawer fronts: where each one sits — bottom edge from the floor, the reveal to the wall
+ * centerline beside it, and the gap between fronts stacked in a bank. All from the model.
+ */
+function frontTalk(ctx: Ctx, fronts: Panel[], out: StepPlacement) {
+  const walls = ctx.panels.filter((q) => q.type === "upright" || q.type === "divider");
+  const banks: Panel[][] = [];
+  for (const d of [...fronts].sort((a, b) => ctx.box.get(a.id)!.min.x - ctx.box.get(b.id)!.min.x)) {
+    const c = ctx.box.get(d.id)!;
+    const bank = banks.find((bk) => ov(c.min.x, c.max.x, ctx.box.get(bk[0].id)!.min.x, ctx.box.get(bk[0].id)!.max.x) > (c.max.x - c.min.x) * 0.5);
+    if (bank) bank.push(d);
+    else banks.push([d]);
+  }
+  const talks: string[] = [];
+  for (const bank of banks) {
+    bank.sort((a, b) => ctx.box.get(a.id)!.min.y - ctx.box.get(b.id)!.min.y);
+    for (const p of bank) out.measures.push({ kind: "frontBottom", id: p.id, value: ctx.box.get(p.id)!.min.y });
+    const bottoms = bank.map((p) => f(ctx.box.get(p.id)!.min.y));
+    const gaps = bank.slice(1).map((p, i) => ctx.box.get(p.id)!.min.y - ctx.box.get(bank[i].id)!.max.y);
+    const c = ctx.box.get(bank[0].id)!;
+    const cx = (c.min.x + c.max.x) / 2;
+    const zone = walls.map((q) => ctx.box.get(q.id)!).filter((w) => ov(w.min.y, w.max.y, c.min.y, c.max.y) > EPS);
+    const left = zone.filter((w) => w.max.x <= cx).sort((a, b) => b.max.x - a.max.x)[0];
+    const right = zone.filter((w) => w.min.x >= cx).sort((a, b) => a.min.x - b.min.x)[0];
+    const revL = left ? c.min.x - (left.min.x + left.max.x) / 2 : null;
+    const revR = right ? (right.min.x + right.max.x) / 2 - c.max.x : null;
+    let t = `bottom edge${bank.length > 1 ? "s" : ""} ${listTalk(bottoms)} up from the floor`;
+    const gapU = [...new Set(gaps.map((g) => f(g)))];
+    if (gapU.length === 1 && gaps.length) t += `, ${gapU[0]} gap between fronts`;
+    else if (gaps.length) t += `, gaps between fronts ${listTalk(gaps.map((g) => f(g)))} from the bottom up`;
+    if (revL != null && revR != null && Math.abs(revL - revR) < 1 / 32) t += `, sides ${f(Math.abs(revL))} ${revL >= 0 ? "in from" : "past"} the centerline of the wall on each side`;
+    talks.push(t);
+  }
+  const uniq = [...new Set(talks)];
+  const lead = uniq.length === 1 && banks.length > 1 ? "Drawer fronts, the same in every bank" : fronts.length > 1 ? "Drawer fronts" : "Drawer front";
+  out.sentences.push(`${lead}: ${uniq.length === 1 ? uniq[0] : uniq.map((t, i) => `bank ${i + 1} — ${t}`).join("; ")}. Hold each front with double-sided tape or clamps, check the gaps, then screw through the box front from inside.`);
 }
 
 function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPlacement) {
@@ -801,6 +842,10 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) pullTalk(ctx, doorsNow, "door", out);
       if (fronts.length) pullTalk(ctx, fronts, "drawer front", out);
       else if (drawers.length) pullTalk(ctx, drawers, "drawer front", out);
+    }
+    if (/drawer fronts?/.test(text)) {
+      const fronts = pick("front", /drawer front/);
+      if (fronts.length) frontTalk(ctx, fronts, out);
     }
     if (/\bslides?\b/.test(text)) {
       const drawers = pick("drawer", /drawer/);

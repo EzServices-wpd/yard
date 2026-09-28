@@ -1,3 +1,4 @@
+import { solveModel } from "./solve";
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
@@ -477,7 +478,8 @@ export const useYard = create<YardState>((set, get) => ({
       const back = parseFloat(measure.backWidth ?? "");
       const left = parseFloat(measure.leftDepth ?? "");
       const right = parseFloat(measure.rightDepth ?? "");
-      const built = buildPocket(
+      // Re-measured pocket goes through the same interference solve as every generated build.
+      const built = solveModel(buildPocket(
         {
           ...project.pocket,
           walls: {
@@ -495,7 +497,7 @@ export const useYard = create<YardState>((set, get) => ({
           },
         },
         prompt,
-      );
+      ));
       if (built) get().commit(built);
       return;
     }

@@ -2386,10 +2386,10 @@ function buildOttoman(spec: FittedSpec, prompt: string, affordances: HouseAfford
   panels.push(panel("upright", "Back left leg", x0, 0, 0, leg, topY, leg));
   panels.push(panel("upright", "Back right leg", x0 + W - leg, 0, 0, leg, topY, leg));
   panels.push(panel("top", "Solid top", x0, topY, 0, W, P, D));
-  panels.push(panel("rail", "Front apron", x0 + leg, Math.max(0, topY - 3), D - leg - P, Math.max(6, W - leg * 2), 3, P));
-  panels.push(panel("rail", "Back apron", x0 + leg, Math.max(0, topY - 3), 0, Math.max(6, W - leg * 2), 3, P));
-  panels.push(panel("rail", "Left apron", x0 + leg, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
-  panels.push(panel("rail", "Right apron", x0 + W - leg - P, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
+  panels.push(panel("rail", "Front apron", x0 + leg, Math.max(0, topY - 3), D - leg, Math.max(6, W - leg * 2), 3, P));
+  panels.push(panel("rail", "Back apron", x0 + leg, Math.max(0, topY - 3), leg - P, Math.max(6, W - leg * 2), 3, P));
+  panels.push(panel("rail", "Left apron", x0 + leg - P, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
+  panels.push(panel("rail", "Right apron", x0 + W - leg, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
   const name = `Ottoman ${W}" × ${H}" × ${D}"`;
   return {
     id: createId("proj"),
@@ -2477,7 +2477,8 @@ function buildLoungeChair(spec: FittedSpec, prompt: string, affordances: HouseAf
   const seatDeck = seatingLoungeSeatDeck({ x0, width: W, seatDepth: seatD, leg });
   panels.push(panel("deck", "Seat", seatDeck.x, seatH - P, seatDeck.z, seatDeck.w, P, seatDeck.d));
   // Backrest + front seat rail match seat deck W (not silent W−leg×2). Side rails stay between-leg in D.
-  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, 0, seatDeck.crossW, backH, P));
+  // Backrest board screws to the FRONT faces of the back legs (full seat width, never through them).
+  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, leg, seatDeck.crossW, backH, P));
   panels.push(panel("rail", "Front seat rail", seatDeck.crossX, seatH - 3, seatD - leg - P, seatDeck.crossW, 3, P));
   panels.push(panel("rail", "Side rail left", x0 + leg, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
   panels.push(panel("rail", "Side rail right", x0 + W - leg - P, Math.max(2, seatH * 0.35), leg, P, 2.5, Math.max(4, seatD - leg * 2)));
@@ -2547,7 +2548,8 @@ function buildRockingChair(spec: FittedSpec, prompt: string, affordances: HouseA
   const seatDeck = seatingLoungeSeatDeck({ x0, width: W, seatDepth: D, leg });
   panels.push(panel("deck", "Seat", seatDeck.x, seatH - P, seatDeck.z, seatDeck.w, P, seatDeck.d));
   // Backrest matches seat deck W (same seatingLoungeSeatDeck cross-W rule as lounge/easy).
-  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, 0, seatDeck.crossW, backH, P));
+  // Backrest on the front faces of the back legs (they stand 2" in from the back).
+  panels.push(panel("rail", "Backrest", seatDeck.crossX, seatH, 2 + leg, seatDeck.crossW, backH, P));
   // Curved rocker rails under the legs — named Rocker (not ski/sled).
   panels.push(panel("rail", "Rocker 1", x0, 0, -2, P, rockerLift + 0.5, rockerLen));
   panels.push(panel("rail", "Rocker 2", x0 + W - P, 0, -2, P, rockerLift + 0.5, rockerLen));

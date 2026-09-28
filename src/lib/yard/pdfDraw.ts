@@ -629,7 +629,12 @@ export function partLetters(project: YardProject, cutList: CutLine[]): Map<strin
       lines.find((l) => l.fam === fam && same(l.key)) ??
       lines.find((l) => same(l.key) && (l.fam.includes(fam) || fam.includes(l.fam))) ??
       (lines.filter((l) => l.fam === fam).length === 1 ? lines.find((l) => l.fam === fam) : undefined) ??
-      (lines.filter((l) => same(l.key)).length === 1 ? lines.find((l) => same(l.key)) : undefined);
+      (lines.filter((l) => same(l.key)).length === 1 ? lines.find((l) => same(l.key)) : undefined) ??
+      // A panel too big for one sheet is cut as n equal strips — the strips carry its letter.
+      lines.find((l) => (l.fam === fam || l.fam.startsWith(`${fam} ·`)) && [2, 3, 4].some((n) => {
+        const cands = [[key[0], key[1] / n, key[2]], [key[0] / n, key[1], key[2]]].map((k) => [...k].sort((a, b) => b - a));
+        return cands.some((k) => k.every((v, i) => Math.abs(v - l.key[i]) < 0.07));
+      }));
     if (hit?.c.label) out.set(p.id, hit.c.label);
   }
   if (project.instances.length && cutList.length === 1 && cutList[0].label) {

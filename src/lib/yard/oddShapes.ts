@@ -395,8 +395,9 @@ function buildSloped(lower: string): Build {
   for (let i = 0; i <= bays; i++) xs.push(i === 0 ? 0 : i === bays ? W - T : r8((i * (W - T)) / bays));
   xs.forEach((x, i) => {
     const name = i === 0 ? "Left upright" : i === bays ? "Right upright" : `Divider ${i}`;
-    const a = r8(under(x));
-    const b = r8(under(x + T));
+    // Round DOWN to the 1/8" so the board end stays under the slope — rounding up pokes into the sloped top.
+    const a = Math.floor(under(x) * 8 + 1e-6) / 8;
+    const b = Math.floor(under(x + T) * 8 + 1e-6) / 8;
     panels.push(facePlate(i === 0 || i === bays ? "upright" : "divider", name, zb, D - zb, [[x, 0], [x + T, 0], [x + T, b], [x, a]], `${tape(D - zb)} deep board. Top end cut at ${deg(ang)}: ${tape(Math.max(a, b))} on the tall edge, ${tape(Math.min(a, b))} on the short edge.`));
   });
   const topP = facePlate("top", "Sloped top", zb, D - zb, [[0, under(0)], [W, under(W)], [W, yTop(W)], [0, yTop(0)]], `${tape(Math.hypot(W, hR - hL))} long along the slope, ${tape(D - zb)} deep. Both ends cut at ${deg(ang)} so they sit plumb on the uprights.`);

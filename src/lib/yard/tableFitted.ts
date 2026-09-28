@@ -208,6 +208,8 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
   let axisFrame: AxisFrame | null = null;
 
   if (legN === 4 && centers.length === 4) {
+    // Aprons butt into the legs, inner faces flush with the legs' inner faces — each apron
+    // ends on two legs and no apron runs through its neighbour at the corner.
     const lx = Math.min(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const rx = Math.max(centers[0].x, centers[1].x, centers[2].x, centers[3].x);
     const fz = Math.min(centers[0].z, centers[1].z, centers[2].z, centers[3].z);
@@ -216,16 +218,16 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
     const spanZ = Math.max(4, bz - fz - legW);
     axisFrame = { lx, rx, fz, bz, spanX, spanZ };
     panels.push(
-      panel("rail", "Front apron", lx + legW / 2, apronY, fz + legW / 2, spanX, apronH, apronT),
+      panel("rail", "Front apron", lx + legW / 2, apronY, fz + legW / 2 - apronT, spanX, apronH, apronT),
     );
     panels.push(
-      panel("rail", "Back apron", lx + legW / 2, apronY, bz - legW / 2 - apronT, spanX, apronH, apronT),
+      panel("rail", "Back apron", lx + legW / 2, apronY, bz - legW / 2, spanX, apronH, apronT),
     );
     panels.push(
-      panel("rail", "Left apron", lx + legW / 2, apronY, fz + legW / 2, apronT, apronH, spanZ),
+      panel("rail", "Left apron", lx + legW / 2 - apronT, apronY, fz + legW / 2, apronT, apronH, spanZ),
     );
     panels.push(
-      panel("rail", "Right apron", rx - legW / 2 - apronT, apronY, fz + legW / 2, apronT, apronH, spanZ),
+      panel("rail", "Right apron", rx - legW / 2, apronY, fz + legW / 2, apronT, apronH, spanZ),
     );
   } else {
     for (let i = 0; i < centers.length; i++) {
@@ -255,7 +257,8 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       const inset = apronT / 2;
       const cx = midX + nx * inset;
       const cz = midZ + nz * inset;
-      const bite = 0.125;
+      // Ends stop at the post faces (no bite into the 2x2 — a bite is two parts in one place).
+      const bite = 0;
       const tA = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
       const tB = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
       const length = Math.max(4, span - tA - tB);
@@ -275,6 +278,16 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         ),
       );
     }
+    // Neighbouring chord aprons meet at the post at an angle: both ends are mitred, so the
+    // model declares that joint (the only place two aprons may share space).
+    const aprons = panels.filter((p) => /^Apron \d+$/.test(p.name));
+    const miter = Math.round(180 / aprons.length);
+    aprons.forEach((a, i) => {
+      const prev = aprons[(i + aprons.length - 1) % aprons.length];
+      const next = aprons[(i + 1) % aprons.length];
+      a.joints = [prev, next].filter((q) => q !== a).map((q) => ({ with: q.id, kind: "miter" as const }));
+      a.cutNote = `Miter both ends at ${miter}° (off square) so neighbouring aprons meet cleanly behind each leg.`;
+    });
   }
 
   // Spoken lower shelf / N shelves — plywood shelf between the legs on ¾" shelf rails.
@@ -306,7 +319,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
       const railY = Math.max(0, shelfY - railH);
       const { lx, rx, fz, bz, spanX, spanZ } = frame;
       panels.push(
-        panel("shelf", label, lx + legW / 2, shelfY, fz + legW / 2, spanX, shelfT, spanZ),
+        panel("shelf", label, lx + legW / 2, shelfY, fz + legW / 2 - apronT, spanX, shelfT, spanZ + apronT * 2),
       );
       panels.push(
         panel(
@@ -314,7 +327,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
           `Front shelf rail${railSuffix}`,
           lx + legW / 2,
           railY,
-          fz + legW / 2,
+          fz + legW / 2 - apronT,
           spanX,
           railH,
           apronT,
@@ -326,7 +339,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
           `Back shelf rail${railSuffix}`,
           lx + legW / 2,
           railY,
-          bz - legW / 2 - apronT,
+          bz - legW / 2,
           spanX,
           railH,
           apronT,
@@ -336,7 +349,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         panel(
           "rail",
           `Left shelf rail${railSuffix}`,
-          lx + legW / 2,
+          lx + legW / 2 - apronT,
           railY,
           fz + legW / 2,
           apronT,
@@ -348,7 +361,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         panel(
           "rail",
           `Right shelf rail${railSuffix}`,
-          rx - legW / 2 - apronT,
+          rx - legW / 2,
           railY,
           fz + legW / 2,
           apronT,
@@ -401,7 +414,8 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         const insetR = apronT / 2;
         const cx = midX + nx * insetR;
         const cz = midZ + nz * insetR;
-        const bite = 0.125;
+        // Ends stop at the post faces (no bite into the 2x2 — a bite is two parts in one place).
+      const bite = 0;
         const tA = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
         const tB = Math.max(0.25, squareHalfAlong(ux, uz) - bite);
         const length = Math.max(4, span - tA - tB);

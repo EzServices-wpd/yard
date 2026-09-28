@@ -1,3 +1,4 @@
+import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -63,7 +64,12 @@ function honestHouse(project: YardProject, prompt: string, honorUnit = false): Y
   });
 }
 
-export function generateFromPrompt(
+/** Built → solved: every caller gets the interference-solved model (the one source of truth). */
+export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  return solveModel(generateRaw(...args));
+}
+
+function generateRaw(
   prompt: string,
   materialOverride?: string,
   formOverride?: FormRecipe,

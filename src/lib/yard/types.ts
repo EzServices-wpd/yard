@@ -147,6 +147,11 @@ export type Panel = {
   cutNote?: string;
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */
   blank?: { lengthIn: number; widthIn: number; thicknessIn: number };
+  /**
+   * Joints declared on purpose where this part is let into another (dado, rabbet, lap) or meets it at a mitre.
+   * Only these pairs may share space; the interference guard fails on any other overlap.
+   */
+  joints?: { with: string; kind: "dado" | "rabbet" | "lap" | "mortise" | "miter" | "notch" }[];
   cutouts?: {
     id: string;
     x: number;

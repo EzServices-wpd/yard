@@ -337,7 +337,8 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
     const keepStand = /stand the main box/i.test(step.title);
     if (blob && /then/i.test(blob[2] ?? "")) {
       const screwClass = (blob[1] ?? SCREW_HW).trim();
-      const bits = parseJoinSequence(blob[2], screwClass);
+      // Only joins for parts the model really has — no ghost "attach bottom" when the model has none.
+      const bits = parseJoinSequence(blob[2], screwClass).filter((bit, i) => i === 0 || !!findPlate(entries, bit.part));
       const coda = (blob[4] ?? "").trim();
       // Lead-in before the glue/screw clause (part dim list).
       const lead = desc0.slice(0, blob.index ?? 0).trim();
