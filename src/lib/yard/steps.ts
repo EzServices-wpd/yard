@@ -1341,10 +1341,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
     const dividers = panels.filter((p) => p.type === "divider");
     // Say the real bottle capacity up front (the same sentence as the notes).
-    const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?:asked for|one opening per bottle|open shelves|make it taller or wider for more)\./)?.[0] ?? "";
+    const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?=\s*Not a bookcase|$)/)?.[0]?.trim() ?? "";
     const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
-    const capShelves = sortedShelves.length > 1 ? [sortedShelves[0], sortedShelves[sortedShelves.length - 1]] : sortedShelves;
-    const midShelves = sortedShelves.filter((p) => !capShelves.includes(p));
+    // Notched grid shelves slot over the dividers; every other shelf (bottom, top shelf, cap) is plain.
+    const midShelves = sortedShelves.filter((p) => /^grid shelf/i.test(p.name));
+    const capShelves = sortedShelves.filter((p) => !midShelves.includes(p));
     const hang = {
       title: "Hang it on studs",
       description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
@@ -1353,7 +1354,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     };
     const railsStep = {
       title: "Glue the bottle rails",
-      description: `${rails.map(cutLine).join("; ") || '1.5" bottle rails.'}. Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off. #8 × 1¼" screws from behind the rail into the shelf front edge.`,
+      description: `${rails.map(cutLine).join("; ") || '1.5" bottle rails.'}. Glue a 1.5" rail on the front of every shelf that carries a row of bottles so they cannot roll off. #8 × 1¼" screws from behind the rail into the shelf front edge.`,
       tips: "The rail stands on the front edge of the shelf. Wipe squeeze-out before it skins. Bottles lie on their sides, necks facing out.",
       partsUsed: names(rails),
     };
@@ -1384,7 +1385,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           title: "Stand the rack",
-          description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${capShelves.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(sortedShelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into the bottom shelf, the top cap and each middle shelf of the grid at those marked heights. Then screw the top cap and bottom shelf down into the divider ends and the back onto the shelf edges. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
+          description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${capShelves.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(sortedShelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into every shelf at those marked heights. Then screw the bottom shelf and the shelf above the bottle rows into the divider ends, and the back onto the shelf edges. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
           tips: "Check both diagonals before the glue skins. Every opening should take a bottle with room to spare.",
           partsUsed: names([...uprights, ...backs, ...capShelves]),
         },

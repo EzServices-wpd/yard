@@ -30,7 +30,7 @@ import {
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
-import { buildFitted } from "../src/lib/yard/fitted";
+import { buildFitted, typedHeightInches } from "../src/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
@@ -3614,7 +3614,13 @@ console.log("SOFT-TRUST OK", {
     const posts = p.panels
       .filter((x) => x.type === "upright" || x.type === "divider")
       .sort((a, b) => a.position.x - b.position.x);
-    const vGaps = shelves.slice(1).map((s, i) => s.position.y - (shelves[i].position.y + shelves[i].size.height));
+    // Bottle rows only: a gap whose floor shelf carries a bottle rail (the open top shelf is not a bottle row).
+    const rails = p.panels.filter((x) => x.type === "rail");
+    const vGaps = shelves
+      .slice(1)
+      .map((s, i) => ({ gap: s.position.y - (shelves[i].position.y + shelves[i].size.height), floor: shelves[i] }))
+      .filter((g) => rails.some((r) => Math.abs(r.position.y - (g.floor.position.y + g.floor.size.height)) < 0.01))
+      .map((g) => g.gap);
     const hGaps = posts.slice(1).map((s, i) => s.position.x - (posts[i].position.x + posts[i].size.width));
     return { vGaps, hGaps, rows: vGaps.length, cols: hGaps.length, dividers: posts.length - 2 };
   };
@@ -3622,9 +3628,26 @@ console.log("SOFT-TRUST OK", {
     const m = (p.notes ?? []).join(" ").match(/Holds (?:about )?(\d+) bottles/);
     return m ? parseInt(m[1], 10) : null;
   };
-  type Case = { prompt: string; asked: number | null; width?: number; cols?: number; capacity?: number; stock?: RegExp; capped?: boolean };
+  type Case = {
+    prompt: string;
+    asked: number | null;
+    width?: number;
+    cols?: number;
+    capacity?: number;
+    stock?: RegExp;
+    capped?: boolean;
+    height?: number;
+    topShelf?: boolean;
+  };
   const cases: Case[] = [
-    { prompt: "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots", asked: 12, width: 24, cols: 5, capacity: 15 },
+    { prompt: "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots", asked: 12, width: 24, cols: 5, capacity: 35, height: 36 },
+    { prompt: "wine rack 24 wide 36 tall 12 deep with twelve slots", asked: 12, width: 24, cols: 5, capacity: 35, height: 36, topShelf: true },
+    { prompt: "pine wine rack for 12 bottles", asked: 12, cols: 5, capacity: 15, height: 14.25, stock: /^Pine 1×4$/ },
+    { prompt: "oak wine rack for 12 bottles, 36 inches tall", asked: 12, cols: 5, capacity: 35, height: 36, topShelf: true, stock: /^Oak 1×4$/ },
+    { prompt: "pine wine rack for 20 bottles 30 inches tall", asked: 20, cols: 5, capacity: 30, height: 30, stock: /^Pine 1×4$/ },
+    { prompt: "oak wine rack for 10 bottles 18 inches tall", asked: 10, cols: 5, capacity: 15, height: 18, stock: /^Oak 1×4$/ },
+    { prompt: "pine wine rack for 15 bottles 20 inches tall", asked: 15, cols: 5, capacity: 20, height: 20, stock: /^Pine 1×4$/ },
+    { prompt: "pine wine rack for 12 bottles, 24 inches tall", asked: 12, cols: 5, capacity: 25, height: 24, stock: /^Pine 1×4$/ },
     { prompt: "wine rack that holds 8 bottles", asked: 8 },
     { prompt: "wine rack that holds 12 bottles, 30 inches wide", asked: 12, width: 30, cols: 6, capacity: 12 },
     { prompt: "oak wine rack for 10 bottles, 18 inches wide", asked: 10, width: 18, cols: 4, capacity: 12, stock: /^Oak 1×4$/ },
@@ -3641,6 +3664,15 @@ console.log("SOFT-TRUST OK", {
     if (c.width != null && Math.abs(p.overall.width - c.width) > 0.01) failWine("typed width wins", { prompt: c.prompt, W: p.overall.width });
     for (const g of [...o.vGaps, ...o.hGaps]) {
       if (g < 3.5 - 1e-6) failWine("opening under 3.5in clear", { prompt: c.prompt, vGaps: o.vGaps, hGaps: o.hGaps });
+    }
+    // Bottle pitch: every bottle row is one bottle high — 3.5" to 5.5" clear, never stretched.
+    for (const g of o.vGaps) {
+      if (g > 5.5 + 1e-6) failWine("bottle row taller than 5.5in (stretched opening)", { prompt: c.prompt, vGaps: o.vGaps });
+    }
+    if (c.height != null && Math.abs(p.overall.height - c.height) > 0.01) failWine("height", { prompt: c.prompt, H: p.overall.height, want: c.height });
+    if (c.topShelf && !/open top shelf/.test(blob)) failWine("leftover height must be a stated top shelf", { prompt: c.prompt, blob: blob.slice(0, 400) });
+    if (c.asked != null && typedHeightInches(c.prompt) == null && !/just the rows the bottles need/.test(blob)) {
+      failWine("untyped height must be derived from the rows", { prompt: c.prompt, blob: blob.slice(0, 400) });
     }
     if (c.asked != null && o.dividers < 1) failWine("asked count built no grid", { prompt: c.prompt, panels: p.panels.map((x) => x.name) });
     const cap = capacityOf(p);
@@ -3689,7 +3721,10 @@ console.log("SOFT-TRUST OK", {
   const plate6 = generateFromPrompt("plate rack with 6 slots");
   if (plate6.panels.some((x) => /^Slot 6$/i.test(x.name))) failWine("plate 6 still has a Slot 6 panel", plate6.panels.map((x) => x.name));
   if (plate6.panels.filter((x) => x.type === "divider").length !== 5) failWine("plate 6 dividers", plate6.panels.map((x) => x.name));
-  console.log("PASS wine-class: grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
+  // Open default rack rows stay one bottle high too.
+  const defRows = openings(def).vGaps;
+  if (!defRows.length || defRows.some((g) => g < 3.5 - 1e-6 || g > 5.5 + 1e-6)) failWine("default rack rows off the bottle pitch", defRows);
+  console.log("PASS wine-class: bottle-pitch rows (3.5–5.5in clear, height from rows or top shelf from leftover), grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
 }
 
 // Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
@@ -3729,6 +3764,9 @@ console.log("SOFT-TRUST OK", {
   // Bottle clear ≥ 3.25" between consecutive shelves (standard bottle OD).
   for (let i = 0; i < wineShelves.length - 1; i++) {
     const clear = wineShelves[i + 1].position.y - (wineShelves[i].position.y + wineShelves[i].size.height);
+    // Bottle rows are the gaps whose floor carries a bottle rail; the open top shelf is not one.
+    const floorTop = wineShelves[i].position.y + wineShelves[i].size.height;
+    if (!rails.some((r) => Math.abs(r.position.y - floorTop) < 0.01)) continue;
     if (clear < 3.25) failHonesty("b37 wine bottle clear", clear, i);
   }
   // Rails stay inside overall H (no top-cap overhang).
@@ -7323,6 +7361,9 @@ console.log("STRANGER PLAN OK", {
   if (rails.length < 1) failHonesty("b-day-push wine rails", wine.panels.map((p) => p.name));
   for (let i = 0; i < shelves.length - 1; i++) {
     const clear = shelves[i + 1].position.y - (shelves[i].position.y + shelves[i].size.height);
+    // Bottle rows only (floor carries a rail); the open top shelf above the rows is not a bottle row.
+    const floorTop = shelves[i].position.y + shelves[i].size.height;
+    if (!rails.some((r) => Math.abs(r.position.y - floorTop) < 0.01)) continue;
     if (clear < 3.25) failHonesty("b-day-push wine bottle clear", clear);
   }
   for (const r of rails) {

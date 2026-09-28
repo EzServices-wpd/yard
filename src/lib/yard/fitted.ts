@@ -333,6 +333,16 @@ export function spokenBottleCount(text: string): number | null {
   return null;
 }
 
+/** Height the stranger actually typed ("36 tall", "30 inches tall", "× 36″ tall", "3 ft tall"), else null. */
+export function typedHeightInches(prompt: string): number | null {
+  const t = prompt.toLowerCase().replace(/[″”"]/g, '"');
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(?:"|in\b|inch(?:es)?\b|-?\s*(ft|foot|feet)\b)?\s*(?:tall|high)\b/);
+  if (m) return parseFloat(m[1]) * (m[2] ? 12 : 1);
+  const h = t.match(/\b(?:height|h)\s*(?:of\s*)?[:=]?\s*(\d+(?:\.\d+)?)/);
+  if (h) return parseFloat(h[1]);
+  return null;
+}
+
 /** Bottle opening minimum, and the side-by-side width one bottle takes on an open shelf. */
 export const WINE_BOTTLE_CLEAR = 3.5;
 const WINE_BOTTLE_SPAN = 3.75;
@@ -346,57 +356,117 @@ export type WineRackLayout = {
   /** Asked count did not fit at 3.5" clear within the height. */
   heightCapped: boolean;
   cellW: number;
+  /** Clear height of every bottle row. */
   cellH: number;
+  /** Overall height (derived from the rows when no height was typed). */
+  H: number;
+  /** Clear height of the open top shelf above the bottle rows (0 = none). */
+  topClear: number;
+  /** True when the height came from the rows, not from a typed/default height. */
+  derivedH: boolean;
 };
 
+/** Bottle row pitch: 3¾" clear opening + one ¾" shelf ≈ 4½", the same rule as the columns. */
+export const WINE_ROW_CLEAR = 3.75;
+/** Largest bottle row we ever build — one bottle high, never two stacked. */
+export const WINE_ROW_MAX_CLEAR = 5.5;
+
 /**
- * Wine rack grid. Board thickness counts: columns = floor((inner + t) / (3.5 + t)),
- * rows likewise from the height, so every opening is ≥3.5" clear. An asked count
- * rounds UP to the full grid (no blank bays); if the height cannot hold the rows,
- * keep the height and state the real capacity.
+ * Wine rack grid. Board thickness counts: columns = floor((inner + t) / (3.5 + t)).
+ * Rows sit on the bottle pitch (3¾" clear + board), never stretched to fill a tall box:
+ * - no typed height → the carcass is only as tall as the rows the count needs;
+ * - typed height → bottle-pitch rows fill it and the leftover becomes an open top shelf.
+ * An asked count rounds UP to the full grid (no blank bays); a height too short for it
+ * keeps the height and states the real capacity.
  */
-export function wineRackLayout(o: { W: number; H: number; t: number; asked: number | null; shelfCount?: number }): WineRackLayout {
-  const { W, H, t, asked } = o;
+export function wineRackLayout(o: {
+  W: number;
+  H: number;
+  t: number;
+  asked: number | null;
+  shelfCount?: number;
+  heightTyped?: boolean;
+}): WineRackLayout {
+  const { W, t, asked } = o;
   const innerW = W - 2 * t;
-  const innerH = H - 2 * t;
   const maxCols = Math.max(1, Math.floor((innerW + t) / (WINE_BOTTLE_CLEAR + t) + 1e-9));
-  const maxRows = Math.max(1, Math.floor((innerH + t) / (WINE_BOTTLE_CLEAR + t) + 1e-9));
-  const cellOf = (n: number, inner: number) => (inner - (n - 1) * t) / n;
+  const pitch = WINE_ROW_CLEAR + t;
+  const gridOf = (rows: number, cell: number) => rows * cell + (rows - 1) * t;
+  // Fill a fixed inner height with pitch rows; leftover ≥ a board + 3" becomes a top shelf.
+  const fill = (innerH: number) => {
+    const rows = Math.max(1, Math.floor((innerH + t) / pitch + 1e-9));
+    const left = innerH - gridOf(rows, WINE_ROW_CLEAR);
+    if (left >= t + 3) return { rows, cellH: WINE_ROW_CLEAR, topClear: left - t };
+    return { rows, cellH: Math.min(WINE_ROW_MAX_CLEAR, (innerH - (rows - 1) * t) / rows), topClear: 0 };
+  };
   if (asked != null && asked >= 1) {
     const cols = Math.min(maxCols, asked);
+    const cellW = (innerW - (cols - 1) * t) / cols;
     const wantRows = Math.ceil(asked / cols);
-    const rows = Math.min(maxRows, wantRows);
+    if (!o.heightTyped) {
+      const H = 2 * t + gridOf(wantRows, WINE_ROW_CLEAR);
+      return { rows: wantRows, cols, grid: true, capacity: wantRows * cols, heightCapped: false, cellW, cellH: WINE_ROW_CLEAR, H, topClear: 0, derivedH: true };
+    }
+    const f = fill(o.H - 2 * t);
     return {
-      rows,
+      rows: f.rows,
       cols,
       grid: true,
-      capacity: rows * cols,
-      heightCapped: wantRows > maxRows,
-      cellW: cellOf(cols, innerW),
-      cellH: cellOf(rows, innerH),
+      capacity: f.rows * cols,
+      heightCapped: f.rows * cols < asked,
+      cellW,
+      cellH: f.cellH,
+      H: o.H,
+      topClear: f.topClear,
+      derivedH: false,
     };
   }
-  // Open rows (no dividers): comfortable ~4.5" pitch, or the spoken shelf count.
+  // Open rows (no dividers): bottles side by side on pitch shelves, or the spoken shelf count.
   const perRow = Math.max(1, Math.floor(innerW / WINE_BOTTLE_SPAN + 1e-9));
-  const rows = o.shelfCount && o.shelfCount > 1
-    ? Math.max(1, Math.min(maxRows, o.shelfCount - 1))
-    : Math.max(1, Math.min(maxRows, Math.round((H - t) / 4.5) - 1));
-  return { rows, cols: perRow, grid: false, capacity: rows * perRow, heightCapped: false, cellW: innerW / perRow, cellH: cellOf(rows, innerH) };
+  const innerH = o.H - 2 * t;
+  if (o.shelfCount && o.shelfCount > 1) {
+    const maxRows = Math.max(1, Math.floor((innerH + t) / (WINE_BOTTLE_CLEAR + t) + 1e-9));
+    const rows = Math.max(1, Math.min(maxRows, o.shelfCount - 1));
+    return { rows, cols: perRow, grid: false, capacity: rows * perRow, heightCapped: false, cellW: innerW / perRow, cellH: (innerH - (rows - 1) * t) / rows, H: o.H, topClear: 0, derivedH: false };
+  }
+  // Open rows spread the height a little (≤ ~4¼" clear at 36") — still one bottle high.
+  const rows = Math.max(1, Math.floor((innerH + t) / pitch + 1e-9));
+  const cellH = (innerH - (rows - 1) * t) / rows;
+  return { rows, cols: perRow, grid: false, capacity: rows * perRow, heightCapped: false, cellW: innerW / perRow, cellH, H: o.H, topClear: 0, derivedH: false };
+}
+
+/** Shop inches to the nearest 1/16" (3.9 → 3 7/8, 3.97 → 4). */
+export function inch16(n: number): string {
+  const e = Math.round(n * 16);
+  const whole = Math.floor(e / 16);
+  let num = e % 16;
+  let den = 16;
+  while (num && num % 2 === 0) {
+    num /= 2;
+    den /= 2;
+  }
+  return num ? (whole ? `${whole} ${num}/${den}` : `${num}/${den}`) : `${whole}`;
 }
 
 /** Plain capacity sentence for the notes — the real layout, never the row count alone. */
 export function wineCapacityVoice(l: WineRackLayout, asked: number | null, H: number): string {
   const grid = `${l.rows} row${l.rows === 1 ? "" : "s"} × ${l.cols} across`;
+  const pitchVoice = `rows on a ${inch16(l.cellH + 0.75)}" pitch, one bottle high`;
+  const heightVoice = l.derivedH
+    ? ` Built ${inch16(l.H)}" tall — just the rows the bottles need.`
+    : l.topClear > 0
+      ? ` The rows fill the ${inch16(l.H)}" height and the ${inch16(l.topClear)}" above them is an open top shelf for glasses, corks or an opener.`
+      : "";
   if (!l.grid) {
-    return `Holds about ${l.capacity} bottles — ${l.rows} rows of about ${l.cols} bottles each, lying side by side on open shelves.`;
+    return `Holds about ${l.capacity} bottles — ${l.rows} rows of about ${l.cols} bottles each, lying side by side on open shelves (${pitchVoice}).`;
   }
   if (asked == null || l.capacity === asked) {
-    return `Holds ${l.capacity} bottles — ${grid}, one opening per bottle.`;
+    return `Holds ${l.capacity} bottles — ${grid}, one opening per bottle (${pitchVoice}).${heightVoice}`;
   }
   if (l.capacity > asked) {
-    return `Holds ${l.capacity} bottles (${grid}, one opening per bottle), room for the ${asked} bottles you asked for.`;
+    return `Holds ${l.capacity} bottles (${grid}, one opening per bottle, ${pitchVoice}), room for the ${asked} bottles you asked for.${heightVoice}`;
   }
-  return `Holds ${l.capacity} bottles at this height (${grid}, one opening per bottle). The ${asked} bottles you asked for need more rows than fit in ${H}" at 3.5" clear — make it taller or wider for more.`;
+  return `Holds ${l.capacity} bottles at this height (${grid}, one opening per bottle, ${pitchVoice}). The ${asked} bottles you asked for need more rows than fit in ${inch16(H)}" — make it taller or wider for more.${heightVoice}`;
 }
 
 /** Spoken slot count for plate/magazine/dish/wine racks ("three slots" / "sixteen slots" / "12 slots" / "16 slots"). */
@@ -3377,62 +3447,69 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const backT = P;
     const spokenBottles = spokenBottleCount(prompt);
     const saidShelves = /\d+\s*shel/i.test(prompt);
-    const layout = wineRackLayout({ W, H, t: P, asked: spokenBottles, shelfCount: saidShelves ? u.shelfCount : undefined });
-    const { rows, cols, grid, cellW, cellH } = layout;
-    const shelfN = rows + 1;
-    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
-    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
-    for (let i = 0; i < shelfN; i++) {
-      const y = (i * (H - P)) / rows;
+    const layout = wineRackLayout({
+      W,
+      H,
+      t: P,
+      asked: spokenBottles,
+      shelfCount: saidShelves ? u.shelfCount : undefined,
+      heightTyped: typedHeightInches(prompt) != null,
+    });
+    const { rows, cols, grid, cellW, cellH, topClear } = layout;
+    const HR = layout.H;
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, HR, D));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, HR, D));
+    // Bottom shelf, then one shelf per bottle row at the bottle pitch (cell + board).
+    const rowFloor = (r: number) => (r === 0 ? 0 : P + r * cellH + (r - 1) * P);
+    const gridTopY = rowFloor(rows);
+    for (let r = 0; r <= rows; r++) {
+      const y = rowFloor(r);
+      const isCap = r === rows && topClear <= 0;
       // Middle shelves of a divider grid are notched (egg-crate) — their own cut line.
-      const gridShelf = grid && cols >= 2 && i > 0 && i < shelfN - 1;
-      panels.push(panel("shelf", gridShelf ? `Grid shelf ${i}` : `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
-      // Front rail on every bottle shelf except the top cap — keeps rails inside overall H.
-      if (i < shelfN - 1) {
-        panels.push(panel("rail", `Bottle rail ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+      const gridShelf = grid && cols >= 2 && r > 0 && r < rows;
+      const nm = gridShelf ? `Grid shelf ${r}` : `Shelf ${r + 1}`;
+      panels.push(panel("shelf", nm, x0 + P, y, backT, innerW, P, D - backT));
+      // Front rail on every bottle-row floor (never the cap) — keeps rails inside overall H.
+      if (r < rows && !isCap) {
+        panels.push(panel("rail", `Bottle rail ${r + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
       }
     }
+    // Open top shelf above the bottle rows: the leftover height, closed by the top cap.
+    if (topClear > 0) {
+      panels.push(panel("shelf", `Shelf ${rows + 2}`, x0 + P, HR - P, backT, innerW, P, D - backT));
+    }
     // Grid racks: one opening per bottle. Dividers sit on exact centres (cell + board),
-    // stop behind the front rails, and half-lap over every shelf they cross.
+    // stop behind the front rails, span only the bottle rows, and half-lap over every
+    // shelf they cross.
     if (grid && cols >= 2) {
       for (let c = 1; c < cols; c++) {
         const x = x0 + P + c * cellW + (c - 1) * P;
-        panels.push(panel("divider", `Bottle divider ${c}`, x, P, backT, P, H - 2 * P, D - backT - P));
+        panels.push(panel("divider", `Bottle divider ${c}`, x, P, backT, P, gridTopY - P, D - backT - P));
       }
     }
-    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-    const name = `Wine rack ${W}" × ${H}" × ${D}"`;
-    const inch = (n: number) => {
-      const e = Math.floor(n * 16 + 1e-6);
-      const whole = Math.floor(e / 16);
-      let num = e % 16;
-      let den = 16;
-      while (num && num % 2 === 0) {
-        num /= 2;
-        den /= 2;
-      }
-      return num ? (whole ? `${whole} ${num}/${den}` : `${num}/${den}`) : `${whole}`;
-    };
-    const slotVoice = wineCapacityVoice(layout, spokenBottles, H);
+    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, HR, backT));
+    const name = `Wine rack ${W}" × ${HR}" × ${D}"`;
+    const inch = inch16;
+    const slotVoice = wineCapacityVoice(layout, spokenBottles, HR);
     const openingVoice = grid
-      ? `Each opening is ${inch(cellW)}" wide × ${inch(cellH)}" tall clear (at least 3.5" both ways so a bottle fits).`
+      ? `Each opening is ${inch(cellW)}" wide × ${inch(cellH)}" tall clear (at least 3.5" both ways so a bottle fits, one bottle high).`
       : `Rows are ${inch(cellH)}" tall clear and ${inch(innerW)}" wide — about ${cols} bottles side by side, each with ${inch(innerW / cols)}" of width.`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: H, depth: D },
+      overall: { width: W, height: HR, depth: D },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
         `${name}. Wall-mounted open wine rack. ${slotVoice} Not a bookcase and not a hollow box.`,
-        `Bottles lie on their sides, necks facing out. ${openingVoice} Glue a 1.5" rail on the front of every shelf except the top cap so bottles cannot roll off.${grid && cols >= 2 ? ` The ${cols - 1} divider${cols - 1 === 1 ? "" : "s"} half-lap over the ${Math.max(0, rows - 1)} middle shel${rows - 1 === 1 ? "f" : "ves"} (egg-crate).` : ""} Glue the shelves; do not pin them — a loaded row is heavy.`,
+        `Bottles lie on their sides, necks facing out. ${openingVoice} Glue a 1.5" rail on the front of every bottle-row shelf so bottles cannot roll off.${grid && cols >= 2 ? ` The ${cols - 1} divider${cols - 1 === 1 ? "" : "s"} half-lap over the ${Math.max(0, rows - 1)} middle shel${rows - 1 === 1 ? "f" : "ves"} (egg-crate).` : ""} Glue the shelves; do not pin them — a loaded row is heavy.`,
         "Hang the rack on studs through the back. Typical bottom sits about 36–42\" off the floor, or sit it on a counter and still lag it so it cannot tip. Guidance only.",
       ],
       historic: false,
-      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      opening: { ...spec.opening, width: W, height: HR, depth: D, kind: "room" },
       fitted: {
         ...spec,
         name,
@@ -3440,10 +3517,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         unit: {
           ...u,
           width: W,
-          height: H,
+          height: HR,
           depth: D,
           doors: false,
-          shelfCount: shelfN,
+          shelfCount: rows + 1 + (topClear > 0 ? 1 : 0),
           drawersPerBank: undefined,
           rod: false,
           kneeW: undefined,
