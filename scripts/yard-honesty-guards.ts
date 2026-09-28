@@ -3513,6 +3513,7 @@ console.log("SOFT-TRUST OK", {
     const cap = capacityOf(p);
     const openN = o.rows * o.cols;
     if (cap !== openN) failWine("notes capacity ≠ openings in the scene", { prompt: c.prompt, cap, openN, blob: blob.slice(0, 300) });
+    if (!(plan.instructions[0]?.description ?? "").includes(`Holds ${cap} bottles`)) failWine("plan step 1 must state capacity", { prompt: c.prompt, step: plan.instructions[0]?.description?.slice(0, 200) });
     if (c.cols != null && o.cols !== c.cols) failWine("columns", { prompt: c.prompt, cols: o.cols, want: c.cols });
     if (c.capacity != null && cap !== c.capacity) failWine("capacity", { prompt: c.prompt, cap, want: c.capacity });
     if (c.asked != null && cap != null) {

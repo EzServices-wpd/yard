@@ -1340,6 +1340,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (wineRack) {
     const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
     const dividers = panels.filter((p) => p.type === "divider");
+    // Say the real bottle capacity up front (the same sentence as the notes).
+    const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?:asked for|one opening per bottle|open shelves|make it taller or wider for more)\./)?.[0] ?? "";
     const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
     const capShelves = sortedShelves.length > 1 ? [sortedShelves[0], sortedShelves[sortedShelves.length - 1]] : sortedShelves;
     const midShelves = sortedShelves.filter((p) => !capShelves.includes(p));
@@ -1357,7 +1359,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     };
     const confirm = {
       title: "Confirm the hang — do not cut yet",
-      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
+      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${capacity ? `${capacity} ` : ""}This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
       tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
       partsUsed: ["*"],
     };
