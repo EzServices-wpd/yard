@@ -138,6 +138,15 @@ export type Panel = {
    * (right angle at −x/−z, the wall corner) or quarter-rounds (arc centered on that corner).
    */
   outline?: "right-triangle" | "quarter-round";
+  /**
+   * Odd-shape plate: real polygon outline, points relative to `position` (min corner).
+   * plane "xz" = plan outline extruded up by size.height; "xy" = front outline extruded by size.depth.
+   */
+  polygon?: { plane: "xz" | "xy"; pts: [number, number][] };
+  /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
+  cutNote?: string;
+  /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */
+  blank?: { lengthIn: number; widthIn: number; thicknessIn: number };
   cutouts?: {
     id: string;
     x: number;
@@ -206,6 +215,23 @@ export type FittedUnit = {
   bays?: number;
   /** Corner-unit class — shelves that tuck into a 90° inside corner. */
   corner?: CornerUnit;
+  /** Odd-shape class pack (L-footprint, diagonal corner, sloped, wrap, angled, outside, polygon). */
+  odd?: OddShape;
+};
+
+export type OddShape = {
+  kind:
+    | "l-footprint"
+    | "corner-diagonal"
+    | "sloped"
+    | "wrap-opening"
+    | "angled-corner"
+    | "outside-corner"
+    | "polygon-planter"
+    | "polygon-stand"
+    | "honeycomb";
+  params: Record<string, number | string | boolean>;
+  stem?: string;
 };
 
 export type CornerUnit = {

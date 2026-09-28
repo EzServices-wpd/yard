@@ -6222,3 +6222,97 @@ console.log("STRANGER PLAN OK", {
   }
   console.log("PASS corner-unit class: triangle/quarter-round plates + 90° wall panels / cleat pairs + typed legs/tiers/height + Buy/steps agree; protect rectangle/placed/brackets");
 }
+
+// Odd-shape class pack (user sweep 2026-09-28): L-desks/benches, diagonal corner cabinets / TV
+// stands, sloped (under-stair / knee-wall) shelves, window/door wraps, non-90° and outside
+// corners, polygon planters / stands, honeycomb shelves silently collapsed to a plain box (or a
+// window frame / pocket vanity). Universal rule: a typed shape keeps its shape — real polygon or
+// angled plates, shape word in the title, Assumed notes for untyped axes, cut notes with the
+// angle, steps that speak the angle, and never a 90° triangle for a non-90 or outside corner.
+{
+  type OddCase = { prompt: string; kind: string; title: RegExp; pieces: RegExp[]; steps: RegExp; typed?: { w?: number; h?: number; d?: number } };
+  const cases: OddCase[] = [
+    { prompt: "L-shaped corner desk 60 by 48 30 tall", kind: "l-footprint", title: /^L-shaped corner desk 60" × 48"/, pieces: [/^Desk top A$/, /^Desk top B$/, /^Wall cleat A$/, /^Wall cleat B$/, /^Leg$/], steps: /both walls/, typed: { w: 60, h: 30, d: 48 } },
+    { prompt: "corner desk that fits in a right angle", kind: "l-footprint", title: /^L-shaped corner desk$/, pieces: [/^Desk top A$/, /^Desk top B$/], steps: /inside corner/ },
+    { prompt: "L-shaped corner bench 60 by 48 18 tall", kind: "l-footprint", title: /^L-shaped corner bench 60" × 48"/, pieces: [/^Seat top A$/, /^Seat top B$/, /^Face panel A$/, /^Face panel B$/], steps: /both walls/, typed: { w: 60, h: 18, d: 48 } },
+    { prompt: "corner window seat", kind: "l-footprint", title: /^L-shaped corner window seat$/, pieces: [/^Seat top A$/], steps: /seat box/i },
+    { prompt: "corner cabinet with angled front 24 along each wall 36 tall", kind: "corner-diagonal", title: /^Diagonal corner cabinet 24" along each wall · 36" tall$/, pieces: [/^Back panel A$/, /^Back panel B$/, /^Diagonal shelf$/, /^Diagonal door$/], steps: /45°/, typed: { w: 24, h: 36, d: 24 } },
+    { prompt: "diagonal corner cupboard with a door", kind: "corner-diagonal", title: /^Diagonal corner cupboard$/, pieces: [/^Diagonal door$/, /^Diagonal bottom$/], steps: /diagonal door/i },
+    { prompt: "corner TV stand", kind: "corner-diagonal", title: /^Corner TV stand$/, pieces: [/^Diagonal top$/, /^Side panel A$/], steps: /both walls/ },
+    { prompt: "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side", kind: "sloped", title: /^Sloped-ceiling bookcase 48" wide · 60" to 30" tall$/, pieces: [/^Sloped top$/, /^Sloped back$/, /^Left upright$/, /^Right upright$/], steps: /slope/, typed: { w: 48, h: 60 } },
+    { prompt: "under stairs storage shelves", kind: "sloped", title: /^Under-stairs shelves$/, pieces: [/^Sloped top$/, /^Divider$/], steps: /stair|slope/i },
+    { prompt: "shelves around a window 36 wide window", kind: "wrap-opening", title: /^Shelves around a window 36" window$/, pieces: [/^Bridge bottom$/, /^Tower shelf$/], steps: /bridge/i },
+    { prompt: "bookshelf over and around a doorway", kind: "wrap-opening", title: /^Bookshelves around a doorway$/, pieces: [/^Bridge top$/], steps: /doorway/ },
+    { prompt: "outside corner shelf that wraps around a wall corner", kind: "outside-corner", title: /^Outside-corner wrap shelves$/, pieces: [/^Wrap shelf A$/, /^Wrap shelf B$/, /^Wall cleat A$/], steps: /corner/ },
+    { prompt: "135 degree corner shelf", kind: "angled-corner", title: /^135° corner shelf$/, pieces: [/^Wedge shelf$/, /^Wall panel A$/, /^Wall panel B$/], steps: /135°/ },
+    { prompt: "corner shelf for a 45 degree angled wall", kind: "angled-corner", title: /^135° corner shelf$/, pieces: [/^Wedge shelf$/], steps: /22\.5°/ },
+    { prompt: "hexagon planter", kind: "polygon-planter", title: /^Hexagon planter box$/, pieces: [/^Planter side$/, /^Planter bottom$/], steps: /30°/ },
+    { prompt: "octagon planter box 24 wide 18 tall", kind: "polygon-planter", title: /^Octagon planter box 24" across · 18" tall$/, pieces: [/^Planter side$/], steps: /22\.5°/, typed: { w: 24, h: 18, d: 24 } },
+    { prompt: "triangle plant stand", kind: "polygon-stand", title: /^Triangle plant stand$/, pieces: [/^Triangle top$/, /^Leg$/], steps: /leg/i },
+    { prompt: "hexagon honeycomb wall shelves", kind: "honeycomb", title: /^Hexagon honeycomb shelves$/, pieces: [/^Hex side$/, /^Hanging cleat$/], steps: /30°/ },
+  ];
+  for (const c of cases) {
+    const p = generateFromPrompt(c.prompt);
+    const plan = buildPlan(p);
+    const odd = p.fitted?.unit?.odd;
+    if (!odd || odd.kind !== c.kind) failHonesty(`odd-shape class lost ${c.prompt}`, { name: p.name, kind: odd?.kind });
+    if (!c.title.test(p.name)) failHonesty(`odd-shape title ${c.prompt}`, p.name);
+    if (/\b(?:no|not|never|without)\b/i.test(p.name)) failHonesty(`odd-shape title negative word ${c.prompt}`, p.name);
+    if (p.fitted?.unit?.corner) failHonesty(`odd-shape stolen by 90° corner class ${c.prompt}`, p.name);
+    const names = plan.cutList.map((x) => x.name);
+    for (const re of c.pieces) if (!names.some((n) => re.test(n))) failHonesty(`odd-shape cut piece ${re} ${c.prompt}`, names);
+    if (plan.cutList.some((x) => /^(Back|Top|Bottom|Upright)$/.test(x.name) && c.kind !== "sloped")) failHonesty(`odd-shape rectangle carcase names ${c.prompt}`, names);
+    // Any non-rectangular piece carries a shop cut note.
+    for (const panel of p.panels.filter((x) => x.polygon)) {
+      if (!panel.cutNote) failHonesty(`odd-shape polygon piece missing cut note ${c.prompt}`, panel.name);
+    }
+    if (!plan.cutList.some((x) => x.notes)) failHonesty(`odd-shape cut list has no shape notes ${c.prompt}`, plan.cutList);
+    const blob = plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n");
+    if (!c.steps.test(blob)) failHonesty(`odd-shape steps ${c.steps} ${c.prompt}`, blob.slice(0, 400));
+    if (/shelf pin|5 ?mm|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`odd-shape steps speak rectangle carcase ${c.prompt}`);
+    if (plan.bom.some((b) => /shelf pin/i.test(b.name))) failHonesty(`odd-shape buys shelf pins ${c.prompt}`, plan.bom.map((b) => b.name));
+    const legCut = plan.cutList.find((x) => x.name === "Leg");
+    if (legCut && !plan.bom.some((b) => /2×2|2x2/i.test(b.name))) failHonesty(`odd-shape legs cut from 2x2 but Buy lacks 2x2 ${c.prompt}`, plan.bom.map((b) => b.name));
+    if (p.panels.some((x) => x.type === "door") !== plan.bom.some((b) => /hinge/i.test(b.name))) failHonesty(`odd-shape door ↔ hinge Buy ${c.prompt}`);
+    // HUD typed axes: typed numbers land; untyped axes are not claimed as typed.
+    const ta = p.fitted?.typedAxes;
+    if (c.typed) {
+      if (c.typed.w != null && !(ta?.width && nearInch(p.overall.width, c.typed.w))) failHonesty(`odd-shape typed width ${c.prompt}`, { overall: p.overall, ta });
+      if (c.typed.h != null && !(ta?.height && nearInch(p.overall.height, c.typed.h))) failHonesty(`odd-shape typed height ${c.prompt}`, { overall: p.overall, ta });
+      if (c.typed.d != null && !(ta?.depth && nearInch(p.overall.depth, c.typed.d))) failHonesty(`odd-shape typed depth ${c.prompt}`, { overall: p.overall, ta });
+    } else if (ta?.width || ta?.depth) {
+      if (!/along each wall|each side|window|doorway|across|wide/.test(p.name)) failHonesty(`odd-shape claims untyped axes ${c.prompt}`, ta);
+    }
+    if (!(p.notes || []).some((n) => /^Assumed|^Your /.test(n)) && !c.typed) failHonesty(`odd-shape missing Assumed note ${c.prompt}`, p.notes);
+    // Nothing floats: every panel starts at or above the floor.
+    if (p.panels.some((x) => x.position.y < -0.01)) failHonesty(`odd-shape panel below floor ${c.prompt}`);
+  }
+  // Non-90 corners never build 90° right triangles; outside corners never build inside-corner triangles.
+  for (const q of ["135 degree corner shelf", "outside corner shelf that wraps around a wall corner", "shelves wrapping an outside corner 8 inches each side"]) {
+    const x = generateFromPrompt(q);
+    if (x.panels.some((pp) => pp.outline === "right-triangle")) failHonesty(`odd corner built a 90° triangle ${q}`, x.name);
+  }
+  // Protect: plain rectangles and prior classes stay put.
+  const keep: Array<[string, (p: ReturnType<typeof generateFromPrompt>) => boolean]> = [
+    ["bookcase 36 wide 12 deep 72 tall with three shelves", (p) => !p.fitted?.unit?.odd && nearInch(p.overall.width, 36)],
+    ["bookcase 36 wide in the corner", (p) => !p.fitted?.unit?.odd && !p.fitted?.unit?.corner && nearInch(p.overall.width, 36)],
+    ["desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space", (p) => !p.fitted?.unit?.odd && nearInch(p.overall.width, 60)],
+    ["TV console 70 wide 30 tall 18 deep", (p) => !p.fitted?.unit?.odd && nearInch(p.overall.width, 70)],
+    ["window seat", (p) => !p.fitted?.unit?.odd],
+    ["floating shelf with brackets", (p) => !p.fitted?.unit?.odd],
+    ["corner bookshelf", (p) => !!p.fitted?.unit?.corner],
+    ["right angle corner shelf 6x6 five shelves", (p) => !!p.fitted?.unit?.corner],
+    ["corner floating shelves 6 inch", (p) => !!p.fitted?.unit?.corner],
+    ["shelf with hex bolts", (p) => !p.fitted?.unit?.odd],
+    ["popsicle stick catapult", (p) => !p.fitted?.unit?.odd],
+    ["planter box", (p) => !p.fitted?.unit?.odd],
+  ];
+  for (const [q, ok] of keep) {
+    const x = generateFromPrompt(q);
+    if (!ok(x)) failHonesty(`odd-shape class over-reach ${q}`, { name: x.name, odd: x.fitted?.unit?.odd?.kind });
+  }
+  // Corner soft: height from shelf count says so.
+  const tiersOnly = generateFromPrompt("right angle corner shelf 6x6 five shelves");
+  if (!(tiersOnly.notes || []).some((n) => /tall — from your 5 shelves/.test(n))) failHonesty("corner height note should cite shelf count", tiersOnly.notes);
+  console.log("PASS odd-shape class pack: L-footprint / diagonal corner / sloped / wrap / angled / outside / polygon / honeycomb keep their shape + notes + angle steps; protect rectangles & 90° corner class");
+}

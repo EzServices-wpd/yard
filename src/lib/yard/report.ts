@@ -62,6 +62,7 @@ function closetCuts(project: YardProject): CutLine[] {
     h: number,
     d: number,
     materialName: string,
+    note?: string,
   ) => {
     let family = partFamily(name, type);
     let dims = sheetCutDims(w, h, d);
@@ -99,6 +100,7 @@ function closetCuts(project: YardProject): CutLine[] {
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += qty;
+      if (note && !existing.notes) existing.notes = note;
       return;
     }
     grouped.set(key, {
@@ -109,6 +111,7 @@ function closetCuts(project: YardProject): CutLine[] {
       widthIn: dims.widthIn,
       thicknessIn: dims.thicknessIn,
       material: matName,
+      ...(note ? { notes: note } : {}),
     });
   };
   for (const p of project.panels) {
@@ -126,7 +129,11 @@ function closetCuts(project: YardProject): CutLine[] {
       }
       continue;
     }
-    addCut(p.materialId, p.name, p.type, w, h, d, materialName);
+    if (p.blank) {
+      addCut(p.materialId, p.name, p.type, p.blank.lengthIn, p.blank.thicknessIn, p.blank.widthIn, materialName, p.cutNote);
+      continue;
+    }
+    addCut(p.materialId, p.name, p.type, w, h, d, materialName, p.cutNote);
   }
   return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()]))).map(cornerCutNote);
 }
@@ -338,7 +345,9 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       (/bedside/.test((project.prompt ?? "").toLowerCase()) && !isBedsideShelf((project.prompt ?? "").toLowerCase())));
   const hasCleats = project.panels.some((p) => /cleat/i.test(p.name));
   const hasBrackets = project.panels.some((p) => /bracket/i.test(p.name));
+  const oddKind = project.fitted?.unit?.odd?.kind;
   const floating =
+    oddKind ? oddKind === "outside-corner" || oddKind === "honeycomb" :
     hasCleats ||
     hasBrackets ||
     ((/floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
@@ -706,6 +715,20 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
 function closetIssues(project: YardProject): FeasibilityIssue[] {
   const issues: FeasibilityIssue[] = [];
   // Corner-unit class: the corner is the opening. Flag real tip risk, not a tight opening.
+  const odd = project.fitted?.unit?.odd;
+  if (odd) {
+    const p = odd.params as Record<string, number>;
+    if (odd.kind === "sloped" && p.angle > 50) {
+      issues.push({ severity: "warning", message: `Steep slope (${p.angle}°) — the low bays get very short; check a shelf still fits before you cut.` });
+    }
+    if (odd.kind === "angled-corner" && (p.theta < 60 || p.theta > 150)) {
+      issues.push({ severity: "info", message: `A ${p.theta}° corner makes ${p.theta < 60 ? "narrow, pointy" : "shallow"} wedge shelves — they hold small things.` });
+    }
+    if (odd.kind === "outside-corner" && p.D > 8) {
+      issues.push({ severity: "warning", message: `${p.D}" deep shelves on an outside corner stick out into the walkway.` });
+    }
+    return issues;
+  }
   const corner = project.fitted?.unit?.corner;
   if (corner) {
     const leg = Math.min(corner.legA, corner.legB);

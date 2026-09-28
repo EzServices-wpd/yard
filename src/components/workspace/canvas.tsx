@@ -255,8 +255,19 @@ function CameraRig({
           : fitted
             ? h * 0.42
             : focus.y;
+    // Corner builds (inside/outside corner, L-footprint, diagonal front) open toward +x/+z —
+    // look straight down the corner diagonal (≈45°) so both walls' runs read.
+    const oddKind = project.fitted?.unit?.odd?.kind;
+    const cornerish =
+      !!project.fitted?.unit?.corner ||
+      oddKind === "l-footprint" ||
+      oddKind === "corner-diagonal" ||
+      oddKind === "angled-corner" ||
+      oddKind === "outside-corner";
     const presets: Record<typeof preset, [number, number, number]> = {
-      iso: isFlat
+      iso: cornerish && fitted
+        ? [focus.x + dist * 0.9, Math.max(h * 0.62, fy + dist * 0.32), focus.z + dist * 0.9]
+        : isFlat
         ? [focus.x + dist * 0.55, fy + dist * 0.75, focus.z + dist * 0.55]
         : eiffel
           ? [focus.x + dist * 0.78, h * 0.16, focus.z + dist * 0.78]

@@ -11,6 +11,7 @@
  */
 
 import { createId } from "@/lib/utils";
+import { oddShapeKind } from "./oddShapes";
 import type { AssemblyStep, CornerUnit, FittedSpec, Panel, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
@@ -34,6 +35,8 @@ const CORNER_HARDWARE = /\bcorner\s+(?:brace|bracket|block|post|guard|bead|clamp
 export function isCornerUnitPrompt(prompt: string): boolean {
   const lower = (prompt || "").toLowerCase();
   if (!SHELF_NOUN.test(lower)) return false;
+  // Outside (convex) corners, non-90° corners, polygons, sloped / wrap builds are the odd-shape pack.
+  if (oddShapeKind(lower)) return false;
   if (/\b(?:desk|table|vanity|cabinet|closet|wardrobe|pantry|dresser|bench|climb(?:ing)?|pikler|catapult|popsicle)\b/.test(lower)) {
     return false;
   }
@@ -317,7 +320,11 @@ export function buildCornerUnit(spec: FittedSpec, prompt: string): YardProject {
     notes.push(`Assumed ${fmt(a)}" along each wall (corner shelf default) — type a size like "8 inches along each wall" to lock it.`);
   }
   if (!c.typed.height && !c.wallHung) {
-    notes.push(`Assumed ${fmt(H)}" tall (corner shelf default) — type a height like "48 tall" to lock it.`);
+    notes.push(
+      c.typed.tiers
+        ? `Assumed ${fmt(H)}" tall — from your ${N} shelves, 12" apart. Type a height like "48 tall" to lock it.`
+        : `Assumed ${fmt(H)}" tall (corner shelf default) — type a height like "48 tall" to lock it.`,
+    );
   }
   if (!c.typed.tiers) {
     notes.push(

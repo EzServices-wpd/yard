@@ -21,6 +21,7 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentity
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
+import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 
 const PLY = "plywood-3-4-4x8";
 const PLY_BACKER = "plywood-1-4-4x8";
@@ -387,6 +388,8 @@ export function looksLikeFitted(prompt: string) {
   if (isOverToilet(lower)) return true;
   // Corner-unit class (corner / right-angle / triangle / quarter-round shelves) is house.
   if (isCornerUnitPrompt(lower)) return true;
+  // Odd-shape pack (L-footprint, diagonal corner, sloped, wrap, angled, outside, polygon) is house.
+  if (isOddShapePrompt(lower)) return true;
   // Climb-primary stools / launcher / media-hold are craft — not fitted.
   // Linen/closet with a climb step-shelf still fitted (climbIdentityLabel null).
   if (climbIdentityLabel(lower)) return false;
@@ -546,6 +549,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!looksLikeFitted(prompt)) return null;
   // Corner-unit class — triangle / quarter-round plates in a 90° corner, never a flat rectangle.
   if (isCornerUnitPrompt(prompt) && !looksLikePocket(prompt)) return cornerSpecFromPrompt(prompt);
+  // Odd-shape pack — a typed shape never collapses to a plain box.
+  if (isOddShapePrompt(prompt)) return oddSpecFromPrompt(prompt);
   const pocket = parsePocket(prompt);
   if (pocket) {
     return {
@@ -2848,6 +2853,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   // Corner-unit class: typed corner intent (or a corner spec from Measure) builds
   // right-triangle / quarter-round shelves against two walls meeting at 90°.
+  if (spec.unit.odd || isOddShapePrompt(prompt)) {
+    return buildOddShape(spec, prompt);
+  }
   if (spec.unit.corner || isCornerUnitPrompt(prompt)) {
     return buildCornerUnit(spec, prompt);
   }

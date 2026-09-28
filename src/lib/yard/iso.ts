@@ -115,6 +115,21 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
   }
   for (const panel of project.panels) {
     const on0 = hot.has(panel.id);
+    if (panel.polygon) {
+      const [ring0, ring1] = polygonRings(panel);
+      for (let i = 0; i < ring0.length; i++) {
+        const j = (i + 1) % ring0.length;
+        for (const r of [ring0, ring1]) {
+          const a = iso(r[i].x, r[i].y, r[i].z);
+          const b = iso(r[j].x, r[j].y, r[j].z);
+          marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
+        }
+        const a = iso(ring0[i].x, ring0[i].y, ring0[i].z);
+        const b = iso(ring1[i].x, ring1[i].y, ring1[i].z);
+        marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
+      }
+      continue;
+    }
     if (panel.outline) {
       // Corner-unit plate: draw the real triangle / quarter-round ring, top and bottom, plus corner posts.
       const ring = outlineRingXZ(panel);
@@ -286,6 +301,15 @@ export function isoFaces(project: YardProject, highlightIds: string[]) {
   for (const panel of project.panels) {
     const on = !hot.size || hot.has(panel.id);
     if (highlightIds.length && !on) continue;
+    if (panel.polygon) {
+      const [, top] = polygonRings(panel);
+      const pts = (panel.polygon.plane === "xz" ? top : polygonRings(panel)[1]).map((c) => {
+        const p = iso(c.x, c.y, c.z);
+        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+      });
+      faces.push({ points: pts.join(" "), hot: on });
+      continue;
+    }
     if (panel.outline) {
       const yt = panel.position.y + panel.size.height;
       const pts = outlineRingXZ(panel).map((c) => {
@@ -371,4 +395,18 @@ export function outlineRingXZ(panel: import("./types").Panel): { x: number; z: n
     { x: x + w, z },
     { x, z: z + d },
   ];
+}
+
+/** Odd-shape polygon plate as two world rings (bottom/back face and top/front face). */
+export function polygonRings(panel: import("./types").Panel): { x: number; y: number; z: number }[][] {
+  const poly = panel.polygon!;
+  const { x, y, z } = panel.position;
+  const { width: w, height: h, depth: d } = panel.size;
+  if (poly.plane === "xz") {
+    const r0 = poly.pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
+    return [r0, r0.map((p) => ({ ...p, y: y + h }))];
+  }
+  void w;
+  const r0 = poly.pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
+  return [r0, r0.map((p) => ({ ...p, z: z + d }))];
 }

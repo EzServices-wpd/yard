@@ -6,6 +6,7 @@ import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
+import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
@@ -87,6 +88,11 @@ export function generateFromPrompt(
   // Linen/closet with climb step-shelf still accepts fitted (climbIdentityLabel is null).
   if (opts.fittedOverride && !climbIdentityLabel(lower)) {
     return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit);
+  }
+
+  // Odd-shape pack beats window/door/pocket steals ("shelves around a window", "corner cabinet with angled front").
+  if (isOddShapePrompt(prompt) && !climbIdentityLabel(lower)) {
+    return honestHouse(buildOddShape(null, prompt), prompt);
   }
 
   if (kindHint === "opening") {

@@ -65,7 +65,7 @@ export function PanelMesh({
   const allowSwing =
     facesOpen &&
     (activeStep == null || /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle));
-  const open = allowSwing && (isDoor || isDrawer || isLid) && (!hasStep || inStep);
+  const open = allowSwing && !panel.yaw && (isDoor || isDrawer || isLid) && (!hasStep || inStep);
   const isLeft =
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
@@ -124,7 +124,27 @@ export function PanelMesh({
     (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
   const isPost = Math.min(w, d) <= 2.2 && h > Math.max(w, d) * 4;
   // Corner-unit plates: right triangle or quarter-round, right angle at −x/−z (the wall corner).
+  const poly = panel.polygon;
   const outlineGeo = useMemo(() => {
+    if (poly && poly.pts.length >= 3) {
+      // Odd-shape plate: real polygon. "xz" = plan outline extruded up; "xy" = face outline extruded back.
+      const shape = new THREE.Shape();
+      if (poly.plane === "xz") {
+        poly.pts.forEach(([px, pz], i) => (i ? shape.lineTo(px - w / 2, pz - d / 2) : shape.moveTo(px - w / 2, pz - d / 2)));
+        shape.closePath();
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+        geo.rotateX(Math.PI / 2);
+        geo.translate(0, h / 2, 0);
+        geo.computeVertexNormals();
+        return geo;
+      }
+      poly.pts.forEach(([px, py], i) => (i ? shape.lineTo(px - w / 2, py - h / 2) : shape.moveTo(px - w / 2, py - h / 2)));
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+      geo.translate(0, 0, -d / 2);
+      geo.computeVertexNormals();
+      return geo;
+    }
     if (!panel.outline) return null;
     const shape = new THREE.Shape();
     const x0 = -w / 2;
@@ -143,7 +163,7 @@ export function PanelMesh({
     geo.translate(0, h / 2, 0);
     geo.computeVertexNormals();
     return geo;
-  }, [panel.outline, w, h, d]);
+  }, [panel.outline, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
 
