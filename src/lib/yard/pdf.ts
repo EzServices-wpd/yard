@@ -242,6 +242,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
       const dims = `${c.lengthIn}" x ${c.widthIn}" x ${c.thicknessIn}"`;
       doc.text(dims, right, y, { align: "right" });
       y += Math.max(15, leftLines.length * 15);
+      if (c.notes) muted(c.notes.replace(/×/g, "x").replace(/—/g, "-"));
     }
   } else if (plan.partsKind === "whole") {
     heading("Stick list");

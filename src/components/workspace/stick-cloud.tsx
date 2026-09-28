@@ -123,6 +123,27 @@ export function PanelMesh({
     panel.type === "top" &&
     (fittedShape === "round" || /cut\s*round|\bdia\b|diameter/i.test(panel.name));
   const isPost = Math.min(w, d) <= 2.2 && h > Math.max(w, d) * 4;
+  // Corner-unit plates: right triangle or quarter-round, right angle at −x/−z (the wall corner).
+  const outlineGeo = useMemo(() => {
+    if (!panel.outline) return null;
+    const shape = new THREE.Shape();
+    const x0 = -w / 2;
+    const y0 = -d / 2;
+    shape.moveTo(x0, y0);
+    shape.lineTo(x0 + w, y0);
+    if (panel.outline === "quarter-round") {
+      shape.absarc(x0, y0, Math.min(w, d), 0, Math.PI / 2, false);
+    } else {
+      shape.lineTo(x0, y0 + d);
+    }
+    shape.lineTo(x0, y0);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 32 });
+    // Shape XY → world XZ (shape +Y → world +Z), extrude along world Y, centered.
+    geo.rotateX(Math.PI / 2);
+    geo.translate(0, h / 2, 0);
+    geo.computeVertexNormals();
+    return geo;
+  }, [panel.outline, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
 
@@ -138,7 +159,9 @@ export function PanelMesh({
             onSelect();
           }}
         >
-          {isRoundTop ? (
+          {outlineGeo ? (
+            <primitive object={outlineGeo} attach="geometry" />
+          ) : isRoundTop ? (
             <cylinderGeometry args={[topRadius, topRadius, h, 64]} />
           ) : (
             <boxGeometry args={[w, h, d]} />
@@ -156,7 +179,7 @@ export function PanelMesh({
         </mesh>
         {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
             scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}
-        {!glass && opacity > 0.4 && !isRoundTop && !isPost && panel.type !== "rail" && !(panel.yaw) && (
+        {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
           <EdgeBand w={w} h={h} d={d} />
         )}
         {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}

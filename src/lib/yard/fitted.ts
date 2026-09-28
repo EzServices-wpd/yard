@@ -20,6 +20,7 @@ import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
+import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 
 const PLY = "plywood-3-4-4x8";
 const PLY_BACKER = "plywood-1-4-4x8";
@@ -384,6 +385,8 @@ export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
   if (looksLikePocket(prompt)) return true;
   if (isOverToilet(lower)) return true;
+  // Corner-unit class (corner / right-angle / triangle / quarter-round shelves) is house.
+  if (isCornerUnitPrompt(lower)) return true;
   // Climb-primary stools / launcher / media-hold are craft — not fitted.
   // Linen/closet with a climb step-shelf still fitted (climbIdentityLabel null).
   if (climbIdentityLabel(lower)) return false;
@@ -541,6 +544,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — do not null brief.
   if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
   if (!looksLikeFitted(prompt)) return null;
+  // Corner-unit class — triangle / quarter-round plates in a 90° corner, never a flat rectangle.
+  if (isCornerUnitPrompt(prompt) && !looksLikePocket(prompt)) return cornerSpecFromPrompt(prompt);
   const pocket = parsePocket(prompt);
   if (pocket) {
     return {
@@ -2839,6 +2844,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       prompt,
     );
     return { ...pocket, fitted: spec, name: spec.name || pocket.name };
+  }
+
+  // Corner-unit class: typed corner intent (or a corner spec from Measure) builds
+  // right-triangle / quarter-round shelves against two walls meeting at 90°.
+  if (spec.unit.corner || isCornerUnitPrompt(prompt)) {
+    return buildCornerUnit(spec, prompt);
   }
 
   const u = spec.unit;

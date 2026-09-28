@@ -274,6 +274,8 @@ export function wantsFixedGlueShelves(project: YardProject): boolean {
   const prompt = project.prompt ?? "";
   const lower = prompt.toLowerCase();
   if (wantsRackAffordance(prompt)) return true;
+  // Corner-unit shelves are glued and screwed through both wall panels / onto cleats.
+  if (project.fitted?.unit?.corner) return true;
   if (project.fitted?.affordances?.includes("cubbies")) return true;
   // TV / media open consoles: dado/screw shelves, not pin-shelf bookcases.
   if (project.fitted?.program === "media") return true;
@@ -726,6 +728,9 @@ function applyLocalFixes(project: YardProject): YardProject {
     ((project.pocket.walls.leftAngleDeg ?? 0) > 0.2 || (project.pocket.walls.rightAngleDeg ?? 0) > 0.2);
   if (pocketWonky || project.kind === "opening") return project;
   if (!project.fitted && !project.panels.length) return project;
+  // Corner-unit class owns its geometry (triangle / quarter-round plates, wall panels or cleats).
+  // A rectangular-carcase rebuild would silently flatten the corner.
+  if (project.fitted?.unit?.corner) return project;
   let next = project;
   const tableLie = tableBraceIssues(next).length > 0;
   const typed = typedExtents(next.prompt ?? "");

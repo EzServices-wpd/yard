@@ -133,6 +133,11 @@ export type Panel = {
   materialId: string;
   /** Yaw in radians — table legs/aprons rotate about Y. */
   yaw?: number;
+  /**
+   * Plate outline inside the width × depth box. Corner-unit shelves are right triangles
+   * (right angle at −x/−z, the wall corner) or quarter-rounds (arc centered on that corner).
+   */
+  outline?: "right-triangle" | "quarter-round";
   cutouts?: {
     id: string;
     x: number;
@@ -199,6 +204,20 @@ export type FittedUnit = {
   legs?: number;
   shape?: "rect" | "round" | "oval" | "square";
   bays?: number;
+  /** Corner-unit class — shelves that tuck into a 90° inside corner. */
+  corner?: CornerUnit;
+};
+
+export type CornerUnit = {
+  shape: "triangle" | "quarter";
+  /** Along-wall legs (quarter-round: legA = legB = radius). */
+  legA: number;
+  legB: number;
+  height: number;
+  tiers: number;
+  wallHung: boolean;
+  typed: { legs: boolean; height: boolean; tiers: boolean };
+  stem?: string;
 };
 
 export type FittedSpec = {

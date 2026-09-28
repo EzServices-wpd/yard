@@ -121,6 +121,11 @@ export function fmtSheetCut(w: number, h: number, d: number) {
  * peg rail / hat shelf, not "Back" / "Top".
  */
 export function cutListName(name: string, type?: string): string {
+  // Corner-unit class keeps its shape words on the cut list.
+  if (/^triangle shelf/i.test(name)) return "Triangle shelf";
+  if (/^quarter-round shelf/i.test(name)) return "Quarter-round shelf";
+  if (/^wall panel\s+[ab]\b/i.test(name)) return name.replace(/^wall panel\s+([ab])\b.*$/i, (_m, l: string) => `Wall panel ${l.toUpperCase()}`);
+  if (/^wall cleat\s+[ab]\b/i.test(name)) return name.replace(/^wall cleat\s+([ab])\b.*$/i, (_m, l: string) => `Wall cleat ${l.toUpperCase()}`);
   if (/hanging rod/i.test(name)) return "Hanging rod";
   if (/jar lip/i.test(name)) return "Jar lip";
   if (/bottle rail/i.test(name)) return "Bottle rail";

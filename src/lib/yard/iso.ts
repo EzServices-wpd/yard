@@ -114,6 +114,28 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
     }
   }
   for (const panel of project.panels) {
+    const on0 = hot.has(panel.id);
+    if (panel.outline) {
+      // Corner-unit plate: draw the real triangle / quarter-round ring, top and bottom, plus corner posts.
+      const ring = outlineRingXZ(panel);
+      const yb = panel.position.y;
+      const yt = panel.position.y + panel.size.height;
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i];
+        const q = ring[(i + 1) % ring.length];
+        for (const yy of [yb, yt]) {
+          const a = iso(p.x, yy, p.z);
+          const b = iso(q.x, yy, q.z);
+          marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
+        }
+      }
+      for (const p of ring.length > 3 ? [ring[0], ring[1], ring[ring.length - 1]] : ring) {
+        const a = iso(p.x, yb, p.z);
+        const b = iso(p.x, yt, p.z);
+        marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
+      }
+      continue;
+    }
     const corners = panelWorldCorners(panel);
     const c = corners.map((pt) => [pt.x, pt.y, pt.z] as [number, number, number]);
     const segs: [number, number][] = [
@@ -264,6 +286,15 @@ export function isoFaces(project: YardProject, highlightIds: string[]) {
   for (const panel of project.panels) {
     const on = !hot.size || hot.has(panel.id);
     if (highlightIds.length && !on) continue;
+    if (panel.outline) {
+      const yt = panel.position.y + panel.size.height;
+      const pts = outlineRingXZ(panel).map((c) => {
+        const p = iso(c.x, yt, c.z);
+        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+      });
+      faces.push({ points: pts.join(" "), hot: on });
+      continue;
+    }
     const world = panelWorldCorners(panel);
     const { width: w, height: h, depth: d } = panel.size;
     const areaXY = w * h;
@@ -318,4 +349,26 @@ export function isoSvgString(project: YardProject, step?: AssemblyStep, w = 280,
     ? `<text x="${(box.minX + box.w / 2).toFixed(2)}" y="${(box.minY + box.h - fs * 0.4).toFixed(2)}" text-anchor="middle" font-size="${(fs * 0.85).toFixed(2)}" font-family="ui-sans-serif, system-ui, sans-serif" fill="#6b6358">${escXml(caption)}</text>`
     : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${box.minX} ${box.minY} ${box.w} ${box.h}" fill="none">${faceSvg}${lines}${dimSvg}${cap}</svg>`;
+}
+
+
+/** Corner-unit plate outline in world XZ (right angle at the panel's −x/−z corner = the wall corner). */
+export function outlineRingXZ(panel: import("./types").Panel): { x: number; z: number }[] {
+  const { x, z } = panel.position;
+  const { width: w, depth: d } = panel.size;
+  if (panel.outline === "quarter-round") {
+    const r = Math.min(w, d);
+    const pts: { x: number; z: number }[] = [{ x, z }];
+    const n = 12;
+    for (let i = 0; i <= n; i++) {
+      const t = (i / n) * (Math.PI / 2);
+      pts.push({ x: x + r * Math.cos(t), z: z + r * Math.sin(t) });
+    }
+    return pts;
+  }
+  return [
+    { x, z },
+    { x: x + w, z },
+    { x, z: z + d },
+  ];
 }

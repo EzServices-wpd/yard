@@ -287,7 +287,10 @@ function PlanBody({
                     <tr key={c.id} className="border-t border-border/70">
                       <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
                       <td className="py-1.5 font-mono">{c.quantity}</td>
-                      <td className="py-1.5">{c.name}</td>
+                      <td className="py-1.5">
+                        {c.name}
+                        {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
+                      </td>
                       <td className="py-1.5 font-mono text-muted">
                         {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
                         {c.material ? (

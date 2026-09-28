@@ -6139,3 +6139,86 @@ console.log("STRANGER PLAN OK", {
     console.log("PASS paper Dia×H bare-H height + protect vanity/no-drawers/media/multi/lift/ledge/night");
   }
 }
+
+// Corner-unit class (user feedback 2026-09-27): a bookshelf that tucks into a 90° room corner
+// silently collapsed to a flat 36" rectangular bookcase / storage unit (lost 6" legs, lost
+// shelf count, no triangle plates, no second wall panel). Universal corner class: corner /
+// right-angle / triangle / quarter-round / "along each wall" shelf prompts build right-triangle
+// (or quarter-round) shelves, two wall panels meeting at 90° (or a cleat pair per shelf when
+// floating), tiers from count or height, typed-axis HUD, Buy + steps agree with the cut list.
+{
+  const cases: Array<{ prompt: string; legs: number; tiers?: number; height?: number; wall: boolean; quarter?: boolean; typedLegs: boolean }> = [
+    { prompt: "corner bookshelf", legs: 12, wall: false, typedLegs: false },
+    { prompt: "corner shelf 6 by 6 in the corner of a room", legs: 6, wall: false, typedLegs: true },
+    { prompt: "corner bookshelf with 6 inch triangle shelves 60 tall", legs: 6, height: 60, wall: false, typedLegs: true },
+    { prompt: "right angle corner shelf 6x6 five shelves", legs: 6, tiers: 5, wall: false, typedLegs: true },
+    { prompt: "5 tier corner shelf 12 wide 12 deep 60 tall", legs: 12, tiers: 5, height: 60, wall: false, typedLegs: true },
+    { prompt: "corner floating shelves 6 inch", legs: 6, wall: true, typedLegs: true },
+    { prompt: "quarter round corner shelf 10 inch radius 4 shelves", legs: 10, tiers: 4, wall: false, quarter: true, typedLegs: true },
+    { prompt: "corner bookcase 72 tall", legs: 12, height: 72, wall: false, typedLegs: false },
+    { prompt: "wall corner shelf unit, 6 inches along each wall, 48 tall", legs: 6, height: 48, wall: false, typedLegs: true },
+  ];
+  for (const c of cases) {
+    const p = generateFromPrompt(c.prompt);
+    const plan = buildPlan(p);
+    const corner = p.fitted?.unit?.corner;
+    if (!corner) failHonesty(`corner intent lost (flat rectangle) ${c.prompt}`, { name: p.name, program: p.fitted?.program });
+    if (!nearInch(corner!.legA, c.legs) || !nearInch(corner!.legB, c.legs)) failHonesty(`corner legs ${c.prompt}`, corner);
+    if (!nearInch(p.overall.width, c.legs) || !nearInch(p.overall.depth, c.legs)) failHonesty(`corner envelope ${c.prompt}`, p.overall);
+    if (c.height != null && !nearInch(p.overall.height, c.height)) failHonesty(`corner typed height ${c.prompt}`, p.overall);
+    const shelves = p.panels.filter((x) => x.type === "shelf");
+    if (c.tiers != null && shelves.length !== c.tiers) failHonesty(`corner spoken tiers ${c.prompt}`, shelves.length);
+    const want = c.quarter ? "quarter-round" : "right-triangle";
+    if (!shelves.length || shelves.some((s) => s.outline !== want)) failHonesty(`corner shelves not ${want} ${c.prompt}`, shelves.map((s) => s.outline));
+    if (/^Bookcase\b|^Storage unit\b|^Wall shelf\b|^Floating shel/i.test(p.name)) failHonesty(`corner title collapsed ${c.prompt}`, p.name);
+    if (!/corner/i.test(p.name)) failHonesty(`corner title missing Corner ${c.prompt}`, p.name);
+    if (/\b(?:no|not|never|without)\b/i.test(p.name)) failHonesty(`corner title negative word ${c.prompt}`, p.name);
+    if (c.typedLegs && !new RegExp(String.raw`${c.legs}"`).test(p.name)) failHonesty(`corner title typed legs ${c.prompt}`, p.name);
+    if (!c.typedLegs && /along the walls|radius/.test(p.name)) failHonesty(`corner title invents untyped legs ${c.prompt}`, p.name);
+    if (!c.typedLegs && !(p.notes || []).some((n) => /^Assumed 12" along each wall/.test(n))) failHonesty(`corner Assumed leg note ${c.prompt}`, p.notes);
+    if (c.height == null && !c.wall && !(p.notes || []).some((n) => /^Assumed \d+" tall/.test(n))) failHonesty(`corner Assumed height note ${c.prompt}`, p.notes);
+    // Two members meet at 90°: wall panels A+B (floor) or a cleat pair per shelf (floating).
+    if (c.wall) {
+      const ca = p.panels.filter((x) => /^Wall cleat A/i.test(x.name));
+      const cb = p.panels.filter((x) => /^Wall cleat B/i.test(x.name));
+      if (ca.length !== shelves.length || cb.length !== shelves.length) failHonesty(`corner floating cleat pairs ${c.prompt}`, { ca: ca.length, cb: cb.length, shelves: shelves.length });
+      if (p.panels.some((x) => x.type === "upright")) failHonesty(`corner floating invented uprights ${c.prompt}`, p.panels.map((x) => x.name));
+    } else {
+      const a = p.panels.find((x) => x.name === "Wall panel A");
+      const b = p.panels.find((x) => x.name === "Wall panel B");
+      if (!a || !b) failHonesty(`corner missing 90° wall panels ${c.prompt}`, p.panels.map((x) => x.name));
+      // A runs along x at the back wall; B runs along z at the side wall, butting A.
+      if (!(a!.size.width > a!.size.depth && b!.size.depth > b!.size.width)) failHonesty(`corner wall panels not at 90° ${c.prompt}`, [a!.size, b!.size]);
+      if (!nearInch(a!.size.width, c.legs) || !nearInch(b!.size.depth + b!.size.width, c.legs)) failHonesty(`corner wall panel legs ${c.prompt}`, [a!.size, b!.size]);
+      if (p.panels.some((x) => x.type === "back" || x.type === "top" || x.type === "bottom" || x.type === "door" || x.type === "drawer")) {
+        failHonesty(`corner invented rectangular carcase pieces ${c.prompt}`, p.panels.map((x) => x.name));
+      }
+    }
+    // Cut list ↔ panels ↔ Buy ↔ steps agree.
+    const shelfCut = plan.cutList.filter((x) => (c.quarter ? /^Quarter-round shelf/ : /^Triangle shelf/).test(x.name));
+    if (shelfCut.reduce((s, x) => s + x.quantity, 0) !== shelves.length) failHonesty(`corner cut list shelf qty ${c.prompt}`, plan.cutList);
+    if (!shelfCut.every((x) => x.notes && (c.quarter ? /radius arc/.test(x.notes) : /diagonal cut/.test(x.notes)))) failHonesty(`corner cut note ${c.prompt}`, shelfCut);
+    if (plan.cutList.some((x) => /^(Back|Top|Bottom|Shelf|Upright)$/.test(x.name))) failHonesty(`corner cut list rectangle names ${c.prompt}`, plan.cutList.map((x) => x.name));
+    if (plan.bom.some((b) => /shelf pin/i.test(b.name))) failHonesty(`corner buys shelf pins ${c.prompt}`, plan.bom.map((b) => b.name));
+    if (plan.bom.some((b) => /1\/4" plywood/i.test(b.name))) failHonesty(`corner buys backer for a missing back ${c.prompt}`, plan.bom.map((b) => b.name));
+    if (!plan.bom.some((b) => /structural screws/i.test(b.name) && /both walls/i.test(b.notes ?? ""))) failHonesty(`corner Buy missing both-walls screws ${c.prompt}`, plan.bom);
+    const blob = plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n");
+    if (!c.quarter && !/diagonal/i.test(blob)) failHonesty(`corner steps missing diagonal cut ${c.prompt}`);
+    if (c.quarter && !/arc/i.test(blob)) failHonesty(`corner steps missing arc cut ${c.prompt}`);
+    if (!/both walls/i.test(blob) || !/stud/i.test(blob)) failHonesty(`corner steps missing screw into both walls / studs ${c.prompt}`);
+    if (/shelf pin|5 ?mm|Pin \d+ adjustable|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
+    if (!c.wall && !/Wall panel A/.test(blob)) failHonesty(`corner steps missing wall panels ${c.prompt}`);
+  }
+  // Protect: rectangle bookcase, bookcase placed in a corner with a typed width, floating shelf with brackets.
+  const rect = generateFromPrompt("bookcase 36 wide 12 deep 72 tall with three shelves");
+  if (rect.fitted?.unit?.corner || !nearInch(rect.overall.width, 36) || rect.panels.some((x) => x.outline)) failHonesty("corner class stole rectangle bookcase", rect.name);
+  const placed = generateFromPrompt("bookcase 36 wide in the corner");
+  if (placed.fitted?.unit?.corner || !nearInch(placed.overall.width, 36)) failHonesty("corner class stole typed-width bookcase in a corner", placed.name);
+  const brackets = generateFromPrompt("floating shelf with brackets");
+  if (brackets.fitted?.unit?.corner || brackets.panels.some((x) => x.outline)) failHonesty("corner class stole floating shelf with brackets", brackets.name);
+  for (const q of ["corner desk 60 wide", "bookcase with corner brackets", "climbing triangle", "corner cabinet"]) {
+    const x = generateFromPrompt(q);
+    if (x.fitted?.unit?.corner) failHonesty(`corner class over-reach ${q}`, x.name);
+  }
+  console.log("PASS corner-unit class: triangle/quarter-round plates + 90° wall panels / cleat pairs + typed legs/tiers/height + Buy/steps agree; protect rectangle/placed/brackets");
+}

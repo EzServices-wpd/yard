@@ -41,6 +41,7 @@ import { slideInches } from "./stockLook";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause } from "./voiceHonesty";
+import { cornerSteps } from "./corner";
 
 function dim(p: Panel) {
   return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
@@ -302,6 +303,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         description: "Generate a thing first. These steps are written from the pieces on the bench.",
       },
     ];
+  }
+
+  // Corner-unit class — triangle / quarter-round shelves against two walls meeting at 90°.
+  if (project.fitted?.unit?.corner) {
+    const corner = cornerSteps(project);
+    if (corner.length) return corner;
   }
 
   const item = getCatalogItem(panels[0]?.materialId ?? project.primaryMaterialId);

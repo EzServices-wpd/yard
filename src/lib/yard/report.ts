@@ -128,7 +128,26 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     addCut(p.materialId, p.name, p.type, w, h, d, materialName);
   }
-  return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()])));
+  return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()]))).map(cornerCutNote);
+}
+
+/** Corner-unit cut lines say how a stranger gets the shape from a square blank. */
+function cornerCutNote(c: CutLine): CutLine {
+  const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.01 ? String(Math.round(n)) : String(n));
+  if (/^triangle shelf/i.test(c.name)) {
+    const squares = Math.ceil(c.quantity / 2);
+    return {
+      ...c,
+      notes: `Right triangle, ${fmt(c.lengthIn)}" × ${fmt(c.widthIn)}" legs. Cut ${squares} square${squares === 1 ? "" : "s"} ${fmt(c.lengthIn)}" × ${fmt(c.widthIn)}", then one diagonal cut each — every square gives 2 shelves.`,
+    };
+  }
+  if (/^quarter-round shelf/i.test(c.name)) {
+    return {
+      ...c,
+      notes: `Quarter circle, ${fmt(c.lengthIn)}" radius. Cut ${c.quantity} square${c.quantity === 1 ? "" : "s"} ${fmt(c.lengthIn)}" × ${fmt(c.widthIn)}", then cut a ${fmt(c.lengthIn)}" radius arc on each with a jigsaw.`,
+    };
+  }
+  return c;
 }
 
 /** After splice: name the sheet that actually fits the face. 102" stays whole on 4×10. */
@@ -349,7 +368,12 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   // Single-slab headboard has no carcase joints — skip join screws.
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   if (!headboard) {
-    const joinScrews = floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : screws;
+    const cornerUnit = project.fitted?.unit?.corner;
+    const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
+    const cornerWallPanelScrews = cornerUnit && !cornerUnit.wallHung ? Math.max(4, Math.ceil(cornerUnit.height / 8)) : 0;
+    const joinScrews = cornerUnit
+      ? cornerShelves * 4 + cornerWallPanelScrews
+      : floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : screws;
     bom.push({
       name: '#8 x 1-1/4" wood screws',
       quantity: Math.ceil(joinScrews / 50),
@@ -357,7 +381,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       catalogId: "screws-8",
       searchQuery: "#8 wood screws 1-1/4",
       estimatedCost: 8,
-      notes: floating
+      notes: cornerUnit
+        ? cornerUnit.wallHung
+          ? `${joinScrews} screws — 4 per shelf, down into its two wall cleats.`
+          : `${joinScrews} screws — 4 per shelf (2 through each wall panel) plus ${cornerWallPanelScrews} joining Wall panel A to Wall panel B.`
+        : floating
         ? hasBrackets
           ? `${joinScrews} screws shelf into brackets (no carcase joints).`
           : `${joinScrews} screws shelf into cleat (no carcase joints).`
@@ -645,7 +673,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           ? "Tapcon 3/16 x 2-3/4"
           : "GRK RSS #9 x 3-1/8",
       estimatedCost: 14,
-      notes: headboard
+      notes: project.fitted?.unit?.corner
+        ? project.fitted.unit.corner.wallHung
+          ? `${project.panels.filter((p) => /^wall cleat/i.test(p.name)).length * 2} screws — 2 through each wall cleat into studs or corner framing on both walls. Guidance only — confirm wall type.`
+          : "4 screws — 2 through Wall panel A and 2 through Wall panel B into studs or corner framing on both walls. Guidance only — confirm wall type."
+        : headboard
         ? "4-6 screws through the board into studs (or a french cleat). Guidance only — confirm wall type."
         : coatRack
           ? "4-6 screws through the peg rail into studs. Guidance only — confirm wall type."
@@ -673,6 +705,24 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
 
 function closetIssues(project: YardProject): FeasibilityIssue[] {
   const issues: FeasibilityIssue[] = [];
+  // Corner-unit class: the corner is the opening. Flag real tip risk, not a tight opening.
+  const corner = project.fitted?.unit?.corner;
+  if (corner) {
+    const leg = Math.min(corner.legA, corner.legB);
+    if (!corner.wallHung && corner.height / Math.max(leg, 1) > 5) {
+      issues.push({
+        severity: "warning",
+        message: `Tall and slim (${Math.round(corner.height)}" tall on ${Math.round(leg)}" legs) — screw both wall panels into the walls before you load it.`,
+      });
+    }
+    if (leg < 5) {
+      issues.push({
+        severity: "info",
+        message: `Shelves under 5" along each wall hold small things (phones, plants, trinkets) — not books.`,
+      });
+    }
+    return issues;
+  }
   const { width, height, depth } = project.overall;
   const coatRack =
     /coat/i.test(project.name) ||

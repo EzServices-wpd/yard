@@ -420,7 +420,11 @@ export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
     // Face dimensions: length x width (thickness is the saw kerf axis, not nested)
     const w = Math.max(c.lengthIn, c.widthIn);
     const h = Math.min(c.lengthIn, c.widthIn);
-    const qty = Math.max(1, Math.floor(c.quantity) || 1);
+    // One diagonal cut through a square blank yields two triangle shelves.
+    const triangle = /^triangle shelf/i.test(c.name);
+    const qty = triangle
+      ? Math.max(1, Math.ceil((Math.floor(c.quantity) || 1) / 2))
+      : Math.max(1, Math.floor(c.quantity) || 1);
     // ASCII material label — avoid Unicode fractions in PDF footers
     const material =
       c.material
