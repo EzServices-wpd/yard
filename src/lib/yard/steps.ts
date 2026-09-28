@@ -2817,6 +2817,11 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "ear", title: "Add the two ears", why: "Ears on the back of the head, one each side." },
       { role: "mane", title: "Lay the mane along the top of the neck", why: "The mane edge runs the length of the neck." },
       { role: "tail", title: "Glue the tail to the back of the body", why: "The tail finishes the silhouette." },
+      { role: "top", title: "Fix the flat top across the back", why: "Pieces side by side, laid flat: the usable top." },
+      { role: "rim", title: "Glue the planter rim around the top", why: "The rim holds the soil or the pot on the top." },
+      { role: "base", title: "Set the animal on its base plate", why: "The base runs past the tail so books stand on it." },
+      { role: "rocker", title: "Build the two curved rockers", why: "Overlapping pieces follow the arc; one under each pair of feet." },
+      { role: "tie", title: "Tie the rockers together and stand the animal on them", why: "Ties front and back keep the rockers parallel; the feet glue onto the rockers." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }

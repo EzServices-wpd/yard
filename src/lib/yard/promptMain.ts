@@ -25,7 +25,7 @@ import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
-import { buildTemplate, detectTemplate, type TemplateBuild, type TemplateClassId } from "./formTemplates";
+import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { hasExplicitSize } from "./promptHelpers";
 
 export function emptyProject(): YardProject {
@@ -67,6 +67,18 @@ function honestHouse(project: YardProject, prompt: string, honorUnit = false): Y
   });
 }
 
+/**
+ * The stock a build uses: the chip's pick, else the named stock, else popsicle sticks.
+ * No build ships stockless — a cut list and a Buy list always exist. ("wire" typed stays wire.)
+ */
+function buildStock(prompt: string, materialOverride?: string): CatalogItem {
+  const picked = materialOverride ? getCatalogItem(materialOverride) : undefined;
+  if (picked) return picked;
+  const named = detectMaterial(prompt);
+  if (isWireStock(named) && !/\bwire\b/i.test(prompt)) return getCatalogItem("popsicle-standard") ?? named;
+  return named;
+}
+
 /** Built → solved: every caller gets the interference-solved model (the one source of truth). */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   return solveModel(generateRaw(...args));
@@ -93,6 +105,11 @@ function generateRaw(
   const scale = opts.scale ?? "full";
   const grain = scale === "weekend" ? 1.85 : 1;
 
+  // An animal with a use (shelf, bookend, planter, rocker) is the animal template first — never a storage unit.
+  if (detectShapeClass(prompt)?.profile.use && !formOverride) {
+    const shaped = buildShapeProject(prompt, buildStock(prompt, materialOverride), opts);
+    if (shaped) return shaped;
+  }
   // Climb/step stool identity beats a stolen Bench fittedOverride from house-brief / Measure.
   // Linen/closet with climb step-shelf still accepts fitted (climbIdentityLabel is null).
   if (opts.fittedOverride && !climbIdentityLabel(lower)) {
@@ -143,7 +160,7 @@ function generateRaw(
 
   // Flat-frame template (picture frames) owns its build before the 2D paper layouts.
   if (detectTemplate(prompt) === "flat-frame") {
-    const fItem = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
+    const fItem = buildStock(prompt, materialOverride);
     const framed = buildTemplateProject(prompt, fItem, opts, "flat-frame");
     if (framed) return framed;
   }
@@ -154,7 +171,7 @@ function generateRaw(
     return enforceWeekendHonesty(withWireNote(buildFlatProject(prompt, item, flatIntent), item));
   }
 
-  const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
+  const item = buildStock(prompt, materialOverride);
   // Subject-class shape templates (quadruped…) are deterministic: they beat any LLM form override.
   if (detectShapeClass(prompt) && !weekendMech) {
     const shaped = buildShapeProject(prompt, item, opts);
@@ -216,23 +233,24 @@ function generateRaw(
     weekendUsesLatticeGraph(prompt, kind) &&
     !(formOverride?.strokes && formOverride.strokes.length >= 4)
   ) {
-    const raw = buildLatticeTowerGraph({
-      targetHeightIn: box.height,
-      materialId: item.id,
-      item,
-      eiffel: kind === "eiffel" || weekend?.override === "eiffel" || /eiffel/.test(lower),
-      platforms: true,
-      grain,
-    });
-    const finished = finishGraph(raw, item, kind, !!opts.includeSpine, grain);
-    const topo = pruneTopology(finished.graph, kind, { aggressiveness: kind === "eiffel" ? 0.06 : 0.18 });
-    const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
-    return finalize(
-      attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod, undefined, whole)),
-      item,
-      box,
-      scale,
-    );
+    const eiffelK = kind === "eiffel" || weekend?.override === "eiffel" || /eiffel/.test(lower);
+    const latticeAt = (targetHeightIn: number) => {
+      const raw = buildLatticeTowerGraph({ targetHeightIn, materialId: item.id, item, eiffel: eiffelK, platforms: true, grain });
+      const finished = finishGraph(raw, item, kind, !!opts.includeSpine, grain);
+      const topo = pruneTopology(finished.graph, kind, { aggressiveness: kind === "eiffel" ? 0.06 : 0.18 });
+      const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
+      return finalize(
+        attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod, undefined, whole)),
+        item,
+        box,
+        scale,
+      );
+    };
+    let lat = latticeAt(box.height);
+    // Thick stock stands proud of the centreline: bring the finished height back onto the typed height.
+    const over = (lat.overall?.height ?? box.height) - box.height;
+    if (!eiffelK && over > 1) lat = latticeAt(box.height - over);
+    return lat;
   }
 
   const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind, grain });
@@ -341,6 +359,9 @@ function buildTemplateProject(
 /** Typed size for a shape template: "tall/high" is height; any other typed size is the length. */
 function shapeTyped(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
   if (sizeOverride) return { length: sizeOverride.width };
+  const said = typedSizeIn(prompt);
+  if (said.height) return { height: said.height };
+  if (said.length) return { length: said.length };
   if (!hasExplicitSize(prompt)) return {};
   const lower = prompt.toLowerCase();
   const s = parseSize(lower);

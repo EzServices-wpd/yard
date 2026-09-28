@@ -11,7 +11,7 @@ import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
-export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid";
+export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower";
 export type TemplatePartName =
   | "wall"
   | "floor"
@@ -72,6 +72,27 @@ export function parseInches(s: string): number | null {
 }
 
 const NUM = String.raw`(\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+)`;
+
+/** Typed overall size in inches: "12 inches long", "18 in tall", "5 feet tall", "2-foot", "30\" long". */
+export function typedSizeIn(prompt: string): { length?: number; height?: number } {
+  const l = prompt.toLowerCase();
+  const unit = String.raw`(?:\s*-?\s*)(inches|inch|in\b|"|''|feet|foot|ft\b|')`;
+  const toIn = (n: string, u: string) => parseFloat(n) * (/^(?:feet|foot|ft|')$/.test(u.trim()) ? 12 : 1);
+  const out: { length?: number; height?: number } = {};
+  for (const m of l.matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)` + unit + String.raw`\s*(long|tall|high|length|height|in length|in height)?`, "g"))) {
+    const v = toIn(m[1], m[2]);
+    if (!(v > 1 && v < 400)) continue;
+    // Skip stock names (2x4, 1/4" plywood, 12" skewers) and hole/photo sizes.
+    const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
+    const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
+    if (/[x×\/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
+    const ax = m[3];
+    if (ax && /tall|high|height/.test(ax)) out.height ??= v;
+    else if (ax) out.length ??= v;
+    else if (out.length == null && out.height == null) out.length = v;
+  }
+  return out;
+}
 
 // ============================================================== small house (birdhouse)
 
@@ -638,6 +659,81 @@ export function buildLauncher(prompt: string, item: CatalogItem, typed0: { width
   return launcherSticks(item, false, typed.height);
 }
 
+
+// ============================================================== platform tower (cat tree)
+
+export function isPlatformTower(prompt: string): boolean {
+  return /\bcat\s*-?\s*(?:tree|tower|condo|climber|climbing\s*tower)\b|\bkitty\s*(?:tree|tower|condo)\b/.test(prompt.toLowerCase());
+}
+
+/** Cat tree: four corner posts, a platform at the base, two in the middle, one on top; decks glued across rails. */
+export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }, whole0: boolean): TemplateBuild | null {
+  const said = typedSizeIn(prompt);
+  const H = said.height ?? said.length ?? typed.height ?? 48;
+  const W = Math.round(Math.max(12, Math.min(24, H * 0.3)) * 4) / 4;
+  const levels = [0, H * 0.34, H * 0.67, H];
+  const kind = templateStock(item);
+  const sheet = item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard";
+  const params = { height: H, width: W, platforms: levels.length };
+  const notes = [
+    `Cat tree · ${fmt(H)}" tall on a ${fmt(W)}" square base: four corner posts and ${levels.length} platforms (base, two perches, top).`,
+    `Wrap the posts in sisal rope where the cat scratches.`,
+  ];
+  if (sheet) {
+    const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.75, 0.25);
+    const pw = 3.5;
+    const r = (n: number) => Math.round(n * 16) / 16;
+    const panels: Panel[] = [];
+    const mk = (p: Omit<Panel, "id" | "materialId">): Panel => ({ id: createId("ct"), materialId: item.id, ...p });
+    for (let i = 0; i < levels.length; i++) {
+      const y = i === 0 ? 0 : i === levels.length - 1 ? H - T : levels[i];
+      panels.push(mk({ type: "shelf", name: i === 0 ? "Base platform" : i === levels.length - 1 ? "Top platform" : "Platform", position: { x: r(-W / 2), y: r(y), z: r(-W / 2) }, size: { width: r(W), height: T, depth: r(W) } }));
+    }
+    for (const xs of [-1, 1]) for (const zs of [-1, 1]) {
+      panels.push(mk({ type: "upright", name: "Post", position: { x: r(xs > 0 ? W / 2 - pw : -W / 2), y: r(T), z: r(zs > 0 ? W / 2 - T : -W / 2) }, size: { width: pw, height: r(H - 2 * T), depth: T }, cutNote: "Screw each platform into the post edges; predrill." }));
+    }
+    return { classId: "platform-tower", subject: "cat tree", label: "Cat tree", kind: "figure", panels, params, notes };
+  }
+  const prim = toPrimitive(item);
+  const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
+  const whole = whole0 && kind === "thin" && isWholeStock(item);
+  const f = prim.width;
+  const t = round ? prim.width : prim.height;
+  const S = Math.max(0.5, prim.length);
+  const lap = Math.min(S * 0.45, Math.max(2 * f, 0.3 * S));
+  const segs: TSeg[] = [];
+  const put = (a: Vec3, b: Vec3, role: string, face: Vec3, sub: Vec3) => {
+    const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (!whole || L <= S + 1e-6) { segs.push({ a, b, role, face }); return; }
+    const u = v3((b.x - a.x) / L, (b.y - a.y) / L, (b.z - a.z) / L);
+    for (const q of lappedRun(L, S, lap)) {
+      const o = q.layer * t;
+      const at = (d: number) => v3(a.x + u.x * (d + L / 2) + sub.x * o, a.y + u.y * (d + L / 2) + sub.y * o, a.z + u.z * (d + L / 2) + sub.z * o);
+      segs.push({ a: at(q.a), b: at(q.b), role, face });
+    }
+  };
+  const Y = v3(0, 1, 0);
+  const deckT = t;
+  const railH = f; // rails on edge
+  const zr = W / 2 - 2.5 * t; // rails just inside the posts (posts + their lap sublayer)
+  // Posts: on the front and back faces at the corners, flat against the face, sublayer outward.
+  for (const xs of [-1, 1]) for (const zs of [-1, 1]) {
+    put(v3(xs * (W / 2 - f / 2), 0, zs * (W / 2 - t / 2)), v3(xs * (W / 2 - f / 2), H - deckT, zs * (W / 2 - t / 2)), "post", v3(0, 0, zs), v3(0, 0, -zs));
+  }
+  // Each platform: two rails along x glued inside the posts, decking across the rails.
+  const pitch = whole && S < W ? 2 * f : f * 1.6;
+  for (let i = 0; i < levels.length; i++) {
+    const top = i === 0 ? railH : i === levels.length - 1 ? H - deckT : levels[i];
+    for (const zs of [-1, 1]) put(v3(-W / 2, top - railH / 2, zs * zr), v3(W / 2, top - railH / 2, zs * zr), "rail", v3(0, 0, 1), Y);
+    const n = Math.max(3, Math.floor((W - f) / pitch) + 1);
+    for (let k = 0; k < n; k++) {
+      const x = -W / 2 + f / 2 + ((W - f) * k) / (n - 1);
+      put(v3(x, top + deckT / 2 + (whole && W > S ? 0 : 0), -W / 2), v3(x, top + deckT / 2, W / 2), "deck", Y, Y);
+    }
+  }
+  return { classId: "platform-tower", subject: "cat tree", label: "Cat tree", kind: "figure", segs, params, notes };
+}
+
 // ============================================================== registry
 
 export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
@@ -668,6 +764,12 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   humanoid: [],
+  "platform-tower": [
+    { role: "post", word: "post stick", title: "Build the four corner posts", why: "Whole sticks lapped face to face up to the full height." },
+    { role: "rail", word: "rail", title: "Glue two rails inside the posts at each platform height", why: "Base, two perches and the top: level rails on both faces." },
+    { role: "deck", word: "deck stick", title: "Lay the decking across each pair of rails", why: "Sticks side by side make the platforms the cat stands on." },
+    { role: "member", title: "Place remaining members", why: "No floating pieces." },
+  ],
 };
 
 export function templateSteps(classId: string): TemplateStep[] | null {
@@ -684,6 +786,7 @@ export function buildTemplate(
   if (id === "small-house") return buildSmallHouse(prompt, item, typed, whole);
   if (id === "flat-frame") return buildFlatFrame(prompt, item, whole);
   if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
+  if (id === "platform-tower") return buildPlatformTower(prompt, item, typed, whole);
   return null;
 }
 
@@ -691,6 +794,7 @@ export function detectTemplate(prompt: string): TemplateClassId | null {
   if (isSmallHouse(prompt)) return "small-house";
   if (isFlatFrame(prompt)) return "flat-frame";
   if (isLauncher(prompt)) return "launcher";
+  if (isPlatformTower(prompt)) return "platform-tower";
   return null;
 }
 
@@ -812,6 +916,20 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     }
     if (wantsPerch(prompt) && !roles.get("perch")?.length && !project.panels.some((p) => p.name === "Perch")) issues.push({ code: "missing-part", detail: "perch" });
   }
+  if (shape.classId === "platform-tower") {
+    const H = P.height ?? 0;
+    if (Math.abs((project.overall?.height ?? 0) - H) > 1.5) issues.push({ code: "height", detail: `${project.overall?.height} vs typed ${H}` });
+    if (project.instances.length) {
+      const levels = new Set((roles.get("deck") ?? []).map((i) => Math.round(i.from!.y)));
+      if (levels.size < 4) issues.push({ code: "platforms", detail: `${levels.size} platform levels` });
+      if ((roles.get("post") ?? []).length < 4) issues.push({ code: "missing-part", detail: "posts" });
+      const postTop = Math.max(...(roles.get("post") ?? []).flatMap((i) => [i.from!.y, i.to!.y]));
+      if (postTop < H - 1.5) issues.push({ code: "posts", detail: `posts stop at ${postTop.toFixed(1)}` });
+    } else {
+      if (project.panels.filter((p) => /platform/i.test(p.name)).length < 4) issues.push({ code: "platforms", detail: "fewer than 4 platforms" });
+      if (project.panels.filter((p) => p.name === "Post").length < 4) issues.push({ code: "missing-part", detail: "posts" });
+    }
+  }
   if (shape.classId === "launcher") {
     const need: [string, number][] = [["rail", 2], ["tie", 3], ["leg", 4], ["stop", 1], ["support", 1], ["arm", 1], ["cup", 3]];
     for (const [r, n] of need) if ((roles.get(r)?.length ?? 0) < n) issues.push({ code: "missing-part", detail: `${r} ×${roles.get(r)?.length ?? 0}` });
@@ -887,7 +1005,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
-  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup)$/.test(name) ? name : null;
+  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post)$/.test(name) ? name : null;
 }
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
@@ -895,6 +1013,10 @@ const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = 
   "flat-frame": [
     { match: /^Frame (rail|stile)$/, title: "Glue and clamp the four mitered members", why: "Dry-fit, then glue the miters and band-clamp; check the diagonals match." },
     { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Photo, then backer, held with glazier points." },
+  ],
+  "platform-tower": [
+    { match: /^(Base platform|Platform|Top platform)$/, title: "Cut the platforms", why: "Square platforms, one at the base, two perches, one on top." },
+    { match: /^Post$/, title: "Screw the four corner posts to the base and platforms", why: "Posts stand at the corners; predrill each screw." },
   ],
   "small-house": [
     { match: /^Front gable$/, title: "Drill the entrance hole in the front gable", why: "Drill before assembly with a spade or Forstner bit, from the face side, backed by scrap so it does not tear out." },

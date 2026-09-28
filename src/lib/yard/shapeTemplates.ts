@@ -18,7 +18,10 @@ import { toPrimitive } from "./geometry";
 import type { StructureEdge, StructureGraph, StructureNode } from "./structureGraph";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
-export type ShapePartName = "body" | "neck" | "head" | "snout" | "ear" | "tail" | "leg" | "mane";
+export type ShapePartName = "body" | "neck" | "head" | "snout" | "ear" | "tail" | "leg" | "mane" | "top" | "rim" | "base" | "rocker" | "tie";
+
+/** What the animal is for, besides being an animal: a flat usable top (shelf, planter, bookend) or rockers. */
+export type AnimalUse = "shelf" | "planter" | "bookend" | "rocker";
 
 export type ShapePart = {
   id: string;
@@ -90,6 +93,7 @@ type QuadProfile = {
   /** Relative size vs a dog in the same stock. */
   scale: number;
   pose?: "stand" | "sit";
+  use?: AnimalUse;
 };
 
 const DOG: QuadProfile = {
@@ -139,7 +143,7 @@ function horse(subject: string, label: string, over: Partial<QuadProfile>): Quad
 
 /** Things that carry an animal word but are not the animal (dog house, sawhorse, cat tree…). */
 const NOT_THE_ANIMAL =
-  /dog\s*-?\s*(?:house|crate|kennel|bed|bowl|feeder|ramp|gate|stairs?|steps?|leash|run|door|pen|toy)|dog-?house|(?:cat|kitty)\s*-?\s*(?:tree|condo|tower|scratch\w*|shelf|shelves|bed|house|door|litter|feeder|climb\w*|perch|hammock|walk\w*)|litter\s*box|saw\s*-?\s*horses?|horse\s*-?\s*shoes?|horseshoes?|rocking\s*horse|hobby\s*horse|pommel\s*horse|clothes\s*horse|horse\s*(?:trailer|stall|barn|fence|jump)|bird\s*house|birdhouse|chicken\s*coop|rabbit\s*hutch|pig\s*pen|cow\s*shed|bear\s*box|teddy\s*bear\s*(?:shelf|chair)|lion\s*gate|(?:dog|cat|horse|pig|cow|sheep|animal)\s*(?:shaped\s+)?(?:shelf|shelves|bench|table|stool|chair|planter|sign|coat\s*rack|hook|rack)/;
+  /dog\s*-?\s*(?:house|crate|kennel|bed|bowl|feeder|ramp|gate|stairs?|steps?|leash|run|door|pen|toy)|dog-?house|(?:cat|kitty)\s*-?\s*(?:tree|condo|tower|scratch\w*|shelf|shelves|bed|house|door|litter|feeder|climb\w*|perch|hammock|walk\w*)|litter\s*box|saw\s*-?\s*horses?|horse\s*-?\s*shoes?|horseshoes?|hobby\s*horse|pommel\s*horse|clothes\s*horse|horse\s*(?:trailer|stall|barn|fence|jump)|bird\s*house|birdhouse|chicken\s*coop|rabbit\s*hutch|pig\s*pen|cow\s*shed|bear\s*box|teddy\s*bear\s*(?:shelf|chair)|lion\s*gate|(?:dog|cat|horse|pig|cow|sheep|animal)\s*(?:shaped\s+)?(?:bench|table|stool|chair|sign|coat\s*rack|hook|rack)/;
 
 const SIT = /\bsitting\b|\bsits\b|\bseated\b|\bsit\b/;
 
@@ -151,7 +155,16 @@ export function quadrupedProfile(prompt: string): QuadProfile | null {
   for (const { re, p } of PROFILES) {
     if (re.test(hay)) {
       const pose: "stand" | "sit" = SIT.test(lower) && /cat|kitten|kitty|dog|pupp|pup|wolf|fox|lion|tiger/.test(p.subject + " " + lower) ? "sit" : "stand";
-      return { ...p, pose };
+      const use: AnimalUse | undefined = /\brocking\b|\brocker\b/.test(lower)
+        ? "rocker"
+        : /\bbook\s*-?\s*ends?\b/.test(lower)
+          ? "bookend"
+          : /\bplanters?\b|\bflower\s*pot\b|\bplant\s*(?:box|holder|stand)\b/.test(lower)
+            ? "planter"
+            : /\bshel(?:f|ves)\b/.test(lower)
+              ? "shelf"
+              : undefined;
+      return { ...p, pose: use === "rocker" ? "stand" : pose, use };
     }
   }
   return null;
@@ -393,7 +406,7 @@ export type ShapeBuild = {
   notes: string[];
 };
 
-type Seg = { a: Vec3; b: Vec3; role: ShapePartName; critical?: boolean };
+type Seg = { a: Vec3; b: Vec3; role: ShapePartName; critical?: boolean; face?: Vec3 };
 
 function stockFace(item: CatalogItem) {
   const prim = toPrimitive(item);
@@ -457,8 +470,10 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
     const parentBox = p.attach ? byId.get(p.attach)?.kind === "box" : false;
     const courseL = whole && !vertical ? (S > 8 && p.l < S * 0.85 ? p.l : snap(p.l)) : p.l;
     // Short deep parts always lap into their parent (snout into head); free-standing boxes center.
-    const c0 = whole && !vertical ? (parentBox || p.attach ? p.l / 2 - courseL : -courseL / 2) : -p.l / 2;
+    let c0 = whole && !vertical ? (parentBox || p.attach ? p.l / 2 - courseL : -courseL / 2) : -p.l / 2;
     const c1 = c0 + courseL;
+    // A short part on a parent box always laps back across the parent's end wall (glued, never butted).
+    if (!vertical && parentBox && courseL - p.l < face * 1.5) c0 -= Math.min(byId.get(p.attach!)!.l * 0.2, p.l * 0.5);
     const pitch = Math.max(face * 2.5, 0.5, wire ? model.bodyLength / 12 : 0);
     const zs = [-p.w / 2, p.w / 2];
     if (vertical) {
@@ -530,6 +545,7 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
   // Re-seat parts after boxes snapped: head rides the neck end, snout rides the head front.
   reseat(model);
 
+  let tailZ: number | undefined;
   for (const p of model.parts) {
     if (p.kind !== "rod" || !p.a || !p.b) continue;
     const parent = p.attach ? byId.get(p.attach) : undefined;
@@ -554,7 +570,13 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
     const n = wire ? 1 : Math.min(3, Math.max(1, Math.round(t / cross)));
     const nrm = v3(-dn.y, dn.x, 0);
     // Thin stock: a neck is two side plates that sandwich onto the head and body walls.
-    const zLayers = cls !== "fat" && (p.name === "neck" || p.name === "mane") ? [-(p.w / 2), p.w / 2] : [0];
+    // A tail laps in against the inside of one body wall (glued face to face), never floating mid-box.
+    const zLayers = cls !== "fat" && (p.name === "neck" || p.name === "mane")
+      ? [-(p.w / 2), p.w / 2]
+      : cls !== "fat" && !wire && p.name === "tail" && (parent?.kind === "box" || parent?.name === "tail")
+        ? [tailZ ?? (parent!.kind === "box" ? parent!.w / 2 - thick : 0)]
+        : [0];
+    if (p.name === "tail" && parent?.kind === "box") tailZ = zLayers[0];
     for (const zl of zLayers) {
       for (let i = 0; i < n; i++) {
         const o = (i - (n - 1) / 2) * cross;
@@ -604,7 +626,7 @@ function segsToGraph(segs: Seg[], item: CatalogItem, model: ShapeModel): Structu
     const a = createId("n");
     const b = createId("n");
     nodes.push({ id: a, position: s.a, role: s.role === "leg" ? "base" : "support" }, { id: b, position: s.b, role: "support" });
-    edges.push({ id: createId("e"), from: a, to: b, join, role: s.role, critical: !!s.critical });
+    edges.push({ id: createId("e"), from: a, to: b, join, role: s.role as StructureEdge["role"], critical: !!s.critical, face: s.face });
   }
   const xs = nodes.map((n) => n.position.x);
   const ys = nodes.map((n) => n.position.y);
@@ -781,6 +803,198 @@ function materializeSheet(model: ShapeModel, item: CatalogItem): Panel[] {
   return panels;
 }
 
+
+// ---------------------------------------------------------------- uses (flat top, rockers)
+
+/** Circle arc under the feet: lowest at xm (y = 0), rising to the ends. */
+function rockerArc(x0: number, x1: number, sag: number) {
+  const half = (x1 - x0) / 2;
+  const xm = (x0 + x1) / 2;
+  const R = (half * half + sag * sag) / (2 * sag);
+  return { xm, R, y: (x: number) => R - Math.sqrt(Math.max(0, R * R - (x - xm) * (x - xm))) };
+}
+
+function shiftSegs(segs: Seg[], dy: number): Seg[] {
+  return segs.map((q) => ({ ...q, a: v3(q.a.x, q.a.y + dy, q.a.z), b: v3(q.b.x, q.b.y + dy, q.b.z) }));
+}
+
+/** Flat usable top (shelf / planter / bookend) or two curved rockers, in the same stock and joinery. */
+function addUseLinear(segs: Seg[], model: ShapeModel, item: CatalogItem, whole: boolean, use: AnimalUse): Seg[] {
+  const cls = shapeStockClass(item);
+  const { face, thick, S, layer } = stockFace(item);
+  const lap = shapeLap(item);
+  const fat = cls === "fat";
+  const tt = fat ? layer : thick; // lying-flat thickness
+  const Y = v3(0, 1, 0);
+  const out = [...segs];
+  const body = segs.filter((q) => q.role === "body");
+  const bx0 = Math.min(...body.flatMap((q) => [q.a.x, q.b.x]));
+  const bx1 = Math.max(...body.flatMap((q) => [q.a.x, q.b.x]));
+  const bz = Math.max(...body.flatMap((q) => [Math.abs(q.a.z), Math.abs(q.b.z)]));
+  const topSurf = Math.max(...body.flatMap((q) => [q.a.y, q.b.y])) + tt / 2;
+  const run = (L: number) => (whole ? runFor(L, S, lap) : { n: 1, len: L });
+  /** One member a→b in whole sticks lapped face to face (sublayer along `sub`), or one cut piece. */
+  const put = (a: Vec3, b: Vec3, role: ShapePartName, f: Vec3, sub: Vec3) => {
+    const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (!whole || L <= S + 1e-6) { out.push({ a, b, role, critical: true, face: f }); return; }
+    const r = runFor(L, S, lap);
+    const u = v3((b.x - a.x) / L, (b.y - a.y) / L, (b.z - a.z) / L);
+    const step = r.n > 1 ? (r.len - S) / (r.n - 1) : 0;
+    const start = -(r.len - L) / 2;
+    for (let i = 0; i < r.n; i++) {
+      const d0 = start + i * step;
+      const o = (i % 2) * tt;
+      const at = (d: number) => v3(a.x + u.x * d + sub.x * o, a.y + u.y * d + sub.y * o, a.z + u.z * d + sub.z * o);
+      out.push({ a: at(d0), b: at(d0 + S), role, critical: true, face: f });
+    }
+  };
+  if (use === "rocker") {
+    const legs = segs.filter((q) => q.role === "leg");
+    const feet = legs.map((q) => (q.a.y < q.b.y ? q.a : q.b));
+    const fx0 = Math.min(...feet.map((q) => q.x));
+    const fx1 = Math.max(...feet.map((q) => q.x));
+    const ext = (fx1 - fx0) * 0.3;
+    const x0 = fx0 - ext, x1 = fx1 + ext;
+    const Lr = x1 - x0;
+    const sag = Lr * 0.1;
+    const arc = rockerArc(x0, x1, sag);
+    const bw = fat ? face : Math.max(face, tt * 3); // rocker depth (board on edge)
+    const lift = arc.y(fx1) + (fat ? face : tt) ;
+    const lifted = shiftSegs(out.splice(0), lift);
+    out.push(...lifted);
+    const zs = [...new Set(feet.map((q) => Math.sign(q.z)))].map((sg) => sg * Math.max(...feet.filter((q) => Math.sign(q.z) === sg).map((q) => Math.abs(q.z))));
+    const nChord = whole ? Math.max(3, Math.ceil(Lr / (S - lap))) : 6;
+    for (const z of zs) {
+      for (let i = 0; i < nChord; i++) {
+        const xa = x0 + (Lr * i) / nChord, xb = x0 + (Lr * (i + 1)) / nChord;
+        const ya = arc.y(xa) + (fat ? face : tt) / 2, yb = arc.y(xb) + (fat ? face : tt) / 2;
+        // Chords: whole sticks laid flat against the rocker plane, overlapping their neighbours.
+        const L = Math.hypot(xb - xa, yb - ya);
+        const ext2 = whole ? Math.max(0, (S - L) / 2) : 0;
+        const ux = (xb - xa) / L, uy = (yb - ya) / L;
+        const zz = z + (i % 2 ? 1 : -1) * (fat ? 0 : tt / 2) * 0 + (i % 2) * Math.sign(z) * tt;
+        out.push({ a: v3(xa - ux * ext2, ya - uy * ext2, zz), b: v3(xb + ux * ext2, yb + uy * ext2, zz), role: "rocker", critical: true, face: v3(0, 0, 1) });
+      }
+    }
+    void bw;
+    // Ties across the rockers, front and back: they hold the rockers parallel.
+    const zSpan = Math.max(...zs) - Math.min(...zs) + 2 * tt;
+    for (const x of [x0 + Lr * 0.12, x1 - Lr * 0.12]) {
+      const y = arc.y(x) + (fat ? face : tt) + tt / 2;
+      put(v3(x, y, -zSpan / 2 - (whole ? Math.max(0, S - zSpan) / 2 : 0)), v3(x, y, zSpan / 2 + (whole ? Math.max(0, S - zSpan) / 2 : 0)), "tie", Y, Y);
+    }
+    return out;
+  }
+  // Flat top over the body, clear of the neck (front) and tail (back).
+  const L = bx1 - bx0;
+  const tx0 = bx0 + L * 0.12, tx1 = bx1 - L * 0.22;
+  const tl = tx1 - tx0;
+  if (fat) {
+    const nB = 3;
+    const Wt = nB * face;
+    for (let i = 0; i < nB; i++) {
+      const z = -Wt / 2 + face / 2 + i * face;
+      out.push({ a: v3(tx0, topSurf + tt / 2, z), b: v3(tx1, topSurf + tt / 2, z), role: "top", critical: true, face: Y });
+    }
+    if (use === "planter") {
+      for (const zs of [1, -1]) out.push({ a: v3(tx0, topSurf + tt + face / 2, zs * (Wt / 2 - tt / 2)), b: v3(tx1, topSurf + tt + face / 2, zs * (Wt / 2 - tt / 2)), role: "rim", critical: true, face: v3(0, 0, 1) });
+      for (const x of [tx0 + tt / 2, tx1 - tt / 2]) out.push({ a: v3(x, topSurf + tt + face / 2, -(Wt / 2 - tt)), b: v3(x, topSurf + tt + face / 2, Wt / 2 - tt), role: "rim", critical: true, face: v3(1, 0, 0) });
+    }
+  } else {
+    // Slats across the body, side by side, laid flat: whole sticks when the stock is whole.
+    const Wt = whole ? (S >= 2 * bz + 2 * face ? S : runFor(2 * bz + 4 * face, S, lap).len) : Math.max(2 * bz + 4 * face, 3.5);
+    const n = Math.max(2, Math.floor(tl / face));
+    for (let i = 0; i < n; i++) {
+      const x = tx0 + face / 2 + (i * (tl - face)) / Math.max(1, n - 1);
+      put(v3(x, topSurf + tt / 2, -Wt / 2), v3(x, topSurf + tt / 2, Wt / 2), "top", Y, Y);
+    }
+    if (use === "planter") {
+      const y = topSurf + tt + face / 2 + (whole && Wt > S ? tt : 0);
+      for (const zs of [1, -1]) put(v3(tx0, y, zs * (Wt / 2 - tt / 2)), v3(tx1, y, zs * (Wt / 2 - tt / 2)), "rim", v3(0, 0, 1), v3(0, 0, -zs));
+      for (const x of [tx0 + tt / 2, tx1 - tt / 2]) put(v3(x, y, -(Wt / 2 - tt)), v3(x, y, Wt / 2 - tt), "rim", v3(1, 0, 0), Y);
+    }
+    void run;
+  }
+  if (use === "bookend") {
+    // Base plate under the feet running past the tail: books stand on it and lean on the tail end.
+    const legs = segs.filter((q) => q.role === "leg");
+    const feet = legs.map((q) => (q.a.y < q.b.y ? q.a : q.b));
+    const fx0 = Math.min(...feet.map((q) => q.x)) - (fat ? face : face) - L * 0.35;
+    const fx1 = Math.max(...feet.map((q) => q.x)) + face;
+    const fz = Math.max(...feet.map((q) => Math.abs(q.z))) + face;
+    const lifted = shiftSegs(out.splice(0), tt);
+    out.push(...lifted);
+    if (fat) {
+      const nB = Math.max(2, Math.ceil((2 * fz) / face));
+      for (let i = 0; i < nB; i++) {
+        const z = -(nB * face) / 2 + face / 2 + i * face;
+        out.push({ a: v3(fx0, tt / 2, z), b: v3(fx1, tt / 2, z), role: "base", critical: true, face: Y });
+      }
+    } else {
+      const Wb = whole ? (S >= 2 * fz ? S : runFor(2 * fz, S, lap).len) : 2 * fz;
+      const n = Math.max(2, Math.floor((fx1 - fx0) / face));
+      for (let i = 0; i < n; i++) {
+        const x = fx0 + face / 2 + (i * (fx1 - fx0 - face)) / Math.max(1, n - 1);
+        put(v3(x, tt / 2, -Wb / 2), v3(x, tt / 2, Wb / 2), "base", Y, Y);
+      }
+    }
+  }
+  return out;
+}
+
+function addUseSheet(panels: Panel[], model: ShapeModel, item: CatalogItem, use: AnimalUse): Panel[] {
+  const prof = panels.find((p) => p.name === "Body profile");
+  const body = model.parts.find((p) => p.name === "body");
+  if (!prof || !body) return panels;
+  const T = prof.size.depth;
+  const r = (n: number) => Math.round(n * 16) / 16;
+  const out = [...panels];
+  const mk = (p: Omit<Panel, "id" | "materialId">): Panel => ({ id: createId("use"), materialId: item.id, ...p });
+  const bx0 = body.c.x - body.l / 2, bx1 = body.c.x + body.l / 2;
+  const topY = body.c.y + body.h / 2;
+  const L = bx1 - bx0;
+  const tx0 = bx0 + L * 0.12, tl = L * 0.66;
+  const D = r(Math.max(5.5, T * 6));
+  if (use === "rocker") {
+    const legs = out.filter((p) => p.name === "Leg");
+    const fx0 = Math.min(...legs.map((p) => p.position.x));
+    const fx1 = Math.max(...legs.map((p) => p.position.x + p.size.width));
+    const ext = (fx1 - fx0) * 0.3;
+    const x0 = fx0 - ext, x1 = fx1 + ext, Lr = x1 - x0;
+    const arc = rockerArc(x0, x1, Lr * 0.1);
+    const bw = r(Math.max(3, T * 5));
+    const lift = r(arc.y(fx1) + bw);
+    for (const p of out) p.position = { ...p.position, y: r(p.position.y + lift) };
+    const N = 16;
+    const pts: [number, number][] = [];
+    for (let i = 0; i <= N; i++) { const x = x0 + (Lr * i) / N; pts.push([r(x - x0), r(arc.y(x) + bw)]); }
+    for (let i = N; i >= 0; i--) { const x = x0 + (Lr * i) / N; pts.push([r(x - x0), r(arc.y(x))]); }
+    const legZ = [...new Set(legs.map((p) => p.position.z))];
+    for (const z of legZ) {
+      out.push(mk({ type: "upright", name: "Rocker", position: { x: r(x0), y: 0, z }, size: { width: r(Lr), height: r(arc.y(x1) + bw), depth: T }, polygon: { plane: "xy", pts }, cutNote: "Curved rocker: trace the arc from the plan, cut with a jigsaw, sand the curve smooth." }));
+    }
+    const zMin = Math.min(...legZ), zMax = Math.max(...legZ) + T;
+    for (const x of [x0 + Lr * 0.12, x1 - Lr * 0.12 - bw]) {
+      out.push(mk({ type: "rail", name: "Rocker tie", position: { x: r(x), y: r(arc.y(x) + bw), z: r(zMin) }, size: { width: r(bw), height: T, depth: r(zMax - zMin) } }));
+    }
+    return out;
+  }
+  out.push(mk({ type: "shelf", name: use === "planter" ? "Planter bottom" : "Shelf top", position: { x: r(tx0), y: r(topY), z: r(-D / 2) }, size: { width: r(tl), height: T, depth: D }, cutNote: "Flat top: screw down into the profile's back edge." }));
+  if (use === "planter") {
+    const h = r(Math.max(2.5, D * 0.5));
+    for (const z of [-D / 2, D / 2 - T]) out.push(mk({ type: "side", name: "Planter side", position: { x: r(tx0), y: r(topY + T), z: r(z) }, size: { width: r(tl), height: h, depth: T } }));
+    for (const x of [tx0, tx0 + tl - T]) out.push(mk({ type: "side", name: "Planter end", position: { x: r(x), y: r(topY + T), z: r(-D / 2 + T) }, size: { width: T, height: h, depth: r(D - 2 * T) } }));
+  }
+  if (use === "bookend") {
+    const legs = out.filter((p) => p.name === "Leg");
+    const fx0 = Math.min(...legs.map((p) => p.position.x)) - L * 0.35;
+    const fx1 = Math.max(...legs.map((p) => p.position.x + p.size.width)) + T;
+    for (const p of out) p.position = { ...p.position, y: r(p.position.y + T) };
+    out.push(mk({ type: "bottom", name: "Bookend base", position: { x: r(fx0), y: 0, z: r(-D / 2) }, size: { width: r(fx1 - fx0), height: T, depth: D }, cutNote: "Base plate: the books stand on the tail-end overhang." }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- entry
 
 export function shapeSummary(model: ShapeModel): ShapeSummary {
@@ -805,16 +1019,46 @@ export function materializeShape(
     const k = typed.height ? typed.height / (ext.maxY - ext.minY) : typed.length! / (ext.maxX - ext.minX);
     BL = Math.max(4, Math.min(120, 10 * k));
   }
+  let out = materializeAt(hit, item, whole, BL);
+  // Snapping to whole sticks / stock thickness moves the size: correct the scale until the built
+  // overall lands on the typed length or height (keep the closest connected build).
+  if (typed.length || typed.height) {
+    const want = (typed.height ?? typed.length)!;
+    const got = (b: ShapeBuild) => (typed.height ? b.overall.height : b.overall.width);
+    let best = out;
+    for (let i = 0; i < 6 && Math.abs(got(best) - want) > Math.max(0.5, want * 0.03); i++) {
+      BL = Math.max(4, Math.min(120, BL * (want / got(out))));
+      out = materializeAt(hit, item, whole, BL);
+      if (Math.abs(got(out) - want) < Math.abs(got(best) - want)) best = out;
+    }
+    // Whole sticks quantize in jumps: scan nearby scales for the closest landing.
+    if (Math.abs(got(best) - want) > want * 0.05) {
+      const base = BL;
+      for (let k = 0; k <= 24; k++) {
+        const b = materializeAt(hit, item, whole, Math.max(4, base * (0.7 + k * 0.025)));
+        if (Math.abs(got(b) - want) < Math.abs(got(best) - want)) best = b;
+      }
+    }
+    out = best;
+  }
+  return out;
+}
+
+function materializeAt(hit: NonNullable<ReturnType<typeof detectShapeClass>>, item: CatalogItem, whole: boolean, BL: number): ShapeBuild {
   const model = hit.cls.build(hit.profile, BL);
+  const use = hit.profile.use;
+  if (use) model.label = use === "rocker" ? `Rocking ${model.label.toLowerCase()}` : `${model.label} ${use}`;
   const cls = shapeStockClass(item);
   const notes: string[] = [];
   let graph: StructureGraph | undefined;
   let panels: Panel[] | undefined;
   if (cls === "sheet") {
     panels = materializeSheet(model, item);
+    if (hit.profile.use) panels = addUseSheet(panels, model, item, hit.profile.use);
     notes.push(`${model.label} · side profile (head, snout, ears, tail in one piece) with four legs screwed to its faces.`);
   } else {
-    const segs = materializeLinear(model, item, whole && cls === "thin");
+    let segs = materializeLinear(model, item, whole && cls === "thin");
+    if (hit.profile.use) segs = addUseLinear(segs, model, item, whole && cls === "thin", hit.profile.use);
     graph = segsToGraph(segs, item, model);
     notes.push(
       cls === "fat"

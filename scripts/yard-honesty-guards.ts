@@ -39,6 +39,7 @@ import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
 import { inspectTemplate } from "../src/lib/yard/formTemplates";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
+import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
   enforceHonesty,
@@ -621,14 +622,13 @@ if (strawCuts > bridge.instances.length * 0.15) {
 const bridgeInspect = inspectWeekendHonesty(bridge, bridgePlan);
 if (!bridgeInspect.ok) failWeekend("bridge inspect", bridgeInspect.issues);
 
+// No build ships stockless: an unnamed stock builds in the chip's stock, else popsicle sticks (cut list + Buy list exist).
 const unnamed = generateFromPrompt("Eiffel Tower");
-if (unnamed.primaryMaterialId !== "wire-frame") {
-  failWeekend("unnamed eiffel defaulted stock", unnamed.primaryMaterialId);
+if (unnamed.primaryMaterialId !== "popsicle-standard" || !unnamed.instances.length) {
+  failWeekend("unnamed eiffel not built in the default stock", unnamed.primaryMaterialId);
 }
-if (!promptBoundStock(unnamed)) failWeekend("unnamed not wire-bound", unnamed.primaryMaterialId);
-if (unnamed.instances.some((i) => i.catalogId.startsWith("popsicle"))) {
-  failWeekend("unnamed eiffel built from popsicle");
-}
+if (generateFromPrompt("Eiffel Tower", "bamboo-skewer-12").primaryMaterialId !== "bamboo-skewer-12") failWeekend("unnamed eiffel ignored the chip stock");
+if (generateFromPrompt("Eiffel Tower from wire").primaryMaterialId !== "wire-frame") failWeekend("typed wire lost");
 
 console.log("WEEKEND STOCK HONESTY OK", {
   eiffelPieces: eiffel.instances.length,
@@ -783,6 +783,78 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
   if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
 }
+// A) A typed size scales the whole animal (then stock snapping), one connected piece.
+// B) Animal + shelf / bookend / planter = animal template with a flat usable top; rocking horse = horse on rockers;
+//    cat tree = tower of platforms. C) No build ships stockless.
+{
+  const full = (b: ReturnType<typeof generateFromPrompt>) => {
+    const it = getCatalogItem(b.primaryMaterialId);
+    return it && b.instances.length ? analyzePieces(b.instances, it, { full: true }) : null;
+  };
+  const sized: [string, "width" | "height", number, number][] = [
+    ["popsicle stick dog, about 12 inches long", "width", 12, 0.12],
+    ["plywood dachshund, 30 inches long", "width", 30, 0.05],
+    ["popsicle stick horse, 18 inches tall", "height", 18, 0.12],
+    ["2x4 dog, 24 inches long", "width", 24, 0.06],
+    ["horse from 2x4, 36 inches tall", "height", 36, 0.06],
+  ];
+  for (const [p, ax, want, tol] of sized) {
+    const b = generateFromPrompt(p);
+    const got = b.overall[ax];
+    if (Math.abs(got - want) > want * tol) failWeekend(`animal size: ${p} → ${got} vs ${want}`);
+    const st = full(b);
+    if (st && (st.components !== 1 || st.loose !== 0)) failWeekend(`animal size: ${p} not one piece`, st);
+    const iss = inspectShape(b);
+    if (iss.length) failWeekend(`animal size: ${p}`, iss);
+  }
+  const uses: [string, RegExp, RegExp][] = [
+    ["plywood dachshund shelf, 30 inches long", /^Dachshund shelf$/, /Shelf top/],
+    ["plywood cat bookend", /^Cat bookend$/, /Shelf top/],
+    ["2x4 scrap dog planter", /^Dog planter$/, /top|rim/],
+    ["popsicle stick dog bookend", /^Dog bookend$/, /top|base/],
+    ["rocking horse out of 2x4s", /^Rocking horse$/, /rocker/],
+    ["rocking horse for a toddler", /^Rocking horse$/, /rocker/],
+    ["rocking horse from plywood", /^Rocking horse$/, /Rocker/],
+  ];
+  for (const [p, name, part] of uses) {
+    const b = generateFromPrompt(p);
+    if (!name.test(b.name) || b.shape?.classId !== "quadruped") failWeekend(`animal use: ${p} → ${b.name}`, b.shape?.classId);
+    const parts = [...b.instances.map((i) => i.role ?? ""), ...b.panels.map((q) => q.name)].join(",");
+    if (!part.test(parts)) failWeekend(`animal use: ${p} missing ${part}`);
+    const st = full(b);
+    if (st && (st.components !== 1 || st.loose !== 0)) failWeekend(`animal use: ${p} not one piece`, st);
+    if (b.primaryMaterialId === "wire-frame") failWeekend(`animal use: ${p} stockless`);
+    if (/rocking horse/.test(p) && b.shape?.subject !== "horse") failWeekend(`animal use: ${p} not a horse`, b.shape?.subject);
+  }
+  // Rockers under the feet: every foot sits on a rocker, rocker bottoms touch the floor.
+  {
+    const b = generateFromPrompt("rocking horse out of 2x4s");
+    const rock = b.instances.filter((i) => i.role === "rocker");
+    if (!(Math.min(...rock.flatMap((i) => [i.from!.y, i.to!.y])) < 2)) failWeekend("rocking horse rockers off the floor");
+  }
+  for (const [p, H] of [["cat tree", 48], ["cat tree, 5 feet tall", 60], ["cat tree from plywood", 48], ["cat tree from 2x4", 48]] as [string, number][]) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "platform-tower" || b.name !== "Cat tree") failWeekend(`cat tree: ${p} → ${b.name}`);
+    if (Math.abs(b.overall.height - H) > 1.5) failWeekend(`cat tree: ${p} height ${b.overall.height} vs ${H}`);
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`cat tree: ${p}`, iss);
+    const st = full(b);
+    if (st && (st.components !== 1 || st.loose !== 0)) failWeekend(`cat tree: ${p} not one piece`, st);
+    if (b.primaryMaterialId === "wire-frame") failWeekend(`cat tree: ${p} stockless`);
+    if (!buildPlan(b).bom.length) failWeekend(`cat tree: ${p} empty Buy list`);
+  }
+  for (const p of ["lattice tower", "dog", "cat tree", "rocking horse for a toddler", "birdhouse", "catapult", "tower"]) {
+    const b = generateFromPrompt(p);
+    const plan = buildPlan(b);
+    if (b.primaryMaterialId === "wire-frame" || !plan.bom.length || !plan.cutList.length || !(b.instances.length || b.panels.length)) failWeekend(`stockless: ${p}`, b.primaryMaterialId);
+  }
+  const t72 = generateFromPrompt("6 foot tower from 2x4");
+  if (Math.abs(t72.overall.height - 72) > 1.5) failWeekend("2x4 tower 72 height", t72.overall);
+  const lh = generateFromPrompt("lighthouse from popsicle sticks");
+  const it = getCatalogItem(lh.primaryMaterialId)!;
+  const S = toPrimitiveG(it).length;
+  if (lh.instances.some((i) => i.cutLength == null && Math.hypot(i.to!.x - i.from!.x, i.to!.y - i.from!.y, i.to!.z - i.from!.z) < S * 0.6)) failWeekend("lighthouse short pieces listed as whole sticks");
+}
 // Launcher class (catapult): low base, A-frames, crossbar stop, pivot axle, arm cocked, cup at the tip — and the
 // swing simulation reaches the crossbar first, leaning back, so the payload flies forward and up. Rubber bands bought.
 {
@@ -842,15 +914,13 @@ const novelInspect = inspectWeekendHonesty(novelTower, novelTowerPlan);
 if (!novelInspect.ok) failWeekend("novel tower inspect", novelInspect.issues);
 
 const unnamedTower = generateFromPrompt("tower");
-if (unnamedTower.primaryMaterialId !== "wire-frame") {
-  failWeekend("unnamed tower defaulted stock", unnamedTower.primaryMaterialId);
+if (unnamedTower.primaryMaterialId !== "popsicle-standard") {
+  failWeekend("unnamed tower not built in the default stock", unnamedTower.primaryMaterialId);
 }
 if (unnamedTower.kind !== "lattice") {
   failWeekend("unnamed tower should still be lattice family", unnamedTower.kind);
 }
-if (unnamedTower.instances.some((i) => i.catalogId.startsWith("popsicle"))) {
-  failWeekend("unnamed tower built from popsicle");
-}
+
 
 const spaceFrame = generateFromPrompt("space frame from popsicle sticks");
 if (spaceFrame.kind !== "lattice" || spaceFrame.primaryMaterialId !== "popsicle-standard") {

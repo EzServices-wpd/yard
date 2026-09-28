@@ -1,3 +1,4 @@
+import { toPrimitive } from "./geometry";
 /**
  * Weekend / hobbyist stock honesty — named stock is the only stock.
  * Sibling of house honesty.ts. No new noun programs.
@@ -728,6 +729,20 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     if (isWholeStock(item) && instances.some((i) => i.cutLength != null)) {
       instances = instances.map((i) => (i.cutLength == null ? i : { ...i, cutLength: undefined }));
       notes.push(`Honesty: ${namedStockDisplayName(project.prompt ?? "", item)} used whole. Do not cut.`);
+    }
+    // A member drawn well under one stick (a short lattice web) is a cut piece: the stick list says so.
+    // (Tower-class builds; the frozen Eiffel keeps its whole-stick contract.)
+    if (isWholeStock(item) && project.kind === "tower") {
+      const S = Math.max(0.5, toPrimitive(item).length);
+      let cut = 0;
+      instances = instances.map((i) => {
+        if (!i.from || !i.to) return i;
+        const L = Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z);
+        if (L >= S * 0.6) return i;
+        cut++;
+        return { ...i, cutLength: Math.max(0.25, Math.round(L * 16) / 16) };
+      });
+      if (cut) notes.push(`${cut} short members are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
     }
   }
 
