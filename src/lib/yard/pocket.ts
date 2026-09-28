@@ -187,7 +187,8 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
 
   // Mirror above the knee, below the uppers
   const mirrorH = Math.max(8, unit.upperStart - unit.vanityH - 3.5);
-  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.4, unit.kneeW, mirrorH, 0.2));
+  // Glass hangs on the back panel face (back is 1/4" thick at z 0) — not floating off it.
+  panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.25, unit.kneeW, mirrorH, 0.2));
 
   // Upper carcase 54 → 102
   const u0 = unit.upperStart;

@@ -15,6 +15,7 @@ import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "
 import { CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
+import { withPlacementTalk } from "./placement";
 
 function letterLabel(i: number) {
   let n = i;
@@ -871,7 +872,12 @@ export function strangerWoodPieceCount(project: YardProject): number {
   return project.instances.length;
 }
 
+/** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
 export function buildPlan(project: YardProject): BuildPlan {
+  return withPlacementTalk(project, buildPlanCore(project));
+}
+
+function buildPlanCore(project: YardProject): BuildPlan {
   if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
     const bom = decorateBom(windowBom(project));

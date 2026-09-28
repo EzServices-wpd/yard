@@ -219,6 +219,23 @@ function screenBox(s: Solid) {
   return { x0, y0, x1, y1 };
 }
 
+/** True when a paints before b for two solids that share volume (seam = least-overlap axis). */
+function interpenetrationFirst(a: Solid, b: Solid): boolean {
+  let best: "x" | "y" | "z" = "x";
+  let least = Infinity;
+  for (const k of ["x", "y", "z"] as const) {
+    const ov = Math.min(a.max[k], b.max[k]) - Math.max(a.min[k], b.min[k]);
+    if (ov < least) {
+      least = ov;
+      best = k;
+    }
+  }
+  const ca = (a.min[best] + a.max[best]) / 2;
+  const cb = (b.min[best] + b.max[best]) / 2;
+  if (Math.abs(ca - cb) > 1e-6) return ca < cb;
+  return dot(a.center, VIEW) <= dot(b.center, VIEW);
+}
+
 /** Painter order: far first. A is behind B when separated along an axis toward the viewer. */
 function paintOrder(solids: Solid[]): Solid[] {
   const n = solids.length;
@@ -239,7 +256,12 @@ function paintOrder(solids: Solid[]): Solid[] {
       let first: number | null = null;
       if (ij && !ji) first = i;
       else if (ji && !ij) first = j;
-      else {
+      else if (!ij && !ji) {
+        // Parts that share volume (a counter over an upright, a door lapping an edge): the axis
+        // with the least overlap is the real seam, so the part whose middle sits nearer the
+        // viewer along that axis paints last. Depth-sorting whole slabs here hid counters.
+        first = interpenetrationFirst(solids[i], solids[j]) ? i : j;
+      } else {
         const di = dot(solids[i].center, VIEW);
         const dj = dot(solids[j].center, VIEW);
         first = di <= dj ? i : j;
@@ -286,6 +308,8 @@ export type RenderOpts = {
   /** Axes the stranger never typed — their dimension labels say "assumed". */
   assumedAxes?: Partial<Record<"width" | "height" | "depth", boolean>>;
   pad?: number;
+  /** Placement arrows (reference → part), labelled in fractions — from the same geometry as the step words. */
+  measures?: { a: V3; b: V3; label: string; ea?: V3; eb?: V3 }[];
 };
 
 function shade(base: RGB, n: V3): RGB {
@@ -344,7 +368,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
         { x: bb.max.x + off * 1.6, y: bb.max.y, z: bb.min.z },
       ]
     : [];
-  const proj = [...fitPts, ...extra].map(iso);
+  const measurePts = (opts.measures ?? []).flatMap((m) => [m.a, m.b]);
+  const proj = [...fitPts, ...extra, ...measurePts].map(iso);
   const minX = Math.min(...proj.map((p) => p.x));
   const maxX = Math.max(...proj.map((p) => p.x));
   const minY = Math.min(...proj.map((p) => p.y));
@@ -397,6 +422,7 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   }
 
   if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes);
+  if (opts.measures?.length) drawMeasures(doc, opts.measures, map);
 
   if (opts.letters) {
     const want = opts.bubbleIds ?? new Set([...opts.tones.entries()].filter(([, t]) => t === "hot").map(([id]) => id));
@@ -410,6 +436,61 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     drawBubbles(doc, frame, byLetter);
   }
   return { anchors, scale: s };
+}
+
+/** Small dimension arrows: reference plane → part face, with a fraction label on a white chip. */
+function drawMeasures(doc: jsPDF, ms: { a: V3; b: V3; label: string; ea?: V3; eb?: V3 }[], map: (p: V3) => { x: number; y: number }) {
+  const blue: RGB = [36, 99, 170];
+  const placedLabels: { x: number; y: number; w: number; h: number }[] = [];
+  for (const m of ms) {
+    const a = map(m.a);
+    const b = map(m.b);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 4) continue;
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    doc.setDrawColor(...blue);
+    // Extension lines from the arrow ends back to the reference surface and the part.
+    doc.setLineWidth(0.35);
+    if (m.ea) {
+      const e = map(m.ea);
+      doc.line(a.x, a.y, e.x, e.y);
+    }
+    if (m.eb) {
+      const e = map(m.eb);
+      doc.line(b.x, b.y, e.x, e.y);
+    }
+    doc.setLineWidth(0.7);
+    doc.line(a.x, a.y, b.x, b.y);
+    // Ticks at both ends, square to the arrow.
+    const px = -uy * 3.5;
+    const py = ux * 3.5;
+    doc.line(a.x - px, a.y - py, a.x + px, a.y + py);
+    doc.line(b.x - px, b.y - py, b.x + px, b.y + py);
+    // Arrow heads.
+    const head = (x: number, y: number, dx: number, dy: number) => {
+      doc.setFillColor(...blue);
+      doc.triangle(x, y, x - dx * 5 - dy * 2.2, y - dy * 5 + dx * 2.2, x - dx * 5 + dy * 2.2, y - dy * 5 - dx * 2.2, "F");
+    };
+    head(b.x, b.y, ux, uy);
+    head(a.x, a.y, -ux, -uy);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    const label = clean(m.label);
+    const w = doc.getTextWidth(label) + 6;
+    const h = 10;
+    const lx = (a.x + b.x) / 2 + 4;
+    let ly = (a.y + b.y) / 2 - h / 2;
+    for (let k = 0; k < 6 && placedLabels.some((r) => lx < r.x + r.w && lx + w > r.x && ly < r.y + r.h && ly + h > r.y); k++) ly += h + 1;
+    placedLabels.push({ x: lx, y: ly, w, h });
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...blue);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(lx, ly, w, h, 2, 2, "FD");
+    doc.setTextColor(...blue);
+    doc.text(label, lx + 3, ly + 7.3);
+  }
+  doc.setTextColor(...KIT.ink);
 }
 
 function drawDims(
@@ -943,3 +1024,4 @@ export function drawTool(doc: jsPDF, t: ToolKind, x: number, y: number, size = 3
       break;
   }
 }
+
