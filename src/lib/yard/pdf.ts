@@ -303,12 +303,17 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   for (const b of plan.bom) {
     const nameLines = wrap(b.name, nameW - 10, 10, "bold");
     const noteLines = b.notes ? wrap(b.notes, nameW - 10, 8.5) : [];
-    const h = nameLines.length * 13 + noteLines.length * 11 + 10;
+    // "2 boxes (50 ct each)": the count inside wraps under the quantity, never into the item column.
+    const qtyText = `${b.quantity} ${b.unit}`;
+    const qtyLines = wrap(qtyText, qtyW - 8, 10, "bold").length > 1 && /\s\(/.test(qtyText)
+      ? qtyText.split(/\s(?=\()/).flatMap((part) => wrap(part, qtyW - 8, 10, "bold"))
+      : wrap(qtyText, qtyW - 8, 10, "bold");
+    const h = Math.max(nameLines.length * 13 + noteLines.length * 11, qtyLines.length * 13) + 10;
     if (h > room()) {
       newPage("Before you start");
     }
     font(10, "bold");
-    doc.text(clean(`${b.quantity} ${b.unit}`), L, y + 12);
+    qtyLines.forEach((ln, i) => doc.text(ln, L, y + 12 + i * 13));
     nameLines.forEach((ln, i) => doc.text(ln, L + qtyW, y + 12 + i * 13));
     font(8.5, "normal", KIT.muted);
     noteLines.forEach((ln, i) => doc.text(ln, L + qtyW, y + 12 + nameLines.length * 13 + i * 11));
