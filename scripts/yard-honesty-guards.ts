@@ -33,6 +33,7 @@ import { buildFitted } from "../src/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
+import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
   enforceHonesty,
@@ -751,8 +752,30 @@ if (dogFig.kind !== "figure" || dogFig.primaryMaterialId !== "popsicle-standard"
   failWeekend("dog family", { kind: dogFig.kind, stock: dogFig.primaryMaterialId });
 }
 if (dogFig.name !== "Dog") failWeekend("dog name drifted", dogFig.name);
-if (dogFig.instances.length < 160) failWeekend("dog armature too sparse", dogFig.instances.length);
+if (!dogFig.shape || dogFig.shape.classId !== "quadruped" || dogFig.shape.subject !== "dog") {
+  failWeekend("dog shape class", dogFig.shape);
+}
+if (dogFig.instances.length < 80) failWeekend("dog armature too sparse", dogFig.instances.length);
 if (dogFig.instances.some((i) => i.cutLength != null)) failWeekend("dog cut popsicle sticks");
+const dogShapeIssues = inspectShape(dogFig);
+if (dogShapeIssues.length) failWeekend("dog silhouette", dogShapeIssues);
+const horseFig = generateFromPrompt("horse from popsicle sticks");
+const catFig = generateFromPrompt("cat from popsicle sticks");
+if (horseFig.name !== "Horse" || catFig.name !== "Cat") failWeekend("horse/cat names", { horse: horseFig.name, cat: catFig.name });
+if (!horseFig.shape || horseFig.shape.subject !== "horse") failWeekend("horse shape", horseFig.shape);
+if (!catFig.shape || catFig.shape.subject !== "cat") failWeekend("cat shape", catFig.shape);
+if (horseFig.instances.length === dogFig.instances.length && Math.abs(horseFig.overall.width - dogFig.overall.width) < 0.5) {
+  failWeekend("horse ≡ dog (same size and piece count)", { dog: dogFig.instances.length, horse: horseFig.instances.length });
+}
+if (Math.abs(horseFig.overall.height - dogFig.overall.height) < 1 && Math.abs(horseFig.overall.width - dogFig.overall.width) < 1) {
+  failWeekend("horse ≡ dog overall", { dog: dogFig.overall, horse: horseFig.overall });
+}
+const dog2 = generateFromPrompt("dog from 2x4");
+if (dog2.primaryMaterialId !== "lumber-2x4-8" || !dog2.shape) failWeekend("dog 2x4 shape", { stock: dog2.primaryMaterialId, shape: dog2.shape });
+if (inspectShape(dog2).length) failWeekend("dog 2x4 silhouette", inspectShape(dog2));
+const dogPly = generateFromPrompt("dog from plywood");
+if (!dogPly.panels.length || !dogPly.shape) failWeekend("dog plywood profile", { panels: dogPly.panels.length, shape: dogPly.shape });
+if (inspectShape(dogPly).length) failWeekend("dog plywood silhouette", inspectShape(dogPly));
 const dogPlan = buildPlan(dogFig);
 if (dogPlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("dog buy list has wood screws", dogPlan.bom.map((b) => b.name));
@@ -6713,6 +6736,10 @@ console.log("STRANGER PLAN OK", {
     "medicine cabinet",
     "outdoor side table",
     "step stool",
+    "dog from popsicle sticks",
+    "horse from popsicle sticks",
+    "dog from 2x4",
+    "dog from plywood",
   ];
   const T = 1 / 32;
   const PART_NOUN = /\b(bottom|top|shel(?:f|ves)|divider|door|drawer|counter|kick|apron|leg|upright|stretcher|cleat|lid|seat|backrest|batten|mirror)s?\b/gi;
@@ -6843,6 +6870,9 @@ console.log("STRANGER PLAN OK", {
     "6 foot garden arch from 3/4 inch PVC pipe",
     "4 foot bridge from plastic drinking straws",
     "Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
+    "dog from popsicle sticks",
+    "horse from popsicle sticks",
+    "dog from plywood",
   ];
   let cases = 0;
   for (const prompt of prompts) {

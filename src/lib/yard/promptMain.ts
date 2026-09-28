@@ -24,6 +24,8 @@ import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, 
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
+import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
+import { hasExplicitSize } from "./promptHelpers";
 
 export function emptyProject(): YardProject {
   return {
@@ -146,6 +148,11 @@ function generateRaw(
   }
 
   const item = (materialOverride && getCatalogItem(materialOverride)) || detectMaterial(prompt);
+  // Subject-class shape templates (quadruped…) are deterministic: they beat any LLM form override.
+  if (detectShapeClass(prompt) && !weekendMech) {
+    const shaped = buildShapeProject(prompt, item, opts);
+    if (shaped) return shaped;
+  }
   const recipe0 = formOverride ?? detectForm(prompt, size);
   let box = defaultSizeFor(recipe0.kind, size, prompt);
   if (opts.sizeOverride) {
@@ -225,6 +232,58 @@ function generateRaw(
     box,
     scale,
   );
+}
+
+/** Typed size for a shape template: "tall/high" is height; any other typed size is the length. */
+function shapeTyped(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
+  if (sizeOverride) return { length: sizeOverride.width };
+  if (!hasExplicitSize(prompt)) return {};
+  const lower = prompt.toLowerCase();
+  const s = parseSize(lower);
+  if (/tall|high\b|height/.test(lower)) return { height: s.height };
+  if (/long|length/.test(lower)) return { length: Math.max(s.width, s.height) };
+  return { length: s.height !== 24 ? s.height : s.width };
+}
+
+function buildShapeProject(
+  prompt: string,
+  item: CatalogItem,
+  opts: { joinMethod?: JoinMethod; scale?: BuildScale; sizeOverride?: { width: number; height: number; depth: number }; cutStock?: boolean },
+): YardProject | null {
+  const lower = prompt.toLowerCase();
+  const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
+  const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
+  const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
+  let typed = shapeTyped(prompt, opts.sizeOverride);
+  if (opts.scale === "tabletop" && !typed.length && !typed.height) typed = { length: 12 };
+  const built = materializeShape(prompt, item, whole, typed);
+  if (!built) return null;
+  const shape = shapeSummary(built.model);
+  const name = built.model.label;
+  let project: YardProject;
+  if (built.graph) {
+    project = projectFromGraph(prompt, item, "figure", built.graph, false, undefined, opts.joinMethod, name, whole);
+  } else {
+    project = {
+      ...emptyProject(),
+      name,
+      prompt,
+      kind: "figure",
+      panels: built.panels ?? [],
+      primaryMaterialId: item.id,
+      joinMethod: "screw",
+      notes: [],
+      assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
+    };
+  }
+  project = {
+    ...project,
+    name,
+    overall: built.overall,
+    shape,
+    notes: [...built.notes, ...project.notes.filter((n) => !/^Form:|^Proportions from/.test(n))],
+  };
+  return enforceWeekendHonesty(withWireNote(project, item));
 }
 
 function finalize(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }, scale: BuildScale): YardProject {

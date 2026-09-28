@@ -24,7 +24,7 @@ export interface StructureEdge {
   join: JoinMethod;
   /** Structural importance for sequencing / warnings */
   critical?: boolean;
-  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support" | "skin";
+  role?: "leg" | "brace" | "ring" | "rail" | "splice" | "deck" | "support" | "skin" | import("./shapeTemplates").ShapePartName;
 }
 
 export interface StructureGraph {

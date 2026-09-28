@@ -2720,6 +2720,21 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
+  if (project.shape || project.instances.some((i) => i.role === "body")) {
+    // Subject-class shape template: one step per named part, body first.
+    const who = (project.name || "animal").toLowerCase();
+    return [
+      { role: "body", title: `Build the ${who}'s body box`, why: "The body sets the length — every other part hangs on it." },
+      { role: "leg", title: "Glue the four legs to the body sides", why: "Front pair and back pair at the corners. Check it stands level before the glue sets." },
+      { role: "neck", title: "Set the neck on the front of the body", why: "The neck tips the head forward and up." },
+      { role: "head", title: "Build the head on the neck", why: "The head sits forward of the body — that is what makes it read as an animal." },
+      { role: "snout", title: "Add the snout to the front of the head", why: "The snout points forward, low on the head." },
+      { role: "ear", title: "Add the two ears", why: "Ears on the back of the head, one each side." },
+      { role: "mane", title: "Lay the mane along the top of the neck", why: "The mane edge runs the length of the neck." },
+      { role: "tail", title: "Glue the tail to the back of the body", why: "The tail finishes the silhouette." },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
   if (project.kind === "figure") {
     const who = (project.name || "figure").toLowerCase();
     return [

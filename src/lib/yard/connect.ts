@@ -485,11 +485,12 @@ export function pieceEnds(inst: YardInstance, length: number): { a: Vec3; b: Vec
   };
 }
 
-export function analyzePieces(instances: YardInstance[], item: CatalogItem): BuildStats {
+export function analyzePieces(instances: YardInstance[], item: CatalogItem, opts: { full?: boolean } = {}): BuildStats {
   const n = instances.length;
   if (!n) return { joints: 0, components: 0, loose: 0, pieces: 0 };
   // Pairwise joint walk is O(n²). A 3-ft popsicle Eiffel at full density froze the bench here.
-  if (n > 400) return { joints: n, components: 1, loose: 0, pieces: n };
+  // Guards pass full: true to walk every piece anyway.
+  if (n > 400 && !opts.full) return { joints: n, components: 1, loose: 0, pieces: n };
   const tol = joinTol(item);
   const segs = instances.map((inst) => {
     const len = toPrimitive(item, inst.cutLength).length;
@@ -520,6 +521,14 @@ export function analyzePieces(instances: YardInstance[], item: CatalogItem): Bui
     const A = segs[i];
     put(A.a.x, A.a.y, A.a.z, i);
     put(A.b.x, A.b.y, A.b.z, i);
+    // Long members: bucket points along the run too, so a T-joint mid-span (a slat glued
+    // onto a long rail) is found — not only joints near a member's ends or middle.
+    const L = dist(A.a, A.b);
+    const k = Math.min(200, Math.floor(L / cell));
+    for (let s = 1; s < k; s++) {
+      const q = lerp(A.a, A.b, s / k);
+      put(q.x, q.y, q.z, i);
+    }
   }
   const neigh = [-1, 0, 1];
   const seen = new Set<string>();
@@ -551,7 +560,11 @@ export function analyzePieces(instances: YardInstance[], item: CatalogItem): Bui
   };
   for (let i = 0; i < n; i++) {
     const A = segs[i];
-    for (const p of [A.a, A.b, mid(A.a, A.b)]) {
+    const LA = dist(A.a, A.b);
+    const kA = Math.min(200, Math.floor(LA / cell));
+    const probes = [A.a, A.b, mid(A.a, A.b)];
+    for (let s = 1; s < kA; s++) probes.push(lerp(A.a, A.b, s / kA));
+    for (const p of probes) {
       const cx = Math.round(p.x / cell);
       const cy = Math.round(p.y / cell);
       const cz = Math.round(p.z / cell);

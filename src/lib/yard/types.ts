@@ -315,6 +315,8 @@ export type YardProject = {
   fitted?: FittedSpec;
   windowPkg?: WindowPackage;
   traverse?: TraversePath;
+  /** Subject-class shape template (quadruped…) the build was materialized from. */
+  shape?: import("./shapeTemplates").ShapeSummary;
   render?: {
     url: string;
     prompt: string;

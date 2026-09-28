@@ -293,11 +293,13 @@ function CameraRig({
       // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
       const box = benchModelBox(projectRef.current);
       const base = benchView(projectRef.current, box);
+      // A shape-template animal faces +x: its front is the face, its side is the profile.
+      const faceX = !!projectRef.current.shape;
       const view =
         preset === "front"
-          ? { azimuthDeg: 0, elevationDeg: 8 }
+          ? { azimuthDeg: faceX ? 90 : 0, elevationDeg: 8 }
           : preset === "side"
-            ? { azimuthDeg: 90, elevationDeg: 8 }
+            ? { azimuthDeg: faceX ? 0.01 : 90, elevationDeg: 8 }
             : preset === "top"
               ? { azimuthDeg: 0.01, elevationDeg: 89 }
               : base;
