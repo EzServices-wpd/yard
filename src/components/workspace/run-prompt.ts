@@ -349,7 +349,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
   }
 
   const houseLike = isHousePrompt(prompt, next.kind, next.fitted);
-  useYard.setState({ grokBusy: true, grokError: null, building: true });
+  useYard.getState().beginBuild();
+  useYard.setState({ grokBusy: true });
   const timeout = window.setTimeout(() => {
     useYard.setState({ grokBusy: false });
     revealBench();

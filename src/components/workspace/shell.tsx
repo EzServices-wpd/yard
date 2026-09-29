@@ -303,6 +303,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 onClick={() => {
                   generate(project.prompt, project.primaryMaterialId, undefined, { includeSpine: true });
                   makePlan();
+                  revealBench();
                 }}
               >
                 Add spine

@@ -224,6 +224,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           onClick={() => {
             generate(POCKET_DREAM, undefined, undefined, { fresh: true });
             makePlan();
+            useYard.getState().revealBench();
             onBuilt();
           }}
           className="mt-2 h-10 w-full rounded-md border border-border text-sm text-muted hover:text-fg"

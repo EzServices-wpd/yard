@@ -84,8 +84,7 @@ export function CatalogPanel() {
                           }
                           const nextPrompt = promptNamingStock(project.prompt, speakCatalogStock(item));
                           const spine = project.supportOffer?.included;
-                          // Paint the lamp before the rebuild. generate is synchronous and heavy.
-                          useYard.setState({ building: true, grokError: null });
+                          useYard.getState().beginBuild();
                           window.setTimeout(() => {
                             try {
                               generate(nextPrompt, item.id, undefined, {

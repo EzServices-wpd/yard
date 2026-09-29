@@ -20,6 +20,22 @@ import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
 
+/** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
+const LAMP_HOLD_MS = 4000;
+let lampTimer = 0;
+let lampGen = 0;
+
+function dropLampTimer() {
+  if (typeof window === "undefined" || !lampTimer) return;
+  window.clearTimeout(lampTimer);
+  lampTimer = 0;
+}
+
+function armBuilding() {
+  lampGen += 1;
+  dropLampTimer();
+}
+
 type YardState = {
   project: YardProject;
   plan: BuildPlan | null;
@@ -47,6 +63,7 @@ type YardState = {
   grokError: string | null;
   showLoad: boolean;
   revealBench: () => void;
+  beginBuild: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
   generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean; fittedOverride?: import("./types").FittedSpec }) => YardProject;
@@ -127,7 +144,23 @@ export const useYard = create<YardState>((set, get) => ({
   grokBusy: false,
   grokError: null,
   showLoad: false,
-  revealBench: () => set({ building: false }),
+  revealBench: () => {
+    const gen = lampGen;
+    dropLampTimer();
+    if (typeof window === "undefined") {
+      set({ building: false });
+      return;
+    }
+    lampTimer = window.setTimeout(() => {
+      lampTimer = 0;
+      if (gen !== lampGen) return;
+      set({ building: false });
+    }, LAMP_HOLD_MS);
+  },
+  beginBuild: () => {
+    armBuilding();
+    set({ building: true, grokError: null });
+  },
   commit: (next) => {
     const { project, history } = get();
     set({
@@ -148,7 +181,7 @@ export const useYard = create<YardState>((set, get) => ({
     persist(next);
   },
   generate: (prompt, materialId, form, opts) => {
-    set({ building: true, grokError: null });
+    get().beginBuild();
     const scale = opts?.scale ?? get().buildScale;
     const current = get().project;
     let used = prompt;
@@ -186,7 +219,6 @@ export const useYard = create<YardState>((set, get) => ({
     get().commit(next);
     set({
       ...flags,
-      building: false,
       cutMode: mode,
       workMode: "look",
       showLoad: false,
@@ -541,6 +573,7 @@ export const useYard = create<YardState>((set, get) => ({
     return lifted;
   },
   reset: () => {
+    armBuilding();
     clearProject();
     set({
       project: emptyProject(),
