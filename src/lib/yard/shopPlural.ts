@@ -146,6 +146,7 @@ export function cutListName(name: string, type?: string): string {
   if (/towel rail/i.test(name)) return "Towel rail";
   if (/peg rail/i.test(name)) return "Peg rail";
   if (/hat shelf/i.test(name)) return "Hat shelf";
+  if (/^plinth$/i.test(name.trim())) return "Plinth";
   if (/toekick|toe[- ]?kick|kick strip/i.test(name) || type === "kick") return "Kick strip";
   if (/desktop|desk top/i.test(name)) return "Desktop";
   if (/headboard/i.test(name)) return "Headboard";

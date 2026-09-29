@@ -1392,6 +1392,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     // Say the real bottle capacity up front (the same sentence as the notes).
     const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?=\s*Not a bookcase|$)/)?.[0]?.trim() ?? "";
     const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
+    const plinths = panels.filter((p) => p.type === "kick" && /plinth/i.test(p.name));
+    const plinthLine = plinths.length
+      ? ` ${plinths.map(cutLine).join("; ")}: glue and screw the plinth between the uprights under the bottom shelf, set 3 1/2" back from the front like a toe kick — it lifts the rows so the top cap lands at the full height.`
+      : "";
     // Notched grid shelves slot over the dividers; every other shelf (bottom, top shelf, cap) is plain.
     const midShelves = sortedShelves.filter((p) => /^grid shelf/i.test(p.name));
     const capShelves = sortedShelves.filter((p) => !midShelves.includes(p));
@@ -1434,9 +1438,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           title: "Stand the rack",
-          description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${capShelves.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(sortedShelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into every shelf at those marked heights. Then screw the bottom shelf and the shelf above the bottle rows into the divider ends, and the back onto the shelf edges. Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
+          description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${capShelves.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(sortedShelves, { wallMounted: true })} Glue and #8 × 1¼" screws through the uprights into every shelf at those marked heights. Then screw the bottom shelf and the shelf above the bottle rows into the divider ends, and the back onto the shelf edges.${plinthLine} Do not use shelf pins — a row of bottles is heavy. Predrill near the ends so the ply does not split.`,
           tips: "Check both diagonals before the glue skins. Every opening should take a bottle with room to spare.",
-          partsUsed: names([...uprights, ...backs, ...capShelves]),
+          partsUsed: names([...uprights, ...backs, ...capShelves, ...plinths]),
         },
         railsStep,
         hang,
