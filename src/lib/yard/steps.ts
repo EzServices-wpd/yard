@@ -72,6 +72,8 @@ function joinHold(item?: CatalogItem | null) {
   if (join === "zip") return { join, hold: "Zip ties or twist ties. Cinch, then trim." };
   if (join === "screw") return { join, hold: "Predrill. #8 screws, plus a drop of glue in the joint if a person will sit or stand on it." };
   if (join === "nail") return { join, hold: "Finish nails or brads, plus glue. Predrill near the ends so the board does not split." };
+  if (join === "friction") return { join, hold: "Press until the pieces lock. No glue." };
+  if (join === "solvent") return { join, hold: "Solvent cement. Twist a quarter turn and hold until it grabs." };
   return { join, hold: "Join as the stock wants. Dry-fit first." };
 }
 
@@ -2322,10 +2324,15 @@ function cutSummary(instances: YardInstance[], itemName: string) {
     return `${instances.length} full ${itemName}${instances.length === 1 ? "" : "s"}. Glue. Do not cut.`;
   }
   const full = instances.length - marked.length;
-  const lens = [...new Set(marked.map((i) => (i.cutLength ?? 0).toFixed(1)))].slice(0, 8);
-  return `${instances.length} pieces of ${itemName}. ${marked.length} marked cuts${
-    lens.length ? ` (${lens.map((l) => `${l}"`).join(", ")}${marked.length > 8 ? "…" : ""})` : ""
-  }. ${full} stay full stock.`;
+  const counts = new Map<string, number>();
+  for (const i of marked) {
+    const k = (Math.round((i.cutLength ?? 0) * 8) / 8).toFixed(1);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const bits = [...counts.entries()].sort((a, b) => Number(b[0]) - Number(a[0]));
+  const shown = bits.slice(0, 12).map(([len, qty]) => `${qty} × ${len}"`);
+  const more = bits.length > 12 ? `, and ${bits.length - 12} more lengths — every one is on the cut list` : "";
+  return `${instances.length} pieces of ${itemName}. ${marked.length} marked cuts (${shown.join(", ")}${more}). ${full} stay full stock.`;
 }
 
 function midY(i: YardInstance) {
@@ -2414,8 +2421,145 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
   return steps;
 }
 
+const CARCASE_FACE = new Set([
+  "upright",
+  "shelf",
+  "divider",
+  "top",
+  "bottom",
+  "back",
+  "door",
+  "glass_panel",
+  "counter",
+  "drawer",
+  "kick",
+  "mirror",
+  "deck",
+]);
+
+const CARCASE_ORDER: { role: string; verb: string }[] = [
+  { role: "bottom", verb: "Lay the bottom" },
+  { role: "kick", verb: "Set the kick" },
+  { role: "upright", verb: "Stand the sides" },
+  { role: "divider", verb: "Stand the dividers" },
+  { role: "back", verb: "Skin the back" },
+  { role: "shelf", verb: "Set the shelves" },
+  { role: "counter", verb: "Set the counter" },
+  { role: "rail", verb: "Run the rails" },
+  { role: "top", verb: "Close the top" },
+  { role: "drawer", verb: "Build the drawers" },
+  { role: "door", verb: "Hang the doors" },
+  { role: "deck", verb: "Lay the deck" },
+  { role: "glass_panel", verb: "Frame the glass opening" },
+  { role: "mirror", verb: "Frame the mirror" },
+];
+
+/** A house box tiled into sticks, bricks, or pipe. Lattice forms keep their own script. */
+function isRecastCarcase(project: YardProject): boolean {
+  if (!project.instances.length || project.panels.length) return false;
+  if (["eiffel", "arch", "bridge", "lattice", "figure", "ladder", "tower"].includes(project.kind)) return false;
+  const seen = new Set<string>();
+  for (const inst of project.instances) {
+    const role = inst.role ?? "";
+    if (CARCASE_FACE.has(role)) seen.add(role);
+  }
+  return seen.size >= 2 || (seen.size >= 1 && (project.kind === "closet" || project.kind === "table"));
+}
+
+function lengthTalk(list: YardInstance[]): string {
+  if (list.every((i) => i.cutLength == null)) return `${list.length} whole pieces. Leave them whole.`;
+  const groups = new Map<number, number>();
+  for (const inst of list) {
+    const len = Math.round((inst.cutLength ?? 0) * 8) / 8;
+    groups.set(len, (groups.get(len) ?? 0) + 1);
+  }
+  const bits = [...groups.entries()].sort((a, b) => b[0] - a[0]).map(([len, qty]) => `${qty} × ${len}"`);
+  if (bits.length <= 8) return `${list.length} pieces: ${bits.join(", ")}.`;
+  const lens = [...groups.keys()];
+  return `${list.length} pieces in ${bits.length} lengths, from ${Math.min(...lens)}" to ${Math.max(...lens)}". Every length is on the cut list.`;
+}
+
+/** Every face of the same box, in the stock you picked. No face is dropped. */
+function uniqueRecastCarcaseSteps(project: YardProject): AssemblyStep[] {
+  const item = getCatalogItem(project.primaryMaterialId);
+  const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
+  const { hold } = joinHold(item);
+  const byRole = new Map<string, YardInstance[]>();
+  for (const inst of project.instances) {
+    const role = inst.role ?? "member";
+    const arr = byRole.get(role) ?? [];
+    arr.push(inst);
+    byRole.set(role, arr);
+  }
+  const whole = !!item && isWholeStock(item) && project.instances.every((i) => i.cutLength == null);
+  const steps: AssemblyStep[] = [];
+  let n = 1;
+  steps.push({
+    step: n++,
+    title: whole ? `Read this ${project.name} before you glue` : `Read this ${project.name} before you cut`,
+    description: `${project.instances.length} pieces of ${stockLabel}. Same ${project.name}, every face in that stock. About ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".`,
+    tips: whole ? "Full pieces. Do not cut." : "The cut list has every length. Nothing is left off.",
+    partsUsed: ["*"],
+  });
+  steps.push({
+    step: n++,
+    title: "Lay out the footprint on the bench",
+    description: `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways. The faces go up from this outline.`,
+    tips: "A crooked base cannot be fixed later.",
+  });
+  if (whole) {
+    steps.push({
+      step: n++,
+      title: `Do not cut — ${stockLabel} stays whole`,
+      description: `${project.instances.length} full pieces from the pack. ${hold}`,
+      tips: "A pack and the join is the whole kit.",
+      partsUsed: ["*"],
+    });
+  } else {
+    const tool = cutHow(item);
+    steps.push({
+      step: n++,
+      title: "Cut every marked length",
+      description: `${tool.how} The cut list is the full list — same letter is the same cut. ${lengthTalk(project.instances)}`,
+      tips: tool.tip,
+      partsUsed: ["*"],
+    });
+  }
+  const used = new Set<string>();
+  for (const spec of CARCASE_ORDER) {
+    const list = byRole.get(spec.role);
+    if (!list?.length) continue;
+    used.add(spec.role);
+    steps.push({
+      step: n++,
+      title: `${spec.verb} — ${list.length} ${list.length === 1 ? "piece" : "pieces"}`,
+      description: `${lengthTalk(list)} ${hold}`,
+      tips: "Dry-fit the face, then join.",
+      partsUsed: [spec.role],
+    });
+  }
+  for (const [role, list] of byRole) {
+    if (used.has(role) || !list.length) continue;
+    steps.push({
+      step: n++,
+      title: `Place the ${role} — ${list.length} ${list.length === 1 ? "piece" : "pieces"}`,
+      description: `${lengthTalk(list)} ${hold}`,
+      tips: "Nothing on the model is left out of the steps.",
+      partsUsed: [role],
+    });
+  }
+  steps.push({
+    step: n++,
+    title: "Check plumb and square",
+    description: "Stand it up. Sight the long edges. If a face racks, find the soft joint and re-join it.",
+    tips: "A lean now is a lean forever.",
+  });
+  return steps;
+}
+
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (project.kind === "eiffel") return uniqueEiffelSteps(project);
+  if (isRecastCarcase(project)) return uniqueRecastCarcaseSteps(project);
   const item = getCatalogItem(project.primaryMaterialId);
   const stockLabel = namedStockDisplayName(project.prompt ?? "", item);
   const { hold } = joinHold(item);

@@ -321,7 +321,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               <p className="mt-0.5 font-medium text-fg">
                 {steps.find((s) => s.step === activeStep)?.title}
               </p>
-              <p className="mt-1 hidden text-xs leading-relaxed text-muted sm:block">
+              <p className="mt-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-muted">
                 {steps.find((s) => s.step === activeStep)?.description}
               </p>
               <p className="mt-1 text-[11px] text-faint sm:mt-2">

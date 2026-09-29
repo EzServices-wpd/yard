@@ -13,6 +13,7 @@ export function CatalogPanel() {
   const project = useYard((s) => s.project);
   const generate = useYard((s) => s.generate);
   const makePlan = useYard((s) => s.makePlan);
+  const revealBench = useYard((s) => s.revealBench);
   const setJoinMethod = useYard((s) => s.setJoinMethod);
   const commit = useYard((s) => s.commit);
   const items = useMemo(() => {
@@ -77,16 +78,25 @@ export function CatalogPanel() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (project.prompt.trim()) {
-                            const nextPrompt = promptNamingStock(project.prompt, speakCatalogStock(item));
-                            generate(nextPrompt, item.id, undefined, {
-                              includeSpine: project.supportOffer?.included,
-                              fresh: true,
-                            });
-                            makePlan();
-                          } else {
+                          if (!project.prompt.trim()) {
                             commit({ ...project, primaryMaterialId: item.id });
+                            return;
                           }
+                          const nextPrompt = promptNamingStock(project.prompt, speakCatalogStock(item));
+                          const spine = project.supportOffer?.included;
+                          // Paint the lamp before the rebuild. generate is synchronous and heavy.
+                          useYard.setState({ building: true, grokError: null });
+                          window.setTimeout(() => {
+                            try {
+                              generate(nextPrompt, item.id, undefined, {
+                                includeSpine: spine,
+                                fresh: true,
+                              });
+                              makePlan();
+                            } finally {
+                              revealBench();
+                            }
+                          }, 48);
                         }}
                         className={`flex w-full items-start justify-between gap-2 rounded-md px-2 py-2 text-left ${
                           selected ? "bg-elevated" : "hover:bg-elevated/60"

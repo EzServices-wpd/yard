@@ -186,6 +186,7 @@ export const useYard = create<YardState>((set, get) => ({
     get().commit(next);
     set({
       ...flags,
+      building: false,
       cutMode: mode,
       workMode: "look",
       showLoad: false,
