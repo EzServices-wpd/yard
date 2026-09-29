@@ -539,7 +539,7 @@ function buildTemplateProject(
 }
 
 /** Typed size for a shape template: "tall/high" is height; any other typed size is the length. */
-function shapeTyped(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
+function shapeTyped(prompt: string, sizeOverride?: { width: number; height: number; depth: number }): { length?: number; height?: number } {
   if (sizeOverride) return { length: sizeOverride.width };
   const said = typedSizeIn(prompt);
   if (said.height) return { height: said.height };
