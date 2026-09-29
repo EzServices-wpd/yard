@@ -121,7 +121,52 @@ function solidWordsInStep(st: AssemblyStep): AssemblyStep {
   return { ...st, title: fix(title) ?? title, description: fix(st.description) ?? st.description, tips: fix(st.tips) };
 }
 
+function combinedSteps(project: YardProject): AssemblyStep[] {
+  const panels = project.panels;
+  const names = panels.map((p) => p.name);
+  const shown = names.slice(0, 14).join(", ");
+  const more = names.length > 14 ? `, and ${names.length - 14} more` : "";
+  const sticks = project.instances.length
+    ? ` ${project.instances.length} sticks sit with the panels.`
+    : "";
+  return [
+    {
+      step: 1,
+      title: "Keep every piece you named",
+      description: `${project.name}. ${project.overall.width}" wide × ${project.overall.height}" high × ${project.overall.depth}" deep. Both products are in this build.${sticks}`,
+      tips: "If a part is missing from the model, it is missing from the cut list too. Do not build only the first noun.",
+      partsUsed: ["*"],
+    },
+    {
+      step: 2,
+      title: "Cut every part on the list",
+      description: `${shown}${more}. Cut each one to the size in its name. Label them with the product they belong to before you mix the piles.`,
+      tips: "Trust the cut list over a rounded number in this sentence.",
+      partsUsed: names.length ? names : ["*"],
+    },
+    {
+      step: 3,
+      title: "Stand the base",
+      description:
+        "Build the floor piece first — uprights, seat or top, shelves, drawers. Leave the tall sides long if they run up to a second piece.",
+      tips: "Check the diagonals before the glue skins.",
+      partsUsed: ["*"],
+    },
+    {
+      step: 4,
+      title: "Attach the other product",
+      description:
+        "Fasten the second piece where the model shows it: on the back and up high for a rack, frame, or mirror, or beside the base when both sit on the floor. Screw the rail or shelf into the tall sides.",
+      tips: "A coat rack has to clear a person's shoulders. Do not screw it down on the seat.",
+      partsUsed: ["*"],
+    },
+  ];
+}
+
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
+  if ((project.notes ?? []).some((n) => n.startsWith("Combined:"))) {
+    return combinedSteps(project);
+  }
   if (project.flat && !project.flat.lifted) {
     return uniqueFlatSteps(project);
   }

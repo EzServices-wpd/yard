@@ -20,7 +20,7 @@ import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
 import type { BuildScale, CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
-import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock } from "./promptHelpers";
+import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
@@ -28,7 +28,7 @@ import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock"
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
-import { hasExplicitSize } from "./promptHelpers";
+import { composeProducts } from "./compose";
 
 export function emptyProject(): YardProject {
   return {
@@ -254,9 +254,16 @@ function generateRaw(
     cutStock?: boolean;
     fittedOverride?: import("./types").FittedSpec;
     honorUnit?: boolean;
+    noCompose?: boolean;
   } = {},
 ): YardProject {
   prompt = normalizeUserPrompt(prompt);
+  if (!opts.noCompose && !opts.fittedOverride && !formOverride) {
+    const composed = composeProducts(prompt, (clause) =>
+      generateRaw(clause, materialOverride, undefined, { ...opts, noCompose: true }),
+    );
+    if (composed) return composed;
+  }
   const lower = prompt.toLowerCase().trim();
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);

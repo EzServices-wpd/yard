@@ -2135,10 +2135,18 @@ if (!coatBenchHit || coatBenchHit.family !== "seat" || !coatBenchHit.affordances
   failHonesty("coat rack with bench family", coatBenchHit);
 }
 const coatBenchWide = generateFromPrompt(coatBenchPrompt);
-if (!/coat bench/i.test(coatBenchWide.name)) failHonesty("coat rack with bench title", coatBenchWide.name);
+if (!/coat/i.test(coatBenchWide.name) || !/bench/i.test(coatBenchWide.name)) {
+  failHonesty("coat rack with bench title", coatBenchWide.name);
+}
 if (!nearInch(coatBenchWide.overall.depth, 16)) failHonesty("coat rack with bench should sit ~16 deep", coatBenchWide.overall);
-if (!coatBenchWide.panels.some((p) => /peg/i.test(p.name))) {
-  failHonesty("coat rack with bench missing peg rail", coatBenchWide.panels.map((p) => p.name));
+if (coatBenchWide.overall.height < 48) {
+  failHonesty("coat rack with bench is only a bench", coatBenchWide.overall);
+}
+if (!coatBenchWide.panels.some((p) => /seat/i.test(p.name))) {
+  failHonesty("coat rack with bench missing the bench", coatBenchWide.panels.map((p) => p.name));
+}
+if (!coatBenchWide.panels.some((p) => /peg/i.test(p.name) && p.position.y > 40)) {
+  failHonesty("coat rack with bench missing a coat-height peg rail", coatBenchWide.panels.map((p) => `${p.name}@${p.position.y}`));
 }
 if (coatBenchWide.assumptions.installMode === "wall") {
   failHonesty("coat rack with bench forced wall-hung", coatBenchWide.assumptions);
