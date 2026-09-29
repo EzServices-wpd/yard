@@ -18,6 +18,7 @@ import {
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
+  wantsClimbHandrail,
   wantsPotHold,
   isHamperHold,
   isUmbrellaHold,
@@ -715,6 +716,21 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
           guard: "anatomy",
           message: "Two-step climb must name two human steps / top tread.",
         });
+      }
+      if (wantsClimbHandrail(prompt) && project.instances.length) {
+        const supports = project.instances.filter((i) => i.role === "support").length;
+        if (supports < 2) {
+          issues.push({
+            guard: "anatomy",
+            message: "Spoken handrail needs posts + a grip above the top tread (support members).",
+          });
+        }
+        if (!/hand\s*-?\s*rail|grab\s*-?\s*rail|grip you hold|hold while climbing/i.test(blobAll)) {
+          issues.push({
+            guard: "anatomy",
+            message: "Spoken handrail must be named in steps/notes as a grip you hold while climbing.",
+          });
+        }
       }
     } else {
       if (project.instances.length && legs < 2) {

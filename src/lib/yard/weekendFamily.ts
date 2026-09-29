@@ -157,6 +157,12 @@ export function wantsPotHold(prompt: string): boolean {
   return POT_HOLD_NOUN.test(hay);
 }
 
+/** Spoken handrail / grab rail on a climb or step stool — densify a usable grip, not decorative junk. */
+export function wantsClimbHandrail(prompt: string): boolean {
+  const hay = looksHay(prompt);
+  return /hand\s*-?\s*rails?|grab\s*-?\s*rails?|grab\s*bars?|holding\s*rails?/.test(hay);
+}
+
 /** Drop board nominals so "from 1x2" is not read as a 1″ pot. "2×2 base" is captured first. */
 function withoutLumberNominals(s: string): string {
   return s.replace(

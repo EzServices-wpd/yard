@@ -9,7 +9,7 @@ import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem } from "./family";
-import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
+import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase } from "./weekendStockHonesty";
@@ -128,6 +128,10 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
   if (isWireStock(named) && !/\bwire\b/i.test(prompt)) {
     // No stock typed: a build a child rides, a cat climbs, or that holds books or soil defaults to real
     // lumber (2x4 for a rocker, 3/4" plywood for the rest); craft pieces default to popsicle sticks.
+    // Human climb / step stool is weight-bearing — never silent popsicle densify.
+    if (detectWeekendMech(prompt) === "climb" && (isClimbStepStool(prompt) || wantsClimbHandrail(prompt))) {
+      return getCatalogItem("plywood-3-4-4x8") || named;
+    }
     const use = detectShapeClass(prompt)?.profile.use;
     const fn = use === "rocker" ? "lumber-2x4-8" : use || detectTemplate(prompt) === "platform-tower" ? "plywood-3-4-4x8" : null;
     return (fn && getCatalogItem(fn)) || getCatalogItem("popsicle-standard") || named;
@@ -624,6 +628,11 @@ function finalize(
         ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; not a vehicle incline.`
         : `Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`,
     );
+    if (wantsClimbHandrail(prompt)) {
+      notes.unshift(
+        "Handrail — posts rise above the top tread with a grip you hold while climbing; not decorative junk.",
+      );
+    }
   }
   if (wantsMediaTipHold(prompt)) {
     const tipTalk = mediaTipTalk(prompt);

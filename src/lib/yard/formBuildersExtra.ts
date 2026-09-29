@@ -439,15 +439,20 @@ export function mediaHoldStandOps(s: Size3, tipDeg?: number | null): FormOp[] {
 /**
  * Weight-bearing climb step(s) — rise × run tread (stool / step-shelf), not a multi-rung ladder.
  * steps≥2 stacks human treads (each rise × run); kid stands on the top tread.
+ * Spoken handrail densifies rear posts + a grip above the top tread (hold while climbing).
  */
 export function climbStepOps(
   s: Size3,
   riseIn?: number | null,
   runIn?: number | null,
   stepCount: number = 1,
+  withHandrail: boolean = false,
 ): FormOp[] {
   const n = Math.max(1, Math.min(6, Math.round(stepCount || 1)));
-  const rise = s.free ? Math.max((s.height || 8) / n, 2) : Math.max(riseIn ?? Math.min((s.height || 8) / n, 12), 4);
+  // Honor typed envelope height as total rise when rise×run is unspoken — do not cap a typed 18" stool at 12".
+  const rise = s.free
+    ? Math.max((s.height || 8) / n, 2)
+    : Math.max(riseIn ?? (s.height || 8) / n, 4);
   const run = s.free ? Math.max((s.depth || 10) / n, 2) : Math.max(runIn ?? Math.min(s.depth || 10, 14), 6);
   const W = s.free ? Math.max(s.width || 8, 4) : Math.max(Math.min(s.width || 14, 22), 10);
   const totalRun = run * n;
@@ -505,6 +510,21 @@ export function climbStepOps(
       { x: x1, y: totalRise, z: zFront },
     ],
   });
+  if (withHandrail) {
+    // Rear posts above the top tread + a grip you can hold while climbing — support role (not tread rails).
+    const gripRise = Math.max(8, Math.min(12, totalRise * 0.55));
+    const yGrip = totalRise + gripRise;
+    ops.push({ op: "column", x: x0, z: zFront, y0: totalRise, y1: yGrip, role: "support" });
+    ops.push({ op: "column", x: x1, z: zFront, y0: totalRise, y1: yGrip, role: "support" });
+    ops.push({
+      op: "poly",
+      role: "support",
+      points: [
+        { x: x0, y: yGrip, z: zFront },
+        { x: x1, y: yGrip, z: zFront },
+      ],
+    });
+  }
   return ops;
 }
 

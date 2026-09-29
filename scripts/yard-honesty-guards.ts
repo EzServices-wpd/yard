@@ -7482,3 +7482,39 @@ console.log("STRANGER PLAN OK", {
   }
 }
 
+// Spoken climb handrail densifies posts + grip; human climb defaults to real stock (not silent popsicle).
+{
+  const prompt = "step stool 18 tall with handrail";
+  const stool = generateFromPrompt(prompt);
+  if (!/Step stool/i.test(stool.name)) failHonesty("climb-handrail title", stool.name);
+  // Typed tall is the tread height; handrail posts stick up above it.
+  let treadY = 0;
+  let ymax = 0;
+  for (const i of stool.instances as Array<{ from?: { y: number }; to?: { y: number }; role?: string }>) {
+    for (const pt of [i.from, i.to]) {
+      if (!pt) continue;
+      ymax = Math.max(ymax, pt.y);
+      if (i.role === "rail") treadY = Math.max(treadY, pt.y);
+    }
+  }
+  if (Math.abs(treadY - 18) > 1.5) failHonesty("climb-handrail tread at typed tall", treadY, stool.overall);
+  if (ymax < treadY + 7) failHonesty("climb-handrail grip above tread", ymax, treadY);
+  const supports = stool.instances.filter((i) => i.role === "support");
+  if (supports.length < 2) failHonesty("climb-handrail support posts+grip", supports.length);
+  const plan = buildPlan(stool);
+  const blob = [stool.name, ...(stool.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+  if (!/hand\s*-?\s*rail|grip you hold|hold while climbing/i.test(blob)) {
+    failHonesty("climb-handrail voice", blob.slice(0, 600));
+  }
+  if (/popsicle/i.test(stool.primaryMaterialId ?? "") || /popsicle/i.test(plan.bom.map((b) => b.name).join(" "))) {
+    failHonesty("climb-handrail stock not popsicle", stool.primaryMaterialId, plan.bom.map((b) => b.name));
+  }
+  // Named craft stock still honored when typed.
+  const craft = generateFromPrompt("popsicle stick step stool 12 tall with handrail");
+  if (!/popsicle/i.test(craft.primaryMaterialId ?? "")) {
+    failHonesty("climb-handrail named popsicle kept", craft.primaryMaterialId);
+  }
+  if (craft.instances.filter((i) => i.role === "support").length < 2) {
+    failHonesty("climb-handrail craft still densifies grip", craft.instances.map((i) => i.role));
+  }
+}

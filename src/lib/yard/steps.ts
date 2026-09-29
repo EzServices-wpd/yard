@@ -12,6 +12,7 @@ import {
   isLauncherRamp,
   isMediaDeviceStand,
   wantsMediaTipHold,
+  wantsClimbHandrail,
   wantsPotHold,
   isFigurineHold,
   isHamperHold,
@@ -2852,6 +2853,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       const n = Math.max(1, climbStepCount(prompt));
       const riseRun =
         rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+      const hand = wantsClimbHandrail(prompt);
       return [
         { role: "leg", title: "Cut the legs", why: (() => {
           const adult = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase());
@@ -2872,6 +2874,15 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
           })(),
         },
         { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
+        ...(hand
+          ? [
+              {
+                role: "support",
+                title: "Stand the handrail posts and seat the grip",
+                why: "Posts rise above the top tread; the grip is what you hold while climbing — not decorative junk.",
+              },
+            ]
+          : []),
         { role: "member", title: "Place remaining members", why: "No floating pieces." },
       ];
     }

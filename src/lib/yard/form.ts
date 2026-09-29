@@ -26,7 +26,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, wantsClimbHandrail, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
@@ -282,7 +282,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       ? isClimbTriangle(prompt) && !isClimbStepStool(prompt)
         ? climbTriangleOps(size)
         : isClimbStepStool(prompt)
-          ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps))
+          ? climbStepOps(size, rr?.rise, rr?.run, Math.max(1, climbSteps), wantsClimbHandrail(prompt))
           : ladderOps(size, spokenRungCount(prompt))
       : mech === "launcher"
         ? isLauncherRamp(prompt)
@@ -311,13 +311,18 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
               const who = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
                 ? "adult stands"
                 : "kid stands";
+              const hand = wantsClimbHandrail(prompt)
+                ? " Handrail posts rise above the top tread with a grip you hold while climbing."
+                : "";
               return climbSteps >= 2
                 ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
                   (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the top tread; not a vehicle incline.`
+                  ` — ${who} on the top tread; not a vehicle incline.` +
+                  hand
                 : `${hit.name} · one weight-bearing climb step` +
                   (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the tread; densify from named stock; not a vehicle incline.`;
+                  ` — ${who} on the tread; densify from named stock; not a vehicle incline.` +
+                  hand;
             })(),
           ]
         : [
