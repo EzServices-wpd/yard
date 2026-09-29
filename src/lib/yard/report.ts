@@ -828,6 +828,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   // Template pivots (figure joints): one paper fastener per joint.
   if (project.shape?.params?.pivots) bom.push(pivotLine(project.shape.params.pivots));
+  bom.push(...templateAccessories(project));
   // Template spring (catapult arm): the rubber band is part of the build.
   if (project.shape?.params?.rubberBands) {
     bom.push({
@@ -1097,8 +1098,10 @@ function buildPlanCore(project: YardProject): BuildPlan {
     );
   }
 
-  // Plates → cut list. A closet rebuilt in sticks (no plates) uses the stick plan below.
-  if (project.panels.length > 0) {
+  // Plates → cut list. A closet rebuilt in sticks (no plates) uses the stick plan below; a stick build whose
+  // only sheet part is a chipboard backer stays a stick plan too (backer on Buy).
+  const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every((p) => p.materialId === "chipboard-sheet");
+  if (project.panels.length > 0 && !stickWithBacker) {
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
@@ -1267,7 +1270,7 @@ function buildPlanCore(project: YardProject): BuildPlan {
         notes: `${project.shape.params.rubberBands} bands: one hinges the arm on the axle, one is the spring from the arm over the crossbar.`,
       }]
     : [];
-  const pivots = project.shape?.params?.pivots ? [pivotLine(project.shape.params.pivots)] : [];
+  const pivots = [...(project.shape?.params?.pivots ? [pivotLine(project.shape.params.pivots)] : []), ...templateAccessories(project)];
   const bom = decorateBom([
     ...bomLinesFromForge(forge),
     ...glue,
@@ -1332,4 +1335,21 @@ function pivotLine(n: number) {
     estimatedCost: 6.49,
     notes: `${n} used: one through each shoulder, elbow, hip and knee overlap so the figure poses.`,
   };
+}
+
+/** Template accessories on Buy: a stick frame's chipboard backer / sawtooth hanger, a cat tree's sisal rope. */
+function templateAccessories(project: YardProject) {
+  const P = project.shape?.params;
+  const out: { name: string; quantity: number; unit: string; catalogId: string; searchQuery: string; estimatedCost: number; notes: string }[] = [];
+  if (project.shape?.classId === "platform-tower" && P?.sisal) {
+    const circ = 4 * (P.post ?? 4) + 0.5;
+    const ft = Math.ceil(((P.sisalLen ?? 0) / 0.375) * circ / 12);
+    const packs = Math.max(1, Math.ceil(ft / 100));
+    out.push({ name: "3/8\" sisal rope, 100 ft", quantity: packs, unit: packs === 1 ? "roll" : "rolls", catalogId: "sisal-rope", searchQuery: "3/8 inch sisal rope 100 ft", estimatedCost: 19.99 * packs, notes: `About ${ft} ft wraps ${Math.round(P.sisalLen ?? 0)}" of the scratching post, tight turns, stapled at both ends.` });
+  }
+  if (project.shape?.classId !== "flat-frame" || !project.instances.length) return out;
+  const b = project.panels.find((p) => p.materialId === "chipboard-sheet");
+  if (P?.backer && b) out.push({ name: "Chipboard sheets 8.5×11", quantity: 1, unit: "pack", catalogId: "chipboard-sheet", searchQuery: "chipboard sheets 8.5 x 11", estimatedCost: 8.99, notes: `One sheet cut to ${Math.round(b.size.width * 16) / 16}" × ${Math.round(b.size.height * 16) / 16}" is the backer.` });
+  if (P?.hanger) out.push({ name: "Sawtooth picture hanger", quantity: 1, unit: "pack", catalogId: "sawtooth-hanger", searchQuery: "sawtooth picture hangers", estimatedCost: 5.99, notes: "One hanger glued or tacked to the top back." });
+  return out;
 }

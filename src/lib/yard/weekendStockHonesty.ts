@@ -814,13 +814,16 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     }
     // A member drawn well under one stick (a short lattice web) is a cut piece: the stick list says so.
     // (Tower-class builds and figures; the frozen Eiffel keeps its whole-stick contract.)
-    if (isWholeStock(item) && (project.kind === "tower" || project.shape?.classId === "humanoid")) {
+    const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame";
+    if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
       const S = Math.max(0.5, toPrimitive(item).length);
       let cut = 0;
       instances = instances.map((i) => {
         if (!i.from || !i.to) return i;
         const L = Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z);
-        if (L >= S * 0.6) return i;
+        // Template classes draw every member at its true length: anything short of a whole stick is cut.
+        const exact = exactCut || (project.shape?.classId === "small-house" && i.role === "perch");
+        if (exact ? L >= S - 0.07 : L >= S * 0.6) return i;
         cut++;
         return { ...i, cutLength: Math.max(0.25, Math.round(L * 16) / 16) };
       });
@@ -832,7 +835,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
   const panels = project.panels.map((p) =>
     lumberTableTop({ ...project, primaryMaterialId: primaryId }, item, p.materialId) ||
     // Thin (¼") plywood backers stay plywood whatever the named frame stock.
-    (p.type === "back" && /^plywood-1-4/.test(p.materialId ?? "") && Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26)
+    (p.type === "back" && /^plywood-1-4/.test(p.materialId ?? "") && Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26) ||
+    // A chipboard backer on a stick frame stays chipboard (it is on Buy as its own line).
+    (p.type === "back" && p.materialId === "chipboard-sheet")
       ? p
       : { ...p, materialId: item.id },
   );

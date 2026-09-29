@@ -101,6 +101,8 @@ export function stockLook(item?: CatalogItem | null, fallbackRough = 0.68, fallb
   const m = ensure();
   if (!item) return { map: m?.wood ?? null, roughness: fallbackRough, metalness: fallbackMetal, env: 0.7 };
   const cat = item.category;
+  // Chipboard backer: flat pressed board, no corrugation.
+  if (cat === "cardboard" && item.tags?.includes("backer")) return { map: null, roughness: 0.95, metalness: 0, env: 0.3 };
   if (cat === "cardboard" || cat === "paper_tube" || cat === "recycled") {
     return { map: m?.card ?? null, roughness: 0.9, metalness: 0.0, env: 0.35 };
   }

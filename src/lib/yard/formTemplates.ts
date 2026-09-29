@@ -202,9 +202,11 @@ function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: 
     }
   }
   if (perch) {
+    // Perch just below the entrance: glued into the batten face in the entrance column, sticking out in front.
     const out = Math.min(2, S * 0.45);
     const z1 = wallOut + t / 2 + out;
-    segs.push({ a: v3(0, open0 + t / 2, z1 - Math.min(stick, S)), b: v3(0, open0 + t / 2, z1), role: "perch", face: Y });
+    const py = Math.max(f, open0 - Math.max(0.5, f * 1.5));
+    segs.push({ a: v3(0, py, wallIn + t / 2 + t / 2), b: v3(0, py, z1), role: "perch", face: Y });
   }
   const name = item.name.replace(/\s*\(.*\)$/, "");
   return {
@@ -217,7 +219,7 @@ function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: 
     notes: [
       `Birdhouse · ${name} walls laid flat side by side, a floor, a slatted gable roof on two rafters each end.`,
       `Entrance ${fmt(openW)}" square — leave out ${k} front slats and close the gap above and below with flat sticks glued behind (whole sticks, no cutting).`,
-      `Gable ends stay open under the roof — that is the vent.${perch ? " Perch stick glued on the entrance sill, sticking out in front." : ""}`,
+      `Gable ends stay open under the roof — that is the vent.${perch ? " Perch glued just below the entrance, sticking out in front." : ""}`,
     ],
   };
 }
@@ -392,74 +394,80 @@ function lappedRun(L: number, S: number, lap: number): { a: number; b: number; l
   return Array.from({ length: n }, (_, i) => ({ a: -L / 2 + i * step, b: -L / 2 + i * step + S, layer: (i % 2) as 0 | 1 }));
 }
 
-function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }): TemplateBuild {
+/** Hang (sawtooth hanger) instead of an easel stand when the prompt says so. */
+export function frameHangs(prompt: string): boolean {
+  return /\bhang(?:s|ing)?\b|\bwall\b|\bhanger\b|\bloop\b/.test(prompt.toLowerCase());
+}
+
+/**
+ * Thin-stock picture frame. Read-as standard: the border is a closed rectangle band — every band
+ * member ends at the outer edge (sticks longer than a side are cut to it, shorter ones lap face to
+ * face), corners overlap cleanly — and a solid chipboard backer closes the back over the photo.
+ * Two stand feet under the bottom corners stand it on a shelf; "to hang" swaps them for a sawtooth hanger.
+ */
+function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }, hang: boolean): TemplateBuild {
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
   const f = wire ? 0.5 : prim.width;
-  const fr = prim.width;
   const t = round || wire ? prim.width : prim.height;
   const S = whole ? Math.max(1, prim.length) : Math.max(photo.w, photo.h) + 4 * f;
   const lap = Math.min(S * 0.3, Math.max(f * 2, 0.75));
   const { w, h } = photo;
-  // Universal border standard: a frame's border must read as a band, not a line. Stock thinner than
-  // 0.3" (skewers, wire) lays several sticks side by side per side until the band is ≥ 0.35" wide.
-  const band = f < 0.3 ? Math.ceil(0.35 / f) : 1;
+  // The border reads as a band: stock thinner than 0.3" lays several sticks side by side per side (≥ 0.35").
+  // Band proportion: at least 0.35" and a tenth of the opening's short side, in whole stick widths.
+  const band = Math.max(1, Math.ceil(Math.max(0.35, 0.1 * Math.min(w, h)) / f - 0.15));
   const Fb = band * f;
   const Wo = w + 2 * Fb;
   const Ho = h + 2 * Fb;
+  /** A member of exact length L: one stick cut to L, or whole sticks lapped end to end. */
+  const run = (L: number) => (S >= L - 1e-6 ? [{ a: -L / 2, b: L / 2, layer: 0 as 0 | 1 }] : lappedRun(L, S, lap));
+  const layersOf = (r: { layer: number }[]) => Math.max(...r.map((q) => q.layer)) + 1;
   const segs: TSeg[] = [];
   const Z = v3(0, 0, 1);
-  // Layers from the front face back: rails, stiles, backer bars.
-  const railRun = lappedRun(Wo, S, lap);
-  const stileRun = lappedRun(Ho, S, lap);
-  const railLayers = Math.max(...railRun.map((r) => r.layer)) + 1;
-  const stileLayers = Math.max(...stileRun.map((r) => r.layer)) + 1;
-  let z = 0;
   const zOf = (layer: number) => -(layer + 0.5) * t;
-  for (let k = 0; k < band; k++) for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), b: v3(r.b, ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), role: "rail", face: Z });
-  z += railLayers;
-  for (let k = 0; k < band; k++) for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2 + k * f), r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2 + k * f), r.b, zOf(z + r.layer)), role: "stile", face: Z });
-  z += stileLayers;
-  // Backer bars across the back: they hold the photo in the opening and tie the stiles.
-  const barRun = lappedRun(Wo, S, lap);
-  const barLayers = Math.max(...barRun.map((r) => r.layer)) + 1;
-  // Bars sit inside the opening's height, evenly spaced (not doubled against the rails).
-  const nb = Math.max(2, Math.ceil(h / 3.5));
-  for (let i = 0; i < nb; i++) {
-    const y = -h / 2 + (h * (i + 1)) / (nb + 1);
-    for (const r of barRun) segs.push({ a: v3(r.a, y, zOf(z + r.layer)), b: v3(r.b, y, zOf(z + r.layer)), role: "backer", face: Z });
+  // Feet lift the frame by one stick thickness (they lie flat under it); hung frames sit on the bench.
+  const footT = hang ? 0 : t;
+  const y0 = footT + Ho / 2; // frame centre height
+  let z = 0;
+  const railRun = run(Wo), stileRun = run(Ho);
+  for (let k = 0; k < band; k++) for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, y0 + ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), b: v3(r.b, y0 + ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), role: "rail", face: Z });
+  z += layersOf(railRun);
+  for (let k = 0; k < band; k++) for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2 + k * f), y0 + r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2 + k * f), y0 + r.b, zOf(z + r.layer)), role: "stile", face: Z });
+  z += layersOf(stileRun);
+  const zBand = -z * t; // back face of the band
+  // Solid backer: chipboard over the opening and half the band each side, glued to the band's back.
+  const bT = 0.06;
+  const r16 = (n: number) => Math.round(n * 16) / 16;
+  const bw = w + Fb, bh = h + Fb;
+  const panels: Panel[] = [{
+    id: createId("fb"), materialId: "chipboard-sheet", type: "back", name: "Backer",
+    position: { x: r16(-bw / 2), y: r16(y0 - bh / 2), z: zBand - bT }, size: { width: r16(bw), height: r16(bh), depth: bT },
+    cutNote: `Backer ${fmt(bw)}" × ${fmt(bh)}" chipboard: photo face down in the opening, then glue the backer over it onto the band.`,
+  }];
+  const zBack = zBand - bT;
+  if (!hang) {
+    // Stand feet: one flat stick under each bottom corner, running front to back past both faces.
+    const fl = Math.min(S, Math.max(3 * (-zBack), Ho * 0.5));
+    const zc = zBack / 2 - fl * 0.1; // a little more behind than in front
+    for (const xs of [1, -1]) {
+      const x = xs * (Wo / 2 - f / 2);
+      segs.push({ a: v3(x, footT / 2, zc - fl / 2), b: v3(x, footT / 2, zc + fl / 2), role: "stand", face: v3(0, 1, 0) });
+    }
   }
-  z += barLayers;
-  const zBack = -z * t;
-  // Easel stand: one stick from high on the backer down to the bench behind — it stands the frame up.
-  // A stick much longer than the frame would sprawl; that frame hangs or leans instead.
-  const standL = whole ? S : Math.max(3, Ho * 0.8);
-
-  // The lowest stick end sits on the bench (crossing ends of long sticks stand the frame).
-  const lift = -Math.min(...segs.flatMap((q) => [q.a.y, q.b.y])) + (round || wire ? t / 2 : f / 2);
-  const all: TSeg[] = segs.map((s0) => ({ ...s0, a: v3(s0.a.x, s0.a.y + lift, s0.a.z), b: v3(s0.b.x, s0.b.y + lift, s0.b.z) }));
-  // Stand only when it reaches a backer bar at a steep lean (foot no more than ~0.6 of its length back).
-  const ay = all.filter((q) => q.role === "backer").map((q) => q.a.y).sort((m, n) => n - m).find((y) => y <= standL * 0.97 && y >= standL * 0.8);
-  const withStand = ay != null;
-  if (ay != null) {
-    all.push({ a: v3(0, ay, zBack - t / 2), b: v3(0, 0, zBack - t / 2 - Math.sqrt(Math.max(0.25, standL * standL - ay * ay))), role: "stand" });
-  }
-  void fr;
   return {
     classId: "flat-frame",
     subject: "picture frame",
     label: "Picture frame",
     kind: "figure",
-    segs: all,
-    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack },
+    segs,
+    panels,
+    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack, band, backer: 1, feet: hang ? 0 : 2, hanger: hang ? 1 : 0, glueOnly: 1 },
     notes: [
       `Picture frame · opening ${fmt(w)}" × ${fmt(h)}" (the photo size) · outer ${fmt(Wo)}" × ${fmt(Ho)}".`,
-      railRun.length > 1 || stileRun.length > 1
-        ? `Each side is whole ${item.name}s lapped face to face (no cutting); rails in front, stiles behind, lapped at the corners.`
-        : `Rails in front, stiles behind, lapped and glued at the four corners.`,
-      `${nb} backer bars across the back hold the photo in the opening.${withStand ? " One stand stick behind makes it stand on a shelf." : " Hang it, or lean it on a shelf."}`,
-      ...(band > 1 ? [`Each side is ${band} ${item.name}s glued side by side so the border reads as a band.`] : []),
+      `The border is a closed band${band > 1 ? ` of ${band} ${item.name}s side by side` : ""}: every side ends flush at the outer corner, overlapping its neighbour.`,
+      `A chipboard backer glued to the back holds the photo in the opening.`,
+      hang ? `A sawtooth hanger on the top back hangs it on a nail.` : `Two stand feet under the bottom corners stand it on a shelf. Add "to hang" for a sawtooth hanger instead.`,
     ],
   };
 }
@@ -519,7 +527,7 @@ export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean
     const pr = toPrimitive(item);
     if (pr.length >= 10 + 2 * pr.width + 1) photo = { w: 8, h: 10, typed: false };
   }
-  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo);
+  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo, frameHangs(prompt));
   if (kind === "panel") return flatFramePanels(item, photo);
   return null;
 }
@@ -688,34 +696,70 @@ export function isPlatformTower(prompt: string): boolean {
   return /\bcat\s*-?\s*(?:tree|tower|condo|climber|climbing\s*tower)\b|\bkitty\s*(?:tree|tower|condo)\b/.test(prompt.toLowerCase());
 }
 
-/** Cat tree: four corner posts, a platform at the base, two in the middle, one on top; decks glued across rails. */
+/**
+ * Cat tree (climb/perch class). Read-as standard: staggered platforms at three heights on posts of
+ * three heights (never a stacked cube), a sisal-wrapped scratching post, a wide base (at least 0.4 of
+ * the height on a side) and a top perch with a low rim. Platforms clear every taller post.
+ */
 export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }, whole0: boolean): TemplateBuild | null {
   const said = typedSizeIn(prompt);
-  const H = said.height ?? said.length ?? typed.height ?? 48;
-  const W = Math.round(Math.max(12, Math.min(24, H * 0.3)) * 4) / 4;
-  const levels = [0, H * 0.34, H * 0.67, H];
   const kind = templateStock(item);
+  // Craft sticks make a model cat tree (16"); real stock makes one a cat uses (48").
+  const H = said.height ?? said.length ?? typed.height ?? (kind === "thin" ? 16 : 48);
+  const r = (n: number) => Math.round(n * 16) / 16;
+  const real = H >= 30;
+  const Wb = real ? Math.round(Math.max(18, 0.42 * H)) : r(0.42 * H);
+  const Pw = real ? Math.round(Math.min(16, Math.max(12, 0.28 * H))) : r(0.28 * H);
+  const rimH = real ? 2.5 : r(H * 0.05);
+  const inset = real ? 0.75 : r(H * 0.015);
   const sheet = item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard";
-  const params = { height: H, width: W, platforms: levels.length };
+  // Platform plan centres: low front-right, mid back-right, top perch back-left over the tall post.
+  const off = Wb / 2 - Pw / 2;
+  const L1 = r(H * 0.33), L2 = r(H * 0.66), L3 = r(H - rimH);
+  const plats = [
+    { name: "Platform", x: off, z: off, top: L1 },
+    { name: "Platform", x: off, z: -off, top: L2 },
+    { name: "Top perch", x: -off, z: -off, top: L3 },
+  ];
+  const sisalLen = r(Math.min(L2, L3 - 6));
+  const params: Record<string, number> = {
+    height: H, baseW: Wb, platW: Pw, platforms: plats.length, sisal: 1, sisalLen, rimH,
+    p1x: plats[0].x, p1z: plats[0].z, p1y: L1, p2x: plats[1].x, p2z: plats[1].z, p2y: L2, p3x: plats[2].x, p3z: plats[2].z, p3y: L3,
+  };
   const notes = [
-    `Cat tree · ${fmt(H)}" tall on a ${fmt(W)}" square base: four corner posts and ${levels.length} platforms (base, two perches, top).`,
-    `Wrap the posts in sisal rope where the cat scratches.`,
+    `Cat tree · ${fmt(H)}" tall on a ${fmt(Wb)}" square base: platforms staggered at ${fmt(L1)}", ${fmt(L2)}" and a rimmed top perch at ${fmt(L3)}".`,
+    `The tall post is the scratching post: wrap ${fmt(sisalLen)}" of it tight in 3/8" sisal rope, stapled at both ends.`,
   ];
   if (sheet) {
     const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.75, 0.25);
-    const pw = 3.5;
-    const r = (n: number) => Math.round(n * 16) / 16;
+    const P = 4; // box post, 4" square
     const panels: Panel[] = [];
     const mk = (p: Omit<Panel, "id" | "materialId">): Panel => ({ id: createId("ct"), materialId: item.id, ...p });
-    for (let i = 0; i < levels.length; i++) {
-      const y = i === 0 ? 0 : i === levels.length - 1 ? H - T : levels[i];
-      panels.push(mk({ type: "shelf", name: i === 0 ? "Base platform" : i === levels.length - 1 ? "Top platform" : "Platform", position: { x: r(-W / 2), y: r(y), z: r(-W / 2) }, size: { width: r(W), height: T, depth: r(W) } }));
-    }
-    for (const xs of [-1, 1]) for (const zs of [-1, 1]) {
-      panels.push(mk({ type: "upright", name: "Post", position: { x: r(xs > 0 ? W / 2 - pw : -W / 2), y: r(T), z: r(zs > 0 ? W / 2 - T : -W / 2) }, size: { width: pw, height: r(H - 2 * T), depth: T }, cutNote: "Screw each platform into the post edges; predrill." }));
-    }
+    panels.push(mk({ type: "bottom", name: "Base", position: { x: r(-Wb / 2), y: 0, z: r(-Wb / 2) }, size: { width: Wb, height: T, depth: Wb }, cutNote: "Wide base: screw every post down through it from below." }));
+    const post = (cx: number, cz: number, top: number, name: string) => {
+      const h = r(top - T - T);
+      // Pinwheel box: four equal strips (P − T wide), each overlapping the next at a corner.
+      const q = r(P - T);
+      panels.push(mk({ type: "upright", name, position: { x: r(cx - P / 2), y: T, z: r(cz + P / 2 - T) }, size: { width: q, height: h, depth: T } }));
+      panels.push(mk({ type: "upright", name, position: { x: r(cx + P / 2 - T), y: T, z: r(cz - P / 2 + T) }, size: { width: T, height: h, depth: q } }));
+      panels.push(mk({ type: "upright", name, position: { x: r(cx - P / 2 + T), y: T, z: r(cz - P / 2) }, size: { width: q, height: h, depth: T } }));
+      panels.push(mk({ type: "upright", name, position: { x: r(cx - P / 2), y: T, z: r(cz - P / 2) }, size: { width: T, height: h, depth: q } }));
+    };
+    const pA = -Wb / 2 + inset + P / 2;
+    const pB = { x: plats[0].x, z: plats[0].z };
+    const pC = { x: Wb / 2 - inset - P / 2, z: -Wb / 2 + inset + P / 2 };
+    post(pA, pA, L3, "Sisal post");
+    post(pB.x, pB.z, L1, "Post");
+    post(pC.x, pC.z, L2, "Post");
+    for (const q of plats) panels.push(mk({ type: "deck", name: q.name, position: { x: r(q.x - Pw / 2), y: r(q.top - T), z: r(q.z - Pw / 2) }, size: { width: Pw, height: T, depth: Pw }, cutNote: q.name === "Top perch" ? "Top perch: a low rim on all four edges keeps the cat on." : "Screw down into the post edges." }));
+    const q3 = plats[2];
+    for (const zs of [-1, 1]) panels.push(mk({ type: "side", name: "Perch rim", position: { x: r(q3.x - Pw / 2), y: L3, z: r(zs > 0 ? q3.z + Pw / 2 - T : q3.z - Pw / 2) }, size: { width: Pw, height: rimH, depth: T } }));
+    for (const xs of [-1, 1]) panels.push(mk({ type: "side", name: "Perch rim", position: { x: r(xs > 0 ? q3.x + Pw / 2 - T : q3.x - Pw / 2), y: L3, z: r(q3.z - Pw / 2 + T) }, size: { width: T, height: rimH, depth: r(Pw - 2 * T) } }));
+    params.postA_x = pA; params.postA_z = pA; params.postC_x = pC.x; params.postC_z = pC.z; params.post = P;
     return { classId: "platform-tower", subject: "cat tree", label: "Cat tree", kind: "figure", panels, params, notes };
   }
+  // Linear stock: posts are members (a thin-stick post is a square tube of four sticks), platforms are
+  // two rails flanking the post plus decking across them; the base is rails and decking on the bench.
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const whole = whole0 && kind === "thin" && isWholeStock(item);
@@ -724,6 +768,8 @@ export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { w
   const S = Math.max(0.5, prim.length);
   const lap = Math.min(S * 0.45, Math.max(2 * f, 0.3 * S));
   const segs: TSeg[] = [];
+  const Y = v3(0, 1, 0), Zp = v3(0, 0, 1), Zn = v3(0, 0, -1);
+  const lay = (L: number) => (whole && L > S + 1e-6 ? 2 : 1);
   const put = (a: Vec3, b: Vec3, role: string, face: Vec3, sub: Vec3) => {
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     if (!whole || L <= S + 1e-6) { segs.push({ a, b, role, face }); return; }
@@ -734,25 +780,53 @@ export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { w
       segs.push({ a: at(q.a), b: at(q.b), role, face });
     }
   };
-  const Y = v3(0, 1, 0);
-  const deckT = t;
-  const railH = f; // rails on edge
-  const zr = W / 2 - 2.5 * t; // rails just inside the posts (posts + their lap sublayer)
-  // Posts: on the front and back faces at the corners, flat against the face, sublayer outward.
-  for (const xs of [-1, 1]) for (const zs of [-1, 1]) {
-    put(v3(xs * (W / 2 - f / 2), 0, zs * (W / 2 - t / 2)), v3(xs * (W / 2 - f / 2), H - deckT, zs * (W / 2 - t / 2)), "post", v3(0, 0, zs), v3(0, 0, -zs));
-  }
-  // Each platform: two rails along x glued inside the posts, decking across the rails.
-  const pitch = whole && S < W ? 2 * f : f * 1.6;
-  for (let i = 0; i < levels.length; i++) {
-    const top = i === 0 ? railH : i === levels.length - 1 ? H - deckT : levels[i];
-    for (const zs of [-1, 1]) put(v3(-W / 2, top - railH / 2, zs * zr), v3(W / 2, top - railH / 2, zs * zr), "rail", v3(0, 0, 1), Y);
-    const n = Math.max(3, Math.floor((W - f) / pitch) + 1);
-    for (let k = 0; k < n; k++) {
-      const x = -W / 2 + f / 2 + ((W - f) * k) / (n - 1);
-      put(v3(x, top + deckT / 2 + (whole && W > S ? 0 : 0), -W / 2), v3(x, top + deckT / 2, W / 2), "deck", Y, Y);
+  const thin = kind === "thin";
+  const tube = thin ? Math.max(4 * f, 1.25) : 0;
+  // Base: rails along x on the bench (front, middle, back), decking along z on top, edge to edge.
+  const baseRailZ = [-Wb / 2 + f / 2, 0, Wb / 2 - f / 2];
+  for (const z of baseRailZ) put(v3(-Wb / 2, t / 2, z), v3(Wb / 2, t / 2, z), "base", Y, Y);
+  const yb0 = t * lay(Wb);
+  const nDeck = Math.max(3, Math.ceil(Wb / f - 0.05));
+  const dp = (Wb - f) / (nDeck - 1);
+  for (let k = 0; k < nDeck; k++) { const x = -Wb / 2 + f / 2 + k * dp; put(v3(x, yb0 + t / 2, -Wb / 2), v3(x, yb0 + t / 2, Wb / 2), "base", Y, Y); }
+  const yb = yb0 + t * lay(Wb) ;
+  /** Post from the base deck up to y1; returns its half depth in z (for the rails that flank it). */
+  const post = (cx: number, cz: number, y1: number, role: string): number => {
+    const L = y1 - yb;
+    if (thin) {
+      for (const zs of [-1, 1]) for (const xs of [-1, 1]) put(v3(cx + xs * (tube / 2 - f / 2), yb, cz + zs * (tube / 2 - t / 2)), v3(cx + xs * (tube / 2 - f / 2), y1, cz + zs * (tube / 2 - t / 2)), role, zs > 0 ? Zp : Zn, zs > 0 ? Zn : Zp);
+      return tube / 2;
     }
-  }
+    // Cut stock: the scratching post is two members face to face (a fatter post for the rope).
+    const n = role === "sisal" ? 2 : 1;
+    for (let k = 0; k < n; k++) put(v3(cx, yb, cz + (k - (n - 1) / 2) * t), v3(cx, y1, cz + (k - (n - 1) / 2) * t), role, Zp, Zp);
+    return (n * t) / 2;
+  };
+  const platform = (q: { x: number; z: number; top: number }, pz: number, cz: number, rim: boolean) => {
+    const railY = q.top - f / 2;
+    for (const zs of [-1, 1]) put(v3(q.x - Pw / 2, railY, cz + zs * (pz + t / 2)), v3(q.x + Pw / 2, railY, cz + zs * (pz + t / 2)), "rail", Zp, Zp);
+    const n = Math.max(3, Math.ceil(Pw / f - 0.05));
+    const pp = (Pw - f) / (n - 1);
+    for (let k = 0; k < n; k++) { const x = q.x - Pw / 2 + f / 2 + k * pp; put(v3(x, q.top + t / 2, q.z - Pw / 2), v3(x, q.top + t / 2, q.z + Pw / 2), "deck", Y, Y); }
+    if (rim) {
+      const y = q.top + t + f / 2;
+      for (const zs of [-1, 1]) put(v3(q.x - Pw / 2, y, q.z + zs * (Pw / 2 - t / 2)), v3(q.x + Pw / 2, y, q.z + zs * (Pw / 2 - t / 2)), "rim", Zp, zs > 0 ? Zn : Zp);
+      for (const xs of [-1, 1]) put(v3(q.x + xs * (Pw / 2 - t / 2), y, q.z - Pw / 2 + t), v3(q.x + xs * (Pw / 2 - t / 2), y, q.z + Pw / 2 - t), "rim", v3(1, 0, 0), v3(-xs, 0, 0));
+    }
+  };
+  const pw = thin ? tube : f;
+  const pA = -Wb / 2 + inset + Math.max(pw, 3) / 2;
+  const pC = { x: Wb / 2 - inset - pw / 2, z: -Wb / 2 + inset + Math.max(pw, 3) / 2 };
+  // Top perch sits one deck + rim lower so the rim top lands on the height.
+  const top3 = H - t - f;
+  const q3 = { ...plats[2], top: top3 };
+  const hzA = post(pA, pA, q3.top, "sisal");
+  const hzB = post(plats[0].x, plats[0].z, plats[0].top, "post");
+  const hzC = post(pC.x, pC.z, plats[1].top, "post");
+  platform(plats[0], hzB, plats[0].z, false);
+  platform(plats[1], hzC, pC.z, false);
+  platform(q3, hzA, pA, true);
+  params.p3y = q3.top; params.stickT = t; params.postA_x = pA; params.postA_z = pA; params.postC_x = pC.x; params.postC_z = pC.z; params.post = Math.max(pw, 3);
   return { classId: "platform-tower", subject: "cat tree", label: "Cat tree", kind: "figure", segs, params, notes };
 }
 
@@ -915,14 +989,13 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "floor", word: "floor stick", title: "Lay the floor inside the walls", why: "The floor squares the box." },
     { role: "rafter", word: "rafter", title: "Set the gable rafters on the front and back walls", why: "Two per end, meeting at the ridge — they set the roof pitch." },
     { role: "roof", word: "roof slat", title: "Lay the roof slats down each slope", why: "Slats run from the ridge to the eave and overhang front and back to keep rain off the entrance." },
-    { role: "perch", title: "Glue the perch on the entrance sill", why: "It sticks out in front, just under the entrance." },
+    { role: "perch", title: "Glue the perch just below the entrance", why: "Cut it short, glue its end to the front below the hole; it sticks out in front." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   "flat-frame": [
-    { role: "rail", word: "rail stick", title: "Glue the top and bottom rails", why: "Rails set the opening width; lapped sticks overlap face to face." },
-    { role: "stile", word: "stile stick", title: "Glue the stiles behind the rails", why: "Stiles set the opening height; they lap over the rails at the four corners." },
-    { role: "backer", word: "backer bar", title: "Glue the backer bars across the back", why: "They close the back and hold the photo in the opening." },
-    { role: "stand", word: "stand stick", title: "Glue the stand behind", why: "One stick from the backer down to the shelf stands the frame up." },
+    { role: "rail", word: "rail stick", title: "Glue the top and bottom rails", why: "Rails set the opening width and end flush at the outer corners; longer sides lap whole sticks face to face." },
+    { role: "stile", word: "stile stick", title: "Glue the stiles behind the rails", why: "Stiles set the opening height and overlap the rails at all four corners: a closed band. Then lay the photo face down in the opening and glue the chipboard backer over it onto the band." },
+    { role: "stand", word: "stand foot", title: "Glue the two stand feet under the bottom corners", why: "Flat under the bottom band, reaching front and back, they stand the frame on a shelf." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   launcher: [
@@ -949,9 +1022,12 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   "platform-tower": [
-    { role: "post", word: "post stick", title: "Build the four corner posts", why: "Whole sticks lapped face to face up to the full height." },
-    { role: "rail", word: "rail", title: "Glue two rails inside the posts at each platform height", why: "Base, two perches and the top: level rails on both faces." },
-    { role: "deck", word: "deck stick", title: "Lay the decking across each pair of rails", why: "Sticks side by side make the platforms the cat stands on." },
+    { role: "base", word: "base piece", title: "Build the wide base", why: "Rails on the bench, decking across them: the base is at least 0.4 of the height on a side so it cannot tip." },
+    { role: "sisal", word: "scratching-post member", title: "Stand the tall scratching post at the back corner", why: "Then wrap it tight in 3/8\" sisal rope, stapled at both ends; the cat scratches here." },
+    { role: "post", word: "post member", title: "Stand the two shorter posts", why: "Front-right post carries the low platform; back-right post the middle one." },
+    { role: "rail", word: "rail", title: "Glue a rail each side of every post top", why: "The rails carry each platform's decking." },
+    { role: "deck", word: "deck piece", title: "Lay the decking across each pair of rails", why: "Three staggered platforms: low, middle and the top perch." },
+    { role: "rim", word: "rim piece", title: "Glue the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
 };
@@ -1126,19 +1202,37 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     }
   }
   if (shape.classId === "platform-tower") {
+    // Climb/perch read-as: wide base, three staggered platforms, a sisal scratching post, a rimmed top perch.
     const H = P.height ?? 0;
     if (Math.abs((project.overall?.height ?? 0) - H) > 1.5) issues.push({ code: "height", detail: `${project.overall?.height} vs typed ${H}` });
+    if (!((P.baseW ?? 0) >= 0.38 * H)) issues.push({ code: "base", detail: `base ${P.baseW}" too narrow for ${H}" tall` });
+    const pl = [1, 2, 3].map((k) => ({ x: P[`p${k}x`] ?? 0, z: P[`p${k}z`] ?? 0, y: P[`p${k}y`] ?? 0 }));
+    for (let k = 1; k < pl.length; k++) {
+      if (pl[k].y - pl[k - 1].y < 0.15 * H) issues.push({ code: "stagger", detail: `platforms ${k} and ${k + 1} only ${(pl[k].y - pl[k - 1].y).toFixed(1)}" apart` });
+      if (Math.hypot(pl[k].x - pl[k - 1].x, pl[k].z - pl[k - 1].z) < 0.3 * (P.platW ?? 0)) issues.push({ code: "stagger", detail: `platforms ${k} and ${k + 1} stacked in line` });
+    }
+    if (!P.sisal) issues.push({ code: "sisal", detail: "no scratching post" });
     if (project.instances.length) {
+      if (!(roles.get("sisal") ?? []).length) issues.push({ code: "sisal", detail: "no sisal post" });
+      if ((roles.get("rim") ?? []).length < 4) issues.push({ code: "perch", detail: "top perch has no rim" });
       const levels = new Set((roles.get("deck") ?? []).map((i) => Math.round(i.from!.y)));
-      if (levels.size < 4) issues.push({ code: "platforms", detail: `${levels.size} platform levels` });
-      if ((roles.get("post") ?? []).length < 4) issues.push({ code: "missing-part", detail: "posts" });
-      const postTop = Math.max(...(roles.get("post") ?? []).flatMap((i) => [i.from!.y, i.to!.y]));
-      if (postTop < H - 1.5) issues.push({ code: "posts", detail: `posts stop at ${postTop.toFixed(1)}` });
+      if (levels.size < 3) issues.push({ code: "platforms", detail: `${levels.size} platform levels` });
     } else {
-      if (project.panels.filter((p) => /platform/i.test(p.name)).length < 4) issues.push({ code: "platforms", detail: "fewer than 4 platforms" });
-      if (project.panels.filter((p) => p.name === "Post").length < 4) issues.push({ code: "missing-part", detail: "posts" });
+      if (!project.panels.some((p) => p.name === "Sisal post")) issues.push({ code: "sisal", detail: "no sisal post" });
+      if (project.panels.filter((p) => /^(Platform|Top perch)$/.test(p.name)).length < 3) issues.push({ code: "platforms", detail: "fewer than 3 platforms" });
+      if (project.panels.filter((p) => p.name === "Perch rim").length < 4) issues.push({ code: "perch", detail: "top perch has no rim" });
+      // Platforms clear every post that rises past them.
+      const posts = project.panels.filter((p) => /post$/i.test(p.name));
+      for (const q of project.panels.filter((p) => /^(Platform|Top perch)$/.test(p.name))) {
+        for (const o of posts) {
+          const hitXZ = o.position.x < q.position.x + q.size.width - 0.01 && o.position.x + o.size.width > q.position.x + 0.01 && o.position.z < q.position.z + q.size.depth - 0.01 && o.position.z + o.size.depth > q.position.z + 0.01;
+          const hitY = o.position.y < q.position.y + q.size.height - 0.01 && o.position.y + o.size.height > q.position.y + 0.01;
+          if (hitXZ && hitY) { issues.push({ code: "collision", detail: `${o.name} runs through a platform` }); break; }
+        }
+      }
     }
   }
+
   if (shape.classId === "launcher") {
     const need: [string, number][] = [["rail", 2], ["tie", 3], ["leg", 4], ["stop", 1], ["support", 1], ["arm", 1], ["cup", 3]];
     for (const [r, n] of need) if ((roles.get(r)?.length ?? 0) < n) issues.push({ code: "missing-part", detail: `${r} ×${roles.get(r)?.length ?? 0}` });
@@ -1179,10 +1273,11 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     if (project.instances.length) {
       const rails = roles.get("rail") ?? [];
       const stiles = roles.get("stile") ?? [];
-      const bars = roles.get("backer") ?? [];
+      const backer = project.panels.find((p) => p.name === "Backer");
+      if (!backer) issues.push({ code: "backer", detail: "no solid backer" });
+      else if (backer.size.width < (P.openW ?? 0) || backer.size.height < (P.openH ?? 0)) issues.push({ code: "backer", detail: "backer smaller than the opening" });
       if (rails.length < 2 || stiles.length < 2) issues.push({ code: "missing-part", detail: `rails ${rails.length} stiles ${stiles.length}` });
-      if (bars.length < 2) issues.push({ code: "backer", detail: `backer bars ${bars.length}` });
-      for (const i of [...rails, ...stiles, ...bars]) if (!near(i.from!.z, i.to!.z, 0.01) || !i.face) issues.push({ code: "flat", detail: `${i.role} not lying flat in the frame face` });
+      for (const i of [...rails, ...stiles]) if (!near(i.from!.z, i.to!.z, 0.01) || !i.face) issues.push({ code: "flat", detail: `${i.role} not lying flat in the frame face` });
       const f = ((P.outerW ?? 0) - (P.openW ?? 0)) / 2;
       const sx = stiles.map((i) => i.from!.x);
       const ry = rails.map((i) => i.from!.y);
@@ -1199,6 +1294,12 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const ys2 = stiles.flatMap((i) => [i.from!.y, i.to!.y]);
       if (Math.min(...xs) > Math.min(...sx) + 0.01 || Math.max(...xs) < Math.max(...sx) - 0.01) issues.push({ code: "corner", detail: "rails stop short of the stiles" });
       if (Math.min(...ys2) > Math.min(...ry) + 0.01 || Math.max(...ys2) < Math.max(...ry) - 0.01) issues.push({ code: "corner", detail: "stiles stop short of the rails" });
+      // Closed band: nothing runs past the outer edge (a ladder look).
+      const W2 = (P.outerW ?? 0) / 2, Hh = P.outerH ?? 0;
+      const y0 = Math.min(...ry) - f / (2 * (P.band ?? 1)); // bottom of the band
+      if (Math.max(...xs.map((x) => Math.abs(x - cx))) > W2 + 0.02) issues.push({ code: "overshoot", detail: "rails run past the band" });
+      if (Math.max(...ys2) - y0 > Hh + 0.02 || Math.min(...ys2) < y0 - 0.02) issues.push({ code: "overshoot", detail: "stiles run past the band" });
+      if (!((roles.get("stand")?.length ?? 0) >= 2 || P.hanger)) issues.push({ code: "stand", detail: "no stand feet and no hanger" });
     } else {
       const rails = project.panels.filter((p) => p.name === "Frame rail");
       const stiles = project.panels.filter((p) => p.name === "Frame stile");
@@ -1219,7 +1320,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
-  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post)$/.test(name) ? name : null;
+  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
 }
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
@@ -1229,8 +1330,11 @@ const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = 
     { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Photo, then backer, held with glazier points." },
   ],
   "platform-tower": [
-    { match: /^(Base platform|Platform|Top platform)$/, title: "Cut the platforms", why: "Square platforms, one at the base, two perches, one on top." },
-    { match: /^Post$/, title: "Screw the four corner posts to the base and platforms", why: "Posts stand at the corners; predrill each screw." },
+    { match: /^Base$/, title: "Cut the wide base", why: "A square at least 0.4 of the height on a side keeps it from tipping." },
+    { match: /^(Sisal post|Post)$/, title: "Glue and screw the three box posts, then screw them to the base", why: "Tall scratching post at the back corner, two shorter posts for the low and middle platforms; screw up through the base." },
+    { match: /^(Platform|Top perch)$/, title: "Screw the staggered platforms onto the post tops", why: "Low front-right, middle back-right, top perch over the tall post." },
+    { match: /^Perch rim$/, title: "Screw the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },
+    { match: /^Sisal post$/, title: "Wrap the scratching post in sisal rope", why: "3/8\" sisal, tight turns from the bottom up, stapled at both ends." },
   ],
   "small-house": [
     { match: /^Front gable$/, title: "Drill the entrance hole in the front gable", why: "Drill before assembly with a spade or Forstner bit, from the face side, backed by scrap so it does not tear out." },
@@ -1265,6 +1369,7 @@ export function templatePanelSteps(project: YardProject): { step: number; title:
     if (!used.length) continue;
     out.push({ step: n++, title: s.title, description: `${used.map((p) => p.name).filter((x, i, a) => a.indexOf(x) === i).join(", ")}. ${s.why}`, tips: s.why, partsUsed: [...new Set(used.map((p) => p.name))] });
   }
-  out.push({ step: n++, title: "Check it square and sand the edges", description: "Sight the corners, ease every edge, and leave it unfinished inside.", tips: "Birds do not like paint inside." });
+  const bird = project.shape?.classId === "small-house";
+  out.push({ step: n++, title: "Check it square and sand the edges", description: bird ? "Sight the corners, ease every edge, and leave it unfinished inside." : "Sight the corners and ease every edge.", tips: bird ? "Birds do not like paint inside." : "Round the edges a pet or hand will touch." });
   return out;
 }

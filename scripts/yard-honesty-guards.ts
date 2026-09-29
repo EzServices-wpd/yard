@@ -775,13 +775,23 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (mode === "sticks" ? !b.instances.length : !b.panels.length) failWeekend(`small-house: ${p} not ${mode}`);
     const iss = inspectTemplate(b, p);
     if (iss.length) failWeekend(`small-house: ${p}`, iss);
-    if (b.instances.some((i) => i.cutLength != null) && /popsicle|craft/.test(p)) failWeekend(`small-house: ${p} cut craft sticks`);
+    if (b.instances.some((i) => i.cutLength != null && i.role !== "perch") && /popsicle|craft/.test(p)) failWeekend(`small-house: ${p} cut craft sticks`);
     counts.push(b.instances.length || b.panels.length);
   }
   const ply = generateFromPrompt("birdhouse from plywood with a 1 1/4 inch hole and a perch");
   const hole = ply.panels.find((q) => q.name === "Front gable")?.polygon?.holes?.[0];
   if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
   if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
+  // Perch sits just below the entrance: its top under the hole's bottom edge, within 1.25".
+  for (const p of ["craft stick birdhouse with a perch", "birdhouse from jumbo craft sticks with a perch", "birdhouse from bamboo skewers with a perch"]) {
+    const b = generateFromPrompt(p);
+    const perch = b.instances.find((i) => i.role === "perch");
+    const hp = b.shape?.params ?? {};
+    const openBottom = Number(hp.openBottom ?? NaN);
+    if (!perch) { failWeekend(`small-house: ${p} no perch`); continue; }
+    const top = perch.from?.y ?? perch.position.y;
+    if (!Number.isFinite(openBottom) || !(top <= openBottom + 0.01 && openBottom - top <= 1.25)) failWeekend(`small-house: ${p} perch not just below the hole`, { top, openBottom });
+  }
 }
 // A) A typed size scales the whole animal (then stock snapping), one connected piece.
 // B) Animal + shelf / bookend / planter = animal template with a flat usable top; rocking horse = horse on rockers;
@@ -842,6 +852,22 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (st && (st.components !== 1 || st.loose !== 0)) failWeekend(`cat tree: ${p} not one piece`, st);
     if (b.primaryMaterialId === "wire-frame") failWeekend(`cat tree: ${p} stockless`);
     if (!buildPlan(b).bom.length) failWeekend(`cat tree: ${p} empty Buy list`);
+    // Read-as (climb/perch class): wide base for the height, three staggered platforms (height and plan offset),
+    // a sisal-wrapped scratching post with sisal rope on Buy, and a rimmed top perch.
+    const P = b.shape?.params ?? {};
+    const n = (k: string) => Number(P[k] ?? NaN);
+    if (!(n("baseW") >= 0.38 * H)) failWeekend(`cat tree: ${p} base ${n("baseW")} too narrow for ${H}"`);
+    const lv = [1, 2, 3].map((k) => ({ x: n(`p${k}x`), z: n(`p${k}z`), y: n(`p${k}y`) }));
+    for (let k = 1; k < 3; k++) {
+      if (!(lv[k].y - lv[k - 1].y >= 0.15 * H)) failWeekend(`cat tree: ${p} platforms ${k}/${k + 1} not at different heights`, lv);
+      if (!(Math.hypot(lv[k].x - lv[k - 1].x, lv[k].z - lv[k - 1].z) >= 0.3 * n("platW"))) failWeekend(`cat tree: ${p} platforms ${k}/${k + 1} stacked, not staggered`, lv);
+    }
+    if (!(lv[2].y >= 0.85 * H)) failWeekend(`cat tree: ${p} top perch not at the top`, lv[2]);
+    const sisalPost = b.panels.some((q) => q.name === "Sisal post") || b.instances.some((i) => i.role === "sisal");
+    if (!sisalPost || n("sisal") < 1) failWeekend(`cat tree: ${p} no sisal scratching post`);
+    const rim = b.panels.filter((q) => q.name === "Perch rim").length + b.instances.filter((i) => i.role === "rim").length;
+    if (rim < 4) failWeekend(`cat tree: ${p} top perch has no rim`, rim);
+    if (!buildPlan(b).bom.some((x) => /sisal/i.test(x.name))) failWeekend(`cat tree: ${p} sisal rope not on Buy`);
   }
   for (const p of ["lattice tower", "dog", "cat tree", "rocking horse for a toddler", "birdhouse", "catapult", "tower"]) {
     const b = generateFromPrompt(p);
@@ -939,8 +965,30 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (b.shape?.params?.openW !== w || b.shape?.params?.openH !== h) failWeekend(`flat-frame: ${p} photo size`, b.shape?.params);
     const iss = inspectTemplate(b, p);
     if (iss.length) failWeekend(`flat-frame: ${p}`, iss);
-    if (b.instances.some((i) => i.cutLength != null) && /popsicle|craft|bamboo/.test(p)) failWeekend(`flat-frame: ${p} cut craft sticks`);
     if ((b.overall?.depth ?? 0) > 6) failWeekend(`flat-frame: ${p} not flat`, b.overall);
+  }
+  // Stick frames read as a picture frame: closed band cut to length (inspect checks no overshoot), a solid
+  // chipboard backer at least the opening size, and it stands (feet) or hangs (sawtooth hanger on Buy).
+  const stickFrames: [string, number, number][] = [
+    ["picture frame from bamboo skewers", 8, 10],
+    ["bamboo picture frame that holds a 5x7", 5, 7],
+    ["popsicle stick picture frame for a 4x6 photo", 4, 6],
+    ["craft stick frame for a 4x6 photo", 4, 6],
+    ["popsicle stick picture frame to hang on the wall", 5, 7],
+  ];
+  for (const [p, w, h] of stickFrames) {
+    const b = generateFromPrompt(p);
+    if (b.shape?.classId !== "flat-frame") { failWeekend(`flat-frame: ${p} class`, b.shape); continue; }
+    if (b.shape?.params?.openW !== w || b.shape?.params?.openH !== h) failWeekend(`flat-frame: ${p} photo size`, b.shape?.params);
+    const iss = inspectTemplate(b, p);
+    if (iss.length) failWeekend(`flat-frame: ${p}`, iss);
+    const backer = b.panels.find((q) => q.name === "Backer");
+    if (!backer || backer.materialId !== "chipboard-sheet" || backer.size.width < w || backer.size.height < h) failWeekend(`flat-frame: ${p} solid backer`, backer?.size);
+    if (b.instances.some((i) => /backer/i.test(i.name ?? ""))) failWeekend(`flat-frame: ${p} spaced backer rungs`);
+    const bom = buildPlan(b).bom.map((x) => x.name);
+    if (!bom.some((n) => /chipboard/i.test(n))) failWeekend(`flat-frame: ${p} chipboard not on Buy`, bom);
+    const hangs = /hang|wall/.test(p);
+    if (hangs ? !bom.some((n) => /sawtooth|hanger/i.test(n)) : Number(b.shape?.params?.feet ?? 0) < 2) failWeekend(`flat-frame: ${p} does not stand or hang`, { bom, params: b.shape?.params });
   }
   const wf = generateFromPrompt("picture frame from 1x2 for an 8x10 photo");
   if (buildPlan(wf).bom.some((x) => /screw/i.test(x.name))) failWeekend("flat-frame: mitered frame buys screws");
@@ -2059,17 +2107,22 @@ if (bambooFrame.kind === "frame" && (bambooFrame.overall?.depth ?? 0) > 8) {
 if (bambooFrame.primaryMaterialId !== "bamboo-skewer-12") {
   failWeekend("bamboo picture frame stock", bambooFrame.primaryMaterialId);
 }
-if (bambooFrame.instances.length < 6 || bambooFrame.instances.length > 28) {
+// Band sticks per side + two stand feet.
+if (bambooFrame.instances.length < 6 || bambooFrame.instances.length > 32) {
   failWeekend("bamboo picture frame piece count", bambooFrame.instances.length);
 }
-if (bambooFrame.instances.some((i) => i.cutLength != null)) {
-  failWeekend("bamboo picture frame cut skewers");
+// Skewers longer than a side are cut to exactly the band length (closed rectangle, no overshoot).
+{
+  const ow = Number(bambooFrame.shape?.params?.outerW ?? 0), oh = Number(bambooFrame.shape?.params?.outerH ?? 0);
+  const bad = bambooFrame.instances.filter((i) => i.cutLength != null && i.role !== "stand" && Math.abs(i.cutLength - ow) > 0.02 && Math.abs(i.cutLength - oh) > 0.02);
+  if (bad.length) failWeekend("bamboo picture frame skewers cut off the band length", bad.map((i) => i.cutLength));
 }
 if (bambooFrame.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
   failWeekend("bamboo picture frame foreign members");
 }
 const bambooFramePlan = buildPlan(bambooFrame);
-if (bambooFramePlan.partsKind !== "whole") failWeekend("bamboo picture frame plan not whole", bambooFramePlan.partsKind);
+// Band skewers are cut to the side length, so the plan lists cuts (the cut list shows the band lengths).
+if (!["whole", "cut"].includes(bambooFramePlan.partsKind)) failWeekend("bamboo picture frame plan kind", bambooFramePlan.partsKind);
 if (bambooFramePlan.bom.some((b) => /wood screws|#8/i.test(b.name))) {
   failWeekend("bamboo picture frame buy list has wood screws", bambooFramePlan.bom.map((b) => b.name));
 }
@@ -7244,7 +7297,8 @@ console.log("STRANGER PLAN OK", {
     const hits = findInterference(proj);
     if (hits.length) failHonesty(`interference: ${prompt} has ${hits.length} undeclared overlaps`, hits.slice(0, 6).map((h) => `${h.a.name} x ${h.b.name} ${h.depth.toFixed(3)}`));
     if (proj.kind === "opening") continue; // door/window framing cut lists come from the framing package (parked)
-    if (!proj.panels.length) {
+    // A stick craft whose only sheet part is a chipboard backer (bought, cut to size in the steps) is still a stick plan.
+    if (!proj.panels.length || (proj.instances.length > 0 && proj.panels.every((p) => p.materialId === "chipboard-sheet"))) {
       // Stick crafts: the model is instances of one stock stick — one cut piece per instance.
       // No cut table (stock bought cut-to-length): the Buy line carries the piece count instead.
       const buyPieces = plan.bom.map((b) => Number((b.notes ?? "").match(/^(\d+) pieces/)?.[1] ?? 0)).reduce((a, b) => a + b, 0);

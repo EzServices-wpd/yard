@@ -318,6 +318,36 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "chipboard-sheet",
+    retailer: "amazon",
+    title: "Chipboard sheets 8.5\" x 11\", 25 pack",
+    href: "https://www.amazon.com/s?k=chipboard+sheets+8.5+x+11",
+    packQty: 25,
+    packPrice: 8.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "sisal-rope",
+    retailer: "amazon",
+    title: "3/8\" natural sisal rope, 100 ft",
+    href: "https://www.amazon.com/s?k=3%2F8+inch+sisal+rope+100+ft",
+    packQty: 1,
+    packPrice: 19.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "sawtooth-hanger",
+    retailer: "amazon",
+    title: "Sawtooth picture hangers with nails",
+    href: "https://www.amazon.com/s?k=sawtooth+picture+hangers",
+    packQty: 1,
+    packPrice: 5.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "tape-packing",
     retailer: "homedepot",
     title: "Scotch 1.88\" packing tape",
@@ -1020,6 +1050,9 @@ function guessCatalogId(line: BomLine): string | null {
   if (/titebond|wood glue|\bglue\b/.test(hay)) return "glue";
   if (/rubber\s*bands?/.test(hay)) return "rubber-bands";
   if (/paper\s*fasteners?/.test(hay)) return "paper-fasteners";
+  if (/chipboard/.test(hay)) return "chipboard-sheet";
+  if (/sawtooth/.test(hay)) return "sawtooth-hanger";
+  if (/sisal/.test(hay)) return "sisal-rope";
   if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
   // Structural / lag BEFORE generic wood screws ("Structural wood screws / lag" contains both)
   if (/grk|structural|lag|rss|tapcon|masonry/.test(hay)) {

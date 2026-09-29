@@ -484,6 +484,8 @@ function buildTemplateProject(
       structureClass: "generic",
     };
     project = projectFromGraph(prompt, item, built.kind, graph, false, undefined, opts.joinMethod, built.label, whole);
+    // Sheet parts that ride with a stick build (a chipboard backer) keep their own material.
+    if (built.panels?.length) project = { ...project, panels: [...project.panels, ...built.panels] };
   } else {
     project = {
       ...emptyProject(),
