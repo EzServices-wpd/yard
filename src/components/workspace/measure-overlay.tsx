@@ -4,27 +4,29 @@ import { useYard } from "@/lib/yard/store";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
 /**
- * Size fields for the bench Options menu: same numbers as the measure panel. Typing a size and
- * leaving the field refits a house build live. Renders nothing when there is no opening to size.
+ * Size fields for the bench Options menu. Leaving a field refits the build:
+ * a closet keeps its carcase, a weekend form keeps its shape, both take the numbers.
  */
 export function MeasureFields() {
-  const open = useYard((s) => s.measureOpen);
   const measure = useYard((s) => s.measure);
   const setMeasure = useYard((s) => s.setMeasure);
   const applyMeasure = useYard((s) => s.applyMeasure);
   const makePlan = useYard((s) => s.makePlan);
   const project = useYard((s) => s.project);
 
-  const housePath =
-    project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted) || Boolean(project.pocket);
+  const canSize =
+    project.kind === "closet" ||
+    project.kind === "opening" ||
+    !!project.fitted ||
+    !!project.pocket ||
+    project.instances.length > 0 ||
+    project.panels.length > 0;
 
-  if (!open && !housePath) return null;
+  if (!canSize) return null;
 
   function commitLive() {
-    if (project.kind === "closet" || project.kind === "opening" || project.fitted || project.pocket) {
-      applyMeasure();
-      makePlan();
-    }
+    applyMeasure();
+    makePlan();
   }
 
   const w = parseFloat(measure.width);

@@ -36,4 +36,4 @@ export type FormRecipe = {
   source?: string;
 };
 
-export type Size3 = { height: number; width: number; depth: number };
+export type Size3 = { height: number; width: number; depth: number; /** User typed all three axes — do not pull them back to a stock proportion. */ free?: boolean };

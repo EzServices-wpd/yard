@@ -123,9 +123,9 @@ export function BenchOptionsPanel({
   if (!open) return null;
 
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
-  const sizeable = housePath || Boolean(project.pocket);
   const built = project.panels.length > 0 || project.instances.length > 0;
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
+  const sizeable = built && !paperCraft;
   const canWalk = Boolean(project.traverse) && !housePath;
   const stickModel = !housePath && (project.instances.some((i) => i.role === "skin") || project.instances.length > 40);
   const makerJob = !housePath && project.instances.length > 0;
@@ -180,16 +180,18 @@ export function BenchOptionsPanel({
       {sizeable && built && (
         <Section id="size" title="Size">
           <MeasureFields />
-          <button
-            type="button"
-            onClick={() => {
-              onMeasure();
-              onClose(false);
-            }}
-            className="mt-2 text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
-          >
-            Measure the walls
-          </button>
+          {(housePath || project.pocket) && (
+            <button
+              type="button"
+              onClick={() => {
+                onMeasure();
+                onClose(false);
+              }}
+              className="mt-2 text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
+            >
+              Measure the walls
+            </button>
+          )}
         </Section>
       )}
 
@@ -200,7 +202,7 @@ export function BenchOptionsPanel({
             {hasFaces && (
               <Toggle on={facesOpen} onClick={() => setFacesOpen(!facesOpen)} label={operateFacesLabel(facesOpen, faceKinds)} plain />
             )}
-            {sizeable && <Toggle on={measureOpen} onClick={() => setMeasureOpen(!measureOpen)} label="Opening outline" />}
+            {(housePath || project.pocket) && <Toggle on={measureOpen} onClick={() => setMeasureOpen(!measureOpen)} label="Opening outline" />}
             {historicOk && !housePath && <Toggle on={showHistoric} onClick={() => setShowHistoric(!showHistoric)} label="Form" />}
             {showLoadBtn && <Toggle on={showLoad} onClick={() => setShowLoad(!showLoad)} label="Load" />}
           </div>

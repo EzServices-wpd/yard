@@ -67,6 +67,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const activeStep = useYard((s) => s.activeStep);
   const setActiveStep = useYard((s) => s.setActiveStep);
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
+  const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
 
   useEffect(() => {
@@ -115,10 +116,14 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   useEffect(() => {
     const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket) || Boolean(project.fitted);
     setMeasureOpen(house);
+    if (!house && project.overall.width > 1 && project.overall.height > 1) {
+      const n = (v: number) => String(Math.round(v * 10) / 10);
+      setMeasure({ width: n(project.overall.width), height: n(project.overall.height), depth: n(project.overall.depth) });
+    }
     // Unit is the hero. Do not steal the bench with the measure sidebar.
     // Measure button still opens the full card (pocket walls, kind, example pocket).
     setSide(null);
-  }, [project.id, setMeasureOpen]);
+  }, [project.id, setMeasureOpen, setMeasure, project.kind, project.pocket, project.fitted, project.overall.width, project.overall.height, project.overall.depth]);
 
   useEffect(() => {
     if (workMode === "build") setWorkMode("look");

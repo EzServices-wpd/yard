@@ -73,6 +73,14 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
       return deskLike ? `${W}${sep1}${D}` : `${W}${sep1}${H}`;
     },
   );
+  if (!/(?:wide|width)\b/i.test(p) || !/(?:tall|high|height)\b/i.test(p) || !/(?:deep|depth)\b/i.test(p)) {
+    const bits = [
+      /(?:wide|width)\b/i.test(p) ? "" : `${W} wide`,
+      /(?:tall|high|height)\b/i.test(p) ? "" : `${H} high`,
+      /(?:deep|depth)\b/i.test(p) ? "" : `${D} deep`,
+    ].filter(Boolean);
+    if (bits.length) p = `${p}, ${bits.join(", ")}`;
+  }
   return p.replace(/\s{2,}/g, " ").trim();
 }
 

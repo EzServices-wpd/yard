@@ -15,7 +15,6 @@ import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize } from "./space";
 import { isRoundUnitEnvelope } from "./voiceHonesty";
-import { detectWeekendMech } from "./weekendFamily";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
@@ -252,6 +251,13 @@ export const useYard = create<YardState>((set, get) => ({
                 height: String(next.fitted.unit.height),
                 depth: String(next.fitted.unit.depth),
                 kind: measureKindFromProject(next),
+              }
+            : next.overall.width > 1
+            ? {
+                width: String(Math.round(next.overall.width * 10) / 10),
+                height: String(Math.round(next.overall.height * 10) / 10),
+                depth: String(Math.round(next.overall.depth * 10) / 10),
+                kind: "general_volume" as const,
               }
             : get().measure,
     });
@@ -535,14 +541,14 @@ export const useYard = create<YardState>((set, get) => ({
       if (built) get().commit(built);
       return;
     }
-    // Weekend climb / launcher / media-hold — Measure refits size, never closet→Bench.
-    const weekendMech = detectWeekendMech(project.prompt || prompt);
-    if (
-      climbIdentityLabel((project.prompt || prompt).toLowerCase()) ||
-      weekendMech === "climb" ||
-      weekendMech === "launcher" ||
-      weekendMech === "media-hold"
-    ) {
+    // Weekend forms take the same three numbers as a closet. Never rebuild them as a carcase.
+    const houseCarcase =
+      project.kind === "closet" ||
+      project.kind === "opening" ||
+      !!project.fitted ||
+      !!project.pocket ||
+      !!project.windowPkg;
+    if (!houseCarcase && (project.instances.length > 0 || project.panels.length > 0)) {
       const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
         sizeOverride: {
           width: widthIn,
@@ -551,8 +557,21 @@ export const useYard = create<YardState>((set, get) => ({
         },
         joinMethod: project.joinMethod,
         includeSpine: project.supportOffer?.included,
+        scale: get().buildScale,
       });
-      if (built) get().commit(built);
+      if (built) {
+        get().commit(built);
+        const n = (v: number) => String(Math.round(v * 10) / 10);
+        set({
+          measure: {
+            ...get().measure,
+            width: n(built.overall.width),
+            height: n(built.overall.height),
+            depth: n(built.overall.depth),
+            kind: "general_volume",
+          },
+        });
+      }
       return;
     }
     const built = projectFromMeasurement(

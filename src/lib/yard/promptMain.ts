@@ -143,9 +143,103 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
   rocker: { height: 24 },
 };
 
-/** Built → solved: every caller gets the interference-solved model (the one source of truth). */
+/** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
-  return solveModel(generateRaw(...args));
+  const project = solveModel(generateRaw(...args));
+  return fitWeekendSize(project, args[0], args[3]?.sizeOverride);
+}
+
+function axisLabeled(prompt: string): boolean {
+  const l = prompt.toLowerCase();
+  return /(?:wide|width)\b/.test(l) && /(?:tall|high|height)\b/.test(l) && /(?:deep|depth)\b/.test(l);
+}
+
+function fitWeekendSize(
+  project: YardProject,
+  prompt: string,
+  override?: { width: number; height: number; depth: number },
+): YardProject {
+  if (project.fitted || project.pocket || project.windowPkg || project.kind === "closet" || project.kind === "opening") {
+    return project;
+  }
+  if (!project.instances.length && !project.panels.length) return project;
+  const box = override ?? (axisLabeled(prompt) ? parseSize(prompt.toLowerCase()) : null);
+  if (!box || !(box.width > 0) || !(box.height > 0) || !(box.depth > 0)) return project;
+  return scaleToBox(project, box);
+}
+
+function scaleToBox(
+  project: YardProject,
+  box: { width: number; height: number; depth: number },
+): YardProject {
+  const o = project.overall;
+  if (!o || o.width < 0.2 || o.height < 0.2 || o.depth < 0.2) return project;
+  const sx = box.width / o.width;
+  const sy = box.height / o.height;
+  const sz = box.depth / o.depth;
+  if (![sx, sy, sz].every((n) => Number.isFinite(n) && n > 0 && n < 40)) return project;
+  if (Math.abs(sx - 1) < 0.03 && Math.abs(sy - 1) < 0.03 && Math.abs(sz - 1) < 0.03) return project;
+  const s = (p: { x: number; y: number; z: number }) => ({ x: p.x * sx, y: p.y * sy, z: p.z * sz });
+  const dist = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
+    Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const instances = project.instances.map((i) => {
+    const from = i.from ? s(i.from) : undefined;
+    const to = i.to ? s(i.to) : undefined;
+    return {
+      ...i,
+      from,
+      to,
+      position: s(i.position),
+      cutLength: from && to ? r1(dist(from, to)) : i.cutLength,
+    };
+  });
+  const panels = project.panels.map((p) => ({
+    ...p,
+    position: s(p.position),
+    size: { width: p.size.width * sx, height: p.size.height * sy, depth: p.size.depth * sz },
+    polygon: p.polygon
+      ? {
+          ...p.polygon,
+          pts: p.polygon.pts.map(([a, b]) =>
+            (p.polygon!.plane === "xy" ? [a * sx, b * sy] : [a * sx, b * sz]) as [number, number],
+          ),
+          holes: p.polygon.holes?.map((h) =>
+            p.polygon!.plane === "xy"
+              ? { x: h.x * sx, y: h.y * sy, r: h.r * Math.min(sx, sy) }
+              : { x: h.x * sx, y: h.y * sz, r: h.r * Math.min(sx, sz) },
+          ),
+        }
+      : p.polygon,
+  }));
+  const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(r1(n)));
+  const note = `Sized to ${fmt(box.width)}" wide × ${fmt(box.height)}" high × ${fmt(box.depth)}" deep.`;
+  const steps = Math.max(1, climbStepCount(project.prompt || ""));
+  const fixRise = (s: string) =>
+    s.replace(
+      /(\d+(?:\.\d+)?)" rise × (\d+(?:\.\d+)?)" run/g,
+      `${fmt(box.height / steps)}" rise × ${fmt(box.depth / steps)}" run`,
+    );
+  let notes = project.notes.map(fixRise);
+  const openW = Number(project.shape?.params?.openW);
+  const openH = Number(project.shape?.params?.openH);
+  let params = project.shape?.params;
+  if (Number.isFinite(openW) && Number.isFinite(openH) && openW > 0 && openH > 0) {
+    const ow = r1(openW * sx);
+    const oh = r1(openH * sy);
+    params = { ...params, openW: ow, openH: oh };
+    notes = notes.map((n) => n.replace(/opening [^×]+× [^("]+/, `opening ${fmt(ow)}" × ${fmt(oh)}"`));
+  }
+  if (!notes.some((n) => n.startsWith("Sized to "))) notes = [note, ...notes];
+  return {
+    ...project,
+    name: fixRise(project.name),
+    instances,
+    panels,
+    overall: { width: r1(box.width), height: r1(box.height), depth: r1(box.depth) },
+    shape: project.shape && params ? { ...project.shape, params } : project.shape,
+    notes,
+  };
 }
 
 function generateRaw(
@@ -260,8 +354,9 @@ function generateRaw(
       depth: opts.sizeOverride.depth || box.depth,
     };
   }
+  const freeSize = !!opts.sizeOverride || axisLabeled(prompt);
   const lowerP = prompt.toLowerCase();
-  if (/arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
+  if (!freeSize && /arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
     const H = box.height;
     box = {
       height: H,
@@ -270,7 +365,7 @@ function generateRaw(
     };
   }
   const namedSpan = /golden gate|brooklyn|suspension/.test(lowerP);
-  if (/bridge|span|overpass|viaduct/.test(lowerP) && !formOverride && !namedSpan) {
+  if (!freeSize && /bridge|span|overpass|viaduct/.test(lowerP) && !formOverride && !namedSpan) {
     // A typed span under 24″ is the span. Untyped bridges still start at 24″ (parseSize lifts a blank to 96″).
     const span = box.width < 24 ? Math.max(box.width, 6) : Math.max(box.width, 24);
     box = {
@@ -287,7 +382,7 @@ function generateRaw(
       box = { height: box.height * k, width: box.width * k, depth: Math.max(4, box.depth * k) };
     }
   }
-  const recipe = formOverride ?? detectForm(prompt, box);
+  const recipe = formOverride ?? detectForm(prompt, { ...box, free: freeSize });
   const kind = recipe.kind;
   const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
   const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
@@ -322,7 +417,7 @@ function generateRaw(
     let lat = latticeAt(box.height);
     // Thick stock stands proud of the centreline: bring the finished height back onto the typed height.
     const over = (lat.overall?.height ?? box.height) - box.height;
-    if (!eiffelK && over > 1) lat = latticeAt(box.height - over);
+    if (over > 1 && (freeSize || !eiffelK)) lat = latticeAt(Math.max(6, box.height - over));
     return lat;
   }
 

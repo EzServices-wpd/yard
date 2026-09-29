@@ -64,6 +64,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           if (project.fitted) {
             return measureRefitTalk(envOpts).panelBlurb;
           }
+          if (project.kind !== "closet" && project.kind !== "opening") {
+            return "W × H × D is this build. Change a number and it refits — same form, the size you typed.";
+          }
           return "The opening is on the bench — type into the arrows or these fields.";
         })()}
       </p>

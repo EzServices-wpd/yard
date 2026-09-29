@@ -62,9 +62,9 @@ export function domeOps(s: Size3): FormOp[] {
  * Shop-length pipe: each member is one piece, not a lattice.
  */
 export function archOps(s: Size3): FormOp[] {
-  const H = Math.max(s.height, 12);
-  const W = Math.max(s.width, H * 0.5, 18);
-  const D = Math.min(Math.max(s.depth, 10), Math.max(12, H * 0.22));
+  const H = Math.max(s.height, s.free ? 8 : 12);
+  const W = s.free ? Math.max(s.width, 8) : Math.max(s.width, H * 0.5, 18);
+  const D = s.free ? Math.max(s.depth, 4) : Math.min(Math.max(s.depth, 10), Math.max(12, H * 0.22));
   const x0 = -W / 2;
   const x1 = W / 2;
   const z0 = -D / 2;
@@ -87,8 +87,8 @@ export function archOps(s: Size3): FormOp[] {
 
 export function ladderOps(s: Size3, rungCount?: number | null): FormOp[] {
   // Honor typed envelope — do not silently clamp a 24″ towel ladder down to 22″.
-  const H = Math.max(s.height, 36);
-  const w = Math.max(12, s.width);
+  const H = s.free ? Math.max(s.height, 8) : Math.max(s.height, 36);
+  const w = s.free ? Math.max(s.width, 4) : Math.max(12, s.width);
   // Honor typed rung count (four rungs → 4). Untyped: ~1 rung / foot, floor at 5.
   const rungs =
     rungCount != null && Number.isFinite(rungCount)
@@ -447,9 +447,9 @@ export function climbStepOps(
   stepCount: number = 1,
 ): FormOp[] {
   const n = Math.max(1, Math.min(6, Math.round(stepCount || 1)));
-  const rise = Math.max(riseIn ?? Math.min((s.height || 8) / n, 12), 4);
-  const run = Math.max(runIn ?? Math.min(s.depth || 10, 14), 6);
-  const W = Math.max(Math.min(s.width || 14, 22), 10);
+  const rise = s.free ? Math.max((s.height || 8) / n, 2) : Math.max(riseIn ?? Math.min((s.height || 8) / n, 12), 4);
+  const run = s.free ? Math.max((s.depth || 10) / n, 2) : Math.max(runIn ?? Math.min(s.depth || 10, 14), 6);
+  const W = s.free ? Math.max(s.width || 8, 4) : Math.max(Math.min(s.width || 14, 22), 10);
   const totalRun = run * n;
   const totalRise = rise * n;
   const x0 = -W / 2;
