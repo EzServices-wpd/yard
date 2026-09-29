@@ -81,7 +81,7 @@ export function CatalogPanel() {
                             const nextPrompt = promptNamingStock(project.prompt, speakCatalogStock(item));
                             generate(nextPrompt, item.id, undefined, {
                               includeSpine: project.supportOffer?.included,
-                              joinMethod: project.joinMethod,
+                              fresh: true,
                             });
                             makePlan();
                           } else {

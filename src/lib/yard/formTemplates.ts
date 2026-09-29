@@ -519,7 +519,7 @@ export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean
     const pr = toPrimitive(item);
     if (pr.length >= 10 + 2 * pr.width + 1) photo = { w: 8, h: 10, typed: false };
   }
-  if (kind === "thin") return flatFrameThin(item, whole && isWholeStock(item), photo);
+  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo);
   if (kind === "panel") return flatFramePanels(item, photo);
   return null;
 }

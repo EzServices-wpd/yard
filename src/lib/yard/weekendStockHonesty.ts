@@ -253,6 +253,32 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
 }
 
+/** The picked sheet replaces ¾" faces. A face longer than that sheet stays on a sheet that fits. ¼" backs stay ¼" unless the pick is the thin sheet. */
+export function applyExplicitSheetCarcase(project: YardProject, item: CatalogItem): YardProject {
+  if (item.formFactor !== "sheet" && item.category !== "sheet_goods") return project;
+  const sheetL = item.dims.length ?? 96;
+  const thick = item.dims.thickness ?? 0.75;
+  const thinPick = thick < 0.4;
+  const panels = project.panels.map((p) => {
+    const id = p.materialId ?? "";
+    if (!/^plywood-/i.test(id)) return p;
+    const long = Math.max(p.size.width, p.size.height, p.size.depth);
+    if (long > sheetL + 0.5) {
+      const taller = thinPick || /^plywood-1-4/i.test(id) ? "plywood-1-4-4x10" : "plywood-3-4-4x10";
+      return { ...p, materialId: taller };
+    }
+    if (!thinPick && /^plywood-1-4/i.test(id)) return p;
+    return { ...p, materialId: item.id };
+  });
+  const note = thinPick
+    ? `Stock: ${item.name}. Every plywood face is this sheet.`
+    : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
+  const notes = (project.notes ?? []).filter(
+    (n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n),
+  );
+  return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
+}
+
 
 
 

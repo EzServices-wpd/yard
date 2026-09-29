@@ -42,7 +42,7 @@ function effortLabel(project: YardProject, pieces: number): string {
   // Fitted/house: bands on honest wood piece count (same as Confirm/chip /
   // plan.totals.pieces via closetCuts) — never raw panels.length. Bounding
   // type=drawer envelopes under-count exploded sides/back/bottom kits.
-  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
+  if (project.panels.length > 0) {
     if (pieces <= 10) return "1/2-day";
     if (pieces <= 20) return "1-day";
     return "weekend";
@@ -1010,7 +1010,7 @@ export function honestNestSheetStockName(
     if (has10) return name10;
     return null;
   }
-  if (!(project.kind === "closet" || project.fitted || project.panels.length > 0)) {
+  if (!project.panels.length) {
     return null;
   }
   const cuts = closetCuts(project);
@@ -1035,7 +1035,7 @@ export function strangerWoodPieceCount(project: YardProject): number {
   if (project.kind === "opening" && project.windowPkg) {
     return stampLabels(windowCuts(project)).reduce((s, c) => s + c.quantity, 0);
   }
-  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
+  if (project.panels.length > 0) {
     return closetCuts(project).reduce((s, c) => s + c.quantity, 0);
   }
   return project.instances.length;
@@ -1097,7 +1097,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
     );
   }
 
-  if (project.kind === "closet" || project.fitted || project.panels.length > 0) {
+  // Plates → cut list. A closet rebuilt in sticks (no plates) uses the stick plan below.
+  if (project.panels.length > 0) {
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);

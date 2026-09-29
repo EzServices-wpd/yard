@@ -12,7 +12,7 @@ import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHou
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -24,7 +24,7 @@ import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, 
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
-import { memberView, type MemberView } from "./memberStock";
+import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
@@ -83,8 +83,8 @@ function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
 
 /**
  * House carcase, then the stock the user actually switched to.
- * A species clause still binds solid 1×4. A later plywood / 2×4 / 1×4 clause replaces it.
- * Popsicle, PVC, and other stick stocks do not come through here — they skip the house branch.
+ * A species clause still binds solid 1×4. A later plywood / 2×4 / 1×4 / 4×10 clause replaces it.
+ * A stick, pipe, or brick keeps the same carcase and tiles every face in that stock.
  */
 function finishHouse(
   project: YardProject,
@@ -103,14 +103,16 @@ function finishHouse(
     },
     honorUnit,
   });
-  if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
+  if (stock && !kind && next.panels.length) {
+    next = recastPanelsAsStock(next, stock);
+  } else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
     next = applyExplicitBoardCarcase(next, stock);
-  } else if (kind === "sheet" && stock && stock.id !== next.primaryMaterialId && stock.id !== "plywood-3-4-4x8") {
-    const thin = (stock.dims.thickness ?? 0.75) < 0.7;
-    const note = thin
-      ? `${stock.name} is thinner than this carcase. The drawing and the cut list stay ¾" plywood — a thinner sheet would change the joinery.`
-      : `${stock.name} does not replace the sheet each face fits. Faces that fit a 4×8 stay on a 4×8; a face taller than 8 ft stays on a 4×10.`;
-    if (!next.notes.includes(note)) next = { ...next, notes: [...next.notes, note] };
+  } else if (kind === "sheet" && stock && (stock.id !== next.primaryMaterialId || stock.id !== "plywood-3-4-4x8")) {
+    const already =
+      stock.id === next.primaryMaterialId &&
+      stock.id === "plywood-3-4-4x8" &&
+      next.panels.every((p) => !/^plywood-3-4-4x10|^plywood-1-2/.test(p.materialId ?? ""));
+    if (!already) next = applyExplicitSheetCarcase(next, stock);
   }
   return next;
 }
@@ -177,16 +179,16 @@ function generateRaw(
   // A stick/pipe pick (popsicle, PVC, dowel) is not a plywood carcase — fall through and densify.
   const stockAsk = requestedStock(prompt, materialOverride);
   const craftAsk = !!stockAsk && !carcaseKind(stockAsk);
-  if (opts.fittedOverride && !climbIdentityLabel(lower) && !craftAsk) {
+  if (opts.fittedOverride && !climbIdentityLabel(lower)) {
     return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit, materialOverride);
   }
 
   // Odd-shape pack beats window/door/pocket steals ("shelves around a window", "corner cabinet with angled front").
-  if (isOddShapePrompt(prompt) && !climbIdentityLabel(lower) && !craftAsk) {
+  if (isOddShapePrompt(prompt) && !climbIdentityLabel(lower)) {
     return honestHouse(buildOddShape(null, prompt), prompt, false, materialOverride);
   }
 
-  if (kindHint === "opening") {
+  if (kindHint === "opening" && !craftAsk) {
     if (looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower)) return buildDoorProject(prompt);
     return buildWindowProject(pickWindow(prompt), prompt);
   }
@@ -212,7 +214,8 @@ function generateRaw(
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
     (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia) &&
-    !craftAsk
+    // A garden arch "from paper towel" is still an arch. Weekend forms are not carcases.
+    !detectWeekendFamily(prompt)
   ) {
     // Wonky pocket before parseBrief — the original survey is a trapezoid, not a fitted rectangle.
     if (looksLikePocket(prompt)) {
