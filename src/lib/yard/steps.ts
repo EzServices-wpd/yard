@@ -2840,7 +2840,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
   const prompt = project.prompt ?? "";
   // Template classes own their step script (before any noun/mech scripts).
   if (project.shape && project.shape.classId !== "quadruped") {
-    const script = templateSteps(project.shape.classId);
+    const script = templateSteps(project.shape.classId, project.shape.params);
     if (script && script.length) return script;
   }
   const mech = detectWeekendMech(prompt);

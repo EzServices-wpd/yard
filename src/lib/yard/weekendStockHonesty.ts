@@ -839,7 +839,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     // Thin (¼") plywood backers stay plywood whatever the named frame stock.
     (p.type === "back" && /^plywood-1-4/.test(p.materialId ?? "") && Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26) ||
     // A chipboard backer on a stick frame stays chipboard (it is on Buy as its own line).
-    (p.type === "back" && p.materialId === "chipboard-sheet")
+    (p.type === "back" && p.materialId === "chipboard-sheet") ||
+    // Frame glazing (glass / acrylic) is bought, never the frame stock.
+    p.type === "glass_panel"
       ? p
       : { ...p, materialId: item.id },
   );

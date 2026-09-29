@@ -8,7 +8,7 @@ import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
 import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10, plySheetCatalogId } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
@@ -665,7 +665,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       notes: "Glue to the outside of the door so the cabinet mirrors when closed. Order or cut close to the door size.",
     });
   }
-  const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type));
+  const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type) && !isFrameGlazing(p.name, p.type));
   if (glassMirrors.length && !medicine) {
     const m = glassMirrors[0];
     const dims = sheetCutDims(m.size.width, m.size.height, m.size.depth);
@@ -1116,7 +1116,7 @@ function buildPlanCore(project: YardProject): BuildPlan {
 
   // Plates → cut list. A closet rebuilt in sticks (no plates) uses the stick plan below; a stick build whose
   // only sheet part is a chipboard backer stays a stick plan too (backer on Buy).
-  const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every((p) => p.materialId === "chipboard-sheet");
+  const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every(isStickAccessorySheet);
   if (project.panels.length > 0 && !stickWithBacker) {
     const cutList = closetCuts(project);
     const bom = closetBom(project, cutList);
@@ -1363,7 +1363,20 @@ function templateAccessories(project: YardProject) {
     const packs = Math.max(1, Math.ceil(ft / 100));
     out.push({ name: "3/8\" sisal rope, 100 ft", quantity: packs, unit: packs === 1 ? "roll" : "rolls", catalogId: "sisal-rope", searchQuery: "3/8 inch sisal rope 100 ft", estimatedCost: 19.99 * packs, notes: `About ${ft} ft wraps ${Math.round(P.sisalLen ?? 0)}" of the scratching post, tight turns, stapled at both ends.` });
   }
-  if (project.shape?.classId !== "flat-frame" || !project.instances.length) return out;
+  if (project.shape?.classId !== "flat-frame") return out;
+  // Glazing asked for: glass or acrylic cut to the photo size, in front of the photo.
+  const g = project.panels.find((p) => isFrameGlazing(p.name, p.type));
+  if (g) {
+    const gw = Math.round(g.size.width * 16) / 16, gh = Math.round(g.size.height * 16) / 16;
+    const acrylic = g.materialId === "acrylic-sheet";
+    out.push(
+      acrylic
+        ? { name: "Clear acrylic sheet 9×12", quantity: 1, unit: "sheet", catalogId: "acrylic-sheet", searchQuery: "clear acrylic sheet 9 x 12", estimatedCost: 9.99, notes: `Score and snap it to ${inchFrac(gw)}" × ${inchFrac(gh)}" (the photo size); it sits in front of the photo.` }
+        : { name: `Picture-frame glass ${inchFrac(gw)}×${inchFrac(gh)}`, quantity: 1, unit: "pc", catalogId: "frame-glass", searchQuery: `${inchFrac(gw)}x${inchFrac(gh)} picture frame glass`, estimatedCost: 6.99, notes: `Cut to ${inchFrac(gw)}" × ${inchFrac(gh)}" (the photo size); a hardware store cuts glass, or buy replacement frame glass this size. It sits in front of the photo.` },
+    );
+  }
+  if (P?.hanger && !project.instances.length) out.push({ name: "Sawtooth picture hanger", quantity: 1, unit: "pack", catalogId: "sawtooth-hanger", searchQuery: "sawtooth picture hangers", estimatedCost: 5.99, notes: "One hanger screwed to the top back." });
+  if (!project.instances.length) return out;
   const b = project.panels.find((p) => p.materialId === "chipboard-sheet");
   if (P?.backer && b) out.push({ name: "Chipboard sheets 8.5×11", quantity: 1, unit: "pack", catalogId: "chipboard-sheet", searchQuery: "chipboard sheets 8.5 x 11", estimatedCost: 8.99, notes: `One sheet cut to ${Math.round(b.size.width * 16) / 16}" × ${Math.round(b.size.height * 16) / 16}" is the backer.` });
   if (P?.hanger) out.push({ name: "Sawtooth picture hanger", quantity: 1, unit: "pack", catalogId: "sawtooth-hanger", searchQuery: "sawtooth picture hangers", estimatedCost: 5.99, notes: "One hanger glued or tacked to the top back." });

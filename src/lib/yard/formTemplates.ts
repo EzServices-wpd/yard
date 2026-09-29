@@ -9,6 +9,7 @@
  */
 import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
+import { inchFrac } from "./inchText";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
 export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower";
@@ -352,6 +353,8 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
 export function isFlatFrame(prompt: string): boolean {
   const l = prompt.toLowerCase();
   if (/\b(?:bed|door|window|mirror\s+door|tent|truck|bike|bicycle|loom|swing|climbing|a-)\s*frame|\bframe\s*(?:tent|house|swing)|ledge|\brail\b|\btip(?:ped|ping)?\b|\blean(?:s|ing)?\b|\beasel\s+stand\b/.test(l)) return false;
+  // "frame for an 8x10" (a print size after "frame for") is a picture frame too.
+  if (/\bframe\s+for\s+(?:an?\s+|my\s+|the\s+)?\d+(?:\.\d+)?\s*(?:"|in)?\s*(?:x|×|by)\s*\d+(?:\.\d+)?\b/.test(l) && !/\b(?:bed|door|window|mattress|tv|television)\b/.test(l)) return true;
   return /\b(?:picture|photo|poster|art|print|selfie)\s*frame\b|\bframe\s+for\s+(?:an?\s+|my\s+|the\s+)?(?:\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*)?(?:photo|picture|print|poster|pic)\b|\bframe\b[^.]*\b\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic)/.test(l);
 }
 
@@ -399,13 +402,44 @@ export function frameHangs(prompt: string): boolean {
   return /\bhang(?:s|ing)?\b|\bwall\b|\bhanger\b|\bloop\b/.test(prompt.toLowerCase());
 }
 
+/** Glazing asked for: 1 = picture-frame glass, 2 = clear acrylic (plexiglass), 0 = none. */
+export function frameGlazing(prompt: string): 0 | 1 | 2 {
+  const l = prompt.toLowerCase();
+  if (/\bacrylic\b|\bplexi(?:glass)?\b|\bperspex\b/.test(l)) return 2;
+  if (/\bglass\b|\bglazed\b/.test(l)) return 1;
+  return 0;
+}
+
+/**
+ * Picture-frame stack (every stock). The front window is the photo less ¼" each way, so the border's
+ * ⅛" lip overlaps the photo on every side and holds it; behind the lip a spacer (sticks) or rabbet
+ * (lumber) is sized to the full photo; then the backer, then the hanger or feet.
+ */
+export const FRAME_LIP = 0.125;
+const FRAME_CLEAR = 1 / 32;
+const PHOTO_T = 0.02;
+const GLAZING_T = 0.08;
+const glazingName = (g: number) => (g === 2 ? "Acrylic" : "Glass");
+const glazingWord = (g: number) => (g === 2 ? "clear acrylic" : "picture-frame glass");
+
+function frameStackNote(g: number, photo: { w: number; h: number }, seat: string, held: string, hang: boolean): string {
+  const glaze = g ? `${glazingWord(g)} ${inchFrac(photo.w)}" × ${inchFrac(photo.h)}", ` : "";
+  return `Stack, front to back: the border (its ${inchFrac(FRAME_LIP)}" lip overlaps the photo on every side), ${glaze}the photo ${seat}, the backer, then ${hang ? "the sawtooth hanger" : "the stand feet"}. ${held}`;
+}
+
+function frameLabel(photo: { w: number; h: number }, win: { w: number; h: number }): string {
+  return `Picture frame · ${inchFrac(photo.w)}×${inchFrac(photo.h)} photo · ${inchFrac(win.w)}×${inchFrac(win.h)} window`;
+}
+
 /**
  * Thin-stock picture frame. Read-as standard: the border is a closed rectangle band — every band
  * member ends at the outer edge (sticks longer than a side are cut to it, shorter ones lap face to
- * face), corners overlap cleanly — and a solid chipboard backer closes the back over the photo.
- * Two stand feet under the bottom corners stand it on a shelf; "to hang" swaps them for a sawtooth hanger.
+ * face), corners overlap cleanly. Buildability: the window is the photo less ¼" (a ⅛" lip each side),
+ * a spacer layer behind the border is sized to the full photo (glass or acrylic first when asked),
+ * and a solid chipboard backer closes it. Two stand feet stand it on a shelf; "to hang" swaps them
+ * for a sawtooth hanger.
  */
-function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }, hang: boolean): TemplateBuild {
+function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }, hang: boolean, glaze: 0 | 1 | 2): TemplateBuild {
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
@@ -414,12 +448,17 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
   const S = whole ? Math.max(1, prim.length) : Math.max(photo.w, photo.h) + 4 * f;
   const lap = Math.min(S * 0.3, Math.max(f * 2, 0.75));
   const { w, h } = photo;
-  // The border reads as a band: stock thinner than 0.3" lays several sticks side by side per side (≥ 0.35").
-  // Band proportion: at least 0.35" and a tenth of the opening's short side, in whole stick widths.
-  const band = Math.max(1, Math.ceil(Math.max(0.35, 0.1 * Math.min(w, h)) / f - 0.15));
+  const ww = w - 2 * FRAME_LIP, wh = h - 2 * FRAME_LIP; // front window
+  const sw = w + 2 * FRAME_CLEAR, sh = h + 2 * FRAME_CLEAR; // spacer opening (the photo seats here)
+  // The border reads as a band: at least 0.35" and a tenth of the photo's short side, in whole stick
+  // widths — and wide enough to cover the lip, the clearance and one spacer stick behind it.
+  const band = Math.max(1, Math.ceil(Math.max(0.35, 0.1 * Math.min(w, h)) / f - 0.15), Math.ceil((FRAME_LIP + FRAME_CLEAR) / f + 1 - 1e-6));
   const Fb = band * f;
-  const Wo = w + 2 * Fb;
-  const Ho = h + 2 * Fb;
+  const Wo = ww + 2 * Fb;
+  const Ho = wh + 2 * Fb;
+  // Spacer rows: about a quarter inch of stick widths around the photo (a gluing ledge for the backer), inside the outer edge.
+  const ns = Math.max(1, Math.min(Math.floor((Wo / 2 - sw / 2) / f + 1e-6), Math.ceil(0.25 / f - 1e-6)));
+  const SW = sw + 2 * ns * f, SH = sh + 2 * ns * f;
   /** A member of exact length L: one stick cut to L, or whole sticks lapped end to end. */
   const run = (L: number) => (S >= L - 1e-6 ? [{ a: -L / 2, b: L / 2, layer: 0 as 0 | 1 }] : lappedRun(L, S, lap));
   const layersOf = (r: { layer: number }[]) => Math.max(...r.map((q) => q.layer)) + 1;
@@ -431,21 +470,39 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
   const y0 = footT + Ho / 2; // frame centre height
   let z = 0;
   const railRun = run(Wo), stileRun = run(Ho);
-  for (let k = 0; k < band; k++) for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, y0 + ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), b: v3(r.b, y0 + ys * (h / 2 + f / 2 + k * f), zOf(z + r.layer)), role: "rail", face: Z });
+  for (let k = 0; k < band; k++) for (const ys of [1, -1]) for (const r of railRun) segs.push({ a: v3(r.a, y0 + ys * (wh / 2 + f / 2 + k * f), zOf(z + r.layer)), b: v3(r.b, y0 + ys * (wh / 2 + f / 2 + k * f), zOf(z + r.layer)), role: "rail", face: Z });
   z += layersOf(railRun);
-  for (let k = 0; k < band; k++) for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (w / 2 + f / 2 + k * f), y0 + r.a, zOf(z + r.layer)), b: v3(xs * (w / 2 + f / 2 + k * f), y0 + r.b, zOf(z + r.layer)), role: "stile", face: Z });
+  for (let k = 0; k < band; k++) for (const xs of [1, -1]) for (const r of stileRun) segs.push({ a: v3(xs * (ww / 2 + f / 2 + k * f), y0 + r.a, zOf(z + r.layer)), b: v3(xs * (ww / 2 + f / 2 + k * f), y0 + r.b, zOf(z + r.layer)), role: "stile", face: Z });
   z += layersOf(stileRun);
-  const zBand = -z * t; // back face of the band
-  // Solid backer: chipboard over the opening and half the band each side, glued to the band's back.
+  const zLip = -z * t; // back face of the border: the photo (or glazing) seats against it
+  // Spacer: rails across the full spacer width, short stiles between them — one plane, as deep as the
+  // glazing plus the photo (courses stacked when one stick is too thin).
+  const spRail = run(SW), spStile = run(sh);
+  const need = Math.max(1, Math.ceil((PHOTO_T + (glaze ? GLAZING_T : 0)) / t - 1e-6));
+  const coursesR = Math.max(1, Math.ceil(need / layersOf(spRail)));
+  const coursesS = Math.max(1, Math.ceil(need / layersOf(spStile)));
+  for (let c = 0; c < coursesR; c++) for (let k = 0; k < ns; k++) for (const ys of [1, -1]) for (const r of spRail) segs.push({ a: v3(r.a, y0 + ys * (sh / 2 + f / 2 + k * f), zOf(z + c * layersOf(spRail) + r.layer)), b: v3(r.b, y0 + ys * (sh / 2 + f / 2 + k * f), zOf(z + c * layersOf(spRail) + r.layer)), role: "spacer", face: Z });
+  for (let c = 0; c < coursesS; c++) for (let k = 0; k < ns; k++) for (const xs of [1, -1]) for (const r of spStile) segs.push({ a: v3(xs * (sw / 2 + f / 2 + k * f), y0 + r.a, zOf(z + c * layersOf(spStile) + r.layer)), b: v3(xs * (sw / 2 + f / 2 + k * f), y0 + r.b, zOf(z + c * layersOf(spStile) + r.layer)), role: "spacer", face: Z });
+  const spL = Math.max(coursesR * layersOf(spRail), coursesS * layersOf(spStile));
+  z += spL;
+  const zSp = -z * t; // back face of the spacer
   const bT = 0.06;
   const r16 = (n: number) => Math.round(n * 16) / 16;
-  const bw = w + Fb, bh = h + Fb;
-  const panels: Panel[] = [{
+  const panels: Panel[] = [];
+  if (glaze) {
+    panels.push({
+      id: createId("fg"), materialId: glaze === 2 ? "acrylic-sheet" : "frame-glass", type: "glass_panel", name: glazingName(glaze),
+      position: { x: r16(-w / 2), y: r16(y0 - h / 2), z: zLip - GLAZING_T }, size: { width: r16(w), height: r16(h), depth: GLAZING_T },
+      cutNote: `${glazingName(glaze)} ${inchFrac(w)}" × ${inchFrac(h)}" (the photo size) seats in the spacer against the lip, in front of the photo.`,
+    });
+  }
+  // Solid backer: chipboard over the spacer, held on with tape tabs (or glued along its edge).
+  panels.push({
     id: createId("fb"), materialId: "chipboard-sheet", type: "back", name: "Backer",
-    position: { x: r16(-bw / 2), y: r16(y0 - bh / 2), z: zBand - bT }, size: { width: r16(bw), height: r16(bh), depth: bT },
-    cutNote: `Backer ${fmt(bw)}" × ${fmt(bh)}" chipboard: photo face down in the opening, then glue the backer over it onto the band.`,
-  }];
-  const zBack = zBand - bT;
+    position: { x: r16(-SW / 2), y: r16(y0 - SH / 2), z: zSp - bT }, size: { width: r16(SW), height: r16(SH), depth: bT },
+    cutNote: `Backer ${inchFrac(SW)}" × ${inchFrac(SH)}" chipboard over the spacer, behind the photo.`,
+  });
+  const zBack = zSp - bT;
   if (!hang) {
     // Stand feet: one flat stick under each bottom corner, running front to back past both faces.
     const fl = Math.min(S, Math.max(3 * (-zBack), Ho * 0.5));
@@ -455,66 +512,86 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
       segs.push({ a: v3(x, footT / 2, zc - fl / 2), b: v3(x, footT / 2, zc + fl / 2), role: "stand", face: v3(0, 1, 0) });
     }
   }
+  const held = `Four tape tabs across the backer onto the spacer hold it (lift them to change the photo), or glue the backer's edge for good.`;
   return {
     classId: "flat-frame",
     subject: "picture frame",
-    label: "Picture frame",
+    label: frameLabel(photo, { w: ww, h: wh }),
     kind: "figure",
     segs,
     panels,
-    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack, band, backer: 1, feet: hang ? 0 : 2, hanger: hang ? 1 : 0, glueOnly: 1 },
+    params: {
+      openW: w, openH: h, photoW: w, photoH: h, windowW: ww, windowH: wh, lip: FRAME_LIP, spacerW: sw, spacerH: sh, spacerRows: ns, spacerDepth: spL * t,
+      glazing: glaze, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack, band, backer: 1, feet: hang ? 0 : 2, hanger: hang ? 1 : 0, glueOnly: 1,
+    },
     notes: [
-      `Picture frame · opening ${fmt(w)}" × ${fmt(h)}" (the photo size) · outer ${fmt(Wo)}" × ${fmt(Ho)}".`,
+      `Picture frame · ${inchFrac(w)}" × ${inchFrac(h)}" photo behind a ${inchFrac(ww)}" × ${inchFrac(wh)}" window · outer ${inchFrac(Wo)}" × ${inchFrac(Ho)}".`,
       `The border is a closed band${band > 1 ? ` of ${band} ${item.name}s side by side` : ""}: every side ends flush at the outer corner, overlapping its neighbour.`,
-      `A chipboard backer glued to the back holds the photo in the opening.`,
+      frameStackNote(glaze, photo, `inside the spacer sticks (${inchFrac(sw)}" × ${inchFrac(sh)}" opening, sized to the photo)`, held, hang),
       hang ? `A sawtooth hanger on the top back hangs it on a nail.` : `Two stand feet under the bottom corners stand it on a shelf. Add "to hang" for a sawtooth hanger instead.`,
     ],
   };
 }
 
-function flatFramePanels(item: CatalogItem, photo: { w: number; h: number }): TemplateBuild {
+function flatFramePanels(item: CatalogItem, photo: { w: number; h: number }, glaze: 0 | 1 | 2): TemplateBuild {
   const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.75, 0.25);
   const bw = item.formFactor === "board" || item.category === "lumber" ? Math.min(item.dims.width ?? 1.5, 2.5) : 1.5;
   const { w, h } = photo;
-  const Wo = w + 2 * bw;
-  const Ho = h + 2 * bw;
+  const ww = w - 2 * FRAME_LIP, wh = h - 2 * FRAME_LIP; // front window: the lip holds the photo
+  const Wo = ww + 2 * bw;
+  const Ho = wh + 2 * bw;
   const r = (n: number) => Math.round(n * 16) / 16;
-  const rab = 0.375;
+  // Rabbet sized to the full photo: lip + clearance wide, deep enough for glazing, photo and backer.
+  const rab = FRAME_LIP + 2 * FRAME_CLEAR; // 3/16": lip plus 1/16" clearance around the photo
   const backT = Math.min(0.25, T / 3);
+  const rabD = backT + PHOTO_T + (glaze ? GLAZING_T : 0) + 0.0625;
   const panels: Panel[] = [];
   const mk = (p: Omit<Panel, "id" | "materialId"> & { materialId?: string }): Panel => ({ id: createId("fr"), materialId: item.id, ...p });
   const x0 = -Wo / 2;
   // Mitered members: trapezoids in the face plane, long edge outside.
-  const top = mk({ type: "rail", name: "Frame rail", position: { x: r(x0), y: r(h + bw), z: 0 }, size: { width: r(Wo), height: r(bw), depth: r(T) }, polygon: { plane: "xy", pts: [[0, r(bw)], [r(Wo), r(bw)], [r(Wo - bw), 0], [r(bw), 0]] } });
+  const top = mk({ type: "rail", name: "Frame rail", position: { x: r(x0), y: r(wh + bw), z: 0 }, size: { width: r(Wo), height: r(bw), depth: r(T) }, polygon: { plane: "xy", pts: [[0, r(bw)], [r(Wo), r(bw)], [r(Wo - bw), 0], [r(bw), 0]] } });
   const bot = mk({ type: "rail", name: "Frame rail", position: { x: r(x0), y: 0, z: 0 }, size: { width: r(Wo), height: r(bw), depth: r(T) }, polygon: { plane: "xy", pts: [[0, 0], [r(Wo), 0], [r(Wo - bw), r(bw)], [r(bw), r(bw)]] } });
   const left = mk({ type: "upright", name: "Frame stile", position: { x: r(x0), y: 0, z: 0 }, size: { width: r(bw), height: r(Ho), depth: r(T) }, polygon: { plane: "xy", pts: [[0, 0], [r(bw), r(bw)], [r(bw), r(Ho - bw)], [0, r(Ho)]] } });
   const right = mk({ type: "upright", name: "Frame stile", position: { x: r(Wo / 2 - bw), y: 0, z: 0 }, size: { width: r(bw), height: r(Ho), depth: r(T) }, polygon: { plane: "xy", pts: [[r(bw), 0], [r(bw), r(Ho)], [0, r(Ho - bw)], [0, r(bw)]] } });
   const members = [top, bot, left, right];
-  const railNote = `45° miters both ends; ${fmt(rab)}" × ${fmt(backT + 0.125)}" rabbet on the back inside edge for the photo, glass and backer.`;
+  const railNote = `45° miters both ends; ${inchFrac(rab)}" wide × ${inchFrac(rabD)}" deep rabbet on the back inside edge: the ${inchFrac(FRAME_LIP)}" lip holds the photo${glaze ? `, ${glazingWord(glaze)}` : ""} and backer.`;
   for (const m of members) m.cutNote = railNote;
   top.blank = bot.blank = { lengthIn: Math.round(Wo * 8) / 8, widthIn: Math.round(bw * 8) / 8, thicknessIn: T };
   left.blank = right.blank = { lengthIn: Math.round(Ho * 8) / 8, widthIn: Math.round(bw * 8) / 8, thicknessIn: T };
   panels.push(...members);
+  const bwIn = w + 4 * FRAME_CLEAR, bhIn = h + 4 * FRAME_CLEAR;
   const backer = mk({
     materialId: "plywood-1-4-4x8",
     type: "back",
     name: "Backer",
-    position: { x: r(-w / 2 - rab), y: r(bw - rab), z: 0 },
-    size: { width: r(w + 2 * rab), height: r(h + 2 * rab), depth: r(backT) },
+    position: { x: r(-bwIn / 2), y: r(bw - FRAME_LIP - 2 * FRAME_CLEAR), z: 0 },
+    size: { width: r(bwIn), height: r(bhIn), depth: r(backT) },
     joints: members.map((m) => ({ with: m.id, kind: "rabbet" as const })),
-    cutNote: `Backer ${fmt(w + 2 * rab)}" × ${fmt(h + 2 * rab)}" drops into the rabbet behind the photo; hold with glazier points.`,
+    cutNote: `Backer ${inchFrac(bwIn)}" × ${inchFrac(bhIn)}" drops into the rabbet behind the photo; hold with turn buttons (or glazier points).`,
   });
   panels.push(backer);
+  if (glaze) {
+    panels.push(mk({
+      materialId: glaze === 2 ? "acrylic-sheet" : "frame-glass",
+      type: "glass_panel",
+      name: glazingName(glaze),
+      position: { x: r(-w / 2), y: r(bw - FRAME_LIP), z: r(backT + PHOTO_T) },
+      size: { width: r(w), height: r(h), depth: GLAZING_T },
+      joints: members.map((m) => ({ with: m.id, kind: "rabbet" as const })),
+      cutNote: `${glazingName(glaze)} ${inchFrac(w)}" × ${inchFrac(h)}" (the photo size) goes into the rabbet first, against the lip.`,
+    }));
+  }
   return {
     classId: "flat-frame",
     subject: "picture frame",
-    label: "Picture frame",
+    label: frameLabel(photo, { w: ww, h: wh }),
     kind: "figure",
     panels,
-    params: { openW: w, openH: h, outerW: Wo, outerH: Ho, rabbet: rab, glueOnly: 1 },
+    params: { openW: w, openH: h, photoW: w, photoH: h, windowW: ww, windowH: wh, lip: FRAME_LIP, spacerW: bwIn, spacerH: bhIn, rabbet: rab, glazing: glaze, outerW: Wo, outerH: Ho, hanger: 1, glueOnly: 1 },
     notes: [
-      `Picture frame · ${item.name}: four mitered members, opening ${fmt(w)}" × ${fmt(h)}" (the photo size), outer ${fmt(Wo)}" × ${fmt(Ho)}".`,
-      `A ${fmt(rab)}" rabbet on the back carries the photo and a backer. Hang it on a sawtooth hanger.`,
+      `Picture frame · ${item.name}: four mitered members, ${inchFrac(w)}" × ${inchFrac(h)}" photo behind a ${inchFrac(ww)}" × ${inchFrac(wh)}" window, outer ${inchFrac(Wo)}" × ${inchFrac(Ho)}".`,
+      frameStackNote(glaze, photo, `in the rabbet (${inchFrac(bwIn)}" × ${inchFrac(bhIn)}", sized to the photo)`, `Four turn buttons screwed to the back hold the backer in (glazier points also work).`, true),
+      `A sawtooth hanger on the top back hangs it on a nail.`,
     ],
   };
 }
@@ -527,8 +604,9 @@ export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean
     const pr = toPrimitive(item);
     if (pr.length >= 10 + 2 * pr.width + 1) photo = { w: 8, h: 10, typed: false };
   }
-  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo, frameHangs(prompt));
-  if (kind === "panel") return flatFramePanels(item, photo);
+  const glaze = frameGlazing(prompt);
+  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo, frameHangs(prompt), glaze);
+  if (kind === "panel") return flatFramePanels(item, photo, glaze);
   return null;
 }
 
@@ -993,8 +1071,9 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   "flat-frame": [
-    { role: "rail", word: "rail stick", title: "Glue the top and bottom rails", why: "Rails set the opening width and end flush at the outer corners; longer sides lap whole sticks face to face." },
-    { role: "stile", word: "stile stick", title: "Glue the stiles behind the rails", why: "Stiles set the opening height and overlap the rails at all four corners: a closed band. Then lay the photo face down in the opening and glue the chipboard backer over it onto the band." },
+    { role: "rail", word: "rail stick", title: "Glue the top and bottom rails", why: "Rails set the window width (the photo less a quarter inch) and end flush at the outer corners; longer sides lap whole sticks face to face." },
+    { role: "stile", word: "stile stick", title: "Glue the stiles behind the rails", why: "Stiles set the window height and overlap the rails at all four corners: a closed band whose inner edge is the lip that holds the photo." },
+    { role: "spacer", word: "spacer stick", title: "Glue the spacer behind the border, sized to the photo", why: "Frame face down. The spacer sticks ring an opening just bigger than the photo, so the photo seats against the lip. Stack, front to back: border, photo, backer. Tape the backer on with four tabs (lift them to change the photo)." },
     { role: "stand", word: "stand foot", title: "Glue the two stand feet under the bottom corners", why: "Flat under the bottom band, reaching front and back, they stand the frame on a shelf." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
@@ -1032,8 +1111,23 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
   ],
 };
 
-export function templateSteps(classId: string): TemplateStep[] | null {
-  return (TEMPLATE_STEPS as Record<string, TemplateStep[]>)[classId] ?? null;
+export function templateSteps(classId: string, params?: Record<string, number | string | boolean>): TemplateStep[] | null {
+  const base = (TEMPLATE_STEPS as Record<string, TemplateStep[]>)[classId] ?? null;
+  if (classId !== "flat-frame" || !base || !params) return base;
+  // Picture frame: the spacer step states this frame's stack (glazing when asked, hanger or feet).
+  const g = Number(params.glazing ?? 0);
+  const hang = !!params.hanger;
+  const glaze = g ? `${g === 2 ? "clear acrylic" : "glass"} (${inchFrac(Number(params.photoW))}" × ${inchFrac(Number(params.photoH))}"), ` : "";
+  const out = base.map((st) =>
+    st.role === "spacer"
+      ? { ...st, why: `Frame face down. The spacer sticks ring a ${inchFrac(Number(params.spacerW))}" × ${inchFrac(Number(params.spacerH))}" opening, just bigger than the photo, so it seats against the lip. Stack, front to back: border, ${glaze}photo, backer, then ${hang ? "the sawtooth hanger" : "the stand feet"}. Tape the backer on with four tabs (lift them to change the photo), or glue its edge for good.` }
+      : st,
+  );
+  if (hang) {
+    const i = out.findIndex((st) => st.role === "member");
+    out.splice(i < 0 ? out.length : i, 0, { role: "hanger", title: "Fix the sawtooth hanger to the top back", why: "Centered on the top rail's back, glued or tacked; it hangs the frame on one nail." });
+  }
+  return out;
 }
 
 export function buildTemplate(
@@ -1268,6 +1362,14 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
   if (shape.classId === "flat-frame") {
     const typed = framePhotoIn(prompt);
     const photo = typed.typed ? typed : { w: P.openW ?? 0, h: P.openH ?? 0 };
+    // Buildability: the window is smaller than the photo on each axis (the lip holds it).
+    for (const [win, ph] of [[P.windowW, photo.w], [P.windowH, photo.h]] as [number | undefined, number][]) {
+      const d = ph - (win ?? ph);
+      if (!(d >= 0.1875 - 1e-6 && d <= 0.5 + 1e-6)) issues.push({ code: "lip", detail: `window ${win} vs photo ${ph}: the photo would fall through` });
+    }
+    const glz = project.panels.filter((p) => p.type === "glass_panel");
+    if (frameGlazing(prompt) && (glz.length !== 1 || Math.abs(glz[0].size.width - photo.w) > 0.07 || Math.abs(glz[0].size.height - photo.h) > 0.07)) issues.push({ code: "glazing", detail: `glazing asked, got ${glz.length}` });
+    if (!frameGlazing(prompt) && glz.length) issues.push({ code: "glazing", detail: "glazing not asked" });
     if (!typed.typed && !["5x7", "8x10"].includes(`${photo.w}x${photo.h}`)) issues.push({ code: "opening", detail: `untyped photo ${photo.w}×${photo.h} is not a standard print` });
     const near = (a: number, b: number, tol = 0.07) => Math.abs(a - b) <= tol;
     if (project.instances.length) {
@@ -1275,10 +1377,22 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const stiles = roles.get("stile") ?? [];
       const backer = project.panels.find((p) => p.name === "Backer");
       if (!backer) issues.push({ code: "backer", detail: "no solid backer" });
-      else if (backer.size.width < (P.openW ?? 0) || backer.size.height < (P.openH ?? 0)) issues.push({ code: "backer", detail: "backer smaller than the opening" });
+      else if (backer.size.width < (P.spacerW ?? P.openW ?? 0) || backer.size.height < (P.spacerH ?? P.openH ?? 0)) issues.push({ code: "backer", detail: "backer smaller than the photo opening" });
+      // Photo seat: a spacer ring behind the border, its opening the photo plus clearance, deep enough for glazing + photo.
+      const spacer = roles.get("spacer") ?? [];
+      if (spacer.length < 4) issues.push({ code: "spacer", detail: `spacer sticks ${spacer.length}` });
+      if (!((P.spacerW ?? 0) >= photo.w && (P.spacerW ?? 0) <= photo.w + 0.13 && (P.spacerH ?? 0) >= photo.h && (P.spacerH ?? 0) <= photo.h + 0.13)) issues.push({ code: "spacer", detail: `spacer opening ${P.spacerW}×${P.spacerH} vs photo ${photo.w}×${photo.h}` });
+      if (spacer.length) {
+        const zBorder = Math.min(...[...rails, ...stiles].map((i) => i.from!.z));
+        if (Math.max(...spacer.map((i) => i.from!.z)) >= zBorder - 0.01) issues.push({ code: "spacer", detail: "spacer not behind the border" });
+        const sxIn = Math.min(...spacer.filter((i) => Math.abs(i.from!.x - i.to!.x) < 0.01).map((i) => Math.abs(i.from!.x)));
+        // Spacer sticks stand outside the photo (their centrelines beyond the photo opening), so the lip is the only overlap.
+        if (!(sxIn > (P.spacerW ?? 0) / 2)) issues.push({ code: "spacer", detail: "spacer runs into the photo" });
+      }
+      if ((P.spacerDepth ?? 0) < 0.02 + (P.glazing ? 0.08 : 0) - 0.005) issues.push({ code: "spacer", detail: `spacer ${P.spacerDepth}" too shallow for the stack` });
       if (rails.length < 2 || stiles.length < 2) issues.push({ code: "missing-part", detail: `rails ${rails.length} stiles ${stiles.length}` });
       for (const i of [...rails, ...stiles]) if (!near(i.from!.z, i.to!.z, 0.01) || !i.face) issues.push({ code: "flat", detail: `${i.role} not lying flat in the frame face` });
-      const f = ((P.outerW ?? 0) - (P.openW ?? 0)) / 2;
+      const f = ((P.outerW ?? 0) - (P.windowW ?? P.openW ?? 0)) / 2;
       const sx = stiles.map((i) => i.from!.x);
       const ry = rails.map((i) => i.from!.y);
       // Inner edges: the stick rows nearest the opening (a border may be several sticks side by side).
@@ -1288,7 +1402,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const inner = (v: number[], c: number) => Math.min(...v.filter((x) => x > c)) - Math.max(...v.filter((x) => x < c));
       const gapW = inner(sx, cx) - f / rows(sx, cx);
       const gapH = inner(ry, cy) - f / rows(ry, cy);
-      if (!near(gapW, photo.w) || !near(gapH, photo.h)) issues.push({ code: "opening", detail: `opening ${gapW.toFixed(2)}×${gapH.toFixed(2)} vs photo ${photo.w}×${photo.h}` });
+      if (!near(gapW, P.windowW ?? photo.w) || !near(gapH, P.windowH ?? photo.h)) issues.push({ code: "opening", detail: `window ${gapW.toFixed(2)}×${gapH.toFixed(2)} vs ${P.windowW}×${P.windowH}` });
       // Corners meet: rails reach across both stiles, stiles reach across both rails.
       const xs = rails.flatMap((i) => [i.from!.x, i.to!.x]);
       const ys2 = stiles.flatMap((i) => [i.from!.y, i.to!.y]);
@@ -1300,17 +1414,19 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       if (Math.max(...xs.map((x) => Math.abs(x - cx))) > W2 + 0.02) issues.push({ code: "overshoot", detail: "rails run past the band" });
       if (Math.max(...ys2) - y0 > Hh + 0.02 || Math.min(...ys2) < y0 - 0.02) issues.push({ code: "overshoot", detail: "stiles run past the band" });
       if (!((roles.get("stand")?.length ?? 0) >= 2 || P.hanger)) issues.push({ code: "stand", detail: "no stand feet and no hanger" });
+      if (P.hanger && (roles.get("stand")?.length ?? 0) > 0) issues.push({ code: "stand", detail: "hung frame still has feet" });
     } else {
       const rails = project.panels.filter((p) => p.name === "Frame rail");
       const stiles = project.panels.filter((p) => p.name === "Frame stile");
       if (rails.length !== 2 || stiles.length !== 2) issues.push({ code: "missing-part", detail: `rails ${rails.length} stiles ${stiles.length}` });
       if (!project.panels.some((p) => p.name === "Backer")) issues.push({ code: "backer", detail: "no backer" });
+      if (!((P.rabbet ?? 0) > (P.lip ?? 0))) issues.push({ code: "lip", detail: "rabbet does not reach past the lip" });
       if (stiles.length === 2 && rails.length === 2) {
         const [l, r] = [...stiles].sort((a, b) => a.position.x - b.position.x);
         const [b, t] = [...rails].sort((a, b2) => a.position.y - b2.position.y);
         const gapW = r.position.x - (l.position.x + l.size.width);
         const gapH = t.position.y - (b.position.y + b.size.height);
-        if (!near(gapW, photo.w) || !near(gapH, photo.h)) issues.push({ code: "opening", detail: `opening ${gapW}×${gapH} vs photo ${photo.w}×${photo.h}` });
+        if (!near(gapW, P.windowW ?? photo.w) || !near(gapH, P.windowH ?? photo.h)) issues.push({ code: "opening", detail: `window ${gapW}×${gapH} vs ${P.windowW}×${P.windowH}` });
         if (!near(t.size.width, r.position.x + r.size.width - l.position.x) || !near(l.size.height, t.position.y + t.size.height - b.position.y)) issues.push({ code: "corner", detail: "miters do not meet" });
       }
     }
@@ -1327,7 +1443,8 @@ type PanelStepSpec = { match: RegExp; title: string; why: string };
 const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = {
   "flat-frame": [
     { match: /^Frame (rail|stile)$/, title: "Glue and clamp the four mitered members", why: "Dry-fit, then glue the miters and band-clamp; check the diagonals match." },
-    { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Photo, then backer, held with glazier points." },
+    { match: /^(Glass|Acrylic)$/, title: "Set the glazing into the rabbet", why: "Clean both faces; it goes in first, against the lip." },
+    { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Stack, front to back: lip, glazing if any, photo, backer. Four turn buttons hold the backer; then the sawtooth hanger on the top back." },
   ],
   "platform-tower": [
     { match: /^Base$/, title: "Cut the wide base", why: "A square at least 0.4 of the height on a side keeps it from tipping." },

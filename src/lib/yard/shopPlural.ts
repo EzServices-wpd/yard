@@ -28,7 +28,17 @@ export function isBoundingDrawerPanel(name: string, type?: string): boolean {
 
 /** Glass vanity/door mirror — buy, do not cut from the plywood nest. */
 export function isBuyMirrorPanel(name: string, type?: string): boolean {
-  return type === "mirror" || /^vanity mirror$/i.test(name);
+  return type === "mirror" || /^vanity mirror$/i.test(name) || isFrameGlazing(name, type);
+}
+
+/** Picture-frame glass / acrylic: bought (cut to the photo size), never cut from the frame stock. */
+export function isFrameGlazing(name: string, type?: string): boolean {
+  return type === "glass_panel" && /^(?:Glass|Acrylic)$/.test(name);
+}
+
+/** Sheet parts a stick build buys as accessories (chipboard backer, frame glazing) — the build stays a stick plan. */
+export function isStickAccessorySheet(p: { materialId?: string }): boolean {
+  return p.materialId === "chipboard-sheet" || p.materialId === "frame-glass" || p.materialId === "acrylic-sheet";
 }
 
 /**

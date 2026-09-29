@@ -338,6 +338,26 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "frame-glass",
+    retailer: "amazon",
+    title: "Picture frame replacement glass",
+    href: "https://www.amazon.com/s?k=picture+frame+replacement+glass",
+    packQty: 1,
+    packPrice: 6.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "acrylic-sheet",
+    retailer: "amazon",
+    title: "Clear acrylic sheet 9\" x 12\", 0.08\"",
+    href: "https://www.amazon.com/s?k=clear+acrylic+sheet+9+x+12",
+    packQty: 1,
+    packPrice: 9.99,
+    lengthIn: 0,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "sawtooth-hanger",
     retailer: "amazon",
     title: "Sawtooth picture hangers with nails",
@@ -1052,6 +1072,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/paper\s*fasteners?/.test(hay)) return "paper-fasteners";
   if (/chipboard/.test(hay)) return "chipboard-sheet";
   if (/sawtooth/.test(hay)) return "sawtooth-hanger";
+  if (/acrylic sheet|plexiglass/.test(hay)) return "acrylic-sheet";
+  if (/picture-frame glass|frame glass/.test(hay)) return "frame-glass";
   if (/sisal/.test(hay)) return "sisal-rope";
   if (/packing tape|duct tape|\btape\b/.test(hay)) return "tape-packing";
   // Structural / lag BEFORE generic wood screws ("Structural wood screws / lag" contains both)

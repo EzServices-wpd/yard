@@ -503,7 +503,7 @@ export function weekendCraftStockPhrases(): [RegExp, string][] {
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
     [/popsicle|craft sticks?/, "popsicle-standard"],
-    [/(?:picture|photo)\s*frame.{0,40}\bbamboo\b|\bbamboo\b.{0,40}(?:picture|photo)\s*frame|\bbamboo\b.{0,40}\bframe\b.{0,40}(?:photo|picture|print)/, "bamboo-skewer-12"],
+    [/(?:picture|photo)\s*frame.{0,40}\bbamboo\b|\bbamboo\b.{0,40}(?:picture|photo)\s*frame|\bbamboo\b.{0,40}\bframe\b.{0,40}(?:photo|picture|print|\b\d+(?:\.\d+)?\s*(?:x|×|by)\s*\d+)/, "bamboo-skewer-12"],
     // Plural-safe: "bamboo skewers" must not fall through to bare bamboo lumber.
     [/\bskewers?\b|bamboo sticks?|kebab sticks?/, "bamboo-skewer-12"],
   ];

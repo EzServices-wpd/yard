@@ -37,7 +37,7 @@ import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
-import { inspectTemplate } from "../src/lib/yard/formTemplates";
+import { inspectTemplate, frameHangs } from "../src/lib/yard/formTemplates";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
@@ -960,6 +960,7 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
 }
 // Flat-frame class (picture frame): inner opening = typed photo size, corners meet, backer drawn, sticks flat.
 {
+  const frameStackPanels: [string, number, number][] = [["picture frame from 1x2 for an 8x10 photo with glass", 8, 10]];
   const cases: [string, "sticks" | "panels", number, number][] = [
     ["picture frame from bamboo skewers", "sticks", 8, 10],
     ["picture frame from bamboo skewers for a 5x7 photo", "sticks", 5, 7],
@@ -980,15 +981,47 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     const iss = inspectTemplate(b, p);
     if (iss.length) failWeekend(`flat-frame: ${p}`, iss);
     if ((b.overall?.depth ?? 0) > 6) failWeekend(`flat-frame: ${p} not flat`, b.overall);
+    if (mode === "panels") frameStackPanels.push([p, w, h]);
   }
   // Stick frames read as a picture frame: closed band cut to length (inspect checks no overshoot), a solid
   // chipboard backer at least the opening size, and it stands (feet) or hangs (sawtooth hanger on Buy).
+  // Buildability (every frame stock): the window is smaller than the photo by 3/16"–1/2" on each axis, a
+  // lip overlaps the photo, a spacer / rabbet behind it is sized to the full photo, the notes state the stack
+  // front to back, glazing is on Buy (cut to the photo) and in the stack only when asked, hanging drops the feet.
+  const frameStack = (p: string, b: ReturnType<typeof generateFromPrompt>, w: number, h: number) => {
+    const P = b.shape?.params ?? {};
+    const n = (k: string) => Number(P[k] ?? NaN);
+    for (const [win, ph] of [[n("windowW"), w], [n("windowH"), h]]) if (!(ph - win >= 0.1875 - 1e-6 && ph - win <= 0.5 + 1e-6)) failWeekend(`frame stack: ${p} window ${win} vs photo ${ph}`);
+    const lip = (Math.min(n("spacerW") - n("windowW"), n("spacerH") - n("windowH"))) / 2;
+    if (!(n("lip") >= 0.09 && lip >= 0.09)) failWeekend(`frame stack: ${p} no lip over the photo`, P);
+    if (!(n("spacerW") >= w && n("spacerW") <= w + 0.13 && n("spacerH") >= h && n("spacerH") <= h + 0.13)) failWeekend(`frame stack: ${p} spacer not sized to the photo`, P);
+    if (b.instances.length && b.instances.filter((i) => i.role === "spacer").length < 4) failWeekend(`frame stack: ${p} no spacer sticks`);
+    if (!b.instances.length && !(n("rabbet") > n("lip"))) failWeekend(`frame stack: ${p} rabbet does not seat the photo`);
+    const stack = (b.notes ?? []).find((x) => /^Stack, front to back:/.test(x)) ?? "";
+    const glazeAsked = /\bglass\b|\bacrylic\b/.test(p);
+    const order = [/lip/, ...(glazeAsked ? [/glass|acrylic/] : []), /the photo/, /backer/, frameHangs(p) || P.hanger ? /sawtooth hanger/ : /stand feet/];
+    let at = 0;
+    for (const re of order) {
+      const m = stack.slice(at).search(re);
+      if (m < 0) { failWeekend(`frame stack: ${p} notes miss the stack order at ${re}`, stack); break; }
+      at += m + 1;
+    }
+    if (!/window/.test(b.name) || !/photo/.test(b.name)) failWeekend(`frame stack: ${p} title does not name photo and window`, b.name);
+    const bom = buildPlan(b).bom;
+    const glz = bom.find((x) => /glass|acrylic/i.test(x.name));
+    if (glazeAsked !== !!glz) failWeekend(`frame stack: ${p} glazing on Buy ${!!glz} vs asked ${glazeAsked}`, bom.map((x) => x.name));
+    if (glz && !new RegExp(`${w}"? × ${h}"`).test(glz.notes ?? "")) failWeekend(`frame stack: ${p} glazing not cut to the photo`, glz.notes);
+    if (!glazeAsked && /glass|acrylic/i.test(stack)) failWeekend(`frame stack: ${p} glazing in the stack when not asked`);
+  };
   const stickFrames: [string, number, number][] = [
     ["picture frame from bamboo skewers", 8, 10],
     ["bamboo picture frame that holds a 5x7", 5, 7],
     ["popsicle stick picture frame for a 4x6 photo", 4, 6],
     ["craft stick frame for a 4x6 photo", 4, 6],
+    ["craft stick frame for a 4x6 photo to hang on the wall", 4, 6],
     ["popsicle stick picture frame to hang on the wall", 5, 7],
+    ["bamboo frame for an 8x10 with glass", 8, 10],
+    ["picture frame from jumbo craft sticks 5x7 with acrylic", 5, 7],
   ];
   for (const [p, w, h] of stickFrames) {
     const b = generateFromPrompt(p);
@@ -1003,7 +1036,10 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (!bom.some((n) => /chipboard/i.test(n))) failWeekend(`flat-frame: ${p} chipboard not on Buy`, bom);
     const hangs = /hang|wall/.test(p);
     if (hangs ? !bom.some((n) => /sawtooth|hanger/i.test(n)) : Number(b.shape?.params?.feet ?? 0) < 2) failWeekend(`flat-frame: ${p} does not stand or hang`, { bom, params: b.shape?.params });
+    if (hangs && b.instances.some((i) => i.role === "stand")) failWeekend(`flat-frame: ${p} hung frame still has feet`);
+    if (b.shape?.classId === "flat-frame") frameStack(p, b, w, h);
   }
+  for (const [p, w, h] of frameStackPanels) frameStack(p, generateFromPrompt(p), w, h);
   const wf = generateFromPrompt("picture frame from 1x2 for an 8x10 photo");
   if (buildPlan(wf).bom.some((x) => /screw/i.test(x.name))) failWeekend("flat-frame: mitered frame buys screws");
   if (wf.panels.find((q) => q.name === "Backer")?.materialId !== "plywood-1-4-4x8") failWeekend("flat-frame: backer not 1/4 plywood");
@@ -2121,14 +2157,14 @@ if (bambooFrame.kind === "frame" && (bambooFrame.overall?.depth ?? 0) > 8) {
 if (bambooFrame.primaryMaterialId !== "bamboo-skewer-12") {
   failWeekend("bamboo picture frame stock", bambooFrame.primaryMaterialId);
 }
-// Band sticks per side + two stand feet.
-if (bambooFrame.instances.length < 6 || bambooFrame.instances.length > 32) {
+// Band sticks per side + the photo spacer ring + two stand feet.
+if (bambooFrame.instances.length < 6 || bambooFrame.instances.length > 40) {
   failWeekend("bamboo picture frame piece count", bambooFrame.instances.length);
 }
 // Skewers longer than a side are cut to exactly the band length (closed rectangle, no overshoot).
 {
   const ow = Number(bambooFrame.shape?.params?.outerW ?? 0), oh = Number(bambooFrame.shape?.params?.outerH ?? 0);
-  const bad = bambooFrame.instances.filter((i) => i.cutLength != null && i.role !== "stand" && Math.abs(i.cutLength - ow) > 0.02 && Math.abs(i.cutLength - oh) > 0.02);
+  const bad = bambooFrame.instances.filter((i) => i.cutLength != null && i.role !== "stand" && i.role !== "spacer" && Math.abs(i.cutLength - ow) > 0.02 && Math.abs(i.cutLength - oh) > 0.02);
   if (bad.length) failWeekend("bamboo picture frame skewers cut off the band length", bad.map((i) => i.cutLength));
 }
 if (bambooFrame.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
@@ -7436,7 +7472,7 @@ console.log("STRANGER PLAN OK", {
     if (hits.length) failHonesty(`interference: ${prompt} has ${hits.length} undeclared overlaps`, hits.slice(0, 6).map((h) => `${h.a.name} x ${h.b.name} ${h.depth.toFixed(3)}`));
     if (proj.kind === "opening") continue; // door/window framing cut lists come from the framing package (parked)
     // A stick craft whose only sheet part is a chipboard backer (bought, cut to size in the steps) is still a stick plan.
-    if (!proj.panels.length || (proj.instances.length > 0 && proj.panels.every((p) => p.materialId === "chipboard-sheet"))) {
+    if (!proj.panels.length || (proj.instances.length > 0 && proj.panels.every((p) => ["chipboard-sheet", "frame-glass", "acrylic-sheet"].includes(p.materialId)))) {
       // Stick crafts: the model is instances of one stock stick — one cut piece per instance.
       // No cut table (stock bought cut-to-length): the Buy line carries the piece count instead.
       const buyPieces = plan.bom.map((b) => Number((b.notes ?? "").match(/^(\d+) pieces/)?.[1] ?? 0)).reduce((a, b) => a + b, 0);
