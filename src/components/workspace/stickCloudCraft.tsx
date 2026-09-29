@@ -51,7 +51,10 @@ export function StickCloud({
     instances.forEach((inst, index) => {
       const item = getCatalogItem(inst.catalogId);
       if (!item) return;
-      const prim = visualPrimitive(item, inst.cutLength, span);
+      const prim0 = visualPrimitive(item, inst.cutLength, span);
+      const prim = inst.section
+        ? { ...prim0, width: inst.section.width, height: inst.section.height, radius: undefined, innerRadius: undefined }
+        : prim0;
       const row: Row = { inst, index, item, prim };
       const k = meshKind(item);
       // A cut piece has square sawn ends; only whole craft sticks keep their rounded factory ends.

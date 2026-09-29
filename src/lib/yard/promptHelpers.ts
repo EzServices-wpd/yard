@@ -498,6 +498,7 @@ export function isWireStock(item: CatalogItem | undefined | null): boolean {
  */
 export function weekendCraftStockPhrases(): [RegExp, string][] {
   return [
+    [/\blegos?\b/, "lego-2x4"],
     [/jumbo (craft|popsicle)|jumbo stick|(?:lattice|tower).{0,24}jumbo|jumbo.{0,24}(?:lattice|tower)/, "popsicle-jumbo"],
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],
     [/giant (craft|popsicle)|giant stick/, "popsicle-giant"],
@@ -535,7 +536,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
 
 /** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */
 export function spokenWeekendCraftStock(lower: string): boolean {
-  return /popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?/.test(
+  return /popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?|legos?/.test(
     lower,
   );
 }

@@ -8,7 +8,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { buildOddShape, isOddShapePrompt } from "./oddShapes";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
@@ -24,6 +24,7 @@ import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, 
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
+import { memberView, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
@@ -288,6 +289,9 @@ function generateRaw(
   const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
   const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
   const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
+  // A sheet is ripped into battens before it tiles a form. The bought id stays the sheet.
+  const members = memberView(item);
+  const formName = stickFurnitureName(prompt, recipe.name);
 
   if (wantsSheetBox(prompt, item, kind)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item));
@@ -300,15 +304,16 @@ function generateRaw(
   ) {
     const eiffelK = kind === "eiffel" || weekend?.override === "eiffel" || /eiffel/.test(lower);
     const latticeAt = (targetHeightIn: number) => {
-      const raw = buildLatticeTowerGraph({ targetHeightIn, materialId: item.id, item, eiffel: eiffelK, platforms: true, grain });
-      const finished = finishGraph(raw, item, kind, !!opts.includeSpine, grain);
+      const raw = buildLatticeTowerGraph({ targetHeightIn, materialId: item.id, item: members.density, eiffel: eiffelK, platforms: true, grain });
+      const finished = finishGraph(raw, members.density, kind, !!opts.includeSpine, grain);
       const topo = pruneTopology(finished.graph, kind, { aggressiveness: kind === "eiffel" ? 0.06 : 0.18 });
       const g = { ...topo.graph, notes: [...topo.graph.notes, topo.note] };
       return finalize(
-        attachFunction(projectFromGraph(prompt, item, kind, g, true, finished.offer, opts.joinMethod, undefined, whole)),
+        attachFunction(projectFromGraph(prompt, members.cut, kind, g, true, finished.offer, opts.joinMethod, undefined, whole, members.section)),
         item,
         box,
         scale,
+        members,
       );
     };
     let lat = latticeAt(box.height);
@@ -318,14 +323,15 @@ function generateRaw(
     return lat;
   }
 
-  const built = buildFormGraph(recipe, item, item.id, { includeSpine: opts.includeSpine, kind, grain });
+  const built = buildFormGraph({ ...recipe, name: formName }, members.density, item.id, { includeSpine: opts.includeSpine, kind, grain });
   return finalize(
     attachFunction(
-      projectFromGraph(prompt, item, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, recipe.name, whole),
+      projectFromGraph(prompt, members.cut, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, formName, whole, members.section),
     ),
     item,
     box,
     scale,
+    members,
   );
 }
 
@@ -478,7 +484,13 @@ function buildShapeProject(
   return enforceWeekendHonesty(withWireNote(project, item));
 }
 
-function finalize(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }, scale: BuildScale): YardProject {
+function finalize(
+  project: YardProject,
+  item: CatalogItem,
+  box: { width: number; height: number; depth: number },
+  scale: BuildScale,
+  members?: MemberView,
+): YardProject {
   const notes = [...project.notes];
   if (scale === "tabletop") {
     notes.unshift(`Tabletop scale — about ${box.height.toFixed(0)}" high. Weekend / Full on the bench grow it.`);
@@ -548,6 +560,9 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };
+  if (members?.note && !next.notes.includes(members.note)) {
+    next = { ...next, notes: [members.note, ...next.notes] };
+  }
   if (next.instances.length === 0 && next.panels.length === 0) {
     next = neverEmpty(next, item, box);
   }
@@ -560,11 +575,83 @@ function finalize(project: YardProject, item: CatalogItem, box: { width: number;
   ) {
     next = withTableTop(next, item, box);
   }
+  if (
+    /table|desk|workbench|picnic/.test(next.prompt.toLowerCase()) &&
+    !/chair|stool|planter/.test(next.prompt.toLowerCase()) &&
+    next.instances.length &&
+    !next.panels.length &&
+    item.formFactor === "block"
+  ) {
+    next = withBrickDeck(next, item);
+  }
   return enforceWeekendHonesty(withWireNote(next, item));
 }
 
+const KEEP_FORM = new Set([
+  "eiffel",
+  "lattice",
+  "tower",
+  "arch",
+  "bridge",
+  "ladder",
+  "frame",
+  "figure",
+  "furniture",
+  "vehicle",
+  "vessel",
+  "plant",
+  "wall",
+  "dome",
+  "pyramid",
+  "custom",
+]);
+
+/** A stick-built table/desk/workbench keeps the noun the person typed. */
+function stickFurnitureName(prompt: string, recipeName: string): string {
+  if (recipeName !== "Table") return recipeName;
+  const stem = identityTitleStem(prompt.toLowerCase());
+  if (stem && /desk|table|workbench|vanity/i.test(stem)) return stem;
+  if (/\bdesk\b/.test(prompt.toLowerCase())) return "Desk";
+  if (/\bworkbench\b/.test(prompt.toLowerCase())) return "Workbench";
+  return recipeName;
+}
+
 function neverEmpty(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }): YardProject {
+  const view = memberView(item);
   const assumed = `I don't have a dedicated ${project.name} recipe in ${item.name} yet. This is a close frame. Assumed ${box.width.toFixed(0)}" × ${box.depth.toFixed(0)}" × ${box.height.toFixed(0)}".`;
+  if (KEEP_FORM.has(project.kind)) {
+    const recipe = detectForm(project.prompt, { ...box, height: Math.max(box.height, 16), width: Math.max(box.width, 16) });
+    const built = buildFormGraph(
+      { ...recipe, ops: recipe.ops.length ? recipe.ops : [{ op: "box", x: 0, y: box.height / 2, z: 0, w: box.width, h: box.height, d: box.depth, role: "leg" }] },
+      view.density,
+      item.id,
+      { kind: project.kind },
+    );
+    const retry = projectFromGraph(
+      project.prompt,
+      view.cut,
+      project.kind,
+      built.graph,
+      false,
+      built.offer,
+      project.joinMethod,
+      project.name,
+      isWholeStock(item),
+      view.section,
+    );
+    if (retry.instances.length) {
+      return {
+        ...retry,
+        name: project.name,
+        kind: project.kind,
+        notes: [view.note ?? assumed, ...retry.notes],
+      };
+    }
+    return {
+      ...project,
+      notes: [view.note ?? assumed, "Nothing I could place stayed above the stock's minimum length. Name a size or a different stock."],
+    };
+  }
   if (item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods") {
     const shell = buildSheetBox(project.prompt, item, project.kind === "castle" ? "castle" : "house", box, project.name);
     return { ...shell, notes: [assumed, ...shell.notes] };
@@ -608,6 +695,75 @@ function withTableTop(project: YardProject, item: CatalogItem, box: { width: num
   };
 }
 
+/** Tile a block stock (Lego) across the top of a table, desk, or workbench. */
+function withBrickDeck(project: YardProject, item: CatalogItem): YardProject {
+  const prim = toPrimitive(item);
+  const L = Math.max(0.4, prim.length);
+  const W = Math.max(0.3, prim.width);
+  const H = Math.max(0.2, prim.height);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  let railY = 0;
+  for (const inst of project.instances) {
+    const pts = inst.from && inst.to ? [inst.from, inst.to] : [inst.position];
+    for (const p of pts) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+      railY = Math.max(railY, p.y);
+    }
+  }
+  const spanX = maxX - minX;
+  const spanZ = maxZ - minZ;
+  if (!(spanX > 1 && spanZ > 1)) return project;
+  let pitchX = L + 0.06;
+  let pitchZ = W + 0.06;
+  let nx = Math.max(1, Math.floor((spanX + 0.01) / pitchX));
+  let nz = Math.max(1, Math.floor((spanZ + 0.01) / pitchZ));
+  while (nx * nz > 1100 && pitchZ < spanZ) {
+    pitchZ += W;
+    nz = Math.max(1, Math.floor((spanZ + 0.01) / pitchZ));
+  }
+  while (nx * nz > 1100 && pitchX < spanX) {
+    pitchX += L;
+    nx = Math.max(1, Math.floor((spanX + 0.01) / pitchX));
+  }
+  const y = railY + H;
+  const x0 = (minX + maxX) / 2 - ((nx - 1) * pitchX) / 2;
+  const z0 = (minZ + maxZ) / 2 - ((nz - 1) * pitchZ) / 2;
+  const deck: YardInstance[] = [];
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      const x = x0 + i * pitchX;
+      const z = z0 + k * pitchZ;
+      deck.push({
+        id: createId("brk"),
+        catalogId: item.id,
+        position: { x, y, z },
+        rotation: { x: 0, y: 0, z: 0 },
+        role: "deck",
+        from: { x: x - L / 2, y, z },
+        to: { x: x + L / 2, y, z },
+      });
+    }
+  }
+  const crown = y + H / 2;
+  return {
+    ...project,
+    instances: [...project.instances, ...deck],
+    overall: {
+      ...project.overall,
+      width: Math.max(project.overall.width, Math.round(spanX * 10) / 10),
+      depth: Math.max(project.overall.depth, Math.round(spanZ * 10) / 10),
+      height: Math.max(project.overall.height, Math.round(crown * 10) / 10),
+    },
+    notes: [...project.notes, `Top: ${deck.length} ${item.name}s pressed on over the frame.`],
+  };
+}
+
 function projectFromGraph(
   prompt: string,
   item: CatalogItem,
@@ -618,6 +774,7 @@ function projectFromGraph(
   joinMethod?: JoinMethod,
   displayName?: string,
   whole?: boolean,
+  section?: { width: number; height: number } | null,
 ): YardProject {
   const mapped = graphToInstances(graph, item, joinMethod, { whole });
   const joinUsed = joinMethod || item.preferredJoins?.[0] || "glue";
@@ -632,6 +789,7 @@ function projectFromGraph(
     from: g.from ? { x: g.from[0], y: g.from[1], z: g.from[2] } : undefined,
     to: g.to ? { x: g.to[0], y: g.to[1], z: g.to[2] } : undefined,
     ...(g.face ? { face: { x: g.face[0], y: g.face[1], z: g.face[2] } } : {}),
+    ...(section ? { section } : {}),
   }));
   const stats = analyzePieces(instances, item);
   const useWhole = whole ?? isWholeStock(item);

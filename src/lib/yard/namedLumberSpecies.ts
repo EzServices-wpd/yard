@@ -534,7 +534,7 @@ const LUMBER_NOMINAL =
 
 /** Craft / sheet / pipe words that are a stock pick even when no species is named. */
 const OTHER_STOCK =
-  /\b(?:plywood|sheet goods|popsicles?|craft sticks?|jumbo(?:\s+(?:craft|popsicle))?|mini(?:\s+(?:craft|popsicle))?|giant(?:\s+(?:craft|popsicle))?|pvc|schedule\s*40|straws?|toothpicks?|dowels?|skewers?|bamboo sticks?|kebab sticks?)\b/i;
+  /\b(?:plywood|sheet goods|popsicles?|craft sticks?|jumbo(?:\s+(?:craft|popsicle))?|mini(?:\s+(?:craft|popsicle))?|giant(?:\s+(?:craft|popsicle))?|pvc|schedule\s*40|straws?|toothpicks?|dowels?|skewers?|bamboo sticks?|kebab sticks?|legos?)\b/i;
 
 export type StockClause = { start: number; end: number; tail: string };
 

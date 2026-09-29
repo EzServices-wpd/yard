@@ -50,16 +50,45 @@ export function buildForgeBom(
     if (!item) continue;
 
     const unitsPerPack = item.unitsPerPack ?? 1;
-    const packsNeeded =
+    let packsNeeded =
       data.count === 0 ? 0 : Math.ceil(data.count / Math.max(1, unitsPerPack));
     const unitCost = item.unitCostUsd;
-    const estCost =
-      unitCost != null ? packsNeeded * unitsPerPack * unitCost : undefined;
 
     const whole = isWholeStock(item) && data.cuts.length === 0;
     const uniqueCuts = [
       ...new Set(data.cuts.map((c) => Math.round(c * 100) / 100).filter((c) => c > 0)),
     ].sort((a, b) => b - a);
+
+    const ripped = instances.find((i) => i.catalogId === catalogId && i.section)?.section;
+    let notes: string | undefined;
+    if (item.formFactor === "sheet" && ripped && data.count > 0) {
+      const sheetL = Math.max(1, item.dims.length ?? 96);
+      const sheetW = Math.max(1, item.dims.width ?? 48);
+      const kerf = 0.125;
+      const across = Math.max(1, Math.floor((sheetW + kerf) / (ripped.width + kerf)));
+      let inches = 0;
+      for (const inst of instances) {
+        if (inst.catalogId !== catalogId) continue;
+        const len =
+          inst.cutLength ??
+          (inst.from && inst.to
+            ? Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z)
+            : sheetL);
+        inches += Math.max(0, len);
+      }
+      const strips = Math.max(1, Math.ceil(inches / sheetL));
+      packsNeeded = Math.max(1, Math.ceil(strips / across));
+      notes = `${data.count} strips, ${ripped.width}" × ${ripped.height}", ripped from ${packsNeeded} sheet${packsNeeded === 1 ? "" : "s"}.`;
+    } else {
+      notes = whole
+        ? `${data.count} full pieces. Glue. Do not cut.`
+        : (item.canCut ?? true) && uniqueCuts.length
+          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}`
+          : item.notes;
+    }
+
+    const estCost =
+      unitCost != null ? packsNeeded * unitsPerPack * unitCost : undefined;
 
     lines.push({
       catalogId,
@@ -73,11 +102,7 @@ export function buildForgeBom(
       searchQuery: item.searchQuery,
       asin: item.asin,
       cutLengths: uniqueCuts,
-      notes: whole
-        ? `${data.count} full pieces. Glue. Do not cut.`
-        : (item.canCut ?? true) && uniqueCuts.length
-          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}`
-          : item.notes,
+      notes,
     });
 
     totalPieces += data.count;

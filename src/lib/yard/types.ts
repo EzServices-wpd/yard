@@ -108,6 +108,11 @@ export type YardInstance = {
   to?: Vec3;
   /** Stick lies flat against this face normal (slatted walls, roof decks, frame faces). */
   face?: Vec3;
+  /**
+   * Drawn cross-section when this piece is ripped or stacked from a larger unit
+   * (a plywood batten, not the 48" sheet face). Absent = draw the catalog unit.
+   */
+  section?: { width: number; height: number };
 };
 
 export type PanelType =
