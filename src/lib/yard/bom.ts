@@ -55,6 +55,22 @@ export function buildForgeBom(
     const unitCost = item.unitCostUsd;
 
     const whole = isWholeStock(item) && data.cuts.length === 0;
+    // Cut craft sticks: short cuts share a stick (first-fit, longest first), so the packs follow the
+    // sticks actually used, not one stick per piece.
+    let sticksUsed = 0;
+    if (isWholeStock(item) && data.cuts.length > 0) {
+      const S = Math.max(0.5, toPrimitive(item).length);
+      const snip = 0.0625;
+      const room: number[] = [];
+      for (const c of [...data.cuts].sort((a, b) => b - a)) {
+        const need = Math.min(S, c);
+        const k = room.findIndex((r) => r + 1e-6 >= need);
+        if (k >= 0) room[k] -= need + snip;
+        else room.push(S - need - snip);
+      }
+      sticksUsed = room.length + (data.count - data.cuts.length);
+      packsNeeded = Math.ceil(sticksUsed / Math.max(1, unitsPerPack));
+    }
     const uniqueCuts = [
       ...new Set(data.cuts.map((c) => Math.round(c * 100) / 100).filter((c) => c > 0)),
     ].sort((a, b) => b - a);
@@ -83,7 +99,7 @@ export function buildForgeBom(
       notes = whole
         ? `${data.count} full pieces. Glue. Do not cut.`
         : (item.canCut ?? true) && uniqueCuts.length
-          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}`
+          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole stick${sticksUsed === 1 ? "" : "s"}` : ""}`
           : item.notes;
     }
 

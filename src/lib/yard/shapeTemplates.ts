@@ -508,9 +508,11 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
         }
       } else {
         // Narrow box in whole sticks: one diagonal brace across each end, exactly one stick long.
+        // The two ends lean opposite ways, so each side wall is tied low at one end and high at the other.
         const dy = Math.min(p.h, Math.sqrt(Math.max(0.01, S * S - p.w * p.w)));
-        for (const ea of [-deckL / 2, deckL / 2]) {
-          segs.push({ a: boxPoint(p, ea, -dy / 2, -p.w / 2), b: boxPoint(p, ea, dy / 2, p.w / 2), role: p.name, critical: true });
+        for (const [k, ea] of [-deckL / 2, deckL / 2].entries()) {
+          const sz = k === 0 ? 1 : -1;
+          segs.push({ a: boxPoint(p, ea, -dy / 2, -sz * p.w / 2), b: boxPoint(p, ea, dy / 2, sz * p.w / 2), role: p.name, critical: true });
         }
       }
     } else {
@@ -524,12 +526,14 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
       }
       // Tie the two faces together at both ends: cross rails when a whole stick fits, else one diagonal.
       const xr2 = whole ? (p.w >= S ? runWithin(p.w, S, lap) : 0) : p.w;
-      for (const ea of [c0 + face / 2, c1 - face / 2]) {
+      for (const [k, ea] of [c0 + face / 2, c1 - face / 2].entries()) {
         if (xr2 > 0) {
           for (const eb of [-p.h / 2, p.h / 2]) segs.push({ a: boxPoint(p, ea, eb, -xr2 / 2), b: boxPoint(p, ea, eb, xr2 / 2), role: p.name, critical: true });
         } else {
+          // Opposite diagonals at the two ends: every face course meets a brace low or high.
+          const sz = k === 0 ? 1 : -1;
           const dy = Math.min(p.h, Math.sqrt(Math.max(0.01, S * S - p.w * p.w)));
-          segs.push({ a: boxPoint(p, ea, -dy / 2, -p.w / 2), b: boxPoint(p, ea, dy / 2, p.w / 2), role: p.name, critical: true });
+          segs.push({ a: boxPoint(p, ea, -dy / 2, -sz * p.w / 2), b: boxPoint(p, ea, dy / 2, sz * p.w / 2), role: p.name, critical: true });
         }
       }
       const nTop = Math.max(1, Math.round((p.w - face) / pitch));
@@ -1020,6 +1024,9 @@ export function materializeShape(
 ): ShapeBuild | null {
   const hit = detectShapeClass(prompt);
   if (!hit) return null;
+  // Long craft stock (12" skewers) is cut to each part: a whole skewer is longer than a tabletop
+  // animal's snout, ears or legs, so whole-stick laps would stick out of the silhouette.
+  if (whole && shapeStockClass(item) === "thin" && toPrimitive(item).length > 8) whole = false;
   let BL = defaultBodyLength(item, hit.profile, whole && shapeStockClass(item) === "thin");
   // A typed size scales the whole silhouette (length for a standing animal, else height).
   if (typed.length || typed.height) {

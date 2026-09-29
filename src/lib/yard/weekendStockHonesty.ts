@@ -814,9 +814,11 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     }
     // A member drawn well under one stick (a short lattice web) is a cut piece: the stick list says so.
     // (Tower-class builds and figures; the frozen Eiffel keeps its whole-stick contract.)
-    const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame";
+    // Animals in long craft stock (12" skewers) are drawn at each part's true length too (a skewer is longer than a snout).
+    const S0 = Math.max(0.5, toPrimitive(item).length);
+    const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || (project.shape?.classId === "quadruped" && S0 > 8);
     if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
-      const S = Math.max(0.5, toPrimitive(item).length);
+      const S = S0;
       let cut = 0;
       instances = instances.map((i) => {
         if (!i.from || !i.to) return i;

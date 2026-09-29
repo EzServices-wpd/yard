@@ -809,6 +809,19 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     ["2x4 dog, 24 inches long", "width", 24, 0.06],
     ["horse from 2x4, 36 inches tall", "height", 36, 0.06],
   ];
+  // Long craft stock (12" skewers): a tabletop animal by default, every part cut to its length and on the
+  // stick list, one connected piece (snout courses tied at both ends), and Buy packs follow packed cuts.
+  for (const [p, lo, hi] of [["dog from bamboo skewers", 10, 24], ["dog from bamboo skewers, 20 inches long", 19, 21], ["horse from bamboo skewers", 10, 26]] as [string, number, number][]) {
+    const b = generateFromPrompt(p);
+    if (!(b.overall.width >= lo && b.overall.width <= hi)) failWeekend(`skewer animal: ${p} length ${b.overall.width} not craft size`);
+    const st = full(b);
+    if (!st || st.components !== 1 || st.loose !== 0) failWeekend(`skewer animal: ${p} not one piece`, st);
+    const short = b.instances.filter((i) => i.from && i.to && Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z) < 11.9);
+    if (short.some((i) => i.cutLength == null)) failWeekend(`skewer animal: ${p} short parts listed as whole skewers`, short.filter((i) => i.cutLength == null).length);
+    const line = buildPlan(b).bom.find((x) => /skewer/i.test(x.name));
+    const sticks = Number(line?.notes?.match(/from (\d+) whole stick/)?.[1] ?? NaN);
+    if (!(sticks > 0 && sticks < b.instances.length)) failWeekend(`skewer animal: ${p} Buy counts one skewer per short cut`, line?.notes);
+  }
   for (const [p, ax, want, tol] of sized) {
     const b = generateFromPrompt(p);
     const got = b.overall[ax];
