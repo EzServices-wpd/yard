@@ -1,5 +1,7 @@
 /** Kit-manual PDF tokens and text helpers — one type scale, one grid, WinAnsi-safe text. */
 
+import { inchFrac } from "./inchText";
+
 export type RGB = [number, number, number];
 
 export const KIT = {
@@ -63,25 +65,11 @@ export function clean(s: string | null | undefined): string {
   return t.replace(/[ \t]+/g, " ").trim();
 }
 
-function gcd(a: number, b: number): number {
-  return b ? gcd(b, a % b) : a;
-}
 
 /** Tape-measure inches: 29.25 → 29 1/4". Rounds to 1/16. */
 export function frac(n: number, unit = '"'): string {
   if (!Number.isFinite(n)) return "-";
-  const neg = n < 0;
-  const sixteenths = Math.round(Math.abs(n) * 16);
-  const whole = Math.floor(sixteenths / 16);
-  const rem = sixteenths % 16;
-  let s: string;
-  if (!rem) s = String(whole);
-  else {
-    const g = gcd(rem, 16);
-    const f = `${rem / g}/${16 / g}`;
-    s = whole ? `${whole} ${f}` : f;
-  }
-  return `${neg ? "-" : ""}${s}${unit}`;
+  return `${inchFrac(n)}${unit}`;
 }
 
 /** Short plain sentences from a step description. */

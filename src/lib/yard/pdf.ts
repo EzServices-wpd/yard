@@ -233,7 +233,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   tl.forEach((ln, i) => doc.text(ln, L, y + 26 + i * 32));
   y += tl.length * 32 + 8;
   y += textBlock(envelope, L, y, W, 13, "normal", KIT.muted, 16) + 6;
-  const speciesTalk = speciesStockHonestyTalk(project.prompt ?? "", '3/4" plywood');
+  // Only a build that is really ¾" plywood needs the "species = finish" disclaimer; named solid boards are the species.
+  const onPly = project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""));
+  const speciesTalk = onPly ? speciesStockHonestyTalk(project.prompt ?? "", '3/4" plywood') : null;
   if (speciesTalk) y += textBlock(speciesTalk, L, y, W, 9, "italic", KIT.muted) + 2;
   const heroH = Math.max(250, 470 - y + 72);
   const hero: Frame = { x: L, y: y + 6, w: W, h: heroH };

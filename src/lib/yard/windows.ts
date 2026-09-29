@@ -3,6 +3,7 @@
  * Pick the unit first. Frame the published rough opening. BOM is the window plus the lumber.
  */
 
+import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import type {
@@ -665,8 +666,8 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
       },
     ];
   }
-  const jackLen = (pkg.role === "door" ? w.roH : pkg.sillHeight + w.roH - 1.5).toFixed(1);
-  const kingLen = (pkg.wallHeight - 3).toFixed(1);
+  const jackLen = inchFrac(pkg.role === "door" ? w.roH : pkg.sillHeight + w.roH - 1.5);
+  const kingLen = inchFrac(pkg.wallHeight - 3);
   return [
     {
       step: 1,

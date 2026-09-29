@@ -1,4 +1,5 @@
 import { getCatalogItem } from "./catalog";
+import { fractionizeInches, inchFrac } from "./inchText";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
@@ -669,7 +670,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
     const m = glassMirrors[0];
     const dims = sheetCutDims(m.size.width, m.size.height, m.size.depth);
     bom.push({
-      name: `Vanity mirror ${dims.lengthIn}" × ${dims.widthIn}"`,
+      name: `Vanity mirror ${inchFrac(dims.lengthIn)}" × ${inchFrac(dims.widthIn)}"`,
       quantity: glassMirrors.length,
       unit: glassMirrors.length === 1 ? "pc" : "pcs",
       catalogId: "vanity-mirror",
@@ -1044,7 +1045,22 @@ export function strangerWoodPieceCount(project: YardProject): number {
 
 /** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
 export function buildPlan(project: YardProject): BuildPlan {
-  return boardStockWording(project, withPlacementTalk(project, buildPlanCore(project)));
+  return fractionPlanText(boardStockWording(project, withPlacementTalk(project, buildPlanCore(project))));
+}
+
+/** Every plan string a stranger reads goes through the shared shop-fraction formatter. */
+function fractionPlanText(plan: BuildPlan): BuildPlan {
+  return {
+    ...plan,
+    instructions: plan.instructions.map((st) => ({
+      ...st,
+      title: fractionizeInches(st.title),
+      description: fractionizeInches(st.description),
+      tips: fractionizeInches(st.tips),
+    })),
+    cutList: plan.cutList.map((c) => (c.notes ? { ...c, notes: fractionizeInches(c.notes) } : c)),
+    bom: plan.bom.map((b) => ({ ...b, notes: fractionizeInches(b.notes) })),
+  };
 }
 
 /**

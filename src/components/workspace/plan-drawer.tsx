@@ -1,5 +1,6 @@
 "use client";
 
+import { inchFrac } from "@/lib/yard/inchText";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
@@ -297,7 +298,7 @@ function PlanBody({
                         {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
                       </td>
                       <td className="py-1.5 font-mono text-muted">
-                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                        {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
                         {c.material ? (
                           <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
                         ) : null}

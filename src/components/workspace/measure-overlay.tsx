@@ -1,5 +1,6 @@
 "use client";
 
+import { inchFrac } from "@/lib/yard/inchText";
 import { useYard } from "@/lib/yard/store";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
@@ -100,8 +101,8 @@ export function MeasureFields() {
         )}
         {project.pocket && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
-            Pocket back {project.pocket.walls.backWidth}" · L {project.pocket.walls.leftDepth}" @{" "}
-            {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {project.pocket.walls.rightDepth}" @{" "}
+            Pocket back {inchFrac(project.pocket.walls.backWidth)}" · L {inchFrac(project.pocket.walls.leftDepth)}" @{" "}
+            {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {inchFrac(project.pocket.walls.rightDepth)}" @{" "}
             {project.pocket.walls.rightAngleDeg.toFixed(1)}°
           </span>
         )}

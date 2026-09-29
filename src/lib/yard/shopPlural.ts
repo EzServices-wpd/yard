@@ -1,4 +1,5 @@
 import { oddCutName } from "./oddShapes";
+import { inchFrac } from "./inchText";
 import { templateCutName } from "./formTemplates";
 /** Shop-plan plurals — avoid "shelfs" on a cut list. */
 export function shopPlural(label: string, qty: number): string {
@@ -114,8 +115,7 @@ export function sheetCutDims(w: number, h: number, d: number) {
 
 export function fmtSheetCut(w: number, h: number, d: number) {
   const { lengthIn, widthIn, thicknessIn } = sheetCutDims(w, h, d);
-  const r = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(2));
-  return `${r(lengthIn)} × ${r(widthIn)} × ${r(thicknessIn)}`;
+  return `${inchFrac(lengthIn)} × ${inchFrac(widthIn)} × ${inchFrac(thicknessIn)}`;
 }
 
 /**

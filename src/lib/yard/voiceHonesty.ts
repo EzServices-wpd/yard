@@ -1,5 +1,6 @@
 /** Voice/PDF honesty helpers — hardware↔Buy class match, species title/stock, footprint talk, plain shop words, parts-plate + one-join densify. */
 
+import { inchFrac } from "./inchText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CutLine } from "./types";
 
@@ -885,8 +886,7 @@ export function stampTypedAxesTitle(
 ): string {
   const fmt = (n: number) => {
     if (!Number.isFinite(n)) return "—";
-    const r = Math.round(n * 10) / 10;
-    return Number.isInteger(r) ? String(r) : String(r);
+    return inchFrac(n);
   };
   const w = typed?.width ?? overall.width;
   const h = typed?.height ?? overall.height;
@@ -1103,8 +1103,7 @@ export function fmtUnitEnvelopeInches(
   });
   const fmt = (n: number) => {
     if (!Number.isFinite(n)) return "—";
-    const r = Math.round(n * 10) / 10;
-    return Number.isInteger(r) ? String(r) : r.toFixed(1);
+    return inchFrac(n);
   };
   if (round) {
     const dia = Math.abs(width - depth) < 0.51 ? width : Math.max(width, depth);

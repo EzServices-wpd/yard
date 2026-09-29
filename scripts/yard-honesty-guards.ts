@@ -31,6 +31,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches } from "../src/lib/yard/fitted";
+import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac } from "../src/lib/yard/inchText";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
@@ -2263,7 +2264,7 @@ if (!deskSlides || !/22"/.test(deskSlides.name)) {
 
 const linenPlan = buildPlan(linen);
 const linenStand = linenPlan.instructions.find((s) => /stand the carcase/i.test(s.title));
-if (linenStand && /0\.75\s*×\s*78\s*×\s*16/.test(linenStand.description) && !/78\s*×\s*16\s*×\s*0\.75/.test(linenStand.description)) {
+if (linenStand && /(?:0\.75|3\/4)\s*×\s*78\s*×\s*16/.test(linenStand.description) && !/78\s*×\s*16\s*×\s*(?:0\.75|3\/4)/.test(linenStand.description)) {
   failHonesty("linen step axis order still W-H-D not cut-list long-mid-thick", linenStand.description);
 }
 
@@ -3393,7 +3394,7 @@ console.log("SOFT-TRUST OK", {
     const med = generateFromPrompt("house: medicine cabinet 24″ wide × 28″ tall × 6″ deep with a mirrored door");
     if (!/Medicine cabinet/i.test(med.name)) failHonesty("b33 protect medicine", med.name);
     const pocket = generateFromPrompt("house: bathroom pocket vanity original trapezoid");
-    if (!/pocket vanity|trapezoid|38\.5|16\s*°/i.test([pocket.name, ...(pocket.notes ?? [])].join("\n"))) {
+    if (!/pocket vanity|trapezoid|38\.5|38 1\/2|16\s*°/i.test([pocket.name, ...(pocket.notes ?? [])].join("\n"))) {
       failHonesty("b33 protect pocket", pocket.name);
     }
     const andersen = generateFromPrompt("house: Andersen 36×48 hung window with RO");
@@ -3660,7 +3661,7 @@ console.log("SOFT-TRUST OK", {
   );
   if (!/pocket|vanity/i.test(pocket.name)) failHonesty("b36 protect pocket title", pocket.name);
   const pocketBlob = [pocket.name, ...(pocket.notes ?? [])].join("\n");
-  if (!/38\.5|16\.0|5\.0|Pocket back/i.test(pocketBlob) && !(pocket.fitted as { opening?: unknown } | undefined)) {
+  if (!/38\.5|38 1\/2|16\.0|5\.0|Pocket back/i.test(pocketBlob) && !(pocket.fitted as { opening?: unknown } | undefined)) {
     // trapezoid freeze — opening / notes carry angles when present
   }
 }
@@ -3826,7 +3827,7 @@ console.log("SOFT-TRUST OK", {
   if (fill36.overall.height !== 36 || fillRows.length < 7 || (capacityOf(fill36) ?? 0) < 40 || fill36.panels.some((x) => /^Open shelf/.test(x.name))) {
     failWine("as many as fit must fill the height with bottles", { H: fill36.overall.height, rows: fillRows, cap: capacityOf(fill36) });
   }
-  console.log("PASS wine-class: bottle-pitch rows (3.5–5.5in clear, height from rows or top shelf from leftover), grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
+  console.log("PASS wine-class: bottle-pitch rows (3.5–5.5in clear), typed count wins (capacity ≥ N, < N + one row), leftover height as 8–12in open shelves or a stated gallery, grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
 }
 
 // Named wood tables: the species drives every part including legs (laminated from the
@@ -3893,6 +3894,44 @@ console.log("SOFT-TRUST OK", {
   const bays = posts.slice(1).map((q, i) => q.position.x - (posts[i].position.x + posts[i].size.width));
   if (Math.max(...bays) - Math.min(...bays) > 1 / 32) failTab("plate rack bays unequal", bays);
   console.log("PASS named-table: species drives legs (laminated) + body, leg species wins for legs, Buy = packed boards per species, side/end 20×22 assumed, coffee/dining/nightstand unchanged, no sheet wording on board builds, plate bays equal");
+}
+
+// Shop fractions everywhere: notes, steps, cut list, Buy notes and PDF text across the
+// canary prompts never leak a raw float (19.200000000000003) or a decimal inch value
+// (0.8", 22.50 × 1.50) where a tape-measure fraction belongs.
+{
+  const failFrac = (msg: string, detail?: unknown) => failHonesty(`fractions ${msg}`, detail);
+  for (const [n, want] of [[3.9, "3 7/8"], [0.75, "3/4"], [19.200000000000003, "19 3/16"], [29.25, "29 1/4"], [24, "24"], [3.97, "4"]] as const) {
+    if (inchFrac(n) !== want) failFrac("inchFrac", { n, got: inchFrac(n), want });
+  }
+  if (fractionizeInches("cost $12.50, a 60.5° miter, 2.5 ft") !== "cost $12.50, a 60.5° miter, 2.5 ft") failFrac("formatter touched non-inch numbers");
+  const CANARY = [
+    "walnut desk", "desk", "oak table with walnut legs", "teak outdoor side table", "40 inch round oak table", "oak coffee table",
+    "wine rack", "wine rack 24 wide 36 tall 12 deep with twelve slots", "pine wine rack for 12 bottles", "oak wine rack for 10 bottles 18 inches tall",
+    "plate rack with 6 slots", "nightstand", "cherry nightstand", "bookcase", "oak bookcase", "dresser", "maple dresser",
+    "bathroom vanity 36 wide with two doors", "media console", "walnut media console", "shoe rack", "entry bench", "floating shelf",
+    "linen closet 24 wide", "linen closet 31.5 wide", "pantry cabinet", "kitchen island", "platform bed queen", "bunk bed", "workbench", "pegboard",
+    "coat hook board", "picture ledge 36 wide", "corner shelf for a 120 degree corner 10 inches along each wall 4 shelves",
+    "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side", "40 diameter round dining table 30 tall with three legs",
+    "cedar planter box", "toy chest", "adirondack chair", "popsicle stick catapult", "raised garden bed 4x8", "spice rack", "towel rack",
+    "radiator cover 36 wide", "step stool with a handrail", "coat rack with bench", "plywood garden arch", "desk made of 2x4s",
+    "bookcase 31.3 wide 47.7 tall 11.6 deep", "hook board 30 tall", "pocket vanity", "oak wine rack for 12 bottles, 36 inches tall",
+  ];
+  for (const prompt of CANARY) {
+    const p = generateFromPrompt(prompt);
+    const plan = buildPlan(p);
+    const bits: [string, string][] = [["title", p.name], ...(p.notes ?? []).map((n) => ["note", n] as [string, string])];
+    for (const st of plan.instructions) for (const t of [st.title, st.description, st.tips ?? ""]) bits.push(["step", t]);
+    for (const c of plan.cutList) bits.push(["cut", c.notes ?? ""]);
+    for (const b of plan.bom) bits.push(["buy", b.notes ?? ""], ["buy name", b.name]);
+    for (const c of plan.cutList) bits.push(["cut name", c.name ?? ""]);
+    for (const m of buildPlanPdf(p, plan).output().matchAll(/\(((?:\\\)|[^)])*)\)\s*Tj/g)) bits.push(["pdf", m[1]]);
+    for (const [where, t] of bits) {
+      const m = t.match(RAW_LONG_DECIMAL) ?? t.match(RAW_DECIMAL_INCH);
+      if (m) failFrac("raw decimal in user-facing text", { prompt, where, at: t.slice(Math.max(0, (m.index ?? 0) - 50), (m.index ?? 0) + 30) });
+    }
+  }
+  console.log(`PASS fractions: ${CANARY.length} canaries — notes, steps, cut list, Buy and PDF text print shop fractions, no raw floats`);
 }
 
 // Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
@@ -5883,7 +5922,7 @@ console.log("STRANGER PLAN OK", {
   if (/×\s*84/.test(widthOnly.name)) {
     failHonesty("width-only linen title invents stock H=84 as typed", widthOnly.name);
   }
-  if (!/31\.5"\s*wide/.test(widthOnly.name)) {
+  if (!/31 1\/2"\s*wide/.test(widthOnly.name)) {
     failHonesty("width-only linen title should stamp typed W only", widthOnly.name);
   }
   // Linen class densify H=78 (CLOSET_STARTERS / bare linen), not silent stock 84 in geometry.
@@ -5901,7 +5940,7 @@ console.log("STRANGER PLAN OK", {
   ) {
     failHonesty("typed linen H still honored", typedH.overall);
   }
-  if (!/31\.5"\s*×\s*78"\s*×\s*16"/.test(typedH.name)) {
+  if (!/31 1\/2"\s*×\s*78"\s*×\s*16"/.test(typedH.name)) {
     failHonesty("typed linen full stamp", typedH.name);
   }
   const twin = generateFromPrompt("36 inch linen closet");
@@ -6047,7 +6086,7 @@ console.log("STRANGER PLAN OK", {
     failHonesty("bare linen regress under class-default densify ship", bareLinenGuard.name);
   }
   const widthLinen = generateFromPrompt("31.5 inch linen closet");
-  if (!/31\.5" wide/i.test(widthLinen.name) || /×\s*84|×\s*78/.test(widthLinen.name)) {
+  if (!/31 1\/2" wide/i.test(widthLinen.name) || /×\s*84|×\s*78/.test(widthLinen.name)) {
     failHonesty("width-only linen regress", widthLinen.name);
   }
 
@@ -6203,7 +6242,7 @@ console.log("STRANGER PLAN OK", {
       notes: widthOnly.notes,
     });
   }
-  if (!/31\.5"\s*wide/i.test(widthOnly.name)) {
+  if (!/31 1\/2"\s*wide/i.test(widthOnly.name)) {
     failHonesty("width-only linen title protect", widthOnly.name);
   }
 

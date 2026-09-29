@@ -4,6 +4,7 @@
  * program (vanity / closet / desk / …) third. Trapezoid walls if they gave them.
  */
 
+import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
 import type {
@@ -468,6 +469,9 @@ export function wineRackLayout(o: {
 
 /** Shop inches to the nearest 1/16" (3.9 → 3 7/8, 3.97 → 4). */
 export function inch16(n: number): string {
+  return inchFrac(n);
+}
+function _inch16Legacy(n: number): string {
   const e = Math.round(n * 16);
   const whole = Math.floor(e / 16);
   let num = e % 16;
@@ -1537,7 +1541,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
           pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
         )
       : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
-        ? Math.min(24, Math.max(18, width * 0.4))
+        ? Math.round(Math.min(24, Math.max(18, width * 0.4)) * 16) / 16
         : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
   const upperStart =

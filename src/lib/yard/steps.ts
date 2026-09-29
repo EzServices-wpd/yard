@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { inchFrac } from "./inchText";
 import { templatePanelSteps, templateSteps } from "./formTemplates";
 import {
   climbRiseRun,
@@ -52,7 +53,7 @@ function dim(p: Panel) {
 }
 
 function round(n: number) {
-  return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(2);
+  return inchFrac(n);
 }
 
 
@@ -2376,7 +2377,7 @@ function cutSummary(instances: YardInstance[], itemName: string) {
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
   const bits = [...counts.entries()].sort((a, b) => Number(b[0]) - Number(a[0]));
-  const shown = bits.slice(0, 12).map(([len, qty]) => `${qty} × ${len}"`);
+  const shown = bits.slice(0, 12).map(([len, qty]) => `${qty} × ${inchFrac(Number(len))}"`);
   const more = bits.length > 12 ? `, and ${bits.length - 12} more lengths — every one is on the cut list` : "";
   return `${instances.length} pieces of ${itemName}. ${marked.length} marked cuts (${shown.join(", ")}${more}). ${full} stay full stock.`;
 }

@@ -1,11 +1,11 @@
 /** Display helpers for plan PDFs — keep floats off the page. */
 
+import { inchFrac } from "./inchText";
 import { fmtUnitEnvelopeInches, isRoundUnitEnvelope } from "./voiceHonesty";
 
 export function fmtIn(n: number): string {
   if (!Number.isFinite(n)) return "—";
-  const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  return inchFrac(n);
 }
 
 export function fmtDims(w: number, h: number, d: number): string {

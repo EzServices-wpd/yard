@@ -18,6 +18,7 @@
  *   polygon         N-sided planter / plant stand (miter = 180/N), honeycomb hexagon shelves
  */
 
+import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { panelWorldCorners } from "./geometry";
 import type { AssemblyStep, FittedProgram, FittedSpec, OddShape, Panel, YardProject } from "./types";
@@ -41,7 +42,7 @@ function r8(n: number) {
   return Math.round(n * 8) / 8;
 }
 export function fmtIn(n: number): string {
-  return Math.abs(n - Math.round(n)) < 0.01 ? String(Math.round(n)) : String(Math.round(n * 100) / 100);
+  return inchFrac(n);
 }
 /** Nearest 1/8" in tape talk. */
 export function tape(n: number): string {

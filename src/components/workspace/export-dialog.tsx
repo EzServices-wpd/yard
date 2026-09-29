@@ -1,5 +1,6 @@
 "use client";
 
+import { inchFrac } from "@/lib/yard/inchText";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { planToMarkdown } from "@/lib/yard/report";
@@ -219,7 +220,7 @@ export function ExportDialog({
                       <td className="py-1.5 font-mono">{c.quantity}</td>
                       <td className="py-1.5">{c.name}</td>
                       <td className="py-1.5 font-mono text-ink-muted">
-                        {c.lengthIn}" × {c.widthIn}" × {c.thicknessIn}"
+                        {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
                         {c.material ? (
                           <span className="mt-0.5 block text-[10px] text-ink-muted/80">{shortSheetTalk(c.material)}</span>
                         ) : null}

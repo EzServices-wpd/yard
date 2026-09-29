@@ -20,6 +20,7 @@
  *  4. Drawer boxes are the opening minus 1" (½" per side-mount slide).
  * Sizes and trims snap to 1/8" — the same grid the cut list prints, so a cut size IS the model size.
  */
+import { fractionizeInches } from "./inchText";
 import type { Panel, YardProject } from "./types";
 import { findInterference, panelPrisms, INTERFERENCE_TOL } from "./interference";
 import { isBoundingDrawerPanel } from "./shopPlural";
@@ -370,7 +371,17 @@ function snapSizes(panels: Panel[]) {
 export type SolveLog = { part: string; change: string }[];
 
 /** Solve the model in place-safe copy. Returns the solved project (same object shape). */
+/** Every solved model speaks shop fractions in its title and notes — never raw floats. */
 export function solveModel<T extends YardProject>(project: T): T {
+  const solved = solveModelCore(project);
+  return {
+    ...solved,
+    name: fractionizeInches(solved.name),
+    notes: solved.notes?.map((n) => fractionizeInches(n)),
+  };
+}
+
+function solveModelCore<T extends YardProject>(project: T): T {
   if (!project.panels?.length) return project;
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   snapSizes(panels);

@@ -2,6 +2,7 @@
  * Round/oval footprint uses footprintConfirmTalk (round top is not a square).
  */
 
+import { inchFrac } from "./inchText";
 import { getCatalogItem } from "./catalog";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
@@ -11,7 +12,7 @@ import type { AssemblyStep, Panel, YardProject } from "./types";
 import { footprintConfirmTalk } from "./voiceHonesty";
 
 function round(n: number) {
-  return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1);
+  return inchFrac(n);
 }
 
 function cutLine(p: Panel) {

@@ -10,6 +10,7 @@
  * Tiers come from the spoken shelf / tier count or the typed height.
  */
 
+import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { oddShapeKind } from "./oddShapes";
 import type { AssemblyStep, CornerUnit, FittedSpec, Panel, YardProject } from "./types";
@@ -171,7 +172,7 @@ export function parseCornerPrompt(prompt: string): CornerParse {
 }
 
 function fmt(n: number): string {
-  return Math.abs(n - Math.round(n)) < 0.01 ? String(Math.round(n)) : String(Math.round(n * 100) / 100);
+  return inchFrac(n);
 }
 
 /** Title speaks typed axes only (legs along the walls, height). */
