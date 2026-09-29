@@ -16,6 +16,7 @@ import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { LavaLamp } from "@/components/workspace/lava-lamp";
+import { BenchTools } from "@/components/workspace/bench-tools";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
@@ -404,6 +405,21 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
           {/* Bottom cards: on phones the step pill stacks above the size card instead of covering it. */}
           <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2 text-xs text-muted sm:block">
+            {/* Quick tools: on phones the top of the bottom stack; on wider screens centred above the step pill.
+                While the plan panel is open it moves into the bench area left of the panel (or steps aside). */}
+            {pieceCount > 0 && !pending && workMode !== "walk" && (
+              <div
+                className={`pointer-events-none z-10 sm:absolute sm:inset-x-0 sm:px-3 ${steps.length > 0 ? "sm:bottom-[7.5rem]" : "sm:bottom-16"} ${
+                  planOpen ? "hidden xl:block xl:right-[35rem]" : ""
+                }`}
+              >
+                <BenchTools
+                  side={side}
+                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
+                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                />
+              </div>
+            )}
             {steps.length > 0 && !pending && (
               <div className="pointer-events-none z-10 flex justify-center sm:absolute sm:inset-x-0 sm:bottom-16 sm:px-3">
                 <div data-bench-overlay="step-pill" className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
