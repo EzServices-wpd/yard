@@ -13,7 +13,7 @@ import { getCatalogItem } from "./catalog";
 import { defaultGhostFlags } from "./ghost";
 import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { climbIdentityLabel } from "./family";
-import { measureKindFromProject, projectFromMeasurement, stampPromptSize } from "./space";
+import { measureKindFromProject, projectFromMeasurement, stampPromptSize, angleMeasureFromProject, stampCornerAngle, stampSlopeEnds, cornerAngleOk } from "./space";
 import { isRoundUnitEnvelope } from "./voiceHonesty";
 import { buildPocket } from "./pocket";
 import { buildFitted } from "./fitted";
@@ -55,6 +55,7 @@ type YardState = {
   dragPos: { id: string; pos: Vec3 } | null;
   measure: MeasureDraft;
   measureOpen: boolean;
+  measureNote: string | null;
   history: YardProject[];
   future: YardProject[];
   building: boolean;
@@ -94,7 +95,7 @@ type YardState = {
   placePiece: (catalogId: string, position: Vec3) => void;
   setMeasureOpen: (v: boolean) => void;
   setMeasure: (patch: Partial<MeasureDraft>) => void;
-  applyMeasure: () => void;
+  applyMeasure: (commitAngle?: boolean) => void;
   liftTo3d: () => YardProject | null;
   reset: () => void;
 };
@@ -137,6 +138,7 @@ export const useYard = create<YardState>((set, get) => ({
   dragPos: null,
   measure: defaultMeasure,
   measureOpen: false,
+  measureNote: null,
   history: [],
   future: [],
   building: false,
@@ -216,6 +218,7 @@ export const useYard = create<YardState>((set, get) => ({
     if (next.pocket) flags.showHull = true;
     if (next.fitted?.opening.kind === "alcove") flags.showHull = true;
     get().commit(next);
+    const angled = angleMeasureFromProject(next);
     set({
       ...flags,
       cutMode: mode,
@@ -227,6 +230,7 @@ export const useYard = create<YardState>((set, get) => ({
       dragPos: null,
       selectedId: null,
       facesOpen: false,
+      measureNote: null,
       measure: next.pocket
         ? {
             width: String(next.pocket.unit.width),
@@ -247,10 +251,12 @@ export const useYard = create<YardState>((set, get) => ({
             }
           : next.fitted
             ? {
-                width: String(next.fitted.unit.width),
-                height: String(next.fitted.unit.height),
-                depth: String(next.fitted.unit.depth),
+                width: angled?.width ?? String(next.fitted.unit.width),
+                height: angled?.height ?? String(next.fitted.unit.height),
+                depth: angled?.depth ?? String(next.fitted.unit.depth),
                 kind: measureKindFromProject(next),
+                angle: angled?.angle,
+                lowSide: angled?.lowSide,
               }
             : next.overall.width > 1
             ? {
@@ -426,7 +432,7 @@ export const useYard = create<YardState>((set, get) => ({
   },
   setMeasureOpen: (v) => set({ measureOpen: v }),
   setMeasure: (patch) => set({ measure: { ...get().measure, ...patch } }),
-  applyMeasure: () => {
+  applyMeasure: (commitAngle = false) => {
     const { measure, project } = get();
     let widthIn = parseFloat(measure.width);
     const heightIn = parseFloat(measure.height);
@@ -445,6 +451,75 @@ export const useYard = create<YardState>((set, get) => ({
       depthIn = widthIn;
     }
     const depth = Number.isFinite(depthIn) ? depthIn : undefined;
+    const corner = project.fitted?.unit?.corner;
+    const oddKind = project.fitted?.unit?.odd?.kind;
+    if (corner || oddKind === "angled-corner") {
+      const ang = parseFloat(measure.angle ?? "");
+      const current = corner ? 90 : Number((project.fitted?.unit?.odd?.params as { theta?: number } | undefined)?.theta ?? 90);
+      const angOk = Number.isFinite(ang) && cornerAngleOk(ang);
+      if (!angOk && commitAngle && (measure.angle ?? "").trim()) {
+        const shown = Number.isFinite(ang) ? ang : measure.angle;
+        set({
+          measureNote: `${shown}° is outside the corner this shelf can be — just over 20° through just under 170°. Left it at ${current}°.`,
+          measure: { ...measure, angle: String(current) },
+        });
+        return;
+      }
+      const useAng = angOk ? ang : current;
+      const tiers = corner?.tiers ?? Number((project.fitted?.unit?.odd?.params as { tiers?: number } | undefined)?.tiers ?? 0);
+      const prompt = stampCornerAngle(
+        project.prompt || project.name,
+        useAng,
+        widthIn,
+        depth ?? widthIn,
+        heightIn,
+        tiers || undefined,
+        corner?.shape === "quarter" && Math.abs(useAng - 90) < 0.05,
+      );
+      const built = generateFromPrompt(prompt, project.primaryMaterialId);
+      if (built) {
+        get().commit(built);
+        const next = angleMeasureFromProject(built);
+        set({
+          measureNote: null,
+          measure: next ? { ...measure, ...next, kind: measure.kind } : measure,
+        });
+        get().makePlan();
+      }
+      return;
+    }
+    if (oddKind === "sloped") {
+      const low = parseFloat(measure.lowSide ?? "");
+      const currentLow = Number((project.fitted?.unit?.odd?.params as { loH?: number } | undefined)?.loH ?? 0);
+      const lowOk = Number.isFinite(low) && low < heightIn && low >= 12;
+      if (!lowOk && commitAngle) {
+        const why = Number.isFinite(low) && low >= heightIn
+          ? "The low side has to be shorter than the high side. Left the slope as it was."
+          : "The low side needs about 12 inches before a shelf fits under it. Left the slope as it was.";
+        set({
+          measureNote: why,
+          measure: { ...measure, lowSide: String(currentLow) },
+        });
+        return;
+      }
+      const useLow = lowOk ? low : currentLow;
+      const prompt = stampSlopeEnds(
+        stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? project.overall.depth),
+        heightIn,
+        useLow,
+      );
+      const built = generateFromPrompt(prompt, project.primaryMaterialId);
+      if (built) {
+        get().commit(built);
+        const next = angleMeasureFromProject(built);
+        set({
+          measureNote: null,
+          measure: next ? { ...measure, ...next, kind: measure.kind } : measure,
+        });
+        get().makePlan();
+      }
+      return;
+    }
     let prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseFloat(measure.depth) || 16));
     if (roundUnit) {
       const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(n));

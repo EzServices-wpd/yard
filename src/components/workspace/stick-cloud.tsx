@@ -55,8 +55,9 @@ export function PanelMesh({
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
   const isLid = isHingedLidPanel(panel);
+  const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
-  const hiddenInStep = hasStep && !inStep && (isDoor || isDrawer || isLid);
+  const hiddenInStep = hasStep && !inStep && (isDoor || isDrawer || isLid || !!leaf);
 
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
@@ -66,7 +67,7 @@ export function PanelMesh({
   // when you ask ("Open doors") or in the step that hangs them, so the hinge side reads.
   const faceStep = activeStep != null && /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle);
   const allowSwing = facesOpen ? activeStep == null || faceStep : faceStep && inStep;
-  const open = allowSwing && !panel.yaw && (isDoor || isDrawer || isLid) && (!hasStep || inStep);
+  const open = allowSwing && !panel.yaw && (isDoor || isDrawer || isLid || !!leaf) && (!hasStep || inStep);
   const isLeft =
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
@@ -80,7 +81,13 @@ export function PanelMesh({
   let groupRot: [number, number, number] = [0, yaw, 0];
   let meshPos: [number, number, number] = [0, 0, 0];
 
-  if (isDoor && open) {
+  if (leaf && open) {
+    const left = leaf.hinge === "left";
+    const swing = ((left ? -1 : 1) * 72 * Math.PI) / 180;
+    groupPos = [leaf.hingeX * explode, cy, leaf.hingeZ * explode];
+    groupRot = [0, swing, 0];
+    meshPos = [panel.position.x + w / 2 - leaf.hingeX, 0, panel.position.z + d / 2 - leaf.hingeZ];
+  } else if (isDoor && open) {
     const hingeX = isLeft ? panel.position.x : panel.position.x + w;
     const hingeZ = panel.position.z + d / 2;
     const swing = ((isLeft ? -1 : 1) * 72 * Math.PI) / 180;
@@ -223,8 +230,12 @@ export function PanelMesh({
         {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
           <EdgeBand w={w} h={h} d={d} />
         )}
-        {isDoor && opacity > 0.4 && <DoorHinges w={w} h={h} d={d} isLeft={isLeft} />}
-        {isDoor && opacity > 0.4 && <BarPull w={w} h={h} d={d} isLeft={isLeft} />}
+        {opacity > 0.4 && (leaf ? leaf.role === "hinge" : isDoor) && (
+          <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
+        )}
+        {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
+          <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
+        )}
         {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />

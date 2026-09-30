@@ -5,6 +5,7 @@
  */
 
 import { inchFrac } from "./inchText";
+import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
 import type {
@@ -647,6 +648,7 @@ export function looksLikeFitted(prompt: string) {
     isToyChest(lower) ||
     isHingedLidChest(lower) ||
     isBookBinBench(lower) ||
+    isPorchSwingFrame(lower) ||
     /ironing/.test(lower)
   ) {
     return true;
@@ -668,15 +670,20 @@ export function looksLikeFitted(prompt: string) {
     return false;
   }
   if (weekendMech === "climb" && !detectHouseFamily(prompt)) return false;
-  if (MAKER.test(lower) && CRAFT.test(lower)) return false;
-  if (CRAFT.test(lower) && !BUILDER.test(lower)) return false;
+  // A stock clause is not a new subject. "entry bench from popsicle sticks",
+  // "dog house from dowels", "hall tree from PVC" stay the house piece.
+  // BUILDER is narrower than the house-noun list (no bare bench, dog house,
+  // hall tree, …), so naming sticks used to fail this test and the generator
+  // stamped a 24×24×24 Custom closet. "popsicle Eiffel" is still not a carcase.
+  const houseDespiteStock = detectHouseFamily(prompt);
+  if (MAKER.test(lower) && CRAFT.test(lower) && !houseDespiteStock) return false;
+  if (CRAFT.test(lower) && !BUILDER.test(lower) && !houseDespiteStock) return false;
   const dimText = lower
     .replace(/\b(?:from\s+)?(?:[1-8]\s*[x×]\s*(?:2|3|4|6|8|10|12)|two by four|two by six|one by four|four by four)\b/gi, " ");
   const nums = (dimText.match(/\d+(?:\.\d+)?/g) ?? []).length;
   if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower) && !/\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|')/.test(lower)) {
     return false;
   }
-  if (isPorchSwingFrame(lower)) return false;
   // Seating lounge class stays fitted (plywood sit anatomy) — not craft House-wire.
   if (
     /chair|stool|ladder/.test(lower) &&
@@ -780,10 +787,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — do not null brief.
   if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
   if (!looksLikeFitted(prompt)) return null;
+  // A numbered degree on a shelf is the odd-shape corner, not a 90° triangle.
+  if (isOddShapePrompt(prompt)) return oddSpecFromPrompt(prompt);
   // Corner-unit class — triangle / quarter-round plates in a 90° corner, never a flat rectangle.
   if (isCornerUnitPrompt(prompt) && !looksLikePocket(prompt)) return cornerSpecFromPrompt(prompt);
-  // Odd-shape pack — a typed shape never collapses to a plain box.
-  if (isOddShapePrompt(prompt)) return oddSpecFromPrompt(prompt);
   const pocket = parsePocket(prompt);
   if (pocket) {
     return {
@@ -949,6 +956,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
   }
 
+
+  if (isPorchSwingFrame(lower)) {
+    if (!Number.isFinite(width)) width = 48;
+    if (!Number.isFinite(height)) height = 78;
+    if (!Number.isFinite(depth)) depth = 36;
+  }
 
   // Bare desk width before trip steal — "60\" desk … 30 deep × 29 tall" must not become 30×29×30.
   if (!Number.isFinite(width) && (program === "desk" || /\b(?:writing\s+)?desk\b/.test(lower))) {
@@ -1996,6 +2009,417 @@ function panel(
   };
 }
 
+/** Dowels sticking out of a rail so a coat rack reads as a coat rack, not a shelf. */
+function pushPegs(
+  panels: Panel[],
+  count: number,
+  x0: number,
+  y: number,
+  z: number,
+  span: number,
+  stick = 3.25,
+  thick = 0.75,
+  nose = false,
+  label = "Peg",
+) {
+  const n = Math.max(2, Math.min(12, Math.round(count)));
+  const peg = thick;
+  const inset = Math.min(Math.max(1.25, span * 0.06), 3);
+  const usable = Math.max(peg, span - inset * 2 - peg);
+  const knobW = Math.round((peg + 0.5) * 8) / 8;
+  for (let i = 0; i < n; i++) {
+    const x = x0 + inset + (usable * i) / Math.max(1, n - 1);
+    panels.push(panel("rail", `${label} ${i + 1}`, x, y, z, peg, peg, stick));
+    if (!nose) continue;
+    // Wider than the peg, dropped, still ¾" so the cut stays a peg stop — not a laminated leg.
+    panels.push(
+      panel(
+        "rail",
+        `${label} stop`,
+        x - (knobW - peg) / 2,
+        Math.max(0, y - 0.5),
+        z + stick,
+        knobW,
+        peg,
+        peg,
+      ),
+    );
+  }
+}
+
+/**
+ * One hall tree: cubby bench, then hooks on the back, hat shelf at the top.
+ * A coat is ~36" long, so a higher hook does not lift it off a sitting person.
+ * The coat hangs a few inches off the back. The seat is in front of that.
+ * Overall height moves the hat shelf. Hooks stay near 64" so an adult can reach them.
+ */
+function buildCoatBench(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const D = Math.max(u.depth, 14);
+  const typedH = u.height;
+  const lower = prompt.toLowerCase();
+  const seatSaid = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*seat(?:\s*height)?\b|seat(?:\s*height)?\s*(?:of\s*)?(\d+(?:\.\d+)?)/);
+  const seatH = seatSaid
+    ? Math.min(22, Math.max(16, parseFloat(seatSaid[1] || seatSaid[2] || "18")))
+    : 18;
+  const overallH = typedH >= 48 ? typedH : 72;
+  const x0 = -W / 2;
+  const post = 1.5;
+  const rows = readHookRows(prompt);
+  const hatBottom = overallH - P;
+  const adultCenter = Math.min(64, hatBottom - 6);
+  const kidCenter = 42;
+  const showAdult = rows !== "kids";
+  const showKids = rows !== "adult" && (rows === "kids" || adultCenter - kidCenter >= 12);
+  const pegN = Math.max(3, Math.min(8, Math.round(W / 8)));
+  const innerX = x0 + post;
+  const innerW = W - post * 2;
+  const bayW = innerW - P * 2;
+  const cubbyN = u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));
+  const apronH = 3.5;
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left post", x0, 0, 0, post, overallH, post, TWO_BY_TWO));
+  panels.push(panel("upright", "Right post", x0 + W - post, 0, 0, post, overallH, post, TWO_BY_TWO));
+  panels.push(panel("back", "Back", innerX, 0, 0, innerW, hatBottom, P));
+  panels.push(panel("upright", "Left upright", innerX, 0, P, P, seatH, D - P));
+  panels.push(panel("upright", "Right upright", innerX + innerW - P, 0, P, P, seatH, D - P));
+  panels.push(panel("bottom", "Shoe shelf", innerX + P, 0, P, bayW, P, D - P));
+  panels.push(panel("top", "Seat", innerX + P, seatH - P, P, bayW, P, D - P));
+  panels.push(panel("rail", "Front apron", innerX + P, seatH - P - apronH, D - P, bayW, apronH, P));
+  for (let i = 1; i < cubbyN; i++) {
+    const x = innerX + (innerW * i) / cubbyN - P / 2;
+    panels.push(panel("divider", `Cubby divider ${i}`, x, P, P, P, seatH - 2 * P, D - P * 2));
+  }
+  panels.push(panel("top", "Hat shelf", innerX, hatBottom, 0, innerW, P, Math.min(10, D - 4)));
+  const hang = (center: number, label: string) => {
+    const y = center - 0.375;
+    const railY = Math.max(seatH + 1, y - 1.25);
+    panels.push(panel("rail", label === "Peg" ? "Peg rail" : "Kid peg rail", innerX, railY, P, innerW, 3.5, P));
+    pushPegs(panels, pegN, innerX, y, P * 2 + 0.04, innerW, 3.5, 0.75, true, label);
+  };
+  if (showAdult) hang(adultCenter, "Peg");
+  if (showKids) hang(rows === "kids" ? Math.min(kidCenter, adultCenter) : kidCenter, "Kid peg");
+  const name = classDefaultDensifyTitle("Coat bench", prompt, { width: W, height: overallH, depth: D });
+  const assumed = classDefaultAssumedNotes(prompt, "Coat bench", { width: W, height: overallH, depth: D });
+  const hookTalk = showKids && showAdult
+    ? `Adult hooks at ${Math.round(adultCenter)}", kid hooks at ${Math.round(kidCenter)}".`
+    : showKids
+      ? `Kid hooks at ${Math.round(Math.min(kidCenter, adultCenter))}".`
+      : `Adult hooks at ${Math.round(adultCenter)}".`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: overallH, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Cubby bench, seat at ${seatH}". ${hookTalk} Hat shelf at the top. ¾" plywood, 2×2 posts.`,
+      `Pegs stand about 3½" off the back, so a coat hangs behind the sitter instead of across the seat. Making the piece taller raises the hat shelf. Hooks stay near 64" so they can still be reached.`,
+      `Screw the pegs into the rail, about 8" on center. Level it on the floor. Guidance only.`,
+      ...assumed,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: overallH, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances: affordances.includes("hooks") ? affordances : [...affordances, "hooks"],
+      unit: {
+        ...u,
+        width: W,
+        height: overallH,
+        depth: D,
+        doors: false,
+        cubbies: cubbyN,
+        shelfCount: undefined,
+        drawersPerBank: undefined,
+        rod: false,
+        kneeW: undefined,
+        counterH: undefined,
+      },
+    },
+    assumptions: {
+      load: "heavy",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+    },
+  };
+}
+
+/** Floor-standing hall tree: seat, pegs, hat shelf. Not a wall board. */
+function buildHallTree(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const typedH = /(?:tall|high|height)\b/.test(prompt.toLowerCase());
+  const typedD = /(?:deep|depth)\b/.test(prompt.toLowerCase());
+  const W = u.width;
+  const H = typedH ? u.height : Math.max(u.height, 72);
+  const D = typedD ? u.depth : Math.max(u.depth, 14);
+  const x0 = -W / 2;
+  const post = 1.5;
+  const seatH = Math.min(18, Math.max(16, H * 0.25));
+  const pegCount = Math.max(3, Math.min(6, Math.round(W / 8)));
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left post", x0, 0, 0, post, H, post, TWO_BY_TWO));
+  panels.push(panel("upright", "Right post", x0 + W - post, 0, 0, post, H, post, TWO_BY_TWO));
+  panels.push(panel("bottom", "Shoe shelf", x0 + post, 4, post, W - post * 2, P, D - post));
+  panels.push(panel("top", "Seat", x0, seatH, 0, W, P, D));
+  panels.push(panel("back", "Back", x0 + post, seatH + P, 0, W - post * 2, H - seatH - P * 2, P));
+  panels.push(panel("top", "Hat shelf", x0, H - P, 0, W, P, Math.min(D, 10)));
+  pushPegs(panels, pegCount, x0 + post, seatH + 16, P + 0.05, W - post * 2, 3.25);
+  const name = `Hall tree ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Floor-standing hall tree — seat at ${seatH}", ${pegCount} pegs, hat shelf. Not a wall coat board.`,
+      `Screw the pegs into the back, about 8" on center, above the seat. Coats hang clear of the seat.`,
+      "Level it on the floor. The posts carry the hat shelf. Guidance only.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances: affordances.includes("hooks") ? affordances : [...affordances, "hooks"],
+      unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
+    },
+    assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+/** Picnic table: top, attached benches, A-frame legs. Not a square dining table. */
+function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
+  const u = spec.unit;
+  const lower = prompt.toLowerCase();
+  const said = /(?:wide|width|deep|depth|tall|high|height|long)\b/.test(lower);
+  const length = said && u.width > 20 ? u.width : 72;
+  const tableH = said && u.height >= 24 && u.height <= 36 ? u.height : 29;
+  const topD = said && u.depth >= 16 && u.depth <= 40 && /deep|depth/.test(lower) ? u.depth : 28;
+  const benchH = 17;
+  const benchW = 10;
+  const gap = 8;
+  const overallD = topD + (benchW + gap) * 2;
+  const x0 = -length / 2;
+  const topZ = -topD / 2;
+  const leg = 1.5;
+  const panels: Panel[] = [];
+  panels.push(panel("top", "Table top", x0, tableH - P, topZ, length, P, topD));
+  // Two A-frames drawn as splayed posts (front/back) plus a stretcher under the top.
+  const inset = 10;
+  for (const x of [x0 + inset, x0 + length - inset - leg]) {
+    panels.push(panel("upright", "Leg", x, 0, topZ + 1, leg, tableH - P, leg, TWO_BY_TWO));
+    panels.push(panel("upright", "Leg", x, 0, topZ + topD - 1 - leg, leg, tableH - P, leg, TWO_BY_TWO));
+  }
+  panels.push(panel("rail", "Table stretcher", x0 + inset, tableH - P - 3.5, -leg / 2, length - inset * 2, 3.5, leg));
+  const benchYs = benchH - P;
+  for (const side of [-1, 1] as const) {
+    const z = side < 0 ? topZ - gap - benchW : topZ + topD + gap;
+    const label = side < 0 ? "Near bench" : "Far bench";
+    panels.push(panel("top", `${label} seat`, x0 + 2, benchYs, z, length - 4, P, benchW));
+    for (const x of [x0 + inset, x0 + length - inset - leg]) {
+      panels.push(panel("upright", `${label} leg`, x, 0, z + 1, leg, benchH - P, leg, TWO_BY_TWO));
+      panels.push(panel("upright", `${label} leg`, x, 0, z + benchW - 1 - leg, leg, benchH - P, leg, TWO_BY_TWO));
+    }
+  }
+  const name = `Picnic table ${Math.round(length)}" × ${Math.round(tableH)}" × ${Math.round(overallD)}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: length, height: tableH, depth: overallD },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}". Not a dining table.`,
+      `The benches sit outside the top, ${gap}" clear of the table legs so you can sit. 2×2 legs, ¾" top and seats.`,
+    ],
+    historic: false,
+    opening: { width: length, height: tableH, depth: overallD, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "table",
+      family: "table",
+      unit: { ...u, width: length, height: tableH, depth: overallD, doors: false, shelfCount: 0 },
+    },
+    assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+/** Standing shop top — legs and a work surface, not an open bin. */
+function buildShopTop(spec: FittedSpec, prompt: string): YardProject {
+  const u = spec.unit;
+  const lower = prompt.toLowerCase();
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const topT = 1.5;
+  const legW = 1.5;
+  const legD = 3.5;
+  const legH = H - topT;
+  const potting = isPottingBench(lower);
+  const wantShelf = (u.shelfCount ?? 0) > 0 || /lower\s+shel|bottom\s+shel/.test(lower);
+  const panels: Panel[] = [];
+  const lumber = "lumber-2x4-8";
+  panels.push(panel("upright", "Front left leg", x0, 0, D - legD, legW, legH, legD, lumber));
+  panels.push(panel("upright", "Front right leg", x0 + W - legW, 0, D - legD, legW, legH, legD, lumber));
+  panels.push(panel("upright", "Back left leg", x0, 0, 0, legW, legH, legD, lumber));
+  panels.push(panel("upright", "Back right leg", x0 + W - legW, 0, 0, legW, legH, legD, lumber));
+  panels.push(panel("top", potting ? "Potting top" : "Work top", x0, H - topT, 0, W, topT, D));
+  const apronH = 3.5;
+  panels.push(panel("rail", "Front apron", x0 + legW, legH - apronH, D - legD, W - legW * 2, apronH, P));
+  panels.push(panel("rail", "Back apron", x0 + legW, legH - apronH, legD - P, W - legW * 2, apronH, P));
+  if (wantShelf) {
+    panels.push(
+      panel(
+        "shelf",
+        "Lower shelf",
+        x0 + legW,
+        Math.max(8, Math.round(H * 0.32)),
+        legD,
+        W - legW * 2,
+        P,
+        D - legD * 2,
+      ),
+    );
+  }
+  const stem = potting ? "Potting bench" : "Workbench";
+  const name = new RegExp(`^${stem}`, "i").test(spec.name) ? spec.name : `${stem} ${W}" × ${H}" × ${D}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      potting
+        ? `${name}. Potting bench — work top at ${H}" on 2×4 legs${wantShelf ? " with one lower shelf" : ""}. Not a sit bench.`
+        : `${name}. Workbench — work top at ${H}" on 2×4 legs${wantShelf ? " with one lower shelf" : ""}. Standing shop top, not a desk and not a bin.`,
+      wantShelf
+        ? "The lower shelf sits between the legs. Glue and screw it into the leg faces."
+        : "No lower shelf unless you ask for one. The aprons keep the legs from racking.",
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: spec.program === "bench" ? "desk" : spec.program,
+      family: spec.family,
+      unit: {
+        ...u,
+        width: W,
+        height: H,
+        depth: D,
+        doors: false,
+        shelfCount: wantShelf ? 1 : 0,
+        drawersPerBank: undefined,
+        kneeW: undefined,
+      },
+    },
+    assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+/** Porch swing you can name from the shape: stand, beam, hanging seat, back. */
+function buildPorchSwing(spec: FittedSpec, prompt: string): YardProject {
+  const u = spec.unit;
+  const W = u.width >= 36 ? u.width : 48;
+  const standH = u.height >= 48 ? u.height : 78;
+  const seatD = 18;
+  const standD = Math.max(36, u.depth || 0, seatD + 16);
+  const x0 = -W / 2;
+  const z0 = -standD / 2;
+  const post = 1.5;
+  const seatY = 18;
+  const backH = 14;
+  const panels: Panel[] = [];
+  for (const x of [x0, x0 + W - post]) {
+    for (const z of [z0, z0 + standD - post]) {
+      panels.push(panel("upright", "Stand post", x, 0, z, post, standH, post, TWO_BY_TWO));
+    }
+  }
+  // Beam over the middle of the stand. Hangers drop from it to the seat ends.
+  const beamZ = -post / 2;
+  panels.push(panel("rail", "Beam", x0, standH - 3.5, beamZ, W, 3.5, post, TWO_BY_TWO));
+  const railX = [x0 + 5, x0 + W - 5 - post];
+  for (const x of railX) {
+    panels.push(panel("rail", "Seat rail", x, seatY, -seatD / 2, post, P, seatD));
+    panels.push(
+      panel(
+        "rail",
+        "Hanger",
+        x,
+        seatY + P,
+        beamZ,
+        post,
+        standH - 3.5 - (seatY + P),
+        post,
+        TWO_BY_TWO,
+      ),
+    );
+  }
+  const slatX = railX[0] + post + 0.15;
+  const slatW = railX[1] - slatX - 0.15;
+  for (let i = 0; i < 4; i++) {
+    const z = -seatD / 2 + 1 + i * ((seatD - 3) / 4);
+    panels.push(panel("deck", `Seat slat ${i + 1}`, slatX, seatY, z, slatW, P, 2.25));
+  }
+  for (let i = 0; i < 3; i++) {
+    const y = seatY + P + 1.5 + i * 4;
+    panels.push(panel("rail", `Back slat ${i + 1}`, slatX, y, -seatD / 2, slatW, 2.25, P));
+  }
+  const name =
+    /frame/i.test(spec.name) || /frame/.test(prompt.toLowerCase())
+      ? `Porch swing frame ${Math.round(W)}" × ${Math.round(standH)}"`
+      : `Porch swing ${Math.round(W)}" × ${Math.round(standH)}"`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: standH, depth: standD },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Hanging seat under a beam — clear swing between the posts. Not a stick scribble and not a bench on the floor.`,
+      `Seat at ${seatY}". The hangers drop from the beam so the seat can swing. Sit facing out.`,
+    ],
+    historic: false,
+    opening: { width: W, height: standH, depth: standD, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      unit: { ...u, width: W, height: standH, depth: standD, doors: false, shelfCount: 0 },
+    },
+    assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "person" },
+  };
+}
+
 /** Sleep-frame corner post — solid 2x2 (name starts with Leg so cut list + Buy match tables). */
 function sleepFrameLeg(
   name: string,
@@ -2619,12 +3043,13 @@ function buildOttoman(spec: FittedSpec, prompt: string, affordances: HouseAfford
   const x0 = -W / 2;
   const panels: Panel[] = [];
   const leg = Math.max(P, 1.5);
-  const topY = Math.max(P, H - P);
+  const cushion = 3.5;
+  const topY = Math.max(cushion, H - cushion);
   panels.push(panel("upright", "Front left leg", x0, 0, D - leg, leg, topY, leg));
   panels.push(panel("upright", "Front right leg", x0 + W - leg, 0, D - leg, leg, topY, leg));
   panels.push(panel("upright", "Back left leg", x0, 0, 0, leg, topY, leg));
   panels.push(panel("upright", "Back right leg", x0 + W - leg, 0, 0, leg, topY, leg));
-  panels.push(panel("top", "Solid top", x0, topY, 0, W, P, D));
+  panels.push(panel("top", "Cushion top", x0, topY, 0, W, cushion, D));
   panels.push(panel("rail", "Front apron", x0 + leg, Math.max(0, topY - 3), D - leg, Math.max(6, W - leg * 2), 3, P));
   panels.push(panel("rail", "Back apron", x0 + leg, Math.max(0, topY - 3), leg - P, Math.max(6, W - leg * 2), 3, P));
   panels.push(panel("rail", "Left apron", x0 + leg - P, Math.max(0, topY - 3), leg, P, 3, Math.max(4, D - leg * 2)));
@@ -2845,9 +3270,9 @@ function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAfforda
   const D = u.depth;
   const x0 = -W / 2;
   const post = Math.max(P, 1.5);
-  // Sleep deck sits at sit/sleep height; backrest fills the typed overall height.
-  const deckY = Math.min(Math.max(14, Math.round(H * 0.72)), Math.max(14, H - 6));
-  const backH = Math.max(6, H - deckY - P);
+  // Sleep deck sits low enough that the backrest is a real back, still inside the typed height.
+  const deckY = Math.min(Math.max(12, Math.round(H * 0.5)), Math.max(12, H - 9));
+  const backH = Math.max(8, H - deckY - P);
   const innerW = Math.max(12, W - post * 2);
   const innerD = Math.max(20, D - post * 2);
   const panels: Panel[] = [];
@@ -2857,7 +3282,7 @@ function buildDaybed(spec: FittedSpec, prompt: string, affordances: HouseAfforda
   panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
   panels.push(panel("deck", "Sleep deck", x0 + post, deckY, post, innerW, P, innerD));
   panels.push(panel("rail", "Front apron", x0 + post, Math.max(0, deckY - 3.5), D - post - P, innerW, 3.5, P));
-  panels.push(panel("rail", "Backrest", x0 + post, deckY + P, post, innerW, backH, P));
+  panels.push(panel("rail", "Backrest", x0 + post, deckY + P, post, innerW, backH, 1.5));
   panels.push(panel("rail", "Left side rail", x0 + post, deckY + P, post, P, Math.min(4, backH), innerD));
   panels.push(panel("rail", "Right side rail", x0 + W - post - P, deckY + P, post, P, Math.min(4, backH), innerD));
 
@@ -3135,6 +3560,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const affordances: HouseAffordance[] = spec.affordances ?? house?.affordances ?? [];
 
   const sleepLower = prompt.toLowerCase();
+  if (isPorchSwingFrame(sleepLower)) {
+    return buildPorchSwing(spec, prompt);
+  }
+  if (/picnic/.test(sleepLower)) {
+    return buildPicnic(spec, prompt);
+  }
   const nightstand =
     (/nightstand/.test(sleepLower) || (/bedside/.test(sleepLower) && !isBedsideShelf(sleepLower))) &&
     !isBedsideShelf(sleepLower);
@@ -3289,6 +3720,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
     }
     panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+    panels.push(panel("mirror", "Mirror", x0 + 1.1, 1.1, D + 0.02, W - 2.2, H - 2.2, 0.12));
     const name = `Medicine cabinet ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -4087,6 +4519,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   if ((spec.program === "bench" || family === "seat") && !isDaybed(prompt.toLowerCase()) && !isSeatingLoungeClass(prompt.toLowerCase())) {
+    if (/coat/.test(prompt.toLowerCase()) && /bench/.test(prompt.toLowerCase())) {
+      return buildCoatBench(spec, prompt, affordances);
+    }
     const innerW = W - P * 2;
     const cubbyN =
       u.cubbies && u.cubbies >= 2 ? u.cubbies : Math.max(2, Math.min(4, Math.round(W / 16)));
@@ -4113,6 +4548,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     if (wantHooks) {
       // Coat + bench / entry tree: peg rail rises above the seat on the back plane.
       panels.push(panel("rail", "Peg rail", x0, H, 0, W, pegH, P));
+      const pegs = Math.max(3, Math.min(8, Math.round(W / 6)));
+      pushPegs(panels, pegs, x0, H + Math.max(2, pegH * 0.35), P + 0.04, W, Math.min(3.25, Math.max(2.5, D * 0.22)));
     }
     const sitTitle = sitBenchTitleStem(prompt.toLowerCase());
     const coatBench = wantHooks && /coat/.test(prompt.toLowerCase());
@@ -4189,14 +4626,33 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // Pegboard wall panel fitted to an opening — slab panel anatomy (not Yard House wire).
   if (isPegboard(prompt.toLowerCase()) || identityTitleStem(prompt.toLowerCase()) === "Pegboard") {
     const panelD = Math.min(D, Math.max(P, 0.75));
-    panels.push(panel("back", "Pegboard panel", x0, 0, 0, W, H, panelD));
+    const board = panel("back", "Pegboard panel", x0, 0, 0, W, H, panelD);
+    const holes: { x: number; y: number; r: number }[] = [];
+    const step = 4;
+    for (let x = step; x < W - 1; x += step) {
+      for (let y = step; y < H - 1; y += step) {
+        holes.push({ x, y, r: 0.28 });
+      }
+    }
+    board.polygon = {
+      plane: "xy",
+      pts: [
+        [0, 0],
+        [W, 0],
+        [W, H],
+        [0, H],
+      ],
+      holes,
+    };
+    panels.push(board);
+    pushPegs(panels, Math.max(4, Math.min(8, Math.round(W / 8))), x0, H * 0.55, panelD + 0.04, W, 2.25);
     const name = `Pegboard ${W}" × ${H}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: H, depth: panelD },
+      overall: { width: W, height: H, depth: panelD + 2.3 },
       instances: [],
       panels,
       primaryMaterialId: PLY,
@@ -4465,6 +4921,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         : Math.max(3, Math.min(8, Math.round(boardW / 6)));
     const mountFromOpening = Math.round(Math.min(66, Math.max(54, 60)));
     panels.push(panel("back", "Hook board", x0, 0, 0, boardW, boardH, boardD));
+    pushPegs(panels, hooks, x0, Math.max(0.6, boardH * 0.35), boardD + 0.04, boardW, 3.25);
     const name = `Coat hook board ${boardW}" × ${boardH}"`;
     const named = namedStockFromPrompt(prompt);
     const stockId = named && named.category === "lumber" ? named.id : PLY;
@@ -4476,7 +4933,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       name,
       prompt,
       kind: "closet",
-      overall: { width: boardW, height: boardH, depth: boardD },
+      overall: { width: boardW, height: boardH, depth: boardD + 3.3 },
       instances: [],
       panels,
       primaryMaterialId: stockId,
@@ -4502,7 +4959,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ...u,
           width: boardW,
           height: boardH,
-          depth: boardD,
+          depth: boardD + 3.3,
           doors: false,
           shelfCount: 0,
           drawersPerBank: undefined,
@@ -4537,6 +4994,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower)) && !isCoatCubbyWall(coatLower)) {
+    if (/hall\s*tree|coat\s*tree|entry\s*tree/.test(coatLower) && !/wall|portal/.test(coatLower)) {
+      return buildHallTree(spec, prompt, affordances);
+    }
     const portal = portalHook || isDoorPortal(coatLower);
     // Portal dims (e.g. 32×80) are the opening envelope — rail mounts inside, clear swing.
     const portalW = W;
@@ -4568,6 +5028,19 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       : hookWord && hookWords[hookWord[1]] != null
         ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
         : Math.max(3, Math.min(8, Math.round(portalW / 6)));
+    const proudPegs = wantHatShelf && !portal;
+    if (!(/rod/.test(coatLower) && !/peg|hook|rack/.test(coatLower))) {
+      // A 3¼" peg under a 4–8" hat shelf disappears in the 3/4 view — the piece
+      // reads as a tray. Coat pegs run past that shelf, with a stop on the tip.
+      const pegZ = P + 0.04;
+      const pegLen = proudPegs
+        ? Math.round((Math.max(0, shelfD - pegZ) + 3.25) * 8) / 8
+        : Math.min(3.25, Math.max(2.25, shelfD - P - 0.35));
+      const pegY = proudPegs
+        ? Math.max(0.6, railH - 2.25)
+        : Math.max(0.5, railH * 0.42);
+      pushPegs(panels, hooks, x0, pegY, pegZ, portalW, pegLen, 0.75, proudPegs);
+    }
     const mountFromOpening = Math.round(Math.min(60, Math.max(48, portalH * 0.7)));
     const pegNoun = pegRail ? "pegs" : "hooks";
     const label = leashRail
@@ -4614,7 +5087,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           standing
             ? `Wall-mounted coat board: ${portalW}" × ${stackH}" with an ${shelfD}" hat shelf. ¾" plywood.`
             : `Wall-mounted ${label.toLowerCase()}: ${portalW}" peg rail (${railH}") with an ${shelfD}" hat shelf. ¾" plywood.`,
-          `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
+          wantHatShelf
+            ? `${hooks} pegs stand about 3" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6" on center. Hit studs.`
+            : `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
           "Guidance only — not a cubby. No leftover shelves. Size follows what you typed.",
         ];
     return {
@@ -4881,13 +5356,46 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     // Door sits on the floor (y = P); clear opening to top underside is H − 2P.
     // Size the door for a real spoken top air gap (not H − P − gap, which only leaves T).
     const doorH = Math.max(12, H - 2 * P - doorGap);
-    panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
-    panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
-    panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
+    const slatSide = (x: number, name: string) => {
+      panels.push(panel("upright", `${name} front post`, x, 0, D - P, P, H, P));
+      panels.push(panel("upright", `${name} back post`, x, 0, 0, P, H, P));
+      const n = Math.max(3, Math.min(5, Math.round(H / 7)));
+      for (let i = 0; i < n; i++) {
+        const y = 2 + ((H - 6) * i) / Math.max(1, n - 1);
+        panels.push(panel("rail", `${name} slat ${i + 1}`, x, y, P, P, 2, D - P * 2));
+      }
+    };
+    slatSide(x0, "Left");
+    slatSide(x0 + W - P, "Right");
+    const backN = Math.max(3, Math.min(5, Math.round(H / 7)));
+    for (let i = 0; i < backN; i++) {
+      const y = 2 + ((H - 6) * i) / Math.max(1, backN - 1);
+      panels.push(panel("rail", `Back slat ${i + 1}`, x0 + P, y, 0, innerW, 2, P));
+    }
     panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, D - P));
-    // Inset top clears the full-height back — same D − T join as the floor (carcase class).
     panels.push(panel("top", "Top", x0 + P, H - P, P, innerW, P, D - P));
-    panels.push(panel("door", "Door", x0 + P + 0.06, P, D - P, innerW - 0.12, doorH, P));
+    const doorW = innerW - 0.12;
+    const door = panel("door", "Door", x0 + P + 0.06, P, D - P, doorW, doorH, P);
+    const holes: { x: number; y: number; r: number }[] = [];
+    const cols = Math.max(2, Math.round(doorW / 6));
+    const rows = Math.max(3, Math.round(doorH / 6));
+    const r = Math.min(1.5, doorW / (cols + 3));
+    for (let c = 1; c <= cols; c++) {
+      for (let row = 1; row <= rows; row++) {
+        holes.push({ x: (doorW * c) / (cols + 1), y: (doorH * row) / (rows + 1), r });
+      }
+    }
+    door.polygon = {
+      plane: "xy",
+      pts: [
+        [0, 0],
+        [doorW, 0],
+        [doorW, doorH],
+        [0, doorH],
+      ],
+      holes,
+    };
+    panels.push(door);
     const dog = /dog/.test(prompt.toLowerCase());
     const name = dog ? `Dog house ${W}" × ${H}" × ${D}"` : /kennel/.test(prompt.toLowerCase()) ? `Kennel ${W}" × ${H}" × ${D}"` : `Crate ${W}" × ${H}" × ${D}"`;
     return {
@@ -4900,7 +5408,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wooden kennel the dog goes inside — floor, top, two sides, a back, and a hinged door. ¾" plywood. No shelves.`,
+        `${name}. Wooden kennel the dog goes inside — slatted sides and back, a floor, a top, and a hinged door you can see through. ¾" plywood. No shelves.`,
         `The door is ${doorH}" tall, leaving a ${doorGap}" air gap at the top. Drill three 1½" holes near the top of each side and the back so it can breathe.`,
         "Latch the door with a barrel bolt. Sits on the floor. Not a bookcase.",
       ],
@@ -5334,6 +5842,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   if (family === "hung-open") return buildHungOpen(spec, prompt, affordances);
   if (family === "hung-cabinet") return buildHungCabinet(spec, prompt, affordances);
+
+  if (isStandingShopTop(prompt.toLowerCase())) {
+    return buildShopTop(spec, prompt);
+  }
 
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));

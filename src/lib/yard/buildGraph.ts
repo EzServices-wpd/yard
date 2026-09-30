@@ -151,7 +151,7 @@ export function buildFormGraph(
       }
       case "arch": {
         const portal = recipe.kind === "arch";
-        const segs = policy.fat || portal ? 4 : Math.max(8, Math.round(Math.hypot(op.x1 - op.x0, op.z1 - op.z0) / policy.faceStep));
+        const segs = policy.fat ? 4 : portal ? 8 : Math.max(8, Math.round(Math.hypot(op.x1 - op.x0, op.z1 - op.z0) / policy.faceStep));
         const y0 = op.y0 ?? 0;
         const ids: string[] = [];
         for (let i = 0; i <= segs; i++) {

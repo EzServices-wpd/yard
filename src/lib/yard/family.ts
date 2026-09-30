@@ -68,7 +68,6 @@ function isNotHouse(lower: string) {
   ) {
     return true;
   }
-  if (isPorchSwingFrame(lower)) return true;
   // Seating lounge class (lounge / rocking / ottoman) stays house/fitted — never craft House-wire steal.
   if (isSeatingLoungeClass(lower)) {
     /* keep house path */

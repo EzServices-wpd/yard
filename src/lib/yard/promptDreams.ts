@@ -5,6 +5,27 @@ export type DreamGroup = "house" | "weekend";
 /** Hero chips. House first. Weekend second. Paper stays in the engine, off the homepage. */
 export const DREAMS = [
   {
+    id: "corner",
+    group: "house" as const,
+    label: "Corner shelf",
+    prompt: "corner bookshelf, 24 inches along each wall, 60 tall, five shelves",
+    blurb: "Books fit. The corner is the opening.",
+  },
+  {
+    id: "slope",
+    group: "house" as const,
+    label: "Under the slope",
+    prompt: "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+    blurb: "The ceiling is the top of the case.",
+  },
+  {
+    id: "ldesk",
+    group: "house" as const,
+    label: "L in the corner",
+    prompt: "L-shaped corner desk 60 by 48 30 tall",
+    blurb: "Two walls, one desk, the sizes you typed.",
+  },
+  {
     id: "pocket",
     group: "house" as const,
     label: "Pocket vanity",

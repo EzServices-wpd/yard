@@ -1,6 +1,6 @@
 # Bot — read this first
 
-Yard is house-first. **Type it. Buy the parts. Build it.** You write voice, not SKUs.
+Yard is house-first. **Built for the corner the room forgot.** You write voice, not SKUs.
 
 Full briefing (vision + queue + worked examples): [`docs/BOT-BRIEF.md`](BOT-BRIEF.md).
 

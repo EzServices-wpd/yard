@@ -11,6 +11,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
   const setMeasure = useYard((s) => s.setMeasure);
   const applyMeasure = useYard((s) => s.applyMeasure);
+  const measureNote = useYard((s) => s.measureNote);
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const generate = useYard((s) => s.generate);
   const project = useYard((s) => s.project);
@@ -32,12 +33,15 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   }
 
   function apply() {
-    applyMeasure();
+    applyMeasure(true);
     makePlan();
     onBuilt();
   }
 
   const isPocket = Boolean(project.pocket);
+  const isCorner = Boolean(project.fitted?.unit?.corner) || project.fitted?.unit?.odd?.kind === "angled-corner";
+  const isSlope = project.fitted?.unit?.odd?.kind === "sloped";
+  const slopeDeg = isSlope ? (project.fitted?.unit?.odd?.params as { angle?: number } | undefined)?.angle : undefined;
   const wNum = parseFloat(measure.width);
   const hNum = parseFloat(measure.height);
   const dNum = parseFloat(measure.depth);
@@ -62,6 +66,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
           if (emptyTalk) return emptyTalk.panelBlurb;
           if (project.fitted) {
+            if (isCorner) return "Wall A, wall B, and the height. The angle is the corner those walls make — just over 20° through just under 170°. 90° is the right triangle.";
+            if (isSlope) return `Wide, deep, the high side, and the low side. The plan states the degree those two heights make${slopeDeg != null ? ` — ${slopeDeg}° now` : ""}.`;
             return measureRefitTalk(envOpts).panelBlurb;
           }
           if (project.kind !== "closet" && project.kind !== "opening") {
@@ -133,7 +139,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       ) : (
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Field
-            label="W"
+            label={isCorner ? "Wall A" : isSlope ? "Wide" : "W"}
             value={measure.width}
             onChange={(v) => {
               setMeasure({ width: v });
@@ -141,7 +147,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label="H"
+            label={isSlope ? "High" : "H"}
             value={measure.height}
             onChange={(v) => {
               setMeasure({ height: v });
@@ -149,7 +155,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label="D"
+            label={isCorner ? "Wall B" : isSlope ? "Deep" : "D"}
             value={measure.depth}
             onChange={(v) => {
               setMeasure({ depth: v });
@@ -158,6 +164,26 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           />
         </div>
       )}
+      {isCorner && (
+        <div className="mt-2">
+          <Field
+            label="Angle"
+            unit="°"
+            value={measure.angle ?? ""}
+            onChange={(v) => setMeasure({ angle: v })}
+          />
+        </div>
+      )}
+      {isSlope && (
+        <div className="mt-2">
+          <Field
+            label="Low"
+            value={measure.lowSide ?? ""}
+            onChange={(v) => setMeasure({ lowSide: v })}
+          />
+        </div>
+      )}
+      {measureNote ? <p className="mt-3 text-sm leading-relaxed text-fg">{measureNote}</p> : null}
       {!isPocket && (
         <label className="mt-3 block text-xs text-muted">
           This is a
@@ -243,14 +269,17 @@ function Field({
   label,
   value,
   onChange,
+  unit = "″",
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  unit?: string;
 }) {
   return (
     <label className="text-xs text-muted">
-      {label}″
+      {label}
+      {unit}
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -6,6 +6,7 @@ import { DREAMS } from "@/lib/yard/prompt";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yard/operateFaces";
+import { pieceControls, promptNamingFace, promptNamingHooks, promptWithDrawers } from "@/lib/yard/face";
 import { MeasureFields } from "./measure-overlay";
 import { YardsMenu } from "./yards-menu";
 import { useStockLabel } from "./use-stock-label";
@@ -141,6 +142,23 @@ export function BenchOptionsPanel({
       (cutMode === "whole" ||
         (cutMode === "auto" && project.instances.length > 0 && project.instances.every((i) => i.cutLength == null))));
   const pieces = plan?.totals.pieces;
+  const face = pieceControls(project);
+  const showFace = face.headboard || face.fronts || face.base;
+  const rebuild = (nextPrompt: string) => {
+    if (nextPrompt.trim() === project.prompt.trim()) return;
+    const api = useYard.getState();
+    const materialId = project.primaryMaterialId;
+    const spine = project.supportOffer?.included;
+    api.beginBuild();
+    window.setTimeout(() => {
+      try {
+        api.generate(nextPrompt, materialId, undefined, { includeSpine: spine, fresh: true });
+        api.makePlan();
+      } finally {
+        api.revealBench();
+      }
+    }, 48);
+  };
   const modes: { id: WorkMode; label: string }[] = [
     { id: "look", label: "Look" },
     ...(canWalk ? [{ id: "walk" as const, label: "Walk" }] : []),
@@ -207,19 +225,17 @@ export function BenchOptionsPanel({
             {showLoadBtn && <Toggle on={showLoad} onClick={() => setShowLoad(!showLoad)} label="Load" />}
           </div>
           {!housePath && (
-            <>
-              <Row label="Move">
-                <Seg items={modes.map((m) => ({ id: m.id, label: m.label }))} value={workMode} onChange={(v) => setWorkMode(v as WorkMode)} />
-              </Row>
-              <Row label="Camera">
-                <Seg
-                  items={(["iso", "front", "side", "top"] as const).map((c) => ({ id: c, label: c === "iso" ? "3/4" : c[0].toUpperCase() + c.slice(1) }))}
-                  value={camera}
-                  onChange={(v) => setCamera(v as typeof camera)}
-                />
-              </Row>
-            </>
+            <Row label="Move">
+              <Seg items={modes.map((m) => ({ id: m.id, label: m.label }))} value={workMode} onChange={(v) => setWorkMode(v as WorkMode)} />
+            </Row>
           )}
+          <Row label="Camera">
+            <Seg
+              items={(["iso", "front", "side", "top"] as const).map((c) => ({ id: c, label: c === "iso" ? "3/4" : c[0].toUpperCase() + c.slice(1) }))}
+              value={camera}
+              onChange={(v) => setCamera(v as typeof camera)}
+            />
+          </Row>
           {stickModel && (
             <Row label="Detail">
               <Seg
@@ -230,6 +246,90 @@ export function BenchOptionsPanel({
                 ]}
                 value={detail}
                 onChange={(v) => setDetail(v as typeof detail)}
+              />
+            </Row>
+          )}
+        </Section>
+      )}
+
+      {built && (showFace || face.drawers != null || face.hooks) && (
+        <Section id="face" title={showFace ? "Face" : face.drawers != null ? "Drawers" : "Hooks"}>
+          {face.hooks && (
+            <Row label="Hooks">
+              <Seg
+                items={[
+                  { id: "adult", label: "Adult" },
+                  { id: "kids", label: "Kids" },
+                  { id: "both", label: "Both" },
+                ]}
+                value={face.hooks}
+                onChange={(v) => rebuild(promptNamingHooks(project.prompt, v as NonNullable<typeof face.hooks>))}
+              />
+            </Row>
+          )}
+          {face.drawers != null && (
+            <Row label="Drawers">
+              <div className="flex overflow-hidden rounded-md border border-border text-xs" role="group" aria-label="Drawers">
+                <button
+                  type="button"
+                  data-yard-drawers="less"
+                  disabled={face.drawers <= 0}
+                  aria-label="Remove a drawer"
+                  onClick={() => rebuild(promptWithDrawers(project.prompt, face.drawers! - 1))}
+                  className="h-9 min-w-11 text-muted hover:text-fg disabled:opacity-30"
+                >
+                  −
+                </button>
+                <span className="flex h-9 min-w-8 items-center justify-center text-fg" data-yard-drawer-count>
+                  {face.drawers}
+                </span>
+                <button
+                  type="button"
+                  data-yard-drawers="more"
+                  disabled={face.drawers >= 8}
+                  aria-label="Add a drawer"
+                  onClick={() => rebuild(promptWithDrawers(project.prompt, face.drawers! + 1))}
+                  className="h-9 min-w-11 text-muted hover:text-fg disabled:opacity-30"
+                >
+                  +
+                </button>
+              </div>
+            </Row>
+          )}
+          {face.headboard && (
+            <Row label="Headboard">
+              <Seg
+                items={[
+                  { id: "plain", label: "Plain" },
+                  { id: "slats", label: "Slats" },
+                  { id: "framed", label: "Framed" },
+                ]}
+                value={face.headboardMode}
+                onChange={(v) => rebuild(promptNamingFace(project.prompt, { headboard: v as typeof face.headboardMode }))}
+              />
+            </Row>
+          )}
+          {face.fronts && (
+            <Row label="Front">
+              <Seg
+                items={[
+                  { id: "flat", label: "Flat" },
+                  { id: "shaker", label: "Shaker" },
+                ]}
+                value={face.frontMode}
+                onChange={(v) => rebuild(promptNamingFace(project.prompt, { fronts: v as "flat" | "shaker" }))}
+              />
+            </Row>
+          )}
+          {face.base && (
+            <Row label="Base">
+              <Seg
+                items={[
+                  { id: "none", label: "None" },
+                  { id: "molding", label: "Strip" },
+                ]}
+                value={face.baseMode}
+                onChange={(v) => rebuild(promptNamingFace(project.prompt, { base: v as "none" | "molding" }))}
               />
             </Row>
           )}

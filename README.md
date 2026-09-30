@@ -1,6 +1,6 @@
 # Yard
 
-**Playground for makers. Utility for real-world builders.**
+**Built for the corner the room forgot.**
 
 Type a dream → see it on the bench → Help Me Build → cut list, shop links, step plates, export.
 

@@ -287,6 +287,11 @@ export function composeProducts(
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;
 
+  // Coat rack + bench is one hall tree. Stacking the wall rack on the seat
+  // stretches the bench sides into fins and runs the pegs across the seat.
+  const stems = kept.map((c) => c.stem);
+  if (stems.length === 2 && stems.includes("Coat rack") && stems.includes("Bench")) return null;
+
   const parts: Part[] = [];
   for (const c of kept) {
     const project = build(shareStock(c.clause, prompt));

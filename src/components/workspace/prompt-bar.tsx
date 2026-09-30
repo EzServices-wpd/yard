@@ -58,7 +58,7 @@ export function PromptBar({
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={housePath ? "taller · 36 wide · or type a new opening" : "bathroom vanity, 36 wide"}
+          placeholder={housePath ? "along the other wall · under the slope · or a new opening" : "corner shelf, 24 inches along each wall"}
           aria-label="What do you want to build?"
           enterKeyHint="go"
           className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"

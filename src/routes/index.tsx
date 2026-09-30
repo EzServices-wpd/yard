@@ -4,6 +4,7 @@ import { ArrowRight, Box, Ruler, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
+import { HoleStart } from "@/components/site/hole-start";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -11,6 +12,11 @@ export const Route = createFileRoute("/")({
 
 const HOUSE = DREAMS.filter((d) => d.group === "house");
 const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
+const GAP_IDS = new Set(["corner", "slope", "ldesk", "pocket"]);
+const GAPS = HOUSE.filter((d) => GAP_IDS.has(d.id));
+const HOUSE_REST = HOUSE.filter((d) => !GAP_IDS.has(d.id));
+
+const LINEN = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
 
 const STOCKS = [
   { id: "plywood", label: "¾ plywood", append: "from 3/4 plywood" },
@@ -118,7 +124,7 @@ function LandingPage() {
               The plan the lumber aisle should have printed
             </p>
             <h1 className="mt-4 max-w-xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
-              Type it. Buy the parts. Build it.
+              Built for the corner the room forgot.
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-ink-muted sm:text-lg">
               Measure a space. Yard returns a cut list, hardware, and shop links — for the hole you actually have.
@@ -139,7 +145,7 @@ function LandingPage() {
                   id="dream"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="bathroom vanity, 36 wide"
+                  placeholder="corner shelf, 24 inches along each wall"
                   className="h-12 flex-1 rounded-lg border border-rule bg-paper px-4 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow,border-color] duration-150 focus:border-ink/30 focus:ring-2"
                 />
                 <button
@@ -169,13 +175,57 @@ function LandingPage() {
                   </span>
                 ))}
               </p>
+              <p className="mt-3 text-sm text-ink-muted">
+                <span className="mr-1">Same closet, two stocks.</span>
+                <button type="button" onClick={() => go(LINEN)} className="underline decoration-rule underline-offset-[5px] hover:decoration-ink">
+                  ¾ plywood
+                </button>
+                <span className="mx-1.5 text-rule">/</span>
+                <button
+                  type="button"
+                  onClick={() => go(`${LINEN} from 2x4`)}
+                  className="underline decoration-rule underline-offset-[5px] hover:decoration-ink"
+                >
+                  2×4
+                </button>
+                <span className="ml-1.5">The size does not move.</span>
+              </p>
             </form>
+
+            <HoleStart onPick={go} />
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the gap</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {HOUSE.map((d) => (
+                  {GAPS.map((d) => (
+                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => go("corner bookshelf, 6 inches along each wall, 60 tall, five shelves")}
+                  className="mt-3 block text-left text-sm text-ink-muted underline decoration-rule underline-offset-[5px] hover:text-ink hover:decoration-ink"
+                >
+                  A corner too small for books
+                </button>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {WEEKEND.map((d) => (
+                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Also the house</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {HOUSE_REST.map((d) => (
                     <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
                       {d.label}
                     </button>
@@ -188,16 +238,6 @@ function LandingPage() {
                   See more of the house
                   <ArrowRight className="size-3.5" />
                 </Link>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {WEEKEND.map((d) => (
-                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </div>

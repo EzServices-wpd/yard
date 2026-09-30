@@ -9,7 +9,7 @@ export const Route = createFileRoute("/about")({
       { title: "About · Yard" },
       {
         name: "description",
-        content: "Yard turns what you want to build into a cut list, buy list, and shop-ready plan. Free to use.",
+        content: "Built for the corner the room forgot. Yard turns that gap into a cut list, a buy list, and a plan you can build.",
       },
       { property: "og:title", content: "About · Yard" },
       { property: "og:url", content: `https://${host}/about` },
@@ -25,7 +25,7 @@ function AboutPage() {
       <main className="mx-auto max-w-2xl px-4 pb-20 pt-10 sm:pt-14">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">About</p>
         <h1 className="mt-3 font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">
-          Type what you want. Get a plan you can build.
+          Built for the corner the room forgot.
         </h1>
         <div className="mt-8 space-y-5 text-base leading-relaxed text-ink-muted sm:text-lg">
           <p>

@@ -167,6 +167,17 @@ export type Panel = {
     height: number;
     label?: string;
   }[];
+  /**
+   * One swinging door broken into stiles, rails, and a panel.
+   * Same id rotates about the same hinge so Operate still opens one door.
+   */
+  leaf?: {
+    id: string;
+    hinge: "left" | "right";
+    hingeX: number;
+    hingeZ: number;
+    role: "hinge" | "pull" | "part";
+  };
 };
 
 export type OpeningKind = "alcove" | "window" | "room" | "pocket" | "door";
@@ -467,6 +478,10 @@ export type MeasureDraft = {
   backWidth?: string;
   leftDepth?: string;
   rightDepth?: string;
+  /** Corner the two walls make, in degrees. Only on a corner shelf. */
+  angle?: string;
+  /** Low side of a slope. The high side is `height`. */
+  lowSide?: string;
 };
 
 export type ExportOptions = {

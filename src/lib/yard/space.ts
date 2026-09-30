@@ -84,6 +84,113 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
   return p.replace(/\s{2,}/g, " ").trim();
 }
 
+function fmtInches(n: number) {
+  return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(Math.round(n * 10) / 10);
+}
+
+/** A corner shelf can be built from just over 20° through just under 170°, including 90°. */
+export function cornerAngleOk(deg: number): boolean {
+  return deg > 20 && deg < 170;
+}
+
+/**
+ * Rewrite a corner shelf so the next build is the same piece at a new angle.
+ * 90° is the right-triangle shelf. Anything else in range is a wedge.
+ */
+export function stampCornerAngle(
+  prompt: string,
+  angle: number,
+  legA: number,
+  legB: number,
+  height: number,
+  tiers?: number,
+  quarter?: boolean,
+): string {
+  const a = fmtInches(legA);
+  const b = fmtInches(legB);
+  const h = fmtInches(height);
+  const n = tiers && tiers > 0 ? `, ${tiers} shelves` : "";
+  const book = /book/i.test(prompt);
+  const equal = Math.abs(legA - legB) < 0.05;
+  if (Math.abs(angle - 90) < 0.05) {
+    const noun = quarter ? "quarter-round corner shelf" : book ? "corner bookshelf" : "corner shelf";
+    return equal
+      ? `${noun}, ${a} inches along each wall, ${h} tall${n}`
+      : `${noun} ${a} wide ${b} deep ${h} tall${n}`;
+  }
+  const noun = book ? "corner bookshelf" : "corner shelf";
+  const deg = fmtInches(angle);
+  return equal
+    ? `${deg} degree ${noun}, ${a} inches along each wall, ${h} tall${n}`
+    : `${deg} degree ${noun} ${a} wide ${b} deep ${h} tall${n}`;
+}
+
+/** Put the high side and the low side back into a slope sentence. The degree is computed, not typed. */
+export function stampSlopeEnds(prompt: string, high: number, low: number): string {
+  const H = fmtInches(high);
+  const L = fmtInches(low);
+  let p = prompt;
+  if (/\bhigh\s+side\b/i.test(p)) {
+    p = p.replace(
+      /(\d+(?:\.\d+)?)((?:\s*(?:in|inch|inches|["″]))?\s*(?:tall|high)?\s*(?:at|on)\s+(?:the\s+)?high\s+side)/i,
+      `${H}$2`,
+    );
+  } else {
+    p = `${p}, ${H} at the high side`;
+  }
+  if (/\blow\s+side\b/i.test(p)) {
+    p = p.replace(
+      /(\d+(?:\.\d+)?)((?:\s*(?:in|inch|inches|["″]))?\s*(?:tall|high)?\s*(?:at|on)\s+(?:the\s+)?low\s+side)/i,
+      `${L}$2`,
+    );
+  } else {
+    p = `${p}, ${L} at the low side`;
+  }
+  return p.replace(/\s{2,}/g, " ").trim();
+}
+
+export type AngleMeasure = {
+  width: string;
+  height: string;
+  depth: string;
+  angle?: string;
+  lowSide?: string;
+};
+
+/** Measure fields for a piece whose shape is an angle. Null for everything else. */
+export function angleMeasureFromProject(project: YardProject): AngleMeasure | null {
+  const corner = project.fitted?.unit?.corner;
+  if (corner && !project.fitted?.unit?.odd) {
+    return {
+      width: fmtInches(corner.legA),
+      height: fmtInches(corner.height),
+      depth: fmtInches(corner.legB),
+      angle: "90",
+    };
+  }
+  const odd = project.fitted?.unit?.odd;
+  if (odd?.kind === "angled-corner") {
+    const p = odd.params as { L?: number; M?: number; H?: number; theta?: number };
+    const leg = p.L ?? project.overall.width;
+    return {
+      width: fmtInches(leg),
+      height: fmtInches(p.H ?? project.overall.height),
+      depth: fmtInches(p.M ?? leg),
+      angle: fmtInches(p.theta ?? 90),
+    };
+  }
+  if (odd?.kind === "sloped") {
+    const p = odd.params as { W?: number; D?: number; hiH?: number; loH?: number };
+    return {
+      width: fmtInches(p.W ?? project.overall.width),
+      height: fmtInches(p.hiH ?? project.overall.height),
+      depth: fmtInches(p.D ?? project.overall.depth),
+      lowSide: fmtInches(p.loH ?? 0),
+    };
+  }
+  return null;
+}
+
 export function classifySpace(m: SpaceMeasurement): SpaceKind {
   if (m.kindHint) return m.kindHint;
   const d = m.depthIn ?? 0;

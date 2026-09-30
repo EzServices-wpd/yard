@@ -29,6 +29,7 @@ import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { composeProducts } from "./compose";
+import { applySpokenFace } from "./face";
 
 export function emptyProject(): YardProject {
   return {
@@ -103,7 +104,12 @@ function finishHouse(
     },
     honorUnit,
   });
-  if (stock && !kind && next.panels.length) {
+  // Sticks tile whatever faces exist, so a slat or a shaker stile has to be a
+  // panel before the recast. Sheet and board carcases are faced after the
+  // interference solve, once doors have been pulled onto the front.
+  const recastCraft = Boolean(stock && !kind && next.panels.length);
+  if (recastCraft && stock) next = applySpokenFace(next, prompt);
+  if (recastCraft && stock) {
     next = recastPanelsAsStock(next, stock);
   } else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
     next = applyExplicitBoardCarcase(next, stock);
@@ -149,7 +155,8 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
-  const project = solveModel(generateRaw(...args));
+  const solved = solveModel(generateRaw(...args));
+  const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
   return fitWeekendSize(project, args[0], args[3]?.sizeOverride);
 }
 
@@ -312,7 +319,6 @@ function generateRaw(
     isBedsideShelf(lower);
   if (
     !climbPrimary &&
-    !isPorchSwingFrame(lower) &&
     !isAdirondackChair(lower) &&
     (!namesSitChair(lower) || isSeatingLoungeClass(lower)) &&
     weekendMech !== "launcher" &&
@@ -426,9 +432,16 @@ function generateRaw(
       );
     };
     let lat = latticeAt(box.height);
-    // Thick stock stands proud of the centreline: bring the finished height back onto the typed height.
+    // Parametric rule (CadQuery / FreeCAD): the typed height is a constraint.
+    // Members are drawn on the centreline, so thick stock stands proud and the
+    // tower grows. Pull the skeleton in by that overrun. Craft-thin sticks stay
+    // on the tuned profile — a popsicle Eiffel is already within an inch.
+    const dims = members.density.dims;
+    const standOff = dims.diameter ?? Math.min(dims.thickness ?? dims.height ?? dims.width ?? 0, dims.width ?? dims.height ?? 0);
     const over = (lat.overall?.height ?? box.height) - box.height;
-    if (over > 1 && (freeSize || !eiffelK)) lat = latticeAt(Math.max(6, box.height - over));
+    if (over > 1 && (standOff >= 0.7 || freeSize || !eiffelK)) {
+      lat = latticeAt(Math.max(6, box.height - over));
+    }
     return lat;
   }
 

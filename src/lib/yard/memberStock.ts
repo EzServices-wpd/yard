@@ -118,12 +118,29 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
 
   const instances: YardInstance[] = [];
   const pitch = across + gap;
+
+  type Grid = {
+    panel: Panel;
+    thinA: Ax;
+    midA: Ax;
+    longA: Ax;
+    thinN: number;
+    midN: number;
+    longN: number;
+    nAcross: number;
+    nAlong: number;
+    cover: number;
+    stepAlong: number;
+  };
+
+  const grids: Grid[] = [];
   for (const panel of project.panels) {
     const axes: { a: Ax; n: number }[] = [
-      { a: "x", n: panel.size.width },
-      { a: "y", n: panel.size.height },
-      { a: "z", n: panel.size.depth },
-    ].sort((a, b) => a.n - b.n);
+      { a: "x" as Ax, n: panel.size.width },
+      { a: "y" as Ax, n: panel.size.height },
+      { a: "z" as Ax, n: panel.size.depth },
+    ];
+    axes.sort((a, b) => a.n - b.n);
     const thinA = axes[0].a;
     const midA = axes[1].a;
     const longA = axes[2].a;
@@ -136,38 +153,140 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
     const stepAlong = nAlong === 1 ? 0 : Math.max(0.15, (longN - cover) / (nAlong - 1));
-    for (let i = 0; i < nAcross; i++) {
-      const v = nAcross === 1 ? midN / 2 : (i + 0.5) * (midN / nAcross);
-      for (let s = 0; s < nAlong; s++) {
-        const start = nAlong === 1 ? Math.max(0, (longN - cover) / 2) : Math.min(s * stepAlong, Math.max(0, longN - cover));
-        const aL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
-        const bL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
-        aL[longA] = start;
-        bL[longA] = start + cover;
-        aL[midA] = Math.min(midN, Math.max(0, v));
-        bL[midA] = aL[midA];
-        aL[thinA] = thinN / 2;
-        bL[thinA] = thinN / 2;
-        const a = worldOf(panel, aL.x, aL.y, aL.z);
-        const b = worldOf(panel, bL.x, bL.y, bL.z);
-        const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-        if (len < 0.15) continue;
-        instances.push({
-          id: createId("sk"),
-          catalogId: item.id,
-          position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
-          rotation: { x: 0, y: 0, z: 0 },
-          cutLength: whole ? undefined : Math.round(Math.min(len, stockL) * 100) / 100,
-          role: panel.type,
-          join,
-          from: a,
-          to: b,
-        });
-        if (instances.length >= budget) break;
+    grids.push({ panel, thinA, midA, longA, thinN, midN, longN, nAcross, nAlong, cover, stepAlong });
+  }
+
+  const place = (g: Grid, i: number, s: number) => {
+    const { panel, thinA, midA, longA, thinN, midN, longN, nAcross, nAlong, cover, stepAlong } = g;
+    const v = nAcross === 1 ? midN / 2 : (i + 0.5) * (midN / nAcross);
+    const start = nAlong === 1 ? Math.max(0, (longN - cover) / 2) : Math.min(s * stepAlong, Math.max(0, longN - cover));
+    const aL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
+    const bL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
+    aL[longA] = start;
+    bL[longA] = start + cover;
+    aL[midA] = Math.min(midN, Math.max(0, v));
+    bL[midA] = aL[midA];
+    aL[thinA] = thinN / 2;
+    bL[thinA] = thinN / 2;
+    const a = worldOf(panel, aL.x, aL.y, aL.z);
+    const b = worldOf(panel, bL.x, bL.y, bL.z);
+    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (len < 0.15) return;
+    instances.push({
+      id: createId("sk"),
+      catalogId: item.id,
+      position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: whole ? undefined : Math.round(Math.min(len, stockL) * 100) / 100,
+      role: panel.type,
+      join,
+      from: a,
+      to: b,
+    });
+  };
+
+  const total = grids.reduce((n, g) => n + g.nAcross * g.nAlong, 0);
+  if (total <= budget) {
+    for (const g of grids) {
+      for (let i = 0; i < g.nAcross; i++) {
+        for (let s = 0; s < g.nAlong; s++) place(g, i, s);
       }
-      if (instances.length >= budget) break;
     }
-    if (instances.length >= budget) break;
+  } else {
+    // Filling the first faces solid and dropping the rest erases the door,
+    // the drawer, and the kick. Share the budget: every face keeps its
+    // outline, then leftovers fill the interiors.
+    const edgeN = (g: Grid) =>
+      g.nAcross * g.nAlong - Math.max(0, g.nAcross - 2) * Math.max(0, g.nAlong - 2);
+    const edges = grids.map(edgeN);
+    const edgeSum = edges.reduce((n, e) => n + e, 0);
+    const quotas = grids.map((g, idx) => {
+      const full = g.nAcross * g.nAlong;
+      if (edgeSum >= budget) {
+        const share = Math.max(1, Math.min(edges[idx], Math.floor((budget * edges[idx]) / Math.max(edgeSum, 1))));
+        return Math.min(full, share);
+      }
+      return edges[idx];
+    });
+    if (edgeSum < budget) {
+      const interiors = grids.map((g, idx) => g.nAcross * g.nAlong - edges[idx]);
+      const intSum = interiors.reduce((n, e) => n + e, 0);
+      let left = budget - edgeSum;
+      for (let idx = 0; idx < grids.length; idx++) {
+        const extra = intSum ? Math.floor((left * interiors[idx]) / intSum) : 0;
+        quotas[idx] = Math.min(grids[idx].nAcross * grids[idx].nAlong, quotas[idx] + extra);
+      }
+      let rem = budget - quotas.reduce((n, q) => n + q, 0);
+      for (let k = 0; rem > 0 && k < grids.length * 3; k++) {
+        const idx = k % grids.length;
+        const full = grids[idx].nAcross * grids[idx].nAlong;
+        if (quotas[idx] < full) {
+          quotas[idx] += 1;
+          rem -= 1;
+        }
+      }
+    } else {
+      let rem = budget - quotas.reduce((n, q) => n + q, 0);
+      for (let k = 0; rem > 0 && k < grids.length * 3; k++) {
+        const idx = k % grids.length;
+        if (quotas[idx] < edges[idx]) {
+          quotas[idx] += 1;
+          rem -= 1;
+        }
+      }
+    }
+
+    const sample = (g: Grid, quota: number, fn: (i: number, s: number) => void) => {
+      const nA = g.nAcross;
+      const nL = g.nAlong;
+      if (quota >= nA * nL) {
+        for (let i = 0; i < nA; i++) for (let s = 0; s < nL; s++) fn(i, s);
+        return;
+      }
+      const seen = new Set<string>();
+      const take = (i: number, s: number) => {
+        if (seen.size >= quota) return;
+        if (i < 0 || s < 0 || i >= nA || s >= nL) return;
+        const key = `${i},${s}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        fn(i, s);
+      };
+      take(0, 0);
+      take(nA - 1, 0);
+      take(0, nL - 1);
+      take(nA - 1, nL - 1);
+      const perimeter: [number, number][] = [];
+      for (let i = 0; i < nA; i++) {
+        perimeter.push([i, 0]);
+        if (nL > 1) perimeter.push([i, nL - 1]);
+      }
+      for (let s = 1; s < nL - 1; s++) {
+        perimeter.push([0, s]);
+        if (nA > 1) perimeter.push([nA - 1, s]);
+      }
+      if (seen.size < quota && perimeter.length) {
+        const stride = Math.max(1, Math.ceil(perimeter.length / Math.max(1, quota - seen.size)));
+        for (let k = 0; k < perimeter.length && seen.size < quota; k += stride) take(perimeter[k][0], perimeter[k][1]);
+      }
+      const innerA = Math.max(0, nA - 2);
+      const innerL = Math.max(0, nL - 2);
+      const innerN = innerA * innerL;
+      const left = quota - seen.size;
+      if (left > 0 && innerN > 0) {
+        const stride = Math.max(1, Math.round(Math.sqrt(innerN / left)));
+        for (let i = 1; i < nA - 1 && seen.size < quota; i += stride) {
+          for (let s = 1; s < nL - 1 && seen.size < quota; s += stride) take(i, s);
+        }
+      }
+    };
+
+    for (let idx = 0; idx < grids.length && instances.length < budget; idx++) {
+      const room = budget - instances.length;
+      sample(grids[idx], Math.min(quotas[idx], room), (i, s) => {
+        if (instances.length < budget) place(grids[idx], i, s);
+      });
+    }
   }
 
   const note = `Same ${project.name} in ${item.name}. Each face is that stock.`;

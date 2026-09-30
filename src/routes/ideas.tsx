@@ -40,7 +40,7 @@ function IdeasPage() {
 
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-10 sm:pt-14">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          Type it. Buy the parts. Build it.
+          Built for the corner the room forgot.
         </p>
         <h1 className="mt-3 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">
           A house full of things you can actually build.

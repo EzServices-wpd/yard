@@ -335,6 +335,13 @@ export function buildCornerUnit(spec: FittedSpec, prompt: string): YardProject {
     );
   }
   notes.push("Walls are rarely a perfect 90°. Dry-fit one shelf in the corner first and shave the edge that touches if it rocks.");
+  const spokenDeg = prompt.match(/\b(\d{2,3})\s*(?:°|deg(?:ree)?s?)\b/i);
+  if (spokenDeg && /\b(?:book\s*shel(?:f|ves)|bookcases?|shel(?:f|ves|ving))\b/i.test(prompt)) {
+    const spoken = parseFloat(spokenDeg[1]);
+    if (spoken <= 20 || spoken >= 170) {
+      notes.push(`${fmt(spoken)}° is outside the corner this shelf can be — just over 20° through just under 170°. This one is 90°.`);
+    }
+  }
 
   const spec2: FittedSpec = {
     ...spec,
@@ -426,12 +433,14 @@ export function cornerSteps(project: YardProject): AssemblyStep[] {
     .sort((p, q) => p.position.y - q.position.y)
     .map((p, i) => `cleat pair ${i + 1} at ${tape(p.position.y - lowestCleat)}`)
     .join(", ");
+  const reach = Math.round((Math.min(c.legA, c.legB) / Math.SQRT2) * 10) / 10;
+  const tiny = reach < 6;
   const steps: AssemblyStep[] = [];
   let n = 1;
   steps.push({
     step: n++,
     title: "Check the corner — do not cut yet",
-    description: `${project.name}. This tucks into an inside corner where two walls meet. Hold a framing square (or a big book) in the corner: if the walls meet at 90°, the shelves sit flat against both walls. Measure ${inch(c.legA)} out along one wall and ${inch(c.legB)} along the other and mark both. ${c.wallHung ? "Find the studs or corner framing on both walls with a stud finder." : `The unit stands ${inch(c.height)} tall on the floor; check nothing (outlet, baseboard heater, vent) is in the way.`} ${shelves.length} ${tri ? "triangle" : "quarter-round"} shelves${c.wallHung ? `, ${cleatsA.length + cleatsB.length} wall cleats` : ", 2 wall panels"} on this list.`,
+    description: `${project.name}. This tucks into an inside corner where two walls meet. Hold a framing square (or a big book) in the corner: if the walls meet at 90°, the shelves sit flat against both walls. Measure ${inch(c.legA)} out along one wall and ${inch(c.legB)} along the other and mark both. ${c.wallHung ? "Find the studs or corner framing on both walls with a stud finder." : `The unit stands ${inch(c.height)} tall on the floor; check nothing (outlet, baseboard heater, vent) is in the way.`} ${shelves.length} ${tri ? "triangle" : "quarter-round"} shelves${c.wallHung ? `, ${cleatsA.length + cleatsB.length} wall cleats` : ", 2 wall panels"} on this list.${tiny ? ` About ${reach}" of shelf in front of the corner — phones and plants, not a row of books. Type a longer run along each wall if you want books.` : ""}`,
     tips: "Baseboard in the corner? Measure above it, or notch the bottom of the wall panels to clear it. If a number here disagrees with the cut list, trust the cut list.",
     partsUsed: ["*"],
   });
@@ -508,7 +517,9 @@ export function cornerSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: "Load it and check",
-    description: `Press down on the front point of each shelf. It should feel solid on both walls. Put the heaviest books on the lowest shelves.`,
+    description: tiny
+      ? `Press down on the front point of each shelf. It should feel solid on both walls. Leave the books in a deeper case — this corner holds phones and plants.`
+      : `Press down on the front point of each shelf. It should feel solid on both walls. Put the heaviest books on the lowest shelves.`,
     tips: "If a shelf rocks, the walls are not quite 90° — shim behind the loose side or sand the edge that touches.",
     partsUsed: shelves.map((p) => p.name),
   });

@@ -501,13 +501,21 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 </p>
                 <p className="mt-0.5 text-faint">
                   {(() => {
-                    const envelope = fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
-                      shape: project.fitted?.unit?.shape,
-                      prompt: project.prompt,
-                      name: project.name,
-                      legs: project.fitted?.unit?.legs,
-                    });
-                    const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
+                    const pocketUnit = project.pocket?.unit;
+                    const inch = (n: number) => {
+                      const r = Math.round(n * 10) / 10;
+                      return Number.isInteger(r) ? String(r) : r.toFixed(1);
+                    };
+                    // Pocket overall is the room the unit stands in. The bench shows the unit you cut.
+                    const envelope = pocketUnit
+                      ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
+                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
+                          shape: project.fitted?.unit?.shape,
+                          prompt: project.prompt,
+                          name: project.name,
+                          legs: project.fitted?.unit?.legs,
+                        });
+                    const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
                     // Bare opening-storage HUD: keep dash honesty; companion must not say "the unit".
                     const companion = emptyTalk
                       ? emptyTalk.hudCompanion

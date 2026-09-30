@@ -159,6 +159,14 @@ export function cutListName(name: string, type?: string): string {
   if (/^plinth$/i.test(name.trim())) return "Plinth";
   if (/toekick|toe[- ]?kick|kick strip/i.test(name) || type === "kick") return "Kick strip";
   if (/desktop|desk top/i.test(name)) return "Desktop";
+  if (/^headboard post$/i.test(name)) return "Headboard post";
+  if (/^headboard rail$/i.test(name)) return "Headboard rail";
+  if (/^headboard slat$/i.test(name)) return "Headboard slat";
+  if (/^headboard panel$/i.test(name)) return "Headboard panel";
+  if (/^shaker stile$/i.test(name)) return "Shaker stile";
+  if (/^shaker rail$/i.test(name)) return "Shaker rail";
+  if (/^shaker panel$/i.test(name)) return "Shaker panel";
+  if (/^base molding$/i.test(name)) return "Base molding";
   if (/headboard/i.test(name)) return "Headboard";
   if (/picture ledge/i.test(name)) return "Picture ledge";
   if (/^apron\b/i.test(name) || (type === "rail" && /apron/i.test(name))) return "Apron";

@@ -43,7 +43,7 @@ export const GALLERY: GalleryPlan[] = [
     label: "36″ vanity with two doors",
     size: "36 × 32 × 21",
     prompt: 'bathroom vanity 36" wide × 21" deep × 32" tall with two doors',
-    blurb: "Two doors, a kick, the width you typed.",
+    blurb: "Two doors. The width, depth, and height you typed.",
     group: "house",
   },
   {
@@ -59,7 +59,7 @@ export const GALLERY: GalleryPlan[] = [
     label: "Corner bookshelf",
     size: "6″ along each wall · 60 tall",
     prompt: "corner bookshelf, 6 inches along each wall, 60 tall, five shelves",
-    blurb: "Triangle shelves in the corner. Five shelves, 60 tall.",
+    blurb: "Five triangle shelves, 60 tall. Six inches along each wall — small things, not books.",
     group: "house",
   },
   {
@@ -83,7 +83,7 @@ export const GALLERY: GalleryPlan[] = [
     label: "Cedar chest",
     size: "36 × 30 × 16 · hinged lid",
     prompt: "cedar chest with a hinged lid",
-    blurb: "Floor chest with a hinged lid. Cedar stock when you name it.",
+    blurb: "Hinged lid. Cedar stays in the name; the boards are plywood unless you ask for cedar boards.",
     group: "house",
   },
   {
@@ -91,7 +91,7 @@ export const GALLERY: GalleryPlan[] = [
     label: "Floating shelf",
     size: "36 wide · 8 deep · brackets",
     prompt: "floating shelf with brackets",
-    blurb: "A shelf that hangs. Brackets and the span you typed.",
+    blurb: "A shelf on two brackets. 36 inches wide unless you type a span.",
     group: "house",
   },
   {
@@ -113,7 +113,7 @@ export const GALLERY: GalleryPlan[] = [
   {
     slug: "catapult",
     label: "Popsicle catapult",
-    size: "~2 ft",
+    size: "9 × 5 × 5",
     prompt: "popsicle stick catapult",
     blurb: "A-frame, axle, throwing arm, payload cup. Whole sticks, glue.",
     group: "weekend",

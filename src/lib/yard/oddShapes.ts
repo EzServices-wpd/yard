@@ -21,6 +21,7 @@
 import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { panelWorldCorners } from "./geometry";
+import { shelfInstallHeightsClause } from "./voiceHonesty";
 import type { AssemblyStep, FittedProgram, FittedSpec, OddShape, Panel, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
@@ -88,9 +89,10 @@ export function oddShapeKind(prompt: string): OddKind | null {
   if (/\boutside\s+(?:wall\s+)?corner\b|\bouter\s+corner\b|\bconvex\s+corner\b|\bwraps?\s+(?:around\s+)?(?:an?\s+|the\s+)?(?:outside\s+)?(?:wall\s+)?corner\b|\bwrapping\s+(?:around\s+)?(?:an?\s+|the\s+)?(?:outside\s+)?(?:wall\s+)?corner\b/.test(lower) && /\bshel|\bledge/.test(lower)) {
     return "outside-corner";
   }
-  // Non-90 inside corner.
+  // Non-90 inside corner. Bookshelf counts; a corner cabinet does not (that front stays 45°).
   const angle = lower.match(/\b(\d{2,3})\s*(?:°|deg(?:ree)?s?)\b/);
-  if (angle && /\bcorner|\bangled\s+wall|\bwall\b/.test(lower) && /\bshel/.test(lower)) {
+  const shelfAngle = /\b(?:book\s*shel(?:f|ves)|bookcases?|shel(?:f|ves|ving))\b/;
+  if (angle && /\bcorner|\bangled\s+wall|\bwall\b/.test(lower) && shelfAngle.test(lower)) {
     const a = parseFloat(angle[1]);
     if (a !== 90 && a > 20 && a < 170) return "angled-corner";
   }
@@ -502,8 +504,11 @@ function buildAngled(lower: string): Build {
   const typedA = parseFloat(m[1]);
   const wallAngled = /\bangled\s+wall|\bdegree\s+(?:angled\s+)?wall|\bwall\s+at\b/.test(lower) && !/\b(?:degree|°)\s+corner\b/.test(lower);
   const theta = wallAngled ? 180 - typedA : typedA;
-  const each = alongEach(lower) ?? typedAxis(lower, "inch|inches") ?? null;
-  const L = each ?? 12;
+  const wide = typedAxis(lower, "wide|width");
+  const deep = typedAxis(lower, "deep|depth");
+  const each = alongEach(lower);
+  const L = each ?? wide ?? typedAxis(lower, "inch|inches") ?? 12;
+  const M = each != null ? L : (deep ?? L);
   const H0 = typedAxis(lower, "tall|high|height");
   const tiers0 = countOf(lower, "shel(?:f|ves)|tiers?|levels?");
   const H = H0 ?? (tiers0 ? (tiers0 - 1) * 12 + T : 48);
@@ -514,10 +519,10 @@ function buildAngled(lower: string): Build {
   const panels: Panel[] = [];
   // Wall panel A along +x from the corner; Wall panel B along direction θ.
   panels.push(panel("upright", "Wall panel A", 0, 0, 0, L, H, T));
-  panels.push(angledBoard("upright", "Wall panel B", (L / 2) * u[0] + (T / 2) * n[0], 0, (L / 2) * u[1] + (T / 2) * n[1], L, H, T, th, `Board ${tape(L)} × ${tape(H)}. Bevel the edge that meets Wall panel A at ${deg((180 - theta) / 2)} (both panels get the same bevel).`));
+  panels.push(angledBoard("upright", "Wall panel B", (M / 2) * u[0] + (T / 2) * n[0], 0, (M / 2) * u[1] + (T / 2) * n[1], M, H, T, th, `Board ${tape(M)} × ${tape(H)}. Bevel the edge that meets Wall panel A at ${deg((180 - theta) / 2)} (both panels get the same bevel).`));
   const apex: [number, number] = [(T * (1 + Math.cos(th))) / Math.sin(th), T];
   const pA: [number, number] = [L, T];
-  const pB: [number, number] = [L * u[0] + T * n[0], L * u[1] + T * n[1]];
+  const pB: [number, number] = [M * u[0] + T * n[0], M * u[1] + T * n[1]];
   const legA = Math.hypot(pA[0] - apex[0], pA[1] - apex[1]);
   const legB = Math.hypot(pB[0] - apex[0], pB[1] - apex[1]);
   const front = Math.hypot(pA[0] - pB[0], pA[1] - pB[1]);
@@ -529,25 +534,26 @@ function buildAngled(lower: string): Build {
   }
   panels[0].cutNote = `Board ${tape(L)} × ${tape(H)}. Bevel the edge that meets Wall panel B at ${deg((180 - theta) / 2)}.`;
   const notes: string[] = [];
-  notes.push(`Corner shelf for a ${deg(theta)} inside corner: wedge shelves with ${fmtIn(L)}" edges along each wall, between two wall panels that meet at ${deg(theta)}.`);
+  const walls = Math.abs(L - M) < 0.05 ? `${fmtIn(L)}" edges along each wall` : `${fmtIn(L)}" along one wall and ${fmtIn(M)}" along the other`;
+  notes.push(`Corner shelf for a ${deg(theta)} inside corner: wedge shelves with ${walls}, between two wall panels that meet at ${deg(theta)}.`);
   if (wallAngled) notes.push(`Read "${fmtIn(typedA)} degree angled wall" as a wall turned ${fmtIn(typedA)}° off straight, so the corner you fill is ${deg(theta)}. If the corner itself measures ${fmtIn(typedA)}°, type "${fmtIn(typedA)} degree corner shelf".`);
-  if (each == null) notes.push(`Assumed ${fmtIn(L)}" along each wall — type "10 inches along each wall" to lock it.`);
+  if (each == null && wide == null) notes.push(`Assumed ${fmtIn(L)}" along each wall — type "10 inches along each wall" to lock it.`);
   if (H0 == null) notes.push(tiers0 ? `Assumed ${fmtIn(H)}" tall — ${tiers} shelves 12" apart; type a height to lock it.` : `Assumed ${fmtIn(H)}" tall — type "48 tall" to lock it.`);
   if (tiers0 == null) notes.push(`Assumed ${tiers} shelves (from the height) — type "four shelves" to lock it.`);
   notes.push(`Measure your real corner with a bevel gauge first; walls are rarely exact. Recut the wedge angle to match.`);
-  const xs = [0, L, L * u[0], pB[0]];
-  const zs = [0, T, L * u[1], pB[1]];
+  const xs = [0, L, pB[0]];
+  const zs = [0, T, pB[1]];
   return {
     kind: "angled-corner",
     stem: `${fmtIn(theta)}° corner shelf`,
     program: "storage",
-    titleBits: [each != null ? `${fmtIn(L)}" along the walls` : "", H0 != null ? `${fmtIn(H)}" tall` : ""],
+    titleBits: [each != null || wide != null ? `${fmtIn(L)}" along the walls` : "", H0 != null ? `${fmtIn(H)}" tall` : ""],
     panels,
     notes,
     overall: { width: r8(Math.max(...xs) - Math.min(...xs)), height: H, depth: r8(Math.max(...zs) - Math.min(...zs)) },
     typed: { width: false, height: H0 != null, depth: false },
     install: "wall",
-    params: { theta, L, H, tiers, bevel: (180 - theta) / 2 },
+    params: { theta, L, M, H, tiers, bevel: (180 - theta) / 2 },
   };
 }
 
@@ -909,7 +915,7 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
       add("Cut the angled parts", `${cutNotes} To mark an angle cut: measure the two heights on the board edges and connect them with a straight edge — no protractor needed.`, ids(P, /upright|Divider|Sloped/i));
       add("Cut the bottoms and shelves", `Cut the bottoms and shelves to the bay widths on the cut list — they are plain rectangles.`, ids(P, /^Bottom|^Shelf/));
       add("Assemble the uprights and bottoms", `Stand the uprights and dividers on edge, angled tops all sloping the same way. Glue and screw each bottom between them.`, ids(P, /upright|Divider|^Bottom/i));
-      add("Fit the shelves", `Glue and screw each shelf between its uprights at the heights on the model (12" apart). Short bays near the low side get fewer shelves.`, ids(P, /^Shelf/));
+      add("Fit the shelves", `Glue and screw each shelf between its uprights. ${shelfInstallHeightsClause(P.filter((p) => /^Shelf\b/i.test(p.name)))} Short bays near the low side get fewer shelves — a shelf that would hit the slope is not on this list.`, ids(P, /^Shelf/));
       add("Add the sloped top and back", `Screw the Sloped top onto the angled upright ends, then nail the Sloped back on, squaring the case as you go.`, ids(P, /^Sloped/));
       add("Screw it into studs", `Slide it under the slope and screw through the back into studs (2 structural screws per stud) so it cannot tip.`, all);
       break;

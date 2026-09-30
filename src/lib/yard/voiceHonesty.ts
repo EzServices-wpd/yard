@@ -230,10 +230,19 @@ export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string 
     const esc = e.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // Skip tiny tokens that are too ambiguous.
     if (e.name.length < 3) continue;
-    const re = new RegExp(`(?<![A-Z]\\s)\\b(${esc})\\b`, "gi");
-    out = out.replace(re, (m) => {
-      // Already prefixed with this letter.
-      return m;
+    const re = new RegExp(`\\b(${esc})\\b`, "gi");
+    out = out.replace(re, (m, _g: string, offset: number, whole: string) => {
+      const prior = whole.slice(0, offset);
+      // "A Wall panel A" is already lettered. A lowercase word in front ("Stand ") is not.
+      if (/[A-Z]\s$/.test(prior)) return m;
+      const buried = byLen.some((longer) => {
+        if (longer.name.length <= e.name.length) return false;
+        if (!longer.name.toLowerCase().endsWith(e.name.toLowerCase())) return false;
+        const head = longer.name.slice(0, longer.name.length - e.name.length).toLowerCase();
+        return prior.toLowerCase().endsWith(head);
+      });
+      if (buried) return m;
+      return plateRef(e, m);
     });
     // Safer: prefix only on "the Name" / "Name and" style when not already lettered.
     const theRe = new RegExp(`\\b([Tt]he)\\s+(?!${e.label}\\b)(${esc})\\b`, "g");
@@ -292,9 +301,12 @@ function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFi
   const partPlate = findPlate(entries, bit.part);
   const ontoPlate = findPlate(entries, bit.onto.replace(/^both\s+/i, "").replace(/uprights?/i, "upright"));
   const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
-  const ontoTalk = ontoPlate
-    ? plateRef(ontoPlate, bit.onto.replace(/^both\s+/i, ""))
-    : bit.onto;
+  const pair = uprightPairTalk(entries);
+  const ontoTalk = pair && /upright/i.test(bit.onto)
+    ? `both ${pair.both} uprights`
+    : ontoPlate
+      ? plateRef(ontoPlate, bit.onto.replace(/^both\s+/i, ""))
+      : bit.onto;
   return `Attach ${partTalk} to ${ontoTalk}`;
 }
 
@@ -326,7 +338,10 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
   for (const step of instructions) {
     const title = densifyPartsPlateTalk(step.title, cutList);
     const tips = step.tips ? densifyPartsPlateTalk(step.tips, cutList) : step.tips;
-    const desc0 = densifyPartsPlateTalk(step.description, cutList);
+    // Split one-join steps from the unlettered sentence. Lettering "bottom" into
+    // "E Bottom" first hides the "then bottom, then top" list and drops those steps.
+    const raw = step.description;
+    const desc0 = densifyPartsPlateTalk(raw, cutList);
 
     // Non-join steps (confirm / cut / level / footprint) — plate letters only.
     if (/confirm|cut the|cut \d|level it|footprint|do not cut|mark the/i.test(step.title) && !/stand the main box|attach |screw the|hinge|hang /i.test(step.title)) {
@@ -334,15 +349,14 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
       continue;
     }
 
-    const blob = desc0.match(JOIN_BLOB);
+    const blob = raw.match(JOIN_BLOB);
     const keepStand = /stand the main box/i.test(step.title);
     if (blob && /then/i.test(blob[2] ?? "")) {
       const screwClass = (blob[1] ?? SCREW_HW).trim();
       // Only joins for parts the model really has — no ghost "attach bottom" when the model has none.
       const bits = parseJoinSequence(blob[2], screwClass).filter((bit, i) => i === 0 || !!findPlate(entries, bit.part));
       const coda = (blob[4] ?? "").trim();
-      // Lead-in before the glue/screw clause (part dim list).
-      const lead = desc0.slice(0, blob.index ?? 0).trim();
+      const lead = densifyPartsPlateTalk(raw.slice(0, blob.index ?? 0).trim(), cutList);
       if (bits.length >= 2) {
         bits.forEach((bit, i) => {
           const isFirst = i === 0;

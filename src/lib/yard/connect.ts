@@ -56,10 +56,18 @@ export function mid(a: Vec3, b: Vec3): Vec3 {
 export function stockDensity(item: CatalogItem, grain = 1): StockDensity {
   const prim = toPrimitive(item);
   const stock = Math.max(0.5, prim.length);
-  const thick = Math.max(prim.width, (prim.radius ?? 0) * 2, 0.06);
-  const fat = thick >= 1.35 || item.formFactor === "pipe" || (item.formFactor === "board" && thick >= 1.4);
+  const wide = Math.max(prim.width, (prim.radius ?? 0) * 2, 0.06);
+  const slim = Math.min(Math.max(prim.width, 0.06), Math.max(prim.height, 0.06));
+  // Boards: the bay follows the thickness (a 2×4 is 1½" thick, not 3½" wide)
+  // and the purchased length is what you cut from, not the storey height.
+  // Treating an 8 ft face as the member blew a 3 ft tower down to five sticks.
+  // Sticks, pipe, and dowel keep the previous face reading.
+  const board = item.formFactor === "board";
+  const thick = board ? slim : wide;
+  const fat = thick >= 1.35 || item.formFactor === "pipe" || (board && thick >= 1.4);
   const g = Math.min(3.2, Math.max(0.32, grain));
-  const lengthBit = Math.min(stock * 0.28, Math.max(thick * 8, 1.15));
+  const lengthCap = board ? Math.max(slim * 5, 4.5) : Math.max(thick * 8, 1.15);
+  const lengthBit = Math.min(stock * 0.28, lengthCap);
   const tile = Math.max(thick * 2.8, lengthBit) * g;
   return {
     fat,

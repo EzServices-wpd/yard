@@ -4,7 +4,7 @@
 
 A working brief for the Grok bot. Not a vision deck. Read `docs/BOT.md` first (the queue), then this (the why). If a canary is red, the canary wins.
 
-**Type it. Buy the parts. Build it.** House-first. Deterministic geometry. Grok writes voice, not SKUs.
+**Built for the corner the room forgot.** House-first. Deterministic geometry. Grok writes voice, not SKUs.
 
 If you remember one paragraph: run `npx tsx --tsconfig tsconfig.json scripts/walk-canary.ts`. Green → one item from NEXT. Red → fix that canary and **stop**. Do not invent a FAIL class. Do not open `fitted.ts` for a new noun. Never invent a size. Never push PLACEHOLDER. Never wipe `canvas.tsx`, `stick-cloud.tsx`, `steps.ts`, or `nest-plate.tsx`.
 

@@ -36,7 +36,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Type it. Buy the parts. Build it. Real retail materials, a 3D bench, and a shop-ready plan.",
+        content: "Built for the corner the room forgot. A cut list, hardware, and shop links for the gap you actually have.",
       },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
       { name: "theme-color", content: "#12100e" },

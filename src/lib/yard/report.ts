@@ -910,11 +910,14 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
         message: `Tall and slim (${Math.round(corner.height)}" tall on ${Math.round(leg)}" legs) — screw both wall panels into the walls before you load it.`,
       });
     }
-    if (leg < 5) {
-      issues.push({
-        severity: "info",
-        message: `Shelves under 5" along each wall hold small things (phones, plants, trinkets) — not books.`,
-      });
+    if (leg < 10) {
+      const reach = Math.round((leg / Math.SQRT2) * 10) / 10;
+      if (reach < 6) {
+        issues.push({
+          severity: "info",
+          message: `About ${reach}" of shelf in front of the corner — phones and plants, not a row of books. Type a longer run along each wall for books.`,
+        });
+      }
     }
     return issues;
   }
