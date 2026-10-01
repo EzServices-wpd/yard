@@ -81,11 +81,11 @@ function AboutPage() {
         </section>
 
         <p className="mt-10 text-sm text-ink-muted">
-          Look at the{" "}
-          <Link to="/gallery" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
-            gallery
+          Look through{" "}
+          <Link to="/ideas" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+            ideas
           </Link>{" "}
-          for plans that already walk on the bench, or{" "}
+          for a plan that already walks on the bench, or{" "}
           <Link to="/workspace" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
             open the bench
           </Link>{" "}

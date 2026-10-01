@@ -264,7 +264,6 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 </Link>
                 {(
                   [
-                    ["/gallery", "Gallery"],
                     ["/about", "About"],
                     ["/privacy", "Privacy"],
                   ] as const

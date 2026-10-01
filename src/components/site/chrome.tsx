@@ -3,15 +3,12 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
 
 const NAV = [
-  { to: "/gallery" as const, label: "Gallery" },
   { to: "/ideas" as const, label: "Ideas" },
   { to: "/workspace" as const, label: "Bench" },
 ];
 
 const FOOT = [
   { to: "/about" as const, label: "About" },
-  { to: "/gallery" as const, label: "Gallery" },
-  { to: "/ideas" as const, label: "Ideas" },
   { to: "/privacy" as const, label: "Privacy" },
 ];
 
@@ -20,7 +17,7 @@ export function SiteChrome({
   active,
 }: {
   children: ReactNode;
-  active?: "gallery" | "ideas" | "about" | "privacy" | "home";
+  active?: "ideas" | "about" | "privacy" | "home";
 }) {
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -31,9 +28,7 @@ export function SiteChrome({
           </Link>
           <nav className="flex items-center gap-5">
             {NAV.map((n) => {
-              const on =
-                (n.to === "/gallery" && active === "gallery") ||
-                (n.to === "/ideas" && active === "ideas");
+              const on = n.to === "/ideas" && active === "ideas";
               return (
                 <Link
                   key={n.to}
@@ -55,7 +50,7 @@ export function SiteChrome({
   );
 }
 
-export function SiteFooter({ active }: { active?: "gallery" | "ideas" | "about" | "privacy" | "home" }) {
+export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" | "home" }) {
   return (
     <footer className="border-t border-rule/80">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between">
@@ -67,9 +62,7 @@ export function SiteFooter({ active }: { active?: "gallery" | "ideas" | "about" 
               to={n.to}
               className={`text-sm transition-colors duration-150 ${
                 (n.to === "/about" && active === "about") ||
-                (n.to === "/privacy" && active === "privacy") ||
-                (n.to === "/gallery" && active === "gallery") ||
-                (n.to === "/ideas" && active === "ideas")
+                (n.to === "/privacy" && active === "privacy")
                   ? "text-ink"
                   : "text-ink-muted hover:text-ink"
               }`}
