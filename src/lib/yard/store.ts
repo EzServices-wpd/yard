@@ -550,6 +550,65 @@ export const useYard = create<YardState>((set, get) => ({
       if (built) get().commit(built);
       return;
     }
+    // A pocket is also fitted. Size the hole and the shelves here, before the generic fitted rebuild, or the bay numbers are dropped.
+    if (project.pocket) {
+      const back = parseFloat(measure.backWidth ?? "");
+      const left = parseFloat(measure.leftDepth ?? "");
+      const right = parseFloat(measure.rightDepth ?? "");
+      const ceiling = parseFloat(measure.ceiling ?? "");
+      const leftBay = parseFloat(measure.leftBay ?? "");
+      const rightBay = parseFloat(measure.rightBay ?? "");
+      const walls = {
+        ...project.pocket.walls,
+        height: Number.isFinite(ceiling) ? ceiling : project.pocket.walls.height,
+        backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
+        leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
+        rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
+      };
+      const fit = fitPocketAsk(
+        { ...project.pocket, walls },
+        {
+          width: widthIn,
+          height: heightIn,
+          depth: depth ?? project.pocket.unit.depth,
+          ceiling: walls.height,
+          leftBay: Number.isFinite(leftBay) ? leftBay : undefined,
+          rightBay: Number.isFinite(rightBay) ? rightBay : undefined,
+        },
+      );
+      const builtRaw = solveModel(buildPocket(fit.spec, prompt));
+      const built = builtRaw && project.fitted
+        ? {
+            ...builtRaw,
+            fitted: {
+              ...project.fitted,
+              walls: fit.spec.walls,
+              unit: { ...project.fitted.unit, ...fit.spec.unit },
+            },
+          }
+        : builtRaw;
+      if (built) {
+        get().commit(built);
+        const n = (v: number) => String(Math.round(v * 10) / 10);
+        const u = fit.spec.unit;
+        set({
+          measureNote: fit.note,
+          measure: {
+            ...get().measure,
+            width: n(u.width),
+            height: n(u.height),
+            depth: n(u.depth),
+            ceiling: n(fit.spec.walls.height),
+            backWidth: n(fit.spec.walls.backWidth),
+            leftDepth: n(fit.spec.walls.leftDepth),
+            rightDepth: n(fit.spec.walls.rightDepth),
+            ...(u.leftBay != null ? { leftBay: n(u.leftBay) } : { leftBay: undefined }),
+            ...(u.rightBay != null ? { rightBay: n(u.rightBay) } : { rightBay: undefined }),
+          },
+        });
+      }
+      return;
+    }
     if (project.fitted) {
       // Stolen Bench fitted on a climb/step stool — rebuild weekend form, keep Measure size.
       if (climbIdentityLabel((project.prompt || prompt).toLowerCase())) {
@@ -593,54 +652,6 @@ export const useYard = create<YardState>((set, get) => ({
       }
       const built = generateFromPrompt(prompt, undefined, undefined, { fittedOverride: spec, honorUnit: true });
       if (built) get().commit(built);
-      return;
-    }
-    if (project.pocket) {
-      const back = parseFloat(measure.backWidth ?? "");
-      const left = parseFloat(measure.leftDepth ?? "");
-      const right = parseFloat(measure.rightDepth ?? "");
-      const ceiling = parseFloat(measure.ceiling ?? "");
-      const leftBay = parseFloat(measure.leftBay ?? "");
-      const rightBay = parseFloat(measure.rightBay ?? "");
-      const walls = {
-        ...project.pocket.walls,
-        height: Number.isFinite(ceiling) ? ceiling : project.pocket.walls.height,
-        backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
-        leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
-        rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
-      };
-      const fit = fitPocketAsk(
-        { ...project.pocket, walls },
-        {
-          width: widthIn,
-          height: heightIn,
-          depth: depth ?? project.pocket.unit.depth,
-          ceiling: walls.height,
-          leftBay: Number.isFinite(leftBay) ? leftBay : undefined,
-          rightBay: Number.isFinite(rightBay) ? rightBay : undefined,
-        },
-      );
-      const built = solveModel(buildPocket(fit.spec, prompt));
-      if (built) {
-        get().commit(built);
-        const n = (v: number) => String(Math.round(v * 10) / 10);
-        const u = fit.spec.unit;
-        set({
-          measureNote: fit.note,
-          measure: {
-            ...get().measure,
-            width: n(u.width),
-            height: n(u.height),
-            depth: n(u.depth),
-            ceiling: n(fit.spec.walls.height),
-            backWidth: n(fit.spec.walls.backWidth),
-            leftDepth: n(fit.spec.walls.leftDepth),
-            rightDepth: n(fit.spec.walls.rightDepth),
-            ...(u.leftBay != null ? { leftBay: n(u.leftBay) } : { leftBay: undefined }),
-            ...(u.rightBay != null ? { rightBay: n(u.rightBay) } : { rightBay: undefined }),
-          },
-        });
-      }
       return;
     }
     // Weekend forms take the same three numbers as a closet. Never rebuild them as a carcase.
