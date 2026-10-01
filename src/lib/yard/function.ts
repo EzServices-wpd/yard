@@ -17,6 +17,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { pyramidDoorDims } from "./lattice";
+import { spanFindings } from "./spanCheck";
 import type {
   CatalogItem,
   FeasibilityIssue,
@@ -48,7 +49,7 @@ export function isSingleStockCraft(item: CatalogItem): boolean {
     item.formFactor === "tube" ||
     item.formFactor === "dowel" ||
     item.formFactor === "block" ||
-    ((item.dims.diameter ?? 1) < 0.5 && item.formFactor !== "pipe")
+    ((item.dims.diameter ?? 1) < 0.5)
   );
 }
 
@@ -165,6 +166,13 @@ export function loadIssues(project: YardProject): FeasibilityIssue[] {
         suggestion: "Closer hangers or a thicker sheet keep the road from sagging.",
       });
     }
+  }
+  for (const found of spanFindings(project)) {
+    issues.push({
+      severity: "warning",
+      message: found.message,
+      suggestion: found.suggestion,
+    });
   }
   return issues;
 }

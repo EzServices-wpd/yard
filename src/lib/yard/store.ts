@@ -15,6 +15,7 @@ import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize, angleMeasureFromProject, stampCornerAngle, stampSlopeEnds, cornerAngleOk } from "./space";
 import { isRoundUnitEnvelope } from "./voiceHonesty";
+import { stampSpanOffer } from "./spanCheck";
 import { buildPocket, fitPocketAsk } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
@@ -163,9 +164,10 @@ export const useYard = create<YardState>((set, get) => ({
     set({ building: true, grokError: null });
   },
   commit: (next) => {
+    const stamped = stampSpanOffer(next);
     const { project, history } = get();
     set({
-      project: next,
+      project: stamped,
       history: [...history.slice(-40), project],
       future: [],
       plan: null,
@@ -175,7 +177,7 @@ export const useYard = create<YardState>((set, get) => ({
       lockedIds: [],
       dragPos: null,
     });
-    persist(next);
+    persist(stamped);
   },
   setProject: (next) => {
     set({ project: next });

@@ -334,6 +334,8 @@ export type YardProject = {
     needed: boolean;
     included: boolean;
     reason: string;
+    /** spine = a temporary mast. span = rails or a divider under a long span. */
+    kind?: "spine" | "span";
   };
   buildStats?: {
     joints: number;

@@ -30,6 +30,7 @@ import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yar
 import { modelProudTalk } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
+import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 
 export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
@@ -41,6 +42,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
   const generate = useYard((s) => s.generate);
+  const commit = useYard((s) => s.commit);
   const makePlan = useYard((s) => s.makePlan);
   const undo = useYard((s) => s.undo);
   const redo = useYard((s) => s.redo);
@@ -328,12 +330,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 type="button"
                 className="shrink-0 rounded-sm bg-accent px-2 py-1 font-medium text-accent-fg"
                 onClick={() => {
+                  if (project.supportOffer?.kind === "span") {
+                    commit(withSupports(project));
+                    makePlan();
+                    return;
+                  }
                   generate(project.prompt, project.primaryMaterialId, undefined, { includeSpine: true });
                   makePlan();
                   revealBench();
                 }}
               >
-                Add spine
+                {project.supportOffer?.kind === "span" ? "Add support" : "Add spine"}
               </button>
             </div>
           )}
