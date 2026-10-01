@@ -1,7 +1,7 @@
 /**
  * Shop rule of thumb for a clear span. Not a stamp.
- * A person-bearing beam gets a support by about 5 feet.
- * A ¾″ shelf is fine near 32″. A ¾″ deck that someone sleeps on is not.
+ * Support goes under the surface, bearing on the frame that is already there.
+ * It does not stand in the space a person sleeps, sits, or shelves into.
  */
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
@@ -20,12 +20,41 @@ export type SpanFinding = {
 };
 
 const TOL = 1.1;
+/** How far a frame may hang below the deck above before it is in the sleeper. */
+const FRAME = 8;
+/** A shelf bay still has to hold something after an apron. */
+const BAY = 6;
+
+const BEAMS: { depth: number; stock: string }[] = [
+  { depth: 3.5, stock: "lumber-2x4-8" },
+  { depth: 5.5, stock: "lumber-2x6-8" },
+  { depth: 7.25, stock: "lumber-2x8-8" },
+  { depth: 9.25, stock: "lumber-2x10-8" },
+  { depth: 11.25, stock: "lumber-2x12-8" },
+];
+
+const APRONS: { depth: number; thick: number; stock: string }[] = [
+  { depth: 1.5, thick: 0.75, stock: "lumber-1x2-8" },
+  { depth: 2.5, thick: 0.75, stock: "lumber-1x3-8" },
+  { depth: 3.5, thick: 1.5, stock: "lumber-2x4-8" },
+  { depth: 5.5, thick: 1.5, stock: "lumber-2x6-8" },
+];
+
+type Box = { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number };
 
 export function allowSpanIn(thick: number, load: SpanLoad): number {
+  return Math.round(allowBeam(thick, load) * 10) / 10;
+}
+
+/** Beam capacity. No 5-foot cap — a deeper rail spans to the posts instead of growing a leg in the bed. */
+function allowBeam(thick: number, load: SpanLoad): number {
   const t = Math.max(0.15, thick);
   const k = load === "person" ? 26 : load === "shelf" ? 42 : 58;
-  const cap = load === "person" ? 60 : 96;
-  return Math.round(Math.min(cap, k * Math.pow(t, 0.8)) * 10) / 10;
+  return Math.min(load === "person" ? 144 : 168, k * Math.pow(t, 0.8));
+}
+
+function beamFor(span: number, load: SpanLoad, room: number): { depth: number; stock: string } | null {
+  return BEAMS.find((b) => b.depth <= room + 0.05 && allowBeam(b.depth, load) >= span) ?? null;
 }
 
 function thickLabel(t: number): string {
@@ -36,8 +65,12 @@ function thickLabel(t: number): string {
     [0.75, "¾"],
     [1, "1"],
     [1.5, "1½"],
+    [2.5, "2½"],
     [3.5, "3½"],
     [5.5, "5½"],
+    [7.25, "7¼"],
+    [9.25, "9¼"],
+    [11.25, "11¼"],
   ];
   for (const [n, s] of known) if (Math.abs(t - n) < 0.06) return `${s}″`;
   return `${Math.round(t * 10) / 10}″`;
@@ -61,30 +94,73 @@ function isFlatPlate(panel: Panel): boolean {
   const { width: w, height: h, depth: d } = panel.size;
   const thick = Math.min(w, h, d);
   if (thick > 2 || thick < 0.15) return false;
-  // Thickness is vertical. A door or a side is thin in plan, not in height.
   return Math.abs(h - thick) < 0.08;
 }
 
-/** Longest gap between supports already under this plate, along its long side. */
-function clearSpan(panel: Panel, panels: Panel[]): { span: number; across: number } {
+function overlap(a0: number, a1: number, b0: number, b1: number) {
+  return Math.min(a1, b1) - Math.max(a0, b0);
+}
+
+/** The volume a person actually uses. Support is not allowed in it. */
+function usableBoxes(panels: Panel[], project: YardProject): Box[] {
+  const boxes: Box[] = [];
+  for (const p of panels) {
+    if (!isFlatPlate(p) || loadOf(project, p) !== "person") continue;
+    const inset = 2;
+    const x0 = p.position.x + inset;
+    const x1 = p.position.x + p.size.width - inset;
+    const z0 = p.position.z + inset;
+    const z1 = p.position.z + p.size.depth - inset;
+    if (x1 - x0 < 8 || z1 - z0 < 8) continue;
+    const top = p.position.y + p.size.height;
+    let y1 = top + 36;
+    for (const q of panels) {
+      if (q === p || !isFlatPlate(q) || q.position.y < top + 4) continue;
+      const ox = overlap(x0, x1, q.position.x, q.position.x + q.size.width);
+      const oz = overlap(z0, z1, q.position.z, q.position.z + q.size.depth);
+      if (ox > 6 && oz > 6) y1 = Math.min(y1, q.position.y - FRAME);
+    }
+    if (y1 > top + 4) boxes.push({ x0, x1, y0: top, y1, z0, z1 });
+  }
+  return boxes;
+}
+
+function hitsUse(x: number, y: number, z: number, w: number, h: number, d: number, boxes: Box[]) {
+  return boxes.some(
+    (b) =>
+      x + w > b.x0 + 0.2 &&
+      x < b.x1 - 0.2 &&
+      y + h > b.y0 + 0.2 &&
+      y < b.y1 - 0.2 &&
+      z + d > b.z0 + 0.2 &&
+      z < b.z1 - 0.2,
+  );
+}
+
+function sectionOf(panel: Panel, panels: Panel[]): number {
+  let t = panel.size.height;
+  for (const q of panels) {
+    if (!q.name.startsWith("Support apron") || !q.name.includes(`under ${panel.name}`)) continue;
+    if (Math.abs(q.position.y + q.size.height - panel.position.y) > 0.25) continue;
+    t = Math.max(t, q.size.height);
+  }
+  return t;
+}
+
+/** Longest gap between supports already under this plate. */
+function clearSpan(panel: Panel, panels: Panel[]): number {
   const longX = panel.size.width >= panel.size.depth;
   const span0 = longX ? panel.size.width : panel.size.depth;
   const across0 = longX ? panel.size.depth : panel.size.width;
-  const origin = longX ? panel.position.x : panel.position.z;
   const c0 = longX ? panel.position.z : panel.position.x;
   const rails = panels.filter((q) => {
     if (q === panel || !q.name.startsWith("Support rail")) return false;
     const top = q.position.y + q.size.height;
     if (top < panel.position.y - 0.15 || q.position.y > panel.position.y + 0.15) return false;
-    const qx0 = q.position.x;
-    const qz0 = q.position.z;
-    const qx1 = qx0 + q.size.width;
-    const qz1 = qz0 + q.size.depth;
-    const x0 = panel.position.x;
-    const z0 = panel.position.z;
-    const ox = Math.min(x0 + panel.size.width, qx1) - Math.max(x0, qx0);
-    const oz = Math.min(z0 + panel.size.depth, qz1) - Math.max(z0, qz0);
-    return ox > 0.4 && oz > 0.4;
+    const ox = overlap(panel.position.x, panel.position.x + panel.size.width, q.position.x, q.position.x + q.size.width);
+    const oz = overlap(panel.position.z, panel.position.z + panel.size.depth, q.position.z, q.position.z + q.size.depth);
+    const along = longX ? ox : oz;
+    return along > span0 * 0.5 && Math.min(ox, oz) > 0.4;
   });
   if (rails.length >= 2) {
     const mids = rails
@@ -92,33 +168,16 @@ function clearSpan(panel: Panel, panels: Panel[]): { span: number; across: numbe
       .sort((a, b) => a - b);
     let across = Math.max(mids[0] - c0, c0 + across0 - mids[mids.length - 1]);
     for (let i = 1; i < mids.length; i++) across = Math.max(across, mids[i] - mids[i - 1]);
-    return { span: across, across: span0 };
+    return across;
   }
-  const stops = [origin, origin + span0];
-  for (const q of panels) {
-    if (q === panel) continue;
-    if (q.type !== "upright" && !q.name.startsWith("Support leg") && !q.name.startsWith("Support divider")) continue;
-    const top = q.position.y + q.size.height;
-    if (top < panel.position.y - 0.2 || q.position.y > panel.position.y + panel.size.height) continue;
-    const mid = longX ? q.position.x + q.size.width / 2 : q.position.z + q.size.depth / 2;
-    const qx0 = q.position.x;
-    const qz0 = q.position.z;
-    const ox = Math.min(panel.position.x + panel.size.width, qx0 + q.size.width) - Math.max(panel.position.x, qx0);
-    const oz = Math.min(panel.position.z + panel.size.depth, qz0 + q.size.depth) - Math.max(panel.position.z, qz0);
-    if (ox < 0.4 || oz < 0.4) continue;
-    if (mid > origin + 1 && mid < origin + span0 - 1) stops.push(mid);
-  }
-  stops.sort((a, b) => a - b);
-  let span = 0;
-  for (let i = 1; i < stops.length; i++) span = Math.max(span, stops[i] - stops[i - 1]);
-  return { span: span || span0, across: across0 };
+  return span0;
 }
 
 function say(name: string, span: number, thick: number, allow: number, load: SpanLoad): Pick<SpanFinding, "message" | "suggestion"> {
   const who = load === "person" ? "A person" : load === "shelf" ? "A shelf of books" : "A light load";
   return {
     message: `${name} spans ${Math.round(span)}″ on ${thickLabel(thick)} stock. ${who} wants that thickness held about every ${Math.round(allow)}″.`,
-    suggestion: "Add support. It puts a rail or a divider only under the spans that are too long. Shop rule of thumb — not an engineer's stamp.",
+    suggestion: "Add support. It stays under the surface and out of the space you use. Shop rule of thumb — not an engineer's stamp.",
   };
 }
 
@@ -127,11 +186,12 @@ export function spanFindings(project: YardProject): SpanFinding[] {
   for (const panel of project.panels) {
     if (!isFlatPlate(panel)) continue;
     const load = loadOf(project, panel);
-    const { span } = clearSpan(panel, project.panels);
-    const allow = allowSpanIn(panel.size.height, load);
+    const span = clearSpan(panel, project.panels);
+    const thick = sectionOf(panel, project.panels);
+    const allow = allowSpanIn(thick, load);
     if (span <= allow * TOL || span < 12) continue;
-    const text = say(panel.name, span, panel.size.height, allow, load);
-    out.push({ panelId: panel.id, name: panel.name, span, thick: panel.size.height, allow, load, ...text });
+    const text = say(panel.name, span, thick, allow, load);
+    out.push({ panelId: panel.id, name: panel.name, span, thick, allow, load, ...text });
   }
   out.sort((a, b) => b.span / b.allow - a.span / a.allow);
   return out;
@@ -153,7 +213,18 @@ export function stampSpanOffer(project: YardProject): YardProject {
   };
 }
 
-function pushPanel(panels: Panel[], type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, materialId: string) {
+function pushPanel(
+  panels: Panel[],
+  type: Panel["type"],
+  name: string,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  materialId: string,
+) {
   panels.push({
     id: createId(type.slice(0, 2)),
     type,
@@ -164,131 +235,88 @@ function pushPanel(panels: Panel[], type: Panel["type"], name: string, x: number
   });
 }
 
-function blocked(panels: Panel[], x: number, z: number, leg: number): [number, number][] {
-  const ranges: [number, number][] = [];
+function plateBelow(panels: Panel[], panel: Panel): number {
+  let base = 0;
   for (const q of panels) {
-    if (q.name.startsWith("Support leg")) continue;
-    const x1 = q.position.x + q.size.width;
-    const z1 = q.position.z + q.size.depth;
-    if (x + leg <= q.position.x + 0.05 || x >= x1 - 0.05 || z + leg <= q.position.z + 0.05 || z >= z1 - 0.05) continue;
-    if (q.name.startsWith("Support rail")) {
-      ranges.push([q.position.y, q.position.y + q.size.height]);
-      continue;
-    }
-    const thin = Math.min(q.size.width, q.size.height, q.size.depth);
-    if (Math.abs(q.size.height - thin) > 0.08) continue;
-    ranges.push([q.position.y, q.position.y + q.size.height]);
+    if (q === panel || q.name.startsWith("Support ")) continue;
+    const top = q.position.y + q.size.height;
+    if (top >= panel.position.y - 0.1) continue;
+    const ox = overlap(panel.position.x, panel.position.x + panel.size.width, q.position.x, q.position.x + q.size.width);
+    const oz = overlap(panel.position.z, panel.position.z + panel.size.depth, q.position.z, q.position.z + q.size.depth);
+    if (ox > 4 && oz > 4 && top > base) base = top;
   }
-  ranges.sort((a, b) => a[0] - b[0]);
-  return ranges;
+  return base;
 }
 
-function dropLegs(panels: Panel[], x: number, z: number, yTop: number, name: string) {
-  const leg = 1.5;
-  const ranges = blocked(panels, x, z, leg);
-  let y = 0;
-  const cuts: [number, number][] = [];
-  for (const [a, b] of ranges) {
-    if (b <= y || a >= yTop) continue;
-    if (a > y + 4) cuts.push([y, Math.min(a, yTop)]);
-    y = Math.max(y, b);
-  }
-  if (yTop > y + 4) cuts.push([y, yTop]);
-  for (const [a, b] of cuts) {
-    const taken = panels.some(
-      (q) =>
-        q.name.startsWith("Support leg") &&
-        Math.abs(q.position.x - x) < 2 &&
-        Math.abs(q.position.z - z) < 2 &&
-        q.position.y < b - 1 &&
-        q.position.y + q.size.height > a + 1,
-    );
-    if (taken) continue;
-    pushPanel(panels, "upright", name, x, a, z, leg, b - a, leg, "lumber-2x4-8");
-  }
-}
-
-function supportPlate(panels: Panel[], panel: Panel, project: YardProject) {
-  const load = loadOf(project, panel);
-  const allow = allowSpanIn(panel.size.height, load);
+/** Rails under a deck or seat. Ends land on a head and foot rail, which land on the posts. Nothing rises into the bed. */
+function supportPerson(panels: Panel[], panel: Panel, boxes: Box[]) {
   const longX = panel.size.width >= panel.size.depth;
   const span = longX ? panel.size.width : panel.size.depth;
   const across = longX ? panel.size.depth : panel.size.width;
-  const beam = load === "person" ? 3.5 : 1.5;
-  const stock = load === "person" ? "lumber-2x4-8" : "lumber-1x3-8";
-
-  if (load === "person" && panel.position.y > beam + 1) {
-    const spaces = Math.max(1, Math.ceil(across / (allow * TOL)));
-    const count = spaces + 1;
-    const railAllow = allowSpanIn(beam, "person");
-    const legSpaces = Math.max(1, Math.ceil(span / (railAllow * TOL)));
-    for (let i = 0; i < count; i++) {
-      const t = count === 1 ? 0.5 : i / (count - 1);
-      const alongShort = t * Math.max(0, across - 1.5);
-      const x = panel.position.x + (longX ? 0 : alongShort);
-      const z = panel.position.z + (longX ? alongShort : 0);
-      const y = panel.position.y - beam;
-      const w = longX ? span : 1.5;
-      const d = longX ? 1.5 : span;
-      pushPanel(panels, "rail", `Support rail under ${panel.name}`, x, y, z, w, beam, d, stock);
-      if (legSpaces > 1 && project.assumptions.installMode !== "wall") {
-        for (let k = 1; k < legSpaces; k++) {
-          const u = (span * k) / legSpaces;
-          const lx = x + (longX ? u - 0.75 : 0);
-          const lz = z + (longX ? 0 : u - 0.75);
-          dropLegs(panels, lx, lz, y, `Support leg under ${panel.name}`);
-        }
-      }
-    }
-    return;
+  const room = panel.position.y - 0.5;
+  const beam = beamFor(span, "person", room);
+  if (!beam) return;
+  const allow = allowSpanIn(panel.size.height, "person");
+  const spaces = Math.max(1, Math.ceil(across / (allow * TOL)));
+  const endT = 1.5;
+  const y = panel.position.y - beam.depth;
+  if (y < 0) return;
+  const ends = [0, span - endT];
+  const placed: { x: number; y: number; z: number; w: number; h: number; d: number }[] = [];
+  for (const along of ends) {
+    const piece = longX
+      ? { x: panel.position.x + along, y, z: panel.position.z, w: endT, h: beam.depth, d: across }
+      : { x: panel.position.x, y, z: panel.position.z + along, w: across, h: beam.depth, d: endT };
+    if (hitsUse(piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, boxes)) return;
+    placed.push(piece);
   }
-
-  if (project.assumptions.installMode === "wall") {
-    const below = panels.some((q) => {
-      if (q === panel) return false;
-      if (q.position.y + q.size.height > panel.position.y - 0.3) return false;
-      const ox = Math.min(panel.position.x + panel.size.width, q.position.x + q.size.width) - Math.max(panel.position.x, q.position.x);
-      const oz = Math.min(panel.position.z + panel.size.depth, q.position.z + q.size.depth) - Math.max(panel.position.z, q.position.z);
-      return ox > 4 && oz > 4;
-    });
-    if (!below) return;
+  const count = spaces + 1;
+  const run = span - endT * 2;
+  if (run < 6) return;
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    const alongShort = t * Math.max(0, across - 1.5);
+    const piece = longX
+      ? { x: panel.position.x + endT, y, z: panel.position.z + alongShort, w: run, h: beam.depth, d: 1.5 }
+      : { x: panel.position.x + alongShort, y, z: panel.position.z + endT, w: 1.5, h: beam.depth, d: run };
+    if (hitsUse(piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, boxes)) return;
+    placed.push(piece);
   }
-
-  const spaces = Math.max(1, Math.ceil(span / (allow * TOL)));
-  for (let i = 1; i < spaces; i++) {
-    const u = (span * i) / spaces;
-    const x = panel.position.x + (longX ? u - 0.375 : 0);
-    const z = panel.position.z + (longX ? 0 : u - 0.375);
-    let base = 0;
-    for (const q of panels) {
-      if (q === panel) continue;
-      const top = q.position.y + q.size.height;
-      if (top >= panel.position.y - 0.15) continue;
-      const ox = Math.min(x + 0.75, q.position.x + q.size.width) - Math.max(x, q.position.x);
-      const oz = Math.min(z + Math.min(panel.size.depth, panel.size.width), q.position.z + q.size.depth) - Math.max(z, q.position.z);
-      if (ox < 0.4 || oz < 0.4) continue;
-      if (top > base) base = top;
-    }
-    const h = panel.position.y - base;
-    if (h < 3) continue;
-    let z0 = panel.position.z;
-    let d0 = panel.size.depth;
-    let x0 = panel.position.x;
-    let w0 = panel.size.width;
-    for (const back of panels) {
-      if (back.type !== "back") continue;
-      if (back.size.depth <= 0.4 && back.position.z <= z0 + 0.05) {
-        z0 = Math.max(z0, back.position.z + back.size.depth);
-        d0 = panel.position.z + panel.size.depth - z0;
-      }
-      if (back.size.width <= 0.4 && back.position.x <= x0 + 0.05) {
-        x0 = Math.max(x0, back.position.x + back.size.width);
-        w0 = panel.position.x + panel.size.width - x0;
-      }
-    }
-    if (longX) pushPanel(panels, "divider", `Support divider under ${panel.name}`, x, base, z0, 0.75, h, Math.max(1, d0), "plywood-3-4-4x8");
-    else pushPanel(panels, "divider", `Support divider under ${panel.name}`, x0, base, z, Math.max(1, w0), h, 0.75, "plywood-3-4-4x8");
+  for (const piece of placed) {
+    pushPanel(panels, "rail", `Support rail under ${panel.name}`, piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, beam.stock);
   }
+}
+
+/** An apron under the edge deepens the shelf. It does not stand up through the bay. */
+function supportShelf(panels: Panel[], panel: Panel, project: YardProject, boxes: Box[]) {
+  const longX = panel.size.width >= panel.size.depth;
+  const span = longX ? panel.size.width : panel.size.depth;
+  const load = loadOf(project, panel);
+  const base = plateBelow(panels, panel);
+  const gap = panel.position.y - base;
+  const need = base > 0 ? BAY : 1;
+  const apron = APRONS.find((a) => a.depth <= gap - need && allowBeam(a.depth, load) >= span);
+  if (!apron) return;
+  const y = panel.position.y - apron.depth;
+  const piece = longX
+    ? {
+        x: panel.position.x,
+        y,
+        z: panel.position.z + Math.max(0, panel.size.depth - apron.thick),
+        w: span,
+        h: apron.depth,
+        d: Math.min(apron.thick, panel.size.depth),
+      }
+    : {
+        x: panel.position.x + Math.max(0, panel.size.width - apron.thick),
+        y,
+        z: panel.position.z,
+        w: Math.min(apron.thick, panel.size.width),
+        h: apron.depth,
+        d: span,
+      };
+  if (hitsUse(piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, boxes)) return;
+  pushPanel(panels, "rail", `Support apron under ${panel.name}`, piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, apron.stock);
 }
 
 export function withSupports(project: YardProject): YardProject {
@@ -300,17 +328,19 @@ export function withSupports(project: YardProject): YardProject {
     };
   }
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const boxes = usableBoxes(panels, project);
   const targets = new Set(before.map((f) => f.panelId));
   for (const panel of [...panels]) {
     if (!targets.has(panel.id)) continue;
-    supportPlate(panels, panel, project);
+    if (loadOf(project, panel) === "person") supportPerson(panels, panel, boxes);
+    else supportShelf(panels, panel, project, boxes);
   }
   const added = panels.length - project.panels.length;
   const next: YardProject = {
     ...project,
     panels,
     notes: added
-      ? [...project.notes, "Support added under the long spans. Shop rule of thumb — not an engineer's stamp."]
+      ? [...project.notes, "Support is under the spans, clear of the space you use. Shop rule of thumb — not an engineer's stamp."]
       : project.notes,
   };
   const left = spanFindings(next);
@@ -322,8 +352,8 @@ export function withSupports(project: YardProject): YardProject {
       included: true,
       kind: "span",
       reason: left.length
-        ? `${left[0].message}${extra} ${added ? "What could be reached is in." : "Add support can't reach this one — it needs a bracket on the wall."}`
-        : "Support is in. The long spans are broken up.",
+        ? `${left[0].message}${extra} ${added ? "What fits without blocking the use is in." : "Nothing fits without blocking the use."}`
+        : "Support is in, under the surface. The space you use is clear.",
     },
   };
 }
