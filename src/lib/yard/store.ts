@@ -15,7 +15,7 @@ import { homeOf, maybeSnap, nearHome, withHome } from "./assembly";
 import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize, angleMeasureFromProject, stampCornerAngle, stampSlopeEnds, cornerAngleOk } from "./space";
 import { isRoundUnitEnvelope } from "./voiceHonesty";
-import { buildPocket } from "./pocket";
+import { buildPocket, fitPocketAsk } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
 
@@ -241,6 +241,9 @@ export const useYard = create<YardState>((set, get) => ({
             backWidth: String(next.pocket.walls.backWidth),
             leftDepth: String(next.pocket.walls.leftDepth),
             rightDepth: String(next.pocket.walls.rightDepth),
+            ceiling: String(next.pocket.walls.height),
+            ...(next.pocket.unit.leftBay != null ? { leftBay: String(next.pocket.unit.leftBay) } : {}),
+            ...(next.pocket.unit.rightBay != null ? { rightBay: String(next.pocket.unit.rightBay) } : {}),
           }
         : next.windowPkg
           ? {
@@ -594,27 +597,48 @@ export const useYard = create<YardState>((set, get) => ({
       const back = parseFloat(measure.backWidth ?? "");
       const left = parseFloat(measure.leftDepth ?? "");
       const right = parseFloat(measure.rightDepth ?? "");
-      // Re-measured pocket goes through the same interference solve as every generated build.
-      const built = solveModel(buildPocket(
+      const ceiling = parseFloat(measure.ceiling ?? "");
+      const leftBay = parseFloat(measure.leftBay ?? "");
+      const rightBay = parseFloat(measure.rightBay ?? "");
+      const walls = {
+        ...project.pocket.walls,
+        height: Number.isFinite(ceiling) ? ceiling : project.pocket.walls.height,
+        backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
+        leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
+        rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
+      };
+      const fit = fitPocketAsk(
+        { ...project.pocket, walls },
         {
-          ...project.pocket,
-          walls: {
-            ...project.pocket.walls,
-            height: heightIn,
-            backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
-            leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
-            rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
-          },
-          unit: {
-            ...project.pocket.unit,
-            width: widthIn,
-            height: heightIn,
-            depth: depth ?? project.pocket.unit.depth,
-          },
+          width: widthIn,
+          height: heightIn,
+          depth: depth ?? project.pocket.unit.depth,
+          ceiling: walls.height,
+          leftBay: Number.isFinite(leftBay) ? leftBay : undefined,
+          rightBay: Number.isFinite(rightBay) ? rightBay : undefined,
         },
-        prompt,
-      ));
-      if (built) get().commit(built);
+      );
+      const built = solveModel(buildPocket(fit.spec, prompt));
+      if (built) {
+        get().commit(built);
+        const n = (v: number) => String(Math.round(v * 10) / 10);
+        const u = fit.spec.unit;
+        set({
+          measureNote: fit.note,
+          measure: {
+            ...get().measure,
+            width: n(u.width),
+            height: n(u.height),
+            depth: n(u.depth),
+            ceiling: n(fit.spec.walls.height),
+            backWidth: n(fit.spec.walls.backWidth),
+            leftDepth: n(fit.spec.walls.leftDepth),
+            rightDepth: n(fit.spec.walls.rightDepth),
+            ...(u.leftBay != null ? { leftBay: n(u.leftBay) } : { leftBay: undefined }),
+            ...(u.rightBay != null ? { rightBay: n(u.rightBay) } : { rightBay: undefined }),
+          },
+        });
+      }
       return;
     }
     // Weekend forms take the same three numbers as a closet. Never rebuild them as a carcase.
@@ -655,7 +679,7 @@ export const useYard = create<YardState>((set, get) => ({
         widthIn,
         heightIn,
         depthIn: depth,
-        kindHint: measure.kind === "closet_niche" || measure.kind === "window_rough_opening" ? measure.kind : undefined,
+        kindHint: measure.kind === "closet_niche" ? measure.kind : undefined,
       },
       prompt,
     );

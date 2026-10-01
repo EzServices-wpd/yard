@@ -212,6 +212,10 @@ export type PocketUnit = {
   vanityH: number;
   kneeW: number;
   upperStart: number;
+  /** Upper shelves toward the left wall, inches along the back. Absent = half the opening. */
+  leftBay?: number;
+  /** Upper shelves toward the right wall, inches along the back. */
+  rightBay?: number;
 };
 
 export type PocketSpec = {
@@ -494,6 +498,12 @@ export type MeasureDraft = {
   backWidth?: string;
   leftDepth?: string;
   rightDepth?: string;
+  /** Ceiling of the hole, when the build is allowed to stop short of it. */
+  ceiling?: string;
+  /** Shelves toward the left wall, inches along the back. */
+  leftBay?: string;
+  /** Shelves toward the right wall, inches along the back. */
+  rightBay?: string;
   /** Corner the two walls make, in degrees. Only on a corner shelf. */
   angle?: string;
   /** Low side of a slope. The high side is `height`. */

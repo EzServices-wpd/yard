@@ -1,6 +1,5 @@
 "use client";
 
-import { inchFrac } from "@/lib/yard/inchText";
 import { useYard } from "@/lib/yard/store";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
@@ -45,8 +44,39 @@ export function MeasureFields() {
   const round = chip.mode === "round" || isRoundUnitEnvelope(envOpts);
   const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
 
+  const pocket = project.pocket;
+
   return (
     <div>
+      {pocket ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-faint">The hole</p>
+            <div className="mt-1 flex flex-wrap items-end gap-2">
+              <Dim label="Back" value={measure.backWidth ?? ""} onChange={(v) => setMeasure({ backWidth: v })} onBlur={commitLive} />
+              <Dim label="Left wall" value={measure.leftDepth ?? ""} onChange={(v) => setMeasure({ leftDepth: v })} onBlur={commitLive} />
+              <Dim label="Right wall" value={measure.rightDepth ?? ""} onChange={(v) => setMeasure({ rightDepth: v })} onBlur={commitLive} />
+              <Dim label="Ceiling" value={measure.ceiling ?? measure.height} onChange={(v) => setMeasure({ ceiling: v })} onBlur={commitLive} />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-faint">How much of it</p>
+            <div className="mt-1 flex flex-wrap items-end gap-2">
+              <Dim label="Wide" value={measure.width} onChange={(v) => setMeasure({ width: v })} onBlur={commitLive} />
+              <Dim label="Deep" value={measure.depth} onChange={(v) => setMeasure({ depth: v })} onBlur={commitLive} />
+              <Dim label="Tall" value={measure.height} onChange={(v) => setMeasure({ height: v })} onBlur={commitLive} />
+            </div>
+            <p className="mt-2 text-[10px] uppercase tracking-wider text-faint">Shelves along the back</p>
+            <div className="mt-1 flex flex-wrap items-end gap-2">
+              <Dim label="Left" value={measure.leftBay ?? ""} onChange={(v) => setMeasure({ leftBay: v })} onBlur={commitLive} />
+              <Dim label="Right" value={measure.rightBay ?? ""} onChange={(v) => setMeasure({ rightBay: v })} onBlur={commitLive} />
+            </div>
+            <p className="mt-1.5 text-[11px] leading-snug text-muted">
+              Shelves are inches along the back. Leave them blank and they split it. A number bigger than the hole is pulled back in.
+            </p>
+          </div>
+        </div>
+      ) : (
       <div data-yard-measure-chip={chip.mode} className="flex flex-wrap items-end gap-2">
         {round ? (
           <>
@@ -99,14 +129,8 @@ export function MeasureFields() {
             unit {project.windowPkg.window.unitW}" × {project.windowPkg.window.unitH}"
           </span>
         )}
-        {project.pocket && (
-          <span className="mb-2 w-full text-[11px] leading-snug text-muted">
-            Pocket back {inchFrac(project.pocket.walls.backWidth)}" · L {inchFrac(project.pocket.walls.leftDepth)}" @{" "}
-            {project.pocket.walls.leftAngleDeg.toFixed(1)}° · R {inchFrac(project.pocket.walls.rightDepth)}" @{" "}
-            {project.pocket.walls.rightAngleDeg.toFixed(1)}°
-          </span>
-        )}
       </div>
+      )}
     </div>
   );
 }

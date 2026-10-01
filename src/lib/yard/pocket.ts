@@ -121,6 +121,94 @@ export function clearancesAt(walls: PocketWalls, unit: PocketUnit) {
   };
 }
 
+function inch(n: number) {
+  const r = Math.round(n * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
+/** How much of a measured pocket the build is allowed to take. Clamps to the hole. */
+export function fitPocketAsk(
+  spec: PocketSpec,
+  ask: { width: number; height: number; depth: number; ceiling?: number; leftBay?: number; rightBay?: number },
+): { spec: PocketSpec; note: string | null } {
+  const notes: string[] = [];
+  const walls = { ...spec.walls };
+  if (ask.ceiling != null && Number.isFinite(ask.ceiling)) walls.height = Math.max(24, ask.ceiling);
+
+  let width = ask.width;
+  let depth = ask.depth;
+  let height = ask.height;
+  if (width > walls.backWidth + 0.05) {
+    notes.push(`The back wall is ${inch(walls.backWidth)}". The build uses that, not ${inch(width)}".`);
+    width = walls.backWidth;
+  }
+  width = Math.max(12, width);
+
+  const shallow = Math.min(walls.leftDepth, walls.rightDepth);
+  const maxD = Math.max(6, shallow - 0.75);
+  if (depth > maxD + 0.05) {
+    notes.push(`The shallower wall is ${inch(shallow)}". The build comes out ${inch(maxD)}", so it stays in the hole.`);
+    depth = maxD;
+  }
+  depth = Math.max(6, Math.min(depth, maxD));
+
+  if (height > walls.height + 0.05) {
+    notes.push(`The ceiling is ${inch(walls.height)}". The build stops there.`);
+    height = walls.height;
+  }
+  height = Math.max(24, Math.min(height, walls.height));
+
+  const usable = Math.max(6, width - 2.25);
+  let leftBay = ask.leftBay;
+  let rightBay = ask.rightBay;
+  if (leftBay != null || rightBay != null) {
+    let L = Math.max(4, leftBay ?? usable / 2);
+    let R = Math.max(4, rightBay ?? usable / 2);
+    if (L + R > usable + 0.05) {
+      notes.push(`Those shelves are wider than the build. They share the ${inch(usable)}" inside it.`);
+      const s = usable / (L + R);
+      L = Math.round(L * s * 10) / 10;
+      R = Math.round((usable - L) * 10) / 10;
+    }
+    leftBay = Math.round(L * 10) / 10;
+    rightBay = Math.round(R * 10) / 10;
+  }
+
+  const unit: PocketUnit = {
+    ...spec.unit,
+    width,
+    depth,
+    height,
+    kneeW: Math.min(spec.unit.kneeW, Math.max(8, width - 8)),
+    vanityH: Math.min(spec.unit.vanityH, Math.max(24, height - 16)),
+    upperStart: Math.min(spec.unit.upperStart, Math.max(32, height - 12)),
+  };
+  if (leftBay != null) unit.leftBay = leftBay;
+  else delete unit.leftBay;
+  if (rightBay != null) unit.rightBay = rightBay;
+  else delete unit.rightBay;
+
+  const clr = clearancesAt(walls, unit);
+  return { spec: { walls, unit, leftClear: clr.leftClear, rightClear: clr.rightClear }, note: notes.join(" ") || null };
+}
+
+/** Upper shelf widths along the back. Absent bays split the opening. */
+export function pocketBays(unit: PocketUnit) {
+  const usable = Math.max(6, unit.width - 2.25);
+  if (unit.leftBay == null && unit.rightBay == null) {
+    const half = usable / 2;
+    return { left: half, right: half, usable };
+  }
+  let left = Math.max(4, unit.leftBay ?? usable / 2);
+  let right = Math.max(4, unit.rightBay ?? usable / 2);
+  if (left + right > usable) {
+    const s = usable / (left + right);
+    left *= s;
+    right *= s;
+  }
+  return { left, right, usable };
+}
+
 function panel(
   type: Panel["type"],
   name: string,
@@ -190,28 +278,30 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   // Glass hangs on the back panel face (back is 1/4" thick at z 0) — not floating off it.
   panels.push(panel("mirror", "Vanity mirror", kneeL, unit.vanityH + 2, 0.25, unit.kneeW, mirrorH, 0.2));
 
-  // Upper carcase 54 → 102
-  const u0 = unit.upperStart;
-  const uH = H - u0;
+  // Upper carcase. Shelves on each side can be a different width of the back.
+  const u0 = Math.min(unit.upperStart, Math.max(unit.vanityH + 4, H - 8));
+  const uH = Math.max(6, H - u0);
+  const bays = pocketBays(unit);
   panels.push(panel("bottom", "Upper bottom", x0 + P, u0, 0, W - P * 2, P, D));
   panels.push(panel("top", "Upper top", x0 + P, H - P, 0, W - P * 2, P, D));
-  panels.push(panel("divider", "Upper center divider", -P / 2, u0, 0, P, uH, D));
+  panels.push(panel("divider", "Left shelf end", x0 + P + bays.left, u0, 0, P, uH, D));
+  if (bays.usable - bays.left - bays.right > 1) {
+    panels.push(panel("divider", "Right shelf end", x1 - P - bays.right - P, u0, 0, P, uH, D));
+  }
 
-  // Adjustable shelves — two bays, three shelves each
   const shelfYs = [u0 + uH * 0.28, u0 + uH * 0.52, u0 + uH * 0.76];
-  const bayW = (W - P * 3) / 2;
   shelfYs.forEach((y, i) => {
-    panels.push(panel("shelf", `Left linen shelf ${i + 1}`, x0 + P, y, 0.1, bayW, P, D - 0.2));
-    panels.push(panel("shelf", `Right towel shelf ${i + 1}`, P / 2, y, 0.1, bayW, P, D - 0.2));
+    panels.push(panel("shelf", `Left linen shelf ${i + 1}`, x0 + P, y, 0.1, bays.left, P, D - 0.2));
+    panels.push(panel("shelf", `Right towel shelf ${i + 1}`, x1 - P - bays.right, y, 0.1, bays.right, P, D - 0.2));
   });
 
-  // Two large upper doors
-  panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, W / 2 - 0.2, uH, P));
-  panels.push(panel("door", "Right upper door", 0.1, u0, D - P, W / 2 - 0.2, uH, P));
+  panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, bays.left, uH, P));
+  panels.push(panel("door", "Right upper door", x1 - bays.right - 0.1, u0, D - P, bays.right, uH, P));
 
   const notes = [
     `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
-    `Unit ${unit.width}" W × ${unit.depth}" D × ${unit.height}" H. Front parallel to the back wall. Centered on the back-wall centerline.`,
+    `Unit ${unit.width}" along the back × ${unit.depth}" out × ${unit.height}" tall. Front parallel to the back wall.`,
+    `Left shelves ${bays.left.toFixed(1)}" wide. Right shelves ${bays.right.toFixed(1)}" wide.`,
     `At the unit front (${unit.depth}"): left clearance ${clr.leftClear.toFixed(2)}" · right clearance ${clr.rightClear.toFixed(2)}" · opening ${clr.opening.toFixed(2)}".`,
     `Vanity counter at ${unit.vanityH}". Knee ${unit.kneeW}" clear, centered. Drawers in the wings. Uppers ${unit.upperStart}" to ${unit.height}".`,
     "Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a 102\" mixed-use unit.",

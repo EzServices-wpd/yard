@@ -61,7 +61,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       <p className="mt-1 text-xs leading-relaxed text-muted">
         {(() => {
           if (isPocket) {
-            return "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls.";
+            return "The hole is the walls. The build is how much of that hole you want filled — along the back, out from the back, and the shelves on each side.";
           }
           const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
           if (emptyTalk) return emptyTalk.panelBlurb;
@@ -89,9 +89,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           />
           <Field
             label="Ceiling"
-            value={measure.height}
+            value={measure.ceiling ?? measure.height}
             onChange={(v) => {
-              setMeasure({ height: v });
+              setMeasure({ ceiling: v });
               liveIfFitted();
             }}
           />
@@ -115,7 +115,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       )}
 
       <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-faint">
-        {isPocket ? "Unit inside the pocket" : roundUnit ? "Round unit" : "Opening"}
+        {isPocket ? "How much of the pocket" : roundUnit ? "Round unit" : "Opening"}
       </p>
       {roundUnit ? (
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -139,7 +139,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       ) : (
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Field
-            label={isCorner ? "Wall A" : isSlope ? "Wide" : "W"}
+            label={isPocket ? "Along the back" : isCorner ? "Wall A" : isSlope ? "Wide" : "W"}
             value={measure.width}
             onChange={(v) => {
               setMeasure({ width: v });
@@ -147,7 +147,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label={isSlope ? "High" : "H"}
+            label={isPocket ? "Tall" : isSlope ? "High" : "H"}
             value={measure.height}
             onChange={(v) => {
               setMeasure({ height: v });
@@ -155,7 +155,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label={isCorner ? "Wall B" : isSlope ? "Deep" : "D"}
+            label={isPocket ? "Comes out" : isCorner ? "Wall B" : isSlope ? "Deep" : "D"}
             value={measure.depth}
             onChange={(v) => {
               setMeasure({ depth: v });
@@ -163,6 +163,29 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
         </div>
+      )}
+      {isPocket && (
+        <>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field
+            label="Left shelves"
+            value={measure.leftBay ?? ""}
+            onChange={(v) => {
+              setMeasure({ leftBay: v });
+              liveIfFitted();
+            }}
+          />
+          <Field
+            label="Right shelves"
+            value={measure.rightBay ?? ""}
+            onChange={(v) => {
+              setMeasure({ rightBay: v });
+              liveIfFitted();
+            }}
+          />
+        </div>
+        <p className="mt-1.5 text-[11px] leading-snug text-muted">Leave the shelves blank and they split the back.</p>
+        </>
       )}
       {isCorner && (
         <div className="mt-2">
