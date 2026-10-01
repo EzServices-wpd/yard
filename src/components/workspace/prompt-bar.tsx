@@ -47,7 +47,7 @@ export function PromptBar({
   }
 
   return (
-    <div className="relative z-30 shrink-0 border-b border-border bg-surface px-2 py-2 sm:px-4 sm:py-3">
+    <div className="relative z-30 shrink-0 border-b border-border/80 bg-bg/40 px-3 py-2 sm:px-5 sm:py-3">
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -61,7 +61,7 @@ export function PromptBar({
           placeholder={housePath ? "along the other wall · under the slope · or a new opening" : "corner shelf, 24 inches along each wall"}
           aria-label="What do you want to build?"
           enterKeyHint="go"
-          className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
+          className="h-11 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-4 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
         />
         <BenchOptionsToggle
           open={optionsOpen}
@@ -72,7 +72,7 @@ export function PromptBar({
         <button
           type="submit"
           disabled={grokBusy}
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg disabled:opacity-60 sm:px-4"
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-full bg-accent px-4 text-sm font-medium text-accent-fg disabled:opacity-60"
         >
           {grokBusy ? "…" : "Go"}
           <ArrowRight className="size-4" />
@@ -85,7 +85,6 @@ export function PromptBar({
         toggleRef={toggleRef}
         onStock={onStock}
         onMeasure={onMeasure}
-        onExample={(p) => void run(p, true)}
       />
     </div>
   );

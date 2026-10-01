@@ -40,10 +40,13 @@ export function BenchTools({
   side,
   onStock,
   onMeasure,
+  bare = false,
 }: {
   side: "catalog" | "measure" | null;
   onStock: () => void;
   onMeasure: () => void;
+  /** Sit inside the bench dock, with no card of its own. */
+  bare?: boolean;
 }) {
   const project = useYard((s) => s.project);
   const explode = useYard((s) => s.explode);
@@ -65,7 +68,7 @@ export function BenchTools({
 
   if (!shown) {
     return (
-      <div data-yard-bench-tools="hidden" className="pointer-events-none flex justify-end">
+      <div data-yard-bench-tools="hidden" className="pointer-events-none flex justify-end px-1.5 py-1">
         <button
           type="button"
           data-bench-overlay="tools"
@@ -74,7 +77,9 @@ export function BenchTools({
           aria-label="Show quick tools"
           title="Show quick tools"
           aria-expanded={false}
-          className="pointer-events-auto grid size-11 place-items-center rounded-full border border-border bg-surface/95 text-muted shadow-lg backdrop-blur hover:text-fg"
+          className={`pointer-events-auto grid place-items-center text-muted hover:text-fg ${
+            bare ? "size-9" : "size-11 rounded-full border border-border bg-surface/95 shadow-lg backdrop-blur"
+          }`}
         >
           <SlidersHorizontal className="size-4" aria-hidden />
         </button>
@@ -88,7 +93,9 @@ export function BenchTools({
         role="toolbar"
         aria-label="Quick tools"
         data-bench-overlay="tools"
-        className="pointer-events-auto flex max-w-full items-stretch gap-0.5 rounded-xl border border-border bg-surface/95 p-1 shadow-lg backdrop-blur sm:gap-1"
+        className={`pointer-events-auto flex max-w-full items-stretch gap-0.5 ${
+          bare ? "w-full justify-center px-1 py-1" : "rounded-xl border border-border bg-surface/95 p-1 shadow-lg backdrop-blur sm:gap-1"
+        }`}
       >
         <ToolBtn
           icon={<Layers className="size-4" aria-hidden />}

@@ -10,7 +10,7 @@
  */
 
 import type { CatalogItem, FormFactor, Panel } from "./types";
-import { getCatalogItem } from "./catalog";
+import { getCatalogItem } from "./catalog.ts";
 
 export interface PrimitiveDims {
   length: number;
@@ -22,7 +22,7 @@ export interface PrimitiveDims {
 }
 
 /** Cross-section kind for canvas InstancedMesh routing. */
-export type MeshKind = "flatBar" | "box" | "cylinder" | "hollow";
+export type MeshKind = "flatBar" | "box" | "cylinder" | "hollow" | "bottle" | "can" | "jar" | "tank" | "tool" | "cup" | "bucket" | "ball" | "sawhorse" | "photo";
 
 /**
  * Tiny floor so a toothpick does not vanish. Aspect ratio stays true —
@@ -59,6 +59,21 @@ export function visualPrimitive(item: CatalogItem, cutLength?: number, overallSp
 export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
   const d = item.dims;
   const L = cutLength ?? d.length ?? 1;
+
+  if (item.image && item.shape !== "bottle" && item.shape !== "can" && item.shape !== "jar" && item.shape !== "cup" && item.shape !== "bucket" && item.shape !== "ball") {
+    const face = d.width ?? d.diameter ?? d.height ?? 4;
+    return { length: L, width: face, height: face };
+  }
+
+  if (item.shape === "ball") {
+    const dia = d.diameter ?? d.width ?? d.length ?? 8;
+    return { length: dia, width: dia, height: dia, radius: dia / 2 };
+  }
+
+  if (item.shape === "bottle" || item.shape === "can" || item.shape === "jar" || item.shape === "tank" || item.shape === "tool" || item.shape === "cup" || item.shape === "bucket" || item.shape === "roll") {
+    const dia = d.diameter ?? d.width ?? 2.5;
+    return { length: L, width: dia, height: dia, radius: dia / 2 };
+  }
 
   switch (item.formFactor) {
     case "stick":
@@ -129,6 +144,22 @@ export function isPinStick(item: CatalogItem): boolean {
 
 /** Global mesh routing used by the canvas cloud. */
 export function meshKind(item: CatalogItem): MeshKind {
+  if (item.image && item.shape !== "bottle" && item.shape !== "can" && item.shape !== "jar" && item.shape !== "cup" && item.shape !== "bucket" && item.shape !== "ball") return "photo";
+  if (item.shape === "tool" && (item.dims.diameter ?? 2) < 0.9) return "cylinder";
+  if (
+    item.shape === "bottle" ||
+    item.shape === "can" ||
+    item.shape === "jar" ||
+    item.shape === "tank" ||
+    item.shape === "tool" ||
+    item.shape === "cup" ||
+    item.shape === "bucket" ||
+    item.shape === "ball"
+  ) {
+    return item.shape;
+  }
+  if (item.shape === "roll") return "cylinder";
+  if (/sawhorse|saw horse/.test(item.name.toLowerCase())) return "sawhorse";
   if (isHollow(item.formFactor)) return "hollow";
   if (isCylindrical(item.formFactor) || isPinStick(item)) return "cylinder";
   if (isFlatBar(item)) return "flatBar";
@@ -257,6 +288,7 @@ export function aabbSize(b: Aabb3) {
  * Lumber, plywood, and shop-length pipe still cut to the list.
  */
 export function isWholeStock(item: CatalogItem): boolean {
+  if (item.shape) return true;
   if (item.formFactor === "stick") return true;
   if (item.category === "craft_wood") return true;
   if (item.category === "plastic") return true;

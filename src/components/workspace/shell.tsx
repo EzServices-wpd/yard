@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Ruler,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
@@ -29,8 +28,6 @@ import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { modelProudTalk } from "@/lib/yard/modelSize";
-import { isLockedForm } from "@/lib/yard/form";
-import { detectWeekendMech } from "@/lib/yard/weekendFamily";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
@@ -150,34 +147,51 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const stepIndex = steps.findIndex((s) => s.step === activeStep);
   const showLoadBtn = !housePath && Boolean(project.traverse && project.traverse.kind !== "around");
   const loadNote = showLoadBtn ? loadIssues(project) : [];
+  const pickedInst = selectedId ? project.instances.find((i) => i.id === selectedId) : undefined;
+  const pickedPanel = !pickedInst && selectedId ? project.panels.find((p) => p.id === selectedId) : undefined;
+  const picked = pickedInst
+    ? (() => {
+        const item = getCatalogItem(pickedInst.catalogId);
+        const len = pickedInst.cutLength ?? item?.dims.length;
+        const dia = item?.dims.diameter;
+        const sec = pickedInst.section;
+        const dim = sec
+          ? `${inches(sec.width)} × ${inches(sec.height)}${len ? ` · ${inches(len)} long` : ""}`
+          : dia
+            ? `${len ? `${inches(len)} long · ` : ""}⌀ ${inches(dia)}`
+            : len
+              ? `${inches(len)} long`
+              : "";
+        return { name: item?.name ?? "Piece", dim, canLock: true };
+      })()
+    : pickedPanel
+      ? {
+          name: pickedPanel.name || getCatalogItem(pickedPanel.materialId)?.name || "Piece",
+          dim: `${inches(pickedPanel.size.width)} × ${inches(pickedPanel.size.height)} × ${inches(pickedPanel.size.depth)}`,
+          canLock: false,
+        }
+      : null;
 
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-      <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-2 sm:h-14 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-2 sm:h-14 sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
-          <span className="hidden truncate text-sm text-muted md:inline">{project.name}</span>
+          <span className="hidden truncate font-display text-sm text-muted md:inline">{project.name}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
-            className={`inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs sm:h-8 ${
-              side === "measure" ? "bg-elevated text-fg" : "text-muted hover:text-fg"
-            }`}
-          >
-            <Ruler className="size-4" />
-            <span>Measure</span>
-          </button>
+          <Link to="/ideas" className="hidden px-2 text-sm text-muted hover:text-fg sm:inline">
+            Ideas
+          </Link>
           <button
             type="button"
             onClick={() => {
               makePlan();
               setPlanOpen(true);
             }}
-            className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg sm:h-9"
+            className="inline-flex h-9 items-center rounded-full bg-accent px-3.5 text-sm font-medium text-accent-fg"
           >
             Get the plan
           </button>
@@ -187,7 +201,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               makePlan();
               setExportOpen(true);
             }}
-            className="inline-flex h-11 items-center rounded-md border border-border px-3 text-sm text-fg sm:h-9"
+            className="inline-flex h-9 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
           >
             Print
           </button>
@@ -239,6 +253,13 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   </>
                 )}
                 <div className="my-1 border-t border-border/70" />
+                <Link
+                  to="/ideas"
+                  className="block rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-elevated hover:text-fg"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  Ideas
+                </Link>
                 {(
                   [
                     ["/gallery", "Gallery"],
@@ -403,29 +424,54 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
             </>
           )}
 
-          {/* Bottom cards: on phones the step pill stacks above the size card instead of covering it. */}
-          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2 text-xs text-muted sm:block">
-            {/* Quick tools: on phones the top of the bottom stack; on wider screens centred above the step pill.
-                While the plan panel is open it moves into the bench area left of the panel (or steps aside). */}
-            {pieceCount > 0 && !pending && workMode !== "walk" && (
-              <div
-                className={`pointer-events-none z-10 sm:absolute sm:inset-x-0 sm:px-3 ${steps.length > 0 ? "sm:bottom-[7.5rem]" : "sm:bottom-16"} ${
-                  planOpen ? "hidden xl:block xl:right-[35rem]" : ""
-                }`}
-              >
+          {/* One dock: tools, the step, and the size. The model stays clear above it. */}
+          {pieceCount > 0 && (
+          <div
+            className={`pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 sm:bottom-4 ${
+              planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
+            }`}
+          >
+            <div data-bench-overlay="dock" className="pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+              {picked && !pending && (
+                <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-fg">{picked.name}</p>
+                    {picked.dim ? <p className="font-mono text-[11px] text-faint">{picked.dim}</p> : null}
+                  </div>
+                  {picked.canLock && (
+                    <button
+                      type="button"
+                      onClick={() => toggleLockSelected()}
+                      className="shrink-0 rounded-full px-2.5 py-1 text-xs text-muted hover:bg-elevated hover:text-fg"
+                    >
+                      {locked ? "Unlock" : "Lock"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => deleteSelected()}
+                    className="shrink-0 rounded-full px-2.5 py-1 text-xs text-danger hover:bg-elevated"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              {pieceCount > 0 && !pending && workMode !== "walk" && (
                 <BenchTools
                   side={side}
                   onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
                   onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                  bare
                 />
-              </div>
-            )}
-            {steps.length > 0 && !pending && (
-              <div className="pointer-events-none z-10 flex justify-center sm:absolute sm:inset-x-0 sm:bottom-16 sm:px-3">
-                <div data-bench-overlay="step-pill" className="pointer-events-auto flex max-w-lg items-center gap-2 rounded-md border border-border bg-surface/95 px-2 py-1.5 text-xs shadow-lg backdrop-blur">
+              )}
+              {steps.length > 0 && !pending && (
+                <div
+                  data-bench-overlay="step-pill"
+                  className="flex items-center gap-1 border-t border-border/60 px-1.5 py-1 text-xs"
+                >
                   <button
                     type="button"
-                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30 sm:size-8"
+                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={!steps.length}
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.max(0, stepIndex - 1);
@@ -435,23 +481,17 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlanOpen(true)}
-                    className="min-w-0 flex-1 text-left"
-                  >
+                  <button type="button" onClick={() => setPlanOpen(true)} className="min-w-0 flex-1 truncate text-left">
                     <span className="font-mono text-faint">
                       {activeStep ? String(activeStep).padStart(2, "0") : "—"} / {String(steps.length).padStart(2, "0")}
-                    </span>
-                    <span className="ml-2 truncate text-fg">
-                      {activeStep
-                        ? steps.find((s) => s.step === activeStep)?.title
-                        : "Step through the build"}
+                    </span>{" "}
+                    <span className="text-fg">
+                      {activeStep ? steps.find((s) => s.step === activeStep)?.title : "Step through the build"}
                     </span>
                   </button>
                   <button
                     type="button"
-                    className="grid size-8 place-items-center text-muted hover:text-fg"
+                    className="grid size-9 place-items-center text-muted hover:text-fg"
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
                       setActiveStep(steps[i].step);
@@ -461,9 +501,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                     <ChevronRight className="size-4" />
                   </button>
                 </div>
-              </div>
-            )}
-            <div className="flex flex-wrap items-end justify-between gap-2">
+              )}
               <div
                 data-yard-house={housePath ? "1" : "0"}
                 data-yard-pieces={pieceCount}
@@ -483,30 +521,25 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 data-yard-wire={wire ? "1" : "0"}
                 data-yard-flat={paperCraft ? "1" : "0"}
                 data-bench-overlay="hud"
-                className="pointer-events-auto rounded-md border border-border bg-surface/90 px-3 py-2 backdrop-blur"
+                className="flex items-baseline justify-between gap-3 border-t border-border/60 px-3.5 py-2 text-xs"
               >
-                <p>
+                <p className="min-w-0 truncate text-muted">
                   {wire
-                    ? "Choose stock · Options, then Material"
+                    ? "Pick a real stock"
                     : nestSheetLabel
                       ? nestSheetLabel
                       : stockLabel !== "stock"
                         ? stockLabel
                         : material?.name ?? "No stock"}
-                  {pieceCount
-                    ? paperCraft
-                      ? ` · ${pieceCount} whole sticks · glue ends`
-                      : ` · ${pieceCount} pieces`
-                    : ""}
+                  {pieceCount ? (paperCraft ? ` · ${pieceCount} whole sticks` : ` · ${pieceCount} pieces`) : ""}
                 </p>
-                <p className="mt-0.5 text-faint">
+                <p className="shrink-0 font-mono text-[11px] text-faint">
                   {(() => {
                     const pocketUnit = project.pocket?.unit;
                     const inch = (n: number) => {
                       const r = Math.round(n * 10) / 10;
                       return Number.isInteger(r) ? String(r) : r.toFixed(1);
                     };
-                    // Pocket overall is the room the unit stands in. The bench shows the unit you cut.
                     const envelope = pocketUnit
                       ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
                       : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
@@ -516,39 +549,20 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                           legs: project.fitted?.unit?.legs,
                         });
                     const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
-                    // Bare opening-storage HUD: keep dash honesty; companion must not say "the unit".
                     const companion = emptyTalk
                       ? emptyTalk.hudCompanion
-                      : housePath
-                        ? " · the unit"
-                        : wire
-                          ? " · Skeleton only — pick a real material to densify"
-                          : workMode === "look"
-                            ? (() => {
-                                const mech = detectWeekendMech(project.prompt ?? "");
-                                // Launcher / media-hold / climb / pot-hold (stand): dims are the envelope, not Orbit chrome.
-                                return (
-                                  mech === "launcher" ||
-                                  mech === "media-hold" ||
-                                  mech === "climb" ||
-                                  mech === "pot-hold"
-                                )
-                                  ? ""
-                                  : " · Orbit";
-                              })()
-                            : workMode === "walk"
-                              ? " · On the road"
-                              : workMode === "build"
-                                ? " · Snap to the glow"
-                                : " · Drag · snap home";
+                      : wire
+                        ? ""
+                        : workMode === "walk"
+                          ? " · on the road"
+                          : workMode === "build"
+                            ? " · snap to the glow"
+                            : "";
+                    const proud = pocketUnit ? "" : modelProudTalk(project.panels, project.overall.depth);
                     return (
                       <>
                         {envelope}
-                        {(() => {
-                          // Same model-derived depth as the PDF cover: doors / drawer fronts proud of the box.
-                          const proud = modelProudTalk(project.panels, project.overall.depth);
-                          return proud ? ` · ${proud}` : "";
-                        })()}
+                        {proud ? ` · ${proud}` : ""}
                         {companion}
                       </>
                     );
@@ -557,6 +571,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
 

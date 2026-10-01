@@ -355,8 +355,10 @@ function PlanBody({
                               {o.best ? "Best · " : ""}
                               {o.label} · {o.title}
                             </a>
-                            <span className="shrink-0 font-mono text-[11px] text-muted">
-                              {o.packsNeeded} × {usd(o.packPrice)} · {usd(o.unitPrice)}/ea
+                            <span className="shrink-0 font-mono text-xs text-muted">
+                              {o.quote === "search"
+                                ? "Search"
+                                : `${o.packsNeeded} × ${usd(o.packPrice)} · ${usd(o.unitPrice)}/ea`}
                             </span>
                           </li>
                         ))}

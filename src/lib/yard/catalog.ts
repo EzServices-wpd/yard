@@ -4,7 +4,8 @@
  */
 
 import type { CatalogItem } from "./types";
-import { catalogLumberAliases, catalogLumberTags } from "./namedLumberSpecies";
+import { foundCatalogItem, listFoundStock } from "./foundStock.ts";
+import { catalogLumberAliases, catalogLumberTags } from "./namedLumberSpecies.ts";
 
 export const FORGE_CATALOG: CatalogItem[] = [
   {
@@ -614,8 +615,9 @@ export const CATALOG_CATEGORIES: { id: CatalogItem["category"]; label: string }[
 
 export function searchCatalog(query: string, limit = 40): CatalogItem[] {
   const q = query.trim().toLowerCase();
-  if (!q) return FORGE_CATALOG.slice(0, limit);
-  const scored = FORGE_CATALOG.map((item) => {
+  const pool = q ? [...FORGE_CATALOG, ...listFoundStock()] : FORGE_CATALOG;
+  if (!q) return pool.slice(0, limit);
+  const scored = pool.map((item) => {
     let score = 0;
     const name = item.name.toLowerCase();
     const aliases = (item.aliases ?? []).map((a) => a.toLowerCase());
@@ -637,5 +639,5 @@ export function searchCatalog(query: string, limit = 40): CatalogItem[] {
 }
 
 export function getCatalogItem(id: string): CatalogItem | undefined {
-  return CATALOG_BY_ID[id];
+  return CATALOG_BY_ID[id] ?? foundCatalogItem(id);
 }

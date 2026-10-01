@@ -9,6 +9,9 @@ export type FormFactor =
   | "roll"
   | "custom";
 
+/** A whole product the bench draws as itself, not as a stick or a pipe. */
+export type StockShape = "bottle" | "can" | "jar" | "tank" | "tool" | "eyewear" | "ball" | "cup" | "bucket" | "roll" | "block" | "object";
+
 export type JoinMethod =
   | "glue"
   | "friction"
@@ -20,6 +23,8 @@ export type JoinMethod =
   | "slot"
   | "pin"
   | "solvent"
+  | "staple"
+  | "zip"
   | "none";
 
 export type CatalogCategory =
@@ -43,6 +48,8 @@ export type CatalogItem = {
   brand?: string;
   category: CatalogCategory;
   formFactor: FormFactor;
+  /** Set when this unit is a product (a bottle), so the bench does not draw a pipe. */
+  shape?: StockShape;
   dims: {
     length?: number;
     width?: number;
@@ -63,6 +70,8 @@ export type CatalogItem = {
   searchQuery?: string;
   exampleUrl?: string;
   asin?: string;
+  /** Real product photo from a listing. The bench draws this when the shape is not a known vessel. */
+  image?: string;
   notes?: string;
 };
 
@@ -89,6 +98,8 @@ export type StructureKind =
   | "furniture"
   | "vessel"
   | "plant"
+  | "table"
+  | "chair"
   | "custom";
 
 export type WorkMode = "look" | "free" | "build" | "walk";
@@ -129,7 +140,10 @@ export type PanelType =
   | "kick"
   | "mirror"
   | "rail"
-  | "deck";
+  | "deck"
+  | "cleat"
+  | "bay"
+  | "side";
 
 export type Panel = {
   id: string;
@@ -386,6 +400,8 @@ export type ShopOffer = {
   lineTotal: number;
   best: boolean;
   checkedAt: string;
+  /** search = open the store, no price. owned = already on hand. */
+  quote?: "search" | "owned";
 };
 
 export type BomLine = {

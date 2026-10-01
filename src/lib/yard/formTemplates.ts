@@ -9,6 +9,7 @@
  */
 import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
+import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
@@ -344,7 +345,12 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
   const perch = wantsPerch(prompt);
   if (kind === "thin") return smallHouseThin(item, whole && isWholeStock(item), hole, perch, typed.width);
   if (kind === "panel") return smallHousePanels(item, hole, perch, typed);
-  return null;
+  // A bottle, a tank, a ball — still the same house, each member one whole piece.
+  const stand = getCatalogItem("popsicle-standard");
+  if (!stand) return null;
+  const thin = smallHouseThin(stand, true, hole, perch, typed.width);
+  if (!thin) return null;
+  return { ...thin, notes: [...thin.notes, `Each piece is a whole ${item.name}.`] };
 }
 
 

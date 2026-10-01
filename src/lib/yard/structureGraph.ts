@@ -167,8 +167,10 @@ export function graphToInstances(
     // Craft-thin stock (toothpick / short stick) keeps intentional lace at face×2.1.
     const craftThin = face < 0.22 || (item.formFactor === "stick" && (item.dims.length ?? 8) <= 6);
     // A whole brick is shorter than a lumber min-length. Keep the unit; still drop dust.
+    // A named product (a tank, a ball) is allowed on a short span — dropping it emptied the build.
     let minLen = Math.max(face * (craftThin ? 2.1 : 2.5), item.formFactor === "sheet" ? 1.2 : 0.4);
-    if (whole) minLen = Math.min(minLen, Math.max(0.35, stock * 0.9));
+    if (item.shape) minLen = Math.min(minLen, 0.75);
+    else if (whole) minLen = Math.min(minLen, Math.max(0.35, stock * 0.9));
     if (segLen < minLen && !critical) return;
     const m = mid(a, b);
     const rot = rotationForDirection(a, b, cylindrical);
@@ -199,7 +201,8 @@ export function graphToInstances(
     const face = item.formFactor === "board" || item.formFactor === "sheet" ? Math.max(prim.height, 0.08) : thick;
     const craftThin = face < 0.22 || (item.formFactor === "stick" && (item.dims.length ?? 8) <= 6);
     let minLen = Math.max(face * (craftThin ? 2.1 : 2.5), item.formFactor === "sheet" ? 1.2 : 0.4);
-    if (whole) minLen = Math.min(minLen, Math.max(0.35, stock * 0.9));
+    if (item.shape) minLen = Math.min(minLen, 0.75);
+    else if (whole) minLen = Math.min(minLen, Math.max(0.35, stock * 0.9));
     if (length < minLen && !critical) return;
     bumpJoin(join);
 
@@ -212,6 +215,13 @@ export function graphToInstances(
         y: origin.y + uy * t,
         z: origin.z + uz * t,
       });
+
+      // A named product keeps its real length, centered on the span, instead of being squashed.
+      if (item.shape && length + 0.05 < stock) {
+        const extra = (stock - length) / 2;
+        pushPiece(along(p0, -extra), along(p0, length + extra), join, role, `${id}-s0`, undefined, critical, faceN);
+        return;
+      }
 
       // Short edge: ends meet at the nodes. Never center a full stick past both
       // joints — that is what made one popsicle pierce through another.

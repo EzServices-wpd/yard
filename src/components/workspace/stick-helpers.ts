@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Vec3, WorkMode, YardInstance } from "@/lib/yard/types";
 import type { PrimitiveDims } from "@/lib/yard/geometry";
 import { pilePosition } from "@/lib/yard/assembly";
@@ -30,6 +31,136 @@ let _flatBarGeo: THREE.BufferGeometry | null = null;
 export function flatBarGeometry(): THREE.BufferGeometry {
   if (!_flatBarGeo) _flatBarGeo = makeFlatBarGeometry();
   return _flatBarGeo;
+}
+
+let _vessels: Map<string, THREE.LatheGeometry> | null = null;
+
+/** Unit vessel, height 1, widest radius 0.5, so a diameter×length scale keeps the real inches. */
+export function vesselGeometry(kind: "bottle" | "can" | "jar" | "tank" | "tool" | "cup" | "bucket"): THREE.LatheGeometry {
+  if (!_vessels) _vessels = new Map();
+  const cached = _vessels.get(kind);
+  if (cached) return cached;
+  const rings: [number, number][] =
+    kind === "can"
+      ? [
+          [0.02, -0.5],
+          [0.47, -0.49],
+          [0.5, -0.45],
+          [0.5, 0.4],
+          [0.46, 0.45],
+          [0.44, 0.5],
+        ]
+      : kind === "jar"
+        ? [
+            [0.02, -0.5],
+            [0.46, -0.48],
+            [0.5, -0.4],
+            [0.5, 0.2],
+            [0.36, 0.3],
+            [0.32, 0.36],
+            [0.4, 0.4],
+            [0.4, 0.5],
+          ]
+        : kind === "tank"
+          ? [
+              [0.08, -0.5],
+              [0.46, -0.48],
+              [0.5, -0.4],
+              [0.5, 0.28],
+              [0.32, 0.38],
+              [0.14, 0.43],
+              [0.1, 0.5],
+            ]
+          : kind === "tool"
+            ? [
+                [0.16, -0.5],
+                [0.32, -0.46],
+                [0.32, -0.22],
+                [0.14, -0.16],
+                [0.07, -0.08],
+                [0.05, 0.5],
+              ]
+            : kind === "cup"
+              ? [
+                  [0.22, -0.5],
+                  [0.42, -0.48],
+                  [0.48, -0.3],
+                  [0.5, 0.42],
+                  [0.44, 0.5],
+                ]
+              : kind === "bucket"
+                ? [
+                    [0.28, -0.5],
+                    [0.36, -0.48],
+                    [0.5, 0.42],
+                    [0.48, 0.5],
+                  ]
+                : [
+            [0.06, -0.5],
+            [0.44, -0.48],
+            [0.5, -0.36],
+            [0.47, -0.02],
+            [0.5, 0.16],
+            [0.22, 0.3],
+            [0.12, 0.38],
+            [0.11, 0.44],
+            [0.18, 0.455],
+            [0.18, 0.5],
+          ];
+  const geo = new THREE.LatheGeometry(
+    rings.map(([r, y]) => new THREE.Vector2(r, y)),
+    28,
+  );
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    const cap =
+      kind === "bottle" ? y > 0.445 : kind === "tool" ? y < -0.16 : kind === "tank" ? y > 0.38 : kind === "jar" ? y > 0.38 : y > 0.42;
+    const label = kind === "bottle" && y > -0.22 && y < 0.12;
+    colors[i * 3] = cap ? (kind === "jar" ? 0.72 : 0.25) : label ? 0.12 : 1;
+    colors[i * 3 + 1] = cap ? (kind === "jar" ? 0.62 : 0.45) : label ? 0.38 : 1;
+    colors[i * 3 + 2] = cap ? (kind === "jar" ? 0.28 : 0.62) : label ? 0.72 : 1;
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  _vessels.set(kind, geo);
+  return geo;
+}
+
+let _sawhorse: THREE.BufferGeometry | null = null;
+/** Unit sawhorse, length 1 along X, so a stock scale keeps the real inches. */
+export function sawhorseGeometry(): THREE.BufferGeometry {
+  if (_sawhorse) return _sawhorse;
+  const beam = new THREE.BoxGeometry(1, 0.08, 0.1);
+  beam.translate(0, 0.4, 0);
+  const legAt = (x: number, z: number, lean: number) => {
+    const leg = new THREE.BoxGeometry(0.05, 0.82, 0.05);
+    leg.translate(0, 0.41, 0);
+    leg.rotateZ(lean);
+    leg.translate(x, 0, z);
+    return leg;
+  };
+  const geo = mergeGeometries([
+    beam,
+    legAt(-0.34, 0.14, 0.22),
+    legAt(-0.34, -0.14, -0.22),
+    legAt(0.34, 0.14, -0.22),
+    legAt(0.34, -0.14, 0.22),
+  ]);
+  if (!geo) return beam;
+  geo.computeVertexNormals();
+  _sawhorse = geo;
+  return geo;
+}
+let _photoSide: THREE.PlaneGeometry | null = null;
+/** The second face of a product photo: length along X, face along Z. */
+export function photoSideGeometry(): THREE.PlaneGeometry {
+  if (!_photoSide) {
+    _photoSide = new THREE.PlaneGeometry(1, 1);
+    _photoSide.rotateX(Math.PI / 2);
+  }
+  return _photoSide;
 }
 
 let _pipeGeos: Map<number, THREE.LatheGeometry> | null = null;
@@ -102,6 +233,7 @@ export function applyMemberPose(
   rot: Vec3,
   overall: { width: number; height: number; depth: number },
   flatBar = false,
+  vessel = false,
 ) {
   const from = inst.from;
   const to = inst.to;
@@ -140,7 +272,8 @@ export function applyMemberPose(
     if (dot < -0.999) dummy.quaternion.setFromAxisAngle(_flip, Math.PI);
     else dummy.quaternion.setFromUnitVectors(axis, _dir);
     const length = span + pad * 2;
-    if (cylindrical) dummy.scale.set(diameter, length, diameter);
+    if (vessel) dummy.scale.set(diameter, prim.length, diameter);
+    else if (cylindrical) dummy.scale.set(diameter, length, diameter);
     else if (flatBar) dummy.scale.set(length, prim.width, prim.height);
     else if (courseOnEdge(inst, prim)) dummy.scale.set(length, prim.width, prim.height);
     else dummy.scale.set(length, prim.height, prim.width);

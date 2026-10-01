@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createId } from "@/lib/utils";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
-import { applyFollowOnSize, followOnNamesStock, looksLikeFollowOn } from "./promptHelpers";
+import { applyFollowOnSize, followOnNamesStock, looksLikeFollowOn, materialUnlessNamed } from "./promptHelpers";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
 import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
@@ -212,6 +212,7 @@ export const useYard = create<YardState>((set, get) => ({
         genOpts.cutStock = false;
       }
     }
+    if (!materialId) materialId = materialUnlessNamed(current.primaryMaterialId, used);
     const next = generateFromPrompt(used, materialId, form, genOpts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     // The wall opening stays as a faint outline (context for where the unit sits).
@@ -409,7 +410,7 @@ export const useYard = create<YardState>((set, get) => ({
     const { project, history } = get();
     const item = getCatalogItem(catalogId);
     if (!item) return;
-    const len = defaultPlaceLength(item);
+    const len = defaultPlaceLength(catalogId);
     const inst = {
       id: createId("inst"),
       catalogId,

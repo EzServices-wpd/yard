@@ -100,6 +100,15 @@ export type StockLook = {
 export function stockLook(item?: CatalogItem | null, fallbackRough = 0.68, fallbackMetal = 0.04): StockLook {
   const m = ensure();
   if (!item) return { map: m?.wood ?? null, roughness: fallbackRough, metalness: fallbackMetal, env: 0.7 };
+  if (item.shape === "bottle" || item.shape === "jar") {
+    return { map: null, roughness: item.roughness ?? 0.16, metalness: item.metalness ?? 0.05, env: 1.35 };
+  }
+  if (item.shape === "can" || item.shape === "tank") {
+    return { map: null, roughness: item.roughness ?? 0.32, metalness: item.metalness ?? 0.72, env: 1.15 };
+  }
+  if (item.shape === "tool" || item.shape === "bucket") {
+    return { map: null, roughness: item.roughness ?? 0.45, metalness: item.metalness ?? 0.2, env: 0.9 };
+  }
   const cat = item.category;
   // Chipboard backer: flat pressed board, no corrugation.
   if (cat === "cardboard" && item.tags?.includes("backer")) return { map: null, roughness: 0.95, metalness: 0, env: 0.3 };

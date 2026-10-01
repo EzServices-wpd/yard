@@ -423,7 +423,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     }
     if (interp.ok && (interp.real || interp.notes)) {
       const current = useYard.getState().project;
-      const extra = [interp.real ? `Queried form: ${interp.real}` : "", interp.notes].filter(Boolean);
+      const extra = [interp.real ? `Queried form: ${interp.real}` : "", interp.notes ?? ""].filter(
+        (n): n is string => n.length > 0,
+      );
       useYard.getState().setProject({
         ...current,
         notes: [...current.notes, ...extra.filter((n) => !current.notes.includes(n))],

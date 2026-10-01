@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { DREAMS } from "@/lib/yard/prompt";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yard/operateFaces";
@@ -35,7 +34,7 @@ export function BenchOptionsToggle({
       aria-haspopup="true"
       aria-label={`Options. Material: ${label}`}
       data-yard-options-toggle
-      className={`inline-flex h-11 max-w-[7.5rem] shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-left sm:max-w-[15rem] sm:px-3 ${
+      className={`inline-flex h-11 max-w-[7.5rem] shrink-0 items-center gap-1.5 rounded-full border px-3 text-left sm:max-w-[15rem] ${
         open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
       }`}
     >
@@ -62,7 +61,6 @@ export function BenchOptionsPanel({
   toggleRef,
   onStock,
   onMeasure,
-  onExample,
 }: {
   open: boolean;
   onClose: (focusToggle?: boolean) => void;
@@ -70,7 +68,6 @@ export function BenchOptionsPanel({
   toggleRef: React.RefObject<HTMLButtonElement | null>;
   onStock: () => void;
   onMeasure: () => void;
-  onExample: (prompt: string) => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const project = useYard((s) => s.project);
@@ -365,24 +362,6 @@ export function BenchOptionsPanel({
           )}
         </Section>
       )}
-
-      <Section id="examples" title="Start from an example">
-        <div className="flex flex-wrap gap-1.5">
-          {DREAMS.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => {
-                onClose(false);
-                onExample(d.prompt);
-              }}
-              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted hover:border-fg/30 hover:text-fg"
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </Section>
 
       <Section id="saved" title="Saved yards">
         <YardsMenu inline onOpened={() => onClose(false)} />

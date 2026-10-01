@@ -975,7 +975,8 @@ export function offersFor(
       item?.category === "recycled" ||
       item?.category === "paper_tube" ||
       (item?.tags ?? []).includes("recycled");
-    const price = recycled ? 0 : (item?.unitCostUsd ?? 0) * pack || 9.99;
+    const piece = Boolean(item?.id.startsWith("piece-"));
+    const price = piece ? (item?.unitCostUsd ?? 0) : recycled ? 0 : (item?.unitCostUsd ?? 0) * pack || 9.99;
     rows = shopLinks(q, item?.asin).map((l) => ({
       catalogId,
       retailer: l.retailer,
@@ -1026,6 +1027,7 @@ export function tagNote() {
 }
 
 function guessCatalogId(line: BomLine): string | null {
+  if (line.catalogId?.startsWith("piece-")) return line.catalogId;
   if (line.catalogId) {
     if (LISTINGS.some((o) => o.catalogId === line.catalogId)) return line.catalogId;
     if (FORGE_CATALOG.some((c) => c.id === line.catalogId)) return line.catalogId;
@@ -1169,6 +1171,12 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
       lineTotal: o.lineTotal,
       best: o.best,
       checkedAt: o.checkedAt,
+      quote:
+        item?.id.startsWith("piece-") && !(item.unitCostUsd != null && item.unitCostUsd > 0)
+          ? item.unitCostUsd === 0
+            ? "owned"
+            : "search"
+          : undefined,
     }));
     if (!offers.length) {
       offers = searchOffers(

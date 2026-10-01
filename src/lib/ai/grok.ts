@@ -125,7 +125,9 @@ export const interpretPrompt = createServerFn({ method: "POST" })
         strokes.length >= 2 || ops.length > 0
           ? {
               name: parsed.form?.name || subject,
+              kind: structure ?? "custom",
               historic: !!parsed.form?.historic,
+              notes: parsed.notes ? [parsed.notes] : [],
               source: parsed.form?.source,
               strokes,
               ops,

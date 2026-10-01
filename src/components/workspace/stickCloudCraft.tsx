@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
@@ -13,9 +13,13 @@ import {
   flatBarGeometry,
   pipeGeometry,
   meshDiameter,
+  photoSideGeometry,
+  sawhorseGeometry,
   ROLE_TINT,
   spanOf,
+  vesselGeometry,
 } from "@/components/workspace/stick-helpers";
+import { loadStockPhoto } from "@/lib/yard/stockPhoto";
 import { BinderCloud } from "@/components/workspace/binder-cloud";
 import type { Vec3, WorkMode, YardInstance, YardProject } from "@/lib/yard/types";
 
@@ -48,6 +52,16 @@ export function StickCloud({
     const boxes: Row[] = [];
     const solidCyls: Row[] = [];
     const hollowCyls: Row[] = [];
+    const bottles: Row[] = [];
+    const cans: Row[] = [];
+    const jars: Row[] = [];
+    const tanks: Row[] = [];
+    const tools: Row[] = [];
+    const cups: Row[] = [];
+    const buckets: Row[] = [];
+    const balls: Row[] = [];
+    const horses: Row[] = [];
+    const photos: Row[] = [];
     instances.forEach((inst, index) => {
       const item = getCatalogItem(inst.catalogId);
       if (!item) return;
@@ -61,10 +75,20 @@ export function StickCloud({
       if (k === "flatBar" && inst.cutLength == null) flatBars.push(row);
       else if (k === "flatBar") boxes.push(row);
       else if (k === "box") boxes.push(row);
+      else if (k === "bottle") bottles.push(row);
+      else if (k === "can") cans.push(row);
+      else if (k === "jar") jars.push(row);
+      else if (k === "tank") tanks.push(row);
+      else if (k === "tool") tools.push(row);
+      else if (k === "cup") cups.push(row);
+      else if (k === "bucket") buckets.push(row);
+      else if (k === "ball") balls.push(row);
+      else if (k === "sawhorse") horses.push(row);
+      else if (k === "photo") photos.push(row);
       else if (k === "cylinder") solidCyls.push(row);
       else hollowCyls.push(row);
     });
-    return { flatBars, boxes, solidCyls, hollowCyls };
+    return { flatBars, boxes, solidCyls, hollowCyls, bottles, cans, jars, tanks, tools, cups, buckets, balls, horses, photos };
   }, [instances, span]);
 
   const common = { explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragId: dragPos?.id ?? null, overall, count: instances.length, onSelect, useShadows };
@@ -74,8 +98,8 @@ export function StickCloud({
     [groups.flatBars, groups.boxes],
   );
   const cyls = useMemo(
-    () => [...groups.solidCyls, ...groups.hollowCyls],
-    [groups.solidCyls, groups.hollowCyls],
+    () => [...groups.solidCyls, ...groups.hollowCyls, ...groups.bottles, ...groups.cans, ...groups.jars],
+    [groups.solidCyls, groups.hollowCyls, groups.bottles, groups.cans, groups.jars],
   );
 
   return (
@@ -84,6 +108,16 @@ export function StickCloud({
       <CloudKind rows={groups.boxes} {...common} cylindrical={false} hollow={false} />
       <CloudKind rows={groups.solidCyls} {...common} cylindrical={true} hollow={false} />
       <CloudKind rows={groups.hollowCyls} {...common} cylindrical={true} hollow={true} />
+      <CloudKind rows={groups.bottles} {...common} cylindrical vessel="bottle" />
+      <CloudKind rows={groups.cans} {...common} cylindrical vessel="can" />
+      <CloudKind rows={groups.jars} {...common} cylindrical vessel="jar" />
+      <CloudKind rows={groups.tanks} {...common} cylindrical vessel="tank" />
+      <CloudKind rows={groups.tools} {...common} cylindrical vessel="tool" />
+      <CloudKind rows={groups.cups} {...common} cylindrical vessel="cup" />
+      <CloudKind rows={groups.buckets} {...common} cylindrical vessel="bucket" />
+      <CloudKind rows={groups.balls} {...common} cylindrical ball />
+      <CloudKind rows={groups.horses} {...common} cylindrical={false} horse />
+      <CloudKind rows={groups.photos} {...common} cylindrical={false} photo />
       {workMode !== "build" && (
         <BinderCloud cyls={cyls} boxes={solidBars} explode={explode} joinMethod={joinMethod} />
       )}
@@ -92,7 +126,7 @@ export function StickCloud({
 }
 
 function CloudKind({
-  rows, explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragId, overall, count, onSelect, cylindrical, hollow, flatBar = false, useShadows,
+  rows, explode, selectedId, workMode, stepIds, placedIds, lockedIds, dragId, overall, count, onSelect, cylindrical, hollow = false, flatBar = false, vessel, ball = false, horse = false, photo = false, useShadows,
 }: {
   rows: Row[];
   explode: number;
@@ -106,11 +140,16 @@ function CloudKind({
   count: number;
   onSelect: (id: string | null) => void;
   cylindrical: boolean;
-  hollow: boolean;
+  hollow?: boolean;
   flatBar?: boolean;
+  vessel?: "bottle" | "can" | "jar" | "tank" | "tool" | "cup" | "bucket";
+  ball?: boolean;
+  horse?: boolean;
+  photo?: boolean;
   useShadows?: boolean;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
+  const side = useRef<THREE.InstancedMesh>(null);
   const { controls } = useThree();
   const nudge = useYard((s) => s.nudgeInstance);
   const finish = useYard((s) => s.finishMove);
@@ -118,39 +157,53 @@ function CloudKind({
   const start = useRef({ mouse: new THREE.Vector3(), pos: { x: 0, y: 0, z: 0 } });
   const live = rows.filter((r) => r.inst.id !== dragId);
   const hasStep = stepIds.length > 0;
+  const photoUrl = photo ? rows[0]?.item.image : undefined;
+  const [photoMap, setPhotoMap] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!photoUrl) return;
+    let cancel = false;
+    loadStockPhoto(photoUrl).then((tex) => {
+      if (!cancel) setPhotoMap(tex);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [photoUrl]);
 
   useLayoutEffect(() => {
-    const m = mesh.current;
-    if (!m) return;
+    const targets = [mesh.current, side.current].filter((m): m is THREE.InstancedMesh => !!m);
+    if (!targets.length) return;
     const dummy = new THREE.Object3D();
     const color = new THREE.Color();
-    for (let i = 0; i < live.length; i++) {
-      const { inst, index, prim } = live[i];
-      const placed = placedIds.includes(inst.id);
-      const pos = displayPos(inst, index, count, overall, workMode, placed, null);
-      const piled = workMode === "build" && !placed;
-      if (piled) {
-        dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
-        dummy.quaternion.identity();
-        const diameter = meshDiameter(prim, cylindrical);
-        if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
-        else if (flatBar) dummy.scale.set(prim.length, prim.width, prim.height);
-        else dummy.scale.set(prim.length, prim.height, prim.width);
-      } else {
-        applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation, overall, flatBar);
+    for (const m of targets) {
+      for (let i = 0; i < live.length; i++) {
+        const { inst, index, prim } = live[i];
+        const placed = placedIds.includes(inst.id);
+        const pos = displayPos(inst, index, count, overall, workMode, placed, null);
+        const piled = workMode === "build" && !placed;
+        if (piled) {
+          dummy.position.set(pos.x * explode, pos.y, pos.z * explode);
+          dummy.quaternion.identity();
+          const diameter = meshDiameter(prim, cylindrical);
+          if (cylindrical) dummy.scale.set(diameter, prim.length, diameter);
+          else if (flatBar) dummy.scale.set(prim.length, prim.width, prim.height);
+          else dummy.scale.set(prim.length, prim.height, prim.width);
+        } else {
+          applyMemberPose(dummy, inst, prim, cylindrical, explode, pos, inst.rotation, overall, flatBar, !!vessel);
+        }
+        dummy.updateMatrix();
+        m.setMatrixAt(i, dummy.matrix);
+        const inStep = hasStep && stepIds.includes(inst.id);
+        const selected = inst.id === selectedId;
+        const stock = photoMap ? "#ffffff" : live[i].item.color || ROLE_TINT[inst.role ?? ""] || "#e0b86a";
+        color.set(hasStep && !inStep ? "#8a7e6e" : selected || inStep ? "#fff1d0" : stock);
+        m.setColorAt(i, color);
       }
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      const inStep = hasStep && stepIds.includes(inst.id);
-      const selected = inst.id === selectedId;
-      const stock = live[i].item.color || ROLE_TINT[inst.role ?? ""] || "#e0b86a";
-      color.set(hasStep && !inStep ? "#8a7e6e" : selected || inStep ? "#fff1d0" : stock);
-      m.setColorAt(i, color);
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      m.count = live.length;
     }
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    m.count = live.length;
-  }, [live, explode, workMode, placedIds, stepIds, selectedId, hasStep, count, overall, cylindrical]);
+  }, [live, explode, workMode, placedIds, stepIds, selectedId, hasStep, count, overall, cylindrical, photoMap]);
 
   const setOrbit = (on: boolean) => {
     const orbit = controls as unknown as { enabled?: boolean } | null;
@@ -207,6 +260,7 @@ function CloudKind({
       : 0.76;
 
   return (
+    <>
     <instancedMesh
       ref={mesh}
       args={[undefined, undefined, Math.max(live.length, 1)]}
@@ -218,7 +272,15 @@ function CloudKind({
       onPointerUp={up}
       onPointerCancel={up}
     >
-      {cylindrical ? (
+      {photo && photoMap ? (
+        <planeGeometry args={[1, 1]} />
+      ) : ball ? (
+        <sphereGeometry args={[0.5, 18, 14]} />
+      ) : horse ? (
+        <primitive object={sawhorseGeometry()} attach="geometry" />
+      ) : vessel ? (
+        <primitive object={vesselGeometry(vessel)} attach="geometry" />
+      ) : cylindrical ? (
         hollow ? (
           <primitive object={pipeGeometry(innerFrac)} attach="geometry" />
         ) : (
@@ -232,9 +294,26 @@ function CloudKind({
       <meshStandardMaterial
         roughness={look.roughness}
         metalness={look.metalness}
-        map={look.map ?? undefined}
+        map={photoMap ?? look.map ?? undefined}
+        vertexColors={!!vessel}
+        side={photoMap ? THREE.DoubleSide : THREE.FrontSide}
         envMapIntensity={look.env}
       />
     </instancedMesh>
+    {photo && photoMap ? (
+      <instancedMesh
+        ref={side}
+        args={[undefined, undefined, Math.max(live.length, 1)]}
+        frustumCulled={false}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+      >
+        <primitive object={photoSideGeometry()} attach="geometry" />
+        <meshStandardMaterial map={photoMap} roughness={0.55} metalness={0.02} side={THREE.DoubleSide} />
+      </instancedMesh>
+    ) : null}
+    </>
   );
 }

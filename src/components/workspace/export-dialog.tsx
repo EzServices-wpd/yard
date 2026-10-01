@@ -2,6 +2,7 @@
 
 import { inchFrac } from "@/lib/yard/inchText";
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { planToMarkdown } from "@/lib/yard/report";
 import { buildPlanPdf, slugPlan } from "@/lib/yard/pdf";
@@ -10,6 +11,8 @@ import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
 import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
+import { ideaSignature } from "@/lib/yard/ideaLibrary";
+import { candidateFromPrint, keepPrintedIdea } from "@/lib/yard/ideaKeep";
 
 export function ExportDialog({
   project,
@@ -25,6 +28,8 @@ export function ExportDialog({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [kept, setKept] = useState<"new" | "known" | null>(null);
+  const [knownLabel, setKnownLabel] = useState("");
   const render = plan.render ?? project.render;
   const md = planToMarkdown(project, plan);
   // Build a preview blob only — never auto-download.
@@ -46,6 +51,24 @@ export function ExportDialog({
       if (url) URL.revokeObjectURL(url);
     };
   }, [project, plan]);
+
+  const printSig = ideaSignature(candidateFromPrint(project, plan));
+  useEffect(() => {
+    let live = true;
+    void keepPrintedIdea(project, plan).then((result) => {
+      if (!live) return;
+      if (result.added) setKept("new");
+      else if (result.knownLabel) {
+        setKnownLabel(result.knownLabel);
+        setKept("known");
+      }
+    });
+    return () => {
+      live = false;
+    };
+    // Signature is the printed plan. Re-opening the same sheet does not ask again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printSig]);
 
   async function copyMd() {
     try {
@@ -163,6 +186,28 @@ export function ExportDialog({
             {sizeLine}
           </p>
           {project.prompt && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.prompt}</p>}
+          {kept === "new" && (
+            <p className="mt-3 text-sm text-ink">
+              New idea. It’s on{" "}
+              <Link to="/ideas" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+                Ideas
+              </Link>
+              .
+            </p>
+          )}
+          {kept === "known" && (
+            <p className="mt-3 text-sm text-ink-muted">
+              Already on{" "}
+              <Link
+                to="/ideas"
+                search={{ q: knownLabel }}
+                className="text-ink underline decoration-rule underline-offset-4 hover:decoration-ink"
+              >
+                Ideas
+              </Link>
+              .
+            </p>
+          )}
           {dlNote && <p className="mt-3 text-xs text-ink-muted">{dlNote}</p>}
 
           {pdfUrl && (

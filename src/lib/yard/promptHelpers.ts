@@ -487,6 +487,14 @@ export function hasExplicitStock(prompt: string): boolean {
   return !isWireStock(detectMaterial(prompt));
 }
 
+/** Keep a piece the user already picked, unless this sentence names a different one. */
+export function materialUnlessNamed(currentId: string | undefined, prompt: string): string | undefined {
+  if (!currentId || currentId === "wire-frame") return undefined;
+  const named = detectMaterial(prompt);
+  if (!isWireStock(named) && named.id !== currentId) return undefined;
+  return currentId;
+}
+
 export function isWireStock(item: CatalogItem | undefined | null): boolean {
   return !!item && (item.id === "wire-frame" || !!item.tags?.includes("wire"));
 }
