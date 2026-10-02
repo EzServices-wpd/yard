@@ -308,6 +308,8 @@ function placeHeldProduct(prompt: string): YardProject | null {
   const lower = prompt.toLowerCase();
   if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves))\b/.test(lower)) return null;
   if (/\bwine\b/.test(lower) && /\bracks?\b/.test(lower)) return null;
+  // A wall shelf or rack for jars is the hung jar rack at the typed width, not a stand around one jar.
+  if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
   const item = modeledProduct(prompt);
   if (!item?.shape || item.shape === "object") return null;
   rememberCatalogItem(item);
