@@ -30,7 +30,7 @@ import {
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
-import { buildFitted, typedHeightInches } from "../src/lib/yard/fitted";
+import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac } from "../src/lib/yard/inchText";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
@@ -3783,9 +3783,10 @@ console.log("SOFT-TRUST OK", {
     for (const g of [...o.vGaps, ...o.hGaps]) {
       if (g < 3.5 - 1e-6) failWine("opening under 3.5in clear", { prompt: c.prompt, vGaps: o.vGaps, hGaps: o.hGaps });
     }
-    // Bottle pitch: every bottle row is one bottle high — 3.5" to 5.5" clear, never stretched.
+    // Bottle pitch: every bottle row is one bottle high — the standard 3 3/4" clear plus at most the
+    // 1/4" row tolerance (4" clear), never stretched; spare height is a plinth or a capped open shelf.
     for (const g of o.vGaps) {
-      if (g > 5.5 + 1e-6) failWine("bottle row taller than 5.5in (stretched opening)", { prompt: c.prompt, vGaps: o.vGaps });
+      if (g > WINE_ROW_MAX_CLEAR + 1e-6) failWine(`bottle row taller than ${WINE_ROW_MAX_CLEAR}in (stretched opening)`, { prompt: c.prompt, vGaps: o.vGaps });
     }
     if (c.height != null && Math.abs(p.overall.height - c.height) > 0.01) failWine("height", { prompt: c.prompt, H: p.overall.height, want: c.height });
     // A typed count wins: capacity ≥ N and < N + one full row (unless capped or "as many as fit").
@@ -3807,7 +3808,7 @@ console.log("SOFT-TRUST OK", {
       if (openGaps.length !== c.openShelves) failWine("open shelves above the grid", { prompt: c.prompt, openGaps, want: c.openShelves });
       if (c.openShelves > 0 && !new RegExp(`with ${c.openShelves} open shel(?:f|ves) above`).test(blob)) failWine("notes must state the open shelves", { prompt: c.prompt, blob: blob.slice(0, 400) });
     }
-    if (c.plinth && (!/plinth so the top cap lands at the/.test(blob) || !p.panels.some((x) => /plinth/i.test(x.name)))) failWine("spare under 6in must be a stated plinth", { prompt: c.prompt, blob: blob.slice(0, 400) });
+    if (c.plinth && (!/plinth, set back like a toe kick, so the top cap lands at the/.test(blob) || !p.panels.some((x) => /plinth/i.test(x.name)))) failWine("spare under 6in must be a stated plinth", { prompt: c.prompt, blob: blob.slice(0, 400) });
     // Open shelf clear: 6–12" (glasses, a corkscrew, decanters), never a sliver or a stretched 16" hole.
     for (const g of openGaps) {
       if (g < 6 - 1e-6 || g > 12 + 1e-6) failWine("open shelf clear outside 6–12in", { prompt: c.prompt, openGaps });
@@ -3875,12 +3876,56 @@ console.log("SOFT-TRUST OK", {
   if (plate6.panels.filter((x) => x.type === "divider").length !== 5) failWine("plate 6 dividers", plate6.panels.map((x) => x.name));
   // Open default rack rows stay one bottle high too.
   const defRows = openings(def).vGaps;
-  if (!defRows.length || defRows.some((g) => g < 3.5 - 1e-6 || g > 5.5 + 1e-6)) failWine("default rack rows off the bottle pitch", defRows);
+  if (!defRows.length || defRows.some((g) => g < 3.5 - 1e-6 || g > WINE_ROW_MAX_CLEAR + 1e-6)) failWine("default rack rows off the bottle pitch", defRows);
   // A typed dimension is a hard cap, a typed count a target: when the count's grid does not fit,
   // build the full rows that fit, never past the typed size, and say the shortfall plus the size that fits.
+  // Spare height: rows on the standard pitch, the spare under them a plinth (< 6" clear + board)
+  // set back like a toe kick, so the top cap lands at the typed height.
+  const plinthOf = (r: ReturnType<typeof generateFromPrompt>) => r.panels.find((x) => x.type === "kick" && /plinth/i.test(x.name));
+  const plinthOk = (r: ReturnType<typeof generateFromPrompt>) => {
+    const k = plinthOf(r);
+    if (!k) return true;
+    const front = r.overall.depth - (k.position.z + k.size.depth);
+    const bottom = r.panels.filter((x) => x.type === "shelf").sort((a, b) => a.position.y - b.position.y)[0];
+    return k.size.height < WINE_OPEN_MIN + 0.75 - 1e-6 && front >= 1 - 1e-6 && Math.abs(bottom.position.y - k.size.height) < 0.01;
+  };
+  // The fit size the shortfall note names really holds every bottle when rebuilt at that size, and it
+  // is measured with this build's openings: opening width, divider board, and row pitch from the scene.
+  const inchOf = (txt: string) => {
+    const m = txt.trim().match(/^(\d+)(?: (\d+)\/(\d+))?$/);
+    return m ? parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) / parseInt(m[3], 10) : 0) : NaN;
+  };
+  const up4 = (n: number) => Math.ceil(n * 4 - 1e-9) / 4;
+  const fitCheck = (q: string, r: ReturnType<typeof generateFromPrompt>, asked: number) => {
+    const blob = (r.notes ?? []).join(" ");
+    const cap = capacityOf(r) ?? 0;
+    if (cap >= asked) return;
+    const fh = blob.match(/about ([\d /]+)" tall fits all/);
+    const fw = blob.match(/about ([\d /]+)" wide at [\d /]+" tall/);
+    if (!fh) return failWine("shortfall must name a height that fits", { q, blob: blob.slice(0, 300) });
+    const o = openings(r);
+    const t = 0.75;
+    const open = o.hGaps.length ? Math.min(...o.hGaps) : 0;
+    const rowClear = o.vGaps.length ? Math.min(...o.vGaps) : WINE_ROW_CLEAR;
+    const rowsNeed = Math.ceil(asked / o.cols);
+    const colsNeed = Math.ceil(asked / o.rows);
+    const wantH = up4(2 * t + rowsNeed * rowClear + (rowsNeed - 1) * t);
+    const wantW = up4(2 * t + colsNeed * open + (colsNeed - 1) * t);
+    const fitH = inchOf(fh[1]);
+    if (Math.abs(fitH - wantH) > 0.26) failWine("fit height not from the built row pitch", { q, fitH, wantH, rowClear });
+    const D = r.overall.depth;
+    const reH = generateFromPrompt(`wine rack ${r.overall.width} wide ${fitH} tall ${D} deep for ${asked} bottles`);
+    if ((capacityOf(reH) ?? 0) < asked) failWine("stated fit height does not hold every bottle when rebuilt", { q, fitH, cap: capacityOf(reH) });
+    if (fw) {
+      const fitW = inchOf(fw[1]);
+      if (Math.abs(fitW - wantW) > 0.26) failWine("fit width not from the built openings", { q, fitW, wantW, open });
+      const reW = generateFromPrompt(`wine rack ${fitW} wide ${r.overall.height} tall ${D} deep for ${asked} bottles`);
+      if ((capacityOf(reW) ?? 0) < asked || openings(reW).hGaps.some((g) => g < 3.5 - 1e-6)) failWine("stated fit width does not hold every bottle when rebuilt", { q, fitW, cap: capacityOf(reW) });
+    }
+  };
   for (const c of [
-    { q: "pine wine rack for 20 bottles 12 inches tall", W: 24, H: 12, asked: 20, cap: 10, fitH: '18 3/4"' },
-    { q: "wine rack 12 wide 30 tall for 20 bottles", W: 12, H: 30, asked: 20, cap: 12, fitH: '45 3/4"', fitW: '17 3/4"' },
+    { q: "pine wine rack for 20 bottles 12 inches tall", W: 24, H: 12, asked: 20, cap: 10, fitH: '18 3/4"', fitW: '47 1/4"', plinth: 2.25 },
+    { q: "wine rack 12 wide 30 tall for 20 bottles", W: 12, H: 30, asked: 20, cap: 12, fitH: '45 3/4"', fitW: '23 1/4"', plinth: 2.25 },
   ]) {
     const r = generateFromPrompt(c.q);
     const blob = (r.notes ?? []).join(" ");
@@ -3894,7 +3939,10 @@ console.log("SOFT-TRUST OK", {
     if (!short.test(blob)) failWine("shortfall + fitting height must be stated", { q: c.q, blob: blob.slice(0, 300) });
     if (c.fitW && !blob.includes(`about ${c.fitW} wide at ${c.H}" tall`)) failWine("width that fits must be stated", { q: c.q, blob: blob.slice(0, 300) });
     const { vGaps } = openings(r);
-    if (vGaps.some((g) => g < 3.5 - 1e-6 || g > 5.5 + 1e-6)) failWine("short rack rows off one-bottle-high", { q: c.q, vGaps });
+    if (vGaps.some((g) => Math.abs(g - WINE_ROW_CLEAR) > 1e-6)) failWine("short rack rows must stay on the standard pitch (spare goes to the plinth)", { q: c.q, vGaps });
+    const k = plinthOf(r);
+    if (!k || Math.abs(k.size.height - c.plinth) > 0.01 || !plinthOk(r) || !/plinth, set back like a toe kick, so the top cap lands at the/.test(blob)) failWine("short rack spare must be a stated, set-back plinth", { q: c.q, plinth: k?.size, blob: blob.slice(0, 400) });
+    fitCheck(c.q, r, c.asked);
   }
   // Height sweep: a count at every typed height 15–60" keeps the count, caps at the typed height
   // (no upright or back above the top cap), open shelves 6–12" clear, and bottle rows 3.5–5.5".
@@ -3911,12 +3959,14 @@ console.log("SOFT-TRUST OK", {
       const bad =
         Math.abs(capTop - r.overall.height) > 0.01 ||
         up.some((x) => x.position.y + x.size.height > capTop + 0.01) ||
-        gaps.some((g) => g < 3.5 - 1e-6 || (g > 5.5 + 1e-6 && (g < 6 - 1e-6 || g > 12 + 1e-6))) ||
-        vGaps.some((g) => g < 3.5 - 1e-6 || g > 5.5 + 1e-6) ||
+        gaps.some((g) => g < 3.5 - 1e-6 || (g > WINE_ROW_MAX_CLEAR + 1e-6 && (g < 6 - 1e-6 || g > 12 + 1e-6))) ||
+        vGaps.some((g) => g < 3.5 - 1e-6 || g > WINE_ROW_MAX_CLEAR + 1e-6) ||
+        !plinthOk(r) ||
         (r.overall.height >= 4.5 * Math.ceil(n / 5) + 1.5 && (cap < n || cap >= n + 5)) ||
         r.overall.height > h + 0.01 ||
         (cap < n && !new RegExp(`${n - cap} short of the ${n} you asked for; about [\\d /]+" tall fits all ${n}`).test((r.notes ?? []).join(" ")));
-      if (bad) failWine("height sweep", { q, H: r.overall.height, capTop, gaps, cap });
+      if (bad) failWine("height sweep", { q, H: r.overall.height, capTop, gaps, cap, plinth: plinthOf(r)?.size });
+      fitCheck(q, r, n);
     }
   }
   // No count + "as many as fit": bottle rows fill the typed height (no open shelves).
@@ -3925,7 +3975,7 @@ console.log("SOFT-TRUST OK", {
   if (fill36.overall.height !== 36 || fillRows.length < 7 || (capacityOf(fill36) ?? 0) < 40 || fill36.panels.some((x) => /^Open shelf/.test(x.name))) {
     failWine("as many as fit must fill the height with bottles", { H: fill36.overall.height, rows: fillRows, cap: capacityOf(fill36) });
   }
-  console.log("PASS wine-class: bottle-pitch rows (3.5–5.5in clear), typed count wins (capacity ≥ N, < N + one row), leftover height as capped 6–12in open shelves or a stated plinth, nothing above the top cap, grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
+  console.log("PASS wine-class: bottle-pitch rows (3.5in to standard 3 3/4in + 1/4in tolerance), spare as a set-back plinth or capped open shelf, fit sizes from the built openings rebuild to hold every bottle, typed count wins (capacity ≥ N, < N + one row), leftover height as capped 6–12in open shelves or a stated plinth, nothing above the top cap, grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
 }
 
 // Named wood tables: the species drives every part including legs (laminated from the
