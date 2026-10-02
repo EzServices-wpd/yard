@@ -362,6 +362,8 @@ export type YardProject = {
     prompt: string;
     scene?: string;
   };
+  /** Human climb build (step stool, library/loft ladder): built to its typed size, never rescaled. */
+  climb?: { kind: "stool" | "ladder"; topTreadIn: number; steps: number; handrailIn: number };
   flat?: {
     paper: "letter" | "letter-landscape" | "8x10" | "a4";
     plane: "top" | "front" | "side";

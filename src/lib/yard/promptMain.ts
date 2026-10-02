@@ -34,6 +34,7 @@ import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, modeledProduct } from "./productModel";
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
+import { buildClimb, climbKind } from "./climb";
 import { localStockQuery } from "./stockQuery";
 import { rememberCatalogItem } from "./foundStock";
 
@@ -263,7 +264,7 @@ function fitWeekendSize(
   prompt: string,
   override?: { width: number; height: number; depth: number },
 ): YardProject {
-  if (project.fitted || project.pocket || project.windowPkg || project.kind === "closet" || project.kind === "opening") {
+  if (project.fitted || project.pocket || project.windowPkg || project.climb || project.kind === "closet" || project.kind === "opening") {
     return project;
   }
   if (!project.instances.length && !project.panels.length) return project;
@@ -527,6 +528,16 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
+  // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
+  // at the typed height. A craft or toy stock pick stays on its craft path.
+  {
+    const climb = climbKind(prompt);
+    const ask = climb ? requestedStock(prompt, materialOverride) : null;
+    // Leaning ladders stay parked on their old path until the step writer reads sloped stringer blanks.
+    if (climb === "stool" && (!ask || carcaseKind(ask) || /^(?:lumber|plywood)-/.test(ask.id))) {
+      return buildClimb(prompt, climb, opts.sizeOverride);
+    }
+  }
   // A known build class (cat tree, any animal, robot, figure, frame, catapult…) beats owned-board and
   // named-product routing. A material plus a size is never a product.
   const buildClass = namedBuildClass(prompt);

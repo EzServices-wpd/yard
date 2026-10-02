@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { stoolRiseRunTalk, stoolStepCount } from "./climb";
 import { inchFrac } from "./inchText";
 import { templatePanelSteps, templateSteps } from "./formTemplates";
 import {
@@ -288,8 +289,8 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   }
   if (mech === "climb" && isClimbStepStool(prompt)) {
     const rr = climbRiseRun(prompt);
-    const n = Math.max(1, climbStepCount(prompt));
-    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+    const n = stoolStepCount(prompt);
+    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : (stoolRiseRunTalk(prompt) ?? "typed rise × run");
     const stepTalk = n >= 2 ? `${n} human steps (each ${riseRun})` : `one climb step at ${riseRun}`;
     const whoClimb = /\badult\b|adult\s+stands|adult\s+tread/.test(prompt.toLowerCase())
       ? "Adult stands"
@@ -785,7 +786,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     detectWeekendMech(project.prompt ?? "") === "climb";
   if (climbStool && uprights.length && !project.instances.length) {
     const rr = climbRiseRun(project.prompt ?? "");
-    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : 'typed rise × run';
+    const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : (stoolRiseRunTalk(project.prompt ?? "") ?? "typed rise × run");
     return [
       {
         step: 1,
@@ -796,7 +797,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: "Stand the legs and seat the tread",
+        title: "Stand the legs and set the tread",
         description: `Assemble the frame so the tread carries a ${
           /\badult\b|adult\s+stands|adult\s+tread/.test((project.prompt ?? "").toLowerCase())
             ? "standing adult"
@@ -2779,8 +2780,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     }
     if (detectWeekendMech(p) === "climb" && isClimbStepStool(p)) {
       const rr = climbRiseRun(p);
-      const n = Math.max(1, climbStepCount(p));
-      const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+      const n = stoolStepCount(p);
+      const riseRun = rr != null ? `${rr.rise}" rise × ${rr.run}" run` : (stoolRiseRunTalk(p) ?? "typed rise × run");
       const adult =
         /\badult\b/.test(p.toLowerCase()) ||
         /adult\s+stands|adult\s+tread/.test(p.toLowerCase());
@@ -2952,9 +2953,9 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     }
     if (isClimbStepStool(prompt)) {
       const rr = climbRiseRun(prompt);
-      const n = Math.max(1, climbStepCount(prompt));
+      const n = stoolStepCount(prompt);
       const riseRun =
-        rr != null ? `${rr.rise}" rise × ${rr.run}" run` : "typed rise × run";
+        rr != null ? `${rr.rise}" rise × ${rr.run}" run` : (stoolRiseRunTalk(prompt) ?? "typed rise × run");
       const hand = wantsClimbHandrail(prompt);
       return [
         { role: "leg", title: "Cut the legs", why: (() => {
