@@ -21,6 +21,7 @@ type Nominal = {
 };
 
 const NOMINALS: Nominal[] = [
+  { key: "5/4x6", id: "lumber-1x6-8", width: 5.5, thick: 1, sold: 96, label: "5/4×6" },
   { key: "1x2", id: "lumber-1x2-8", width: 1.5, thick: 0.75, sold: 96, label: "1×2" },
   { key: "1x3", id: "lumber-1x3-8", width: 2.5, thick: 0.75, sold: 96, label: "1×3" },
   { key: "1x4", id: "lumber-1x4-8", width: 3.5, thick: 0.75, sold: 96, label: "1×4" },
@@ -35,7 +36,7 @@ const NOMINALS: Nominal[] = [
   { key: "4x4", id: "lumber-4x4-8", width: 3.5, thick: 3.5, sold: 96, label: "4×4" },
 ];
 
-const OWNED = /\b(i have|pile of|piles of|scraps?|leftovers?|on hand|already have)\b/i;
+const OWNED = /\b(i have|i own|already own|already owns|pile of|piles of|scraps?|leftovers?|on hand|already have)\b/i;
 
 function frac(n: number): string {
   const known: [number, string][] = [
@@ -64,6 +65,13 @@ function hash(s: string): string {
 }
 
 function findNominal(q: string): { nom: Nominal; rest: string } | null {
+  const deck = q.match(/\b5\s*\/\s*4\s*[x×]\s*6(?:\s*[x×]\s*(\d+(?:\.\d+)?))?\b/i);
+  if (deck) {
+    const nom = NOMINALS.find((n) => n.key === "5/4x6");
+    if (!nom) return null;
+    const rest = `${q.slice(0, deck.index)} ${deck[1] ? deck[1] + " in " : ""} ${q.slice((deck.index ?? 0) + deck[0].length)}`;
+    return { nom, rest };
+  }
   const m = q.match(/\b([124])\s*[x×]\s*(2|3|4|6|8|10|12)\b/i);
   if (!m) return null;
   const key = `${m[1]}x${m[2]}`;

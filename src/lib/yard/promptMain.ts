@@ -31,6 +31,7 @@ import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type Te
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
 import { isBareProductPrompt, modeledProduct } from "./productModel";
+import { localStockQuery } from "./stockQuery";
 import { rememberCatalogItem } from "./foundStock";
 
 export function emptyProject(): YardProject {
@@ -256,6 +257,51 @@ function scaleToBox(
 }
 
 
+
+/** A board they already own stays that board. Not a catalog default, not a figure. */
+function placeOwnedBoard(prompt: string): YardProject | null {
+  const item = localStockQuery(prompt);
+  if (!item || item.unitCostUsd !== 0) return null;
+  rememberCatalogItem(item);
+  const length = item.dims.length ?? 0;
+  const width = item.dims.width ?? 0;
+  const thick = item.dims.height ?? 0;
+  if (length < 0.5 || width < 0.5) return null;
+  const scraper = /boot scraper|scraper/i.test(prompt);
+  const name = scraper ? `Boot scraper from your ${item.name}` : item.name;
+  const pos = { x: 0, y: thick / 2, z: 0 };
+  const note = item.notes
+    ? `${item.notes} Kept at ${thick}" × ${width}" × ${length}", not a catalog 1× or 2×.`
+    : `Kept at ${thick}" × ${width}" × ${length}".`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "custom",
+    overall: { width: length, height: thick, depth: width },
+    instances: [
+      {
+        id: createId("inst"),
+        catalogId: item.id,
+        position: pos,
+        rotation: { x: 0, y: 0, z: 0 },
+        cutLength: length,
+        role: "member",
+        home: pos,
+      },
+    ],
+    panels: [],
+    primaryMaterialId: item.id,
+    notes: [note],
+    assumptions: {
+      load: "light",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 /** A named product is the piece, not a carcase that happens to mention a bottle. */
 function placeNamedProduct(prompt: string): YardProject | null {
   if (!isBareProductPrompt(prompt)) return null;
@@ -318,6 +364,8 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
+  const owned = placeOwnedBoard(prompt);
+  if (owned && !formOverride) return owned;
   const placed = placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
   const size = parseSize(lower);

@@ -27,6 +27,13 @@ describe("end user critiques of stock", () => {
     assert.equal(scrap.dims.height, 1.5);
     assert.equal(scrap.unitCostUsd, 0);
     assert.match(scrap.notes ?? "", /actually/i);
+    const deck = stockOffer("I already own one 5/4 x 6 x 53 cedar deck board. Make a boot scraper from that board.");
+    assert.ok(deck);
+    assert.equal(deck.dims.length, 53);
+    assert.equal(deck.dims.width, 5.5);
+    assert.equal(deck.dims.height, 1);
+    assert.equal(deck.unitCostUsd, 0);
+    assert.match(deck.name, /5\/4/);
     assert.equal(stockOffer("2x4"), null);
     assert.equal(stockOffer("popsicle stick"), null);
   });
