@@ -18,4 +18,3 @@ export function usd(n: number): string {
   return n === 0 ? "—" : `~$${n.toFixed(2)}`;
 }
 
-export { shopSearchUrl, affiliateUrl, shopLinks, amazonAssociateTag } from "@/lib/yard/shop";

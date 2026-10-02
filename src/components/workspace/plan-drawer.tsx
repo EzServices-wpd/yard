@@ -8,8 +8,7 @@ import { writeInstructions, renderProject } from "@/lib/ai/grok";
 import { planToMarkdown } from "@/lib/yard/report";
 import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type PaperSize } from "@/lib/yard/flat";
 import { usd } from "@/lib/utils";
-import { tagNote } from "@/lib/yard/listings";
-import { outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET } from "@/lib/yard/outbound";
+import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
@@ -310,65 +309,7 @@ function PlanBody({
             </section>
           )}
 
-          {plan.bom.length > 0 && (
-            <section>
-              <h3 className="font-display text-lg text-fg">Buy</h3>
-              <p className="mt-1 text-xs text-muted">
-                {plan.partsKind === "whole"
-                  ? `${plan.totals.pieces} full pieces · glue · do not cut`
-                  : `${plan.totals.pieces} pieces`}{" "}
-                · {usd(plan.totals.estCostUsd)} estimated · cheapest first for the amount you need, any store, same size only
-              </p>
-              <p className="mt-1 text-[11px] text-faint">
-                Estimates, not a quote. Best is the cheapest checked listing; rows with search links only show an estimate.
-              </p>
-              {tagNote() && (
-                <p className="mt-1 text-[11px] text-faint" data-yard-affiliate-disclosure="1">
-                  {tagNote()}
-                </p>
-              )}
-              <ul className="mt-3 space-y-3">
-                {plan.bom.map((b, i) => (
-                  <li key={i} className="border-b border-rule/60 pb-3 last:border-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-fg">
-                          {b.quantity} {b.unit} · {b.name}
-                        </p>
-                        {b.notes && <p className="text-xs text-muted">{b.notes}</p>}
-                      </div>
-                      {b.estimatedCost != null && <p className="font-mono text-xs text-muted">{usd(b.estimatedCost)}</p>}
-                    </div>
-                    {b.offers && b.offers.length > 0 ? (
-                      <ul className="mt-2 space-y-1">
-                        {b.offers.map((o) => (
-                          <li key={o.href} className="flex items-baseline justify-between gap-2">
-                            <a
-                              href={outboundHref(o.href)}
-                              target={OUTBOUND_TARGET}
-                              rel={OUTBOUND_REL}
-                              className={`text-xs underline-offset-2 hover:underline ${o.best ? "text-fg" : "text-muted hover:text-fg"}`}
-                              data-yard-shop={o.retailer}
-                              data-yard-affiliate={outboundIsAffiliate(o.href) ? "1" : "0"}
-                              data-yard-best={o.best ? "1" : "0"}
-                            >
-                              {o.best ? "Best · " : ""}
-                              {o.label} · {o.title}
-                            </a>
-                            <span className="shrink-0 font-mono text-xs text-muted">
-                              {o.quote === "search"
-                                ? "Search"
-                                : `${o.packsNeeded} × ${usd(o.packPrice)} · ${usd(o.unitPrice)}/ea`}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <BuyList plan={plan} />
 
           {(!housePath || hasIssues) && (
             <section>

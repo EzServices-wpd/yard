@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { lookupStockProduct, type StoreHit } from "@/lib/ai/stockLookup";
 import { searchCatalog } from "@/lib/yard/catalog";
-import { outboundHref, OUTBOUND_REL, OUTBOUND_TARGET } from "@/lib/yard/outbound";
-import { shopLinks } from "@/lib/yard/shop";
 import {
   localStockQuery,
   measuredProduct,
@@ -125,7 +123,6 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
       ? measuredProduct(q, length, Number.isFinite(across) ? across : null, round, listing)
       : null;
   const chosen = ready ?? measured;
-  const links = shopLinks((ready?.searchQuery || name || q).slice(0, 120));
   const showSize = look && !ready;
 
   return (
@@ -176,7 +173,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
         <p className="mt-2 text-xs text-muted">
           {offer
             ? "No photo came back, so this is the usual size. Put the inches in the search if you measured it."
-            : "No listing came back. Open a store, or type the inches and use that size."}
+            : "No listing came back. Type the inches and Yard uses that size."}
         </p>
       )}
       {status === "error" && <p className="mt-2 text-xs text-muted">{error}</p>}
@@ -234,21 +231,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
           Use this
         </button>
       )}
-      {(look || offer) && (
-        <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-          {links.map((link) => (
-            <a
-              key={link.retailer}
-              href={outboundHref(link.href)}
-              target={OUTBOUND_TARGET}
-              rel={OUTBOUND_REL}
-              className="text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
-            >
-              {link.label}
-            </a>
-          ))}
-        </p>
-      )}
+      {/* No store links here: shopping links live only on the Buy list (yard-affiliate-guards). */}
     </div>
   );
 }
