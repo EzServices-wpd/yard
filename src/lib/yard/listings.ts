@@ -1120,7 +1120,10 @@ function guessCatalogId(line: BomLine): string | null {
 
 /** Store search links priced at an estimate (no checked listing, so no "Best"). */
 export function estimateOffers(query: string, qty: number, lineTotal: number): ShopOffer[] {
-  return searchOffers(query, undefined, qty, lineTotal);
+  // Sold by the piece (a board): "8 × ~$20.00", not one pack of 8 at the line total.
+  const n = Math.max(1, Math.round(qty));
+  const each = lineTotal / n;
+  return searchOffers(query, undefined, 1, each).map((o) => ({ ...o, packQty: 1, packPrice: each, unitPrice: each, packsNeeded: n, lineTotal }));
 }
 
 function searchOffers(
