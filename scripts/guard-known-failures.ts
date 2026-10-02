@@ -27,9 +27,6 @@ export type KnownFailure = {
 
 export const KNOWN_FAILURES: KnownFailure[] = [
   // ---- yard-honesty-smoke.ts --------------------------------------------------------------
-  // Desk drawer fronts: the fitted desk builds drawers as boxes with a pull, not separate
-  // "false front" steps. Long-standing, accepted by Ezra; a desk-drawer pass owns it.
-  { guard: "honesty-smoke", message: "desk plan does not build drawer fronts", why: "known desk drawer-front step gap (accepted) — owner: desk pass" },
   // The smoke exited at the desk check for months, so every check after it went unseen. These were
   // already failing on origin/main before the CI work (2026-10-02 audit); each needs its own fix.
   { guard: "honesty-smoke", message: "desk cut list still says Left instead of grouping", why: "desk cut rows not grouped by part (pre-existing, hidden behind the desk exit) — owner: desk pass" },
