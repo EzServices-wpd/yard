@@ -516,7 +516,8 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   const coatRack =
     /coat/i.test(project.name) ||
     isCoatHookBoard((project.prompt ?? "").toLowerCase()) ||
-    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase()));
+    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase())) ||
+    /\b(?:coat|hat|key|leash)\s+(?:rack|holder)\b/i.test(project.name);
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
   const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
@@ -641,7 +642,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       catalogId: "coat-hooks",
       searchQuery: "coat hooks wall mount 6 pack",
       estimatedCost: 12.98,
-      notes: `${hooks} hooks, 6" on center into the peg rail.`,
+      notes: `${hooks} hooks, 6" on center into the ${project.panels.some((p) => /peg rail/i.test(p.name)) ? "peg rail" : project.panels.some((p) => /body profile/i.test(p.name)) ? "body profile" : project.shape ? "body" : "rail"}.`,
     });
   }
   const doors = project.panels.filter((panel) => panel.type === "door");

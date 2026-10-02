@@ -21,7 +21,7 @@ import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 export type ShapePartName = "body" | "neck" | "head" | "snout" | "ear" | "tail" | "leg" | "mane" | "top" | "rim" | "base" | "rocker" | "tie";
 
 /** What the animal is for, besides being an animal: a flat usable top (shelf, planter, bookend) or rockers. */
-export type AnimalUse = "shelf" | "planter" | "bookend" | "rocker";
+export type AnimalUse = "shelf" | "planter" | "bookend" | "rocker" | "hooks";
 
 export type ShapePart = {
   id: string;
@@ -94,6 +94,8 @@ type QuadProfile = {
   scale: number;
   pose?: "stand" | "sit";
   use?: AnimalUse;
+  /** Plain noun for a hooks use: "coat rack", "key holder", "hat rack", "leash holder". */
+  useNoun?: string;
 };
 
 const DOG: QuadProfile = {
@@ -147,9 +149,12 @@ const NOT_THE_ANIMAL =
 
 const SIT = /\bsitting\b|\bsits\b|\bseated\b|\bsit\b/;
 
+/** "horse-shaped", "shaped like a horse", "in the shape of a dog": the animal is the shape and the noun is its use. */
+const SHAPED_AS = /\b[a-z]+\s*-\s*shaped\b|\b[a-z]+\s+shaped\b|\bshaped\s+like\b|\bin\s+the\s+shape\s+of\b/;
+
 export function quadrupedProfile(prompt: string): QuadProfile | null {
   const lower = prompt.toLowerCase();
-  if (NOT_THE_ANIMAL.test(lower)) return null;
+  if (NOT_THE_ANIMAL.test(lower) && !SHAPED_AS.test(lower)) return null;
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
   const hay = looks ? looks[1] : lower;
   for (const { re, p } of PROFILES) {
@@ -163,8 +168,11 @@ export function quadrupedProfile(prompt: string): QuadProfile | null {
             ? "planter"
             : /\bshel(?:f|ves)\b/.test(lower)
               ? "shelf"
-              : undefined;
-      return { ...p, pose: use === "rocker" ? "stand" : pose, use };
+              : /\bcoat\s*racks?\b|\bhooks?\b|\bhat\s*racks?\b|\bkey\s*(?:racks?|holders?)\b|\bleash\s*(?:racks?|holders?)\b/.test(lower)
+                ? "hooks"
+                : undefined;
+      const useNoun = use === "hooks" ? (lower.match(/\b(coat\s*rack|hat\s*rack|key\s*(?:rack|holder)|leash\s*(?:rack|holder))/)?.[1]?.replace(/\s+/g, " ") ?? "coat rack") : undefined;
+      return { ...p, pose: use === "rocker" ? "stand" : pose, use, useNoun };
     }
   }
   return null;
@@ -889,6 +897,7 @@ function addUseLinear(segs: Seg[], model: ShapeModel, item: CatalogItem, whole: 
     }
     return out;
   }
+  if (use === "hooks") return out;
   // Flat top over the body, clear of the neck (front) and tail (back).
   const L = bx1 - bx0;
   const tx0 = bx0 + L * 0.12, tx1 = bx1 - L * 0.22;
@@ -992,6 +1001,15 @@ function addUseSheet(panels: Panel[], model: ShapeModel, item: CatalogItem, use:
     }
     return out;
   }
+  if (use === "hooks") {
+    // Wall-hung silhouette: a cleat behind the body (same plane as the back legs) holds it off the
+    // wall and screws into studs; coat hooks screw into the body profile along the belly line.
+    const backZ = Math.min(...out.map((p) => p.position.z));
+    const cleatW = r(L * 0.7);
+    const cleatH = r(Math.max(2.5, body.h * 0.35));
+    out.push(mk({ type: "cleat", name: "Wall cleat", position: { x: r(body.c.x - cleatW / 2), y: r(body.c.y - cleatH / 2), z: r(backZ) }, size: { width: cleatW, height: cleatH, depth: T }, cutNote: "Glue and screw to the back of the body profile; two screws through it into studs hang the rack." }));
+    return out;
+  }
   out.push(mk({ type: "shelf", name: use === "planter" ? "Planter bottom" : "Shelf top", position: { x: r(tx0), y: r(topY), z: r(-D / 2) }, size: { width: r(tl), height: T, depth: D }, cutNote: "Flat top: screw down into the profile's back edge." }));
   if (use === "planter") {
     const h = r(Math.max(2.5, D * 0.5));
@@ -1063,7 +1081,7 @@ export function materializeShape(
 function materializeAt(hit: NonNullable<ReturnType<typeof detectShapeClass>>, item: CatalogItem, whole: boolean, BL: number): ShapeBuild {
   const model = hit.cls.build(hit.profile, BL);
   const use = hit.profile.use;
-  if (use) model.label = use === "rocker" ? `Rocking ${model.label.toLowerCase()}` : `${model.label} ${use}`;
+  if (use) model.label = use === "rocker" ? `Rocking ${model.label.toLowerCase()}` : use === "hooks" ? `${model.label} ${hit.profile.useNoun ?? "coat rack"}` : `${model.label} ${use}`;
   const cls = shapeStockClass(item);
   const notes: string[] = [];
   let graph: StructureGraph | undefined;
@@ -1090,6 +1108,10 @@ function materializeAt(hit: NonNullable<ReturnType<typeof detectShapeClass>>, it
   const r1 = (n: number) => Math.round(n * 10) / 10;
   const overall = { width: r1(span((p) => p.x) + pad), height: r1(Math.max(...pts.map((p) => p.y)) + pad / 2), depth: r1(span((p) => p.z) + pad) };
   notes.push(`${model.label} · ${hit.profile.torsoH ? `body ${(1 / hit.profile.torsoH).toFixed(1)}:1 long to tall` : ""}, legs ${Math.round(hit.profile.legL * 100)}% of the body length${model.pose === "sit" ? ", sitting on its haunches" : ""}.`);
+  if (use === "hooks") {
+    const hooks = Math.max(3, Math.min(8, Math.round(overall.width / 6)));
+    notes.push(`Wall-hung ${hit.profile.useNoun ?? "coat rack"}: ${hooks} hooks screw into the body ${cls === "sheet" ? "profile" : "boards"} along the belly line, about 6" on center. ${cls === "sheet" ? "The wall cleat behind the body screws into studs." : "Two screws through the body into studs hang it."}`);
+  }
   return { model, graph, panels, overall, notes };
 }
 

@@ -30,7 +30,9 @@ import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplat
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
-import { isBareProductPrompt, modeledProduct } from "./productModel";
+import { hasProductDrawing, isBareProductPrompt, modeledProduct } from "./productModel";
+import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
+import { buildHeldStand } from "./heldStand";
 import { localStockQuery } from "./stockQuery";
 import { rememberCatalogItem } from "./foundStock";
 
@@ -154,6 +156,7 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
   planter: { length: 24 },
   shelf: { length: 30 },
   rocker: { height: 24 },
+  hooks: { length: 36 },
 };
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
@@ -303,102 +306,67 @@ function placeOwnedBoard(prompt: string): YardProject | null {
 }
 
 
-/** A stand, rack, shelf, or holder that names a product keeps that product. Not a creature, not a plywood box. */
+/**
+ * A stand, riser, shelf, or holder FOR a held object keeps that object on a deck sized to it.
+ * Only when no build class matched (animal / figure / template / weekend / climb), and only when the
+ * held phrase names a real object: a class-default held object (microwave, aquarium, TV…) or a
+ * product with a drawing (cooler, bottle). An unknown noun never becomes a tiny placeholder.
+ */
 function placeHeldProduct(prompt: string): YardProject | null {
   const lower = prompt.toLowerCase();
-  if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves))\b/.test(lower)) return null;
+  if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves)|risers?|carts?)\b/.test(lower)) return null;
   if (/\bwine\b/.test(lower) && /\bracks?\b/.test(lower)) return null;
   // A wall shelf or rack for jars is the hung jar rack at the typed width, not a stand around one jar.
   if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
   // A shoe rack is the cubbies, not a stand around one shoe. A stand/holder for a named product still keeps the piece.
   if (wantsShoes(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
-  // Spoken "N shelves" densifies a house carcase (bookcase / utility / ladder shelf). Never invent a
-  // product-stand around the furniture noun. "shelf for an Igloo cooler" still holds (uses "for").
-  if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+shel(?:f|ves)\b/.test(lower)) return null;
+  // Spoken "N shelves" / "N tiers" densifies a carcase or tiered stand. Never a product stand.
+  if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
   // Ladder / leaning / utility / open shelving / bookcase IS the carcase — shelf word is the furniture.
   if (
     /bookcases?|bookshel(?:f|ves)/.test(lower) ||
     /\bshelving\b/.test(lower) ||
-    /\b(?:utility|open(?:\s+kitchen)?|ladder|leaning(?:\s+ladder)?)\s+shel(?:f|ves|ving)\b/.test(lower)
+    /\b(?:utility|open(?:\s+kitchen)?|ladder|leaning(?:\s+ladder)?|floating|wall|corner|display)\s+shel(?:f|ves|ving)\b/.test(lower)
   ) {
     return null;
   }
-  const item = modeledProduct(prompt);
-  if (!item?.shape) return null;
-  // Object is the envelope for a product the family list missed (a flamingo). Still the piece, not a closet.
-  rememberCatalogItem(item);
-  const tall = item.dims.length ?? 18;
-  const across = item.dims.diameter ?? item.dims.width ?? 8;
-  const post = 1.5;
-  const span = across + 4;
-  const legH = Math.min(14, Math.max(6, tall * 0.4));
-  const x0 = -span / 2;
-  const z0 = -span / 2;
-  const corners: [number, number][] = [
-    [x0, z0],
-    [x0 + span - post, z0],
-    [x0, z0 + span - post],
-    [x0 + span - post, z0 + span - post],
-  ];
-  const panels: Panel[] = corners.map(([x, z], i) => ({
-    id: createId("panel"),
-    type: "upright",
-    name: `Stand post ${i + 1}`,
-    position: { x, y: 0, z },
-    size: { width: post, height: legH, depth: post },
-    materialId: "lumber-2x2-8",
-    cutNote: "2x2 post at a corner, outside the piece.",
-  }));
-  const railT = 1.5;
-  panels.push({
-    id: createId("panel"),
-    type: "rail",
-    name: "Near rail",
-    position: { x: x0, y: legH - railT, z: z0 },
-    size: { width: span, height: railT, depth: railT },
-    materialId: "lumber-2x4-8",
-    cutNote: "2x4 rail. The piece sits in the opening, not on a plywood deck.",
-  });
-  panels.push({
-    id: createId("panel"),
-    type: "rail",
-    name: "Far rail",
-    position: { x: x0, y: legH - railT, z: z0 + span - railT },
-    size: { width: span, height: railT, depth: railT },
-    materialId: "lumber-2x4-8",
-    cutNote: "2x4 rail. Opening stays clear for the piece.",
-  });
-  const pos = { x: 0, y: legH + tall / 2, z: 0 };
-  return {
-    id: createId("proj"),
-    name: item.name,
-    prompt,
-    kind: "custom",
-    overall: { width: span, height: legH + tall, depth: span },
-    instances: [
-      {
-        id: createId("inst"),
-        catalogId: item.id,
-        position: pos,
-        rotation: { x: 0, y: 0, z: 0 },
-        cutLength: tall,
-        role: "member",
-        home: pos,
-      },
-    ],
-    panels,
-    primaryMaterialId: "lumber-2x2-8",
-    notes: [
-      item.notes || `${item.name} at its usual size.`,
-      "The named product stays in the stand. Posts and rails stay outside it.",
-    ],
-    assumptions: {
-      load: "medium",
-      units: "inches",
-      installMode: "freestanding",
-      wallType: "wood_stud",
-    },
+  // A known build class always wins over the hold cue ("dachshund shelf", "cat tree", "robot").
+  if (namedBuildClass(prompt)) return null;
+  // "shelf for my X collection" is a display shelf: X is what it shows, not one object on a riser.
+  if (heldCollection(lower)) return null;
+  const phrase = heldPhrase(stripPetUse(lower));
+  if (!phrase) return null;
+  const titleFor = (label: string) => {
+    const noun = (lower.match(/\b(stand|riser|shelf|holder|cradle|cart|rack)\b/)?.[1] ?? "stand");
+    const art = /^(?:one|two|three|four|\d+\s+\w+s)\b/i.test(label) && !/^\d+\s*(?:gallon|inch|″|")/i.test(label) ? "" : /^(?:[aeiou]|8\b|11\b|18\b)/i.test(label) ? "an " : "a ";
+    return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} for ${art}${label}`;
   };
+  const held = heldObjectFor(phrase);
+  if (held) return buildHeldStand(prompt, held, titleFor(held.label));
+  // A named product with a listing or usual-family size keeps that envelope.
+  if (!hasProductDrawing(phrase)) return null;
+  const item = modeledProduct(phrase);
+  if (!item?.shape) return null;
+  const round = ["bottle", "can", "jar", "tank", "cup", "bucket", "roll", "ball"].includes(item.shape);
+  const dia = item.dims.diameter ?? item.dims.width ?? 4;
+  const w = round ? dia : (item.dims.length ?? 8);
+  const d = round ? dia : (item.dims.width ?? 4);
+  const h = round ? (item.dims.length ?? 8) : (item.dims.height ?? 4);
+  const holdsWater = ["bottle", "can", "jar", "cup", "bucket"].includes(item.shape) || /cooler/.test(phrase);
+  const pounds = Math.max(2, Math.round(((w * d * h) / 1728) * 30));
+  const raw = prompt.slice(lower.indexOf(phrase), lower.indexOf(phrase) + phrase.length) || phrase;
+  const product: HeldObject = {
+    label: raw,
+    width: w,
+    depth: d,
+    height: h,
+    pounds,
+    water: holdsWater,
+    count: 1,
+    standHeight: 24,
+    note: item.notes || `${item.name} at its usual size.`,
+  };
+  return buildHeldStand(prompt, product, titleFor(raw));
 }
 
 /** A named product is the piece, not a carcase that happens to mention a bottle. */
@@ -463,9 +431,12 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
-  const owned = placeOwnedBoard(prompt);
+  // A known build class (cat tree, any animal, robot, figure, frame, catapult…) beats owned-board and
+  // named-product routing. A material plus a size is never a product.
+  const buildClass = namedBuildClass(prompt);
+  const owned = buildClass ? null : placeOwnedBoard(prompt);
   if (owned && !formOverride) return owned;
-  const placed = placeNamedProduct(prompt);
+  const placed = buildClass ? null : placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
   const held = placeHeldProduct(prompt);
   if (held && !formOverride) return held;

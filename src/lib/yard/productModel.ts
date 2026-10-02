@@ -271,7 +271,7 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /ketchup|mustard/.test(q), over: { shape: "bottle", length: 8, diameter: 2.5, note: "Usual squeeze bottle, about 8″ × 2.5″. Not this bottle’s drawing." } },
   { match: (q) => /\bbricks?\b/.test(q) && !/lego/.test(q), over: { shape: "block", length: 8, width: 3.75, height: 2.25, note: "Usual brick, 8″ × 3.75″ × 2.25″. Not a Lego, and not this brick’s drawing." } },
   { match: (q) => /wd-?\s*40|aerosol|spray\s*paint/.test(q), over: { shape: "can", length: 7.75, diameter: 2.6, color: "#f2d23a", note: "Usual aerosol can, 7.75″ × 2.6″. Not this can’s drawing." } },
-  { match: (q) => /sharpies?|markers?|pens?|pencils?/.test(q), over: { shape: "tool", length: 5.5, diameter: 0.6, color: "#1a1a1a", note: "Usual marker, 5.5″ × 0.6″. Not this one’s drawing." } },
+  { match: (q) => /\b(?:sharpies?|markers?|pens?|pencils?)\b/.test(q), over: { shape: "tool", length: 5.5, diameter: 0.6, color: "#1a1a1a", note: "Usual marker, 5.5″ × 0.6″. Not this one’s drawing." } },
   { match: (q) => /flashlights?|\btorches\b|lanterns?/.test(q), over: { shape: "tool", length: 6.5, diameter: 1.5, color: "#2a2e33", note: "Usual flashlight, 6.5″ × 1.5″. Not this light’s drawing." } },
   { match: (q) => /tape\s*measures?/.test(q), over: { shape: "roll", length: 1.5, diameter: 3.2, color: "#e0a106", note: "Usual tape measure, 3.2″ across and 1.5″ thick. Not this tape’s drawing." } },
   { match: (q) => /extension\s*cords?|\bcords?\b|\bropes?\b|\bhoses?\b/.test(q), over: { shape: "roll", length: 2.5, diameter: 8, color: "#f07a1a", note: "Usual 25 ft coil, about 8″ across. Not this cord’s drawing." } },
@@ -325,6 +325,16 @@ export function isBareProductPrompt(prompt: string): boolean {
   if (SPECS.some((row) => row.match(q))) return true;
   // A lawn flamingo or garden gnome is the ornament, not a creature. shapeOf stays object so a bare camel still can.
   if (/\b(flamingos?|lawn\s+ornaments?|gnomes?)\b/.test(q)) return true;
+  if (NAMED.some((row) => row.match(q))) return true;
+  return shapeOf(q) !== "object";
+}
+
+/** A product we have a listing or usual-family size for (cooler, bottle, tote). Unknown nouns are not. */
+export function hasProductDrawing(phrase: string): boolean {
+  const q = phrase.trim().toLowerCase();
+  if (q.length < 3) return false;
+  if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
+  if (SPECS.some((row) => row.match(q))) return true;
   if (NAMED.some((row) => row.match(q))) return true;
   return shapeOf(q) !== "object";
 }

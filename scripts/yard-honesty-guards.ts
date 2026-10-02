@@ -7886,7 +7886,7 @@ console.log("STRANGER PLAN OK", {
   // Protect: shelf-for-product still holds the named piece.
   const cooler = generateFromPrompt("shelf for an Igloo cooler");
   if (cooler.kind === "closet") failHonesty("shelf-for-product not closet", cooler.kind);
-  if (!cooler.panels.some((p) => /post/i.test(p.name))) {
+  if (!cooler.panels.some((p) => /post|^leg\b/i.test(p.name))) {
     failHonesty("shelf-for-product still stand", cooler.panels.map((p) => p.name));
   }
   console.log("PASS shelf-count-carcase: bookshelf 30×60×12 Shelf×5; bookcase/kids/ladder siblings; shelf-for-cooler protect");
