@@ -424,6 +424,39 @@ export type WineRackLayout = {
   heightTyped: boolean;
 };
 
+/** Front cradle rail on every bottle row: tall enough to hold the neck, scalloped so the bottle passes. */
+export const WINE_RAIL_H = 1.5;
+/** Highest a cradle scallop floor sits: a 3/4" lip, lower when the row needs it so a 3 1/2" bottle clears with 1/16" to spare. */
+export const WINE_CRADLE_LIP = 0.75;
+
+/** Cradle scallop floor and the clear height a bottle gets above it on a row of `cellH` clear. */
+export function wineCradle(cellH: number): { floor: number; clear: number } {
+  const floor = Math.max(1 / 8, Math.min(WINE_CRADLE_LIP, cellH - WINE_BOTTLE_CLEAR - 1 / 16));
+  return { floor, clear: cellH - floor };
+}
+
+/**
+ * Face outline ("xy", rail-local) of a scalloped cradle rail: a WINE_RAIL_H board with one circular
+ * scallop WINE_BOTTLE_CLEAR wide per bottle centre, bottoming out at `floor`. The scallop radius is at
+ * least the bottle radius, so a bottle resting on the scallop floor passes through it.
+ */
+export function wineCradleOutline(w: number, centres: number[], floor: number): [number, number][] {
+  const c = WINE_BOTTLE_CLEAR;
+  const d = WINE_RAIL_H - floor;
+  const R = (c * c / 4 + d * d) / (2 * d);
+  const pts: [number, number][] = [[0, 0], [w, 0], [w, WINE_RAIL_H]];
+  const round64 = (v: number) => Math.round(v * 64) / 64;
+  for (const cx of [...centres].sort((a, b) => b - a)) {
+    for (let i = 0; i <= 16; i++) {
+      const x = cx + c / 2 - (i * c) / 16;
+      const y = floor + R - Math.sqrt(Math.max(0, R * R - (x - cx) ** 2));
+      pts.push([round64(Math.min(w, Math.max(0, x))), round64(Math.min(WINE_RAIL_H, y))]);
+    }
+  }
+  pts.push([0, WINE_RAIL_H]);
+  return pts;
+}
+
 /** Bottle row pitch: 3¾" clear opening + one ¾" shelf ≈ 4½", the same rule as the columns. */
 export const WINE_ROW_CLEAR = 3.75;
 /**
@@ -4255,6 +4288,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const plinthZ = Math.max(backT, D - P - Math.min(WINE_PLINTH_SETBACK, Math.max(0, D - backT - 2 * P)));
     if (plinth > 0) panels.push(panel("kick", "Plinth", x0 + P, 0, plinthZ, innerW, plinth, P));
     const gridTopY = rowFloor(rows);
+    // Each bottle slides in over a scalloped cradle rail: one scallop per bottle, cut low enough that a
+    // 3 1/2" bottle clears the row above, and the neck rests in the scallop.
+    const bottleCentres = grid && cols >= 2
+      ? Array.from({ length: cols }, (_, c) => c * (cellW + P) + cellW / 2)
+      : Array.from({ length: cols }, (_, c) => (c + 0.5) * (innerW / cols));
+    const cradle = wineCradle(cellH);
     for (let r = 0; r <= rows; r++) {
       const y = rowFloor(r);
       // Middle shelves of a divider grid are notched (egg-crate) — their own cut line.
@@ -4263,7 +4302,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("shelf", nm, x0 + P, y, backT, innerW, P, D - backT));
       // Front rail on every bottle-row floor (never the cap) — keeps rails inside overall H.
       if (r < rows) {
-        panels.push(panel("rail", `Bottle rail ${r + 1}`, x0 + P, y + P, D - P, innerW, 1.5, P));
+        const rail = panel("rail", `Bottle rail ${r + 1}`, x0 + P, y + P, D - P, innerW, WINE_RAIL_H, P);
+        rail.polygon = { plane: "xy", pts: wineCradleOutline(innerW, bottleCentres, cradle.floor) };
+        rail.cutNote = `Scalloped cradle: ${bottleCentres.length} scallops ${inch16(WINE_BOTTLE_CLEAR)}" wide, cut down to ${inch16(cradle.floor)}" of rail, one centred on each bottle. Trace the arcs from the plan and cut with a jigsaw.`;
+        panels.push(rail);
       }
     }
     // Open shelves above the bottle rows (typed height taller than the count needs), then the top cap.
@@ -4302,7 +4344,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `${name}. Wall-mounted open wine rack. ${slotVoice} Not a bookcase and not a hollow box.`,
-        `Bottles lie on their sides, necks facing out. ${openingVoice} Glue a 1.5" rail on the front of every bottle-row shelf so bottles cannot roll off.${grid && cols >= 2 ? ` The ${cols - 1} divider${cols - 1 === 1 ? "" : "s"} half-lap over the ${Math.max(0, rows - 1)} middle shel${rows - 1 === 1 ? "f" : "ves"} (egg-crate).` : ""} Glue the shelves; do not pin them — a loaded row is heavy.`,
+        `Bottles lie on their sides, necks facing out. ${openingVoice} Glue a ${inch(WINE_RAIL_H)}" scalloped cradle rail on the front of every bottle-row shelf: one ${inch(WINE_BOTTLE_CLEAR)}" wide scallop per bottle, cut down to ${inch(cradle.floor)}", so each bottle slides in with ${inch(cradle.clear)}" clear above the cradle and its neck rests in the scallop.${grid && cols >= 2 ? ` The ${cols - 1} divider${cols - 1 === 1 ? "" : "s"} half-lap over the ${Math.max(0, rows - 1)} middle shel${rows - 1 === 1 ? "f" : "ves"} (egg-crate).` : ""} Glue the shelves; do not pin them — a loaded row is heavy.`,
         "Hang the rack on studs through the back. Typical bottom sits about 36–42\" off the floor, or sit it on a counter and still lag it so it cannot tip. Guidance only.",
       ],
       historic: false,

@@ -200,13 +200,14 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const shelves = project.panels.filter((p) => /shelf/i.test(p.type) || /shelf/i.test(p.name));
   const legs = project.panels.filter((p) => /^leg/i.test(p.name));
   const round = project.fitted?.unit?.shape === "round" || project.panels.some((p) => isRoundPlate(project, p) || p.outline === "quarter-round");
-  const angled = project.panels.some((p) => p.polygon || p.outline === "right-triangle" || /°/.test(p.cutNote ?? ""));
+  const curved = project.panels.some((p) => /scallop|curved/i.test(p.cutNote ?? ""));
+  const angled = project.panels.some((p) => (p.polygon && !/scallop|curved/i.test(p.cutNote ?? "")) || p.outline === "right-triangle" || /°/.test(p.cutNote ?? ""));
 
   const tools: ToolKind[] = (() => {
     if (craft) return ["ruler", "pencil", "glue", "clamp", "square"];
     const t: ToolKind[] = ["tape", "square", "pencil"];
     if (plan.cutList.length) t.push("saw");
-    if (round) t.push("jigsaw");
+    if (round || curved) t.push("jigsaw");
     if (angled) t.push("bevel");
     if (hasScrews) t.push("drill");
     if (hasGlue) t.push("clamp");
