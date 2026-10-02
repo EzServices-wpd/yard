@@ -1189,7 +1189,7 @@ export function openingStorageMeasureEmptyTalk(prompt: string | null | undefined
   return {
     bare: true,
     // HUD after fmt "—" — action, not jargon.
-    hudCompanion: " · type Measure to lock size",
+    hudCompanion: " · type Size to lock the size",
     panelBlurb:
       "No size typed yet. These fields start from Yard's class guess — type your opening to lock width, height, and depth.",
     overlayHint: "Yard sized this — type to lock",
@@ -1220,21 +1220,21 @@ export function measureRefitTalk(opts: {
       round: true,
       // Universal round class — diameter × height, not W×H×D axis jargon.
       panelBlurb:
-        "Dia × H refits this unit — diameter on both plan axes, never W×H×W.",
-      checkSuggestion: "Measure is live. Change Dia × H to refit.",
+        "Diameter and height refit this unit — diameter on both plan axes.",
+      checkSuggestion: "Size is live. Change diameter and height to refit.",
     };
   }
   if (opts.pocket) {
     return {
       round: false,
       panelBlurb: "Back wall, left depth, right depth, ceiling. The unit stays a straight box inside the wonky walls.",
-      checkSuggestion: "Measure is live. Change the walls and flares to refit.",
+      checkSuggestion: "Size is live. Change the walls and flares to refit.",
     };
   }
   return {
     round: false,
-    panelBlurb: "W × H × D refits this unit. Drawers, knee, doors, and shelves stay.",
-    checkSuggestion: "Measure is live. Change W × H × D to refit.",
+    panelBlurb: "Wide, tall, and deep refit this unit. Drawers, knee, doors, and shelves stay.",
+    checkSuggestion: "Size is live. Change wide, tall, and deep to refit.",
   };
 }
 

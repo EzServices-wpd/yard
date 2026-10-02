@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
 import { HoleStart } from "@/components/site/hole-start";
+import { LinenNestHero } from "@/components/site/linen-nest";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -92,9 +93,6 @@ function LandingPage() {
     if (!t || !chosen) return;
     setPrompt(`${stripChipStock(t)} ${chosen.append}`.replace(/\s+/g, " ").trim());
   }
-
-  const featured = HEROES.find((h) => h.featured) ?? HEROES[0];
-  const rest = HEROES.filter((h) => h.id !== featured.id);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -241,35 +239,22 @@ function LandingPage() {
 
           <button
             type="button"
-            onClick={() => go(featured.prompt)}
-            className="yard-hero-in yard-hero-in-2 group relative overflow-hidden rounded-xl border border-rule bg-surface/40 text-left lg:col-span-7"
+            onClick={() => go(LINEN)}
+            className="yard-hero-in yard-hero-in-2 group rounded-xl border border-rule bg-surface/40 p-3 text-left lg:col-span-7"
           >
-            <div className="relative aspect-[4/3] bg-paper sm:aspect-[5/4]">
-              <img
-                src={featured.src}
-                alt={`${featured.label} ${featured.size}`}
-                className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
-                width={1280}
-                height={960}
-              />
-            </div>
-            <div className="flex flex-col p-4 sm:absolute sm:inset-x-0 sm:bottom-0 sm:bg-gradient-to-t sm:from-paper sm:via-paper/90 sm:to-transparent sm:p-5 sm:pt-16">
-              <span className="font-display text-lg text-ink group-hover:underline">{featured.label}</span>
-              <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{featured.size}</span>
-              <span className="mt-1.5 text-sm leading-snug text-ink-muted">{featured.caption}</span>
-            </div>
+            <LinenNestHero />
           </button>
         </section>
 
-        <section className="yard-hero-in yard-hero-in-3 mt-4 grid gap-4 sm:grid-cols-2">
-          {rest.map((h) => (
+        <section className="yard-hero-in yard-hero-in-3 mt-4 grid gap-4 sm:grid-cols-3">
+          {HEROES.map((h) => (
             <button
               key={h.id}
               type="button"
               onClick={() => go(h.prompt)}
-              className="group flex overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition-colors duration-150 hover:border-ink/30"
+              className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition-colors duration-150 hover:border-ink/30"
             >
-              <div className="relative aspect-[4/3] w-2/5 shrink-0 overflow-hidden bg-paper sm:w-1/2">
+              <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                 <img
                   src={h.src}
                   alt={`${h.label} ${h.size}`}

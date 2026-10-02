@@ -7257,7 +7257,7 @@ console.log("STRANGER PLAN OK", {
   const vanPlan = buildPlan(van);
   const talk = typedAxesTalk(van);
   // Tail comes from the solved model: overlay doors stand 3/4" proud of the 21" box (same as the cover arrow).
-  if (!/^36" wide · 34" tall and 21" deep assumed, measure to lock · 21 3\/4" deep with the doors on$/.test(talk.subtitle)) failHonesty("pdf cover must mark untyped vanity axes assumed", talk);
+  if (!/^36" wide · 34" tall and 21 3\/4" deep assumed, measure to lock · doors stand proud$/.test(talk.subtitle)) failHonesty("pdf cover must mark untyped vanity axes assumed", talk);
   if (talk.assumed.width || !talk.assumed.height || !talk.assumed.depth) failHonesty("pdf vanity assumed axes", talk.assumed);
   const linenTalk = typedAxesTalk(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep"));
   if (/assumed/.test(linenTalk.subtitle)) failHonesty("pdf linen fully typed must not say assumed", linenTalk.subtitle);

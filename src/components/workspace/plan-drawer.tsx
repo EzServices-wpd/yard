@@ -320,7 +320,7 @@ function PlanBody({
                 · {usd(plan.totals.estCostUsd)} estimated · cheapest first for the amount you need, any store, same size only
               </p>
               <p className="mt-1 text-[11px] text-faint">
-                Prices checked 19 Aug 2026. Best is the cheapest checked listing; rows with search links only show an estimate.
+                Estimates, not a quote. Best is the cheapest checked listing; rows with search links only show an estimate.
               </p>
               {tagNote() && (
                 <p className="mt-1 text-[11px] text-faint" data-yard-affiliate-disclosure="1">

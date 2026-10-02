@@ -55,8 +55,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   };
   const roundUnit = measureChipAxisLabels(envOpts).mode === "round" || isRoundUnitEnvelope(envOpts);
 
-  const built = project.panels.length > 0 || project.instances.length > 0;
-  const title = isPocket ? "The pocket you measured" : built ? "Size" : "Measure a space";
+  const title = isPocket ? "The hole" : "Size";
 
   return (
     <div className="p-4">

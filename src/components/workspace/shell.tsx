@@ -27,7 +27,7 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelProudTalk } from "@/lib/yard/modelSize";
+import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
@@ -181,7 +181,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
-          <span className="hidden truncate font-display text-sm text-muted md:inline">{project.name}</span>
+          <span className="hidden truncate font-display text-sm text-muted md:inline">
+            {stampFinishedDepth(project.name, project.overall.depth, modelFinishedDepth(project.panels, project.overall.depth))}
+          </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link to="/ideas" className="hidden px-2 text-sm text-muted hover:text-fg sm:inline">
@@ -574,9 +576,13 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                       const r = Math.round(n * 10) / 10;
                       return Number.isInteger(r) ? String(r) : r.toFixed(1);
                     };
+                    const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
+                    const finished = pocketUnit
+                      ? pocketUnit.depth
+                      : modelFinishedDepth(project.panels, project.overall.depth);
                     const envelope = pocketUnit
                       ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
-                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, {
+                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, finished, {
                           shape: project.fitted?.unit?.shape,
                           prompt: project.prompt,
                           name: project.name,
@@ -592,12 +598,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                           : workMode === "build"
                             ? " · snap to the glow"
                             : "";
-                    const proud = pocketUnit ? "" : modelProudTalk(project.panels, project.overall.depth);
-                    // Doors stand proud of the box. One depth on the dock — the finished one — not the box depth and the proud depth side by side.
-                    const face = proud ? envelope.replace(/ × [^×]+$/, "") : envelope;
                     return (
                       <>
-                        {face}
+                        {envelope}
                         {proud ? ` · ${proud}` : ""}
                         {companion}
                       </>

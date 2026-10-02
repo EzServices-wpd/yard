@@ -48,6 +48,7 @@ import { shelfInstallHeightsClause } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
 import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
+import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 
 function dim(p: Panel) {
   return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
@@ -2018,7 +2019,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : wallHang
           ? "Confirm the hang — do not cut yet"
           : "Confirm the footprint — do not cut yet",
-      description: `${project.name}. Unit ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${
+      description: `${stampFinishedDepth(project.name, D, modelFinishedDepth(project.panels, D))}. Unit ${round(W)}" wide × ${round(modelFinishedDepth(project.panels, D))}" deep × ${round(H)}" high. ${
+        modelProudNote(project.panels, D) ? `${modelProudNote(project.panels, D)[0].toUpperCase()}${modelProudNote(project.panels, D).slice(1)}. ` : ""
+      }${
         alcove
           ? `Fitted to a ${opening?.width}" × ${opening?.height}" × ${opening?.depth}" ${opening?.kind}. Measure width, height, and depth in three places. Cut to the smallest width.`
           : wallHang

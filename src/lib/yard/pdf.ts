@@ -1,4 +1,4 @@
-import { modelProudTalk } from "./modelSize";
+import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
 import { nestCutList, nestParts, sheetSizeLabel, type NestPart, type NestSheet } from "./nesting";
@@ -68,8 +68,10 @@ export function typedAxesTalk(project: YardProject, craft = false) {
   const stock = noDigits && !Object.keys(assumed).length && !extra.length;
   if (stock) (["width", "height", "depth"] as Axis[]).forEach((a) => (assumed[a] = true));
   const axes: Axis[] = ["width", "height", "depth"];
-  const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(o[a])} ${AXIS_WORD[a]}`);
-  const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(o[a])} ${AXIS_WORD[a]}`);
+  const finished = modelFinishedDepth(project.panels, o.depth);
+  const shown = { ...o, depth: finished };
+  const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
+  const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
   const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
   const assumedList = [...guessed, ...extra];
   const assumedTalk = !assumedList.length
@@ -77,15 +79,18 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     : craft && stock
       ? "design size, nothing typed"
       : `${list(assumedList)} assumed, measure to lock`;
-  // The built model is the truth: overlay doors and drawer fronts stand proud of the box, so when
-  // the model runs deeper than the box size, the subtitle says so (same number as the cover arrow).
-  const proud = modelProudTalk(project.panels, o.depth);
+  // One finished depth. The note does not repeat an inch figure.
+  const proud = modelProudNote(project.panels, o.depth);
   const subtitle =
     craft && stock
       ? `About ${guessed.join(" x ")} · ${assumedTalk}`
       : [typed.join(" x "), assumedTalk, proud].filter(Boolean).join(" · ");
   // Title never stamps an untyped stock size: "Nightstand 20" × 24" × 16"" from a bare prompt → "Nightstand".
-  const title = stock && /\d/.test(name) ? name.replace(/\s*\d.*$/, "").trim() || name : name;
+  const title = stampFinishedDepth(
+    stock && /\d/.test(name) ? name.replace(/\s*\d.*$/, "").trim() || name : name,
+    o.depth,
+    finished,
+  );
   const assumedShort = assumedList.length ? (craft && stock ? "design size" : `${list(assumedList)} assumed`) : "";
   return { title, subtitle: clean(subtitle), assumed, assumedTalk, assumedShort };
 }
