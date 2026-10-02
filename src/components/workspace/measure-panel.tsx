@@ -6,6 +6,7 @@ import type { SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk, measureRefitTalk } from "@/lib/yard/voiceHonesty";
+import { parseInch } from "@/lib/yard/inchText";
 
 export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const measure = useYard((s) => s.measure);
@@ -23,13 +24,14 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     return () => setMeasureOpen(false);
   }, [setMeasureOpen]);
 
-  function liveIfFitted() {
-    if (project.kind !== "closet" && project.kind !== "opening") return;
+  // Every build refits live from the same model: closets, pockets, weekend forms, sticks or sheet.
+  // A half-typed number ("31 1/") waits; the last whole number wins.
+  function liveIfFitted(delay = 450) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       applyMeasure();
       makePlan();
-    }, 280);
+    }, delay);
   }
 
   function apply() {
@@ -38,13 +40,17 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     onBuilt();
   }
 
-  const isPocket = Boolean(project.pocket);
+  const pocketSrc = project.pocket ?? project.recastFrom?.pocket;
+  const isPocket = Boolean(pocketSrc);
+  const flaredNow = pocketSrc ? Math.abs(pocketSrc.walls.leftAngleDeg) > 0.05 || Math.abs(pocketSrc.walls.rightAngleDeg) > 0.05 : false;
+  const shape = measure.pocketShape ?? (flaredNow ? "flared" : "straight");
+  const notchSide = measure.notchSide ?? pocketSrc?.walls.notch?.side ?? "none";
   const isCorner = Boolean(project.fitted?.unit?.corner) || project.fitted?.unit?.odd?.kind === "angled-corner";
   const isSlope = project.fitted?.unit?.odd?.kind === "sloped";
   const slopeDeg = isSlope ? (project.fitted?.unit?.odd?.params as { angle?: number } | undefined)?.angle : undefined;
-  const wNum = parseFloat(measure.width);
-  const hNum = parseFloat(measure.height);
-  const dNum = parseFloat(measure.depth);
+  const wNum = parseInch(measure.width);
+  const hNum = parseInch(measure.height);
+  const dNum = parseInch(measure.depth);
   const envOpts = {
     width: Number.isFinite(wNum) ? wNum : project.overall.width,
     height: Number.isFinite(hNum) ? hNum : project.overall.height,
@@ -63,7 +69,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       <p className="mt-1 text-xs leading-relaxed text-muted">
         {(() => {
           if (isPocket) {
-            return "The hole is the walls. The build is how much of that hole you want filled — along the back, out from the back, and the shelves on each side.";
+            return "The hole is the walls: its size, its shape and any notch in it. The build is how much of that hole you want filled — along the back, out from the back, and the shelves on each side. Change a number and the model, cut list, Buy list and steps refit.";
           }
           const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
           if (emptyTalk) return emptyTalk.panelBlurb;
@@ -73,7 +79,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             return measureRefitTalk(envOpts).panelBlurb;
           }
           if (project.kind !== "closet" && project.kind !== "opening") {
-            return "Wide, tall, and deep. Change a number and it keeps this form.";
+            return "Wide, tall, and deep. Change a number and the same build refits — model, cut list, Buy list and steps.";
           }
           return "Wide, tall, and deep. Change a number and the same closet refits.";
         })()}
@@ -113,6 +119,115 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               liveIfFitted();
             }}
           />
+        </div>
+      )}
+
+      {isPocket && (
+        <div className="mt-4" data-yard-pocket-shape={shape}>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-faint">Shape of the hole</p>
+          <Segmented
+            label="Shape of the hole"
+            value={shape}
+            options={[
+              ["straight", "Straight sides"],
+              ["flared", "Flared sides"],
+            ]}
+            onChange={(v) => {
+              const flared = v === "flared";
+              const keep = flared && pocketSrc && !flaredNow;
+              setMeasure({
+                pocketShape: v as "straight" | "flared",
+                ...(keep ? { leftAngle: measure.leftAngle && measure.leftAngle !== "0" ? measure.leftAngle : "10", rightAngle: measure.rightAngle && measure.rightAngle !== "0" ? measure.rightAngle : "5" } : {}),
+              });
+              liveIfFitted(0);
+            }}
+          />
+          {shape === "flared" && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Field
+                label="Left wall flare"
+                unit="°"
+                value={measure.leftAngle ?? ""}
+                onChange={(v) => {
+                  setMeasure({ leftAngle: v });
+                  liveIfFitted();
+                }}
+              />
+              <Field
+                label="Right wall flare"
+                unit="°"
+                value={measure.rightAngle ?? ""}
+                onChange={(v) => {
+                  setMeasure({ rightAngle: v });
+                  liveIfFitted();
+                }}
+              />
+            </div>
+          )}
+          <p className="mt-1.5 text-[11px] leading-snug text-muted">
+            {shape === "flared"
+              ? "Degrees each side wall opens out from square. The unit stays square and centered; the hole is the part that flares."
+              : "Both side walls square to the back: a rectangle."}
+          </p>
+          <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Notch in the hole</p>
+          <Segmented
+            label="Notch in the hole"
+            value={notchSide}
+            options={[
+              ["none", "None"],
+              ["left", "Left corner"],
+              ["right", "Right corner"],
+              ["back", "Along back"],
+            ]}
+            onChange={(v) => {
+              const side = v as "none" | "left" | "right" | "back";
+              const ceilingNow = pocketSrc?.walls.height ?? 96;
+              setMeasure({
+                notchSide: side,
+                ...(side !== "none" && !measure.notchWidth ? { notchWidth: "6" } : {}),
+                ...(side !== "none" && !measure.notchDepth ? { notchDepth: "4" } : {}),
+                ...(side !== "none" && !measure.notchHeight ? { notchHeight: side === "back" ? "36" : String(ceilingNow) } : {}),
+              });
+              liveIfFitted(0);
+            }}
+          />
+          {notchSide !== "none" && (
+            <div className={`mt-2 grid gap-2 ${notchSide === "back" ? "grid-cols-2" : "grid-cols-3"}`}>
+              {notchSide !== "back" && (
+                <Field
+                  label="Notch wide"
+                  value={measure.notchWidth ?? ""}
+                  onChange={(v) => {
+                    setMeasure({ notchWidth: v });
+                    liveIfFitted();
+                  }}
+                />
+              )}
+              <Field
+                label="Notch deep"
+                value={measure.notchDepth ?? ""}
+                onChange={(v) => {
+                  setMeasure({ notchDepth: v });
+                  liveIfFitted();
+                }}
+              />
+              <Field
+                label="Notch tall"
+                value={measure.notchHeight ?? ""}
+                onChange={(v) => {
+                  setMeasure({ notchHeight: v });
+                  liveIfFitted();
+                }}
+              />
+            </div>
+          )}
+          {notchSide !== "none" && (
+            <p className="mt-1.5 text-[11px] leading-snug text-muted">
+              {notchSide === "back"
+                ? "A ledge or pipe wall along the back. The unit stands in front of it."
+                : "A pipe chase or wall jog in that back corner. The unit stands beside it."}
+            </p>
+          )}
         </div>
       )}
 
@@ -270,7 +385,11 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
         onClick={apply}
         className="mt-4 h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-fg"
       >
-        {isPocket ? "Refit this pocket" : "Fit this opening"}
+        {isPocket
+          ? "Refit this pocket"
+          : project.kind === "closet" || project.kind === "opening" || project.fitted || measure.kind === "window_rough_opening"
+            ? "Fit this opening"
+            : "Refit this build"}
       </button>
       {isPocket && (
         <button
@@ -286,6 +405,38 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           Load the example pocket
         </button>
       )}
+    </div>
+  );
+}
+
+function Segmented({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: [string, string][];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="mt-1.5 flex flex-wrap gap-1">
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          data-yard-choice={v}
+          onClick={() => onChange(v)}
+          className={`h-9 rounded-full border px-3 text-xs ${
+            value === v ? "border-fg/40 bg-elevated text-fg" : "border-border text-muted hover:text-fg"
+          }`}
+        >
+          {text}
+        </button>
+      ))}
     </div>
   );
 }
@@ -308,7 +459,12 @@ function Field({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        inputMode="decimal"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        inputMode="text"
+        autoComplete="off"
+        spellCheck={false}
         className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-2 font-mono text-sm text-fg"
       />
     </label>

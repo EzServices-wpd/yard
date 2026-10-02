@@ -1,6 +1,7 @@
 "use client";
 
 import { useYard } from "@/lib/yard/store";
+import { parseInch } from "@/lib/yard/inchText";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
 /**
@@ -19,6 +20,7 @@ export function MeasureFields() {
     project.kind === "opening" ||
     !!project.fitted ||
     !!project.pocket ||
+    !!project.recastFrom ||
     project.instances.length > 0 ||
     project.panels.length > 0;
 
@@ -29,9 +31,9 @@ export function MeasureFields() {
     makePlan();
   }
 
-  const w = parseFloat(measure.width);
-  const h = parseFloat(measure.height);
-  const d = parseFloat(measure.depth);
+  const w = parseInch(measure.width);
+  const h = parseInch(measure.height);
+  const d = parseInch(measure.depth);
   const envOpts = {
     width: Number.isFinite(w) ? w : project.overall.width,
     height: Number.isFinite(h) ? h : project.overall.height,
@@ -44,7 +46,7 @@ export function MeasureFields() {
   const round = chip.mode === "round" || isRoundUnitEnvelope(envOpts);
   const emptyTalk = openingStorageMeasureEmptyTalk(project.prompt);
 
-  const pocket = project.pocket;
+  const pocket = project.pocket ?? project.recastFrom?.pocket;
 
   return (
     <div>

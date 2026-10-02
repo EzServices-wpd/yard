@@ -94,7 +94,8 @@ function rectAt(y: number, halfX: number, halfZ: number): GhostStroke[] {
 
 /** A — envelope of *our* pieces, so the ghost always matches the bench. */
 export function hullStrokes(project: YardProject): GhostStroke[] {
-  if (project.pocket) return pocketStrokes(project.pocket);
+  const pocket = project.pocket ?? project.recastFrom?.pocket;
+  if (pocket) return pocketStrokes(pocket);
   if (project.panels.length && !project.instances.length) {
     const o = project.opening ?? {
       width: project.overall.width,

@@ -1,7 +1,7 @@
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
-import { inchFrac } from "./inchText";
+import { inchFrac, parseInch } from "./inchText";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
@@ -299,10 +299,18 @@ function scaleToBox(
       cutLength: from && to ? r1(dist(from, to)) : i.cutLength,
     };
   });
-  const panels = project.panels.map((p) => ({
+  // Stock keeps its thickness: a ¾" sheet stays ¾" when the build is stretched or squeezed.
+  // Only the face of each panel follows the new size.
+  const panels = project.panels.map((p) => {
+    const thinAxis = p.size.width <= p.size.height && p.size.width <= p.size.depth ? "x" : p.size.height <= p.size.depth ? "y" : "z";
+    const k = { x: thinAxis === "x" ? 1 : sx, y: thinAxis === "y" ? 1 : sy, z: thinAxis === "z" ? 1 : sz };
+    const c0 = { x: p.position.x + p.size.width / 2, y: p.position.y + p.size.height / 2, z: p.position.z + p.size.depth / 2 };
+    const size = { width: p.size.width * k.x, height: p.size.height * k.y, depth: p.size.depth * k.z };
+    const c1 = s(c0);
+    return {
     ...p,
-    position: s(p.position),
-    size: { width: p.size.width * sx, height: p.size.height * sy, depth: p.size.depth * sz },
+    position: { x: c1.x - size.width / 2, y: thinAxis === "y" && p.position.y < 0.01 ? 0 : c1.y - size.height / 2, z: c1.z - size.depth / 2 },
+    size,
     polygon: p.polygon
       ? {
           ...p.polygon,
@@ -316,8 +324,9 @@ function scaleToBox(
           ),
         }
       : p.polygon,
-  }));
-  const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(r1(n)));
+  };
+  });
+  const fmt = (n: number) => inchFrac(n);
   const note = `Sized to ${fmt(box.width)}" wide × ${fmt(box.height)}" high × ${fmt(box.depth)}" deep.`;
   const steps = Math.max(1, climbStepCount(project.prompt || ""));
   const fixRise = (s: string) =>
@@ -335,7 +344,15 @@ function scaleToBox(
     params = { ...params, openW: ow, openH: oh };
     notes = notes.map((n) => n.replace(/opening [^×]+× [^("]+/, `opening ${fmt(ow)}" × ${fmt(oh)}"`));
   }
-  if (!notes.some((n) => n.startsWith("Sized to "))) notes = [note, ...notes];
+  // Part sizes written into the notes follow the new size: scaled when the build grew or shrank evenly;
+  // when it was stretched one way, the cut list carries the real lengths and the old numbers drop out.
+  const even = Math.max(sx, sy, sz) / Math.min(sx, sy, sz) < 1.04;
+  const k = (sx + sy + sz) / 3;
+  const inchNum = /(\d+(?:\.\d+)?(?: \d+\/\d+)?|\d+\/\d+)"/g;
+  notes = notes
+    .filter((n) => n.startsWith("Sized to ") || even || !/\d"/.test(n))
+    .map((n) => (n.startsWith("Sized to ") || !even ? n : n.replace(inchNum, (_m, v: string) => `${inchFrac(parseInch(v) * k)}"`)));
+  notes = [note, ...notes.filter((n) => !n.startsWith("Sized to "))];
   return {
     ...project,
     name: fixRise(project.name),
@@ -516,11 +533,16 @@ function generateRaw(
     sizeOverride?: { width: number; height: number; depth: number };
     cutStock?: boolean;
     fittedOverride?: import("./types").FittedSpec;
+    /** A pocket whose hole or share was edited on the bench: rebuild that hole, in the chosen stock. */
+    pocketOverride?: import("./types").PocketSpec;
     honorUnit?: boolean;
     noCompose?: boolean;
   } = {},
 ): YardProject {
   prompt = normalizeUserPrompt(prompt);
+  if (opts.pocketOverride) {
+    return finishHouse(enforceHonesty(buildPocket(opts.pocketOverride, prompt)), prompt, false, materialOverride);
+  }
   if (!opts.noCompose && !opts.fittedOverride && !formOverride) {
     const composed = composeProducts(prompt, (clause) =>
       generateRaw(clause, materialOverride, undefined, { ...opts, noCompose: true }),

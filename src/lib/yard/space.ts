@@ -1,3 +1,4 @@
+import { fieldInch } from "./inchText";
 import { buildClosetFromOpening } from "./closet";
 import { buildWindowProject, headerForSpan, pickWindow, STOCK_WINDOWS } from "./windows";
 import type { FittedProgram, SpaceKind, YardProject } from "./types";
@@ -162,9 +163,9 @@ export function angleMeasureFromProject(project: YardProject): AngleMeasure | nu
   const corner = project.fitted?.unit?.corner;
   if (corner && !project.fitted?.unit?.odd) {
     return {
-      width: fmtInches(corner.legA),
-      height: fmtInches(corner.height),
-      depth: fmtInches(corner.legB),
+      width: fieldInch(corner.legA),
+      height: fieldInch(corner.height),
+      depth: fieldInch(corner.legB),
       angle: "90",
     };
   }
@@ -173,19 +174,19 @@ export function angleMeasureFromProject(project: YardProject): AngleMeasure | nu
     const p = odd.params as { L?: number; M?: number; H?: number; theta?: number };
     const leg = p.L ?? project.overall.width;
     return {
-      width: fmtInches(leg),
-      height: fmtInches(p.H ?? project.overall.height),
-      depth: fmtInches(p.M ?? leg),
+      width: fieldInch(leg),
+      height: fieldInch(p.H ?? project.overall.height),
+      depth: fieldInch(p.M ?? leg),
       angle: fmtInches(p.theta ?? 90),
     };
   }
   if (odd?.kind === "sloped") {
     const p = odd.params as { W?: number; D?: number; hiH?: number; loH?: number };
     return {
-      width: fmtInches(p.W ?? project.overall.width),
-      height: fmtInches(p.hiH ?? project.overall.height),
-      depth: fmtInches(p.D ?? project.overall.depth),
-      lowSide: fmtInches(p.loH ?? 0),
+      width: fieldInch(p.W ?? project.overall.width),
+      height: fieldInch(p.hiH ?? project.overall.height),
+      depth: fieldInch(p.D ?? project.overall.depth),
+      lowSide: fieldInch(p.loH ?? 0),
     };
   }
   return null;

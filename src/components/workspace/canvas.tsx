@@ -5,6 +5,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
+import { parseInch } from "@/lib/yard/inchText";
 import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/ghost";
 import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
@@ -445,9 +446,9 @@ function BenchScene({
   const explodeScale = explode ? 1.35 : 1;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
-  const mw = parseFloat(measure.width) || 0;
-  const mh = parseFloat(measure.height) || 0;
-  const md = parseFloat(measure.depth) || 0;
+  const mw = parseInch(measure.width) || 0;
+  const mh = parseInch(measure.height) || 0;
+  const md = parseInch(measure.depth) || 0;
   const members =
     detail === "frame"
       ? project.instances.filter((i) => isFrameRole(i.role))

@@ -290,17 +290,40 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
   }
 
   const note = `Same ${project.name} in ${item.name}. Each face is that stock.`;
-  const notes = (project.notes ?? []).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
+  const notes = recastNotes(project.notes ?? [], item).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
   if (instances.length >= budget) {
     notes.unshift(`Stopped at ${budget} pieces so the bench can draw it. A solid tile of ${item.name} would be denser.`);
+  }
+  const big = Math.max(project.overall?.width ?? 0, project.overall?.height ?? 0, project.overall?.depth ?? 0) >= 30;
+  if (big && instances.length >= 300 && item.category !== "lumber") {
+    notes.unshift(
+      `At full size this takes ${instances.length >= budget ? "over " : ""}${instances.length} pieces of ${item.name} — great as a model or a fun build. ` +
+        `For a piece that holds weight every day, ¾" plywood or 1×12 boards build the same shape from the same cut list.`,
+    );
   }
   return {
     ...project,
     panels: [],
     fitted: undefined,
     pocket: undefined,
+    recastFrom: project.fitted || project.pocket ? { fitted: project.fitted, pocket: project.pocket } : project.recastFrom,
     instances,
     primaryMaterialId: item.id,
     notes: [note, ...notes],
   };
+}
+
+/**
+ * Carcase notes after the faces are re-tiled in another stock: the sheet wording names the new stock,
+ * and sheet-only advice (nesting, 2x2 legs on a sheet build, sheet edges) drops out.
+ */
+export function recastNotes(notes: string[], item: CatalogItem): string[] {
+  const name = item.name;
+  return notes
+    .map((n) =>
+      n
+        .replace(/[¾]\s*(?:"|″)?\s*plywood|3\/4\s*(?:"|″|-inch|in\.?)\s*plywood/gi, name)
+        .replace(/\bplywood (uprights|shelves|top|box|carcase|sides)\b/gi, `${name} $1`),
+    )
+    .filter((n) => !/\bnest(?:s|ed)?\b.*\bsheet\b|\bsheet\b.*\bnest|buy 2x2 lumber|edge band|plywood|4\s*[×x]\s*8\b|4\s*[×x]\s*10\b/i.test(n));
 }

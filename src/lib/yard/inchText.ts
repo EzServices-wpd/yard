@@ -55,3 +55,54 @@ export const RAW_LONG_DECIMAL = /\d+\.\d{3,}/;
 export const RAW_DECIMAL_INCH = new RegExp(
   String.raw`(?<![\d$.,/])\d*\.\d+(?=\s*(?:"|″|”|-?\s?in\b|-?\s?inch))|(?<![\d$.,/])\d+\.\d+(?=\s*[×x]\s*\d)|[×x]\s*\d+\.\d+(?![\d.])(?!\s*(?:%|°|ft|feet|foot|'|lb))`,
 );
+
+/**
+ * Read a size the way a person types it on a tape: "31 1/2", "31-1/2", "31½", "31.5", "2' 6"",
+ * "3 ft", "48 in". NaN when it is not a size yet (half-typed "31 1/").
+ */
+export function parseInch(raw: string | number | undefined | null): number {
+  if (raw == null) return NaN;
+  if (typeof raw === "number") return raw;
+  let s = String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/½/g, " 1/2")
+    .replace(/¼/g, " 1/4")
+    .replace(/¾/g, " 3/4")
+    .replace(/⅛/g, " 1/8")
+    .replace(/⅜/g, " 3/8")
+    .replace(/⅝/g, " 5/8")
+    .replace(/⅞/g, " 7/8")
+    .replace(/⁄/g, "/")
+    .replace(/(?:"|″|”|\binches\b|\binch\b|\bin\b)\s*$/g, "")
+    .trim();
+  if (!s) return NaN;
+  let feet = 0;
+  const fm = s.match(/^(\d+(?:\.\d+)?)\s*(?:'|’|′|\bft\b|\bfeet\b|\bfoot\b)\s*(.*)$/);
+  if (fm) {
+    feet = parseFloat(fm[1]);
+    s = fm[2].replace(/(?:"|″|”)\s*$/, "").trim();
+    if (!s) return feet * 12;
+  }
+  s = s.replace(/(\d)\s*-\s*(\d)/g, "$1 $2").replace(/\s+/g, " ").trim();
+  const m = s.match(/^(?:(\d+(?:\.\d+)?|\.\d+)(?: (\d+)\/(\d+))?|(\d+)\/(\d+))$/);
+  if (!m) return NaN;
+  let v: number;
+  if (m[4] != null) {
+    if (+m[5] === 0) return NaN;
+    v = +m[4] / +m[5];
+  } else {
+    v = parseFloat(m[1]);
+    if (m[2] != null) {
+      if (+m[3] === 0) return NaN;
+      v += +m[2] / +m[3];
+    }
+  }
+  return Number.isFinite(v) ? feet * 12 + v : NaN;
+}
+
+/** A size field's text: shop fractions, no inch mark (the label carries it). */
+export function fieldInch(n: number | undefined | null): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  return inchFrac(n);
+}

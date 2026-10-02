@@ -203,6 +203,18 @@ export type PocketWalls = {
   height: number;
   leftAngleDeg: number;
   rightAngleDeg: number;
+  /**
+   * A notch in the hole: a pipe chase or wall jog in a back corner ("left" / "right"), or a ledge
+   * along the whole back wall ("back"). Width runs along the back, depth out from it, height from the floor.
+   */
+  notch?: PocketNotch;
+};
+
+export type PocketNotch = {
+  side: "left" | "right" | "back";
+  width: number;
+  depth: number;
+  height: number;
 };
 
 export type PocketUnit = {
@@ -353,6 +365,11 @@ export type YardProject = {
   };
   pocket?: PocketSpec;
   fitted?: FittedSpec;
+  /**
+   * A house build re-tiled in sticks, pipe or bricks keeps the hole and unit it was fitted to here,
+   * so Size and the pocket card still refit the same object in that stock.
+   */
+  recastFrom?: { fitted?: FittedSpec; pocket?: PocketSpec };
   windowPkg?: WindowPackage;
   traverse?: TraversePath;
   /** Subject-class shape template (quadruped…) the build was materialized from. */
@@ -515,6 +532,16 @@ export type MeasureDraft = {
   leftBay?: string;
   /** Shelves toward the right wall, inches along the back. */
   rightBay?: string;
+  /** Pocket shape: straight sides (a rectangle) or flared sides (a trapezoid). */
+  pocketShape?: "straight" | "flared";
+  /** How far each side wall flares out from square, in degrees. */
+  leftAngle?: string;
+  rightAngle?: string;
+  /** Notch in the hole: none, a chase in a back corner, or a ledge along the back. */
+  notchSide?: "none" | "left" | "right" | "back";
+  notchWidth?: string;
+  notchDepth?: string;
+  notchHeight?: string;
   /** Corner the two walls make, in degrees. Only on a corner shelf. */
   angle?: string;
   /** Low side of a slope. The high side is `height`. */

@@ -26,6 +26,7 @@ import { honestNestSheetStockName } from "@/lib/yard/report";
 import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
+import { inchFrac } from "@/lib/yard/inchText";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
@@ -130,8 +131,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   useEffect(() => {
     const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket) || Boolean(project.fitted);
     setMeasureOpen(house);
-    if (!house && project.overall.width > 1 && project.overall.height > 1) {
-      const n = (v: number) => String(Math.round(v * 10) / 10);
+    if (!house && !project.recastFrom && project.overall.width > 1 && project.overall.height > 1) {
+      const n = inchFrac;
       setMeasure({ width: n(project.overall.width), height: n(project.overall.height), depth: n(project.overall.depth) });
     }
     // Unit is the hero. Do not steal the bench with the measure sidebar.
@@ -589,15 +590,12 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   type="button"
                   onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
                   className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
-                  aria-label={project.pocket ? "Edit the hole, how much of it, and the shelves" : "Edit the size"}
-                  title={project.pocket ? "The hole, the share, and the shelves" : "Edit wide, tall, and deep"}
+                  aria-label={project.pocket ?? project.recastFrom?.pocket ? "Edit the hole (size, shape, notch), how much of it, and the shelves" : "Edit the size"}
+                  title={project.pocket ?? project.recastFrom?.pocket ? "The hole: size, shape, notch, the share, and the shelves" : "Edit wide, tall, and deep"}
                 >
                   {(() => {
-                    const pocketUnit = project.pocket?.unit;
-                    const inch = (n: number) => {
-                      const r = Math.round(n * 10) / 10;
-                      return Number.isInteger(r) ? String(r) : r.toFixed(1);
-                    };
+                    const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
+                    const inch = inchFrac;
                     const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
                     const finished = pocketUnit
                       ? pocketUnit.depth

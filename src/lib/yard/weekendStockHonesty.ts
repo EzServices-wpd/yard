@@ -1,3 +1,4 @@
+import { inchFrac } from "./inchText";
 import { toPrimitive } from "./geometry";
 /**
  * Weekend / hobbyist stock honesty — named stock is the only stock.
@@ -243,14 +244,17 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
   const note = [
     `Stock: every ¾" part is ${label}.`,
     thick > 0.9
-      ? `That board is ${thick}" thick and the drawing is still ¾" — rip to ¾" or the box will be thicker than drawn.`
+      ? `That board is ${inchFrac(thick)}" thick and the parts are drawn ¾" — plane or resaw each board to ¾" (a lumberyard will do it), or pick 1×4 boards, which come ¾" thick.`
       : `Parts wider than one board are edge-glued, then cut to size.`,
-    face < 3.2 ? `This board is only ${face}" wide, so buy extra when a part is wider than the face.` : "",
+    face < 3.2 ? `This board is ${inchFrac(face)}" wide, so buy extra when a part is wider than the face.` : "",
     `¼" backs stay plywood.`,
   ]
     .filter(Boolean)
     .join(" ");
-  const notes = (project.notes ?? []).filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n));
+  const notes = (project.notes ?? [])
+    .filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n))
+    .map((n) => n.replace(/(\d"?\s*H\.)\s*¾"\s*plywood\./, `$1 ${label}.`))
+    .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
 }
 

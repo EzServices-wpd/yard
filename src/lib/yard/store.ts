@@ -1,7 +1,7 @@
 import { solveModel } from "./solve";
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
-import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, Vec3, WorkMode, YardProject } from "./types";
+import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, PocketNotch, PocketSpec, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
 import { applyFollowOnSize, followOnNamesStock, looksLikeFollowOn, materialUnlessNamed } from "./promptHelpers";
 import type { FormRecipe } from "./form";
@@ -16,9 +16,10 @@ import { climbIdentityLabel } from "./family";
 import { measureKindFromProject, projectFromMeasurement, stampPromptSize, angleMeasureFromProject, stampCornerAngle, stampSlopeEnds, cornerAngleOk } from "./space";
 import { isRoundUnitEnvelope } from "./voiceHonesty";
 import { stampSpanOffer } from "./spanCheck";
-import { buildPocket, fitPocketAsk } from "./pocket";
+import { fitPocketAsk } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
+import { fieldInch, inchFrac, parseInch } from "./inchText";
 
 /** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
 const LAMP_HOLD_MS = 4000;
@@ -106,9 +107,43 @@ type YardState = {
   setMeasureOpen: (v: boolean) => void;
   setMeasure: (patch: Partial<MeasureDraft>) => void;
   applyMeasure: (commitAngle?: boolean) => void;
+  applyMeasureRaw: (commitAngle?: boolean) => void;
   liftTo3d: () => YardProject | null;
   reset: () => void;
 };
+
+/** The pocket card's fields, read back from the built pocket (shop fractions, never decimals). */
+function pocketMeasure(pocket: PocketSpec): Omit<MeasureDraft, "kind"> {
+  const { walls, unit } = pocket;
+  const flared = Math.abs(walls.leftAngleDeg) > 0.05 || Math.abs(walls.rightAngleDeg) > 0.05;
+  const deg = (n: number) => String(Math.round(n * 10) / 10);
+  const notch = walls.notch;
+  return {
+    width: fieldInch(unit.width),
+    height: fieldInch(unit.height),
+    depth: fieldInch(unit.depth),
+    backWidth: fieldInch(walls.backWidth),
+    leftDepth: fieldInch(walls.leftDepth),
+    rightDepth: fieldInch(walls.rightDepth),
+    ceiling: fieldInch(walls.height),
+    leftBay: unit.leftBay != null ? fieldInch(unit.leftBay) : undefined,
+    rightBay: unit.rightBay != null ? fieldInch(unit.rightBay) : undefined,
+    pocketShape: flared ? "flared" : "straight",
+    leftAngle: deg(walls.leftAngleDeg),
+    rightAngle: deg(walls.rightAngleDeg),
+    notchSide: notch ? notch.side : "none",
+    notchWidth: notch ? fieldInch(notch.width) : undefined,
+    notchDepth: notch ? fieldInch(notch.depth) : undefined,
+    notchHeight: notch ? fieldInch(notch.height) : undefined,
+  };
+}
+
+/** The stock to rebuild in: the default sheet stays implicit so a sheet build keeps its own sheet choices. */
+function rebuildStock(project: YardProject): string | undefined {
+  return project.primaryMaterialId && project.primaryMaterialId !== "plywood-3-4-4x8" && project.primaryMaterialId !== "wire-frame"
+    ? project.primaryMaterialId
+    : undefined;
+}
 
 function persist(project: YardProject) {
   saveProject(project);
@@ -213,7 +248,20 @@ export const useYard = create<YardState>((set, get) => ({
       sizeOverride?: { width: number; height: number; depth: number };
       cutStock?: boolean;
       fittedOverride?: import("./types").FittedSpec;
+      pocketOverride?: PocketSpec;
+      honorUnit?: boolean;
     } = { ...opts, scale, cutStock: stockFlag(mode) };
+    // Same object, new stock: a pocket or fitted unit rebuilds from the hole and unit on the bench
+    // (with every edit made there), not from re-reading the sentence.
+    if (opts?.restock && materialId) {
+      const srcPocket = current.pocket ?? current.recastFrom?.pocket;
+      const srcFitted = current.fitted ?? current.recastFrom?.fitted;
+      if (srcPocket) genOpts.pocketOverride = srcPocket;
+      else if (srcFitted && !climbIdentityLabel((current.prompt || "").toLowerCase())) {
+        genOpts.fittedOverride = srcFitted;
+        genOpts.honorUnit = true;
+      }
+    }
     if (follow) {
       used = `${current.prompt.replace(/\. Then:[\s\S]*$/, "")}. Then: ${prompt}`;
       genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
@@ -230,9 +278,11 @@ export const useYard = create<YardState>((set, get) => ({
     if (!materialId) materialId = materialUnlessNamed(current.primaryMaterialId, used);
     const next = generateFromPrompt(used, materialId, form, genOpts);
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
+    const srcPocket = next.pocket ?? next.recastFrom?.pocket;
+    const srcFitted = next.fitted ?? next.recastFrom?.fitted;
     // The wall opening stays as a faint outline (context for where the unit sits).
-    if (next.pocket) flags.showHull = true;
-    if (next.fitted?.opening.kind === "alcove") flags.showHull = true;
+    if (srcPocket) flags.showHull = true;
+    if (srcFitted?.opening.kind === "alcove") flags.showHull = true;
     get().commit(next);
     const angled = angleMeasureFromProject(next);
     set({
@@ -249,41 +299,33 @@ export const useYard = create<YardState>((set, get) => ({
       selectedId: null,
       facesOpen: false,
       measureNote: null,
-      measure: next.pocket
+      measure: srcPocket
         ? {
-            width: String(next.pocket.unit.width),
-            height: String(next.pocket.unit.height),
-            depth: String(next.pocket.unit.depth),
-            kind: "closet_niche",
-            backWidth: String(next.pocket.walls.backWidth),
-            leftDepth: String(next.pocket.walls.leftDepth),
-            rightDepth: String(next.pocket.walls.rightDepth),
-            ceiling: String(next.pocket.walls.height),
-            ...(next.pocket.unit.leftBay != null ? { leftBay: String(next.pocket.unit.leftBay) } : {}),
-            ...(next.pocket.unit.rightBay != null ? { rightBay: String(next.pocket.unit.rightBay) } : {}),
+            ...pocketMeasure(srcPocket),
+            kind: "closet_niche" as const,
           }
         : next.windowPkg
           ? {
-              width: String(next.windowPkg.window.roW),
-              height: String(next.windowPkg.window.roH),
-              depth: String(next.windowPkg.window.jambDepth),
+              width: fieldInch(next.windowPkg.window.roW),
+              height: fieldInch(next.windowPkg.window.roH),
+              depth: fieldInch(next.windowPkg.window.jambDepth),
               kind: "window_rough_opening",
               windowId: next.windowPkg.window.id,
             }
-          : next.fitted
+          : srcFitted
             ? {
-                width: angled?.width ?? String(next.fitted.unit.width),
-                height: angled?.height ?? String(next.fitted.unit.height),
-                depth: angled?.depth ?? String(next.fitted.unit.depth),
+                width: angled?.width ?? fieldInch(srcFitted.unit.width),
+                height: angled?.height ?? fieldInch(srcFitted.unit.height),
+                depth: angled?.depth ?? fieldInch(srcFitted.unit.depth),
                 kind: measureKindFromProject(next),
                 angle: angled?.angle,
                 lowSide: angled?.lowSide,
               }
             : next.overall.width > 1
             ? {
-                width: String(Math.round(next.overall.width * 10) / 10),
-                height: String(Math.round(next.overall.height * 10) / 10),
-                depth: String(Math.round(next.overall.depth * 10) / 10),
+                width: fieldInch(next.overall.width),
+                height: fieldInch(next.overall.height),
+                depth: fieldInch(next.overall.depth),
                 kind: "general_volume" as const,
               }
             : get().measure,
@@ -459,10 +501,32 @@ export const useYard = create<YardState>((set, get) => ({
   setMeasureOpen: (v) => set({ measureOpen: v }),
   setMeasure: (patch) => set({ measure: { ...get().measure, ...patch } }),
   applyMeasure: (commitAngle = false) => {
+    const before = get().project;
+    const ask = get().measure;
+    set({ measureNote: null });
+    get().applyMeasureRaw(commitAngle);
+    const after = get().project;
+    if (after === before || get().measureNote) return;
+    // Say where the build landed when the stock or the class can't hit the asked size exactly.
+    const w = parseInch(ask.width);
+    const h = parseInch(ask.height);
+    const d = parseInch(ask.depth);
+    const srcPocket = after.pocket ?? after.recastFrom?.pocket;
+    const env = srcPocket?.unit ?? (after.fitted ?? after.recastFrom?.fitted)?.unit ?? after.overall;
+    const off = (a: number, b: number) => Number.isFinite(a) && a > 0 && Math.abs(a - b) > 0.5;
+    const parts: string[] = [];
+    if (off(w, env.width)) parts.push(`${inchFrac(env.width)}" wide`);
+    if (off(h, env.height)) parts.push(`${inchFrac(env.height)}" tall`);
+    if (off(d, env.depth) && !srcPocket) parts.push(`${inchFrac(env.depth)}" deep`);
+    if (parts.length) {
+      set({ measureNote: `Lands at ${parts.join(" × ")} — the nearest this build makes in this stock.` });
+    }
+  },
+  applyMeasureRaw: (commitAngle = false) => {
     const { measure, project } = get();
-    let widthIn = parseFloat(measure.width);
-    const heightIn = parseFloat(measure.height);
-    let depthIn = parseFloat(measure.depth);
+    let widthIn = parseInch(measure.width);
+    const heightIn = parseInch(measure.height);
+    let depthIn = parseInch(measure.depth);
     if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn)) return;
     // Round / diameter tables: Measure chip is Dia × H — keep plan axes equal (never W×H×W drift).
     const roundUnit = isRoundUnitEnvelope({
@@ -480,7 +544,7 @@ export const useYard = create<YardState>((set, get) => ({
     const corner = project.fitted?.unit?.corner;
     const oddKind = project.fitted?.unit?.odd?.kind;
     if (corner || oddKind === "angled-corner") {
-      const ang = parseFloat(measure.angle ?? "");
+      const ang = parseInch(measure.angle ?? "");
       const current = corner ? 90 : Number((project.fitted?.unit?.odd?.params as { theta?: number } | undefined)?.theta ?? 90);
       const angOk = Number.isFinite(ang) && cornerAngleOk(ang);
       if (!angOk && commitAngle && (measure.angle ?? "").trim()) {
@@ -515,7 +579,7 @@ export const useYard = create<YardState>((set, get) => ({
       return;
     }
     if (oddKind === "sloped") {
-      const low = parseFloat(measure.lowSide ?? "");
+      const low = parseInch(measure.lowSide ?? "");
       const currentLow = Number((project.fitted?.unit?.odd?.params as { loH?: number } | undefined)?.loH ?? 0);
       const lowOk = Number.isFinite(low) && low < heightIn && low >= 12;
       if (!lowOk && commitAngle) {
@@ -524,7 +588,7 @@ export const useYard = create<YardState>((set, get) => ({
           : "The low side needs about 12 inches before a shelf fits under it. Left the slope as it was.";
         set({
           measureNote: why,
-          measure: { ...measure, lowSide: String(currentLow) },
+          measure: { ...measure, lowSide: fieldInch(currentLow) },
         });
         return;
       }
@@ -546,7 +610,7 @@ export const useYard = create<YardState>((set, get) => ({
       }
       return;
     }
-    let prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseFloat(measure.depth) || 16));
+    let prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseInch(measure.depth) || 16));
     if (roundUnit) {
       const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(n));
       const dia = fmt(widthIn);
@@ -571,72 +635,101 @@ export const useYard = create<YardState>((set, get) => ({
       return;
     }
     // A pocket is also fitted. Size the hole and the shelves here, before the generic fitted rebuild, or the bay numbers are dropped.
-    if (project.pocket) {
-      const back = parseFloat(measure.backWidth ?? "");
-      const left = parseFloat(measure.leftDepth ?? "");
-      const right = parseFloat(measure.rightDepth ?? "");
-      const ceiling = parseFloat(measure.ceiling ?? "");
-      const leftBay = parseFloat(measure.leftBay ?? "");
-      const rightBay = parseFloat(measure.rightBay ?? "");
-      const walls = {
-        ...project.pocket.walls,
-        height: Number.isFinite(ceiling) ? ceiling : project.pocket.walls.height,
-        backWidth: Number.isFinite(back) ? back : project.pocket.walls.backWidth,
-        leftDepth: Number.isFinite(left) ? left : project.pocket.walls.leftDepth,
-        rightDepth: Number.isFinite(right) ? right : project.pocket.walls.rightDepth,
+    const pocketSrc = project.pocket ?? project.recastFrom?.pocket;
+    if (pocketSrc) {
+      const back = parseInch(measure.backWidth ?? "");
+      const left = parseInch(measure.leftDepth ?? "");
+      const right = parseInch(measure.rightDepth ?? "");
+      const ceiling = parseInch(measure.ceiling ?? "");
+      const leftBay = parseInch(measure.leftBay ?? "");
+      const rightBay = parseInch(measure.rightBay ?? "");
+      const shapeNotes: string[] = [];
+      // Shape: straight sides are a rectangle; flared sides are a trapezoid at the typed wall angles.
+      const flaredNow = Math.abs(pocketSrc.walls.leftAngleDeg) > 0.05 || Math.abs(pocketSrc.walls.rightAngleDeg) > 0.05;
+      const shape = measure.pocketShape ?? (flaredNow ? "flared" : "straight");
+      const angleOf = (raw: string | undefined, current: number, side: string) => {
+        const a = parseFloat(raw ?? "");
+        if (!Number.isFinite(a)) return current;
+        if (a < 0 || a > 45) {
+          shapeNotes.push(`A side wall flares 0° to 45° here, so the ${side} wall stays at ${Math.round(Math.min(45, Math.max(0, a)))}°.`);
+          return Math.min(45, Math.max(0, a));
+        }
+        return a;
       };
+      const leftAngleDeg = shape === "straight" ? 0 : angleOf(measure.leftAngle, pocketSrc.walls.leftAngleDeg, "left");
+      const rightAngleDeg = shape === "straight" ? 0 : angleOf(measure.rightAngle, pocketSrc.walls.rightAngleDeg, "right");
+      const side = measure.notchSide ?? pocketSrc.walls.notch?.side ?? "none";
+      let notch: PocketNotch | undefined;
+      if (side !== "none") {
+        const nw = parseInch(measure.notchWidth ?? "");
+        const nd = parseInch(measure.notchDepth ?? "");
+        const nh = parseInch(measure.notchHeight ?? "");
+        const prev = pocketSrc.walls.notch;
+        notch = {
+          side,
+          width: Number.isFinite(nw) && nw > 0 ? nw : prev?.width ?? 6,
+          depth: Number.isFinite(nd) && nd > 0 ? nd : prev?.depth ?? 4,
+          height: Number.isFinite(nh) && nh > 0 ? nh : prev?.height ?? (side === "back" ? 36 : pocketSrc.walls.height),
+        };
+      }
+      const walls = {
+        ...pocketSrc.walls,
+        height: Number.isFinite(ceiling) ? ceiling : pocketSrc.walls.height,
+        backWidth: Number.isFinite(back) && back >= 12 ? back : pocketSrc.walls.backWidth,
+        leftDepth: Number.isFinite(left) && left >= 8 ? left : pocketSrc.walls.leftDepth,
+        rightDepth: Number.isFinite(right) && right >= 8 ? right : pocketSrc.walls.rightDepth,
+        leftAngleDeg,
+        rightAngleDeg,
+        notch,
+      };
+      if (!notch) delete walls.notch;
       const fit = fitPocketAsk(
-        { ...project.pocket, walls },
+        { ...pocketSrc, walls },
         {
           width: widthIn,
           height: heightIn,
-          depth: depth ?? project.pocket.unit.depth,
+          depth: depth ?? pocketSrc.unit.depth,
           ceiling: walls.height,
           leftBay: Number.isFinite(leftBay) ? leftBay : undefined,
           rightBay: Number.isFinite(rightBay) ? rightBay : undefined,
         },
       );
-      const builtRaw = solveModel(buildPocket(fit.spec, prompt));
-      const built = builtRaw && project.fitted
+      if (fit.note) fit.spec.clampNote = fit.note;
+      // Same stock as the build on the bench: a pocket switched to 2×4 or popsicle stays that stock.
+      const builtRaw = generateFromPrompt(prompt, rebuildStock(project), undefined, { pocketOverride: fit.spec });
+      const fittedSrc0 = project.fitted ?? project.recastFrom?.fitted;
+      const built = builtRaw && fittedSrc0 && builtRaw.pocket
         ? {
             ...builtRaw,
             fitted: {
-              ...project.fitted,
+              ...fittedSrc0,
               walls: fit.spec.walls,
-              unit: { ...project.fitted.unit, ...fit.spec.unit },
+              unit: { ...fittedSrc0.unit, ...fit.spec.unit },
             },
           }
         : builtRaw;
       if (built) {
         get().commit(built);
-        const n = (v: number) => String(Math.round(v * 10) / 10);
-        const u = fit.spec.unit;
+        const note = [fit.note, ...shapeNotes].filter(Boolean).join(" ");
         set({
-          measureNote: fit.note,
+          measureNote: note || null,
           measure: {
             ...get().measure,
-            width: n(u.width),
-            height: n(u.height),
-            depth: n(u.depth),
-            ceiling: n(fit.spec.walls.height),
-            backWidth: n(fit.spec.walls.backWidth),
-            leftDepth: n(fit.spec.walls.leftDepth),
-            rightDepth: n(fit.spec.walls.rightDepth),
-            ...(u.leftBay != null ? { leftBay: n(u.leftBay) } : { leftBay: undefined }),
-            ...(u.rightBay != null ? { rightBay: n(u.rightBay) } : { rightBay: undefined }),
+            ...pocketMeasure(built.pocket ?? fit.spec),
           },
         });
       }
       return;
     }
-    if (project.fitted) {
+    const fittedSrc = project.fitted ?? project.recastFrom?.fitted;
+    if (fittedSrc) {
       // Stolen Bench fitted on a climb/step stool — rebuild weekend form, keep Measure size.
       if (climbIdentityLabel((project.prompt || prompt).toLowerCase())) {
         const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
           sizeOverride: {
             width: widthIn,
             height: heightIn,
-            depth: depth ?? project.fitted.unit.depth,
+            depth: depth ?? fittedSrc.unit.depth,
           },
           joinMethod: project.joinMethod,
         });
@@ -644,24 +737,24 @@ export const useYard = create<YardState>((set, get) => ({
         return;
       }
       const spec = {
-        ...project.fitted,
+        ...fittedSrc,
         opening: {
-          ...project.fitted.opening,
+          ...fittedSrc.opening,
           width: widthIn,
           height: heightIn,
-          depth: depth ?? project.fitted.opening.depth,
+          depth: depth ?? fittedSrc.opening.depth,
         },
         unit: {
-          ...project.fitted.unit,
+          ...fittedSrc.unit,
           width: widthIn,
           height: heightIn,
-          depth: depth ?? project.fitted.unit.depth,
+          depth: depth ?? fittedSrc.unit.depth,
         },
       };
       if (spec.walls && measure.backWidth) {
-        const back = parseFloat(measure.backWidth);
-        const left = parseFloat(measure.leftDepth ?? "");
-        const right = parseFloat(measure.rightDepth ?? "");
+        const back = parseInch(measure.backWidth);
+        const left = parseInch(measure.leftDepth ?? "");
+        const right = parseInch(measure.rightDepth ?? "");
         spec.walls = {
           ...spec.walls,
           height: heightIn,
@@ -670,7 +763,7 @@ export const useYard = create<YardState>((set, get) => ({
           rightDepth: Number.isFinite(right) ? right : spec.walls.rightDepth,
         };
       }
-      const built = generateFromPrompt(prompt, undefined, undefined, { fittedOverride: spec, honorUnit: true });
+      const built = generateFromPrompt(prompt, rebuildStock(project), undefined, { fittedOverride: spec, honorUnit: true });
       if (built) get().commit(built);
       return;
     }
@@ -694,7 +787,7 @@ export const useYard = create<YardState>((set, get) => ({
       });
       if (built) {
         get().commit(built);
-        const n = (v: number) => String(Math.round(v * 10) / 10);
+        const n = fieldInch;
         set({
           measure: {
             ...get().measure,
