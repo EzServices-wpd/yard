@@ -328,6 +328,8 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
         notes: `${plyParts} plywood part${plyParts === 1 ? "" : "s"} (${plyCuts.map((c) => `${c.quantity} × ${inchFrac(c.lengthIn)}" × ${inchFrac(c.widthIn)}"`).join(", ")}).`,
       });
     } else {
+    // Every structural part (2×4 parts included) is packed into these boards — no second 2×4 line.
+    frameBought = true;
     const boardPlan = planSolidBoards(
       structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
     );
