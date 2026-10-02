@@ -4,7 +4,7 @@
  * family uses the usual size of that family, and the note says so.
  */
 import type { CatalogItem, StockShape } from "./types";
-import { inchFrac, stripTypedSizes } from "./inchText";
+import { INCH_NUM, inchFrac, parseInchNum, stripTypedSizes } from "./inchText";
 
 type Envelope = {
   shape: StockShape;
@@ -358,9 +358,11 @@ export function hasProductDrawing(phrase: string): boolean {
 
 /** An inch length they already own beats the listing and the usual size. */
 function applyTypedLength(query: string, env: Envelope): Envelope {
-  const said = query.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")\b/i);
+  // A size naming the stock ("from 1/4 inch dowels", "3/4 in plywood") is the stock, not the piece.
+  const hay = query.replace(new RegExp(String.raw`(?<![\w/])${INCH_NUM}\s*-?\s*(?:in|inch|inches|"|″)?\s*(?:dowels?|plywood|ply|boards?|sticks?|rods?|pipes?|lumber|mdf|skewers?)\b`, "gi"), " ");
+  const said = hay.match(new RegExp(String.raw`(?<![\w/.])(${INCH_NUM})\s*-?\s*(?:in|inch|inches|"|″)(?=\W|$)`, "i"));
   if (!said) return env;
-  const n = parseFloat(said[1]);
+  const n = parseInchNum(said[1]);
   if (!Number.isFinite(n) || n < 0.5 || n > 120) return env;
   if (Math.abs(n - env.length) < 0.05) return env;
   return { ...env, length: n, note: `Size you typed, ${n}″. The piece stays this shape.` };

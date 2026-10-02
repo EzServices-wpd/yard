@@ -13,6 +13,7 @@
  */
 import { detectShapeClass } from "./shapeTemplates";
 import { detectTemplate } from "./formTemplates";
+import { detectBlockSubject } from "./blocks";
 import { detectWeekendFamily } from "./weekendFamily";
 import { climbIdentityLabel, identityTitleStem, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isWallMediaLedge } from "./family";
 import { isOddShapePrompt } from "./oddShapes";
@@ -55,6 +56,9 @@ export function namedBuildClass(prompt: string): string | null {
   const purpose = hay.match(/^(.*?\b(?:stands?|shel(?:f|ves)|racks?|holders?|cradles?|risers?|carts?|cabinets?|display\s+cases?))\s+for\b/);
   if (purpose) hay = purpose[1];
   const pet = stripPetUse(hay);
+  // A subject the shared parts blocks build (swan, flamingo, truck, rocket, owl, robot, castle…).
+  const block = detectBlockSubject(pet);
+  if (block) return `blocks:${block.subject}`;
   const shape = detectShapeClass(pet);
   if (shape) return `shape:${shape.profile.subject}`;
   const tmpl = detectTemplate(pet);

@@ -239,7 +239,10 @@ export function applyMemberPose(
   const to = inst.to;
   const diameter = meshDiameter(prim, cylindrical);
   const craft = diameter < 0.55;
-  const pad = cylindrical
+  // Discs and wide cut pieces (a board or sheet part drawn at its own section) draw at their true length.
+  const pad = inst.round || (inst.section && Math.max(inst.section.width, inst.section.height) > 2)
+    ? 0
+    : cylindrical
     ? Math.min(diameter * (craft ? 0.1 : 0.14), craft ? 0.28 : 0.55)
     : Math.min(diameter * (craft ? 0.28 : 0.4), craft ? 0.35 : 1.1);
 

@@ -10,7 +10,7 @@ import type { Vec3, YardProject } from "./types";
 /** Two faces glued together sit within this gap (inches). */
 export const CONTACT_GAP = 1 / 32;
 
-type Box = { c: Vec3; ax: [Vec3, Vec3, Vec3]; h: [number, number, number]; role: string };
+export type Box = { c: Vec3; ax: [Vec3, Vec3, Vec3]; h: [number, number, number]; role: string };
 
 const sub = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
 const dot = (a: Vec3, b: Vec3) => a.x * b.x + a.y * b.y + a.z * b.z;
@@ -30,13 +30,21 @@ function stickBoxes(project: YardProject): Box[] {
     const prim = toPrimitive(it, inst.cutLength);
     const d = norm(sub(inst.to, inst.from));
     const span = Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z);
-    const L = Math.max(span, inst.cutLength ?? 0);
-    const round = prim.radius != null;
+    // A disc (wheel, face) is its diameter across and its thickness along from → to; a ball is its diameter.
+    const disc = inst.round ?? (it.shape === "ball" ? it.dims.diameter ?? prim.width : undefined);
+    const L = disc ? span : Math.max(span, inst.cutLength ?? 0);
+    const round = prim.radius != null && !inst.section;
     let f = inst.face ? norm(inst.face) : Math.abs(d.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
     // Face normal square to the length.
     f = norm(sub(f, { x: d.x * dot(f, d), y: d.y * dot(f, d), z: d.z * dot(f, d) }));
     const w = norm(cross(d, f));
-    const half: [number, number, number] = round ? [L / 2, prim.width / 2, prim.width / 2] : [L / 2, prim.width / 2, prim.height / 2];
+    const half: [number, number, number] = disc
+      ? [Math.max(L, it.shape === "ball" ? disc : 0) / 2, disc / 2, disc / 2]
+      : inst.section
+        ? [L / 2, inst.section.width / 2, inst.section.height / 2]
+        : round
+          ? [L / 2, prim.width / 2, prim.width / 2]
+          : [L / 2, prim.width / 2, prim.height / 2];
     out.push({ c: { x: (inst.from.x + inst.to.x) / 2, y: (inst.from.y + inst.to.y) / 2, z: (inst.from.z + inst.to.z) / 2 }, ax: [d, w, f], h: half, role: inst.role ?? "member" });
   }
   return out;
@@ -82,8 +90,13 @@ export type ContactReport = {
  * Every piece's real box against every other: components of the touch graph, and for each named
  * part (role) whether it touches the rest of the build, with its smallest gap to the rest.
  */
+/** Every piece's true box (sticks, discs, balls, panels), in instance order then panel order. */
+export function projectBoxes(project: YardProject): Box[] {
+  return [...stickBoxes(project), ...panelBoxes(project)];
+}
+
 export function contactReport(project: YardProject, gapTol = CONTACT_GAP): ContactReport {
-  const boxes = [...stickBoxes(project), ...panelBoxes(project)];
+  const boxes = projectBoxes(project);
   const n = boxes.length;
   const parent = Array.from({ length: n }, (_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));

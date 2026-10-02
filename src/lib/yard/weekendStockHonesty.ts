@@ -810,27 +810,28 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
 
   let instances = project.instances;
   if (!isWireStock(item)) {
-    // Parts that carry their own stock (a ridden rocker's 2x2 handle bar) keep it.
-    const own = (i: YardProject["instances"][number]) => OWN_STOCK_ROLES.has(i.role ?? "");
+    // Parts that carry their own stock (a ridden rocker's 2x2 handle bar, a parts-block axle, wood ball or closet-rod boiler) keep it.
+    const perPiece = project.shape?.classId === "blocks";
+    const own = (i: YardProject["instances"][number]) => OWN_STOCK_ROLES.has(i.role ?? "") || (perPiece && !!getCatalogItem(i.catalogId));
     const drifted = instances.some((i) => i.catalogId !== item.id && !own(i));
     if (drifted) {
       instances = instances.map((i) => (i.catalogId === item.id || own(i) ? i : { ...i, catalogId: item.id }));
       notes.push(`Honesty: every member is ${namedStockDisplayName(project.prompt ?? "", item)}.`);
     }
-    if (isWholeStock(item) && instances.some((i) => i.cutLength != null)) {
-      instances = instances.map((i) => (i.cutLength == null ? i : { ...i, cutLength: undefined }));
+    if (isWholeStock(item) && instances.some((i) => i.cutLength != null && i.catalogId === item.id)) {
+      instances = instances.map((i) => (i.cutLength == null || i.catalogId !== item.id ? i : { ...i, cutLength: undefined }));
       notes.push(`Honesty: ${namedStockDisplayName(project.prompt ?? "", item)} used whole. Do not cut.`);
     }
     // A member drawn well under one stick (a short lattice web) is a cut piece: the stick list says so.
     // (Tower-class builds and figures; the frozen Eiffel keeps its whole-stick contract.)
     // Animals in long craft stock (12" skewers) are drawn at each part's true length too (a skewer is longer than a snout).
     const S0 = Math.max(0.5, toPrimitive(item).length);
-    const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || (project.shape?.classId === "quadruped" && S0 > 8);
+    const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || project.shape?.classId === "blocks" || (project.shape?.classId === "quadruped" && S0 > 8);
     if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
       const S = S0;
       let cut = 0;
       instances = instances.map((i) => {
-        if (!i.from || !i.to) return i;
+        if (!i.from || !i.to || i.catalogId !== item.id) return i;
         const L = Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z);
         // Template classes draw every member at its true length: anything short of a whole stick is cut.
         const exact = exactCut || (project.shape?.classId === "small-house" && i.role === "perch");
@@ -912,9 +913,9 @@ export function weekendCutLines(project: YardProject): CutLine[] {
     // Towel/blanket ladder climb cut parts: Rung not Rail (role stays rail for anatomy counts).
     let family = (inst.role || "member").replace(/^\w/, (c) => c.toUpperCase());
     if (ladderRungs && inst.role === "rail") family = "Rung";
-    // The row's section is the member as drawn (ripped strip or the row's own stock), never the primary sheet's width.
+    // The row's section is the member as drawn (ripped strip, cut disc, or the row's own stock), never the primary sheet's width.
     const rowItem = getCatalogItem(inst.catalogId) ?? item;
-    const rowW = inst.section?.width ?? rowItem.dims.width ?? rowItem.dims.diameter ?? width;
+    const rowW = inst.round ?? inst.section?.width ?? rowItem.dims.width ?? rowItem.dims.diameter ?? width;
     const rowT = inst.section?.height ?? rowItem.dims.thickness ?? rowItem.dims.height ?? rowItem.dims.diameter ?? thick;
     const key = `${inst.catalogId}|${family}|${len}|${rowW}x${rowT}`;
     const existing = grouped.get(key);
@@ -927,11 +928,12 @@ export function weekendCutLines(project: YardProject): CutLine[] {
       id: key,
       name: family,
       quantity: 1,
-      lengthIn: len,
+      lengthIn: inst.round ? rowW : len,
       widthIn: rowW,
       thicknessIn: rowT,
       material: rowLabel,
       whole: false,
+      ...(inst.round ? { notes: `Cut round, ${inchFrac(rowW)}" across.` } : {}),
     });
   }
   return [...grouped.values()].sort((a, b) => b.lengthIn - a.lengthIn || a.name.localeCompare(b.name));

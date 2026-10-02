@@ -30,6 +30,7 @@ import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock"
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
+import { blockKit, buildBlocks, defaultBlockStock, detectBlockSubject, pieceBounds, stripStockSizes } from "./blocks";
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct } from "./productModel";
@@ -148,6 +149,9 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
     if (detectWeekendMech(prompt) === "climb" && (isClimbStepStool(prompt) || wantsClimbHandrail(prompt))) {
       return getCatalogItem("plywood-3-4-4x8") || named;
     }
+    // A parts-block subject with its own natural stock (a pull wagon is plywood) uses it.
+    const blockStock = defaultBlockStock(prompt);
+    if (blockStock && getCatalogItem(blockStock)) return getCatalogItem(blockStock)!;
     const use = detectShapeClass(prompt)?.profile.use;
     const fn = use === "rocker" ? "lumber-2x4-8" : use || detectTemplate(prompt) === "platform-tower" ? "plywood-3-4-4x8" : null;
     return (fn && getCatalogItem(fn)) || getCatalogItem("popsicle-standard") || named;
@@ -592,6 +596,11 @@ function generateRaw(
   const scale = opts.scale ?? "full";
   const grain = scale === "weekend" ? 1.85 : 1;
 
+  // A subject the shared parts blocks build (neck, wheels, tube, perched body, figure, towers) owns its build.
+  if (!formOverride && !opts.fittedOverride) {
+    const blocked = buildBlocksProject(prompt, buildStock(prompt, materialOverride), opts);
+    if (blocked) return blocked;
+  }
   // An animal with a use (shelf, bookend, planter, rocker) is the animal template first — never a storage unit.
   if (detectShapeClass(prompt)?.profile.use && !formOverride) {
     const shaped = buildShapeProject(prompt, buildStock(prompt, materialOverride), opts);
@@ -860,6 +869,83 @@ function buildTemplateProject(
     notes: [...built.notes, ...project.notes.filter((n) => !/^Form:|^Proportions from/.test(n))],
   };
   return enforceWeekendHonesty(withWireNote(project, item));
+}
+
+/**
+ * Parts-block build: exact pieces (a disc is a disc, a strip its own width), mixed stocks per piece
+ * (axles, wood balls, closet rod), and sheet cutouts as panels. Box figures in thin stock stay humanoid.
+ */
+function buildBlocksProject(
+  prompt: string,
+  item: CatalogItem,
+  opts: { joinMethod?: JoinMethod; sizeOverride?: { width: number; height: number; depth: number } },
+): YardProject | null {
+  const subject = detectBlockSubject(prompt);
+  if (!subject) return null;
+  if (subject.figure === "box" && blockKit(item).kind !== "lumber") return null;
+  const built = buildBlocks(prompt, item, shapeTyped(stripStockSizes(prompt), opts.sizeOverride));
+  if (!built) return null;
+  const stockItem = getCatalogItem(built.stockId) ?? item;
+  const instances: YardInstance[] = built.pieces.map((p) => {
+    const it = getCatalogItem(p.stock);
+    const cyl = !p.section && !!it && (it.formFactor === "dowel" || it.formFactor === "tube" || it.formFactor === "pipe");
+    const rot = rotationForDirection(p.a, p.b, cyl);
+    return {
+      id: createId("i"),
+      catalogId: p.stock,
+      position: { x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2, z: (p.a.z + p.b.z) / 2 },
+      rotation: { x: rot[0], y: rot[1], z: rot[2] },
+      ...(p.cut != null ? { cutLength: p.cut } : {}),
+      role: p.role,
+      join: stockItem.preferredJoins?.[0] ?? "glue",
+      from: p.a,
+      to: p.b,
+      ...(p.face ? { face: p.face } : {}),
+      ...(p.section ? { section: p.section } : {}),
+      ...(p.round ? { round: p.round } : {}),
+    };
+  });
+  const stats = analyzePieces(instances, stockItem, { full: true });
+  const joinMethod = opts.joinMethod ?? (stockItem.category === "cardboard" ? "glue" : stockItem.preferredJoins?.[0]);
+  let project: YardProject = instances.length
+    ? toProject(prompt, stockItem, built.kind, instances, [], false, { buildStats: stats, joinMethod, name: built.label })
+    : {
+        ...emptyProject(),
+        name: built.label,
+        prompt,
+        kind: built.kind,
+        panels: [],
+        primaryMaterialId: stockItem.id,
+        joinMethod: stockItem.category === "cardboard" ? "glue" : "screw",
+        notes: [],
+        assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
+      };
+  if (built.panels.length) project = { ...project, panels: [...project.panels, ...built.panels] };
+  const bb = pieceBounds(built);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const counts = new Map<string, number>();
+  for (const i of project.instances) if (i.role) counts.set(i.role, (counts.get(i.role) ?? 0) + 1);
+  for (const p of project.panels) counts.set(p.name.toLowerCase(), (counts.get(p.name.toLowerCase()) ?? 0) + 1);
+  const connected = stats.components <= 1 && stats.loose === 0;
+  project = {
+    ...project,
+    name: built.label,
+    primaryMaterialId: stockItem.id,
+    overall: { width: r1(bb.max.x - bb.min.x), height: r1(bb.max.y), depth: r1(bb.max.z - bb.min.z) },
+    shape: {
+      classId: "blocks",
+      subject: built.subject.subject,
+      pose: "stand",
+      bodyLength: 0,
+      parts: [...counts].map(([name, count]) => ({ name: name as never, count })),
+      params: { ...built.params, blocks: built.subject.blocks.join("+") as never },
+    },
+    notes: [
+      ...built.notes,
+      ...(instances.length ? [connected ? `Connected structure · ${stats.joints} joints · every piece meets another` : `Joined in ${stats.components} clusters — glue each cluster to the next where they touch.`] : []),
+    ],
+  };
+  return enforceWeekendHonesty(withWireNote(project, stockItem));
 }
 
 /** Typed size for a shape template: "tall/high" is height; any other typed size is the length. */

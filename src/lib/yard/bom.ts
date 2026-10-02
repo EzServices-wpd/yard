@@ -91,8 +91,24 @@ export function buildForgeBom(
     ].sort((a, b) => b - a);
 
     const ripped = instances.find((i) => i.catalogId === catalogId && i.section)?.section;
+    const cutParts = instances.filter((i) => i.catalogId === catalogId && i.section);
+    const partsVary = cutParts.some((i) => Math.abs(i.section!.width - ripped!.width) > 0.01 || i.section!.width > 6);
     let notes: string | undefined;
-    if (item.formFactor === "sheet" && ripped && data.count > 0) {
+    if (item.formFactor === "sheet" && ripped && data.count > 0 && partsVary) {
+      // Cut parts of different sizes (panels, discs, strips) nest on whole sheets, shelf by shelf.
+      const sheetL = Math.max(1, item.dims.length ?? 96);
+      const sheetW = Math.max(1, item.dims.width ?? 48);
+      const rects = instances
+        .filter((i) => i.catalogId === catalogId)
+        .map((i) => {
+          const len = i.cutLength ?? (i.from && i.to ? Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z) : sheetL);
+          const w = i.section?.width ?? 1;
+          return [Math.max(len, w), Math.min(len, w)] as [number, number];
+        });
+      packsNeeded = Math.max(1, Math.ceil(nestSheets(rects, sheetL, sheetW) / Math.max(1, unitsPerPack)));
+      const sheets = nestSheets(rects, sheetL, sheetW);
+      notes = `${data.count} cut parts nested on ${sheets} sheet${sheets === 1 ? "" : "s"} ${sheetW}×${sheetL}.`;
+    } else if (item.formFactor === "sheet" && ripped && data.count > 0) {
       const sheetL = Math.max(1, item.dims.length ?? 96);
       const sheetW = Math.max(1, item.dims.width ?? 48);
       const kerf = 0.125;
@@ -152,6 +168,26 @@ export function buildForgeBom(
     totalEstCostUsd,
     primaryMaterialId: primaryMaterialId ?? null,
   };
+}
+
+/** Shelf nest: parts (long × short, inches) on sheets L × W with a 1/8" kerf. Returns sheets used. */
+export function nestSheets(parts: [number, number][], L: number, W: number): number {
+  const kerf = 0.125;
+  const sorted = parts
+    .map(([a, b]) => (a <= L && b <= W ? [a, b] : b <= L && a <= W ? [b, a] : [Math.min(a, L), Math.min(b, W)]) as [number, number])
+    .sort((p, q) => q[1] - p[1] || q[0] - p[0]);
+  type Shelf = { h: number; used: number };
+  const sheets: { shelves: Shelf[]; height: number }[] = [];
+  for (const [len, h] of sorted) {
+    let placed = false;
+    for (const sh of sheets) {
+      const fit = sh.shelves.find((s) => s.h + 1e-6 >= h && s.used + len <= L + 1e-6);
+      if (fit) { fit.used += len + kerf; placed = true; break; }
+      if (sh.height + h <= W + 1e-6) { sh.shelves.push({ h, used: len + kerf }); sh.height += h + kerf; placed = true; break; }
+    }
+    if (!placed) sheets.push({ shelves: [{ h, used: len + kerf }], height: h + kerf });
+  }
+  return Math.max(1, sheets.length);
 }
 
 export function bomLinesFromForge(result: ForgeBomResult): BomLine[] {

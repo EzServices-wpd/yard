@@ -69,6 +69,11 @@ export function StickCloud({
       const prim = inst.section
         ? { ...prim0, width: inst.section.width, height: inst.section.height, radius: undefined, innerRadius: undefined }
         : prim0;
+      // A piece cut round (wheel, face disc) draws as a disc of its own diameter, whatever the stock.
+      if (inst.round) {
+        solidCyls.push({ inst, index, item, prim: { ...prim0, width: inst.round, height: inst.round, radius: inst.round / 2, innerRadius: undefined } });
+        return;
+      }
       const row: Row = { inst, index, item, prim };
       const k = meshKind(item);
       // A cut piece has square sawn ends; only whole craft sticks keep their rounded factory ends.

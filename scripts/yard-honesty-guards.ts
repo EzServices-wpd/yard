@@ -43,7 +43,7 @@ import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
 import { inspectTemplate, frameHangs } from "../src/lib/yard/formTemplates";
-import { contactReport } from "../src/lib/yard/contact";
+import { boxGap, contactReport, projectBoxes } from "../src/lib/yard/contact";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
@@ -1062,6 +1062,149 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (loose.length) failWeekend(`connectivity: ${q} parts that touch nothing`, loose);
   }
   console.log(`PASS connectivity: ${prompts.length} figure and animal builds — every named part touches the rest (real stick boxes, 1/32" glue line)`);
+}
+// Parts blocks (neck, wheels, tube, perched body, figure, towers): each subject builds its signature
+// features in the typed stock, every piece touches the rest, and none falls to a four-legged stand-in.
+{
+  let bad = 0;
+  const pb = (m: string, extra?: unknown) => {
+    bad++;
+    failWeekend(`parts-blocks: ${m}`, extra);
+  };
+  type Bx = ReturnType<typeof projectBoxes>[number];
+  const lowY = (b: Bx) => b.c.y - b.ax.reduce((a, ax, i) => a + Math.abs(ax.y) * b.h[i], 0);
+  const P = (b: ReturnType<typeof generateFromPrompt>) => (b.shape?.params ?? {}) as Record<string, number>;
+  const built = (q: string) => {
+    const b = generateFromPrompt(q);
+    if (b.shape?.classId !== "blocks") pb(`${q} is not a parts-block build (${b.shape?.classId ?? b.name})`);
+    if (/armature|quadruped/i.test(`${b.name} ${b.notes.join(" ")}`)) pb(`${q} fell to the four-legged placeholder`);
+    const r = contactReport(b);
+    if (r.components !== 1) pb(`${q} pieces in ${r.components} separate clusters`, r.clusters.slice(0, 3).map((c) => c.roles.slice(0, 4)));
+    if (!buildPlan(b).bom.length) pb(`${q} empty Buy`);
+    return b;
+  };
+  const near = (q: string, got: number, want: number) => { if (Math.abs(got - want) > 1) pb(`${q} size ${got}" not the typed ${want}"`); };
+  const stock = (q: string, b: ReturnType<typeof generateFromPrompt>, re: RegExp, not?: RegExp) => {
+    if (!re.test(b.primaryMaterialId)) pb(`${q} stock chip ${b.primaryMaterialId}`);
+    const bom = buildPlan(b).bom;
+    if (!bom.some((x) => re.test(x.catalogId ?? ""))) pb(`${q} Buy lacks the typed stock`);
+    if (not && bom.some((x) => not.test(x.catalogId ?? ""))) pb(`${q} Buy carries ${not}`);
+  };
+  const wheels = (q: string) => {
+    const b = built(q);
+    const bx = projectBoxes(b);
+    const inst = b.instances;
+    const wheelIdx = inst.map((i, k) => (i.role === "wheel" ? k : -1)).filter((k) => k >= 0);
+    const axles = inst.map((i, k) => (i.role === "axle" ? k : -1)).filter((k) => k >= 0);
+    if (wheelIdx.length < 4) pb(`${q} has ${wheelIdx.length} wheels`);
+    for (const k of wheelIdx) {
+      const w = inst[k];
+      if (!w.round) pb(`${q} wheel is not a round disc`);
+      const c = { x: (w.from!.x + w.to!.x) / 2, y: (w.from!.y + w.to!.y) / 2, z: (w.from!.z + w.to!.z) / 2 };
+      const onAxle = axles.some((a) => {
+        const A = inst[a];
+        const d = { x: A.to!.x - A.from!.x, y: A.to!.y - A.from!.y, z: A.to!.z - A.from!.z };
+        const L2 = d.x * d.x + d.y * d.y + d.z * d.z;
+        const t = ((c.x - A.from!.x) * d.x + (c.y - A.from!.y) * d.y + (c.z - A.from!.z) * d.z) / L2;
+        return t > 0 && t < 1 && Math.hypot(A.from!.x + d.x * t - c.x, A.from!.y + d.y * t - c.y, A.from!.z + d.z * t - c.z) < 0.05;
+      });
+      if (!onAxle) pb(`${q} wheel is not on an axle`);
+      const tight = bx.find((B, j) => j !== k && B.role !== "wheel" && B.role !== "axle" && boxGap(bx[k], B) < 0.125 - 1e-3);
+      if (tight) pb(`${q} wheel rubs the ${tight.role} (under 1/8" spin gap)`);
+    }
+    for (const a of axles) if (!bx.some((B) => B.role === "axle block" && boxGap(bx[a], B) < 0)) pb(`${q} axle does not pass through an axle block`);
+    const wl = Math.min(...wheelIdx.map((k) => lowY(bx[k])));
+    const ol = Math.min(...bx.filter((B) => B.role !== "wheel").map(lowY));
+    if (Math.abs(wl) > 0.02 || ol < 0.25) pb(`${q} wheels are not the only parts on the ground (wheels ${wl.toFixed(2)}", other ${ol.toFixed(2)}")`);
+    return b;
+  };
+  const neck = (q: string, legs: number, cutout = false) => {
+    const b = built(q);
+    const p = P(b);
+    if (!(p.neckSegs >= 3)) pb(`${q} neck has ${p.neckSegs} bends`);
+    if (!(p.headFwd > 0)) pb(`${q} head is not forward of the chest`);
+    if (!(p.neckLen >= 0.6 * p.bodyH)) pb(`${q} neck ${p.neckLen}" under 0.6 of the body ${p.bodyH}"`);
+    if (p.legs !== legs) pb(`${q} has ${p.legs} legs, wants ${legs}`);
+    if (cutout && !b.panels.some((x) => x.polygon?.plane === "xy")) pb(`${q} has no flat profile`);
+    if (legs === 2 && !cutout) for (const i of b.instances.filter((x) => x.role === "leg")) {
+      const it = getCatalogItem(i.catalogId);
+      const w = i.section?.width ?? it?.dims.diameter ?? it?.dims.width ?? 9;
+      if (w > 0.5) pb(`${q} leg ${w}" wide is not a thin stilt`);
+    }
+    return b;
+  };
+  neck("craft stick swan", 0);
+  near("dowel flamingo", neck("dowel flamingo lawn figure, 36 inches tall", 2).overall.height, 36);
+  near("dowel giraffe", neck("dowel giraffe, 18 inches tall", 4).overall.height, 18);
+  near("plywood heron cutout", neck("plywood heron cutout, 30 inches tall", 2, true).overall.height, 30);
+  {
+    const f = built("flamingo from 1/4 inch dowels");
+    if (/1\/\s|\b1\/$/.test(f.name) || f.primaryMaterialId !== "dowel-1-4-36") pb(`flamingo from 1/4 inch dowels titled "${f.name}" on ${f.primaryMaterialId}`);
+    if (buildPlan(f).bom.some((x) => !Number.isFinite(x.estimatedCost ?? 0))) pb("flamingo from 1/4 inch dowels has a price that is not a number");
+  }
+  if (!wheels("pine toy truck with rolling wheels").instances.some((i) => i.role === "cab")) pb("toy truck has no cab");
+  if (!wheels("pine toy train engine").instances.some((i) => i.role === "boiler")) pb("train engine has no boiler");
+  if (wheels("pine school bus with rolling wheels").instances.some((i) => i.role === "cab")) pb("school bus grew a separate cab");
+  {
+    const w = wheels("kids wagon with a pull handle");
+    if (!w.instances.some((i) => i.role === "handle") || !w.instances.some((i) => i.role === "bed")) pb("wagon lacks its bed or pull handle");
+  }
+  {
+    const q = "cardboard rocket, 3 feet tall, kid fits inside";
+    const b = built(q);
+    const p = P(b);
+    if (!(p.fins >= 3) || !(p.finSpan >= 0.15 * p.tubeD)) pb(`${q} fins ${p.fins} reaching ${p.finSpan}" on a ${p.tubeD}" tube`);
+    if (!(p.inside >= 18) || !(p.doorH >= 18) || !b.instances.some((i) => i.role === "door")) pb(`${q} inside ${p.inside}", door ${p.doorH}"`);
+    near(q, b.overall.height, 36);
+    stock(q, b, /cardboard/, /popsicle/);
+    const tips = b.instances.filter((i) => i.role === "nose cone").map((i) => Math.max(i.from!.y, i.to!.y));
+    if (!tips.length || Math.max(...tips) - Math.min(...tips) > 0.05) pb(`${q} nose cone does not come to a point`);
+  }
+  {
+    const q = "cardboard submarine, 4 feet long";
+    const b = built(q);
+    const p = P(b);
+    if (!p.crossTail || p.fins !== 4 || !p.tower || !b.instances.some((i) => i.role === "nose cap")) pb(`${q} lacks its rounded nose, cross tail or tower`);
+    if (!(b.overall.width > 1.3 * b.overall.height)) pb(`${q} is not laid level`);
+    near(q, b.overall.width, 48);
+    stock(q, b, /cardboard/, /popsicle/);
+  }
+  {
+    const q = "cardboard castle with four towers and a drawbridge";
+    const b = built(q);
+    if (P(b).towers !== 4 || !P(b).drawbridge) pb(`${q} lacks four towers and a drawbridge`);
+    stock(q, b, /cardboard/, /popsicle/);
+  }
+  {
+    const q = "2x4 scrap owl bookend";
+    const b = built(q);
+    const p = P(b);
+    if (!(p.faceD > 0) || !(p.baseBehind >= 4) || !p.earTufts) pb(`${q} face ${p.faceD}", base behind ${p.baseBehind}"`);
+    if (b.instances.some((i) => i.role === "leg")) pb(`${q} grew legs`);
+    stock(q, b, /2x4/);
+  }
+  {
+    const q = "2x4 scrap penguin";
+    const b = built(q);
+    if (!(P(b).faceD > 0) || /owl/i.test(b.name) || b.instances.some((i) => i.role === "ear tuft" || i.role === "leg")) pb(`${q} reads as the owl or lacks its face`);
+  }
+  {
+    const q = "2x4 scrap robot, 18 inches tall";
+    const b = built(q);
+    const p = P(b);
+    if (p.arms !== 2 || p.legs !== 2 || !(p.legGap >= 0.5)) pb(`${q} arms ${p.arms}, legs ${p.legs}, leg gap ${p.legGap}"`);
+    near(q, b.overall.height, 18);
+    const bx = projectBoxes(b);
+    for (let i = 0; i < bx.length; i++) for (let j = i + 1; j < bx.length; j++) if (boxGap(bx[i], bx[j]) < -0.05) pb(`${q} ${bx[i].role} and ${bx[j].role} sit in the same spot`);
+  }
+  {
+    const q = "dowel and wood-ball robot, poseable";
+    const b = built(q);
+    if (!(P(b).ballJoints >= 8)) pb(`${q} has ${P(b).ballJoints} pivot joints`);
+    if (!buildPlan(b).bom.some((x) => /wood-ball/.test(x.catalogId ?? ""))) pb(`${q} wood balls are not on Buy`);
+  }
+  built("giraffe");
+  if (!bad) console.log("PASS parts-blocks: 16 subjects build their wheels, necks, tubes, faces, figures and towers, connected, in the typed stock");
 }
 // Flat-frame class (picture frame): inner opening = typed photo size, corners meet, backer drawn, sticks flat.
 {

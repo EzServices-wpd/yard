@@ -536,6 +536,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bcloset rods?\b|\bcloset poles?\b/, "closet-rod"],
+    [/(?:1\s*\/\s*2|half(?:\s|-)?inch)\s*(?:"|in(?:ch(?:es)?)?\.?)?\s*(?:hardwood\s+)?dowels?/, "dowel-1-2-36"],
     [/\bdowels?\b/, "dowel-1-4-36"],
     [/1\s*\/\s*4.{0,24}4\s*[x×]\s*10|quarter(?:\s|-)?inch 4\s*[x×]\s*10|tall backer plywood|ten foot backer/, "plywood-1-4-4x10"],
     [/3\s*\/\s*4.{0,24}4\s*[x×]\s*10|4\s*[x×]\s*10 plywood|ten foot plywood/, "plywood-3-4-4x10"],
@@ -543,6 +544,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/1\s*\/\s*2.{0,16}plywood|half(?:\s|-)?inch plywood|header spacer/, "plywood-1-2-4x8"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
     [/paper.?towel/, "paper-towel-roll"],
+    [/\bcardboard\b(?!\s*(?:tubes?|rolls?|cores?))|\bcorrugated\b/, "cardboard-corrugated-sheet"],
   ];
 }
 

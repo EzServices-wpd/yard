@@ -124,6 +124,8 @@ export type YardInstance = {
    * (a plywood batten, not the 48" sheet face). Absent = draw the catalog unit.
    */
   section?: { width: number; height: number };
+  /** Cut round: a disc (wheel, face) of this diameter; from → to runs through its thickness (the axle line). */
+  round?: number;
 };
 
 export type PanelType =

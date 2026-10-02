@@ -725,6 +725,19 @@ export function unionOutline(polys: P2[][], cell = 0.125): P2[] {
       if (polys.some((poly) => inPoly(x, y, poly))) grid[j * nx + i] = 1;
     }
   }
+  // Cells that touch only at a corner would make a pinch the trace cannot follow (it would close the
+  // outline with a chord across open space). Bridge each one with a single 1/8" cell so the outline is one
+  // clean loop.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let j = 0; j + 1 < ny; j++) {
+      for (let i = 0; i + 1 < nx; i++) {
+        const a = grid[j * nx + i], b = grid[j * nx + i + 1], c = grid[(j + 1) * nx + i], d = grid[(j + 1) * nx + i + 1];
+        if (a && d && !b && !c) { grid[j * nx + i + 1] = 1; changed = true; }
+        else if (b && c && !a && !d) { grid[j * nx + i] = 1; changed = true; }
+      }
+    }
+  }
   const at = (i: number, j: number) => (i >= 0 && j >= 0 && i < nx && j < ny ? grid[j * nx + i] : 0);
   // Directed boundary edges (filled cell on the left), chained into loops.
   const next = new Map<string, string>();

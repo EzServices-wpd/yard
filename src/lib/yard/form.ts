@@ -407,7 +407,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
       kind: hit.kind,
       notes: [
         `${hit.named || subjectTitle(prompt)} · ${hit.stance ?? "figure"} armature.`,
-        "Any named creature uses this stance if we have no published wire. Grok can replace the wire when the key is set.",
+        "None of the shared parts blocks (neck, wheels, tube, perched body, figure, towers) fits this subject yet, so it uses the general stance wire — the closest honest build. Grok can replace the wire when the key is set.",
       ],
       ops: [],
       strokes,

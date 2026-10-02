@@ -13,7 +13,7 @@ import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
-export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower";
+export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower" | "blocks";
 export type TemplatePartName =
   | "wall"
   | "floor"
@@ -1242,6 +1242,27 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "deck", word: "deck piece", title: "Lay the decking across each pair of rails", why: "Three staggered platforms: low, middle and the top perch." },
     { role: "rim", word: "rim piece", title: "Glue the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
+  ],
+  blocks: [
+    { role: "base", word: "base piece", title: "Cut and glue the base", why: "Everything stands on it." },
+    { role: "cradle", word: "saddle piece", title: "Glue up the two saddles", why: "They hold the hull level on the floor." },
+    { role: "axle block", word: "axle block", title: "Drill and glue the axle blocks", why: "Drill each axle hole a little bigger than the axle first, so the axle turns freely in it." },
+    { role: "chassis", word: "chassis piece", title: "Glue the chassis across the axle blocks", why: "It ties the axle blocks square to each other." },
+    { role: "body", word: "body piece", title: "Build the body", why: "The main mass every other part glues to." },
+    { role: "hull", word: "hull stave", title: "Roll the hull", why: "Staves edge to edge around the tube; tape or glue every seam inside and out." },
+    { role: "torso", word: "torso piece", title: "Build the torso", why: "Arms, legs and head all fasten to it." },
+    { role: "leg", word: "leg", title: "Fit the legs", why: "Square to the bench so it stands without rocking." },
+    { role: "hips", word: "hip piece", title: "Glue the hip bar across the legs", why: "It holds the legs apart with their gap." },
+    { role: "cab", word: "cab piece", title: "Glue up the cab", why: "Laminate the cab pieces, then glue it on the chassis." },
+    { role: "bed", word: "bed panel", title: "Build the bed", why: "Floor and four sides, glued and pinned at each corner." },
+    { role: "bed side", word: "bed side", title: "Glue the bed sides and tailgate", why: "They stand on the chassis behind the cab." },
+    { role: "boiler", word: "boiler piece", title: "Glue the boiler and smokestack", why: "The boiler runs forward of the cab; the stack stands on it." },
+    { role: "tower", word: "tower piece", title: "Build the towers", why: "Roll each tower and tape the seam." },
+    { role: "wall", word: "wall panel", title: "Fit the walls", why: "Each wall runs into the towers at its ends." },
+    { role: "neck", word: "neck segment", title: "Glue the neck segments in an S", why: "Each segment laps the one before; clamp each joint until the glue grabs." },
+    { role: "head", word: "head piece", title: "Glue the head on the neck", why: "The head sits forward of the chest." },
+    { role: "axle", word: "axle", title: "Slide the axles through and glue on the wheels", why: "Leave the gap between wheel and body so each wheel spins; glue the wheels to the axle ends only." },
+    { role: "member", title: "Glue on the remaining parts", why: "Face disc, fins, nose, beak, tail, handle: each glues where it touches." },
   ],
 };
 
