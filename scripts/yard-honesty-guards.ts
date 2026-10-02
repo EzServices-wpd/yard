@@ -3810,7 +3810,7 @@ console.log("SOFT-TRUST OK", {
       if (openGaps.length !== c.openShelves) failWine("open shelves above the grid", { prompt: c.prompt, openGaps, want: c.openShelves });
       if (c.openShelves > 0 && !new RegExp(`with ${c.openShelves} open shel(?:f|ves) above`).test(blob)) failWine("notes must state the open shelves", { prompt: c.prompt, blob: blob.slice(0, 400) });
     }
-    if (c.plinth && (!/plinth, set back like a toe kick, so the top cap lands at the/.test(blob) || !p.panels.some((x) => /plinth/i.test(x.name)))) failWine("spare under 6in must be a stated plinth", { prompt: c.prompt, blob: blob.slice(0, 400) });
+    if (c.plinth && (!/plinth, recessed like a kick strip, so the top cap lands at the/.test(blob) || !p.panels.some((x) => /plinth/i.test(x.name)))) failWine("spare under 6in must be a stated plinth", { prompt: c.prompt, blob: blob.slice(0, 400) });
     // Open shelf clear: 6–12" (glasses, a corkscrew, decanters), never a sliver or a stretched 16" hole.
     for (const g of openGaps) {
       if (g < 6 - 1e-6 || g > 12 + 1e-6) failWine("open shelf clear outside 6–12in", { prompt: c.prompt, openGaps });
@@ -3882,7 +3882,7 @@ console.log("SOFT-TRUST OK", {
   // A typed dimension is a hard cap, a typed count a target: when the count's grid does not fit,
   // build the full rows that fit, never past the typed size, and say the shortfall plus the size that fits.
   // Spare height: rows on the standard pitch, the spare under them a plinth (< 6" clear + board)
-  // set back like a toe kick, so the top cap lands at the typed height.
+  // recessed like a kick strip, so the top cap lands at the typed height.
   const plinthOf = (r: ReturnType<typeof generateFromPrompt>) => r.panels.find((x) => x.type === "kick" && /plinth/i.test(x.name));
   const plinthOk = (r: ReturnType<typeof generateFromPrompt>) => {
     const k = plinthOf(r);
@@ -3943,7 +3943,7 @@ console.log("SOFT-TRUST OK", {
     const { vGaps } = openings(r);
     if (vGaps.some((g) => Math.abs(g - WINE_ROW_CLEAR) > 1e-6)) failWine("short rack rows must stay on the standard pitch (spare goes to the plinth)", { q: c.q, vGaps });
     const k = plinthOf(r);
-    if (!k || Math.abs(k.size.height - c.plinth) > 0.01 || !plinthOk(r) || !/plinth, set back like a toe kick, so the top cap lands at the/.test(blob)) failWine("short rack spare must be a stated, set-back plinth", { q: c.q, plinth: k?.size, blob: blob.slice(0, 400) });
+    if (!k || Math.abs(k.size.height - c.plinth) > 0.01 || !plinthOk(r) || !/plinth, recessed like a kick strip, so the top cap lands at the/.test(blob)) failWine("short rack spare must be a stated, set-back plinth", { q: c.q, plinth: k?.size, blob: blob.slice(0, 400) });
     fitCheck(c.q, r, c.asked);
   }
   // Height sweep: a count at every typed height 15–60" keeps the count, caps at the typed height

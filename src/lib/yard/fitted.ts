@@ -556,7 +556,7 @@ export function wineCapacityVoice(l: WineRackLayout, asked: number | null, H: nu
   const shelfWord = `${l.openShelves} open shel${l.openShelves === 1 ? "f" : "ves"}`;
   const heightWord = l.heightTyped ? `the ${inch16(l.H)}" height you typed` : `the full ${inch16(l.H)}" height`;
   const plinthVoice = l.plinth > 0
-    ? ` The bottle rows sit on a ${inch16(l.plinth)}" plinth, set back like a toe kick, so the top cap lands at ${heightWord}.`
+    ? ` The bottle rows sit on a ${inch16(l.plinth)}" plinth, recessed like a kick strip, so the top cap lands at ${heightWord}.`
     : "";
   const openUse = l.openClear < 8 ? "stemless glasses, a corkscrew and stoppers" : "glasses, decanters or books";
   const heightVoice = l.derivedH

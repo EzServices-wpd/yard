@@ -1404,7 +1404,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
     const plinths = panels.filter((p) => p.type === "kick" && /plinth/i.test(p.name));
     const plinthLine = plinths.length
-      ? ` ${plinths.map(cutLine).join("; ")}: glue and screw the plinth between the uprights under the bottom shelf, set ${inchFrac(Math.max(0, (project.overall?.depth ?? 0) - (plinths[0].position.z + plinths[0].size.depth)))}" back from the front like a toe kick — it lifts the rows so the top cap lands at the full height.`
+      ? ` ${plinths.map(cutLine).join("; ")}: glue and screw the plinth between the uprights under the bottom shelf, recessed ${inchFrac(Math.max(0, (project.overall?.depth ?? 0) - (plinths[0].position.z + plinths[0].size.depth)))}" like a kick strip so your toes clear — it lifts the rows so the top cap lands at the full height.`
       : "";
     // Notched grid shelves slot over the dividers; every other shelf (bottom, top shelf, cap) is plain.
     const midShelves = sortedShelves.filter((p) => /^grid shelf/i.test(p.name));
