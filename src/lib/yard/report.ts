@@ -1132,6 +1132,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
             ? "headboard"
             : isPlatformBed((project.prompt ?? "").toLowerCase()) || /platform\s*bed/i.test(project.name)
               ? "platform bed"
+            : /\bbunk\b/i.test(project.name) || /\bbunk\b/.test((project.prompt ?? "").toLowerCase())
+              ? "bunk bed"
             : isBedsideShelf((project.prompt ?? "").toLowerCase()) || /^Bedside shelf/i.test(project.name)
               ? "bedside shelf"
             : isCoatHookBoard((project.prompt ?? "").toLowerCase()) || /Coat hook board/i.test(project.name)

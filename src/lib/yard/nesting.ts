@@ -403,15 +403,25 @@ export function spliceCutListToSheet(cutList: CutLine[]): CutLine[] {
  * Thin backs (thickness < 1/2") are skipped — buy as separate 1/4" sheet.
  * Grain: longer edge prefers sheet long axis; rotation allowed for square-ish panels.
  */
+
+/** Plywood / MDF / OSB faces. Dimensional lumber (2x6, 1x4) stays on the board buy. */
+function isSheetGood(c: CutLine): boolean {
+  const blob = `${c.material ?? ""} ${c.name ?? ""}`;
+  const sheetNamed = /ply|mdf|osb|chipboard|sheet good/i.test(blob);
+  const lumberNamed = /\b[124]\s*[x×]\s*\d|\blumber\b|\bdowel\b|\bstick\b|\bpipe\b/i.test(blob);
+  if (lumberNamed && !sheetNamed) return false;
+  if (sheetNamed) return c.widthIn > 2 && c.lengthIn > 2;
+  const thick = c.thicknessIn ?? 0.75;
+  if (thick > 1) return false;
+  return c.widthIn > 2 && c.lengthIn > 2;
+}
+
 export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
   const parts: NestPart[] = [];
   for (const c of cutList) {
     if (c.whole) continue;
-    // Skip non-sheet (sticks, dowels, pipe) — only nest sheet goods
-    const isSheet =
-      (c.widthIn > 2 && c.lengthIn > 2) ||
-      /ply|sheet|board|panel|mdf|osb/i.test(c.material + " " + c.name);
-    if (!isSheet) continue;
+    // Sheet goods only. A 2x6 is wider than 2" but it is a board, not a 4x8 face.
+    if (!isSheetGood(c)) continue;
 
     // Thin backer (1/4" or thinner) does not belong on a 3/4" structural sheet.
     const thick = c.thicknessIn ?? 0.75;
