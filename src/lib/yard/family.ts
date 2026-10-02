@@ -248,7 +248,9 @@ function wantsJars(lower: string) {
 }
 
 function wantsBottles(lower: string) {
-  return /wine|bottle/.test(lower);
+  // Wine still means a bottle rack. A bare bottle (Dasani, a water bottle) is the product, not storage.
+  if (/wine/.test(lower)) return true;
+  return /bottle/.test(lower) && /rack|shelf|shelves|holder|stand|storage|cabinet|organizer|crate|cubb/.test(lower);
 }
 
 /** Shoe storage intent — rack, cubbies, or store — not a bare "shoe". */

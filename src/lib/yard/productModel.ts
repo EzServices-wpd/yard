@@ -252,6 +252,20 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /gnomes?/.test(q), over: { shape: "object", length: 12, width: 5, height: 4, color: "#c23b3b", note: "Usual garden gnome, about 12″ tall. Not this gnome’s drawing." } },
 ];
 
+const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
+
+/**
+ * A sentence that names a product and not a thing to build for it.
+ * "Dasani bottle" is the bottle. "bottle shelf" and "wine rack" are builds.
+ */
+export function isBareProductPrompt(prompt: string): boolean {
+  const q = prompt.trim().toLowerCase();
+  if (q.length < 3 || BUILD_NOUN.test(q)) return false;
+  if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
+  if (SPECS.some((row) => row.match(q))) return true;
+  return shapeOf(q) !== "object";
+}
+
 /** The piece this name is, at a published size or the usual size of its family. */
 export function productEnvelope(query: string): Envelope | null {
   const q = query.trim().toLowerCase();

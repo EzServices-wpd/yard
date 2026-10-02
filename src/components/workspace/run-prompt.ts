@@ -8,6 +8,7 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, 
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
+import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { bindsDeterministically, detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
 import type { FittedSpec } from "@/lib/yard/types";
@@ -331,7 +332,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     (parsed?.walls != null &&
       ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
   const skipLlm =
-    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky;
+    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt);
   if (skipLlm) {
     revealBench();
     makePlan();

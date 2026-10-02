@@ -30,6 +30,8 @@ import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplat
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
+import { isBareProductPrompt, modeledProduct } from "./productModel";
+import { rememberCatalogItem } from "./foundStock";
 
 export function emptyProject(): YardProject {
   return {
@@ -253,6 +255,46 @@ function scaleToBox(
   };
 }
 
+
+/** A named product is the piece, not a carcase that happens to mention a bottle. */
+function placeNamedProduct(prompt: string): YardProject | null {
+  if (!isBareProductPrompt(prompt)) return null;
+  const item = modeledProduct(prompt);
+  if (!item?.shape || item.shape === "object") return null;
+  rememberCatalogItem(item);
+  const tall = item.dims.length ?? 8;
+  const across = item.dims.diameter ?? item.dims.width ?? 3;
+  const deep = item.dims.height ?? item.dims.diameter ?? across;
+  const pos = { x: 0, y: tall / 2, z: 0 };
+  return {
+    id: createId("proj"),
+    name: item.name,
+    prompt,
+    kind: "custom",
+    overall: { width: across, height: tall, depth: deep },
+    instances: [
+      {
+        id: createId("inst"),
+        catalogId: item.id,
+        position: pos,
+        rotation: { x: 0, y: 0, z: 0 },
+        cutLength: tall,
+        role: "member",
+        home: pos,
+      },
+    ],
+    panels: [],
+    primaryMaterialId: item.id,
+    notes: [item.notes || `${item.name} at its usual size.`],
+    assumptions: {
+      load: "light",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 function generateRaw(
   prompt: string,
   materialOverride?: string,
@@ -276,6 +318,8 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
+  const placed = placeNamedProduct(prompt);
+  if (placed && !formOverride) return placed;
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
   const scale = opts.scale ?? "full";
