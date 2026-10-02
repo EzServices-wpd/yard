@@ -44,6 +44,13 @@ const AXIS_WORD: Record<Axis, string> = { width: "wide", height: "tall", depth: 
  * typed axes print plainly; untyped axes read from the build's "Assumed …" notes are marked assumed.
  * A prompt with no numbers at all (stock design size) is all assumed.
  */
+/** "21 3/4" → 21.75, "3/4" → 0.75, "34" → 34. */
+function shopInches(raw: string): number {
+  const [a, b] = raw.trim().split(/\s+/);
+  const part = (t: string) => (t.includes("/") ? Number(t.split("/")[0]) / Number(t.split("/")[1]) : parseFloat(t));
+  return b ? part(a) + part(b) : part(a);
+}
+
 export function typedAxesTalk(project: YardProject, craft = false) {
   // A pocket build's overall is the room pocket it stands in (walls + clearance) — the plan talks
   // about the unit you build, the same 38 × 102 × 17 the bench and the cover arrows show.
@@ -56,11 +63,13 @@ export function typedAxesTalk(project: YardProject, craft = false) {
   const extra: string[] = [];
   const axisOf = (w: string): Axis => (/wide/i.test(w) ? "width" : /tall/i.test(w) ? "height" : "depth");
   for (const n of project.notes ?? []) {
-    const m = String(n).trim().match(/^Assumed\s+(\d+(?:\.\d+)?)\s*(?:"|″|in)?\s*(wide|tall|deep)\b(?:\s*\(([^)]*)\))?/i);
+    // Shop fractions in the note ("Assumed 21 3/4" deep") read as their inch value.
+    const m = String(n).trim().match(/^Assumed\s+(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*(?:"|″|in)?\s*(wide|tall|deep)\b(?:\s*\(([^)]*)\))?/i);
     if (!m) continue;
     const axis = axisOf(m[2]);
-    const v = parseFloat(m[1]);
-    if (Math.abs(v - o[axis]) < 0.5) assumed[axis] = true;
+    const v = shopInches(m[1]);
+    const finishedAxis = axis === "depth" ? modelFinishedDepth(project.panels, o.depth) : o[axis];
+    if (Math.abs(v - o[axis]) < 0.5 || Math.abs(v - finishedAxis) < 0.07) assumed[axis] = true;
     // An assumed part size that is not the overall (L-desk wing depth) names its part: "desk 24" deep".
     else extra.push(`${m[3] ? `${clean(m[3]).replace(/\s*(?:class\s+)?default$/i, "")} ` : ""}${frac(v)} ${AXIS_WORD[axis]}`);
   }

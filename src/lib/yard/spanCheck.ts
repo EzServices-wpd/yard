@@ -6,7 +6,7 @@
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
 
-export type SpanLoad = "person" | "shelf" | "light";
+export type SpanLoad = "person" | "shelf" | "surface" | "light";
 
 export type SpanFinding = {
   panelId: string;
@@ -49,7 +49,7 @@ export function allowSpanIn(thick: number, load: SpanLoad): number {
 /** Beam capacity. No 5-foot cap — a deeper rail spans to the posts instead of growing a leg in the bed. */
 function allowBeam(thick: number, load: SpanLoad): number {
   const t = Math.max(0.15, thick);
-  const k = load === "person" ? 26 : load === "shelf" ? 42 : 58;
+  const k = load === "person" ? 26 : load === "shelf" || load === "surface" ? 42 : 58;
   return Math.min(load === "person" ? 144 : 168, k * Math.pow(t, 0.8));
 }
 
@@ -84,7 +84,10 @@ function loadOf(project: YardProject, panel: Panel): SpanLoad {
     return "person";
   }
   if (panel.type === "shelf" || panel.type === "bottom" || /shelf/.test(panel.name.toLowerCase())) return "shelf";
-  if (panel.type === "counter" || panel.type === "top") return "shelf";
+  // A table, desk or counter top carries its own use (dishes, a monitor, elbows), not a shelf of books.
+  if (panel.type === "counter" || panel.type === "top" || /desktop|\btop\b|counter/.test(panel.name.toLowerCase())) {
+    return surfaceUse(project) ? "surface" : "shelf";
+  }
   return "light";
 }
 
@@ -173,8 +176,28 @@ function clearSpan(panel: Panel, panels: Panel[]): number {
   return span0;
 }
 
-function say(name: string, span: number, thick: number, allow: number, load: SpanLoad): Pick<SpanFinding, "message" | "suggestion"> {
-  const who = load === "person" ? "A person" : load === "shelf" ? "A shelf of books" : "A light load";
+/** The real use of a top, from the build itself. */
+function surfaceUse(project: YardProject): string | null {
+  const hay = `${project.name} ${project.prompt ?? ""}`.toLowerCase();
+  if (/\bdesk\b|workstation|writing/.test(hay)) return "Desk use (a monitor, a laptop, leaning elbows)";
+  if (/workbench|island|counter|prep|butcher|potting/.test(hay)) return "Counter use (a cutting board, tools, leaning weight)";
+  if (/table|nightstand|console|cart|sideboard|credenza|buffet|vanity|dresser/.test(hay)) return "Table use (dishes, a lamp, leaning elbows)";
+  return null;
+}
+
+/** A top that sits on aprons along its edges: the aprons are the support under it. */
+function restsOnAprons(panel: Panel, panels: Panel[]): boolean {
+  return panels.some((q) => {
+    if (q === panel || !/apron|stretcher|\brail\b/i.test(q.name)) return false;
+    if (Math.abs(q.position.y + q.size.height - panel.position.y) > 0.3) return false;
+    const ox = overlap(panel.position.x, panel.position.x + panel.size.width, q.position.x, q.position.x + q.size.width);
+    const oz = overlap(panel.position.z, panel.position.z + panel.size.depth, q.position.z, q.position.z + q.size.depth);
+    return ox > 0.2 && oz > 0.2;
+  });
+}
+
+function say(project: YardProject, name: string, span: number, thick: number, allow: number, load: SpanLoad): Pick<SpanFinding, "message" | "suggestion"> {
+  const who = load === "person" ? "A person" : load === "shelf" ? "A shelf of books" : load === "surface" ? surfaceUse(project) ?? "Everyday use on the top" : "A light load";
   return {
     message: `${name} spans ${Math.round(span)}″ on ${thickLabel(thick)} stock. ${who} wants that thickness held about every ${Math.round(allow)}″.`,
     suggestion: "Add support. It stays under the surface and out of the space you use. Shop rule of thumb — not an engineer's stamp.",
@@ -190,7 +213,8 @@ export function spanFindings(project: YardProject): SpanFinding[] {
     const thick = sectionOf(panel, project.panels);
     const allow = allowSpanIn(thick, load);
     if (span <= allow * TOL || span < 12) continue;
-    const text = say(panel.name, span, thick, allow, load);
+    if (load === "surface" && restsOnAprons(panel, project.panels)) continue;
+    const text = say(project, panel.name, span, thick, allow, load);
     out.push({ panelId: panel.id, name: panel.name, span, thick, allow, load, ...text });
   }
   out.sort((a, b) => b.span / b.allow - a.span / a.allow);

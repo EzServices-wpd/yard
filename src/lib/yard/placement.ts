@@ -679,7 +679,7 @@ function frontTalk(ctx: Ctx, fronts: Panel[], out: StepPlacement) {
   }
   const uniq = [...new Set(talks)];
   const lead = uniq.length === 1 && banks.length > 1 ? "Drawer fronts, the same in every bank" : fronts.length > 1 ? "Drawer fronts" : "Drawer front";
-  out.sentences.push(`${lead}: ${uniq.length === 1 ? uniq[0] : uniq.map((t, i) => `bank ${i + 1} — ${t}`).join("; ")}. Hold each front with double-sided tape or clamps, check the gaps, then screw through the box front from inside.`);
+  out.sentences.push(`${lead}: ${uniq.length === 1 ? uniq[0] : uniq.map((t, i) => `bank ${i + 1} — ${t}`).join("; ")}. Hold each front with double-sided tape or clamps, check the gaps, then screw it on from inside the box.`);
 }
 
 function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPlacement) {

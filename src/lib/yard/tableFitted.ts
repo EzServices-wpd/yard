@@ -51,11 +51,26 @@ function legStock(prompt: string): { id: string; face: number; note: string } {
 }
 const P = 0.75;
 
-/** Side/end table class default (~20" across × 22" tall) — say so when nothing was typed. */
-function sideTableAssumedNote(prompt: string, W: number, H: number): string[] {
+/**
+ * Every table built from untyped sizes says what it assumed, in one finished size: the top as
+ * built (overhang included) and the height. Side / end tables keep their sofa-arm reason.
+ */
+function tableAssumedNote(prompt: string, W: number, D: number, H: number, round: boolean): string[] {
   const lower = prompt.toLowerCase();
-  if (!isSideEndTable(lower) || /\d/.test(lower.replace(/\b\d+\s*(?:legs?|shel(?:f|ves))\b/g, ""))) return [];
-  return [`Assumed ${W}" across × ${H}" tall — side / end table size (18–22" tall sits at sofa-arm height). Type a size to change it.`];
+  if (/\d/.test(lower.replace(/\b\d+\s*(?:legs?|shel(?:f|ves)|drawers?)\b/g, ""))) return [];
+  if (/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|thirty|forty|fifty|sixty)\b(?!\s*(?:legs?|shel(?:f|ves)|drawers?))/.test(lower)) return [];
+  const square = Math.abs(W - D) < 1 / 16;
+  const top = round ? `${W}" across` : square ? `${W}" across` : `${W}" wide × ${D}" deep`;
+  const label = `${top} × ${H}" tall (finished top, overhang included)`;
+  if (isSideEndTable(lower)) return [`Assumed ${label} — side / end table size (18–22" tall sits at sofa-arm height). Type a size to change it.`];
+  const klass = /coffee|cocktail/.test(lower)
+    ? 'coffee table size (16–18" tall sits at sofa-seat height)'
+    : /dining|kitchen table|dinner/.test(lower)
+      ? 'dining table size (30" tall seats standard chairs)'
+      : /console|sofa|entry|hall/.test(lower)
+        ? "console table size (about sofa-back height)"
+        : "table class default";
+  return [`Assumed ${label} — ${klass}. Type a size to change it.`];
 }
 
 /** Spoken shelf count for freestanding tables — never invent when the prompt is silent. */
@@ -475,7 +490,7 @@ export function buildTable(spec: FittedSpec, prompt = ""): YardProject {
         ? `Oval top: cut a ${W}" × ${D}" rectangular blank, then band-saw / jigsaw to an oval ${W}" long × ${D}" wide. Height ${H}".`
         : `Top ${W}" × ${D}". Height ${H}".`,
     stock.note,
-    ...sideTableAssumedNote(prompt, W, H),
+    ...tableAssumedNote(prompt, W, D, H, round),
     shelfN >= 1
       ? "Lower shelf sits on 3/4\" shelf rails between the legs — screw rails to the posts, then the shelf down onto the rails."
       : "",

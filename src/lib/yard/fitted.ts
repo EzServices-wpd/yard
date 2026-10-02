@@ -21,7 +21,7 @@ import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocke
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
-import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches } from "./voiceHonesty";
+import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
@@ -6338,6 +6338,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const rightW = x0 + W - kneeR;
     const workTopFace = Math.min(counterY, H);
     const boxH = Math.max(P * 2, workTopFace - workTopT);
+    // The knee is open to the floor: the bottom runs under each bank only, never across the knee.
+    const fullBottom = panels.findIndex((p) => p.type === "bottom" && p.name === "Bottom");
+    if (fullBottom >= 0) {
+      const by = panels[fullBottom].position.y;
+      panels.splice(
+        fullBottom,
+        1,
+        panel("bottom", "Left bottom", x0 + P, by, 0, Math.max(P, leftW - P * 2), P, D),
+        panel("bottom", "Right bottom", kneeR + P, by, 0, Math.max(P, rightW - P * 2), P, D),
+      );
+    }
     panels.push(panel("divider", "Left knee divider", kneeL - P, 0, 0, P, boxH, D));
     panels.push(panel("divider", "Right knee divider", kneeR, 0, 0, P, boxH, D));
     panels.push(panel("kick", "Left toekick", x0 + P, 0, D - P, leftW - P, 3.5, P));
@@ -6660,7 +6671,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           `Kids bookcase: ${inchFrac(H)}" tall so a child reaches the top shelf. Anti-tip: strap the top to a wall stud anyway — kids climb shelves.`,
         ]
       : []),
-    "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
+    guidanceConfirmTalk(`${prompt} ${spec.name ?? ""}`, alcove ? "alcove" : "floor"),
   ];
 
   if (spec.typedAxes && isClassDefaultDensifyPrompt(prompt)) {

@@ -45,7 +45,7 @@ import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
-import { shelfInstallHeightsClause } from "./voiceHonesty";
+import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
 import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
@@ -105,6 +105,11 @@ function cutHow(item?: CatalogItem | null) {
 
 /** Prompt of the panel project being written (named solid stock labels / glue-up). */
 let stepStockPrompt = "";
+
+/** "1 piece" / "3 pieces" — the count and the noun agree. */
+function countWord(n: number, one: string): string {
+  return `${n} ${n === 1 ? one : `${one}s`}`;
+}
 
 /** Named solid stock drives the parts (Pine / Oak 1×4 …, no ¾" plywood left). */
 function solidStockVoice(project: YardProject): boolean {
@@ -1523,7 +1528,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const sortedShelves = [...shelves].sort((p, q) => p.position.y - q.position.y);
     const plinths = panels.filter((p) => p.type === "kick" && /plinth/i.test(p.name));
     const plinthLine = plinths.length
-      ? ` ${plinths.map(cutLine).join("; ")}: glue and screw the plinth between the uprights under the bottom shelf, recessed ${inchFrac(Math.max(0, (project.overall?.depth ?? 0) - (plinths[0].position.z + plinths[0].size.depth)))}" like a kick strip so your toes clear — it lifts the rows so the top cap lands at the full height.`
+      ? ` ${plinths.map(cutLine).join("; ")}: glue and screw the plinth between the uprights under the bottom shelf, recessed ${inchFrac(Math.max(0, (project.overall?.depth ?? 0) - (plinths[0].position.z + plinths[0].size.depth)))}" from the front — the recessed base keeps the front clean and lifts the rows so the top cap lands at the full height.`
       : "";
     // Notched grid shelves slot over the dividers; every other shelf (bottom, top shelf, cap) is plain.
     const midShelves = sortedShelves.filter((p) => /^grid shelf/i.test(p.name));
@@ -1977,8 +1982,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Build drawer sides, front, back, and bottom",
-        description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom — glue and nail the box square. Screw the Drawer front onto the box face; edge-band the plywood edge people see (thin veneer strip over the raw edge). One cup pull centered on the front.`,
-        tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
+        description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom — glue and nail the box square. The front goes on after the box is hung, so its gaps line up.`,
+        tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
         partsUsed: names(drawers),
       },
       {
@@ -1990,6 +1995,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 7,
+        title: "Fit the drawer front (false front)",
+        description: "The Drawer front is a false front — the show face screwed onto the front of the box. With the box hung, set the Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge). One cup pull centered on the front.",
+        tips: "Even gaps all round before you drive the screws — double-sided tape holds it while you check.",
+        partsUsed: names(drawers),
+      },
+      {
+        step: 8,
         title: "Level it",
         description: "This nightstand sits on the floor. The back is already on it so it cannot rack (twist). Shim the feet if the floor is out — do not twist the main box.",
         tips: "Guidance only — confirm the bedside height before you cut. Not stamped engineering.",
@@ -2215,7 +2227,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: n++,
         title: `Keep ${kneeClear}" knee clear — set the knee dividers`,
-        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. Screw through the bottom and the counter into each divider. Leave the middle open to the floor — that is the knee.`,
+        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. ${kneeScrewTalk(panels, knee)} Leave the middle open to the floor — that is the knee.`,
         tips: "Hang drawer slides on these faces before the last divider goes in — you can still get a screwdriver in.",
         partsUsed: names(knee),
       });
@@ -2284,8 +2296,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         drawers.length === 1
           ? "Build drawer sides, front, back, and bottom"
           : `Build ${drawers.length} drawers (sides, fronts, backs, and bottoms)`,
-      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}). Glue and nail each box square; screw each Drawer front onto its box face — edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
-      tips: "Dry-fit the box in the bay (assemble without glue) before you glue the front on.",
+      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}). Glue and nail each box square. The fronts go on after the boxes are hung, so every gap lines up.`,
+      tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
       partsUsed: names(drawers),
     });
     steps.push({
@@ -2293,6 +2305,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: `Hang ${drawers.length} drawers on ${slide}" slides`,
       description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${dividers.length ? "dividers" : "uprights"} first, then set the boxes. Confirm the slide against the ${round(D)}" main box before you buy.`,
       tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
+      partsUsed: names(drawers),
+    });
+    steps.push({
+      step: n++,
+      title: drawers.length === 1 ? "Fit the drawer front (false front)" : `Fit ${drawers.length} drawer fronts (false fronts)`,
+      description: `Each Drawer front is a false front — the show face screwed onto the front of its box, standing proud of the cabinet. With the boxes hung, set each Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
+      tips: "A playing card between neighbouring fronts keeps the 1/8\" gaps even while you drive the screws.",
       partsUsed: names(drawers),
     });
   }
@@ -2356,7 +2375,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       : wallHang
         ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."
         : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the main box.",
-    tips: "Guidance only — confirm plumbing, studs, and the real opening before you cut. Not stamped engineering.",
+    tips: `${guidanceConfirmTalk(`${project.prompt ?? ""} ${project.name}`, alcove ? "alcove" : wallHang ? "wall" : "floor")} Not stamped engineering.`,
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
   });
 
@@ -2550,7 +2569,8 @@ function cutSummary(instances: YardInstance[], itemName: string) {
   const bits = [...counts.entries()].sort((a, b) => Number(b[0]) - Number(a[0]));
   const shown = bits.slice(0, 12).map(([len, qty]) => `${qty} × ${inchFrac(Number(len))}"`);
   const more = bits.length > 12 ? `, and ${bits.length - 12} more lengths — every one is on the cut list` : "";
-  return `${instances.length} pieces of ${itemName}. ${marked.length} marked cuts (${shown.join(", ")}${more}). ${full} stay full stock.`;
+  const fullTalk = full === 0 ? "Every piece is cut to its mark." : `${full} ${full === 1 ? "piece stays" : "pieces stay"} full stock.`;
+  return `${countWord(instances.length, "piece")} of ${itemName}. ${countWord(marked.length, "marked cut")} (${shown.join(", ")}${more}). ${fullTalk}`;
 }
 
 function midY(i: YardInstance) {
@@ -2715,7 +2735,7 @@ function uniqueRecastCarcaseSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: whole ? `Read this ${project.name} before you glue` : `Read this ${project.name} before you cut`,
-    description: `${project.instances.length} pieces of ${stockLabel}. Same ${project.name}, every face in that stock. About ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".`,
+    description: `${countWord(project.instances.length, "piece")} of ${stockLabel}. Same ${project.name}, every face in that stock. About ${project.overall.width.toFixed(0)}" × ${project.overall.height.toFixed(0)}" × ${project.overall.depth.toFixed(0)}".`,
     tips: whole ? "Full pieces. Do not cut." : "The cut list has every length. Nothing is left off.",
     partsUsed: ["*"],
   });
@@ -2945,7 +2965,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `${spec.title} — ${listI.length} ${roleWord}${listI.length === 1 ? "" : "s"}`,
-      description: `${listI.length} ${roleWord} members. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
+      description: `${countWord(listI.length, `${roleWord} member`)}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
       partsUsed: [spec.role],
       tips: spec.why,
     });
@@ -3232,3 +3252,15 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     { role: "member", title: "Fill remaining members", why: "No floating pieces." },
   ];
 }
+
+/** Knee dividers: banks with their own bottoms stand the dividers on the floor; the work top screws down into them. */
+function kneeScrewTalk(panels: Panel[], knee: Panel[]): string {
+  const top = panels.find((p) => p.type === "counter")?.name.toLowerCase() ?? "counter";
+  const kneeL = Math.min(...knee.map((p) => p.position.x));
+  const kneeR = Math.max(...knee.map((p) => p.position.x + p.size.width));
+  const spans = panels.some((p) => p.type === "bottom" && p.position.x < kneeL && p.position.x + p.size.width > kneeR);
+  return spans
+    ? `Screw through the bottom and the ${top} into each divider.`
+    : `Stand each divider on the floor at the inner end of its bank bottom and screw through the bottom into it; the ${top} screws down into the divider tops.`;
+}
+

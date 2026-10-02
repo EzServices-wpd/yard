@@ -1,7 +1,7 @@
 /** Shop words for the plan PDF — plain stranger words (never carcase/toekick jargon). */
 export const SHOP_GLOSSARY: { term: string; def: string }[] = [
   { term: "Main box", def: "The uprights, top, bottom, and back screwed together." },
-  { term: "Kick strip", def: "The recessed strip at the floor so your toes clear when you stand close to the face." },
+  { term: "Kick strip", def: "The recessed strip along the bottom of the front. It keeps the face clean, and on a floor cabinet it gives your toes room when you stand close." },
   { term: "Dry-fit", def: "Assemble without glue or screws first, to check fit and square before you commit." },
   { term: "Overlay", def: "Door or drawer front sits on top of the face, not inside the opening." },
   { term: "Lag", def: "Long heavy screw driven into a wall stud (or masonry anchor) to hold the unit." },

@@ -205,32 +205,68 @@ function findPlate(entries: PlateEntry[], spoken: string): PlateEntry | undefine
   return entries.find((e) => e.family === fam || e.name.toLowerCase().startsWith(fam));
 }
 
+/** Words that may follow a part name when the name is the thing being handled (not a compound or adjective). */
+const PART_REF_FOLLOW = new Set(
+  "and or to into onto with on in at between from so flush against over under across up down is are sits sit goes lands rests should will can must until then for by along before after first last only as where that which while now off out its".split(" "),
+);
+/** Words that point at one part before its name ("the Lid", "both uprights", "1 Back"). */
+const PART_REF_LEAD = /(?:^|[\s(])(?:the|each|both|its|this|that|these|those|other|remaining|second|third|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+$/i;
+/** Names that double as a direction or an edge word (back, top, side…). */
+const DIRECTION_NAMES = /^(?:back|front|top|bottom|sides?|left|right|middle|ends?|face)$/i;
+
+/**
+ * True when the token at `offset` is an explicit reference to a part — never a direction
+ * ("open up and back"), a compound ("hinged-lid", "lid stay"), a title ("Ladder shelf"),
+ * an adjective, a dimension ("2 1/4\" plinth") or an article that would read "a A lid".
+ */
+export function isExplicitPartRef(whole: string, offset: number, token: string): boolean {
+  const prior = whole.slice(0, offset);
+  const after = whole.slice(offset + token.length);
+  if (/[-‐–]$/.test(prior) || /^[-‐]/.test(after)) return false;
+  if (/(?:["″]|\d\/\d+|\d\s*(?:in|inch|inches))\s*$/i.test(prior)) return false;
+  if (/\ban?\s+$/i.test(prior)) return false;
+  const next = after.match(/^\s*([A-Za-z]+|\d|[.,;:!?)(—–]|$)/)?.[1] ?? "";
+  const followOk = next === "" || /^[\d.,;:!?)(—–]$/.test(next) || PART_REF_FOLLOW.has(next.toLowerCase());
+  if (!followOk) return false;
+  const leadOk = PART_REF_LEAD.test(prior);
+  const clauseStart = /(?:^|[.;:—(]\s*)$/.test(prior) && /^[A-Z]/.test(token);
+  if (!leadOk && !clauseStart) return false;
+  if (DIRECTION_NAMES.test(token)) {
+    if (/\b(?:at|toward|towards|from|near|in|along|off|out|of|over|across|around|up and|down and)\s+(?:the\s+)?$/i.test(prior)) return false;
+    if (!/^[A-Z]/.test(token) && !/\b(?:the|both|\d+)\s+$/i.test(prior)) return false;
+  }
+  return true;
+}
+
 /**
  * Inject cut-list plate letters into step/PDF talk so strangers can match
  * "B Back" on the bench to letter B on the cut list / nest plate.
+ * Only explicit part references are lettered: dimension lines ("Back — 34 1/2 × …") and a
+ * part name that a determiner points at ("the Lid", "both uprights"). Step titles keep their
+ * plain words (`opts.title`), so a title like "Ladder shelf" or "Add a lid stay" reads as written.
  */
-export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string {
-  return densifyPartsPlateTalkKeep(text, cutList);
+export function densifyPartsPlateTalk(text: string, cutList: CutLine[], opts: { title?: boolean } = {}): string {
+  return densifyPartsPlateTalkKeep(text, cutList, undefined, opts);
 }
 
 /**
  * Same, but the project's own name ("Display shelf for a Lego collection", "Ladder shelf") is a title,
  * not a part: it never takes a cut-list letter ("Display E shelf").
  */
-export function densifyPartsPlateTalkKeep(text: string, cutList: CutLine[], projectName?: string): string {
+export function densifyPartsPlateTalkKeep(text: string, cutList: CutLine[], projectName?: string, opts: { title?: boolean } = {}): string {
   const name = (projectName ?? "").trim();
-  if (!name || name.length < 4 || !text) return densifyPartsPlateTalkRaw(text, cutList);
+  if (!name || name.length < 4 || !text) return densifyPartsPlateTalkRaw(text, cutList, opts);
   const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const kept: string[] = [];
   const masked = text.replace(new RegExp(esc, "gi"), (m) => {
     kept.push(m);
     return `\u0000${kept.length - 1}\u0000`;
   });
-  if (!kept.length) return densifyPartsPlateTalkRaw(text, cutList);
-  return densifyPartsPlateTalkRaw(masked, cutList).replace(/\u0000(\d+)\u0000/g, (_m, i: string) => kept[Number(i)] ?? "");
+  if (!kept.length) return densifyPartsPlateTalkRaw(text, cutList, opts);
+  return densifyPartsPlateTalkRaw(masked, cutList, opts).replace(/\u0000(\d+)\u0000/g, (_m, i: string) => kept[Number(i)] ?? "");
 }
 
-function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
+function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { title?: boolean } = {}): string {
   const entries = partsPlateEntries(cutList);
   if (!entries.length || !text) return text;
   let out = text;
@@ -251,13 +287,32 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
       return `${plateRef(plate, rawName)}${qty ?? ""}${dash}`;
     },
   );
+  // A named dimension line at the start of a clause ("Front apron — 12", "Left knee divider — 26")
+  // takes its letter in front of the whole part name: "B Front apron — 12".
+  out = out.replace(
+    /(^|[.;:]\s+)([A-Z][a-z]+(?:\s+[a-z]+){0,3})(\s+\d+)?(\s*—\s*(?=\d))/g,
+    (full, lead: string, phrase: string, qty: string | undefined, dash: string, offset: number, whole: string) => {
+      const words = phrase.split(/\s+/);
+      if (words.length < 2) return full;
+      const named = entries.find((e) => e.name.toLowerCase() === phrase.toLowerCase());
+      const found = named ?? findPlate(entries, words[words.length - 1]);
+      if (!found) return full;
+      const dim = parseFloat(whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)/)?.[1] ?? "");
+      const plate = named ?? sizedPlate(entries, found, dim);
+      return `${lead}${plate.label} ${phrase}${qty ?? ""}${dash}`;
+    },
+  );
 
-  // Bare part tokens in prose (longest names first).
+  // Bare part tokens in prose (longest names first) — explicit references only, never in titles.
   const byLen = [...entries].sort((a, b) => b.name.length - a.name.length);
-  for (const e of byLen) {
+  for (const e of opts.title ? [] : byLen) {
     const esc = e.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // Skip tiny tokens that are too ambiguous.
     if (e.name.length < 3) continue;
+    // A bare noun several parts share ("shelf" for Shelf and Grid shelf) names no one part.
+    const tail = e.name.toLowerCase().split(/\s+/).pop()!;
+    const shared = entries.some((o) => o.label !== e.label && o.name.toLowerCase() !== e.name.toLowerCase() && o.name.toLowerCase().split(/\s+/).pop() === tail);
+    if (shared && !/\s/.test(e.name)) continue;
     const re = new RegExp(`\\b(${esc})\\b`, "gi");
     out = out.replace(re, (m, _g: string, offset: number, whole: string) => {
       const prior = whole.slice(0, offset);
@@ -273,8 +328,7 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
       // "from top and bottom" is the edge of the piece, not the Top and Bottom panels.
       if (/^(top|bottom)$/i.test(m) && /\bfrom\s+(?:the\s+)?$/i.test(prior)) return m;
       if (/^(top|bottom)$/i.test(m) && /^\s+and\s+(top|bottom)\b/i.test(after)) return m;
-      if (/^(top|bottom)$/i.test(m) && /^\s+edge\b/i.test(after)) return m;
-      if (/^top$/i.test(m) && /\bon\s+$/i.test(prior) && /^\s+of\b/i.test(after)) return m;
+      if (!isExplicitPartRef(whole, offset, m)) return m;
       const buried = byLen.some((longer) => {
         if (longer.name.length <= e.name.length) return false;
         if (!longer.name.toLowerCase().endsWith(e.name.toLowerCase())) return false;
@@ -290,14 +344,11 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
       }
       return plateRef(e, m);
     });
-    // Safer: prefix only on "the Name" / "Name and" style when not already lettered.
-    const theRe = new RegExp(`\\b([Tt]he)\\s+(?!${e.label}\\b)(${esc})\\b`, "g");
-    out = out.replace(theRe, (_m, the: string, name: string) => `${the} ${plateRef(e, name)}`);
   }
 
   // Synonym families for uprights / sides that cut-list groups as Upright.
   const pair = uprightPairTalk(entries);
-  if (pair) {
+  if (pair && !opts.title) {
     out = out.replace(/\b([Ll]ay the)\s+two uprights\b/g, `$1 ${pair.two} uprights`);
     out = out.replace(/\b([Tt]he)\s+two uprights\b/g, `$1 ${pair.two} uprights`);
     out = out.replace(/\bboth uprights\b/gi, `both ${pair.both} uprights`);
@@ -342,11 +393,19 @@ function parseJoinSequence(seq: string, _screwClass: string): JoinBit[] {
   return bits;
 }
 
+/** A join names the part as the cut list does ("Desktop", not the family word "Top"). */
+function cutListWord(plate: PlateEntry | undefined, spoken: string): string {
+  if (!plate) return spoken;
+  const one = !/\s/.test(plate.name);
+  if (one && plate.family === plateFamily(spoken) && plate.name.toLowerCase() !== spoken.toLowerCase()) return plate.name;
+  return spoken;
+}
+
 function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFirst: boolean): string {
   if (keepStand && isFirst) return ""; // caller keeps original
   const partPlate = findPlate(entries, bit.part);
   const ontoPlate = findPlate(entries, bit.onto.replace(/^both\s+/i, "").replace(/uprights?/i, "upright"));
-  const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
+  const partTalk = partPlate ? plateRef(partPlate, cutListWord(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase()))) : bit.part;
   const pair = uprightPairTalk(entries);
   const ontoTalk = pair && /upright/i.test(bit.onto)
     ? `both ${pair.both} uprights`
@@ -359,7 +418,7 @@ function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFi
 function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string, coda: string): string {
   const partPlate = findPlate(entries, bit.part);
   const pair = uprightPairTalk(entries);
-  const partTalk = partPlate ? plateRef(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase())) : bit.part;
+  const partTalk = partPlate ? plateRef(partPlate, cutListWord(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase()))) : bit.part;
   const ontoRaw = bit.onto.replace(/^both\s+/i, "");
   const ontoTalk = pair && /upright/i.test(ontoRaw)
     ? `both ${pair.both} uprights`
@@ -379,11 +438,11 @@ function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string
  */
 export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
   const entries = partsPlateEntries(cutList);
-  const densifyPartsPlateTalk = (text: string, lines: CutLine[]) => densifyPartsPlateTalkKeep(text, lines, projectName);
+  const densifyPartsPlateTalk = (text: string, lines: CutLine[], opts: { title?: boolean } = {}) => densifyPartsPlateTalkKeep(text, lines, projectName, opts);
   const out: AssemblyStep[] = [];
 
   for (const step of instructions) {
-    const title = densifyPartsPlateTalk(step.title, cutList);
+    const title = densifyPartsPlateTalk(step.title, cutList, { title: true });
     const tips = step.tips ? densifyPartsPlateTalk(step.tips, cutList) : step.tips;
     // Split one-join steps from the unlettered sentence. Lettering "bottom" into
     // "E Bottom" first hides the "then bottom, then top" list and drops those steps.
@@ -401,7 +460,18 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
     if (blob && /then/i.test(blob[2] ?? "")) {
       const screwClass = (blob[1] ?? SCREW_HW).trim();
       // Only joins for parts the model really has — no ghost "attach bottom" when the model has none.
-      const bits = parseJoinSequence(blob[2], screwClass).filter((bit, i) => i === 0 || !!findPlate(entries, bit.part));
+      // A part with its own dedicated step later (the desktop's "Set the desktop") joins there, once.
+      const ownStep = (bit: { part: string }) => {
+        const e = findPlate(entries, bit.part);
+        if (!e) return false;
+        return instructions.some(
+          (o) =>
+            o !== step &&
+            (o.partsUsed ?? []).length > 0 &&
+            (o.partsUsed ?? []).every((n) => findPlate(entries, n)?.label === e.label),
+        );
+      };
+      const bits = parseJoinSequence(blob[2], screwClass).filter((bit, i) => i === 0 || (!!findPlate(entries, bit.part) && !ownStep(bit)));
       const coda = (blob[4] ?? "").trim();
       const lead = densifyPartsPlateTalk(raw.slice(0, blob.index ?? 0).trim(), cutList);
       if (bits.length >= 2) {
@@ -450,7 +520,7 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
   if (/lid stay|lid support/i.test(hayTitle) && !/with\s+1\s+lid stay/i.test(d)) {
     const lid = entries.find((e) => e.family === "lid");
     if (!/one join:/i.test(d)) {
-      d = `One join: attach 1 lid stay / lid support to ${lid ? plateRef(lid, "Lid") : "the lid"} with 1 lid stay. ${d}`;
+      d = `One join: attach 1 lid stay (lid support) between ${lid ? `the ${plateRef(lid, "Lid")}` : "the lid"} and the main box. ${d}`;
     }
     return d;
   }
@@ -473,7 +543,7 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
     const hw = `2 × ${SCREW_HW} per end`;
     const aTalk = apron ? familyRef(entries, "apron", "Aprons") ?? plateRef(apron, "Aprons") : "aprons";
     const lTalk = leg ? familyRef(entries, "leg", "Legs") ?? plateRef(leg, "Legs") : "legs";
-    d = `One join class: attach ${/ and /.test(aTalk) ? "the" : "each"} ${aTalk} to ${lTalk} with ${hw}. ${d}`;
+    d = `One join class: attach the ${aTalk} to the ${lTalk} with ${hw}. ${d}`;
   }
 
   // Doors — "2 hinges each" / "Two concealed hinges".
@@ -668,7 +738,7 @@ export function wantsCabinetryShopWords(hay: string): boolean {
  */
 export function shopWordsChipTalk(hay: string): string {
   if (wantsCabinetryShopWords(hay)) {
-    return "Main box = uprights, top, bottom, and back screwed together · Kick strip = recessed strip at the floor so your toes clear · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
+    return "Main box = uprights, top, bottom, and back screwed together · Kick strip = recessed strip along the bottom of the front · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
   }
   return "Dry-fit = assemble without glue first · Kerf = width the saw blade removes · Square = matching diagonals within about 1/16\"";
 }
@@ -1347,3 +1417,16 @@ export function speciesStockHonestyTalk(prompt: string, stockLabel: string): str
   return `Stock is ${stockLabel} (structural). ${sp} in the title means optional ${sp.toLowerCase()} lining or finish — not silent solid-${sp.toLowerCase()} boards.`;
 }
 
+
+/** Builds that carry water lines or a drain: vanities, sinks, kitchen and laundry bases. */
+export function isPlumbedBuild(hay: string): boolean {
+  return /\bvanity\b|vanities|\bsinks?\b|kitchen\s*base|base\s*cabinet|laundry\s*(?:base|cabinet|sink)|utility\s*sink|wet\s*bar|dishwasher|faucet|basin/i.test(hay);
+}
+
+/** The guidance line fits the build: plumbing only on plumbed builds, studs only where it meets a wall. */
+export function guidanceConfirmTalk(hay: string, mount: "wall" | "alcove" | "floor"): string {
+  if (isPlumbedBuild(hay)) return "Guidance only — confirm plumbing, studs, and the real opening before you cut.";
+  if (mount === "alcove") return "Guidance only — confirm studs and the real opening before you cut.";
+  if (mount === "wall") return "Guidance only — confirm the studs and the hang height before you cut.";
+  return "Guidance only — confirm the real footprint before you cut.";
+}

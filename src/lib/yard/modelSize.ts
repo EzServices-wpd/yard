@@ -1,5 +1,6 @@
 import { aabbOfPanels } from "./geometry";
 import { frac } from "./pdfKit";
+import { inchFrac } from "./inchText";
 import type { Panel } from "./types";
 
 /**
@@ -38,4 +39,28 @@ export function stampFinishedDepth(name: string, boxDepth: number, finished: num
   const fin = frac(finished);
   if (!/[×x]\s*[\d\s/]+["″″']?\s*$/.test(name)) return name;
   return name.replace(/[×x]\s*[\d\s/]+["″″']?\s*$/, `× ${fin}`);
+}
+
+/**
+ * Notes speak the same one finished depth as the HUD, the steps and the PDF cover: a box
+ * depth in a size note becomes the finished depth, labelled once with what stands proud.
+ */
+export function notesWithFinishedDepth(notes: string[], panels: Panel[] | undefined, boxDepth: number): string[] {
+  const fin = modelFinishedDepth(panels, boxDepth);
+  if (!(fin > boxDepth + 1 / 16)) return notes;
+  const proud = modelProudNote(panels, boxDepth);
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  const b = esc(inchFrac(boxDepth));
+  const f = inchFrac(fin);
+  let labelled = false;
+  return notes.map((n) => {
+    let out = n
+      .replace(new RegExp(`(×\\s*)${b}(["″])(?=\\s*(?:[.,;)]|$))`), `$1${f}$2`)
+      .replace(new RegExp(`(^|[^\\d/])${b}(["″])\\s*(D\\b|deep\\b)`, "g"), `$1${f}$2 $3`);
+    if (out !== n && !labelled && proud) {
+      out = /\.(\s|$)/.test(out) ? out.replace(/\.(\s|$)/, ` (finished depth — ${proud}).$1`) : `${out} (finished depth — ${proud})`;
+      labelled = true;
+    }
+    return out;
+  });
 }
