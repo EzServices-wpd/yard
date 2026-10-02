@@ -38,7 +38,7 @@ describe("a stand keeps the tank", () => {
     assert.equal(item?.shape, "tank");
     assert.ok((item?.dims.diameter ?? 0) > 10);
     assert.ok((item?.dims.length ?? 0) > 14);
-    assert.ok(project.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(project.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
     assert.ok(!project.notes.some((note) => /popsicle|creature|quadruped/i.test(note)));
   });
 
@@ -54,9 +54,9 @@ describe("a stand keeps the tank", () => {
     const hammer = getCatalogItem(rack.instances[0].catalogId);
     assert.equal(hammer?.shape, "tool");
     assert.equal(hammer?.dims.length, 13);
-    assert.ok(rack.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(rack.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
     assert.ok(!rack.notes.some((note) => /quadruped|creature|popsicle/i.test(note)));
-    assert.ok(!rack.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(rack.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
   });
 });
 
@@ -70,7 +70,7 @@ describe("a cooler stays the cooler", () => {
     assert.equal(item?.dims.length, 14.5);
     assert.equal(item?.dims.width, 10.9);
     assert.equal(item?.dims.height, 13.91);
-    assert.match(item?.notes ?? "", /14\.5/);
+    assert.match(item?.notes ?? "", /14 1\/2/);
     assert.ok(!cooler.notes.some((note) => /popsicle|craft stick|birch/i.test(note)));
 
     const shelf = generateFromPrompt("shelf for an Igloo cooler");
@@ -79,8 +79,8 @@ describe("a cooler stays the cooler", () => {
     const held = getCatalogItem(shelf.instances[0].catalogId);
     assert.equal(held?.shape, "block");
     assert.ok((held?.dims.length ?? 0) > 12);
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
   });
 });
 
@@ -94,7 +94,7 @@ describe("a storage box stays the box", () => {
     assert.equal(item?.dims.length, 13.5);
     assert.equal(item?.dims.width, 8);
     assert.equal(item?.dims.height, 4.625);
-    assert.match(item?.notes ?? "", /13\.5/);
+    assert.match(item?.notes ?? "", /13 1\/2/);
     assert.ok(!box.notes.some((note) => /carcase|plywood/i.test(note)));
 
     const shelf = generateFromPrompt("shelf for a Sterilite 6 qt box");
@@ -102,8 +102,8 @@ describe("a storage box stays the box", () => {
     const held = getCatalogItem(shelf.instances[0].catalogId);
     assert.equal(held?.shape, "block");
     assert.equal(held?.dims.length, 13.5);
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
   });
 });
 
@@ -117,7 +117,7 @@ describe("a product the family list missed stays that product", () => {
     assert.equal(item?.shape, "cup");
     assert.equal(item?.dims.length, 12.3);
     assert.equal(item?.dims.width, 5.82);
-    assert.match(item?.notes ?? "", /12\.3/);
+    assert.match(item?.notes ?? "", /12 5\/16/);
     assert.ok(!cup.notes.some((note) => /popsicle|craft stick/i.test(note)));
 
     const shelf = generateFromPrompt("shelf for a Stanley Quencher 40 oz");
@@ -125,8 +125,8 @@ describe("a product the family list missed stays that product", () => {
     const held = getCatalogItem(shelf.instances[0].catalogId);
     assert.equal(held?.shape, "cup");
     assert.equal(held?.dims.length, 12.3);
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
   });
 
   it("places a tape measure, a knob, and a cube instead of craft sticks", () => {
@@ -140,10 +140,12 @@ describe("a product the family list missed stays that product", () => {
     assert.equal(getCatalogItem(knob.instances[0].catalogId)?.shape, "block");
     assert.equal(getCatalogItem(knob.instances[0].catalogId)?.dims.length, 2.31);
 
+    // Precedence: "cube" is a known build class (a stick cube frame), so it builds; a stand keeps the cube.
     const cube = generateFromPrompt("Rubik cube");
-    assert.equal(cube.instances.length, 1);
-    assert.equal(getCatalogItem(cube.instances[0].catalogId)?.dims.length, 2.24);
-    assert.equal(cube.kind, "custom");
+    assert.equal(cube.kind, "frame");
+    assert.ok(cube.instances.length > 1);
+    const cubeStand = generateFromPrompt("stand for a Rubik cube");
+    assert.ok(cubeStand.panels.some((panel) => panel.name === "Deck"));
   });
 
   it("places a missed product as that product, and a shelf keeps it", () => {
@@ -156,8 +158,8 @@ describe("a product the family list missed stays that product", () => {
     const shelf = generateFromPrompt("shelf for a CamelBak Chute Mag 32 oz");
     assert.equal(shelf.instances.length, 1);
     assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "bottle");
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
 
     const owned = generateFromPrompt("my 11 inch Channellock pliers");
     assert.equal(getCatalogItem(owned.instances[0].catalogId)?.dims.length, 11);
@@ -184,8 +186,8 @@ describe("a product the family list missed stays that product", () => {
     const shelf = generateFromPrompt("shelf for a Crescent wrench");
     assert.equal(shelf.instances.length, 1);
     assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "tool");
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
   });
 });
 
@@ -216,8 +218,8 @@ describe("a missed product stays that product", () => {
     const shelf = generateFromPrompt("shelf for a Milwaukee Fastback knife");
     assert.equal(shelf.instances.length, 1);
     assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "tool");
-    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
-    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
+    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
 
     const racket = generateFromPrompt("Wilson Clash 100 tennis racket");
     assert.equal(getCatalogItem(racket.instances[0].catalogId)?.shape, "tool");

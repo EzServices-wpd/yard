@@ -360,9 +360,10 @@ function placeOwnedBoard(prompt: string): YardProject | null {
   const scraper = /boot scraper|scraper/i.test(prompt);
   const name = scraper ? `Boot scraper from your ${item.name}` : item.name;
   const pos = { x: 0, y: thick / 2, z: 0 };
+  const kept = `${inchFrac(thick)}" × ${inchFrac(width)}" × ${inchFrac(length)}"`;
   const note = item.notes
-    ? `${item.notes} Kept at ${thick}" × ${width}" × ${length}", not a catalog 1× or 2×.`
-    : `Kept at ${thick}" × ${width}" × ${length}".`;
+    ? `${item.notes} Kept at your board's own ${kept}.`
+    : `Kept at your board's own ${kept}.`;
   return {
     id: createId("proj"),
     name,
@@ -399,36 +400,43 @@ function placeOwnedBoard(prompt: string): YardProject | null {
  * held phrase names a real object: a class-default held object (microwave, aquarium, TV…) or a
  * product with a drawing (cooler, bottle). An unknown noun never becomes a tiny placeholder.
  */
+/** Nouns that are plural in form but one object (a pair of pliers). A language rule, not routing. */
+const PAIR_NOUN = /\b(?:pliers|scissors|shears|tongs|goggles|glasses|sunglasses|binoculars|headphones|earbuds|clippers|tweezers|pants|jeans|skis|chopsticks)$/;
+
+/** The held phrase names many things: a count above two, or a plural head noun. */
+function holdsMany(phrase: string): boolean {
+  const p = phrase.trim().replace(/\s+(?:collection|set)$/, "");
+  if (/^(?:\d+|three|four|five|six|seven|eight|nine|ten|twelve|dozen|several|many|lots of|all)\b/.test(p) && !/^\d+(?:\.\d+)?\s*(?:lb|lbs|pound|gallon|gal|qt|quart|oz|inch|in|"|ft|foot|feet)\b/.test(p)) return true;
+  const head = p.split(/\s+/).pop() ?? "";
+  if (PAIR_NOUN.test(head)) return false;
+  return /[a-z]{3,}s$/.test(head) && !/(?:ss|us|is|ics)$/.test(head);
+}
+
 function placeHeldProduct(prompt: string): YardProject | null {
   const lower = prompt.toLowerCase();
   if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves)|risers?|carts?)\b/.test(lower)) return null;
-  if (/\bwine\b/.test(lower) && /\bracks?\b/.test(lower)) return null;
-  // A wall shelf or rack for jars is the hung jar rack at the typed width, not a stand around one jar.
-  if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
-  // A shoe rack is the cubbies, not a stand around one shoe. A stand/holder for a named product still keeps the piece.
-  if (wantsShoes(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
-  // Spoken "N shelves" / "N tiers" densifies a carcase or tiered stand. Never a product stand.
-  if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
-  // Ladder / leaning / utility / open shelving / bookcase IS the carcase — shelf word is the furniture.
-  if (
-    /bookcases?|bookshel(?:f|ves)/.test(lower) ||
-    /\bshelving\b/.test(lower) ||
-    /\b(?:utility|open(?:\s+kitchen)?|ladder|leaning(?:\s+ladder)?|floating|wall|corner|display)\s+shel(?:f|ves|ving)\b/.test(lower)
-  ) {
-    return null;
-  }
-  // A known build class always wins over the hold cue ("dachshund shelf", "cat tree", "robot").
+  // One precedence rule. A known build class wins (cat tree, any animal, robot, frame, and the house
+  // furniture identities: shoe rack, bookcase, ladder / floating / utility shelving, printer stand…).
   if (namedBuildClass(prompt)) return null;
-  // "shelf for my X collection" is a display shelf: X is what it shows, not one object on a riser.
+  // A shelf / tier count is a property of shelving furniture, never of a stand around one object.
+  if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
+  // "shelf for my X collection" is a display shelf: X is what it shows.
   if (heldCollection(lower)) return null;
   const phrase = heldPhrase(stripPetUse(lower));
   if (!phrase) return null;
+  const held = heldObjectFor(phrase);
+  if (!held) {
+    // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
+    if (holdsMany(phrase)) return null;
+    // "<X> shelf / rack" (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
+    // class table knows X as one object (microwave shelf). Stand / holder / riser / cradle / cart keep X.
+    if (!/\bfor\b/.test(lower) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
+  }
   const titleFor = (label: string) => {
     const noun = (lower.match(/\b(stand|riser|shelf|holder|cradle|cart|rack)\b/)?.[1] ?? "stand");
     const art = /^(?:one|two|three|four|\d+\s+\w+s)\b/i.test(label) && !/^\d+\s*(?:gallon|inch|″|")/i.test(label) ? "" : /^(?:[aeiou]|8\b|11\b|18\b)/i.test(label) ? "an " : "a ";
     return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} for ${art}${label}`;
   };
-  const held = heldObjectFor(phrase);
   if (held) return buildHeldStand(prompt, held, titleFor(held.label));
   // A named product with a listing or usual-family size keeps that envelope.
   if (!hasProductDrawing(phrase)) return null;
@@ -452,6 +460,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
     count: 1,
     standHeight: 24,
     note: item.notes || `${item.name} at its usual size.`,
+    item,
   };
   return buildHeldStand(prompt, product, titleFor(raw));
 }

@@ -46,7 +46,7 @@ describe("stock query", () => {
     assert.equal(item?.dims.length, 8.86);
     assert.equal(item?.dims.diameter, 2.58);
     assert.match(item?.name ?? "", /16\.9 oz/);
-    assert.match(item?.notes ?? "", /8\.86/);
+    assert.match(item?.notes ?? "", /8 7\/8/);
     assert.notEqual(item?.formFactor, "tube");
   });
 
@@ -95,7 +95,7 @@ describe("stock query", () => {
     assert.equal(item?.shape, "bottle");
     assert.equal(item?.dims.length, 8.02);
     assert.equal(item?.dims.diameter, 2.57);
-    assert.match(item?.notes ?? "", /not this brand/i);
+    assert.match(item?.notes ?? "", /type a size to match yours/i);
   });
 
   it("offers a 1x6 the seed library does not sell, without a fake price", () => {

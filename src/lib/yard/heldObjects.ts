@@ -36,7 +36,7 @@ export function heldCollection(lower: string): string | null {
 /** The hold phrase after "for", or before a stand/riser noun. Null when nothing is held. */
 export function heldPhrase(lower: string): string | null {
   const forM = lower.match(/\bfor\s+(?:(?:a|an|the|my|our|your|two|2|three|3)\s+)?([^,.;]+)/);
-  if (forM) return forM[1].replace(/\b(?:\d+(?:\.\d+)?\s*(?:in|inch|inches|"|ft|feet|foot)\s*(?:tall|high|wide|long|deep)?)\b.*$/, "").trim();
+  if (forM) return forM[1].replace(/\s*\b\d+(?:\.\d+)?\s*(?:(?:in|inch|inches|"|ft|feet|foot)\b\s*(?:tall|high|wide|long|deep)?|(?:tall|high|wide|long|deep)\b).*$/, "").trim();
   const before = lower.match(/([a-z0-9][a-z0-9\s'-]{1,40}?)\s+(?:stands?|holders?|cradles?|risers?|shel(?:f|ves)|carts?)\b/);
   return before ? before[1].trim() : null;
 }
@@ -49,7 +49,11 @@ export function namedBuildClass(prompt: string): string | null {
   const lower = prompt.toLowerCase();
   // A purpose phrase ("for my robot collection") names what is held, not the build.
   const coll = heldCollection(lower);
-  const hay = coll ? lower.replace(coll, " ") : lower;
+  let hay = coll ? lower.replace(coll, " ") : lower;
+  // An object noun that takes a purpose builds that object: "stand for a Rubik cube" is a stand and the
+  // cube is what it holds. Only the words before "for" name the build.
+  const purpose = hay.match(/^(.*?\b(?:stands?|shel(?:f|ves)|racks?|holders?|cradles?|risers?|carts?|cabinets?|display\s+cases?))\s+for\b/);
+  if (purpose) hay = purpose[1];
   const pet = stripPetUse(hay);
   const shape = detectShapeClass(pet);
   if (shape) return `shape:${shape.profile.subject}`;
@@ -64,6 +68,8 @@ export function namedBuildClass(prompt: string): string | null {
   if (stem) return `house:${stem}`;
   if (isWallMediaLedge(pet) || isPictureLedge(pet) || isHouseMediaCarcase(pet) || isAvTower(pet) || isBedsideShelf(pet) || isPlatformBed(pet)) return "house:media";
   if (isOddShapePrompt(pet)) return "house:odd-shape";
+  // Shop builds with their own form recipe (whole words).
+  if (/\bsaw\s*-?\s*horses?\b/.test(pet)) return "form:Sawhorse";
   return null;
 }
 
@@ -83,6 +89,8 @@ export type HeldObject = {
   standHeight: number;
   /** "Assumed …" sentence stating the size and weight. */
   note: string;
+  /** The product's own catalog piece (listing / usual-family shape and size), drawn on the deck. */
+  item?: import("./types").CatalogItem;
 };
 
 type Row = {

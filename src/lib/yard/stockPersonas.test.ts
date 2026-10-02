@@ -12,7 +12,7 @@ describe("end user critiques of stock", () => {
     assert.notEqual(item.formFactor, "tube");
     assert.equal(item.dims.length, 8.86);
     assert.equal(item.dims.diameter, 2.58);
-    assert.match(item.notes ?? "", /8\.86/);
+    assert.match(item.notes ?? "", /8 7\/8/);
     assert.equal(item.unitCostUsd, undefined);
     const links = shopLinks(item.searchQuery || item.name);
     assert.equal(links.length, 4);
@@ -51,7 +51,7 @@ describe("end user critiques of stock", () => {
       assert.ok(item);
       assert.notEqual(item.formFactor, "tube");
       assert.equal(item.unitCostUsd, undefined);
-      assert.match(item.notes ?? "", /not this|no drawing/i);
+      assert.match(item.notes ?? "", /usual size|type a size/i);
     }
     const pictured = withStoreHit(tank!, {
       title: "Diving cylinder",
@@ -85,7 +85,7 @@ describe("end user critiques of stock", () => {
     const can = stockOffer("watering can");
     assert.equal(can?.shape, "bucket");
     assert.notEqual(can?.shape, "can");
-    assert.match(can?.notes ?? "", /not a drink can/i);
+    assert.match(can?.notes ?? "", /usual watering can/i);
     const bucket = stockOffer("5 gallon bucket");
     assert.equal(bucket?.dims.length, 14.5);
     assert.equal(bucket?.dims.diameter, 11.9);

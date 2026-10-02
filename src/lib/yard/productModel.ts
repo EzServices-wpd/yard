@@ -4,6 +4,7 @@
  * family uses the usual size of that family, and the note says so.
  */
 import type { CatalogItem, StockShape } from "./types";
+import { inchFrac } from "./inchText";
 
 type Envelope = {
   shape: StockShape;
@@ -31,7 +32,7 @@ const SPECS: (Envelope & { match: (q: string) => boolean })[] = [
     roughness: 0.16,
     metalness: 0.05,
     sourced: true,
-    note: "20 oz Dasani PET. 8.95″ tall, 2.89″ across.",
+    note: "20 oz Dasani PET. 8 15/16″ tall, 2 7/8″ across.",
     match: (q) => /dasani/.test(q) && (/\b20\b/.test(q) || /\b591\b/.test(q)),
   },
   {
@@ -44,7 +45,7 @@ const SPECS: (Envelope & { match: (q: string) => boolean })[] = [
     roughness: 0.16,
     metalness: 0.05,
     sourced: true,
-    note: "16.9 oz Dasani PET. 8.86″ tall, 2.58″ across.",
+    note: "16.9 oz Dasani PET. 8 7/8″ tall, 2 9/16″ across.",
     match: (q) => /dasani/.test(q),
   },
 ];
@@ -58,7 +59,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.16,
     metalness: 0.05,
     sourced: false,
-    note: "Usual 16.9 oz PET bottle, 8.02″ × 2.57″. Not this brand’s drawing.",
+    note: "Usual 16.9 oz PET bottle, 8″ × 2 9/16″. Type a size to match yours.",
   },
   can: {
     shape: "can",
@@ -68,7 +69,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.32,
     metalness: 0.72,
     sourced: false,
-    note: "Usual 12 oz can, 4.83″ × 2.60″. Not this brand’s drawing.",
+    note: "Usual 12 oz can, 4 13/16″ × 2 5/8″. Type a size to match yours.",
   },
   jar: {
     shape: "jar",
@@ -78,7 +79,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.4,
     metalness: 0.04,
     sourced: false,
-    note: "Usual jar, about 5.5″ × 3″. Not a checked drawing.",
+    note: "Usual jar, about 5 1/2″ × 3″. Type a size to match yours.",
   },
   tank: {
     shape: "tank",
@@ -89,7 +90,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.32,
     metalness: 0.62,
     sourced: false,
-    note: "Usual tank, about 26″ tall and 7.25″ across. Not this one’s drawing.",
+    note: "Usual tank, about 26″ tall and 7 1/4″ across. Type a size to match yours.",
   },
   tool: {
     shape: "tool",
@@ -100,7 +101,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.45,
     metalness: 0.35,
     sourced: false,
-    note: "Usual hand tool, about 8″ long. Not this tool’s drawing.",
+    note: "Usual hand tool, about 8″ long. Type a size to match yours.",
   },
   eyewear: {
     shape: "eyewear",
@@ -111,18 +112,19 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.28,
     metalness: 0.08,
     sourced: false,
-    note: "Usual goggles, about 7″ × 3″. Not this pair’s drawing.",
+    note: "Usual goggles, about 7″ × 3″. Type a size to match yours.",
   },
+  // Unknown object: a stated tabletop-size assumption the user can type over — never a tiny placeholder.
   object: {
     shape: "object",
-    length: 6,
-    width: 4,
-    height: 3,
+    length: 10,
+    width: 8,
+    height: 8,
     color: "#d9d3c7",
     roughness: 0.55,
     metalness: 0.04,
     sourced: false,
-    note: "No drawing on file. About 6″ × 4″ × 3″. A listing photo replaces this when one comes back.",
+    note: "Assumed a tabletop-size piece, about 10″ × 8″ × 8″ — type a size to fit yours. A listing photo replaces this when one comes back.",
   },
   ball: {
     shape: "ball",
@@ -132,7 +134,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.55,
     metalness: 0.02,
     sourced: false,
-    note: "Usual ball, about 8.5″ across. Not this ball’s stamp.",
+    note: "Usual ball, about 8 1/2″ across. Type a size to match yours.",
   },
   cup: {
     shape: "cup",
@@ -142,7 +144,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.35,
     metalness: 0.04,
     sourced: false,
-    note: "Usual cup, about 4″ × 3.2″. Not this cup’s drawing.",
+    note: "Usual cup, about 4″ × 3 3/16″. Type a size to match yours.",
   },
   bucket: {
     shape: "bucket",
@@ -152,7 +154,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.42,
     metalness: 0.08,
     sourced: false,
-    note: "Usual bucket, about 12″ × 10″. Not this bucket’s drawing.",
+    note: "Usual bucket, about 12″ × 10″. Type a size to match yours.",
   },
   roll: {
     shape: "roll",
@@ -162,7 +164,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.7,
     metalness: 0.02,
     sourced: false,
-    note: "Usual roll, about 4.5″ wide. Not this roll’s drawing.",
+    note: "Usual roll, about 4 1/2″ wide. Type a size to match yours.",
   },
   block: {
     shape: "block",
@@ -173,7 +175,7 @@ const USUAL: Record<StockShape, Omit<Envelope, "name" | "id">> = {
     roughness: 0.85,
     metalness: 0.02,
     sourced: false,
-    note: "Usual block, about 16″ × 8″ × 8″. Not this block’s drawing.",
+    note: "Usual block, about 16″ × 8″ × 8″. Type a size to match yours.",
   },
 };
 
@@ -244,65 +246,66 @@ function niceName(query: string, shape: StockShape): string {
 }
 
 const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
-  { match: (q) => /yeti/.test(q) && /rambler|tumbler|20/.test(q), over: { shape: "cup", length: 6.6, diameter: 3.5, color: "#d7dde2", metalness: 0.55, roughness: 0.28, note: "YETI Rambler 20 oz, 6.6″ tall and 3.5″ across. Listing size, not a drawing." } },
-  { match: (q) => /quencher/.test(q) && /40/.test(q), over: { shape: "cup", length: 12.3, diameter: 3.86, width: 5.82, color: "#d7e4ee", metalness: 0.45, roughness: 0.35, note: "Stanley Quencher H2.0 40 oz, 12.3″ tall, 3.86″ × 5.82″ with the handle. Listing size." } },
-  { match: (q) => /stanley/.test(q) && /tape\s*measures?/.test(q), over: { shape: "roll", length: 3.13, diameter: 3, width: 1.75, color: "#c5c8cc", metalness: 0.55, roughness: 0.35, note: "Stanley PowerLock 25 ft case, 3.13″ × 1.75″ × 3″. Listing housing, not the blade." } },
-  { match: (q) => /schlage/.test(q) && /knob/.test(q), over: { shape: "block", length: 2.31, width: 2.09, height: 2.09, color: "#c5c9ce", metalness: 0.72, roughness: 0.32, note: "Schlage Plymouth knob, 2.09″ across and 2.31″ projection. Maker size." } },
-  { match: (q) => /rubik/.test(q), over: { shape: "block", length: 2.24, width: 2.24, height: 2.24, color: "#1c1c1c", roughness: 0.4, metalness: 0.05, note: "Rubik's Cube, 57 mm (2.24″) on a side. Official size." } },
-  { match: (q) => /hydro\s*flask/.test(q) && /32/.test(q), over: { shape: "bottle", length: 11, diameter: 3.55, color: "#d5dde3", metalness: 0.55, roughness: 0.28, note: "Hydro Flask 32 oz wide mouth, 11″ tall and 3.55″ across. Maker size, not a PET bottle." } },
+  { match: (q) => /yeti/.test(q) && /rambler|tumbler|20/.test(q), over: { shape: "cup", length: 6.6, diameter: 3.5, color: "#d7dde2", metalness: 0.55, roughness: 0.28, note: "YETI Rambler 20 oz, 6 5/8″ tall and 3 1/2″ across. Listing size." } },
+  { match: (q) => /quencher/.test(q) && /40/.test(q), over: { shape: "cup", length: 12.3, diameter: 3.86, width: 5.82, color: "#d7e4ee", metalness: 0.45, roughness: 0.35, note: "Stanley Quencher H2.0 40 oz, 12 5/16″ tall, 3 7/8″ × 5 13/16″ with the handle. Listing size." } },
+  { match: (q) => /stanley/.test(q) && /tape\s*measures?/.test(q), over: { shape: "roll", length: 3.13, diameter: 3, width: 1.75, color: "#c5c8cc", metalness: 0.55, roughness: 0.35, note: "Stanley PowerLock 25 ft case, 3 1/8″ × 1 3/4″ × 3″. Listing housing, not the blade." } },
+  { match: (q) => /schlage/.test(q) && /knob/.test(q), over: { shape: "block", length: 2.31, width: 2.09, height: 2.09, color: "#c5c9ce", metalness: 0.72, roughness: 0.32, note: "Schlage Plymouth knob, 2 1/16″ across and 2 5/16″ projection. Maker size." } },
+  { match: (q) => /rubik/.test(q), over: { shape: "block", length: 2.24, width: 2.24, height: 2.24, color: "#1c1c1c", roughness: 0.4, metalness: 0.05, note: "Rubik's Cube, 57 mm (2 1/4″) on a side. Official size." } },
+  { match: (q) => /hydro\s*flask/.test(q) && /32/.test(q), over: { shape: "bottle", length: 11, diameter: 3.55, color: "#d5dde3", metalness: 0.55, roughness: 0.28, note: "Hydro Flask 32 oz wide mouth, 11″ tall and 3 9/16″ across. Maker size." } },
   { match: (q) => /estwing/.test(q) && /hammer/.test(q) && /12/.test(q), over: { shape: "tool", length: 11, diameter: 1.15, width: 5, color: "#3d5f8a", note: "Estwing 12 oz claw hammer, 11″ overall. Maker length." } },
   { match: (q) => /estwing/.test(q) && /hammer/.test(q), over: { shape: "tool", length: 13, diameter: 1.25, width: 5.5, color: "#3d5f8a", note: "Estwing 16 oz claw hammer, 13″ overall. Maker length, not an 8″ hand-tool guess." } },
-  { match: (q) => /lineman|klein/.test(q) && /pliers/.test(q), over: { shape: "tool", length: 9.35, diameter: 0.75, width: 2.06, color: "#1d3f73", note: "Klein D213-9NE lineman pliers, 9.35″ × 2.06″. Maker size." } },
-  { match: (q) => /rubbermaid/.test(q) && /tote|18/.test(q), over: { shape: "block", length: 23.875, width: 15.875, height: 16.375, color: "#6d737c", note: "Rubbermaid Roughneck 18 gal tote, 23.875″ × 15.875″ × 16.375″. Listing outside size." } },
-  { match: (q) => /footballs?/.test(q), over: { shape: "ball", length: 11.125, diameter: 6.73, width: 6.73, color: "#8a5a32", note: "Official football, 11 to 11.25″ long, short way about 6.73″. Rule size, not this ball’s stamp." } },
-  { match: (q) => /master\s*lock/.test(q) && /3\s*d|padlock/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Master Lock 3D, about 1.57″ wide and 2.6″ tall. Listing size." } },
-  { match: (q) => /padlocks?/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Usual laminated padlock, about 1.57″ × 2.6″. Not this lock’s drawing." } },
-  { match: (q) => /traffic\s*cones?/.test(q), over: { shape: "bucket", length: 18, diameter: 10.5, width: 10.5, color: "#e35b12", note: "Usual 18″ traffic cone, 10.5″ base. Not this cone’s drawing." } },
-  { match: (q) => /soccer/.test(q) && /ball/.test(q), over: { shape: "ball", length: 8.65, diameter: 8.65, note: "Size 5 soccer ball, 8.65″ across. Not this ball’s stamp." } },
-  { match: (q) => /tennis/.test(q) && /ball/.test(q), over: { shape: "ball", length: 2.57, diameter: 2.57, note: "Tennis ball, 2.57″ across. Not this ball’s stamp." } },
-  { match: (q) => /\b5\s*gal/.test(q) && /bucket|pail/.test(q), over: { shape: "bucket", length: 14.5, diameter: 11.9, note: "Usual 5 gallon bucket, 14.5″ × 11.9″. Not this bucket’s drawing." } },
-  { match: (q) => /cinder|cmu|concrete\s+block/.test(q), over: { shape: "block", length: 16, width: 8, height: 8, note: "Usual cinder block, 16″ × 8″ × 8″. Not this block’s drawing." } },
-  { match: (q) => /milk\s*crate|\bcrates?\b/.test(q), over: { shape: "block", length: 13, width: 13, height: 11, note: "Usual milk crate, 13″ × 13″ × 11″. Not this crate’s drawing." } },
-  { match: (q) => /toilet\s*paper/.test(q), over: { shape: "roll", length: 4.5, diameter: 4.2, note: "Usual toilet paper roll, 4.5″ wide. Not this roll’s drawing." } },
-  { match: (q) => /paper\s*towels?/.test(q), over: { shape: "roll", length: 11, diameter: 5.5, note: "Usual paper towel roll, 11″ wide. Not this roll’s drawing." } },
-  { match: (q) => /yoga\s*mat/.test(q), over: { shape: "object", length: 68, width: 24, height: 0.2, note: "Usual yoga mat, 68″ × 24″. Not this mat’s drawing." } },
-  { match: (q) => /bowling\s*pins?/.test(q), over: { shape: "object", length: 15, width: 4.7, height: 4.7, note: "Usual bowling pin, 15″ tall. Not this pin’s drawing." } },
-  { match: (q) => /watering\s+can/.test(q), over: { shape: "bucket", length: 11, diameter: 8, note: "Usual watering can, about 11″ × 8″. Not a drink can, and not this one’s drawing." } },
-  { match: (q) => /ketchup|mustard/.test(q), over: { shape: "bottle", length: 8, diameter: 2.5, note: "Usual squeeze bottle, about 8″ × 2.5″. Not this bottle’s drawing." } },
-  { match: (q) => /\bbricks?\b/.test(q) && !/lego/.test(q), over: { shape: "block", length: 8, width: 3.75, height: 2.25, note: "Usual brick, 8″ × 3.75″ × 2.25″. Not a Lego, and not this brick’s drawing." } },
-  { match: (q) => /wd-?\s*40|aerosol|spray\s*paint/.test(q), over: { shape: "can", length: 7.75, diameter: 2.6, color: "#f2d23a", note: "Usual aerosol can, 7.75″ × 2.6″. Not this can’s drawing." } },
-  { match: (q) => /\b(?:sharpies?|markers?|pens?|pencils?)\b/.test(q), over: { shape: "tool", length: 5.5, diameter: 0.6, color: "#1a1a1a", note: "Usual marker, 5.5″ × 0.6″. Not this one’s drawing." } },
-  { match: (q) => /flashlights?|\btorches\b|lanterns?/.test(q), over: { shape: "tool", length: 6.5, diameter: 1.5, color: "#2a2e33", note: "Usual flashlight, 6.5″ × 1.5″. Not this light’s drawing." } },
-  { match: (q) => /tape\s*measures?/.test(q), over: { shape: "roll", length: 1.5, diameter: 3.2, color: "#e0a106", note: "Usual tape measure, 3.2″ across and 1.5″ thick. Not this tape’s drawing." } },
-  { match: (q) => /extension\s*cords?|\bcords?\b|\bropes?\b|\bhoses?\b/.test(q), over: { shape: "roll", length: 2.5, diameter: 8, color: "#f07a1a", note: "Usual 25 ft coil, about 8″ across. Not this cord’s drawing." } },
-  { match: (q) => /drop\s*cloth|tarp|\bcanvas\b/.test(q), over: { shape: "object", length: 108, width: 144, height: 0.08, color: "#efe8d4", note: "Usual 9×12 ft cloth. Not this cloth’s drawing." } },
-  { match: (q) => /saw\s*horses?|sawhorses?/.test(q), over: { shape: "object", length: 36, width: 24, height: 29, color: "#c4a36a", note: "Usual sawhorse, 36″ long and 29″ tall. Not this one’s drawing." } },
-  { match: (q) => /cat\s*trees?/.test(q), over: { shape: "object", length: 60, width: 20, height: 20, color: "#c8bfb0", note: "Usual cat tree, about 60″ tall. Not this tree’s drawing." } },
-  { match: (q) => /rubber\s*ducks?|\bducks?\b/.test(q), over: { shape: "object", length: 4.2, width: 3.5, height: 3.5, color: "#f2c14e", note: "Usual rubber duck, about 4.2″ long. Not this duck’s drawing." } },
-  { match: (q) => /gnomes?/.test(q), over: { shape: "object", length: 12, width: 5, height: 4, color: "#c23b3b", note: "Usual garden gnome, about 12″ tall. Not this gnome’s drawing." } },
-  { match: (q) => /sterilite/.test(q) && /\b6\b/.test(q) && /box|bin/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Sterilite 6 qt storage box, 13.5″ × 8″ × 4.625″. Listing outside size." } },
-  { match: (q) => /\b(storage\s+box(?:es)?|storage\s+bins?|latching\s+box(?:es)?)\b/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Usual small storage box, about 13.5″ × 8″ × 4.6″. Not this box’s drawing." } },
-  { match: (q) => /igloo/.test(q) && /cooler/.test(q), over: { shape: "block", length: 14.5, width: 10.9, height: 13.91, color: "#d7e4ee", note: "Igloo Latitude 16 qt cooler, 14.5″ × 10.9″ × 13.91″. Listing outside size." } },
-  { match: (q) => /\bcoolers?\b/.test(q) && !/wine/.test(q), over: { shape: "block", length: 16, width: 12, height: 13, color: "#d7e4ee", note: "Usual picnic cooler, about 16″ × 12″ × 13″. Not this cooler’s drawing." } },
-  { match: (q) => /camelbak/.test(q) && /32/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag 32 oz stainless, 10.83″ × 3.74″. Maker size (27.5 × 9.5 cm)." } },
-  { match: (q) => /camelbak/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag, about 10.83″ × 3.74″. Usual of that bottle, not every CamelBak." } },
-  { match: (q) => /channellock/.test(q) && /430/.test(q), over: { shape: "tool", length: 10, width: 2.13, diameter: 0.44, color: "#1d4e89", note: "Channellock 430, 10″ × 2.13″ × 0.44″. Maker size." } },
+  { match: (q) => /lineman|klein/.test(q) && /pliers/.test(q), over: { shape: "tool", length: 9.35, diameter: 0.75, width: 2.06, color: "#1d3f73", note: "Klein D213-9NE lineman pliers, 9 3/8″ × 2 1/16″. Maker size." } },
+  { match: (q) => /rubbermaid/.test(q) && /tote|18/.test(q), over: { shape: "block", length: 23.875, width: 15.875, height: 16.375, color: "#6d737c", note: "Rubbermaid Roughneck 18 gal tote, 23 7/8″ × 15 7/8″ × 16 3/8″. Listing outside size." } },
+  { match: (q) => /footballs?/.test(q), over: { shape: "ball", length: 11.125, diameter: 6.73, width: 6.73, color: "#8a5a32", note: "Official football, 11 to 11 1/4″ long, short way about 6 3/4″. Rule size." } },
+  { match: (q) => /master\s*lock/.test(q) && /3\s*d|padlock/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Master Lock 3D, about 1 9/16″ wide and 2 5/8″ tall. Listing size." } },
+  { match: (q) => /padlocks?/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Usual laminated padlock, about 1 9/16″ × 2 5/8″. Type a size to match yours." } },
+  { match: (q) => /traffic\s*cones?/.test(q), over: { shape: "bucket", length: 18, diameter: 10.5, width: 10.5, color: "#e35b12", note: "Usual 18″ traffic cone, 10 1/2″ base. Type a size to match yours." } },
+  { match: (q) => /basket\s*balls?/.test(q), over: { shape: "ball", length: 9.43, diameter: 9.43, note: "Size 7 basketball, 9 7/16″ across. Type a size to match yours." } },
+  { match: (q) => /soccer/.test(q) && /ball/.test(q), over: { shape: "ball", length: 8.65, diameter: 8.65, note: "Size 5 soccer ball, 8 5/8″ across. Type a size to match yours." } },
+  { match: (q) => /tennis/.test(q) && /ball/.test(q), over: { shape: "ball", length: 2.57, diameter: 2.57, note: "Tennis ball, 2 9/16″ across. Type a size to match yours." } },
+  { match: (q) => /\b5\s*gal/.test(q) && /bucket|pail/.test(q), over: { shape: "bucket", length: 14.5, diameter: 11.9, note: "Usual 5 gallon bucket, 14 1/2″ × 11 7/8″. Type a size to match yours." } },
+  { match: (q) => /cinder|cmu|concrete\s+block/.test(q), over: { shape: "block", length: 16, width: 8, height: 8, note: "Usual cinder block, 16″ × 8″ × 8″. Type a size to match yours." } },
+  { match: (q) => /milk\s*crate|\bcrates?\b/.test(q), over: { shape: "block", length: 13, width: 13, height: 11, note: "Usual milk crate, 13″ × 13″ × 11″. Type a size to match yours." } },
+  { match: (q) => /toilet\s*paper/.test(q), over: { shape: "roll", length: 4.5, diameter: 4.2, note: "Usual toilet paper roll, 4 1/2″ wide. Type a size to match yours." } },
+  { match: (q) => /paper\s*towels?/.test(q), over: { shape: "roll", length: 11, diameter: 5.5, note: "Usual paper towel roll, 11″ wide. Type a size to match yours." } },
+  { match: (q) => /yoga\s*mat/.test(q), over: { shape: "object", length: 68, width: 24, height: 0.2, note: "Usual yoga mat, 68″ × 24″. Type a size to match yours." } },
+  { match: (q) => /bowling\s*pins?/.test(q), over: { shape: "object", length: 15, width: 4.7, height: 4.7, note: "Usual bowling pin, 15″ tall. Type a size to match yours." } },
+  { match: (q) => /watering\s+can/.test(q), over: { shape: "bucket", length: 11, diameter: 8, note: "Usual watering can, about 11″ × 8″. Type a size to match yours." } },
+  { match: (q) => /ketchup|mustard/.test(q), over: { shape: "bottle", length: 8, diameter: 2.5, note: "Usual squeeze bottle, about 8″ × 2 1/2″. Type a size to match yours." } },
+  { match: (q) => /\bbricks?\b/.test(q) && !/lego/.test(q), over: { shape: "block", length: 8, width: 3.75, height: 2.25, note: "Usual brick, 8″ × 3 3/4″ × 2 1/4″. Type a size to match yours." } },
+  { match: (q) => /wd-?\s*40|aerosol|spray\s*paint/.test(q), over: { shape: "can", length: 7.75, diameter: 2.6, color: "#f2d23a", note: "Usual aerosol can, 7 3/4″ × 2 5/8″. Type a size to match yours." } },
+  { match: (q) => /\b(?:sharpies?|markers?|pens?|pencils?)\b/.test(q), over: { shape: "tool", length: 5.5, diameter: 0.6, color: "#1a1a1a", note: "Usual marker, 5 1/2″ × 5/8″. Type a size to match yours." } },
+  { match: (q) => /flashlights?|\btorches\b|lanterns?/.test(q), over: { shape: "tool", length: 6.5, diameter: 1.5, color: "#2a2e33", note: "Usual flashlight, 6 1/2″ × 1 1/2″. Type a size to match yours." } },
+  { match: (q) => /tape\s*measures?/.test(q), over: { shape: "roll", length: 1.5, diameter: 3.2, color: "#e0a106", note: "Usual tape measure, 3 3/16″ across and 1 1/2″ thick. Type a size to match yours." } },
+  { match: (q) => /extension\s*cords?|\bcords?\b|\bropes?\b|\bhoses?\b/.test(q), over: { shape: "roll", length: 2.5, diameter: 8, color: "#f07a1a", note: "Usual 25 ft coil, about 8″ across. Type a size to match yours." } },
+  { match: (q) => /drop\s*cloth|tarp|\bcanvas\b/.test(q), over: { shape: "object", length: 108, width: 144, height: 0.08, color: "#efe8d4", note: "Usual 9×12 ft cloth. Type a size to match yours." } },
+  { match: (q) => /saw\s*horses?|sawhorses?/.test(q), over: { shape: "object", length: 36, width: 24, height: 29, color: "#c4a36a", note: "Usual sawhorse, 36″ long and 29″ tall. Type a size to match yours." } },
+  { match: (q) => /cat\s*trees?/.test(q), over: { shape: "object", length: 60, width: 20, height: 20, color: "#c8bfb0", note: "Usual cat tree, about 60″ tall. Type a size to match yours." } },
+  { match: (q) => /rubber\s*ducks?|\bducks?\b/.test(q), over: { shape: "object", length: 4.2, width: 3.5, height: 3.5, color: "#f2c14e", note: "Usual rubber duck, about 4 3/16″ long. Type a size to match yours." } },
+  { match: (q) => /gnomes?/.test(q), over: { shape: "object", length: 12, width: 5, height: 4, color: "#c23b3b", note: "Usual garden gnome, about 12″ tall. Type a size to match yours." } },
+  { match: (q) => /sterilite/.test(q) && /\b6\b/.test(q) && /box|bin/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Sterilite 6 qt storage box, 13 1/2″ × 8″ × 4 5/8″. Listing outside size." } },
+  { match: (q) => /\b(storage\s+box(?:es)?|storage\s+bins?|latching\s+box(?:es)?)\b/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Usual small storage box, about 13 1/2″ × 8″ × 4 5/8″. Type a size to match yours." } },
+  { match: (q) => /igloo/.test(q) && /cooler/.test(q), over: { shape: "block", length: 14.5, width: 10.9, height: 13.91, color: "#d7e4ee", note: "Igloo Latitude 16 qt cooler, 14 1/2″ × 10 7/8″ × 13 15/16″. Listing outside size." } },
+  { match: (q) => /\bcoolers?\b/.test(q) && !/wine/.test(q), over: { shape: "block", length: 16, width: 12, height: 13, color: "#d7e4ee", note: "Usual picnic cooler, about 16″ × 12″ × 13″. Type a size to match yours." } },
+  { match: (q) => /camelbak/.test(q) && /32/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag 32 oz stainless, 10 13/16″ × 3 3/4″. Maker size (27.5 × 9.5 cm)." } },
+  { match: (q) => /camelbak/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag, about 10 13/16″ × 3 3/4″. Usual of that bottle, not every CamelBak." } },
+  { match: (q) => /channellock/.test(q) && /430/.test(q), over: { shape: "tool", length: 10, width: 2.13, diameter: 0.44, color: "#1d4e89", note: "Channellock 430, 10″ × 2 1/8″ × 7/16″. Maker size." } },
   { match: (q) => /fiskars/.test(q) && /scissors|shears/.test(q), over: { shape: "tool", length: 8, width: 3.2, diameter: 0.4, color: "#f04e23", note: "Fiskars 8″ scissors, 8″ overall. Maker length." } },
-  { match: (q) => /\b(scissors|shears)\b/.test(q), over: { shape: "tool", length: 8, width: 3.2, diameter: 0.4, color: "#c45c26", note: "Usual scissors, about 8″ long. Not this pair’s drawing." } },
-  { match: (q) => /iris/.test(q) && /tote|weatherpro/.test(q), over: { shape: "block", length: 17.5, width: 11.75, height: 7.88, color: "#e7eef2", note: "IRIS WeatherPro 19 qt tote, 17.5″ × 11.75″ × 7.88″. Listing outside size." } },
-  { match: (q) => /dewalt/.test(q) && /batter/.test(q), over: { shape: "block", length: 9.25, width: 7, height: 3.625, color: "#f5c400", note: "DeWalt DCB205 20V 5.0Ah, 9.25″ × 7″ × 3.625″. Listing size of one pack." } },
-  { match: (q) => /\bbatter(?:y|ies)\b/.test(q), over: { shape: "block", length: 5.2, width: 3.4, height: 2.4, color: "#f5c400", note: "Usual slide battery, about 5.2″ × 3.4″ × 2.4″. Not this pack’s drawing." } },
-  { match: (q) => /ultra-star|discraft/.test(q), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Discraft Ultra-Star, 10.75″ across. Listing diameter." } },
-  { match: (q) => /\b(frisbees?|flying\s+discs?)\b/.test(q) || (/\bdiscs?\b/.test(q) && !/sander|brake/.test(q)), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Usual flying disc, about 10.75″ across. Not this disc’s stamp." } },
-  { match: (q) => /kwikset/.test(q) && /deadbolt/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Kwikset 660 deadbolt, 2.5″ rose and 1.06″ projection. Listing size." } },
-  { match: (q) => /\bdeadbolts?\b/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Usual deadbolt rose, about 2.5″ across and 1″ projection. Not this lock’s drawing." } },
-  { match: (q) => /flamingos?/.test(q), over: { shape: "object", length: 24, width: 16, height: 4, color: "#f4a4c0", note: "Usual lawn flamingo, about 24″ tall and 16″ wide. Not this bird’s drawing." } },
-  { match: (q) => /fastback/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c0392b", note: "Milwaukee Fastback utility knife, 7.25″ overall. Listing length of the standard press-and-flip." } },
-  { match: (q) => /\bknives?\b/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c45c26", note: "Usual utility knife, about 7.25″ long. Not this knife’s drawing." } },
+  { match: (q) => /\b(scissors|shears)\b/.test(q), over: { shape: "tool", length: 8, width: 3.2, diameter: 0.4, color: "#c45c26", note: "Usual scissors, about 8″ long. Type a size to match yours." } },
+  { match: (q) => /iris/.test(q) && /tote|weatherpro/.test(q), over: { shape: "block", length: 17.5, width: 11.75, height: 7.88, color: "#e7eef2", note: "IRIS WeatherPro 19 qt tote, 17 1/2″ × 11 3/4″ × 7 7/8″. Listing outside size." } },
+  { match: (q) => /dewalt/.test(q) && /batter/.test(q), over: { shape: "block", length: 9.25, width: 7, height: 3.625, color: "#f5c400", note: "DeWalt DCB205 20V 5.0Ah, 9 1/4″ × 7″ × 3 5/8″. Listing size of one pack." } },
+  { match: (q) => /\bbatter(?:y|ies)\b/.test(q), over: { shape: "block", length: 5.2, width: 3.4, height: 2.4, color: "#f5c400", note: "Usual slide battery, about 5 3/16″ × 3 3/8″ × 2 3/8″. Type a size to match yours." } },
+  { match: (q) => /ultra-star|discraft/.test(q), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Discraft Ultra-Star, 10 3/4″ across. Listing diameter." } },
+  { match: (q) => /\b(frisbees?|flying\s+discs?)\b/.test(q) || (/\bdiscs?\b/.test(q) && !/sander|brake/.test(q)), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Usual flying disc, about 10 3/4″ across. Type a size to match yours." } },
+  { match: (q) => /kwikset/.test(q) && /deadbolt/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Kwikset 660 deadbolt, 2 1/2″ rose and 1 1/16″ projection. Listing size." } },
+  { match: (q) => /\bdeadbolts?\b/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Usual deadbolt rose, about 2 1/2″ across and 1″ projection. Type a size to match yours." } },
+  { match: (q) => /flamingos?/.test(q), over: { shape: "object", length: 24, width: 16, height: 4, color: "#f4a4c0", note: "Usual lawn flamingo, about 24″ tall and 16″ wide. Type a size to match yours." } },
+  { match: (q) => /fastback/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c0392b", note: "Milwaukee Fastback utility knife, 7 1/4″ overall. Listing length of the standard press-and-flip." } },
+  { match: (q) => /\bknives?\b/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c45c26", note: "Usual utility knife, about 7 1/4″ long. Type a size to match yours." } },
   { match: (q) => /clash/.test(q) && /racket/.test(q), over: { shape: "tool", length: 27, width: 10.6, height: 1, diameter: 1, color: "#2c2c2c", note: "Wilson Clash 100, 27″ long, 100 sq in head. Listing length." } },
-  { match: (q) => /\brackets?\b/.test(q), over: { shape: "tool", length: 27, width: 10.6, height: 1, diameter: 1, color: "#2c2c2c", note: "Usual adult tennis racket, 27″ long. Not this frame’s stamp." } },
-  { match: (q) => /\bbaseballs?\b/.test(q), over: { shape: "ball", length: 2.9, diameter: 2.9, width: 2.9, color: "#f4f1ea", note: "Official baseball, 9–9¼″ around (about 2.9″ across). Not this ball’s stamp." } },
-  { match: (q) => /duplex|receptacle|\boutlets?\b/.test(q), over: { shape: "block", length: 4.5, width: 2.75, height: 1.1, color: "#ece7dc", note: "Usual standard duplex plate, 4.5″ × 2.75″. Not this device’s drawing." } },
+  { match: (q) => /\brackets?\b/.test(q), over: { shape: "tool", length: 27, width: 10.6, height: 1, diameter: 1, color: "#2c2c2c", note: "Usual adult tennis racket, 27″ long. Type a size to match yours." } },
+  { match: (q) => /\bbaseballs?\b/.test(q), over: { shape: "ball", length: 2.9, diameter: 2.9, width: 2.9, color: "#f4f1ea", note: "Official baseball, 9–9¼″ around (about 2 7/8″ across). Type a size to match yours." } },
+  { match: (q) => /duplex|receptacle|\boutlets?\b/.test(q), over: { shape: "block", length: 4.5, width: 2.75, height: 1.1, color: "#ece7dc", note: "Usual standard duplex plate, 4 1/2″ × 2 3/4″. Type a size to match yours." } },
 ];
 
 const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
@@ -374,7 +377,7 @@ export function productEnvelope(query: string): Envelope | null {
     env.length = 18;
     env.diameter = 12.2;
     env.width = 12.2;
-    env.note = "20 lb propane tank, about 18\u2033 tall and 12.2\u2033 across. Usual cylinder, not this tank\u2019s stamp.";
+    env.note = "20 lb propane tank, about 18\u2033 tall and 12 3/16\u2033 across. Usual cylinder — type a size to match yours.";
   }
   return applyTypedLength(q, env);
 }
@@ -383,6 +386,20 @@ export function modeledProduct(query: string): CatalogItem | null {
   const env = productEnvelope(query);
   if (!env) return null;
   return pieceFromEnvelope(env, env.length, env.diameter, env.note, [query.trim(), env.name]);
+}
+
+/**
+ * Product notes read like the rest of the plan: shop fractions, positive wording. "10.83″" → "10 13/16″";
+ * "Not this tool’s drawing." → what the size is instead.
+ */
+export function plainProductNote(note: string): string {
+  return note
+    .replace(/(\d+\.\d+)\s*(″|"|-?inch(?:es)?\b|in\b)/g, (_m, n: string, u: string) => `${inchFrac(parseFloat(n))}${u}`)
+    .replace(/\s*Not this [^.]*?(?:drawing|stamp)\./g, " Usual size for its kind — type a size to match yours.")
+    .replace(/\s*Rule size, not this [^.]*?(?:drawing|stamp)\./g, " Rule size.")
+    .replace(/,?\s*not a drawing\./g, ".")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function pieceFromEnvelope(
@@ -417,6 +434,6 @@ export function pieceFromEnvelope(
     roughness: env.roughness,
     metalness: env.metalness,
     searchQuery: env.name,
-    notes: note,
+    notes: plainProductNote(note),
   };
 }

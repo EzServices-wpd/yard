@@ -144,7 +144,7 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   mk({ type: "top", name: "Deck", position: { x: 0, y: legH, z: 0 }, size: { width: W, height: deckT, depth: D }, materialId: ply, cutNote: `Solid 3/4" plywood deck; the ${held.label} sits on it.` });
 
   // The held object, drawn as a plain proxy box at its real size (not a cut part).
-  const item = proxyItem(held);
+  const item = held.item ?? proxyItem(held);
   rememberCatalogItem(item);
   const instances = Array.from({ length: n }, (_, i) => {
     const cx = (W - objW) / 2 + held.width / 2 + i * (held.width + gap);

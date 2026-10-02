@@ -193,6 +193,16 @@ for (const q of ["plant stand with three tiers", "shoe rack with 4 shelves", "ro
   if (!p.panels.some((x) => /plywood/.test(x.materialId)) && /¼″ backs stay plywood|1\/4" backs stay plywood/.test(text)) fail("plywood back text on a build with no plywood", q);
 }
 
+// ---------------------------------------------------------------- 5. Product notes: shop fractions, positive wording, no placeholder
+for (const q of ["basketball", "poland spring water bottle", "watering can", "ceramic frog", "wrench", "propane tank", "football", "brick", "safety goggles", "yeti rambler 20"]) {
+  const p = generateFromPrompt(q);
+  for (const n of p.notes) {
+    if (/\b\d+\.\d+\s*(?:″|"|in\b)/.test(n)) fail("product note uses decimal inches", { q, n });
+    if (/not this\b|not a drawing|not a checked/i.test(n)) fail("product note uses negative 'not this' wording", { q, n });
+    if (/6″ × 4″ × 3″|6" x 4" x 3"/.test(n)) fail("product note carries the 6x4x3 placeholder", { q, n });
+  }
+}
+
 console.log(`stand guards: swept ${swept} weekend prompts`);
 if (failed) {
   console.error(`FAIL stand guards: ${failed} failures`);
