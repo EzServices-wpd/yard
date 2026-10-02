@@ -591,9 +591,11 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                             ? " · snap to the glow"
                             : "";
                     const proud = pocketUnit ? "" : modelProudTalk(project.panels, project.overall.depth);
+                    // Doors stand proud of the box. One depth on the dock — the finished one — not the box depth and the proud depth side by side.
+                    const face = proud ? envelope.replace(/ × [^×]+$/, "") : envelope;
                     return (
                       <>
-                        {envelope}
+                        {face}
                         {proud ? ` · ${proud}` : ""}
                         {companion}
                       </>
