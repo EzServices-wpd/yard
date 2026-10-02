@@ -31,6 +31,7 @@ import {
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
+import { guardFail, guardStart } from "./guard-known-failures";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac } from "../src/lib/yard/inchText";
 import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
 import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
@@ -75,10 +76,27 @@ import {
   weekendTypedSize,
 } from "../src/lib/yard/weekendStockHonesty";
 
-function failHonesty(msg: string, extra?: unknown) {
-  console.error("FAIL honesty", msg, extra ?? "");
-  process.exit(1);
+/** Parse the Buy screw note "N screws from the model's joints: a for x butt joints, b for y …". */
+function modelScrewNote(plan: { bom: { name: string; notes?: string }[] }): { total: number; sum: number; joints: number } | null {
+  const row = plan.bom.find((b) => /wood screws/i.test(b.name));
+  const m = row?.notes?.match(/(\d+) screws from the model's joints: ([^.]*)/);
+  if (!m) return null;
+  let sum = 0;
+  let joints = 0;
+  for (const part of m[2].matchAll(/(\d+) for (\d+) /g)) {
+    sum += Number(part[1]);
+    joints += Number(part[2]);
+  }
+  const total = Number(m[1]);
+  // A small build rounds up to the 4-screw floor.
+  return { total, sum: Math.max(sum, total === 4 ? 4 : sum), joints };
 }
+
+function failHonesty(msg: string, extra?: unknown) {
+  guardFail("honesty", "honesty", msg, extra);
+}
+guardStart("honesty");
+guardStart("weekend");
 
 function checkSizePrompt(prompt: string, w: number, h: number, d: number) {
   const typed = typedExtents(prompt);
@@ -507,8 +525,7 @@ console.log("HOUSE FAMILY OK", {
 });
 
 function failWeekend(msg: string, extra?: unknown) {
-  console.error("FAIL weekend honesty", msg, extra ?? "");
-  process.exit(1);
+  guardFail("weekend", "weekend honesty", msg, extra);
 }
 
 function expectStock(prompt: string, id: string) {
@@ -867,7 +884,7 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     const short = b.instances.filter((i) => i.from && i.to && Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z) < 11.9);
     if (short.some((i) => i.cutLength == null)) failWeekend(`skewer animal: ${p} short parts listed as whole skewers`, short.filter((i) => i.cutLength == null).length);
     const line = buildPlan(b).bom.find((x) => /skewer/i.test(x.name));
-    const sticks = Number(line?.notes?.match(/from (\d+) whole stick/)?.[1] ?? NaN);
+    const sticks = Number(line?.notes?.match(/from (\d+) whole [a-z]+/)?.[1] ?? NaN);
     if (!(sticks > 0 && sticks < b.instances.length)) failWeekend(`skewer animal: ${p} Buy counts one skewer per short cut`, line?.notes);
   }
   for (const [p, ax, want, tol] of sized) {
@@ -5639,14 +5656,10 @@ console.log("SOFT-TRUST OK", {
     });
   }
   const nsScrews = joinScrewQty(nsPlan);
-  const nsExpectScrews = Math.max(16, nsCut * 6);
-  if (nsScrews !== nsExpectScrews) {
-    failEff("nightstand #8 screws ≠ honest woodPieces*6", {
-      screws: nsScrews,
-      expect: nsExpectScrews,
-      cut: nsCut,
-      rawWould: Math.max(16, ns.panels.length * 6),
-    });
+  // Screws come from the model's joints (per joint type), never a flat count per cut piece.
+  const nsJoints = modelScrewNote(nsPlan);
+  if (!nsJoints || nsJoints.sum !== nsScrews || nsJoints.joints < 4 || nsScrews! > 4 * nsJoints.joints || nsScrews === nsCut * 6) {
+    failEff("nightstand #8 screws must be the sum over the model's joints (≤ 4 per joint)", { screws: nsScrews, joints: nsJoints, cut: nsCut });
   }
   if (nsScrews === Math.max(16, ns.panels.length * 6) && ns.panels.length !== nsCut) {
     failEff("nightstand screws still raw panels.length*6", {
@@ -5676,14 +5689,9 @@ console.log("SOFT-TRUST OK", {
     });
   }
   const drScrews = joinScrewQty(drPlan);
-  const drExpectScrews = Math.max(16, drCut * 6);
-  if (drScrews !== drExpectScrews) {
-    failEff("dresser #8 screws ≠ honest woodPieces*6", {
-      screws: drScrews,
-      expect: drExpectScrews,
-      cut: drCut,
-      rawWould: Math.max(16, dr.panels.length * 6),
-    });
+  const drJoints = modelScrewNote(drPlan);
+  if (!drJoints || drJoints.sum !== drScrews || drJoints.joints < 4 || drScrews! > 4 * drJoints.joints || drScrews === drCut * 6) {
+    failEff("dresser #8 screws must be the sum over the model's joints (≤ 4 per joint)", { screws: drScrews, joints: drJoints, cut: drCut });
   }
   if (dr.panels.length !== drCut && drScrews === Math.max(16, dr.panels.length * 6)) {
     failEff("dresser screws still raw panels.length*6", { screws: drScrews, raw: dr.panels.length, cut: drCut });
@@ -5902,12 +5910,13 @@ console.log("SOFT-TRUST OK", {
   const nsPlan = buildPlan(ns);
   if (nsPlan.totals.pieces !== 11) failBom("protect nightstand pieces 11", nsPlan.totals.pieces);
   if (nsPlan.effort !== "1-day") failBom("protect nightstand effort 1-day", nsPlan.effort);
-  // Box model: 66 screws → 2 boxes (50 ct each); the note keeps the 66 count.
+  // Box model: the note keeps the screw count from the model's joints; boxes hold it (50 ct each).
   const nsScrewRow = nsPlan.bom.find((b) => /#8.*wood screws|wood screws/i.test(b.name));
   const nsScrews = Number(nsScrewRow?.notes?.match(/(\d+)\s+screws/)?.[1] ?? NaN);
-  if (nsScrews !== 66) failBom("protect nightstand screws 66", nsScrewRow);
-  if (nsScrewRow?.quantity !== 2 || !/boxes \(50 ct each\)/.test(nsScrewRow?.unit ?? "")) {
-    failBom("protect nightstand screws 2 boxes (50 ct each)", nsScrewRow);
+  const nsModel = modelScrewNote(nsPlan);
+  if (!nsModel || nsModel.sum !== nsScrews) failBom("protect nightstand screws = model joints", nsScrewRow);
+  if (nsScrewRow?.quantity !== Math.ceil(nsScrews / 50) || !/\(50 ct/.test(nsScrewRow?.unit ?? "")) {
+    failBom("protect nightstand screws boxed by 50", nsScrewRow);
   }
   const linen = generateFromPrompt("house: linen closet 31.5×78×16");
   if (Math.abs(linen.overall.width - 31.5) > 0.2) failBom("protect linen 31.5", linen.overall);
@@ -7944,19 +7953,13 @@ console.log("STRANGER PLAN OK", {
   const prompt = "step stool 18 tall with handrail";
   const stool = generateFromPrompt(prompt);
   if (!/Step stool/i.test(stool.name)) failHonesty("climb-handrail title", stool.name);
-  // Typed tall is the tread height; handrail posts stick up above it.
-  let treadY = 0;
-  let ymax = 0;
-  for (const i of stool.instances as Array<{ from?: { y: number }; to?: { y: number }; role?: string }>) {
-    for (const pt of [i.from, i.to]) {
-      if (!pt) continue;
-      ymax = Math.max(ymax, pt.y);
-      if (i.role === "rail") treadY = Math.max(treadY, pt.y);
-    }
-  }
+  // Typed tall is the top tread height; the handrail stands up above it (panel model).
+  const tops = stool.panels.filter((x) => x.type === "top" && /tread/i.test(x.name)).map((x) => x.position.y + x.size.height);
+  const treadY = tops.length ? Math.max(...tops) : 0;
+  const ymax = Math.max(0, ...stool.panels.map((x) => x.position.y + x.size.height));
   if (Math.abs(treadY - 18) > 1.5) failHonesty("climb-handrail tread at typed tall", treadY, stool.overall);
   if (ymax < treadY + 7) failHonesty("climb-handrail grip above tread", ymax, treadY);
-  const supports = stool.instances.filter((i) => i.role === "support");
+  const supports = stool.panels.filter((x) => /handrail/i.test(x.name));
   if (supports.length < 2) failHonesty("climb-handrail support posts+grip", supports.length);
   const plan = buildPlan(stool);
   const blob = [stool.name, ...(stool.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");

@@ -1,3 +1,4 @@
+import { guardFail, guardStart } from "./guard-known-failures";
 import { DREAMS, generateFromPrompt, detectMaterial, parseSize } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { buildFitted } from "../src/lib/yard/fitted";
@@ -12,7 +13,11 @@ import {
   typedExtents,
 } from "../src/lib/yard/honesty";
 
+guardStart("honesty-smoke");
+
 const extra = [
+  // The pyramid left the home-page dream chips; keep guarding it by prompt.
+  "3 ft popsicle stick pyramid",
   "6 foot garden arch from 3/4 inch PVC pipe",
   "7 foot PVC garden arch",
   "4 foot bridge from plastic drinking straws",
@@ -57,60 +62,48 @@ const results = [
 const arch = results.find((r) => r.label === "arch");
 if (!arch) throw new Error("arch dream missing");
 if (arch.material !== "pvc-3-4-sch40") {
-  console.error("FAIL arch material", arch.material);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "arch material", arch.material);
 }
 if (arch.pieces < 8 || arch.pieces > 28) {
-  console.error("FAIL arch piece count", arch.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "arch piece count", arch.pieces);
 }
 if (arch.traverse !== "portal") {
-  console.error("FAIL arch should be a walk-through portal", arch);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "arch should be a walk-through portal", arch);
 }
 const desk = results.find((r) => r.label === "desk");
 if (desk && (desk.kind !== "closet" || desk.panels < 6)) {
-  console.error("FAIL desk not fitted", desk);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "desk not fitted", desk);
 }
 if (desk) {
   const deskPlan = buildPlan(desk.project);
   const titles = deskPlan.instructions.map((s) => s.title).join(" | ");
   if (/mark studs/i.test(titles)) {
-    console.error("FAIL freestanding desk still talks like a closet", titles);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "freestanding desk still talks like a closet", titles);
   }
   if (!deskPlan.instructions.some((s) => /knee/i.test(`${s.title} ${s.description}`))) {
-    console.error("FAIL desk plan lost the knee bay", titles);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "desk plan lost the knee bay", titles);
   }
   if (!deskPlan.instructions.some((s) => /false front/i.test(s.title))) {
-    console.error("FAIL desk plan does not build drawer fronts", titles);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "desk plan does not build drawer fronts", titles);
   }
   if (deskPlan.instructions.filter((s) => /hang drawer/i.test(s.title)).length > 1) {
-    console.error("FAIL desk still repeats hang-drawer six times", titles);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "desk still repeats hang-drawer six times", titles);
   }
 }
 const vanity = results.find((r) => r.label.startsWith("Build a vanity"));
 if (vanity && (vanity.overall.height > 48 || vanity.panels < 6)) {
-  console.error("FAIL 36x22 vanity should be a counter-height unit", vanity);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "36x22 vanity should be a counter-height unit", vanity);
 }
 const pocket = results.find((r) => r.label === "pocket");
 if (pocket && (pocket.overall.height < 90 || pocket.panels < 10)) {
-  console.error("FAIL pocket vanity lost the trapezoid", pocket);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pocket vanity lost the trapezoid", pocket);
 }
-const pyramid = results.find((r) => r.label === "pyramid");
+const pyramid = results.find((r) => r.label === "pyramid" || r.label === "3 ft popsicle stick pyramid");
 if (!pyramid || pyramid.kind !== "pyramid" || pyramid.traverse !== "portal") {
-  console.error("FAIL pyramid needs a north door you can walk through", pyramid);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pyramid needs a north door you can walk through", pyramid);
 }
 if (pyramid.pieces < 80 || pyramid.pieces > 4000) {
-  console.error("FAIL pyramid piece count drifted", pyramid.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pyramid piece count drifted", pyramid.pieces);
 }
 const pyrRoles: Record<string, number> = {};
 for (const inst of pyramid.project.instances) {
@@ -120,70 +113,55 @@ for (const inst of pyramid.project.instances) {
 const pyrSkin = pyrRoles.skin ?? 0;
 const pyrCore = pyramid.pieces - pyrSkin;
 if (pyrCore < 80 || pyrCore > 500) {
-  console.error("FAIL pyramid structure should stay stepped courses", pyrCore, pyrRoles);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pyramid structure should stay stepped courses", pyrCore, pyrRoles);
 }
 if (pyrSkin < pyramid.pieces * 0.45) {
-  console.error("FAIL pyramid Fill skin is missing", pyrRoles, pyramid.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pyramid Fill skin is missing", pyrRoles, pyramid.pieces);
 }
 const pyrBrace = pyrRoles.brace ?? 0;
 if (pyrBrace > pyrCore * 0.55) {
-  console.error("FAIL pyramid faces got laced shut", pyrRoles, pyramid.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "pyramid faces got laced shut", pyrRoles, pyramid.pieces);
 }
 if (pyramid.use !== "display") {
-  console.error("FAIL popsicle pyramid is display load, not", pyramid.use);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "popsicle pyramid is display load, not", pyramid.use);
 }
 const eiffel = results.find((r) => r.label === "eiffel");
 if (eiffel && (eiffel.deck > 0 || eiffel.traverse === "deck")) {
-  console.error("FAIL eiffel picked up a road", eiffel);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "eiffel picked up a road", eiffel);
 }
 if (eiffel && (eiffel.pieces < 400 || eiffel.pieces > 1200)) {
-  console.error("FAIL eiffel piece count drifted", eiffel.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "eiffel piece count drifted", eiffel.pieces);
 }
 const gg = results.find((r) => /golden gate/i.test(r.label));
 if (!gg || gg.kind !== "bridge" || gg.deck < 1 || gg.traverse !== "deck") {
-  console.error("FAIL golden gate needs a road you can walk", gg);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "golden gate needs a road you can walk", gg);
 }
 if (gg.use !== "display") {
-  console.error("FAIL popsicle golden gate is display load, not", gg.use);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "popsicle golden gate is display load, not", gg.use);
 }
 const straw = results.find((r) => r.label === "bridge");
 if (!straw || straw.deck < 1 || straw.traverse !== "deck") {
-  console.error("FAIL straw bridge needs a road", straw);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "straw bridge needs a road", straw);
 }
 const ggPlan = buildPlan(gg.project);
 if (!ggPlan.instructions.some((s) => /road deck/i.test(s.title))) {
-  console.error("FAIL golden gate plan lost the forge steps / road", ggPlan.instructions.map((s) => s.title));
-  process.exit(1);
+  guardFail("honesty-smoke", "", "golden gate plan lost the forge steps / road", ggPlan.instructions.map((s) => s.title));
 }
 if (ggPlan.feasibility.issues.some((i) => /closet|carcase|stud/i.test(i.message))) {
-  console.error("FAIL golden gate plan hijacked by closet path", ggPlan.feasibility);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "golden gate plan hijacked by closet path", ggPlan.feasibility);
 }
 if (!ggPlan.feasibility.issues.some((i) => /display load/i.test(i.message))) {
-  console.error("FAIL golden gate missing display-load note", ggPlan.feasibility.issues);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "golden gate missing display-load note", ggPlan.feasibility.issues);
 }
 if (ggPlan.totals.pieces < gg.pieces) {
-  console.error("FAIL plan piece count dropped the deck", ggPlan.totals.pieces, gg.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "plan piece count dropped the deck", ggPlan.totals.pieces, gg.pieces);
 }
 const chair = results.find((r) => /kitchen chair/i.test(r.label));
 if (!chair || chair.kind !== "furniture") {
-  console.error("FAIL chair is not furniture", chair);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair is not furniture", chair);
 }
 if (chair.material !== "lumber-1x4-8") {
-  console.error("FAIL chair stock", chair.material);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair stock", chair.material);
 }
 const chairRoles: Record<string, number> = {};
 for (const inst of chair.project.instances) {
@@ -191,30 +169,24 @@ for (const inst of chair.project.instances) {
   chairRoles[r] = (chairRoles[r] ?? 0) + 1;
 }
 if ((chairRoles.leg ?? 0) !== 4) {
-  console.error("FAIL chair should have 4 legs", chairRoles, chair.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair should have 4 legs", chairRoles, chair.pieces);
 }
 if ((chairRoles.rail ?? 0) < 6) {
-  console.error("FAIL chair lost seat rails / slats", chairRoles);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair lost seat rails / slats", chairRoles);
 }
 if (chair.pieces < 12 || chair.pieces > 28) {
-  console.error("FAIL chair piece count is a jungle gym or a stick", chair.pieces, chairRoles);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair piece count is a jungle gym or a stick", chair.pieces, chairRoles);
 }
 const chairPlan = buildPlan(chair.project);
 if (chairPlan.instructions.some((s) => /mark studs|lace every open bay/i.test(s.title))) {
-  console.error("FAIL chair plan talks like a closet or a tower", chairPlan.instructions.map((s) => s.title));
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair plan talks like a closet or a tower", chairPlan.instructions.map((s) => s.title));
 }
 if (!chairPlan.instructions.some((s) => /sit on it/i.test(s.title))) {
-  console.error("FAIL chair plan never sits", chairPlan.instructions.map((s) => s.title));
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair plan never sits", chairPlan.instructions.map((s) => s.title));
 }
 const ladder = results.find((r) => /8 foot ladder/i.test(r.label));
 if (!ladder || ladder.kind !== "ladder") {
-  console.error("FAIL ladder kind", ladder);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "ladder kind", ladder);
 }
 const ladderRoles: Record<string, number> = {};
 for (const inst of ladder.project.instances) {
@@ -222,73 +194,59 @@ for (const inst of ladder.project.instances) {
   ladderRoles[r] = (ladderRoles[r] ?? 0) + 1;
 }
 if ((ladderRoles.leg ?? 0) !== 2) {
-  console.error("FAIL ladder should have two rails", ladderRoles, ladder.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "ladder should have two rails", ladderRoles, ladder.pieces);
 }
 if ((ladderRoles.brace ?? 0) > 0) {
-  console.error("FAIL ladder picked up leftover braces", ladderRoles);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "ladder picked up leftover braces", ladderRoles);
 }
 if ((ladderRoles.rail ?? 0) < 5 || ladder.pieces > 16) {
-  console.error("FAIL ladder rungs drifted", ladderRoles, ladder.pieces);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "ladder rungs drifted", ladderRoles, ladder.pieces);
 }
 const ladderPlan = buildPlan(ladder.project);
 if (!ladderPlan.instructions.some((s) => /rung/i.test(s.title))) {
-  console.error("FAIL ladder plan never screws rungs", ladderPlan.instructions.map((s) => s.title));
-  process.exit(1);
+  guardFail("honesty-smoke", "", "ladder plan never screws rungs", ladderPlan.instructions.map((s) => s.title));
 }
 if (eiffel) {
   const cutN = eiffel.project.instances.filter((i) => i.cutLength != null).length;
   if (cutN > 0) {
-    console.error("FAIL eiffel is still cutting popsicle sticks", cutN, "of", eiffel.pieces);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "eiffel is still cutting popsicle sticks", cutN, "of", eiffel.pieces);
   }
   const eiffelPlan = buildPlan(eiffel.project);
   if (eiffelPlan.partsKind !== "whole") {
-    console.error("FAIL eiffel plan is a cut list for craft sticks", eiffelPlan.partsKind, eiffelPlan.cutList.slice(0, 5));
-    process.exit(1);
+    guardFail("honesty-smoke", "", "eiffel plan is a cut list for craft sticks", eiffelPlan.partsKind, eiffelPlan.cutList.slice(0, 5));
   }
   if (eiffelPlan.cutList.length > 2) {
-    console.error("FAIL eiffel stick list split into unique lengths", eiffelPlan.cutList);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "eiffel stick list split into unique lengths", eiffelPlan.cutList);
   }
   if (!eiffelPlan.instructions.some((s) => /do not cut/i.test(s.title))) {
-    console.error("FAIL eiffel plan still tells a kid to cut", eiffelPlan.instructions.map((s) => s.title));
-    process.exit(1);
+    guardFail("honesty-smoke", "", "eiffel plan still tells a kid to cut", eiffelPlan.instructions.map((s) => s.title));
   }
 }
 if (!chairPlan.cutList.some((c) => c.quantity >= 2 && c.label)) {
-  console.error("FAIL chair cut list did not group same-size parts", chairPlan.cutList);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair cut list did not group same-size parts", chairPlan.cutList);
 }
 if (chairPlan.cutList.some((c) => /left|right/i.test(c.name) && c.quantity === 1)) {
-  console.error("FAIL chair still lists left/right separately", chairPlan.cutList);
-  process.exit(1);
+  guardFail("honesty-smoke", "", "chair still lists left/right separately", chairPlan.cutList);
 }
 if (desk) {
   const deskPlan = buildPlan(desk.project);
   const left = deskPlan.cutList.filter((c) => /left/i.test(c.name));
   if (left.length) {
-    console.error("FAIL desk cut list still says Left instead of grouping", deskPlan.cutList.map((c) => `${c.label} ${c.quantity}× ${c.name}`));
-    process.exit(1);
+    guardFail("honesty-smoke", "", "desk cut list still says Left instead of grouping", deskPlan.cutList.map((c) => `${c.label} ${c.quantity}× ${c.name}`));
   }
   if (!deskPlan.cutList.some((c) => /upright/i.test(c.name) && c.quantity >= 2)) {
-    console.error("FAIL desk uprights not batched", deskPlan.cutList.map((c) => `${c.quantity}× ${c.name}`));
-    process.exit(1);
+    guardFail("honesty-smoke", "", "desk uprights not batched", deskPlan.cutList.map((c) => `${c.quantity}× ${c.name}`));
   }
 }
 if (straw) {
   const strawCuts = straw.project.instances.filter((i) => i.cutLength != null).length;
   if (strawCuts > straw.pieces * 0.15) {
-    console.error("FAIL straw bridge is cutting drinking straws", strawCuts, straw.pieces);
-    process.exit(1);
+    guardFail("honesty-smoke", "", "straw bridge is cutting drinking straws", strawCuts, straw.pieces);
   }
 }
 
 function failHonesty(msg: string, extra?: unknown) {
-  console.error("FAIL honesty", msg, extra ?? "");
-  process.exit(1);
+  guardFail("honesty-smoke", "honesty", msg, extra);
 }
 
 function checkSizePrompt(prompt: string, w: number, h: number, d: number) {

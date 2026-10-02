@@ -1,0 +1,88 @@
+# Yard guard suite — runs on every push to main and every pull request.
+#
+# This check reports only; it does not block Vercel (Vercel deploys from main on its own).
+# A red run means a guard found a regression that is NOT on the skip list.
+# The one skip list for known, pre-existing failures lives in scripts/guard-known-failures.ts:
+# every entry says why it is tolerated and who owns the fix. Delete an entry when its fix lands
+# (the guards print "STALE KNOWN" for entries that no longer fire).
+name: guards
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: guards-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Honesty smoke
+        run: npx tsx scripts/yard-honesty-smoke.ts
+
+      - name: Honesty guards (wine class, fractions, frame check, named table, render stock)
+        run: |
+          set -o pipefail
+          npx tsx scripts/yard-honesty-guards.ts 2>&1 | tee honesty.log
+
+      - name: Wine-class guard
+        if: always()
+        run: grep -E "^PASS wine" honesty.log
+
+      - name: Fractions guard
+        if: always()
+        run: grep -E "^PASS fractions" honesty.log
+
+      - name: Frame check (weekend structure families incl. picture frame)
+        if: always()
+        run: grep -E "WEEKEND STRUCTURE FAMILIES OK" honesty.log
+
+      - name: Named-table guard
+        if: always()
+        run: grep -E "^PASS named-table" honesty.log
+
+      - name: Render-stock guard
+        if: always()
+        run: grep -E "^PASS render-stock" honesty.log
+
+      - name: Affiliate guards
+        if: always()
+        run: npx tsx scripts/yard-affiliate-guards.ts
+
+      - name: Buy order + sheet nest guards
+        if: always()
+        run: npx tsx scripts/yard-buy-order-guards.ts
+
+      - name: Stand guards
+        if: always()
+        run: npx tsx scripts/yard-stand-guards.ts
+
+      - name: Climb + Buy-reads-the-model guards (treads, dowel packing, screws from joints)
+        if: always()
+        run: npx tsx scripts/yard-climb-buy-guards.ts
+
+      - name: Unit tests (TypeScript, via tsx)
+        if: always()
+        run: npx tsx scripts/run-unit-tests.ts
+
+      - name: Unit tests (.mjs)
+        if: always()
+        run: node --test 'scripts/**/*.test.mjs'
+
+      - name: Build (vite)
+        if: always()
+        run: node scripts/write-brand-assets.mjs && npx vite build
