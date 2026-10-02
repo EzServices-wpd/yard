@@ -790,6 +790,9 @@ function compatibleJoin(item: CatalogItem, join?: JoinMethod | null): JoinMethod
  * Local fixes only: bind members to the named/picked stock, clear craft cut
  * lengths, snap joinMethod onto preferredJoins. Geometry rebuild is CatalogPanel / generate.
  */
+/** Roles whose pieces are bought as their own stock, not the build's primary stock. */
+export const OWN_STOCK_ROLES = new Set(["handle"]);
+
 export function enforceWeekendHonesty(project: YardProject): YardProject {
   if (project.fitted || project.kind === "closet" || project.kind === "opening" || project.pocket) {
     return project;
@@ -803,9 +806,11 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
 
   let instances = project.instances;
   if (!isWireStock(item)) {
-    const drifted = instances.some((i) => i.catalogId !== item.id);
+    // Parts that carry their own stock (a ridden rocker's 2x2 handle bar) keep it.
+    const own = (i: YardProject["instances"][number]) => OWN_STOCK_ROLES.has(i.role ?? "");
+    const drifted = instances.some((i) => i.catalogId !== item.id && !own(i));
     if (drifted) {
-      instances = instances.map((i) => (i.catalogId === item.id ? i : { ...i, catalogId: item.id }));
+      instances = instances.map((i) => (i.catalogId === item.id || own(i) ? i : { ...i, catalogId: item.id }));
       notes.push(`Honesty: every member is ${namedStockDisplayName(project.prompt ?? "", item)}.`);
     }
     if (isWholeStock(item) && instances.some((i) => i.cutLength != null)) {

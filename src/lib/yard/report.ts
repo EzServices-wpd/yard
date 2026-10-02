@@ -9,7 +9,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
-import { spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, type PlanSheetNest } from "./nesting";
+import { spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
@@ -208,7 +208,8 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   const coatHookBoard =
     isCoatHookBoard((project.prompt ?? "").toLowerCase()) || /Coat hook board/i.test(project.name || "");
   const buyNamedBoard = !!(coatHookBoard && namedLumber && namedLumber.category === "lumber");
-  const allLegCuts = cuts.filter((c) => /^leg$/i.test(c.name));
+  // Lumber legs buy as sticks; legs cut from a sheet good nest on the shared sheet with the rest.
+  const allLegCuts = cuts.filter(isLumberLegCut);
   // Named-wood legs are laminated from the leg species' 1×4 boards (cut line id carries the bind).
   const namedLegCuts = allLegCuts.filter((c) => c.id.startsWith(`${CATALOG_LUMBER_BIND}|`));
   const legCuts = allLegCuts.filter((c) => !namedLegCuts.includes(c));
@@ -217,7 +218,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   const legStripParts = namedLegCuts.map((c) => ({ name: "Leg strip", lengthIn: c.lengthIn + 1, widthIn: 1.5, qty: 2 * c.quantity }));
   let legsMerged = false;
   const structural = cuts.filter(
-    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
+    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );
   const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
   const sheet10 = getCatalogItem("plywood-3-4-4x10");

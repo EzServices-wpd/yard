@@ -27,7 +27,7 @@ import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
-import { detectShapeClass, materializeShape, shapeSummary } from "./shapeTemplates";
+import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
@@ -764,7 +764,7 @@ function buildTemplateProject(
       prompt,
       kind: built.kind,
       panels: built.panels ?? [],
-      primaryMaterialId: item.id,
+      primaryMaterialId: built.stockId ?? item.id,
       joinMethod: item.category === "cardboard" || built.params?.glueOnly ? "glue" : "screw",
       notes: [],
       assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
@@ -843,6 +843,11 @@ function buildShapeProject(
   let project: YardProject;
   if (built.graph) {
     project = projectFromGraph(prompt, item, "figure", built.graph, false, undefined, opts.joinMethod, name, whole);
+    // A ridden rocker's handle bar is its own stock (a rounded 2x2), so Buy and the bench show it.
+    if (project.instances.some((i) => i.role === "handle") && getCatalogItem(RIDE_HANDLE_STOCK)) {
+      const hs = getCatalogItem(RIDE_HANDLE_STOCK)!;
+      project = { ...project, instances: project.instances.map((i) => (i.role === "handle" ? { ...i, catalogId: hs.id, cutLength: i.cutLength ?? Math.round(Math.hypot(i.to!.x - i.from!.x, i.to!.y - i.from!.y, i.to!.z - i.from!.z) * 8) / 8 } : i)) };
+    }
   } else {
     project = {
       ...emptyProject(),

@@ -47,6 +47,8 @@ export type TemplateBuild = {
   /** Named measurements the guard reads back (hole diameter, opening size…). */
   params: Record<string, number>;
   notes: string[];
+  /** The stock this build is made from when it differs from the stock passed in. */
+  stockId?: string;
 };
 
 export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string; /** Replaces the stock join text (a pivot is not glued). */ hold?: string };
@@ -114,12 +116,50 @@ export function smallHouseHoleIn(prompt: string): number | null {
   return v && v >= 0.5 && v <= 4 ? v : null;
 }
 
+/** Entrance diameters by bird when no size is typed (inches). */
+const SPECIES_HOLE: [RegExp, number, string][] = [
+  [/\bwrens?\b/, 1.125, "wren"],
+  [/\bchickadees?\b/, 1.125, "chickadee"],
+  [/\bnuthatch(?:es)?\b/, 1.25, "nuthatch"],
+  [/\btitmouse\b|\btitmice\b/, 1.25, "titmouse"],
+  [/\bbluebirds?\b/, 1.5, "bluebird"],
+  [/\b(?:tree\s+)?swallows?\b/, 1.5, "swallow"],
+  [/\b(?:purple\s+)?martins?\b/, 2.125, "martin"],
+  [/\bflickers?\b/, 2.5, "flicker"],
+  [/\bkestrels?\b|\bscreech[- ]?owls?\b/, 3, "kestrel"],
+];
+export const DEFAULT_BIRD_HOLE = 1.5;
+
+/** The entrance this birdhouse is drilled for: the typed size wins; a named bird sets it otherwise. */
+export function birdhouseHole(prompt: string): { dia: number; typed: boolean; bird?: string } {
+  const typed = smallHouseHoleIn(prompt);
+  const l = prompt.toLowerCase();
+  const sp = SPECIES_HOLE.find(([re]) => re.test(l));
+  if (typed) return { dia: typed, typed: true, bird: sp?.[2] };
+  if (sp) return { dia: sp[1], typed: false, bird: sp[2] };
+  return { dia: DEFAULT_BIRD_HOLE, typed: false };
+}
+
+/** Solid wall left around the entrance on every side of the face. */
+export function holeBorder(hole: number): number {
+  return Math.max(0.75, hole / 2);
+}
+
+/**
+ * Nest-box size for an entrance larger than the standard 1 1/2": floor about 2.8 × the hole across
+ * (a flicker's 2 1/2" hole → 7" × 7"), floor to eave about 6.4 × the hole (→ 16").
+ */
+export function nestBoxFor(hole: number): { floor: number; eave: number } | null {
+  if (hole <= DEFAULT_BIRD_HOLE + 1e-6) return null;
+  return { floor: Math.ceil(2.8 * hole * 4) / 4, eave: Math.ceil(6.4 * hole * 2) / 2 };
+}
+
 export function wantsPerch(prompt: string): boolean {
   const l = prompt.toLowerCase();
   return /\bperch\b/.test(l) && !/\b(?:no|without(?:\s+a)?)\s+perch\b/.test(l);
 }
 
-function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: boolean, typedW?: number): TemplateBuild {
+function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: boolean, typedW?: number, typedHole = false): TemplateBuild {
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
@@ -139,13 +179,25 @@ function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: 
   const Y = v3(0, 1, 0);
   const wallOut = S / 2 + t / 2;
   const wallIn = S / 2 - t / 2;
-  // Entrance: leave out the slats in the hole column; the opening is square, k slats wide.
-  let k = Math.max(2, Math.round(Math.min(hole, S * 0.45) / f));
-  const n0 = Math.max(4, Math.floor(S / f + 1e-6));
-  if ((n0 - k) % 2) k = k + 1 <= n0 - 2 && Math.abs((k + 1) * f - hole) <= Math.abs((k - 1) * f - hole) ? k + 1 : Math.max(1, k - 1);
+  // Entrance: leave out the slats in the hole column; the opening is square, k slats wide —
+  // the typed size, or the nearest whole-slat size at or under it, with a solid border all round.
+  const kWant = Math.max(2, Math.floor(hole / f + 1e-6));
+  const placeOpen = (kk: number) => {
+    const w = kk * f;
+    const b = holeBorder(w);
+    const o0 = Math.max(f * 3, Math.round((H * 0.6 - w / 2) / f) * f);
+    const o0Top = Math.floor((H - b - w) / f + 1e-6) * f; // keeps the border above the opening
+    const lo = Math.min(o0, o0Top);
+    const side = Math.floor((n - kk) / 2) * f;
+    return { w, o0: lo, o1: lo + w, fits: side >= b - 1e-6 && lo >= b - 1e-6 && H - (lo + w) >= b - 1e-6 };
+  };
+  let k = kWant;
+  while (k > 2 && !placeOpen(k).fits) k--;
+  // A hole bigger than the standard 1 1/2" also needs the nest box the bird needs inside.
+  const nb = nestBoxFor(hole);
+  const faceFits = placeOpen(kWant).fits && (!nb || (S - 2 * t >= nb.floor - 1e-6 && H >= nb.eave - 1e-6));
   const openW = k * f;
-  const open0 = Math.max(f * 3, Math.round((H * 0.6 - openW / 2) / f) * f);
-  const open1 = Math.min(H - f * 2, open0 + openW);
+  const { o0: open0, o1: open1 } = placeOpen(k);
   const xs = Array.from({ length: n }, (_, i) => -C / 2 + f / 2 + i * f);
   const firstGap = Math.floor((n - k) / 2);
   for (const zs of [1, -1]) {
@@ -217,10 +269,16 @@ function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: 
     label: "Birdhouse",
     kind: "house",
     segs,
-    params: { hole: openW, holeTypedDia: hole, openBottom: open0, openTop: Math.min(open1, open0 + openW), openX0: gapX0, openX1: gapX1, eave: H, ridge: ridgeY, width: S + 2 * t, depth: S + 2 * t, perch: perch ? 1 : 0 },
+    params: { hole: openW, holeTypedDia: hole, openBottom: open0, openTop: Math.min(open1, open0 + openW), openX0: gapX0, openX1: gapX1, eave: H, ridge: ridgeY, width: S + 2 * t, depth: S + 2 * t, perch: perch ? 1 : 0, faceFits: faceFits ? 1 : 0, faceH: H, faceW: n * f, slatW: f },
     notes: [
       `Birdhouse · ${name} walls laid flat side by side, a floor, a slatted gable roof on two rafters each end.`,
-      `Entrance ${fmt(openW)}" square — leave out ${k} front slats and close the gap above and below with flat sticks glued behind (whole sticks, no cutting).`,
+      `Entrance ${fmt(openW)}" square${
+        Math.abs(openW - hole) < 1e-6
+          ? typedHole ? `, the size you typed` : ""
+          : faceFits
+            ? ` — the nearest whole-slat size at or under the ${fmt(hole)}" entrance (${k} slats of ${fmt(f)}")`
+            : ` — the largest opening this ${fmt(n * f)}" stick face holds with a solid border; the full ${fmt(hole)}" entrance needs a bigger house (½" plywood builds it at full size)`
+      } — leave out ${k} front slats and close the gap above and below with flat sticks glued behind (whole sticks, no cutting).`,
       `Gable ends stay open under the roof — that is the vent.${perch ? " Perch glued just below the entrance, sticking out in front." : ""}`,
     ],
   };
@@ -241,9 +299,17 @@ function smallHousePanels(item: CatalogItem, hole: number, perch: boolean, typed
   const bw = item.dims.width ?? 5.5;
   // Boards: one board wide when it is wide enough, else two edge-glued.
   const boardW = bw >= 5 ? bw : Math.min(2 * bw, 7.25);
-  const W = board ? boardW : Math.max(6, Math.min(16, typed.width ?? 7));
-  const D = board ? boardW : Math.max(6, Math.min(16, typed.depth ?? W));
-  const He = Math.max(6, Math.min(24, typed.height ? typed.height * 0.68 : board ? 8 : 8));
+  const W0 = board ? boardW : Math.max(6, Math.min(16, typed.width ?? 7));
+  const D0 = board ? boardW : Math.max(6, Math.min(16, typed.depth ?? W0));
+  const He0 = Math.max(6, Math.min(24, typed.height ? typed.height * 0.68 : board ? 8 : 8));
+  // The entrance sets the house: a big hole gets a nest box sized to the bird, and every hole
+  // keeps a solid border on the face.
+  const nb = nestBoxFor(hole);
+  const border = holeBorder(hole);
+  const W = Math.max(W0, nb ? nb.floor + 2 * T : 0, hole + 2 * border);
+  const D = Math.max(D0, nb ? nb.floor + 2 * T : 0);
+  const He = Math.max(He0, nb ? nb.eave : 0, hole + 2 * border + 2.5);
+  const grown = W > W0 + 1e-6 || D > D0 + 1e-6 || He > He0 + 1e-6;
   const pitch = Math.PI / 4;
   const rise = (W / 2) * Math.tan(pitch);
   const Hr = He + rise;
@@ -251,7 +317,7 @@ function smallHousePanels(item: CatalogItem, hole: number, perch: boolean, typed
   const r = (n: number) => Math.round(n * 16) / 16;
   const x0 = -W / 2;
   const z0 = -D / 2;
-  const holeY = Math.min(He - hole / 2 - 1, Math.max(hole / 2 + 2.5, He * 0.7));
+  const holeY = Math.min(He - hole / 2 - border, Math.max(hole / 2 + 2.5, He * 0.7));
   const panels: Panel[] = [];
   const mk = (p: Omit<Panel, "id" | "materialId">): Panel => ({ id: createId("bh"), materialId: item.id, ...p });
   const gable: [number, number][] = [
@@ -331,20 +397,37 @@ function smallHousePanels(item: CatalogItem, hole: number, perch: boolean, typed
     label: "Birdhouse",
     kind: "house",
     panels,
-    params: { hole, holeTypedDia: hole, holeY, eave: He, ridge: Hr + lift, width: W, depth: D, perch: perch ? 1 : 0 },
+    params: { hole, holeTypedDia: hole, holeY, eave: He, ridge: Hr + lift, width: W, depth: D, perch: perch ? 1 : 0, grown: grown ? 1 : 0, floorIn: Math.min(W, D) - 2 * T },
     notes: [
       `Birdhouse · ${item.name}: two gable ends, two side walls, a floor and a 45° gable roof overhanging ${fmt(ov)}".`,
       `Entrance: ${fmt(hole)}" hole drilled ${fmt(holeY)}" up the front${perch ? ", perch below it" : ""}.`,
+      ...(grown
+        ? [`Enlarged to fit the ${fmt(hole)}" entrance: ${fmt(W - 2 * T)}" × ${fmt(D - 2 * T)}" inside floor and ${fmt(He)}" from floor to eave, with at least ${fmt(border)}" of solid wall around the hole.`]
+        : []),
     ],
   };
 }
 
 export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }, whole: boolean): TemplateBuild | null {
   const kind = templateStock(item);
-  const hole = smallHouseHoleIn(prompt) ?? 1.5;
+  const entry = birdhouseHole(prompt);
+  const hole = entry.dia;
   const perch = wantsPerch(prompt);
-  if (kind === "thin") return smallHouseThin(item, whole && isWholeStock(item), hole, perch, typed.width);
-  if (kind === "panel") return smallHousePanels(item, hole, perch, typed);
+  const said = entry.typed ? "" : entry.bird ? ` Sized for ${entry.bird}s: a ${fmt(hole)}" entrance.` : "";
+  const withSaid = (b: TemplateBuild): TemplateBuild => (said ? { ...b, notes: [...b.notes, said.trim()] } : b);
+  if (kind === "thin") {
+    const thin = smallHouseThin(item, whole && isWholeStock(item), hole, perch, typed.width, entry.typed);
+    // The entrance outgrows a craft-stick face: with no stock typed, the house is built in ½" plywood
+    // at the size the hole needs.
+    const stickTyped = /popsicle|craft\s*sticks?|\bsticks?\b|skewers?|toothpicks?|straws?|jumbo|lego/i.test(prompt);
+    const ply = getCatalogItem("plywood-1-2-4x8");
+    if (!thin.params.faceFits && !stickTyped && ply) {
+      const big = smallHousePanels(ply, hole, perch, {});
+      return withSaid({ ...big, stockId: ply.id, notes: [...big.notes, `Built in ${ply.name}: the ${fmt(hole)}" entrance needs a bigger face than a ${fmt(thin.params.faceW)}" craft-stick wall.`] });
+    }
+    return withSaid(thin);
+  }
+  if (kind === "panel") return withSaid(smallHousePanels(item, hole, perch, typed));
   // A bottle, a tank, a ball — still the same house, each member one whole piece.
   const stand = getCatalogItem("popsicle-standard");
   if (!stand) return null;
@@ -633,7 +716,21 @@ const DEG = Math.PI / 180;
  * A rubber band from the arm to the crossbar is the spring. Front legs lean at the arm's stop angle,
  * so the arm stops leaning back (115°) and throws the payload forward and up.
  */
-function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): TemplateBuild {
+/** What the catapult throws, and its size across (inches) — the cup is sized to hold it. */
+export function launcherPayload(prompt: string): { name: string; dia: number; said: boolean } {
+  const l = prompt.toLowerCase();
+  if (/\bmini\s*-?\s*marshmallows?\b/.test(l)) return { name: "mini marshmallow", dia: 0.75, said: true };
+  if (/\bmarshmallows?\b/.test(l)) return { name: "marshmallow", dia: 1.25, said: true };
+  if (/\bping\s*-?\s*pong\b/.test(l)) return { name: "ping-pong ball", dia: 1.5625, said: true };
+  if (/\bmarbles?\b/.test(l)) return { name: "marble", dia: 0.625, said: true };
+  if (/\bpom\s*-?\s*poms?\b/.test(l)) return { name: "pom-pom", dia: 1, said: true };
+  return { name: "pom-pom or marble", dia: 1, said: false };
+}
+
+/** The cocked arm rests this far below level, so the pull-back reads at a glance. */
+export const LAUNCH_COCK_DEG = 25;
+
+function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number, payload = launcherPayload("")): TemplateBuild {
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const f = prim.width;
@@ -670,8 +767,15 @@ function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): Tem
   const railLayers = whole && (S > S0 + 1e-6 || S0 < 12) ? 2 : 1;
   const railTop = t * railLayers;
   const e = Math.max(f, 0.08 * S); // arm tail past the pivot
-  // Axle height: the arm tail swings down past the front tie without touching it.
-  const yp = railTop + Math.max(t + f, 0.1 * S, t + e + t);
+  const ta0 = t;
+  // Cup: a pad of sticks across the tip, deep enough for the payload between its front and back walls.
+  const cupK = Math.max(3, Math.ceil((payload.dia + 0.125 + 2 * Math.max(t, t < 0.3 * payload.dia ? t : f)) / f - 1e-6));
+  // Axle height: the arm tail swings down past the front tie without touching it, and the cocked arm
+  // rests on the rear tie LAUNCH_COCK_DEG below level so the pull-back is visible.
+  const tieTop0 = railTop + t;
+  // The arm rests on the rear tie right under the cup, so the tip stays above the bench.
+  const restDrop = (L2_: number) => (L2_ - e - f) * Math.sin(LAUNCH_COCK_DEG * DEG) - (whole ? ta0 / 2 + t : ta0 / 2);
+  const yp = Math.max(railTop + Math.max(t + f, 0.1 * S, t + e + t), tieTop0 + restDrop(L2));
   // A-frame: pick the leg spread (and, for cut stock, leg length) so the arm's leading face meets the
   // crossbar's rear edge nearest 115° (leaning back), with feet spread at least half the rise.
   const geom = (sp: number, Lg: number) => {
@@ -709,8 +813,8 @@ function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): Tem
   put(v3(0, yA + t / 2, -W / 2), v3(0, yA + t / 2, W / 2), "stop", Y);
   // Pivot axle across the front legs.
   put(v3(xp, yp, -W / 2), v3(xp, yp, W / 2), "support", v3(0, -1, 0));
-  // Arm, cocked: rests on the rear tie just inboard of the cup.
-  const rRest = L2 - e - 3.5 * f;
+  // Arm, cocked: rests on the rear tie right under the cup.
+  const rRest = L2 - e - f;
   const tieTop = railTop + t;
   const thC = Math.PI + Math.asin(Math.min(0.9, Math.max(-0.9, (yp + (whole ? ta / 2 + t : ta / 2) - tieTop) / rRest)));
   const dC = { x: Math.cos(thC), y: Math.sin(thC) };
@@ -720,21 +824,42 @@ function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): Tem
   const o1 = ta / 2 + t / 2;
   put(along(-e, o1), along(L2 - e, o1), "arm", face);
   const topOff = whole ? o1 + t : o1;
-  // Cup: three pad sticks across the tip, two rims on top (front and back lips).
+  // Cup: pad sticks across the tip, deep enough for the payload, with raised walls — front and back
+  // walls stand on edge across the pad (one stick width tall per course); cut stock adds side walls.
   // Cut stock: the cup is cut to fit between the A-frames so it swings clear of the legs.
   const Wc = whole ? W : 2 * (zr - 1.5 * t) - 0.25;
   const cupLayers = whole && Wc > S0 + 1e-6 ? 2 : 1;
   const cupR: number[] = [];
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < cupK; k++) {
     const r = L2 - e - f / 2 - k * f;
     cupR.push(r);
     const c = along(r, topOff + t);
     put(v3(c.x, c.y, -Wc / 2), v3(c.x, c.y, Wc / 2), "cup", face);
   }
-  for (const k of [0, 2]) {
-    const c = along(cupR[k], topOff + (1 + cupLayers) * t);
-    put(v3(c.x, c.y, -Wc / 2), v3(c.x, c.y, Wc / 2), "cup", face);
+  const padTop = topOff + t + (cupLayers - 0.5) * t;
+  // Thin sticks stand on edge (a stick width per course); real stock stacks flat (a thickness per course).
+  const onEdge = t < 0.3 * payload.dia;
+  const unit = onEdge ? f : t;
+  const courses = Math.max(1, Math.ceil((0.4 * payload.dia) / unit - 1e-6));
+  const wallH = courses * unit;
+  const along3 = (r: number, off: number, z: number) => { const q = along(r, off); return v3(q.x, q.y, z); };
+  const wallT = onEdge ? t : f;
+  const rFrontWall = L2 - e - wallT / 2;
+  const rBackWall = L2 - e - cupK * f + wallT / 2;
+  const edgeFace = onEdge ? v3(dC.x, dC.y, 0) : face;
+  for (let c0 = 0; c0 < courses; c0++) {
+    const off = padTop + unit / 2 + c0 * unit;
+    for (const r of [rFrontWall, rBackWall]) {
+      const q = along(r, off);
+      put(v3(q.x, q.y, -Wc / 2), v3(q.x, q.y, Wc / 2), "cup", edgeFace);
+    }
+    if (!whole) {
+      // Side walls, cut to the cup depth between the front and back walls.
+      const sideT = onEdge ? t : f;
+      for (const zs of [1, -1]) put(along3(rBackWall + wallT / 2, off, zs * (Wc / 2 - sideT / 2)), along3(rFrontWall - wallT / 2, off, zs * (Wc / 2 - sideT / 2)), "cup", onEdge ? v3(0, 0, zs) : face);
+    }
   }
+  const cupInner = { depth: rFrontWall - rBackWall - wallT, width: whole ? Wc : Wc - 2 * (onEdge ? t : f), wall: wallH };
   const xRest = xp + dC.x * rRest + nC.x * (topOff - t / 2);
   // Base: rails from behind the rest tie to past the front feet; ties on top.
   const xFront = sA + 2 * f;
@@ -753,12 +878,14 @@ function launcherSticks(item: CatalogItem, whole: boolean, typedH?: number): Tem
     segs,
     params: {
       pivotX: xp, pivotY: yp, armLen: L2 - e, armTail: e, cockedDeg: thC / DEG, stopDeg: thS / DEG, stickT: t, stickW: f, crossbarX: 0, crossbarY: yA + t / 2,
-      cupR: cupMid, cupInnerR: cupR[2] - f / 2, apexY: yA, legSpread: sA, legRise: R, zr, leadOffset: oLead, baseTop: tieTop, rubberBands: 2,
+      cupR: cupMid, cupInnerR: cupR[cupK - 1] - f / 2, apexY: yA, legSpread: sA, legRise: R, zr, leadOffset: oLead, baseTop: tieTop, rubberBands: 2,
+      cupSticks: cupK, cupDepth: cupInner.depth, cupWidth: cupInner.width, cupWall: cupInner.wall, cupWallSides: whole ? 0 : 1, payloadDia: payload.dia,
     },
     notes: [
       `Catapult · base ${fmt(L)}" long, A-frames ${fmt(yA)}" tall, arm ${fmt(L2)}" with a cup at the tip.`,
-      `The arm pivots on the axle across the front legs, cocks back onto the rear tie, and stops against the crossbar leaning back ${Math.round(thS / DEG - 90)}° so the payload flies forward and up.`,
-      `Spring: loop a rubber band from the arm (just below the crossbar) up over the crossbar. Pull the cup back to the rear tie, load a pom-pom or marble, let go.`,
+      `The arm pivots on the axle across the front legs, cocks back ${Math.round(thC / DEG - 180)}° below level onto the rear tie, and stops against the crossbar leaning back ${Math.round(thS / DEG - 90)}° so the payload flies forward and up.`,
+      `Cup: ${cupK} sticks across the tip with ${fmt(wallH)}" walls${onEdge ? " standing on edge" : ""}${whole ? " front and back" : " all round"} — ${fmt(cupInner.depth)}" inside, sized for a ${fmt(payload.dia)}" ${payload.name}.`,
+      `Spring: loop a rubber band from the arm (just below the crossbar) up over the crossbar. Pull the cup back to the rear tie, load ${payload.said ? `the ${payload.name}` : "a pom-pom or marble"}, let go.`,
     ],
   };
 }
@@ -768,9 +895,10 @@ export function buildLauncher(prompt: string, item: CatalogItem, typed0: { width
   // A single typed size on a catapult is its height.
   const typed = { height: typed0.height ?? (typed0.width && !typed0.depth ? typed0.width : undefined) };
   if (item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard") return null;
-  if (kind === "thin") return launcherSticks(item, whole && isWholeStock(item), typed.height);
+  const payload = launcherPayload(prompt);
+  if (kind === "thin") return launcherSticks(item, whole && isWholeStock(item), typed.height, payload);
   // Boards / dowels: same silhouette from cut members.
-  return launcherSticks(item, false, typed.height);
+  return launcherSticks(item, false, typed.height, payload);
 }
 
 
@@ -1246,7 +1374,8 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     if (!st || st.components !== 1 || st.loose !== 0) issues.push({ code: "connected", detail: JSON.stringify(st) });
   }
   if (shape.classId === "small-house") {
-    const typedHole = smallHouseHoleIn(prompt) ?? 1.5;
+    const typedHole = birdhouseHole(prompt).dia;
+    const notesBlob = (project.notes ?? []).join(" ");
     if (project.instances.length) {
       const need: [string, number][] = [["wall", 8], ["floor", 3], ["roof", 4], ["rafter", 4], ["batten", 3]];
       for (const [r, n] of need) if ((roles.get(r)?.length ?? 0) < n) issues.push({ code: "missing-part", detail: `${r} ×${roles.get(r)?.length ?? 0}` });
@@ -1260,7 +1389,14 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       if (bat.some((b) => b.from!.y > (P.openBottom ?? 0) + 0.01 && b.from!.y < (P.openTop ?? 0) - 0.01)) issues.push({ code: "entrance", detail: "a batten crosses the entrance" });
       const slat = (P.openX1 ?? 0) - (P.openX0 ?? 0);
       const pitch = front.length > 1 ? Math.abs(front[1].from!.x - front[0].from!.x) : 0.5;
-      if (Math.abs(slat - typedHole) > pitch * 1.01) issues.push({ code: "entrance", detail: `opening ${slat.toFixed(2)}" vs typed ${typedHole}"` });
+      // The opening is the typed size or the nearest whole-slat size under it, never bigger.
+      if (slat > typedHole + 1e-6 || (P.faceFits && typedHole - slat >= pitch - 1e-6)) issues.push({ code: "entrance", detail: `opening ${slat.toFixed(3)}" vs typed ${typedHole}"` });
+      if (slat < typedHole - 1e-6 && !notesBlob.includes(`${fmt(typedHole)}" entrance`)) issues.push({ code: "entrance", detail: `opening ${fmt(slat)}" under the ${fmt(typedHole)}" entrance, notes silent` });
+      // A solid border of wall all round the opening.
+      const bd = holeBorder(slat);
+      const sideL = (P.openX0 ?? 0) - Math.min(...front.map((w) => w.from!.x)) + pitch / 2;
+      const sideR = Math.max(...front.map((w) => w.from!.x)) + pitch / 2 - (P.openX1 ?? 0);
+      if (Math.min(sideL, sideR) < bd - 1e-6 || (P.openBottom ?? 0) < bd - 1e-6 || (P.faceH ?? 0) - (P.openTop ?? 0) < bd - 1e-6) issues.push({ code: "entrance", detail: `border under ${fmt(bd)}" around the opening` });
       const roofTop = Math.max(...(roles.get("roof") ?? []).flatMap((r) => [r.from!.y, r.to!.y]));
       const wallTop = Math.max(...walls.flatMap((w) => [w.from!.y, w.to!.y]));
       if (!(roofTop > wallTop + 1)) issues.push({ code: "roof", detail: `roof top ${roofTop.toFixed(2)} vs wall top ${wallTop.toFixed(2)}` });
@@ -1271,6 +1407,13 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const front = project.panels.find((p) => p.name === "Front gable");
       const hole = front?.polygon?.holes?.[0];
       if (!hole || Math.abs(hole.r * 2 - typedHole) > 1 / 16 + 1e-6) issues.push({ code: "entrance", detail: `hole ${hole ? hole.r * 2 : "none"} vs typed ${typedHole}` });
+      if (hole && front) {
+        const bd = holeBorder(hole.r * 2) - 1 / 16;
+        const eaveY = front.polygon?.pts.filter((q) => q[0] === 0).reduce((m, q) => Math.max(m, q[1]), 0) ?? 0;
+        if (hole.x - hole.r < bd || front.size.width - hole.x - hole.r < bd || hole.y - hole.r < bd || eaveY - hole.y - hole.r < bd) issues.push({ code: "entrance", detail: `hole border under ${fmt(bd)}"` });
+        const nb = nestBoxFor(hole.r * 2);
+        if (nb && (Number(P.floorIn ?? 0) < nb.floor - 0.13 || eaveY < nb.eave - 0.13 || !/Enlarged to fit the/.test(notesBlob))) issues.push({ code: "entrance", detail: `a ${fmt(hole.r * 2)}" hole needs a ${fmt(nb.floor)}" floor and ${fmt(nb.eave)}" to the eave (have ${fmt(Number(P.floorIn ?? 0))}", ${fmt(eaveY)}")` });
+      }
       const peak = front?.polygon ? Math.max(...front.polygon.pts.map((q) => q[1])) : 0;
       const eave = front?.polygon ? front.polygon.pts.filter((q) => q[0] === 0).reduce((m, q) => Math.max(m, q[1]), 0) : 0;
       if (!(peak > eave + 1)) issues.push({ code: "roof", detail: "front is not a gable" });
@@ -1353,13 +1496,19 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     const axle = (roles.get("support") ?? [])[0];
     if (!axle || Math.hypot(axle.from!.x - P0.x, axle.from!.y - P0.y) > 0.01 || Math.abs(axle.from!.z - axle.to!.z) < 1) issues.push({ code: "pivot", detail: "axle not across the frame at the pivot" });
     const cockedDeg = P.cockedDeg ?? 0;
-    if (!(cockedDeg > 150 && cockedDeg < 200)) issues.push({ code: "cocked", detail: `arm at ${cockedDeg.toFixed(1)}°` });
+    // Cocked visibly: the arm rests at least 15° below level (and never past 40°).
+    if (!(cockedDeg >= 195 && cockedDeg <= 220)) issues.push({ code: "cocked", detail: `arm at ${cockedDeg.toFixed(1)}° (want 15–40° below level)` });
     const cups = roles.get("cup") ?? [];
     const armLen = P.armLen ?? 0;
     for (const c of cups) {
       const r = Math.hypot(c.from!.x - P0.x, c.from!.y - P0.y);
-      if (r < armLen - 3.6 * (P.stickW ?? 0)) issues.push({ code: "cup", detail: `cup stick at r=${r.toFixed(2)} not at the tip (${armLen.toFixed(2)})` });
+      if (r < armLen - ((P.cupSticks ?? 3) + 0.6) * (P.stickW ?? 0)) issues.push({ code: "cup", detail: `cup stick at r=${r.toFixed(2)} not at the tip (${armLen.toFixed(2)})` });
     }
+    // A real cup: raised walls and room for the payload it throws.
+    const pay = launcherPayload(prompt);
+    if (!(Number(P.cupWall ?? 0) >= 0.3 * pay.dia - 1e-6)) issues.push({ code: "cup", detail: `cup walls ${P.cupWall ?? 0}" — under 0.3 of the ${pay.dia}" ${pay.name}` });
+    if (!(Number(P.cupDepth ?? 0) >= pay.dia - 1e-6) || !(Number(P.cupWidth ?? 0) >= pay.dia - 1e-6)) issues.push({ code: "cup", detail: `cup ${P.cupDepth}×${P.cupWidth} too small for the ${pay.dia}" ${pay.name}` });
+    if (pay.said && !(project.notes ?? []).some((n) => n.includes(pay.name))) issues.push({ code: "cup", detail: `notes never name the ${pay.name}` });
     if (!P.rubberBands) issues.push({ code: "spring", detail: "no rubber band spring" });
     const sim = simulateLaunch(project, (P.stickT ?? 0.1) / 2);
     if (sim.hitRole !== "stop" || sim.blockedBy) issues.push({ code: "launch", detail: `arm first meets ${sim.hitRole ?? "nothing"} at ${sim.hitDeg?.toFixed(1)}° ${sim.blockedBy ?? ""}` });

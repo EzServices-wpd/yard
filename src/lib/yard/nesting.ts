@@ -549,10 +549,21 @@ export function isNamedBoardMaterial(material?: string): boolean {
   return /^[A-Z][a-z]+ 1×\d+$/.test(material ?? "");
 }
 
-/** Legs, 2× bearers and named solid boards are bought as lumber — never nested on a sheet. */
+/** A cut line whose stock is a sheet good (plywood, chipboard …): its id carries the sheet catalog id. */
+export function isSheetStockCut(c: CutLine): boolean {
+  const id = (c.id ?? "").split("|")[0];
+  return /^(?:plywood-|chipboard-|mdf-|hardboard-|osb-)/.test(id) || /plywood|chipboard|\bmdf\b|hardboard/i.test(c.material ?? "");
+}
+
+/** A leg bought as lumber (2×2, 4×4, named boards). A leg drawn on a sheet good is a sheet part. */
+export function isLumberLegCut(c: CutLine): boolean {
+  return /^leg$/i.test(c.name) && !isSheetStockCut(c);
+}
+
+/** Lumber legs, 2× bearers and named solid boards are bought as lumber — never nested on a sheet. */
 function sheetNestable(c: CutLine): boolean {
   if (c.whole) return false;
-  if (/^leg$/i.test(c.name)) return false;
+  if (isLumberLegCut(c)) return false;
   if (/^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id ?? "")) return false;
   if (isNamedBoardMaterial(c.material)) return false;
   return true;

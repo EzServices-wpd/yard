@@ -40,6 +40,7 @@ import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
 import { inspectTemplate, frameHangs } from "../src/lib/yard/formTemplates";
+import { contactReport } from "../src/lib/yard/contact";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
@@ -785,6 +786,51 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   const hole = ply.panels.find((q) => q.name === "Front gable")?.polygon?.holes?.[0];
   if (!hole || Math.abs(hole.r * 2 - 1.25) > 0.01) failWeekend("small-house: plywood hole not the typed 1 1/4", hole);
   if (generateFromPrompt("birdhouse from popsicle sticks").instances.some((i) => i.role === "perch")) failWeekend("small-house: perch added when not asked");
+  // Entrance rule, both directions: the typed hole wins (or the nearest whole-slat size under it, said in
+  // the notes); a named bird sets it only when no size is typed; a big hole grows the house to the nest box
+  // the bird needs; every opening keeps a solid border on the face.
+  {
+    const bh = (q: string) => {
+      const b = generateFromPrompt(q);
+      const P = (b.shape?.params ?? {}) as Record<string, number>;
+      const notes = (b.notes ?? []).join(" ");
+      const hole = b.panels.find((x) => x.name === "Front gable")?.polygon?.holes?.[0];
+      const open = b.instances.length ? P.openX1 - P.openX0 : hole ? hole.r * 2 : NaN;
+      const iss = inspectTemplate(b, q);
+      if (iss.length) failWeekend(`small-house entrance: ${q}`, iss);
+      return { b, P, notes, open };
+    };
+    const wren = bh("birdhouse for wrens with a 1.25 inch hole");
+    if (!(wren.open <= 1.25 + 1e-6 && wren.open > 1.25 - 0.375) || !/1 1\/4" entrance/.test(wren.notes)) failWeekend("small-house: wren 1 1/4 typed hole not honoured (or the slat size under it not stated)", { open: wren.open, notes: wren.notes.slice(0, 300) });
+    const chick = bh("birdhouse for chickadees with a 1 1/8 inch hole");
+    if (Math.abs(chick.open - 1.125) > 1e-6) failWeekend("small-house: chickadee 1 1/8 hole not 3 slats", chick.open);
+    const flick = bh("birdhouse for flickers with a 2.5 inch hole");
+    if (Math.abs(flick.open - 2.5) > 1 / 16 || !(flick.P.floorIn >= 7 - 0.13) || !(flick.P.eave >= 16 - 0.13) || !/Enlarged to fit the 2 1\/2" entrance/.test(flick.notes)) failWeekend("small-house: flicker 2 1/2 hole must grow the house to a 7x7 floor, 16 deep, said in the notes", { open: flick.open, P: flick.P });
+    if (Math.abs(bh("birdhouse for wrens").open - 1.125) > 1e-6) failWeekend("small-house: wren default entrance not 1 1/8");
+    if (Math.abs(bh("birdhouse for bluebirds").open - 1.5) > 1e-6) failWeekend("small-house: bluebird default entrance not 1 1/2");
+    if (Math.abs(bh("birdhouse").open - 1.5) > 1e-6) failWeekend("small-house: default entrance moved off 1 1/2");
+    if (!/1 1\/8" square, the size you typed/.test(chick.notes)) failWeekend("small-house: chickadee notes must confirm the typed 1 1/8 entrance", chick.notes.slice(0, 300));
+    // Small holes keep the default house; only a hole that won't fit the face grows it.
+    const base = bh("birdhouse");
+    for (const s of [wren, chick]) {
+      if (/Enlarged/.test(s.notes) || Math.abs(s.b.overall.width - base.b.overall.width) > 1e-6 || Math.abs(s.b.overall.height - base.b.overall.height) > 1e-6) failWeekend("small-house: a small entrance must keep the default house size", s.b.overall);
+    }
+    // Solid border on the face, both sides of the hole.
+    for (const s of [wren, chick, base]) {
+      const W = Number(s.P.faceW);
+      const side = Math.min(s.P.openX0 + W / 2, W / 2 - s.P.openX1);
+      if (!(side >= 0.75 - 1e-6)) failWeekend("small-house: stick face border under 3/4 beside the hole", { side, P: s.P });
+    }
+    {
+      const g = flick.b.panels.find((x) => x.name === "Front gable")?.polygon;
+      const h = g?.holes?.[0];
+      const xs = g?.pts.map((v) => v[0]) ?? [];
+      const side = h && xs.length ? Math.min(h.x - h.r - Math.min(...xs), Math.max(...xs) - h.x - h.r) : NaN;
+      if (!(side >= 1.25 - 1e-3)) failWeekend("small-house: flicker face border under 1 1/4 beside the hole", { side });
+    }
+    const stick = bh("popsicle stick birdhouse with a 2.5 inch hole");
+    if (!(stick.open <= 2.5) || !/2 1\/2" entrance/.test(stick.notes)) failWeekend("small-house: stick house under a typed 2 1/2 hole must say so", { open: stick.open, notes: stick.notes.slice(0, 300) });
+  }
   // Perch sits just below the entrance: its top under the hole's bottom edge, within 1.25".
   for (const p of ["craft stick birdhouse with a perch", "birdhouse from jumbo craft sticks with a perch", "birdhouse from bamboo skewers with a perch"]) {
     const b = generateFromPrompt(p);
@@ -857,6 +903,23 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     const b = generateFromPrompt("rocking horse out of 2x4s");
     const rock = b.instances.filter((i) => i.role === "rocker");
     if (!(Math.min(...rock.flatMap((i) => [i.from!.y, i.to!.y])) < 2)) failWeekend("rocking horse rockers off the floor");
+  }
+  // Rockers run the whole length of the animal plus a margin past the nose and the tail; a ridden (lumber)
+  // horse gets a seat and a 2x2 handle bar that lands on Buy as its own stock.
+  for (const [p, margin, ride] of [["rocking horse for a toddler", 1.5, true], ["rocking horse out of 2x4s", 1.5, true], ["popsicle stick rocking horse", 0.2, false]] as [string, number, boolean][]) {
+    const b = generateFromPrompt(p);
+    const xsOf = (pred: (r: string) => boolean) => b.instances.filter((i) => i.from && i.to && pred(String(i.role ?? ""))).flatMap((i) => [i.from!.x, i.to!.x]);
+    const xr = xsOf((r) => r === "rocker");
+    const xo = xsOf((r) => r !== "rocker" && r !== "tie");
+    if (!xr.length || !xo.length) { failWeekend(`rocking horse: ${p} has no rockers`); continue; }
+    const past = Math.min(Math.min(...xo) - Math.min(...xr), Math.max(...xr) - Math.max(...xo));
+    if (!(past >= margin - 1e-6)) failWeekend(`rocking horse: ${p} rockers end ${past.toFixed(2)}" past the animal (want ≥ ${margin})`);
+    if (!(b.notes ?? []).some((n) => /^Rockers .* past the nose and the tail/.test(n))) failWeekend(`rocking horse: ${p} notes do not give the rocker length`);
+    if (ride) {
+      const roles = new Set(b.instances.map((i) => i.role));
+      if (!roles.has("seat") || !roles.has("handle")) failWeekend(`rocking horse: ${p} needs a seat and a handle bar`, [...roles]);
+      if (!buildPlan(b).bom.some((x) => x.catalogId === "lumber-2x2-8")) failWeekend(`rocking horse: ${p} handle bar 2x2 missing from Buy`);
+    }
   }
   for (const [p, H] of [["cat tree", 48], ["cat tree, 5 feet tall", 60], ["cat tree from plywood", 48], ["cat tree from 2x4", 48]] as [string, number][]) {
     const b = generateFromPrompt(p);
@@ -949,6 +1012,10 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     "2 foot catapult from popsicle sticks",
     "weekend craft: popsicle stick catapult that launches a marble",
     "catapult",
+    // Cocked visibly (15–40° below level), a real cup with raised walls sized for what it throws,
+    // and the notes name the marshmallow (inspectTemplate reads all three back).
+    "popsicle stick catapult that launches marshmallows",
+    "catapult from 1x2 for marshmallows",
   ]) {
     const b = generateFromPrompt(p);
     if (b.shape?.classId !== "launcher") failWeekend(`launcher: ${p} class`, b.shape?.classId);
@@ -959,6 +1026,23 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (!plan.bom.some((x) => /rubber band/i.test(x.name))) failWeekend(`launcher: ${p} no rubber bands on the Buy list`);
   }
   if (!/trebuchet/i.test(generateFromPrompt("popsicle stick trebuchet").name)) failWeekend("launcher: trebuchet stolen");
+}
+// Figure and animal connectivity: every named part touches the rest, read from each piece's real box
+// (stick length × width × thickness, panel boxes) within a 1/32" glue line — not the join tolerance.
+{
+  const prompts = [
+    "horse", "pony", "zebra", "donkey", "deer", "dog", "puppy", "sitting dog", "dachshund", "cat", "cow", "pig", "sheep", "lion", "bear", "wolf",
+    "plywood horse", "plywood dachshund", "cat bookend", "dog planter", "dog from 2x4", "rocking horse for a toddler", "dog bookend from popsicle sticks",
+    "man from popsicle sticks", "robot from popsicle sticks", "giraffe", "elephant",
+  ];
+  for (const q of prompts) {
+    const b = generateFromPrompt(q);
+    const r = contactReport(b);
+    if (r.partGroups.length !== 1) failWeekend(`connectivity: ${q} parts in ${r.partGroups.length} separate groups`, r.partGroups);
+    const loose = r.parts.filter((x) => !x.touches);
+    if (loose.length) failWeekend(`connectivity: ${q} parts that touch nothing`, loose);
+  }
+  console.log(`PASS connectivity: ${prompts.length} figure and animal builds — every named part touches the rest (real stick boxes, 1/32" glue line)`);
 }
 // Flat-frame class (picture frame): inner opening = typed photo size, corners meet, backer drawn, sticks flat.
 {
@@ -3976,6 +4060,46 @@ console.log("SOFT-TRUST OK", {
   const fillRows = openings(fill36).vGaps;
   if (fill36.overall.height !== 36 || fillRows.length < 7 || (capacityOf(fill36) ?? 0) < 40 || fill36.panels.some((x) => /^Open shelf/.test(x.name))) {
     failWine("as many as fit must fill the height with bottles", { H: fill36.overall.height, rows: fillRows, cap: capacityOf(fill36) });
+  }
+  // Bottles slide in past the front rail: a 3 1/2" bottle (shoulder) resting on the rail's lowest point
+  // under it must clear the shelf above, at every bottle position the row promises.
+  {
+    const BOTTLE_R = 1.75;
+    const topAt = (pts: [number, number][], x: number) => {
+      let top = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length];
+        if (x < Math.min(ax, bx) - 1e-9 || x > Math.max(ax, bx) + 1e-9) continue;
+        top = Math.max(top, Math.abs(bx - ax) < 1e-9 ? Math.max(ay, by) : ay + ((x - ax) / (bx - ax)) * (by - ay));
+      }
+      return top;
+    };
+    for (const q of ["pine wine rack for 20 bottles, 12 inches tall", "wine rack 12 wide 30 tall for 20 bottles", "wine rack", "plywood wine rack", "wine rack 24 wide 36 tall 12 deep, as many bottles as fit", "wine rack 24 wide 36 tall 12 deep with twelve slots", "oak wine rack for 10 bottles, 18 inches tall", "wine rack 36 tall as many bottles as fit"]) {
+      const r = generateFromPrompt(q);
+      const rails = r.panels.filter((x) => /^Bottle rail/.test(x.name));
+      const shelves = r.panels.filter((x) => x.type === "shelf");
+      const dividers = r.panels.filter((x) => /^Bottle divider/.test(x.name)).length;
+      const perRow = dividers ? dividers + 1 : Math.ceil((capacityOf(r) ?? 0) / Math.max(1, rails.length));
+      for (const rail of rails) {
+        const above = shelves.filter((x) => x.position.y > rail.position.y + 1e-6).sort((a, b) => a.position.y - b.position.y)[0];
+        const clearH = (above?.position.y ?? r.overall.height) - rail.position.y;
+        const w = rail.size.width;
+        const pts: [number, number][] = rail.polygon?.plane === "xy" ? rail.polygon.pts : [[0, 0], [w, 0], [w, rail.size.height], [0, rail.size.height]];
+        // Lowest the bottle can ride at centre cx: its circle sits on the rail profile.
+        const rideAt = (cx: number) => {
+          let b0 = 0;
+          for (let x = cx - BOTTLE_R; x <= cx + BOTTLE_R + 1e-9; x += 1 / 32) b0 = Math.max(b0, topAt(pts, x) - BOTTLE_R + Math.sqrt(Math.max(0, BOTTLE_R ** 2 - (x - cx) ** 2)));
+          return b0;
+        };
+        let fit = 0;
+        for (let cx = BOTTLE_R; cx <= w - BOTTLE_R + 1e-9; ) {
+          if (rideAt(cx) + 2 * BOTTLE_R <= clearH + 1e-3) { fit++; cx += 2 * BOTTLE_R; } else cx += 1 / 64;
+        }
+        if (fit < perRow) { failWine("bottles cannot slide in past the front rail", { q, rail: rail.name, clearH, perRow, fit }); break; }
+      }
+      if (rails.length && !(r.notes ?? []).some((n) => /scalloped cradle rail .* clear above the cradle/.test(n))) failWine("notes must say how the bottle clears the cradle rail", q);
+    }
+    console.log("PASS wine-rail: a 3 1/2\" bottle slides in over the scalloped cradle rail at every bottle position, under the shelf above");
   }
   console.log("PASS wine-class: bottle-pitch rows (3.5in to standard 3 3/4in + 1/4in tolerance), spare as a set-back plinth or capped open shelf, fit sizes from the built openings rebuild to hold every bottle, typed count wins (capacity ≥ N, < N + one row), leftover height as capped 6–12in open shelves or a stated plinth, nothing above the top cap, grid counts board thickness, ≥3.5\" openings from the scene, asked capacity binds + rounds up / caps honestly, one notch per crossed shelf, named solid stock on chip/cut/Buy; plate rack N−1 dividers");
 }

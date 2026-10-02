@@ -14,11 +14,15 @@
  */
 
 import { createId } from "@/lib/utils";
+import { inchFrac } from "./inchText";
 import { toPrimitive } from "./geometry";
 import type { StructureEdge, StructureGraph, StructureNode } from "./structureGraph";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 
-export type ShapePartName = "body" | "neck" | "head" | "snout" | "ear" | "tail" | "leg" | "mane" | "top" | "rim" | "base" | "rocker" | "tie";
+export type ShapePartName = "body" | "neck" | "head" | "snout" | "ear" | "tail" | "leg" | "mane" | "top" | "rim" | "base" | "rocker" | "tie" | "seat" | "handle";
+
+/** A ridden rocker's handle bar: a 2x2 with the edges rounded, through the neck. */
+export const RIDE_HANDLE_STOCK = "lumber-2x2-8";
 
 /** What the animal is for, besides being an animal: a flat usable top (shelf, planter, bookend) or rockers. */
 export type AnimalUse = "shelf" | "planter" | "bookend" | "rocker" | "hooks";
@@ -453,6 +457,21 @@ function materializeLinear(model: ShapeModel, item: CatalogItem, whole: boolean)
   const snap = (need: number) => (whole ? runFor(need, S, lap).len : need);
   const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
 
+  // Thin stock: a neck is two side plates glued face to face inside the body walls and outside
+  // the head walls, so the head is sized to sit just inside the neck plates (every part touches).
+  if (cls !== "fat" && !wire) {
+    for (const rodP of model.parts) {
+      if (rodP.kind !== "rod" || rodP.name !== "neck") continue;
+      const parentP = rodP.attach ? byId.get(rodP.attach) : undefined;
+      const childP = model.parts.find((q) => q.attach === rodP.id && q.kind === "box");
+      if (parentP?.kind !== "box") continue;
+      rodP.w = parentP.w - 2 * thick;
+      // A head about as wide as the body takes the neck plates inside its walls; a narrower head
+      // sits just inside the plates.
+      if (childP) childP.w = childP.w >= parentP.w - 2 * thick ? parentP.w : Math.max(face * 2, parentP.w - 4 * thick);
+    }
+  }
+
   // Boxes first (they may be resized to whole-stick runs), then rods that hang on them.
   for (const p of model.parts) {
     if (p.kind !== "box") continue;
@@ -865,8 +884,13 @@ function addUseLinear(segs: Seg[], model: ShapeModel, item: CatalogItem, whole: 
     const feet = legs.map((q) => (q.a.y < q.b.y ? q.a : q.b));
     const fx0 = Math.min(...feet.map((q) => q.x));
     const fx1 = Math.max(...feet.map((q) => q.x));
-    const ext = (fx1 - fx0) * 0.3;
-    const x0 = fx0 - ext, x1 = fx1 + ext;
+    // Rockers run past the whole animal (head, tail and seat) by a margin at each end, centred on
+    // the feet, so nothing overhangs the rockers and it cannot tip off either end.
+    const allX = segs.flatMap((q) => [q.a.x, q.b.x]);
+    const fc = (fx0 + fx1) / 2;
+    const reachX = Math.max(fc - Math.min(...allX), Math.max(...allX) - fc, (fx1 - fx0) * 0.8);
+    const margin = Math.max(fat ? 2 : 0.5, (Math.max(...allX) - Math.min(...allX)) * 0.08);
+    const x0 = fc - reachX - margin, x1 = fc + reachX + margin;
     const Lr = x1 - x0;
     const sag = Lr * 0.1;
     const arc = rockerArc(x0, x1, sag);
@@ -889,6 +913,26 @@ function addUseLinear(segs: Seg[], model: ShapeModel, item: CatalogItem, whole: 
       }
     }
     void bw;
+    // A ridden rocker (real lumber) gets a seat on the back and a handle bar through the neck.
+    if (fat) {
+      const L = bx1 - bx0;
+      const seatW = Math.max(3 * face, 2 * bz + 2 * face);
+      const nSeat = Math.max(2, Math.round((0.55 * L) / face));
+      const sx0 = bx0 + L * 0.12;
+      for (let i = 0; i < nSeat; i++) {
+        const x = sx0 + face / 2 + i * face;
+        out.push({ a: v3(x, topSurf + lift, -seatW / 2), b: v3(x, topSurf + lift, seatW / 2), role: "seat", critical: true, face: Y });
+      }
+      const neck = segs.filter((q) => q.role === "neck");
+      if (neck.length) {
+        const top = neck.map((q) => (q.a.y > q.b.y ? q.a : q.b)).reduce((m, q) => (q.y > m.y ? q : m));
+        const root = neck.map((q) => (q.a.y > q.b.y ? q.b : q.a)).reduce((m, q) => (q.y < m.y ? q : m));
+        const at = v3(root.x + (top.x - root.x) * 0.62, root.y + (top.y - root.y) * 0.62 + lift, 0);
+        const grip = 4.5;
+        const nz = Math.max(...neck.flatMap((q) => [Math.abs(q.a.z), Math.abs(q.b.z)])) + layer / 2;
+        out.push({ a: v3(at.x, at.y, -(nz + grip)), b: v3(at.x, at.y, nz + grip), role: "handle", critical: true, face: Y });
+      }
+    }
     // Ties across the rockers, front and back: they hold the rockers parallel.
     const zSpan = Math.max(...zs) - Math.min(...zs) + 2 * tt;
     for (const x of [x0 + Lr * 0.12, x1 - Lr * 0.12]) {
@@ -1093,6 +1137,15 @@ function materializeAt(hit: NonNullable<ReturnType<typeof detectShapeClass>>, it
   } else {
     let segs = materializeLinear(model, item, whole && cls === "thin");
     if (hit.profile.use) segs = addUseLinear(segs, model, item, whole && cls === "thin", hit.profile.use);
+    if (hit.profile.use === "rocker") {
+      const xr = segs.filter((q) => q.role === "rocker").flatMap((q) => [q.a.x, q.b.x]);
+      const xo = segs.filter((q) => q.role !== "rocker" && q.role !== "tie").flatMap((q) => [q.a.x, q.b.x]);
+      const rl = Math.max(...xr) - Math.min(...xr);
+      const past = Math.min(Math.min(...xo) - Math.min(...xr), Math.max(...xr) - Math.max(...xo));
+      const seat = segs.some((q) => q.role === "seat");
+      const handle = segs.some((q) => q.role === "handle");
+      notes.push(`Rockers ${inchFrac(rl)}" long — they run ${inchFrac(Math.max(0, past))}" past the nose and the tail, so it rocks without tipping off either end.${seat ? " A seat on the back" : ""}${handle ? `${seat ? " and a" : " A"} 2x2 handle bar through the neck (round the edges) give a rider a place to sit and hold.` : seat ? "." : ""}`);
+    }
     graph = segsToGraph(segs, item, model);
     notes.push(
       cls === "fat"
