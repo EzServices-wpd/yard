@@ -214,6 +214,27 @@ for (const [q, wantN] of [["ladder shelf with 4 shelves", 4], ["leaning ladder s
   if (plan.instructions.some((st) => /main box|back is already on/i.test(st.description))) fail("ladder shelf steps talk about a carcase it does not have", plan.instructions.map((st) => st.title));
 }
 
+// ---------------------------------------------------------------- 7. Typed fractions survive titles; a named stock builds; money is finite
+for (const [q, titleRe] of [["flamingo from 1/4 inch dowels", /^Flamingo\b/i], ["bird from 1/4 inch dowels", /^Bird\b/i], ["giraffe from 3/4 inch plywood", /^Giraffe\b/i]] as const) {
+  const p = generateFromPrompt(q);
+  if (/\b\d+\/(?!\d)|\/\s/.test(p.name)) fail("title ate a typed fraction", { q, name: p.name });
+  if (!titleRe.test(p.name)) fail("title names the subject", { q, name: p.name });
+  if (p.instances.some((i) => /^piece-model-/.test(i.catalogId))) fail("a named build stock never routes to a product block", { q, name: p.name });
+}
+for (const q of ["dowel flamingo", "flamingo", "popsicle stick flamingo"]) {
+  const p = generateFromPrompt(q);
+  if (p.instances.some((i) => /^piece-model-/.test(i.catalogId))) fail("a subject with a figure block builds from stock, not a product block", { q, name: p.name });
+}
+for (const q of ["dasani bottle", "basketball", "garden gnome", "rubber duck", "camelbak water bottle"]) {
+  const p = generateFromPrompt(q);
+  if (!p.instances.some((i) => /^piece-model-/.test(i.catalogId))) fail("a bare product stays the product", { q, name: p.name, kind: p.kind });
+}
+for (const q of ["dowel flamingo", "flamingo from 1/4 inch dowels", "garden gnome", "dasani bottle", "ceramic frog", "shelf for my microwave", "ladder shelf with 4 shelves"]) {
+  const plan = buildPlan(generateFromPrompt(q));
+  const nums = [plan.totals.estCostUsd, ...plan.bom.flatMap((b) => [b.estimatedCost ?? 0, ...(b.offers ?? []).flatMap((o) => [o.packPrice, o.unitPrice, o.lineTotal])])];
+  if (nums.some((n) => typeof n === "number" && !Number.isFinite(n))) fail("Buy money is finite (no $NaN)", q);
+}
+
 // ---------------------------------------------------------------- 5. Product notes: shop fractions, positive wording, no placeholder
 for (const q of ["basketball", "poland spring water bottle", "watering can", "ceramic frog", "wrench", "propane tank", "football", "brick", "safety goggles", "yeti rambler 20"]) {
   const p = generateFromPrompt(q);

@@ -165,11 +165,16 @@ describe("a product the family list missed stays that product", () => {
     assert.equal(getCatalogItem(owned.instances[0].catalogId)?.dims.length, 11);
     assert.match(getCatalogItem(owned.instances[0].catalogId)?.notes ?? "", /Size you typed/);
 
+    // A subject with a figure block (a flamingo is a long-neck figure) builds from stock — never a
+    // product block with no price. The same flamingo held on a shelf is the 24" lawn ornament.
     const bird = generateFromPrompt("pink flamingo");
-    assert.equal(bird.kind, "custom");
-    assert.equal(bird.instances.length, 1);
-    assert.equal(getCatalogItem(bird.instances[0].catalogId)?.dims.length, 24);
-    assert.ok(!bird.notes.some((note) => /popsicle|quadruped|longneck/i.test(note)));
+    assert.equal(bird.kind, "figure");
+    assert.ok(!bird.instances.some((i) => /^piece-model-/.test(i.catalogId)));
+    const dowel = generateFromPrompt("flamingo from 1/4 inch dowels");
+    assert.match(dowel.name, /^Flamingo\b/);
+    assert.ok(!/\d\/(?!\d)/.test(dowel.name), "a typed fraction never leaves '1/' in the title");
+    const held = generateFromPrompt("shelf for my lawn flamingo");
+    assert.equal(getCatalogItem(held.instances[0].catalogId)?.dims.length, 24);
   });
 
   it("keeps a singular wrench as the tool, at the length they typed", () => {

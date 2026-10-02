@@ -1089,8 +1089,17 @@ function packPlan(
   }));
   const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name);
   const assumedInstructions = densifyConfirmAssumedNotes(kitInstructions, project.notes);
+  // Money is finite or absent: a piece with no listing price never reads "$NaN" on Buy.
+  const finite = (n: unknown) => typeof n === "number" && Number.isFinite(n);
   const plainBom = bom.map((b) => ({
     ...b,
+    estimatedCost: finite(b.estimatedCost) ? b.estimatedCost : undefined,
+    offers: b.offers?.map((o) => ({
+      ...o,
+      packPrice: finite(o.packPrice) ? o.packPrice : 0,
+      unitPrice: finite(o.unitPrice) ? o.unitPrice : 0,
+      lineTotal: finite(o.lineTotal) ? o.lineTotal : 0,
+    })),
     notes: b.notes
       ? densifyDrawerExplodeTalk(strangerPlainShopTalk(b.notes), platedCutList)
       : b.notes,
@@ -1110,7 +1119,7 @@ function packPlan(
     instructions: assumedInstructions,
     totals: {
       pieces,
-      estCostUsd: cost,
+      estCostUsd: Number.isFinite(cost) ? cost : plainBom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0),
       packs: bom.reduce((s, b) => s + b.quantity, 0),
     },
     effort: effortLabel(project, pieces),

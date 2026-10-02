@@ -164,3 +164,24 @@ export function fieldInch(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "";
   return inchFrac(n);
 }
+
+/**
+ * A typed inch number, fractions included: "24", "9.5", "1/4", "3 1/2", "3-1/2". Use this (never a bare
+ * \d+(?:\.\d+)?) in any size parser or title stripper, or "1/4 inch dowels" turns into "1/ dowels".
+ */
+export const INCH_NUM = String.raw`(?:\d+(?:\s+|-)\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)`;
+
+/** Parse an INCH_NUM match: "3 1/2" → 3.5, "1/4" → 0.25, "9.5" → 9.5. NaN when it is not a number. */
+export function parseInchNum(s: string): number {
+  const t = s.trim();
+  const mixed = t.match(/^(\d+)(?:\s+|-)(\d+)\/(\d+)$/);
+  if (mixed) return Number(mixed[2]) > 0 && Number(mixed[3]) > 0 ? Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]) : NaN;
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) return Number(frac[2]) > 0 ? Number(frac[1]) / Number(frac[2]) : NaN;
+  return /^\d+(?:\.\d+)?$/.test(t) ? parseFloat(t) : NaN;
+}
+
+/** Remove typed sizes ("1/4 inch", "24 in", "3 1/2\"", "6 ft") from a title, fractions and all. */
+export function stripTypedSizes(text: string): string {
+  return text.replace(new RegExp(String.raw`(?<![\w/])${INCH_NUM}\s*(?:-\s*)?(?:in\b|inch(?:es)?\b|ft\b|foot\b|feet\b|"|″|'|′)`, "gi"), " ");
+}

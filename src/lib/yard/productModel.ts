@@ -4,7 +4,7 @@
  * family uses the usual size of that family, and the note says so.
  */
 import type { CatalogItem, StockShape } from "./types";
-import { inchFrac } from "./inchText";
+import { inchFrac, stripTypedSizes } from "./inchText";
 
 type Envelope = {
   shape: StockShape;
@@ -225,8 +225,7 @@ function hash(s: string): string {
 }
 
 function niceName(query: string, shape: StockShape): string {
-  const cleaned = query
-    .replace(/\b\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|"|')\b/gi, " ")
+  const cleaned = stripTypedSizes(query)
     .replace(/\b(?:tall|high|long|wide|width|thick|diameter|dia|across)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -321,13 +320,28 @@ function isSoldStorageBox(q: string): boolean {
     || (/sterilite/.test(q) && /\b(box(?:es)?|bins?|totes?)\b/.test(q));
 }
 
+/**
+ * The prompt names build stock ("from 1/4 inch dowels", "popsicle stick", "plywood", "out of scrap"):
+ * it is something to make, never a product to buy.
+ */
+export function namesBuildStock(q: string): boolean {
+  const s = q.toLowerCase();
+  if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(s)) return true;
+  if (/\b(?:dowels?|popsicle|craft\s*sticks?|lolly\s*sticks?|tongue\s*depressors?|plywood|lumber|scrap\s*wood|wood\s*scraps?|pvc|cardboard|balsa|toothpicks?|straws?|paper\s*straws?|pallets?|mdf)\b/.test(s)) return true;
+  return /\b(?:from|out\s+of|made\s+(?:of|from)|built\s+(?:of|from))\s+(?:\S+\s+){0,3}?(?:wood|boards?|sticks?|stock|scraps?|planks?|slats?)\b/.test(s);
+}
+
+/** A listed spec (brand / model row: Dasani, CamelBak, YETI…) — the product itself, whatever else the words suggest. */
+export function isSpecProduct(prompt: string): boolean {
+  const q = prompt.trim().toLowerCase();
+  return SPECS.some((row) => row.match(q));
+}
+
 export function isBareProductPrompt(prompt: string): boolean {
   const q = prompt.trim().toLowerCase();
   if (q.length < 3 || (BUILD_NOUN.test(q) && !isSoldStorageBox(q))) return false;
-  if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
+  if (namesBuildStock(q)) return false;
   if (SPECS.some((row) => row.match(q))) return true;
-  // A lawn flamingo or garden gnome is the ornament, not a creature. shapeOf stays object so a bare camel still can.
-  if (/\b(flamingos?|lawn\s+ornaments?|gnomes?)\b/.test(q)) return true;
   if (NAMED.some((row) => row.match(q))) return true;
   return shapeOf(q) !== "object";
 }

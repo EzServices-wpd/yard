@@ -11,6 +11,7 @@ import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
+import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase } from "./weekendStockHonesty";
@@ -31,7 +32,7 @@ import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } f
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
-import { hasProductDrawing, isBareProductPrompt, modeledProduct } from "./productModel";
+import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct } from "./productModel";
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
@@ -490,6 +491,12 @@ function placeHeldProduct(prompt: string): YardProject | null {
 /** A named product is the piece, not a carcase that happens to mention a bottle. */
 function placeNamedProduct(prompt: string): YardProject | null {
   if (!isBareProductPrompt(prompt)) return null;
+  // A subject the build path has a block for (a figure stance, a weekend family) builds from stock,
+  // unless it is a listed spec product (Dasani, CamelBak…).
+  if (!isSpecProduct(prompt)) {
+    const a = classifyAnatomy(prompt);
+    if ((a.anatomy === "figure" && a.kind === "figure") || detectWeekendFamily(prompt.toLowerCase())) return null;
+  }
   const item = modeledProduct(prompt);
   if (!item?.shape) return null;
   rememberCatalogItem(item);

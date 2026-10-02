@@ -7,6 +7,7 @@ import { getCatalogItem, searchCatalog } from "./catalog.ts";
 import { namedLumberFromPrompt } from "./namedLumberSpecies.ts";
 import { modeledProduct, pieceFromEnvelope, productEnvelope } from "./productModel.ts";
 import type { CatalogItem, FormFactor } from "./types";
+import { INCH_NUM, parseInchNum, stripTypedSizes } from "./inchText";
 
 type Nominal = {
   key: string;
@@ -167,9 +168,9 @@ export function stockHint(query: string): string | null {
 type Measures = { length?: number; width?: number; thick?: number; diameter?: number };
 
 function labeled(text: string, axis: RegExp): number | undefined {
-  const m = text.match(new RegExp(String.raw`(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:${axis.source})`, "i"));
+  const m = text.match(new RegExp(String.raw`(?<![\w/])(${INCH_NUM})\s*(?:in|inch|inches|")?\s*(?:${axis.source})`, "i"));
   if (!m) return undefined;
-  const n = parseFloat(m[1]);
+  const n = parseInchNum(m[1]);
   return Number.isFinite(n) ? n : undefined;
 }
 
@@ -182,18 +183,24 @@ export function measuresFromQuery(query: string): Measures {
   if (length != null || width != null || thick != null || diameter != null) {
     return { length, width, thick, diameter };
   }
-  const pair = stripped.match(/(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?/i);
-  if (pair) return { length: parseFloat(pair[1]), width: parseFloat(pair[2]) };
-  const one = stripped.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")\b/i);
-  if (one) return { length: parseFloat(one[1]) };
+  const pair = stripped.match(new RegExp(String.raw`(?<![\w/])(${INCH_NUM})\s*(?:x|×|by)\s*(${INCH_NUM})\s*(?:in|inch|inches|")?`, "i"));
+  if (pair) return { length: parseInchNum(pair[1]), width: parseInchNum(pair[2]) };
+  // A size that names the stock ("from 1/4 inch dowels") is the material, not the piece.
+  const one = stripped.match(new RegExp(String.raw`(?<![\w/])(${INCH_NUM})\s*(?:in|inch|inches|")(?!\w)(?!\s*(?:dowels?|rods?|ply(?:wood)?|boards?|sticks?|stock|pipe|tubing|wire)\b)`, "i"));
+  if (one) return { length: parseInchNum(one[1]) };
   return {};
 }
 
 function titleFrom(query: string): string {
-  return query
-    .replace(/\b\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|"|')\b/gi, " ")
+  const N = INCH_NUM;
+  return stripTypedSizes(
+    query
+      // "12 x 18 in", "3 1/2 by 4": the whole pair goes, fractions and all.
+      .replace(new RegExp(String.raw`(?<![\w/])${N}\s*(?:x|×|by)\s*${N}(?:\s*(?:x|×|by)\s*${N})?\s*(?:in\b|inch(?:es)?\b|"|″)?`, "gi"), " ")
+      // "24 long", "3/4 diameter": a number that a size word labels.
+      .replace(new RegExp(String.raw`(?<![\w/])${N}\s*(?:in\b|inch(?:es)?\b|"|″)?\s*(?=(?:tall|high|long|length|wide|width|thick|thickness|deep|depth|diameter|dia|across)\b)`, "gi"), " "),
+  )
     .replace(/\b(?:tall|high|long|length|wide|width|thick|thickness|deep|depth|diameter|dia|across)\b/gi, " ")
-    .replace(/\b\d+(?:\.\d+)?\s*(?:x|×|by)\s*\d+(?:\.\d+)?\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -342,7 +349,8 @@ export function withStoreHit(item: CatalogItem, hit: StockListing | null | undef
     ...item,
     name: keepName ? item.name : hit.title,
     brand: hit.brand || item.brand,
-    unitCostUsd: hit.priceUsd ?? item.unitCostUsd,
+    // Only a real, finite price replaces ours — a listing with no price never becomes $NaN.
+    unitCostUsd: hit.priceUsd != null && Number.isFinite(hit.priceUsd) && hit.priceUsd > 0 ? hit.priceUsd : item.unitCostUsd,
     dims,
     image: hit.image || item.image,
     searchQuery: item.searchQuery || hit.title,

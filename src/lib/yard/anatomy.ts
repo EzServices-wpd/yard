@@ -32,8 +32,8 @@ const SHELL =
 const SPAN = /bridge|viaduct|overpass|trestle/;
 const CARCASE = /chair|stool|table|desk|bed|bench|box|cube|frame|shelf|crate|cabinet/;
 const FIGURE =
-  /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
-const LONGNECK = /giraffe|camel|llama|brachiosaurus|sauropod|flamingo/;
+  /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|\bcamels?\b|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;
+const LONGNECK = /giraffe|\bcamels?\b|llama|brachiosaurus|sauropod|flamingo/;
 const WINGED = /bird|eagle|angel|pteranodon|wing/;
 const WYVERN =
   /charizard|dragon|wyvern|godzilla|kaiju|griffin|phoenix|pterodactyl|bat\b/;

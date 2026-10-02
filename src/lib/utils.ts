@@ -16,6 +16,7 @@ export function inches(n: number, _digits = 1): string {
 }
 
 export function usd(n: number): string {
-  return n === 0 ? "—" : `~$${n.toFixed(2)}`;
+  // No price (0, missing, NaN) reads as a dash — never "$NaN".
+  return !Number.isFinite(n) || n === 0 ? "—" : `~$${n.toFixed(2)}`;
 }
 
