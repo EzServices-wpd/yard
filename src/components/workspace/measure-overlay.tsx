@@ -81,14 +81,14 @@ export function MeasureFields() {
         {round ? (
           <>
             <Dim
-              label="Dia"
+              label="Across"
               value={measure.width}
               onChange={(v) => setMeasure({ width: v, depth: v })}
               onBlur={commitLive}
             />
             <span className="mb-2 text-faint">×</span>
             <Dim
-              label="H"
+              label="Tall"
               value={measure.height}
               onChange={(v) => setMeasure({ height: v })}
               onBlur={commitLive}
@@ -97,35 +97,35 @@ export function MeasureFields() {
         ) : (
           <>
             <Dim
-              label="W"
+              label="Wide"
               value={measure.width}
               onChange={(v) => setMeasure({ width: v })}
               onBlur={commitLive}
             />
             <span className="mb-2 text-faint">×</span>
             <Dim
-              label="H"
+              label="Tall"
               value={measure.height}
               onChange={(v) => setMeasure({ height: v })}
               onBlur={commitLive}
             />
             <span className="mb-2 text-faint">×</span>
             <Dim
-              label="D"
+              label="Deep"
               value={measure.depth}
               onChange={(v) => setMeasure({ depth: v })}
               onBlur={commitLive}
             />
           </>
         )}
-        <span className="mb-2.5 text-xs text-faint">{round ? "dia × H in" : "in"}</span>
+        <span className="mb-2.5 text-xs text-faint">inches</span>
         {emptyTalk && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">{emptyTalk.overlayHint}</span>
         )}
         {project.windowPkg && (
           <span className="mb-2 w-full text-[11px] leading-snug text-muted">
             {project.windowPkg.window.brand} {project.windowPkg.window.line} {project.windowPkg.window.callW}×
-            {project.windowPkg.window.callH} · RO {project.windowPkg.window.roW}" × {project.windowPkg.window.roH}" ·
+            {project.windowPkg.window.callH} · rough opening {project.windowPkg.window.roW}" × {project.windowPkg.window.roH}" ·
             unit {project.windowPkg.window.unitW}" × {project.windowPkg.window.unitH}"
           </span>
         )}

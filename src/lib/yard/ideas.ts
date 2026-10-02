@@ -86,7 +86,7 @@ export const IDEAS: Idea[] = [
     label: "Andersen hung",
     size: "36 × 48",
     prompt: "Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
-    blurb: "Pick the unit. Frame its RO. Buy the window and the lumber.",
+    blurb: "Pick the unit. Frame the rough opening. Buy the window and the lumber.",
   },
   {
     id: "desk",
@@ -158,7 +158,7 @@ export const IDEAS: Idea[] = [
     label: "Laundry folding table",
     size: "48 × 36 × 24",
     prompt: "laundry folding table 48 wide 36 high 24 deep",
-    blurb: "Plywood top, four legs, perimeter rails. Height is 36.",
+    blurb: "Plywood top, four legs, perimeter rails. The top is 36 inches off the floor.",
   },
   {
     id: "windowseat",
@@ -293,7 +293,7 @@ export const IDEAS: Idea[] = [
     label: "Laundry fold-down",
     size: "48 × 36 × 6",
     prompt: "laundry fold-down 48 wide 36 high 6 deep",
-    blurb: "Hung fold surface with a support leg — same affordance as ironing.",
+    blurb: "Hung fold surface with a support leg, same job as the ironing cabinet.",
   },
   {
     id: "hood",

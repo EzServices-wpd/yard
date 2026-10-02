@@ -44,7 +44,7 @@ export const DREAMS = [
     group: "house" as const,
     label: "Andersen 36×48 hung",
     prompt: "Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
-    blurb: "Pick the unit. Frame its RO. Buy the window and the lumber.",
+    blurb: "Pick the unit. Frame the rough opening. Buy the window and the lumber.",
   },
   {
     id: "desk",

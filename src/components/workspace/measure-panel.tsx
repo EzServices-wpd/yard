@@ -55,9 +55,12 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   };
   const roundUnit = measureChipAxisLabels(envOpts).mode === "round" || isRoundUnitEnvelope(envOpts);
 
+  const built = project.panels.length > 0 || project.instances.length > 0;
+  const title = isPocket ? "The pocket you measured" : built ? "Size" : "Measure a space";
+
   return (
     <div className="p-4">
-      <h2 className="font-display text-lg text-fg">{isPocket ? "The pocket you measured" : "Measure a space"}</h2>
+      <h2 className="font-display text-lg text-fg">{title}</h2>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         {(() => {
           if (isPocket) {
@@ -71,9 +74,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             return measureRefitTalk(envOpts).panelBlurb;
           }
           if (project.kind !== "closet" && project.kind !== "opening") {
-            return "W × H × D is this build. Change a number and it refits — same form, the size you typed.";
+            return "Wide, tall, and deep. Change a number and it keeps this form.";
           }
-          return "The opening is on the bench — type into the arrows or these fields.";
+          return "Wide, tall, and deep. Change a number and the same closet refits.";
         })()}
       </p>
 
@@ -115,12 +118,12 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       )}
 
       <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-faint">
-        {isPocket ? "How much of the pocket" : roundUnit ? "Round unit" : "Opening"}
+        {isPocket ? "How much of the pocket" : roundUnit ? "Round" : "This build"}
       </p>
       {roundUnit ? (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Field
-            label="Dia"
+            label="Across"
             value={measure.width}
             onChange={(v) => {
               setMeasure({ width: v, depth: v });
@@ -128,7 +131,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label="H"
+            label="Tall"
             value={measure.height}
             onChange={(v) => {
               setMeasure({ height: v });
@@ -139,7 +142,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       ) : (
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Field
-            label={isPocket ? "Along the back" : isCorner ? "Wall A" : isSlope ? "Wide" : "W"}
+            label={isPocket ? "Along the back" : isCorner ? "Wall A" : "Wide"}
             value={measure.width}
             onChange={(v) => {
               setMeasure({ width: v });
@@ -147,7 +150,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label={isPocket ? "Tall" : isSlope ? "High" : "H"}
+            label={isPocket ? "Tall" : isSlope ? "High" : "Tall"}
             value={measure.height}
             onChange={(v) => {
               setMeasure({ height: v });
@@ -155,7 +158,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             }}
           />
           <Field
-            label={isPocket ? "Comes out" : isCorner ? "Wall B" : isSlope ? "Deep" : "D"}
+            label={isPocket ? "Comes out" : isCorner ? "Wall B" : "Deep"}
             value={measure.depth}
             onChange={(v) => {
               setMeasure({ depth: v });

@@ -65,6 +65,8 @@ export function BenchTools({
   const doorsOnly = faceKinds.doors > 0 && faceKinds.drawers === 0 && faceKinds.lids === 0;
   const camIdx = Math.max(0, CAMERA_ORDER.indexOf(camera));
   const nextCam = CAMERA_ORDER[(camIdx + 1) % CAMERA_ORDER.length];
+  const built = project.panels.length > 0 || project.instances.length > 0;
+  const sizeLabel = project.pocket ? "The hole" : built ? "Size" : "Measure";
 
   if (!shown) {
     return (
@@ -132,7 +134,9 @@ export function BenchTools({
         )}
         <ToolBtn
           icon={<Ruler className="size-4" aria-hidden />}
-          label="Measure"
+          label={sizeLabel}
+          ariaLabel={project.pocket ? "Edit the hole, how much of it, and the shelves" : "Edit the size"}
+          title={project.pocket ? "The hole, the share, and the shelves" : "Edit wide, tall, and deep"}
           on={side === "measure"}
           onClick={onMeasure}
           tool="measure"
