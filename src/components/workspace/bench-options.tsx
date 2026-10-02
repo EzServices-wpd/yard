@@ -8,6 +8,7 @@ import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yar
 import { pieceControls, promptNamingFace, promptNamingHooks, promptWithDrawers } from "@/lib/yard/face";
 import { MeasureFields } from "./measure-overlay";
 import { YardsMenu } from "./yards-menu";
+import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import type { WorkMode } from "@/lib/yard/types";
 
@@ -94,6 +95,7 @@ export function BenchOptionsPanel({
   const reset = useYard((s) => s.reset);
   const plan = useYard((s) => s.plan);
   const { label: stockLabel, wire } = useStockLabel();
+  const [toolsShown] = useBenchToolsShown();
 
   useEffect(() => {
     if (!open) return;
@@ -122,6 +124,8 @@ export function BenchOptionsPanel({
 
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const built = project.panels.length > 0 || project.instances.length > 0;
+  // Dock already has stock, size, see-inside, and open doors. Options keeps what the dock does not.
+  const dockHasTools = built && workMode !== "walk" && toolsShown;
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const sizeable = built && !paperCraft;
   const canWalk = Boolean(project.traverse) && !housePath;
@@ -172,6 +176,7 @@ export function BenchOptionsPanel({
       data-yard-options-panel
       className="absolute inset-x-2 top-full z-40 mt-1 max-h-[calc(100dvh-8.5rem)] overflow-y-auto overscroll-contain rounded-md border border-border bg-surface p-3 text-sm shadow-xl outline-none sm:left-auto sm:right-4 sm:w-[26rem]"
     >
+      {!dockHasTools && (
       <Section id="material" title="Material">
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0">
@@ -191,9 +196,10 @@ export function BenchOptionsPanel({
           </button>
         </div>
       </Section>
+      )}
 
-      {sizeable && built && (
-        <Section id="size" title="Size">
+      {sizeable && built && !dockHasTools && (
+        <Section id="size" title={project.pocket ? "The hole" : "Size"}>
           <MeasureFields />
           {(housePath || project.pocket) && (
             <button
@@ -204,7 +210,7 @@ export function BenchOptionsPanel({
               }}
               className="mt-2 text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
             >
-              Measure the walls
+              {project.pocket ? "The hole and the shelves" : "Edit the size"}
             </button>
           )}
         </Section>
@@ -213,8 +219,8 @@ export function BenchOptionsPanel({
       {built && (
         <Section id="view" title="View">
           <div className="flex flex-wrap gap-1.5">
-            <Toggle on={explode} onClick={() => setExplode(!explode)} label="See inside" />
-            {hasFaces && (
+            {!dockHasTools && <Toggle on={explode} onClick={() => setExplode(!explode)} label="See inside" />}
+            {!dockHasTools && hasFaces && (
               <Toggle on={facesOpen} onClick={() => setFacesOpen(!facesOpen)} label={operateFacesLabel(facesOpen, faceKinds)} plain />
             )}
             {(housePath || project.pocket) && <Toggle on={measureOpen} onClick={() => setMeasureOpen(!measureOpen)} label="Opening outline" />}
