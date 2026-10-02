@@ -193,6 +193,27 @@ for (const q of ["plant stand with three tiers", "shoe rack with 4 shelves", "ro
   if (!p.panels.some((x) => /plywood/.test(x.materialId)) && /¼″ backs stay plywood|1\/4" backs stay plywood/.test(text)) fail("plywood back text on a build with no plywood", q);
 }
 
+// ---------------------------------------------------------------- 6. Ladder shelf: leaning rails, tapered shelves, 7" clear
+for (const [q, wantN] of [["ladder shelf with 4 shelves", 4], ["leaning ladder shelf 24 wide 72 tall with five shelves", 5], ["ladder shelf 30 tall with 6 shelves", 4]] as const) {
+  const p = generateFromPrompt(q);
+  const rails = p.panels.filter((x) => /leaning rail$/i.test(x.name));
+  if (rails.length !== 2 || rails.some((x) => !x.polygon || !x.yaw)) fail("ladder shelf has two leaning (shaped, turned) rails", { q, parts: p.panels.map((x) => x.name) });
+  if (p.panels.filter((x) => /back post$/i.test(x.name)).length !== 2) fail("ladder shelf has two back posts at the wall", q);
+  const sh = p.panels.filter((x) => x.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+  if (sh.length !== wantN) fail("ladder shelf count", { q, n: sh.length, wantN });
+  for (let i = 1; i < sh.length; i++) {
+    const clear = sh[i].position.y - (sh[i - 1].position.y + sh[i - 1].size.height);
+    if (clear < 7 - 1e-6) fail("ladder shelf opening clears 7 inches", { q, i, clear });
+    if (sh[i].size.depth >= sh[i - 1].size.depth) fail("ladder shelves get shallower as they climb", { q, d: sh.map((x) => x.size.depth) });
+  }
+  if (sh.length && sh[sh.length - 1].size.depth < 6) fail("ladder top shelf is at least 6 inches deep", { q, d: sh[sh.length - 1].size.depth });
+  if (!p.notes.some((n) => /anti-tip/i.test(n))) fail("ladder shelf anti-tip note", q);
+  if (/30 tall/.test(q) && !p.notes.some((n) => /6 shelves were asked; 4 fit/.test(n))) fail("ladder shelf shortfall note", p.notes);
+  const plan = buildPlan(p);
+  if (!plan.instructions.some((st) => /anchor/i.test(st.title))) fail("ladder shelf steps anchor it to the wall", plan.instructions.map((st) => st.title));
+  if (plan.instructions.some((st) => /main box|back is already on/i.test(st.description))) fail("ladder shelf steps talk about a carcase it does not have", plan.instructions.map((st) => st.title));
+}
+
 // ---------------------------------------------------------------- 5. Product notes: shop fractions, positive wording, no placeholder
 for (const q of ["basketball", "poland spring water bottle", "watering can", "ceramic frog", "wrench", "propane tank", "football", "brick", "safety goggles", "yeti rambler 20"]) {
   const p = generateFromPrompt(q);

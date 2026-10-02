@@ -303,7 +303,9 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
     }
   }
   // Setback from the front of the supports (or the unit front).
-  const front = frontOf(ctx, sups);
+  // A shaped, turned support (leaning rail) has no single front line — skip the setback against it.
+  const shapedSup = sups.some((id) => { const q = ctx.panels.find((x) => x.id === id); return !!(q?.polygon && q.yaw); });
+  const front = shapedSup ? null : frontOf(ctx, sups);
   if (front != null && !first.yaw) {
     const gaps = group.map((p) => front - ctx.box.get(p.id)!.max.z);
     const g = gaps[0];

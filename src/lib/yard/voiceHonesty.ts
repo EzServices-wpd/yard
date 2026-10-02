@@ -174,12 +174,17 @@ function familyRef(entries: PlateEntry[], family: string, spoken: string): strin
 }
 
 /** Same family on several lines (two apron sizes): pick the line whose size matches the spoken dims. */
-function sizedPlate(entries: PlateEntry[], plate: PlateEntry, firstDim: number): PlateEntry {
+function sizedPlate(entries: PlateEntry[], plate: PlateEntry, firstDim: number, secondDim?: number): PlateEntry {
   if (!Number.isFinite(firstDim)) return plate;
   const same = entries.filter((e) => e.family === plate.family && e.name.toLowerCase() === plate.name.toLowerCase());
   if (same.length < 2) return plate;
   const off = (e: PlateEntry) => Math.min(Math.abs((e.lengthIn ?? NaN) - firstDim), Math.abs((e.widthIn ?? NaN) - firstDim));
-  const best = [...same].sort((a, b) => (off(a) || 0) - (off(b) || 0))[0];
+  // Same-length pieces (tapered shelves 22 1/2 × 15 3/4, × 13 7/8 …) are told apart by the second number.
+  const off2 = (e: PlateEntry) =>
+    secondDim != null && Number.isFinite(secondDim)
+      ? Math.min(Math.abs((e.lengthIn ?? NaN) - secondDim), Math.abs((e.widthIn ?? NaN) - secondDim)) || 0
+      : 0;
+  const best = [...same].sort((a, b) => (off(a) || 0) + off2(a) - ((off(b) || 0) + off2(b)))[0];
   return best && off(best) < 0.3 ? best : plate;
 }
 
@@ -238,8 +243,10 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
     (full, rawName: string, qty: string | undefined, dash: string, offset: number, whole: string) => {
       const found = findPlate(entries, rawName);
       if (!found) return full;
-      const dim = parseFloat(whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)/)?.[1] ?? "");
-      const plate = sizedPlate(entries, found, dim);
+      const dims = whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?(?:\s*[×x]\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?)?/);
+      const num = (w?: string, a?: string, b?: string) => (w ? parseFloat(w) + (a && b ? Number(a) / Number(b) : 0) : NaN);
+      const dim = num(dims?.[1], dims?.[2], dims?.[3]);
+      const plate = sizedPlate(entries, found, dim, num(dims?.[4], dims?.[5], dims?.[6]));
       if (new RegExp(`\\b${plate.label}\\s+${rawName}`, "i").test(full)) return full;
       return `${plateRef(plate, rawName)}${qty ?? ""}${dash}`;
     },
@@ -275,6 +282,12 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
         return prior.toLowerCase().endsWith(head);
       });
       if (buried) return m;
+      // Several cut lines share this name (tapered shelves): the size that follows picks the letter.
+      const dimM = after.match(/^\s*(?:—\s*)?(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?\s*[×x]\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?/);
+      if (dimM) {
+        const num = (w?: string, a?: string, b?: string) => (w ? parseFloat(w) + (a && b ? Number(a) / Number(b) : 0) : NaN);
+        return plateRef(sizedPlate(entries, e, num(dimM[1], dimM[2], dimM[3]), num(dimM[4], dimM[5], dimM[6])), m);
+      }
       return plateRef(e, m);
     });
     // Safer: prefix only on "the Name" / "Name and" style when not already lettered.

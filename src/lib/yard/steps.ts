@@ -440,6 +440,52 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const steps: AssemblyStep[] = [];
   let n = 1;
 
+  // Ladder / leaning shelf: two leaning front rails, two plumb back posts, shelves that shallow as they climb.
+  if (panels.some((p) => /leaning rail$/i.test(p.name) && p.yaw && p.polygon)) {
+    const railsL = panels.filter((p) => /leaning rail$/i.test(p.name));
+    const posts = panels.filter((p) => /back post$/i.test(p.name));
+    const shelvesL = panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
+    const out: AssemblyStep[] = [];
+    let k = 1;
+    const footD = round(D);
+    out.push({
+      step: k++,
+      title: "Confirm the footprint — do not cut yet",
+      description: `${project.name}. ${round(W)}" wide × ${round(H)}" tall, ${footD}" from the wall at the floor. It stands against the wall: the back posts go flat to the wall, the leaning rails lean back toward it. ${partsOnThisListPhrase(project)}.`,
+      tips: "Find the wall stud you will anchor to before you cut.",
+      partsUsed: ["*"],
+    });
+    out.push({
+      step: k++,
+      title: sheetCutTitle(panels, item),
+      description: sheetCutDescription(panels, item, railsL[0]?.cutNote ?? ""),
+      tips: tool.tip,
+      partsUsed: names(panels),
+    });
+    out.push({
+      step: k++,
+      title: "Mark the shelf heights on the rails and posts",
+      description: `Lay each leaning rail beside its back post, feet level. Mark the top of every shelf on both — measured plumb up from the floor, not along the slope of the rail. ${shelvesL.length} shel${shelvesL.length === 1 ? "f" : "ves"}.`,
+      tips: "Clamp each rail to its post with the feet on one line so the marks match.",
+      partsUsed: names([...railsL, ...posts]),
+    });
+    out.push({
+      step: k++,
+      title: `Fix ${shelvesL.length} shel${shelvesL.length === 1 ? "f" : "ves"} between the side frames`,
+      description: `${shelvesL.map(cutLine).join("; ")}. Each shelf runs from the wall to the leaning rail: its back edge flush with the back of the posts, its front edge flush with the face of the rail. Glue and two #8 × 1¼" screws through the rail and two through the post into each shelf end. Start with the bottom and top shelves so the frame stands, then fill in. Fixed shelves, glued and screwed.`,
+      tips: "Predrill near the ends so the ply does not split.",
+      partsUsed: names([...railsL, ...posts, ...shelvesL]),
+    });
+    out.push({
+      step: k++,
+      title: "Stand it at the wall and anchor it",
+      description: "Stand it with both back posts flat to the wall. Screw an L bracket from each back post into a wall stud near the top (the anti-tip kit on the Buy list). Check the shelves read level side to side; shim a foot if the floor is out.",
+      tips: "Anchor before you load it — a leaning shelf tips forward if pulled.",
+      partsUsed: names(posts),
+    });
+    return out;
+  }
+
   // Frame stands (held-object stands, risers, stepped plant stands): legs / posts, rails, plywood decks.
   // They have no carcase, back or doors — say what is really there.
   if (!project.fitted && !pocket && panels.some((p) => /^(Deck|Tier \d+ deck)$/.test(p.name))) {
@@ -2450,6 +2496,12 @@ function groupSheetCuts(panels: Panel[]): string[] {
     else map.set(key, { qty: 1, label: cutListName(name, type), w, h, d });
   };
   for (const p of panels) {
+    // A shaped part (leaning rail, sloped board) is cut from its rectangular blank, not its bounding box.
+    if (p.blank && p.polygon) {
+      const b = p.blank;
+      push(p.name, p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
+      continue;
+    }
     const w = Math.round(p.size.width * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;

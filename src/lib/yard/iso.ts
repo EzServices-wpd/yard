@@ -406,7 +406,15 @@ export function polygonRings(panel: import("./types").Panel): { x: number; y: nu
     const r0 = poly.pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
     return [r0, r0.map((p) => ({ ...p, y: y + h }))];
   }
-  void w;
   const r0 = poly.pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
-  return [r0, r0.map((p) => ({ ...p, z: z + d }))];
+  const r1 = r0.map((p) => ({ ...p, z: z + d }));
+  const yaw = panel.yaw ?? 0;
+  if (!yaw) return [r0, r1];
+  // Turned part (a leaning rail lies along the depth): same R_y about the box centre as panelWorldCorners.
+  const cx = x + w / 2;
+  const cz = z + d / 2;
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  const rot = (p: { x: number; y: number; z: number }) => ({ x: cx + (p.x - cx) * c + (p.z - cz) * s, y: p.y, z: cz - (p.x - cx) * s + (p.z - cz) * c });
+  return [r0.map(rot), r1.map(rot)];
 }

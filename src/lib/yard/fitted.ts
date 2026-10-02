@@ -3134,6 +3134,99 @@ function buildCollectionShelf(spec: FittedSpec, prompt: string, affordances: Hou
   };
 }
 
+/**
+ * Ladder shelf / leaning shelf: two front rails that lean back toward the wall, two plumb back posts at
+ * the wall, and shelves that get shallower as they climb (deep at the floor, still usable at the top).
+ * The rails are side-profile parts (a face outline turned 90° so it lies along the depth). Every
+ * opening clears SHELF_MIN_CLEAR; a typed height wins over the spoken count, with a note.
+ */
+function buildLadderShelf(spec: FittedSpec, prompt: string, affordances: HouseAffordance[], stem: string): YardProject {
+  const u = spec.unit;
+  const typed = typedOpeningStorageAxes(prompt);
+  const r16 = (v: number) => Math.round(v * 16) / 16;
+  const fl16 = (v: number) => Math.floor(v * 8 + 1e-6) / 8; // shop eighths (the bench rounds to 1/8)
+  const W = typed.width ? u.width : 24;
+  const H = typed.height ? u.height : 70;
+  const D = typed.depth ? Math.max(8, u.depth) : Math.min(20, Math.max(12, Math.round(H * 0.24)));
+  const topD = Math.min(D, Math.max(7, Math.round(D * 0.45)));
+  const bw = 2.5; // rail / post width, ripped from the plywood
+  const zf = (y: number) => D - ((D - topD) * y) / H; // front edge of the rail at height y
+  const asked = spokenShelfCount(prompt) ?? spokenTierCount(prompt);
+  const want = asked != null ? Math.min(10, Math.max(1, asked)) : H >= 60 ? 5 : H >= 40 ? 4 : 3;
+  const yTop = r16(H - 1); // top of the highest shelf, just under the rail tops
+  let yLow = Math.min(10, yTop);
+  const pitchMin = SHELF_MIN_CLEAR + P;
+  let n = want;
+  if (n > 1 && (yTop - yLow) / (n - 1) < pitchMin) yLow = Math.max(4, yTop - pitchMin * (n - 1));
+  if (n > 1 && (yTop - yLow) / (n - 1) < pitchMin - 1e-6) n = Math.max(1, Math.floor((yTop - yLow) / pitchMin + 1e-6) + 1);
+  const pitch = n > 1 ? (yTop - yLow) / (n - 1) : 0;
+  const tops = Array.from({ length: n }, (_, i) => r16(n === 1 ? yTop : yLow + i * pitch));
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const innerW = W - 2 * P;
+  const panels: Panel[] = [];
+  // Front rails: face outline in rail-local (lx along the depth, y up), lx = D − z, turned 90° about Y.
+  const lean = Math.atan((D - topD) / H);
+  const leanDeg = Math.round((lean * 180) / Math.PI);
+  const railW = r16(D - topD + bw);
+  const railPts: [number, number][] = [[0, 0], [bw, 0], [railW, H], [r16(D - topD), H]];
+  const zMid = (topD - bw + D) / 2;
+  const blankL = Math.ceil((Math.hypot(D - topD, H) + bw * Math.sin(lean)) * 16) / 16;
+  for (const [side, xr] of [["Left", x0], ["Right", x1 - P]] as const) {
+    panels.push({
+      ...panel("upright", `${side} leaning rail`, xr + P / 2 - railW / 2, 0, zMid - P / 2, railW, H, P),
+      yaw: Math.PI / 2,
+      polygon: { plane: "xy", pts: railPts },
+      blank: { lengthIn: blankL, widthIn: bw, thicknessIn: P },
+      cutNote: `Leaning rail: ${inchFrac(bw)}" strip, ${inchFrac(blankL)}" long. Cut the foot and the top ${leanDeg}° off square so the foot sits flat on the floor and the top is level.`,
+    });
+  }
+  for (const [side, xr] of [["Left", x0], ["Right", x1 - P]] as const) {
+    panels.push(panel("upright", `${side} back post`, xr, 0, 0, P, H, bw));
+  }
+  tops.forEach((t, i) => {
+    const d = fl16(zf(t));
+    panels.push(panel("shelf", n === 1 ? "Shelf" : `Shelf ${i + 1}`, x0 + P, r16(t - P), 0, innerW, P, d));
+  });
+  const clears = tops.slice(1).map((t, i) => t - P - tops[i]);
+  const minClear = clears.length ? Math.min(...clears) : yTop - P;
+  const shelfDs = panels.filter((x) => x.type === "shelf").map((x) => x.size.depth);
+  const deepest = Math.max(...shelfDs);
+  const shallowest = Math.min(...shelfDs);
+  const name = stem;
+  const notes = [
+    `${name}. ${n} shel${n === 1 ? "f" : "ves"} between two leaning rails and two plumb back posts — ${inchFrac(deepest)}" deep at the bottom, ${inchFrac(shallowest)}" deep at the top. ${clears.length ? `${inchFrac(r16(minClear))}" clear between shelves.` : ""} ¾" plywood, fixed shelves, glued and screwed.`.replace(/\s{2,}/g, " "),
+    `The leaning rails tip back ${leanDeg}° from plumb: ${inchFrac(D)}" from the wall at the floor, ${inchFrac(topD)}" at the top.`,
+    ...(asked != null && n < asked ? [`${asked} shelves were asked; ${n} fit in the typed ${inchFrac(H)}" with at least ${SHELF_MIN_CLEAR}" clear between shelves. The size wins — add height for the rest.`] : []),
+    "Anti-tip: screw each back post to a wall stud with an L bracket near the top — a loaded leaning shelf can tip forward.",
+    ...(typed.width ? [] : [`Assumed ${inchFrac(W)}" wide — type a width to lock it.`]),
+    ...(typed.height ? [] : [`Assumed ${inchFrac(H)}" tall — type a height to lock it.`]),
+    ...(typed.depth ? [] : [`Assumed ${inchFrac(D)}" deep at the floor — type a depth to lock it.`]),
+  ];
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes,
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bookcase",
+      family: "floor-carcase",
+      affordances,
+      unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: n, drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined, mirror: false },
+    },
+    assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
 /** Litter box cabinet: a carcase that hides the box — a fixed entry panel with a cat hole, and a scoop door. */
 export function isLitterCabinet(prompt: string): boolean {
   const l = prompt.toLowerCase();
@@ -4825,6 +4918,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  {
+    const ladderStem = ladderShelfTitleStem(prompt.toLowerCase());
+    if (ladderStem) return buildLadderShelf(spec, prompt, affordances, ladderStem);
+  }
   if (isLitterCabinet(prompt)) {
     return buildLitterCabinet(spec, prompt, affordances);
   }

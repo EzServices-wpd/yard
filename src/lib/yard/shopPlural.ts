@@ -142,6 +142,8 @@ export function cutListName(name: string, type?: string): string {
   if (/^quarter-round shelf/i.test(name)) return "Quarter-round shelf";
   if (/^wall panel\s+[ab]\b/i.test(name)) return name.replace(/^wall panel\s+([ab])\b.*$/i, (_m, l: string) => `Wall panel ${l.toUpperCase()}`);
   if (/^wall cleat\s+[ab]\b/i.test(name)) return name.replace(/^wall cleat\s+([ab])\b.*$/i, (_m, l: string) => `Wall cleat ${l.toUpperCase()}`);
+  if (/leaning rail$/i.test(name) && /^(?:left|right)\b/i.test(name)) return "Leaning rail";
+  if (/back post$/i.test(name) && /^(?:left|right)\b/i.test(name)) return "Back post";
   if (/hanging rod/i.test(name)) return "Hanging rod";
   if (/jar lip/i.test(name)) return "Jar lip";
   if (/bottle rail/i.test(name)) return "Bottle rail";
