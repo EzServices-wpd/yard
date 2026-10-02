@@ -199,7 +199,11 @@ export function shapeOf(text: string): StockShape {
   if (/\b(totes?|storage\s+bins?|storage\s+box(?:es)?|latching\s+box(?:es)?)\b/.test(q)) return "block";
   if (/sterilite/.test(q) && /\b(box(?:es)?|bins?|totes?)\b/.test(q)) return "block";
   if (/\bbatter(?:y|ies)\b/.test(q)) return "block";
-  if (/\b(flamingos?|lawn\s+ornaments?)\b/.test(q)) return "object";
+  if (/\b(flamingos?|lawn\s+ornaments?|gnomes?)\b/.test(q)) return "object";
+  if (/\b(utility\s+knives|knives|knife|box\s*cutters?|fastbacks?)\b/.test(q)) return "tool";
+  if (/\b(tennis\s+)?rackets?\b/.test(q)) return "tool";
+  if (/\bbaseballs?\b/.test(q)) return "ball";
+  if (/\b(duplex\s+)?outlets?\b/.test(q) || /\breceptacles?\b/.test(q)) return "block";
   if (/\b(toilet\s*paper|paper\s*towels?|duct\s*tape|masking\s*tape|extension\s*cords?|cords?|ropes?|hoses?)\b/.test(q)) return "roll";
   if (/\b(crates?|cinder|cmu|pavers?|bricks?)\b/.test(q) || /\bconcrete\s+blocks?\b/.test(q)) return "block";
   if (/\b(wd-?\s*40|aerosol|spray\s*paint)\b/.test(q)) return "can";
@@ -293,6 +297,12 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /kwikset/.test(q) && /deadbolt/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Kwikset 660 deadbolt, 2.5″ rose and 1.06″ projection. Listing size." } },
   { match: (q) => /\bdeadbolts?\b/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Usual deadbolt rose, about 2.5″ across and 1″ projection. Not this lock’s drawing." } },
   { match: (q) => /flamingos?/.test(q), over: { shape: "object", length: 24, width: 16, height: 4, color: "#f4a4c0", note: "Usual lawn flamingo, about 24″ tall and 16″ wide. Not this bird’s drawing." } },
+  { match: (q) => /fastback/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c0392b", note: "Milwaukee Fastback utility knife, 7.25″ overall. Listing length of the standard press-and-flip." } },
+  { match: (q) => /\bknives?\b/.test(q), over: { shape: "tool", length: 7.25, width: 1.3, diameter: 0.9, color: "#c45c26", note: "Usual utility knife, about 7.25″ long. Not this knife’s drawing." } },
+  { match: (q) => /clash/.test(q) && /racket/.test(q), over: { shape: "tool", length: 27, width: 10.6, height: 1, diameter: 1, color: "#2c2c2c", note: "Wilson Clash 100, 27″ long, 100 sq in head. Listing length." } },
+  { match: (q) => /\brackets?\b/.test(q), over: { shape: "tool", length: 27, width: 10.6, height: 1, diameter: 1, color: "#2c2c2c", note: "Usual adult tennis racket, 27″ long. Not this frame’s stamp." } },
+  { match: (q) => /\bbaseballs?\b/.test(q), over: { shape: "ball", length: 2.9, diameter: 2.9, width: 2.9, color: "#f4f1ea", note: "Official baseball, 9–9¼″ around (about 2.9″ across). Not this ball’s stamp." } },
+  { match: (q) => /duplex|receptacle|\boutlets?\b/.test(q), over: { shape: "block", length: 4.5, width: 2.75, height: 1.1, color: "#ece7dc", note: "Usual standard duplex plate, 4.5″ × 2.75″. Not this device’s drawing." } },
 ];
 
 const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
@@ -313,8 +323,9 @@ export function isBareProductPrompt(prompt: string): boolean {
   if (q.length < 3 || (BUILD_NOUN.test(q) && !isSoldStorageBox(q))) return false;
   if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
   if (SPECS.some((row) => row.match(q))) return true;
-  // A lawn flamingo is the ornament, not a creature. shapeOf stays object so a bare camel still can.
-  if (/\b(flamingos?|lawn\s+ornaments?)\b/.test(q)) return true;
+  // A lawn flamingo or garden gnome is the ornament, not a creature. shapeOf stays object so a bare camel still can.
+  if (/\b(flamingos?|lawn\s+ornaments?|gnomes?)\b/.test(q)) return true;
+  if (NAMED.some((row) => row.match(q))) return true;
   return shapeOf(q) !== "object";
 }
 

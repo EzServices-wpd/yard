@@ -202,3 +202,44 @@ describe("shoe rack stays the cubbies", () => {
     assert.ok(!project.notes.some((note) => /no drawing|named product stays/i.test(note)));
   });
 });
+
+describe("a missed product stays that product", () => {
+  it("places a utility knife, racket, baseball, outlet, and gnome instead of a creature", () => {
+    const knife = generateFromPrompt("Milwaukee Fastback utility knife");
+    assert.equal(knife.kind, "custom");
+    assert.equal(knife.instances.length, 1);
+    const knifeItem = getCatalogItem(knife.instances[0].catalogId);
+    assert.equal(knifeItem?.shape, "tool");
+    assert.equal(knifeItem?.dims.length, 7.25);
+    assert.ok(!knife.notes.some((note) => /quadruped|popsicle|creature/i.test(note)));
+
+    const shelf = generateFromPrompt("shelf for a Milwaukee Fastback knife");
+    assert.equal(shelf.instances.length, 1);
+    assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "tool");
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+
+    const racket = generateFromPrompt("Wilson Clash 100 tennis racket");
+    assert.equal(getCatalogItem(racket.instances[0].catalogId)?.shape, "tool");
+    assert.equal(getCatalogItem(racket.instances[0].catalogId)?.dims.length, 27);
+    assert.ok(!racket.notes.some((note) => /quadruped|popsicle/i.test(note)));
+
+    const ball = generateFromPrompt("Rawlings official baseball");
+    assert.equal(getCatalogItem(ball.instances[0].catalogId)?.shape, "ball");
+    assert.equal(getCatalogItem(ball.instances[0].catalogId)?.dims.diameter, 2.9);
+
+    const owned = generateFromPrompt("my 9 inch Rawlings baseball");
+    assert.equal(getCatalogItem(owned.instances[0].catalogId)?.dims.length, 9);
+    assert.match(getCatalogItem(owned.instances[0].catalogId)?.notes ?? "", /Size you typed/);
+
+    const outlet = generateFromPrompt("Leviton duplex outlet");
+    assert.equal(getCatalogItem(outlet.instances[0].catalogId)?.shape, "block");
+    assert.equal(getCatalogItem(outlet.instances[0].catalogId)?.dims.length, 4.5);
+    assert.ok(!outlet.notes.some((note) => /quadruped|popsicle|carcase/i.test(note)));
+
+    const gnome = generateFromPrompt("garden gnome");
+    assert.equal(gnome.instances.length, 1);
+    assert.equal(getCatalogItem(gnome.instances[0].catalogId)?.dims.length, 12);
+    assert.ok(!gnome.notes.some((note) => /quadruped|popsicle|creature/i.test(note)));
+  });
+});
