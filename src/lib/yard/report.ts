@@ -18,6 +18,7 @@ import { planSolidBoards } from "./solidStock";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
+import { panelStock } from "./partStock";
 import { backReachesTwoStuds, STUD_CENTER_IN } from "./fitted";
 
 function letterLabel(i: number) {
@@ -127,30 +128,27 @@ function closetCuts(project: YardProject): CutLine[] {
     });
   };
   for (const p of project.panels) {
-    const item = getCatalogItem(p.materialId);
     const w = Math.round(p.size.width * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
-    const boardRow = !!item && item.category === "lumber" && item.formFactor === "board";
-    const materialName =
-      (p.materialId === CATALOG_LUMBER_BIND && namedSolid) ||
-      (boardRow && p.materialId !== "lumber-2x2-8" && p.materialId !== "lumber-4x4-8")
-        ? namedStockDisplayName(project.prompt ?? "", item)
-        : (item?.name ?? p.materialId);
+    // One stock answer per part — the bench paints the part from the same answer.
+    const stock = panelStock(project.prompt ?? "", p);
+    const materialName = stock.label;
     // Class pack: type=drawer panels are visual envelopes, not cuttable boards.
     // Explode into sides/back/bottom so the cut list matches Build steps.
     if (isBuyMirrorPanel(p.name, p.type)) continue;
-    if (legSpecies && /^leg\b/i.test(p.name) && p.materialId === "lumber-2x2-8") {
+    if (legSpecies && stock.catalogId !== p.materialId) {
+      // Named-wood leg: laminated from two ripped strips of the leg species.
       const len = Math.max(w, h, d);
       addCut(
-        CATALOG_LUMBER_BIND,
+        stock.catalogId,
         p.name,
         p.type,
         w,
         h,
         d,
-        legSpecies.densifyLabel,
-        `Laminated leg: rip two 1 1/2" strips from ${legSpecies.densifyLabel}, face-glue them into a 1 1/2" × 1 1/2" square, then cut to ${len}".`,
+        stock.label,
+        `Laminated leg: rip two 1 1/2" strips from ${stock.label}, face-glue them into a 1 1/2" × 1 1/2" square, then cut to ${len}".`,
       );
       continue;
     }

@@ -32,6 +32,8 @@ import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac } from "../src/lib/yard/inchText";
+import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
+import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
 import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, monitorEnvelopeTalk, monitorRiseIn, reelEnvelopeTalk, lampEnvelopeTalk, lampEnvelopeIn, lampHeightIn, wantsPotHold } from "../src/lib/yard/weekendFamily";
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
@@ -4042,6 +4044,52 @@ console.log("SOFT-TRUST OK", {
   const bays = posts.slice(1).map((q, i) => q.position.x - (posts[i].position.x + posts[i].size.width));
   if (Math.max(...bays) - Math.min(...bays) > 1 / 32) failTab("plate rack bays unequal", bays);
   console.log("PASS named-table: species drives legs (laminated) + body, leg species wins for legs, Buy = packed boards per species, side/end 20×22 assumed, coffee/dining/nightstand unchanged, no sheet wording on board builds, plate bays equal");
+}
+
+// Render stock = cut-list stock: every part on the bench is painted from the stock its cut-list
+// line names (walnut legs cut as Walnut 1×4 render walnut, not the default 2x2 tone), across
+// tables, named-wood builds and plywood builds.
+{
+  const failRender = (msg: string, detail?: unknown) => failHonesty(`render-stock ${msg}`, detail);
+  const prompts = [
+    "oak table with walnut legs",
+    "maple end table",
+    "teak side table",
+    "walnut coffee table",
+    "cherry dining table with maple legs",
+    "oak table with legs of walnut",
+    "pine wine rack for 12 bottles",
+    "oak wine rack for 10 bottles 18 inches tall",
+    "maple bookshelf",
+    "coffee table",
+    "nightstand with one drawer",
+    "wine rack",
+    "bookshelf",
+  ];
+  const tones = new Map<string, string>();
+  for (const q of prompts) {
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    for (const panel of p.panels) {
+      if (isBuyMirrorPanel(panel.name, panel.type) || isBoundingDrawerPanel(panel.name, panel.type) || panel.blank) continue;
+      const look = panelRenderLook(p.prompt ?? q, panel);
+      const family = cutListName(panel.name, panel.type);
+      const lines = plan.cutList.filter((c) => c.name === family || c.name.startsWith(`${family} · `));
+      if (!lines.length) continue;
+      // The cut line that carries this part: the one whose stock species matches, else any.
+      const cutSpecies = new Set(lines.map((c) => speciesOfStockLabel(c.material)));
+      if (!cutSpecies.has(look.speciesId)) failRender("part paints a different species than its cut line", { q, part: panel.name, render: look.speciesId, cut: lines.map((c) => c.material) });
+      if (look.speciesId && look.tone !== SPECIES_TONE[look.speciesId]) failRender("named species part not painted its species tone", { q, part: panel.name, look });
+      if (!look.speciesId && lines.every((c) => /ply/i.test(c.material ?? "")) && !/ply/i.test(look.catalogId)) failRender("plywood cut line, non-plywood render", { q, part: panel.name, look });
+      tones.set(`${q}|${family}`, look.color(true));
+    }
+  }
+  // Two species on one table read as two woods.
+  if (tones.get("oak table with walnut legs|Leg") === tones.get("oak table with walnut legs|Top")) failRender("walnut legs and oak top paint the same tone", Object.fromEntries(tones));
+  if (tones.get("cherry dining table with maple legs|Leg") === tones.get("cherry dining table with maple legs|Top")) failRender("maple legs and cherry top paint the same tone");
+  // Every named species has a tone.
+  for (const s of NAMED_LUMBER_SPECIES) if (!SPECIES_TONE[s.id]) failRender("species without a bench tone", s.id);
+  console.log("PASS render-stock: every bench part painted from its cut-list stock (species tone for named woods, legs from the leg species)");
 }
 
 // Shop fractions everywhere: notes, steps, cut list, Buy notes and PDF text across the

@@ -8,6 +8,7 @@ import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { stockLook } from "@/lib/yard/stockLook";
+import { panelRenderLook } from "@/lib/yard/partStock";
 import {
   BarPull,
   CupPull,
@@ -40,14 +41,17 @@ export function PanelMesh({
   facesOpen?: boolean;
   showPinHoles?: boolean;
 }) {
-  const item = getCatalogItem(panel.materialId);
+  // The part's real stock — the same answer the cut list prints (walnut legs render walnut).
+  const prompt = useYard((s) => s.project.prompt ?? "");
+  const partLook = panelRenderLook(prompt, panel);
+  const item = getCatalogItem(partLook.catalogId) ?? getCatalogItem(panel.materialId);
   const look = stockLook(item);
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
   // Step view: this step's parts keep their real wood tone with a warm glow and orange edges;
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
   const opacity = ghost ? 0.16 : glass ? 0.42 : 1;
-  const color = ghost ? "#8a7c68" : look.map ? "#e9d6b4" : item?.color ?? "#c4a06a";
+  const color = ghost ? "#8a7c68" : partLook.color(!!look.map);
   const glow = inStep ? 0.22 : selected ? 0.14 : 0;
   const edgeColor = inStep ? "#e0782f" : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
