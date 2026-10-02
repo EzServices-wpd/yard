@@ -77,6 +77,8 @@ export function CatalogPanel() {
         generate(nextPrompt, item.id, undefined, {
           includeSpine: spine,
           fresh: true,
+          keepView: true,
+          restock: true,
         });
         makePlan();
       } finally {

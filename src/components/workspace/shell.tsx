@@ -69,6 +69,20 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
+  const orbited = useYard((s) => s.orbited);
+  const [orbitHint, setOrbitHint] = useState(false);
+  useEffect(() => {
+    try {
+      if (orbited) {
+        window.localStorage.setItem("yard.orbitHint", "seen");
+        setOrbitHint(false);
+      } else if (window.localStorage.getItem("yard.orbitHint") !== "seen") {
+        setOrbitHint(true);
+      }
+    } catch {
+      setOrbitHint(false);
+    }
+  }, [orbited]);
 
   useEffect(() => {
     const fromUrl =
@@ -373,6 +387,14 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 Exit step view
               </button>
             </div>
+          )}
+          {orbitHint && pieceCount > 0 && !pending && activeStep == null && workMode !== "walk" && (
+            <p
+              data-yard-orbit-hint="1"
+              className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur"
+            >
+              Drag to turn it · pinch or scroll to zoom
+            </p>
           )}
           {ready && pieceCount === 0 && !side && !pending && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">

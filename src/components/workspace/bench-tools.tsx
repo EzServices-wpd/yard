@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, DoorClosed, DoorOpen, Eye, Layers, PanelTopOpen, Rotate3d, Ruler, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, DoorClosed, DoorOpen, Eye, Layers, PanelTopOpen, Rotate3d, RotateCcw, Ruler, SlidersHorizontal } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yard/operateFaces";
 import { useStockLabel } from "./use-stock-label";
@@ -55,10 +55,11 @@ export function BenchTools({
   const setFacesOpen = useYard((s) => s.setFacesOpen);
   const camera = useYard((s) => s.camera);
   const setCamera = useYard((s) => s.setCamera);
+  const orbited = useYard((s) => s.orbited);
+  const resetView = useYard((s) => s.resetView);
   const { label: stockLabel, wire } = useStockLabel();
   const [shown, setShown] = useBenchToolsShown();
 
-  const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted);
   const faceKinds = operateFaceKinds(project.panels);
   const hasFaces = hasOperableFaces(faceKinds);
   const operateLabel = operateFacesLabel(facesOpen, faceKinds);
@@ -141,12 +142,21 @@ export function BenchTools({
           onClick={onMeasure}
           tool="measure"
         />
-        {!housePath && (
+        {orbited ? (
+          <ToolBtn
+            icon={<RotateCcw className="size-4" aria-hidden />}
+            label="Reset view"
+            ariaLabel={`Reset view to ${CAMERA_NAME[CAMERA_ORDER[camIdx]]}`}
+            title="Frame the whole model again"
+            onClick={() => resetView()}
+            tool="view"
+          />
+        ) : (
           <ToolBtn
             icon={<Rotate3d className="size-4" aria-hidden />}
             label={`${CAMERA_NAME[CAMERA_ORDER[camIdx]]} view`}
-            ariaLabel={`View: ${CAMERA_NAME[CAMERA_ORDER[camIdx]]}. Next: ${CAMERA_NAME[nextCam]}`}
-            title={`Next: ${CAMERA_NAME[nextCam]} view`}
+            ariaLabel={`View: ${CAMERA_NAME[CAMERA_ORDER[camIdx]]}. Next: ${CAMERA_NAME[nextCam]}. Drag the model to turn it, pinch or scroll to zoom.`}
+            title={`Next: ${CAMERA_NAME[nextCam]} view · drag to turn, pinch or scroll to zoom`}
             onClick={() => setCamera(nextCam)}
             tool="view"
           />

@@ -43,6 +43,12 @@ type YardState = {
   explode: boolean;
   facesOpen: boolean;
   camera: "iso" | "front" | "side" | "top";
+  /** Bumps when the user asks for the framed view back after turning the model by hand. */
+  viewNonce: number;
+  /** The user turned, zoomed or panned the model since the last framing. */
+  orbited: boolean;
+  /** The angle the user turned the model to (kept across a resize or a stock change). */
+  userView: { azimuthDeg: number; elevationDeg: number } | null;
   showDims: boolean;
   showHull: boolean;
   showHistoric: boolean;
@@ -67,7 +73,7 @@ type YardState = {
   beginBuild: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean; fittedOverride?: import("./types").FittedSpec }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean; fittedOverride?: import("./types").FittedSpec; keepView?: boolean; restock?: boolean }) => YardProject;
   setJoinMethod: (join: JoinMethod) => void;
   setDetail: (v: DetailLevel) => void;
   setBuildScale: (v: BuildScale) => void;
@@ -82,6 +88,9 @@ type YardState = {
   setExplode: (v: boolean) => void;
   setFacesOpen: (v: boolean) => void;
   setCamera: (v: YardState["camera"]) => void;
+  resetView: () => void;
+  setOrbited: (v: boolean) => void;
+  setUserView: (v: { azimuthDeg: number; elevationDeg: number } | null) => void;
   setShowHull: (v: boolean) => void;
   setShowHistoric: (v: boolean) => void;
   setWorkMode: (v: WorkMode) => void;
@@ -126,6 +135,9 @@ export const useYard = create<YardState>((set, get) => ({
   explode: false,
   facesOpen: false,
   camera: "iso",
+  viewNonce: 0,
+  orbited: false,
+  userView: null,
   showDims: true,
   showHull: false,
   showHistoric: false,
@@ -193,6 +205,7 @@ export const useYard = create<YardState>((set, get) => ({
     if (opts?.cutStock === true) mode = "cut";
     else if (opts?.cutStock === false) mode = "whole";
     else if (!follow && current.prompt.trim() !== prompt.trim()) mode = "auto";
+    const keepView = !!opts?.keepView;
     const genOpts: {
       includeSpine?: boolean;
       joinMethod?: JoinMethod;
@@ -224,6 +237,8 @@ export const useYard = create<YardState>((set, get) => ({
     const angled = angleMeasureFromProject(next);
     set({
       ...flags,
+      // A new build is framed fresh; the same build in a new stock keeps the angle the user chose.
+      ...(keepView ? {} : { orbited: false, userView: null }),
       cutMode: mode,
       workMode: "look",
       showLoad: false,
@@ -344,7 +359,12 @@ export const useYard = create<YardState>((set, get) => ({
   select: (id) => set({ selectedId: id }),
   setExplode: (v) => set({ explode: v }),
   setFacesOpen: (v) => set({ facesOpen: v }),
-  setCamera: (v) => set({ camera: v }),
+  setCamera: (v) => set({ camera: v, orbited: false, userView: null, viewNonce: get().viewNonce + 1 }),
+  resetView: () => set({ orbited: false, userView: null, viewNonce: get().viewNonce + 1 }),
+  setOrbited: (v) => {
+    if (get().orbited !== v) set(v ? { orbited: true } : { orbited: false, userView: null });
+  },
+  setUserView: (v) => set({ userView: v }),
   setShowHull: (v) => set({ showHull: v }),
   setShowHistoric: (v) => set({ showHistoric: v }),
   setWorkMode: (v) => set({ workMode: v }),

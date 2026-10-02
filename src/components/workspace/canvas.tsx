@@ -182,6 +182,7 @@ export function WorkspaceCanvas() {
   const building = useYard((s) => s.building);
   const grokBusy = useYard((s) => s.grokBusy);
   const detail = useYard((s) => s.detail);
+  const viewNonce = useYard((s) => s.viewNonce);
   const pending = building || grokBusy;
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
@@ -189,7 +190,12 @@ export function WorkspaceCanvas() {
   const useShadows = project.instances.length + project.panels.length < 180;
 
   return (
-    <div className="absolute inset-0">
+    <div
+      className="absolute inset-0"
+      data-yard-orbit="drag-turn pinch-zoom"
+      // One finger turns the model and two fingers zoom it; the page itself never scrolls under the bench.
+      style={{ touchAction: "none", overscrollBehavior: "contain" }}
+    >
       <AutoCaptureRunner />
       <Canvas
         key={project.id}
@@ -245,8 +251,19 @@ export function WorkspaceCanvas() {
           useShadows={useShadows}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
-        <OrbitControls makeDefault enabled={workMode !== "walk"} enableDamping dampingFactor={0.08} minDistance={4} maxDistance={480} target={[0, 6, 0]} />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}`} />
+        <OrbitControls
+          makeDefault
+          enabled={workMode !== "walk"}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.9}
+          zoomSpeed={0.9}
+          minDistance={4}
+          maxDistance={480}
+          target={[0, 6, 0]}
+          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+        />
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
       </Canvas>
@@ -282,9 +299,39 @@ function CameraRig({
   const { camera, controls, gl, size, scene } = useThree();
   const projectRef = useRef(project);
   projectRef.current = project;
+  const presetKey = `${preset}|${overlayKey.split("|").pop() ?? ""}`;
+  const lastPresetKey = useRef(presetKey);
+  // Turning, zooming or panning by hand: remember the angle so a rebuild keeps it.
+  useEffect(() => {
+    const orbit = controls as unknown as (THREE.EventDispatcher<{ start: object; end: object }> & { target?: THREE.Vector3 }) | null;
+    if (!orbit?.addEventListener) return;
+    const onStart = () => useYard.getState().setOrbited(true);
+    const onEnd = () => {
+      if (!orbit.target) return;
+      const d = camera.position.clone().sub(orbit.target);
+      if (d.lengthSq() < 1e-6) return;
+      d.normalize();
+      useYard.getState().setUserView({
+        azimuthDeg: (Math.atan2(d.x, d.z) * 180) / Math.PI,
+        elevationDeg: Math.max(-80, Math.min(89, (Math.asin(d.y) * 180) / Math.PI)),
+      });
+    };
+    orbit.addEventListener("start", onStart);
+    orbit.addEventListener("end", onEnd);
+    return () => {
+      orbit.removeEventListener("start", onStart);
+      orbit.removeEventListener("end", onEnd);
+    };
+  }, [controls, camera]);
   useEffect(() => {
     if (locked) return;
     let cancelled = false;
+    // A preset or Reset view frames the model fresh. A rebuild (new size, new stock) keeps the
+    // angle the user turned it to and only refits the distance.
+    const asked = lastPresetKey.current !== presetKey;
+    lastPresetKey.current = presetKey;
+    const st = useYard.getState();
+    const kept = !asked && st.orbited ? st.userView : null;
     const fit = () => {
       if (cancelled) return;
       const cam = camera as THREE.PerspectiveCamera;
@@ -295,8 +342,9 @@ function CameraRig({
       const base = benchView(projectRef.current, box);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
-      const view =
-        preset === "front"
+      const view = kept
+        ? kept
+        : preset === "front"
           ? { azimuthDeg: faceX ? 90 : 0, elevationDeg: 8 }
           : preset === "side"
             ? { azimuthDeg: faceX ? 0.01 : 90, elevationDeg: 8 }
@@ -327,7 +375,7 @@ function CameraRig({
         const v = new THREE.Vector3(x, y, z).project(cam);
         return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
       });
-      (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset };
+      (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept };
     };
     // Let the overlay cards lay out first, then fit.
     const t1 = window.setTimeout(fit, 60);
@@ -338,7 +386,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey]);
   return null;
 }
 
