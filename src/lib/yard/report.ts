@@ -9,7 +9,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
-import { nestCutList, nestParts, cutListToNestParts, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, SHEET_4X10, plySheetCatalogId } from "./nesting";
+import { spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
@@ -200,7 +200,7 @@ function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
   });
 }
 
-function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
+function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = planSheetNest(cuts)): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   // Join-screw estimate from honest cut wood qty (drawer explode + plies), not raw panels.length.
   const woodPieces = cuts.reduce((s, c) => s + c.quantity, 0);
@@ -225,23 +225,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   const sheet10 = getCatalogItem("plywood-3-4-4x10");
   // 2x4 / 2x6 bearers are boards, not sheet parts. Nesting them onto plywood inflates Buy.
   const stickBoards = structural.filter((c) => /^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id));
-  const structuralNestable = structural.filter(
-    (c) => Math.min(c.lengthIn, c.widthIn) > 2 && !stickBoards.includes(c),
-  );
-  const on8 = structuralNestable.filter((c) => fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
-  const on10 = structuralNestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
-  const nest8 = on8.length ? nestParts(cutListToNestParts(on8), SHEET_4X8) : null;
-  const nest10 = on10.length ? nestParts(cutListToNestParts(on10), SHEET_4X10) : null;
-  // Fallback when nothing nestable but structural exists (e.g. only thick sticks filtered out)
-  const sheets8 = nest8?.totalSheets ?? nest8?.sheets.length ?? 0;
-  const sheets10 = nest10?.totalSheets ?? nest10?.sheets.length ?? 0;
-  const unplaced = [...(nest8?.unplaced ?? []), ...(nest10?.unplaced ?? [])];
-  const sheetsFallback =
-    isTable && structural.length === 0
-      ? 0
-      : structural.length && sheets8 + sheets10 === 0
-        ? 1
-        : 0;
+  // Sheet counts come from the plan's one sheet nest — the same sheets the layout and PDF draw.
+  const counted = nestSheetCounts(nest.sheets);
+  const sheets8 = counted.on8;
+  const sheets10 = counted.on10;
+  const unplaced = counted.unplaced;
 
   const boardPrimary =
     !!sheet &&
@@ -293,7 +281,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
         (face < 3.2 ? `. The face is only ${face}" — buy extra when a part is wider` : "") +
         `. ¼" backs stay plywood.`,
     });
-  } else if (sheets8 + sheetsFallback > 0) {
+  } else if (sheets8 > 0 || (project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber && structural.length > 0)) {
     const isNamedLumberPrimary =
       project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber;
     // Solid named lumber (teak outdoor etc.): Buy pcs = honest cut wood qty, not
@@ -305,7 +293,7 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       /ply|sheet/i.test(`${c.material ?? ""}`),
     );
     const solidNamed = isNamedLumberPrimary && !densifyNestsOnSheet;
-    const nestSheetQty = sheets8 + sheetsFallback;
+    const nestSheetQty = sheets8;
     const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
     if (solidNamed) {
       // Named solid stock drives every ¾" part: Buy the 8-ft boards the parts
@@ -492,14 +480,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
-    // Promote thickness so nestCutList accepts them; nest on 4×8 and 4×10 as needed.
-    const asNestable = thinBacks.map((c) => ({ ...c, thicknessIn: Math.max(c.thicknessIn ?? 0.25, 0.5) }));
-    const thin8 = asNestable.filter((c) => fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
-    const thin10 = asNestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
-    const nestThin8 = thin8.length ? nestParts(cutListToNestParts(thin8), SHEET_4X8) : null;
-    const nestThin10 = thin10.length ? nestParts(cutListToNestParts(thin10), SHEET_4X10) : null;
-    const t8 = nestThin8?.totalSheets ?? 0;
-    const t10 = nestThin10?.totalSheets ?? 0;
+    // Backer sheets from the plan's one nest (4×8, and 4×10 for full-height backs).
+    const thin10 = thinBacks.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
+    const backer = nestSheetCounts(nest.backer);
+    const t8 = backer.on8;
+    const t10 = backer.on10;
     const spliceNote = thinBacks.some((c) => / · /.test(c.name))
       ? " Splice segments butt-join into the finished back before you hang it."
       : "";
@@ -1081,15 +1066,8 @@ export function honestNestSheetStockName(
   if (!project.panels.length) {
     return null;
   }
-  const cuts = closetCuts(project);
-  const structural = cuts.filter(
-    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !/^leg$/i.test(c.name),
-  );
-  const nestable = structural.filter((c) => Math.min(c.lengthIn, c.widthIn) > 2);
-  const on10 = nestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
-  if (!on10.length) return null;
-  const nest10 = nestParts(cutListToNestParts(on10), SHEET_4X10);
-  const sheets10 = nest10?.totalSheets ?? nest10?.sheets.length ?? 0;
+  // Same one nest Buy counts.
+  const sheets10 = nestSheetCounts(planSheetNest(closetCuts(project)).sheets).on10;
   return sheets10 > 0 ? name10 : null;
 }
 
@@ -1185,7 +1163,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every(isStickAccessorySheet);
   if (project.panels.length > 0 && !stickWithBacker) {
     const cutList = closetCuts(project);
-    const bom = closetBom(project, cutList);
+    const sheetNest = planSheetNest(cutList);
+    const bom = closetBom(project, cutList, sheetNest);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     const issues: FeasibilityIssue[] = [
       {
@@ -1324,7 +1303,7 @@ function buildPlanCore(project: YardProject): BuildPlan {
       ...loadIssues(project),
     ];
     const pieces = cutList.reduce((s, c) => s + c.quantity, 0);
-    return honestPlan(
+    const plan = honestPlan(
       project,
       packPlan(
         project,
@@ -1337,6 +1316,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
         cost,
       ),
     );
+    // The sheets Buy counted ride on the plan: the layout and PDF draw exactly these.
+    return { ...plan, sheetNest };
   }
 
   const item = getCatalogItem(project.primaryMaterialId);

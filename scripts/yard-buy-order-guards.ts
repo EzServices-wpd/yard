@@ -8,7 +8,9 @@
  * Run: node_modules/.bin/tsx scripts/yard-buy-order-guards.ts
  */
 import fs from "fs";
-import { GALLERY } from "../src/lib/yard/gallery";
+import { IDEAS } from "../src/lib/yard/ideas";
+import { planSheetNest } from "../src/lib/yard/nesting";
+import { buildPlanPdf } from "../src/lib/yard/pdf";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { LISTINGS, compareOffersByPrice, offersFor, sortOffersByPrice } from "../src/lib/yard/listings";
@@ -98,9 +100,9 @@ for (const id of catalogIds) {
   }
 }
 
-// ── every gallery plan + canaries, with and without affiliate IDs ──
+// ── every Ideas plan + canaries, with and without affiliate IDs ──
 const prompts = [
-  ...GALLERY.map((g) => g.prompt),
+  ...IDEAS.map((g) => g.prompt),
   "pocket vanity",
   "nightstand with one drawer",
   "house: linen closet 31.5×78×16",
@@ -146,3 +148,70 @@ for (const p of prompts) {
 }
 
 console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest (${withBest} with a Best), no store preference, same with or without affiliate IDs`);
+
+// ── one sheet nest: Buy's sheet count = the sheets the plan layout and the PDF draw ──
+// Every sheet-goods build: Buy ¾" sheets = the layout's structural sheets, Buy backer sheets = the
+// backer sheets, the plan carries the nest Buy counted (rebuilt from the final cut list it matches),
+// and the PDF cut diagrams number the same total ("Sheet k of N").
+{
+  const sheetCanaries = [
+    ...prompts,
+    "wine rack",
+    "plywood wine rack",
+    "wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit",
+    "wine rack 24 wide 36 high 12 deep with twelve slots",
+    "wine rack 12 wide 30 tall for 20 bottles",
+    "bookshelf",
+    "bookshelf 30 wide 12 deep 60 tall with five shelves",
+    "kitchen island",
+    "tv console",
+    "dresser with 6 drawers",
+    "desk with drawers",
+    "plate rack with 6 slots",
+    "spice rack",
+    "oak coffee table",
+    "linen closet",
+    "shoe rack with 4 shelves",
+    "toy chest",
+    "workbench",
+  ];
+  let checked = 0;
+  for (const p of sheetCanaries) {
+    const proj = generateFromPrompt(p);
+    const plan = buildPlan(proj);
+    if (plan.partsKind === "whole" || !proj.panels.length) continue;
+    const layout = plan.sheetNest ?? planSheetNest(plan.cutList);
+    const rebuilt = planSheetNest(plan.cutList);
+    const structural = layout.sheets?.totalSheets ?? 0;
+    const backer = layout.backer?.totalSheets ?? 0;
+    if ((rebuilt.sheets?.totalSheets ?? 0) !== structural || (rebuilt.backer?.totalSheets ?? 0) !== backer) {
+      fail(`sheet nest drifts from the final cut list: ${p}`, { structural, backer, rebuilt: [rebuilt.sheets?.totalSheets, rebuilt.backer?.totalSheets] });
+    }
+    const sheetRows = plan.bom.filter((b) => /^sheets?$/.test(b.unit));
+    const buyBacker = sheetRows.filter((b) => /^plywood-1-4-/.test(b.catalogId ?? "")).reduce((s, b) => s + b.quantity, 0);
+    const buyStructural = sheetRows.filter((b) => !/^plywood-1-4-/.test(b.catalogId ?? "")).reduce((s, b) => s + b.quantity, 0);
+    if (buyStructural !== structural) fail(`Buy sheets ≠ layout sheets: ${p}`, { buy: buyStructural, layout: structural, rows: sheetRows.map((b) => `${b.name} ${b.quantity}`) });
+    if (buyBacker !== backer) fail(`Buy backer sheets ≠ backer layout: ${p}`, { buy: buyBacker, layout: backer });
+    if (layout.sheets?.unplaced.length) fail(`parts left off every sheet: ${p}`, layout.sheets.unplaced.map((x) => x.name));
+    // Every placed part sits on its sheet and no two parts overlap.
+    for (const sh of [...(layout.sheets?.sheets ?? []), ...(layout.backer?.sheets ?? [])]) {
+      for (const [i, a] of sh.parts.entries()) {
+        if (a.x < -1e-6 || a.y < -1e-6 || a.x + a.width > sh.width + 1e-6 || a.y + a.height > sh.height + 1e-6) fail(`part off the sheet: ${p}`, a);
+        for (const b of sh.parts.slice(i + 1)) {
+          if (a.x < b.x + b.width - 1e-6 && b.x < a.x + a.width - 1e-6 && a.y < b.y + b.height - 1e-6 && b.y < a.y + a.height - 1e-6) fail(`parts overlap on a sheet: ${p}`, { a, b });
+        }
+      }
+    }
+    // PDF cut diagrams: same total.
+    const out = buildPlanPdf(proj, plan).output();
+    const labels = [...out.matchAll(/\((Sheet \d+(?: of \d+)?)/g)].map((m) => m[1]);
+    const pdfTotal = labels.length ? Math.max(...labels.map((l) => Number(l.match(/of (\d+)/)?.[1] ?? 1))) : 0;
+    if (pdfTotal !== structural + backer) fail(`PDF sheet diagrams ≠ Buy sheets: ${p}`, { pdf: pdfTotal, labels, structural, backer });
+    // Strips ripped from a sheet sit on that sheet — never a separate "plywood board" diagram.
+    const plyBoards = [...out.matchAll(/\(([^()]*(?:ply|mdf|osb)[^()]*\d+ boards?, \d+\\?" long)/gi)].map((m) => m[1]);
+    if (plyBoards.length) fail(`PDF draws sheet stock as boards: ${p}`, plyBoards);
+    checked++;
+  }
+  console.log(`PASS sheet-nest: Buy sheet qty = plan layout = PDF diagrams on ${checked} sheet-goods builds`);
+}
+

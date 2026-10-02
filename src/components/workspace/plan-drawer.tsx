@@ -13,7 +13,7 @@ import { outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET } from
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { ExportDialog } from "@/components/workspace/export-dialog";
-import { nestCutList, sheetSizeLabel } from "@/lib/yard/nesting";
+import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
@@ -209,11 +209,11 @@ function PlanBody({
   const paperCraft = Boolean(project.flat && !project.flat.lifted);
   const nest = useMemo(
     () => {
-      // Named solid boards (Pine 1×4, Oak 1×4 …) are not sheet goods — no sheet layout for them.
-      const sheetCuts = plan.cutList.filter((c) => !/^[A-Z][a-z]+ 1×\d+$/.test(c.material ?? ""));
-      return plan.partsKind === "whole" || !sheetCuts.length ? null : nestCutList(sheetCuts);
+      // The same sheets Buy counted (one nest per plan); named solid boards are never on a sheet.
+      if (plan.partsKind === "whole") return null;
+      return (plan.sheetNest ?? planSheetNest(plan.cutList)).sheets;
     },
-    [plan.cutList, plan.partsKind],
+    [plan.cutList, plan.partsKind, plan.sheetNest],
   );
   const nestSheets = nest?.sheets ?? [];
   const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);

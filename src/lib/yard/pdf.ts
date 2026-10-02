@@ -1,7 +1,7 @@
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import { nestCutList, nestParts, sheetSizeLabel, type NestPart, type NestSheet } from "./nesting";
+import { planSheetNest, sheetSizeLabel, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, CutLine, YardProject } from "./types";
 import { fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
@@ -501,29 +501,15 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
 
   // ═════════════════════════ CUT DIAGRAMS
   if (!craft && partLines.length) {
-    // Named solid boards (Pine 1×4, Oak 1×4 …) are not sheet goods — no sheet diagram for them.
-    const nest = nestCutList(partLines.filter((c) => !/^[A-Z][a-z]+ 1×\d+$/.test(c.material ?? "")));
-    const sheets: NestSheet[] = [...(nest?.sheets ?? [])];
-    const thin = partLines.filter((c) => !c.whole && (c.thicknessIn ?? 0.75) < 0.5 && Math.min(c.lengthIn, c.widthIn) > 2);
-    if (thin.length) {
-      const parts: NestPart[] = [];
-      for (const c of thin) {
-        for (let i = 0; i < Math.max(1, Math.floor(c.quantity)); i++) {
-          parts.push({
-            id: `${c.id}-${i}`,
-            name: c.name,
-            label: c.label,
-            width: Math.max(c.lengthIn, c.widthIn),
-            height: Math.min(c.lengthIn, c.widthIn),
-            material: `${frac(c.thicknessIn)} plywood`,
-            allowRotate: true,
-          });
-        }
-      }
-      const tall = parts.some((p) => p.width > 96);
-      const res = nestParts(parts, tall ? { width: 120, height: 48 } : { width: 96, height: 48 });
-      res.sheets.forEach((s) => sheets.push({ ...s, index: sheets.length + 1 }));
+    // The same sheets Buy counted (one nest per plan): structural sheets, then the thin backer's
+    // own sheets. Named solid boards are never on a sheet — they get board diagrams below.
+    const planNest = plan.sheetNest ?? planSheetNest(partLines);
+    const sheets: NestSheet[] = [...(planNest.sheets?.sheets ?? [])];
+    for (const s of planNest.backer?.sheets ?? []) {
+      const thick = partLines.find((c) => s.parts.some((p) => p.label && p.label === c.label))?.thicknessIn ?? 0.25;
+      sheets.push({ ...s, index: sheets.length + 1, material: `${frac(thick)} plywood` });
     }
+    const thin = partLines.filter((c) => !c.whole && (c.thicknessIn ?? 0.75) < 0.5);
     const nested = new Set(sheets.flatMap((s) => s.parts.map((p) => p.label)));
     const boards = partLines.filter((c) => !c.whole && !nested.has(c.label) && !(thin.includes(c)));
     const blocks: { h: number; draw: (top: number) => void }[] = [];

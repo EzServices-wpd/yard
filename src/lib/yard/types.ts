@@ -451,6 +451,11 @@ export type BuildPlan = {
   generatedAt: string;
   grokNotes?: string;
   partsKind?: "cut" | "whole";
+  /**
+   * The one sheet nest (structural + backer) Buy counted. The plan's sheet layout and the PDF
+   * cut diagrams draw exactly these sheets.
+   */
+  sheetNest?: import("./nesting").PlanSheetNest | null;
   render?: {
     url: string;
     prompt: string;

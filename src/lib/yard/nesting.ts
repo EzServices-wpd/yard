@@ -73,6 +73,23 @@ function scoreBSSF(rect: FreeRect, w: number, h: number): number {
   const leftoverH = rect.height - h;
   return Math.min(leftoverW, leftoverH);
 }
+/** Best long side fit. */
+function scoreBLSF(rect: FreeRect, w: number, h: number): number {
+  return Math.max(rect.width - w, rect.height - h);
+}
+/** Best area fit. */
+function scoreBAF(rect: FreeRect, w: number, h: number): number {
+  return rect.width * rect.height - w * h;
+}
+type Scorer = (rect: FreeRect, w: number, h: number) => number;
+type PartOrder = (a: NestPart, b: NestPart) => number;
+const SCORERS: Scorer[] = [scoreBSSF, scoreBLSF, scoreBAF];
+const ORDERS: PartOrder[] = [
+  (a, b) => b.width * b.height - a.width * a.height,
+  (a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height) || b.width * b.height - a.width * a.height,
+  (a, b) => Math.min(b.width, b.height) - Math.min(a.width, a.height) || Math.max(b.width, b.height) - Math.max(a.width, a.height),
+  (a, b) => b.width + b.height - (a.width + a.height),
+];
 
 function splitFreeRect(rect: FreeRect, x: number, y: number, w: number, h: number): FreeRect[] {
   const result: FreeRect[] = [];
@@ -123,16 +140,16 @@ function pruneFreeList(list: FreeRect[]): FreeRect[] {
 function packSheet(
   parts: NestPart[],
   sheetW: number,
-  sheetH: number
+  sheetH: number,
+  order: PartOrder = ORDERS[0],
+  score: Scorer = scoreBSSF,
 ): { placed: PlacedPart[]; remaining: NestPart[] } {
   let free: FreeRect[] = [{ x: 0, y: 0, width: sheetW, height: sheetH }];
   const placed: PlacedPart[] = [];
   const remaining: NestPart[] = [];
 
-  // Sort largest area first
-  const sorted = [...parts].sort(
-    (a, b) => b.width * b.height - a.width * a.height
-  );
+  // Largest first (by the chosen order)
+  const sorted = [...parts].sort(order);
 
   for (const part of sorted) {
     const candidates = [
@@ -157,7 +174,7 @@ function packSheet(
         if (!fits(free[i], cand.w, cand.h)) continue;
         const consumeW = Math.min(cand.w + KERF, free[i].width);
         const consumeH = Math.min(cand.h + KERF, free[i].height);
-        const s = scoreBSSF(free[i], consumeW, consumeH);
+        const s = score(free[i], consumeW, consumeH);
         if (!best || s < best.score) {
           best = { rectIdx: i, score: s, w: consumeW, h: consumeH, rotated: cand.rotated };
         }
@@ -212,32 +229,55 @@ export function nestParts(
   const unplaced: NestPart[] = [];
   let sheetIndex = 0;
 
-  for (const [material, matParts] of byMaterial) {
+  // Every material: try each part order × fit rule and keep the fewest sheets (then the
+  // fullest early sheets), so Buy never asks for a sheet a better layout does not need.
+  const sheetArea = sheetSize.width * sheetSize.height;
+  const packAll = (matParts: NestPart[], order: PartOrder, score: Scorer) => {
+    const out: { placed: PlacedPart[] }[] = [];
+    const lost: NestPart[] = [];
     let remaining = matParts;
     while (remaining.length > 0) {
-      const { placed, remaining: still } = packSheet(
-        remaining,
-        sheetSize.width,
-        sheetSize.height
-      );
+      const { placed, remaining: still } = packSheet(remaining, sheetSize.width, sheetSize.height, order, score);
       if (placed.length === 0) {
         // Cannot place any more on a full sheet — give up on these
-        unplaced.push(...still);
+        lost.push(...still);
         break;
       }
-      const usedArea = placed.reduce((s, p) => s + p.width * p.height, 0);
-      const sheetArea = sheetSize.width * sheetSize.height;
+      out.push({ placed });
+      remaining = still;
+    }
+    return { out, lost };
+  };
+  for (const [material, matParts] of byMaterial) {
+    let best: ReturnType<typeof packAll> | null = null;
+    let bestKey: number[] = [];
+    for (const order of ORDERS) {
+      for (const score of SCORERS) {
+        const r = packAll(matParts, order, score);
+        // Fewest unplaced, then fewest sheets, then the emptiest last sheet (more usable offcut).
+        const last = r.out.length ? r.out[r.out.length - 1].placed.reduce((s, p) => s + p.width * p.height, 0) : 0;
+        const key = [r.lost.length, r.out.length, last];
+        const i = key.findIndex((v, k) => Math.abs(v - bestKey[k]) > 1e-6);
+        const better = !best || (i >= 0 && key[i] < bestKey[i]);
+        if (better) {
+          best = r;
+          bestKey = key;
+        }
+      }
+    }
+    for (const sh of best!.out) {
+      const usedArea = sh.placed.reduce((s, p) => s + p.width * p.height, 0);
       sheets.push({
         index: ++sheetIndex,
         width: sheetSize.width,
         height: sheetSize.height,
         material,
-        parts: placed,
+        parts: sh.placed,
         usedArea,
         utilization: usedArea / sheetArea,
       });
-      remaining = still;
     }
+    unplaced.push(...best!.lost);
   }
 
   const avgUtil =
@@ -405,23 +445,24 @@ export function spliceCutListToSheet(cutList: CutLine[]): CutLine[] {
  */
 
 /** Plywood / MDF / OSB faces. Dimensional lumber (2x6, 1x4) stays on the board buy. */
-function isSheetGood(c: CutLine): boolean {
+function isSheetGood(c: CutLine, strips = false): boolean {
   const blob = `${c.material ?? ""} ${c.name ?? ""}`;
   const sheetNamed = /ply|mdf|osb|chipboard|sheet good/i.test(blob);
   const lumberNamed = /\b[124]\s*[x×]\s*\d|\blumber\b|\bdowel\b|\bstick\b|\bpipe\b/i.test(blob);
   if (lumberNamed && !sheetNamed) return false;
-  if (sheetNamed) return c.widthIn > 2 && c.lengthIn > 2;
+  // Strips ripped from a named sheet (bottle rails, lips, cleats) come off the same sheet.
+  if (sheetNamed) return strips ? c.widthIn > 0 && c.lengthIn > 0 : c.widthIn > 2 && c.lengthIn > 2;
   const thick = c.thicknessIn ?? 0.75;
   if (thick > 1) return false;
   return c.widthIn > 2 && c.lengthIn > 2;
 }
 
-export function cutListToNestParts(cutList: CutLine[]): NestPart[] {
+export function cutListToNestParts(cutList: CutLine[], opts: { strips?: boolean } = {}): NestPart[] {
   const parts: NestPart[] = [];
   for (const c of cutList) {
     if (c.whole) continue;
     // Sheet goods only. A 2x6 is wider than 2" but it is a board, not a 4x8 face.
-    if (!isSheetGood(c)) continue;
+    if (!isSheetGood(c, !!opts.strips)) continue;
 
     // Thin backer (1/4" or thinner) does not belong on a 3/4" structural sheet.
     const thick = c.thicknessIn ?? 0.75;
@@ -479,6 +520,70 @@ export function nestCutList(cutList: CutLine[]): NestResult | null {
   const averageUtilization =
     totalSheets === 0 ? 0 : sheets.reduce((sum, sh) => sum + sh.utilization, 0) / totalSheets;
   return { sheets, unplaced, totalSheets, averageUtilization };
+}
+
+/** Nest parts onto 4×8, and onto 4×10 for faces that do not fit a 4×8; one numbered result. */
+function nestOn8And10(parts: NestPart[]): NestResult | null {
+  if (parts.length === 0) return null;
+  const on8 = parts.filter((p) => fitsOnSheet(p.width, p.height, DEFAULT_SHEET));
+  const on10 = parts.filter((p) => !fitsOnSheet(p.width, p.height, DEFAULT_SHEET));
+  const nest8 = on8.length ? nestParts(on8, DEFAULT_SHEET) : null;
+  const nest10 = on10.length ? nestParts(on10, SHEET_10) : null;
+  const sheets = [...(nest8?.sheets ?? []), ...(nest10?.sheets ?? [])].map((s, i) => ({ ...s, index: i + 1 }));
+  const unplaced = [...(nest8?.unplaced ?? []), ...(nest10?.unplaced ?? [])];
+  const totalSheets = sheets.length;
+  const averageUtilization = totalSheets === 0 ? 0 : sheets.reduce((sum, sh) => sum + sh.utilization, 0) / totalSheets;
+  return { sheets, unplaced, totalSheets, averageUtilization };
+}
+
+/** The plan's sheet nest: ¾" structural sheets and ¼" backer sheets, from one cut list. */
+export interface PlanSheetNest {
+  /** Structural sheet goods (½"–2" thick): every face and every strip ripped from the sheet. */
+  sheets: NestResult | null;
+  /** Thin backer (under ½"), on its own sheets — never nested with structural ply. */
+  backer: NestResult | null;
+}
+
+/** Named solid boards (Pine 1×4, Oak 1×4 …) are boards, not sheet goods. */
+export function isNamedBoardMaterial(material?: string): boolean {
+  return /^[A-Z][a-z]+ 1×\d+$/.test(material ?? "");
+}
+
+/** Legs, 2× bearers and named solid boards are bought as lumber — never nested on a sheet. */
+function sheetNestable(c: CutLine): boolean {
+  if (c.whole) return false;
+  if (/^leg$/i.test(c.name)) return false;
+  if (/^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id ?? "")) return false;
+  if (isNamedBoardMaterial(c.material)) return false;
+  return true;
+}
+
+/**
+ * One sheet nest for the whole plan. Buy's sheet count, the sheet layout in the plan, the PDF
+ * cut diagrams, and the cut steps all read this result, so they always show the same sheets.
+ * Strips cut from the sheet (rails, lips, cleats) are placed on it too.
+ */
+export function planSheetNest(cutList: CutLine[]): PlanSheetNest {
+  const ok = cutList.filter(sheetNestable);
+  const structural = ok.filter((c) => (c.thicknessIn ?? 0.75) >= MIN_NEST_THICKNESS && (c.thicknessIn ?? 0) < 2);
+  // Thin backer: promote the thickness so the sheet-good filter takes it, nest it on its own sheets.
+  const thin = ok
+    .filter((c) => (c.thicknessIn ?? 0.75) < MIN_NEST_THICKNESS)
+    .map((c) => ({ ...c, thicknessIn: MIN_NEST_THICKNESS, material: c.material || '1/4" plywood' }));
+  return {
+    sheets: nestOn8And10(cutListToNestParts(structural, { strips: true })),
+    backer: nestOn8And10(cutListToNestParts(thin, { strips: true })),
+  };
+}
+
+/** Sheet count per size for Buy (4×8 vs 4×10) from the one plan nest. */
+export function nestSheetCounts(nest: NestResult | null): { on8: number; on10: number; unplaced: NestPart[] } {
+  const sheets = nest?.sheets ?? [];
+  return {
+    on8: sheets.filter((s) => Math.max(s.width, s.height) <= 96 + 1e-6).length,
+    on10: sheets.filter((s) => Math.max(s.width, s.height) > 96 + 1e-6).length,
+    unplaced: nest?.unplaced ?? [],
+  };
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;
