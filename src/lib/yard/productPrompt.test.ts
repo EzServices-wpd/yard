@@ -41,4 +41,21 @@ describe("a stand keeps the tank", () => {
     assert.ok(project.panels.some((panel) => /post/i.test(panel.name)));
     assert.ok(!project.notes.some((note) => /popsicle|creature|quadruped/i.test(note)));
   });
+
+  it("keeps a named product in a rack instead of a closet or a creature", () => {
+    const ball = generateFromPrompt("Wilson GST football");
+    const ballItem = getCatalogItem(ball.instances[0].catalogId);
+    assert.equal(ballItem?.shape, "ball");
+    assert.ok((ballItem?.dims.length ?? 0) > 10);
+    assert.ok(!ball.notes.some((note) => /quadruped|creature|popsicle/i.test(note)));
+
+    const rack = generateFromPrompt("rack for an Estwing claw hammer");
+    assert.notEqual(rack.kind, "closet");
+    const hammer = getCatalogItem(rack.instances[0].catalogId);
+    assert.equal(hammer?.shape, "tool");
+    assert.equal(hammer?.dims.length, 13);
+    assert.ok(rack.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!rack.notes.some((note) => /quadruped|creature|popsicle/i.test(note)));
+    assert.ok(!rack.panels.some((panel) => /plywood/i.test(panel.materialId)));
+  });
 });

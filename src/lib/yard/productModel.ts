@@ -183,12 +183,16 @@ export function shapeOf(text: string): StockShape {
   if (/\b(mason|jars?)\b/.test(q)) return "jar";
   if (/\b(watering|trash|garbage|oil|gas|jerry|milk)\s+cans?\b/.test(q)) return "bucket";
   if (/\bcans?\b/.test(q) && !/\bcanvas\b/.test(q)) return "can";
-  if (/\b(bottles?|dasani|aquafina|evian|fiji|smartwater|pellegrino|poland|ketchup|mustard)\b/.test(q)) return "bottle";
+  if (/\b(bottles?|dasani|aquafina|evian|fiji|smartwater|pellegrino|poland|hydro\s*flask|ketchup|mustard)\b/.test(q)) return "bottle";
   if (/\b(screw\s*drivers?|hammers?|wrenches?|pliers|drills?|saws?|chisels?|ratchets?|flashlights?|torches|lanterns?)\b/.test(q)) return "tool";
   if (/\b(goggles|glasses|sunglasses)\b/.test(q)) return "eyewear";
+  if (/\bfootballs?\b/.test(q)) return "ball";
   if (/\b(basketballs?|soccer\s*balls?|tennis\s*balls?|balls?)\b/.test(q)) return "ball";
-  if (/\b(mugs?|cups?|tumblers?)\b/.test(q)) return "cup";
+  if (/\b(mugs?|cups?|tumblers?|ramblers?)\b/.test(q)) return "cup";
   if (/\b(buckets?|pails?)\b/.test(q)) return "bucket";
+  if (/\btraffic\s*cones?\b/.test(q)) return "bucket";
+  if (/\b(padlocks?)\b/.test(q)) return "block";
+  if (/\b(totes?|storage\s+bins?)\b/.test(q)) return "block";
   if (/\b(toilet\s*paper|paper\s*towels?|duct\s*tape|masking\s*tape|extension\s*cords?|cords?|ropes?|hoses?)\b/.test(q)) return "roll";
   if (/\b(crates?|cinder|cmu|pavers?|bricks?)\b/.test(q) || /\bconcrete\s+blocks?\b/.test(q)) return "block";
   if (/\b(wd-?\s*40|aerosol|spray\s*paint)\b/.test(q)) return "can";
@@ -227,7 +231,16 @@ function niceName(query: string, shape: StockShape): string {
 }
 
 const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
-  { match: (q) => /basket\s*ball/.test(q), over: { shape: "ball", length: 9.43, diameter: 9.43, note: "Size 7 basketball, 9.43″ across. Not this ball’s stamp." } },
+  { match: (q) => /yeti/.test(q) && /rambler|tumbler|20/.test(q), over: { shape: "cup", length: 6.6, diameter: 3.5, color: "#d7dde2", metalness: 0.55, roughness: 0.28, note: "YETI Rambler 20 oz, 6.6″ tall and 3.5″ across. Listing size, not a drawing." } },
+  { match: (q) => /hydro\s*flask/.test(q) && /32/.test(q), over: { shape: "bottle", length: 11, diameter: 3.55, color: "#d5dde3", metalness: 0.55, roughness: 0.28, note: "Hydro Flask 32 oz wide mouth, 11″ tall and 3.55″ across. Maker size, not a PET bottle." } },
+  { match: (q) => /estwing/.test(q) && /hammer/.test(q) && /12/.test(q), over: { shape: "tool", length: 11, diameter: 1.15, width: 5, color: "#3d5f8a", note: "Estwing 12 oz claw hammer, 11″ overall. Maker length." } },
+  { match: (q) => /estwing/.test(q) && /hammer/.test(q), over: { shape: "tool", length: 13, diameter: 1.25, width: 5.5, color: "#3d5f8a", note: "Estwing 16 oz claw hammer, 13″ overall. Maker length, not an 8″ hand-tool guess." } },
+  { match: (q) => /lineman|klein/.test(q) && /pliers/.test(q), over: { shape: "tool", length: 9.35, diameter: 0.75, width: 2.06, color: "#1d3f73", note: "Klein D213-9NE lineman pliers, 9.35″ × 2.06″. Maker size." } },
+  { match: (q) => /rubbermaid/.test(q) && /tote|18/.test(q), over: { shape: "block", length: 23.875, width: 15.875, height: 16.375, color: "#6d737c", note: "Rubbermaid Roughneck 18 gal tote, 23.875″ × 15.875″ × 16.375″. Listing outside size." } },
+  { match: (q) => /footballs?/.test(q), over: { shape: "ball", length: 11.125, diameter: 6.73, width: 6.73, color: "#8a5a32", note: "Official football, 11 to 11.25″ long, short way about 6.73″. Rule size, not this ball’s stamp." } },
+  { match: (q) => /master\s*lock/.test(q) && /3\s*d|padlock/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Master Lock 3D, about 1.57″ wide and 2.6″ tall. Listing size." } },
+  { match: (q) => /padlocks?/.test(q), over: { shape: "block", length: 2.6, width: 1.57, height: 0.98, color: "#b7bec6", metalness: 0.7, roughness: 0.35, note: "Usual laminated padlock, about 1.57″ × 2.6″. Not this lock’s drawing." } },
+  { match: (q) => /traffic\s*cones?/.test(q), over: { shape: "bucket", length: 18, diameter: 10.5, width: 10.5, color: "#e35b12", note: "Usual 18″ traffic cone, 10.5″ base. Not this cone’s drawing." } },
   { match: (q) => /soccer/.test(q) && /ball/.test(q), over: { shape: "ball", length: 8.65, diameter: 8.65, note: "Size 5 soccer ball, 8.65″ across. Not this ball’s stamp." } },
   { match: (q) => /tennis/.test(q) && /ball/.test(q), over: { shape: "ball", length: 2.57, diameter: 2.57, note: "Tennis ball, 2.57″ across. Not this ball’s stamp." } },
   { match: (q) => /\b5\s*gal/.test(q) && /bucket|pail/.test(q), over: { shape: "bucket", length: 14.5, diameter: 11.9, note: "Usual 5 gallon bucket, 14.5″ × 11.9″. Not this bucket’s drawing." } },

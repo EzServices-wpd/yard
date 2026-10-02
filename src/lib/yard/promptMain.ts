@@ -303,11 +303,11 @@ function placeOwnedBoard(prompt: string): YardProject | null {
 }
 
 
-/** A stand for a tank, can, or ball keeps that object. Not a popsicle creature, not a plywood box. */
+/** A stand, rack, shelf, or holder that names a product keeps that product. Not a creature, not a plywood box. */
 function placeHeldProduct(prompt: string): YardProject | null {
   const lower = prompt.toLowerCase();
-  if (!/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
-  if (!/\b(tanks?|propane|bottles?|cans?|goggles|balls?)\b/.test(lower)) return null;
+  if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves))\b/.test(lower)) return null;
+  if (/\bwine\b/.test(lower) && /\bracks?\b/.test(lower)) return null;
   const item = modeledProduct(prompt);
   if (!item?.shape || item.shape === "object") return null;
   rememberCatalogItem(item);
@@ -315,7 +315,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   const across = item.dims.diameter ?? item.dims.width ?? 8;
   const post = 1.5;
   const span = across + 4;
-  const legH = 14;
+  const legH = Math.min(14, Math.max(6, tall * 0.4));
   const x0 = -span / 2;
   const z0 = -span / 2;
   const corners: [number, number][] = [
@@ -331,7 +331,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
     position: { x, y: 0, z },
     size: { width: post, height: legH, depth: post },
     materialId: "lumber-2x2-8",
-    cutNote: "2x2 post at a corner, outside the cylinder.",
+    cutNote: "2x2 post at a corner, outside the piece.",
   }));
   const railT = 1.5;
   panels.push({
@@ -341,7 +341,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
     position: { x: x0, y: legH - railT, z: z0 },
     size: { width: span, height: railT, depth: railT },
     materialId: "lumber-2x4-8",
-    cutNote: "2x4 rail. The tank sits in the opening, not on a plywood deck.",
+    cutNote: "2x4 rail. The piece sits in the opening, not on a plywood deck.",
   });
   panels.push({
     id: createId("panel"),
@@ -350,7 +350,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
     position: { x: x0, y: legH - railT, z: z0 + span - railT },
     size: { width: span, height: railT, depth: railT },
     materialId: "lumber-2x4-8",
-    cutNote: "2x4 rail. Opening stays clear for the tank.",
+    cutNote: "2x4 rail. Opening stays clear for the piece.",
   });
   const pos = { x: 0, y: legH + tall / 2, z: 0 };
   return {
@@ -374,7 +374,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
     primaryMaterialId: "lumber-2x2-8",
     notes: [
       item.notes || `${item.name} at its usual size.`,
-      "The tank is the cylinder in the stand. Posts and rails stay outside it.",
+      "The named product stays in the stand. Posts and rails stay outside it.",
     ],
     assumptions: {
       load: "medium",
