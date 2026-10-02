@@ -47,6 +47,7 @@ import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from
 import { shelfInstallHeightsClause } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
+import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
 
 function dim(p: Panel) {
   return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
@@ -1107,22 +1108,28 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. Stop the shelves ${HINGE_ARM_CLEAR_IN}" short of the door so the concealed hinge arm can close. Do not glue the shelves; pins let you move them later.`,
         tips: "A medicine bottle is taller than a spice tin — leave the middle gap honest.",
         partsUsed: names(shelves),
       },
       {
         step: 5,
         title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Glue a mirror to the outside of the door so it reflects when closed. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Glue the mirror to the outside face of the door, flush with that face, not buried in the slab. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
       {
         step: 6,
         title: "Hang it on studs",
-        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws, one near each corner. A loaded medicine cabinet will rip off drywall anchors. Close the door and check the reveal.`,
-        tips: "Guidance only — hit a stud. Confirm the hang height so the mirror is at your eye line.",
+        description: (() => {
+          const backW = backs[0]?.size.width ?? W - 1.5;
+          if (backReachesTwoStuds(backW)) {
+            return `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws, one near each corner. Close the door and check the reveal.`;
+          }
+          return `The back is ${round(backW)}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Lag a 3" structural screw into the stud you can reach, and use rated wall anchors at the other corners. Do not drive four corner screws and call them studs. Close the door and check the reveal.`;
+        })(),
+        tips: "Guidance only — confirm the wall. A loaded medicine cabinet will rip off drywall alone. Confirm the hang height so the mirror is at your eye line.",
         partsUsed: names(backs),
       },
     ];

@@ -29,6 +29,36 @@ const PLY = "plywood-3-4-4x8";
 const PLY_BACKER = "plywood-1-4-4x8";
 const TWO_BY_TWO = "lumber-2x2-8";
 const P = 0.75;
+/** Stud spacing the hang steps assume. A back narrower than this cannot take a screw in two studs. */
+export const STUD_CENTER_IN = 16;
+/** Concealed hinge arm sticks in from the door's inner face. Shelves must stop short of it. */
+export const HINGE_ARM_CLEAR_IN = 0.75;
+const DOOR_MIRROR_T = 0.12;
+
+/**
+ * Shallow hung cabinet: the typed depth is the finished depth, door included.
+ * The overlay door's outer face is that number — it does not add a slab past the label.
+ * A mirror sits on that outer face, not buried in the door. Shelves stop short of the hinge arm.
+ */
+export function shallowWallCabinetFace(typedDepth: number, backT = P) {
+  const doorT = P;
+  const outer = typedDepth;
+  const doorZ = Math.max(0, outer - doorT);
+  const shelfStop = Math.max(backT + 0.5, doorZ - HINGE_ARM_CLEAR_IN);
+  return {
+    doorT,
+    doorZ,
+    outer,
+    shelfDepth: Math.max(0.5, shelfStop - backT),
+    mirrorT: DOOR_MIRROR_T,
+    mirrorZ: outer - DOOR_MIRROR_T,
+  };
+}
+
+/** A back this wide cannot reach two studs at the usual centers. */
+export function backReachesTwoStuds(backWidth: number, studCenter = STUD_CENTER_IN) {
+  return backWidth + 1e-6 >= studCenter;
+}
 
 function tableClassHeight(lower: string): number {
   if (/coffee|cocktail/.test(lower)) return 18;
@@ -2833,6 +2863,7 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
   const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
   const fold = affordances.includes("fold-down-board");
   const panels: Panel[] = [];
+  const face = shallowWallCabinetFace(D, backT);
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
@@ -2842,7 +2873,7 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     const innerH = H - P * 2;
     for (let i = 1; i <= shelfN; i++) {
       const y = P + (innerH * i) / (shelfN + 1);
-      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, face.shelfDepth));
     }
   } else {
     const boardW = Math.max(10, innerW - 0.25);
@@ -2853,7 +2884,7 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
   }
   const doorN = fold ? 1 : typedDoorCount(prompt) ?? (W > 28 ? 2 : 1);
   if (fold) {
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+    panels.push(panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT));
   } else {
     const leafH = H - 0.16;
     const bayW = W / doorN;
@@ -2861,7 +2892,7 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
     for (let i = 0; i < doorN; i++) {
       const label =
         doorN === 1 ? "Door" : doorN === 2 ? (i === 0 ? "Left door" : "Right door") : `Door ${i + 1}`;
-      panels.push(panel("door", label, x0 + i * bayW + 0.1, 0.08, D - P, leafW, leafH, P));
+      panels.push(panel("door", label, x0 + i * bayW + 0.1, 0.08, face.doorZ, leafW, leafH, face.doorT));
     }
   }
   const lowerPrompt = prompt.toLowerCase();
@@ -2894,8 +2925,8 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
       fold
         ? "The board stores upright and hinges down on a piano hinge. A support leg kicks out to the floor. Hang the carcase on studs through the back."
         : doorN > 1
-          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorN} hinge pairs). Glue the shelves; do not pin them.`
-          : "Hang the carcase on studs through the back. Concealed hinges on the door. Glue the shelves; do not pin them.",
+          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorN} hinge pairs). Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`
+          : `Hang the carcase on studs through the back. Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -3708,6 +3739,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (isMedicineCabinet(prompt)) {
     const innerW = W - P * 2;
     const backT = P;
+    const face = shallowWallCabinetFace(D, backT);
     const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
@@ -3717,11 +3749,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const innerH = H - P * 2;
     for (let i = 1; i <= shelfN; i++) {
       const y = P + (innerH * i) / (shelfN + 1);
-      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+      panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, face.shelfDepth));
     }
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
-    panels.push(panel("mirror", "Mirror", x0 + 1.1, 1.1, D + 0.02, W - 2.2, H - 2.2, 0.12));
+    panels.push(panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT));
+    panels.push(panel("mirror", "Mirror", x0 + 1.1, 1.1, face.mirrorZ, W - 2.2, H - 2.2, face.mirrorT));
     const name = `Medicine cabinet ${W}" × ${H}" × ${D}"`;
+    const studNote = backReachesTwoStuds(innerW)
+      ? "Hang the carcase on studs through the back."
+      : `The back is ${innerW}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Lag the corner that hits a stud and use rated wall anchors at the others — not four corner screws into studs.`;
     return {
       id: createId("proj"),
       name,
@@ -3732,8 +3767,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood.`,
-        "Hang the carcase on studs through the back. Typical center sits about 60–66\" off the floor (eye height). Concealed hinges on the door. Glue a mirror to the door face.",
+        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
+        `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close. Glue the mirror to the outside face of the door.`,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },

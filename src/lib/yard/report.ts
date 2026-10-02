@@ -18,6 +18,7 @@ import { planSolidBoards } from "./solidStock";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
+import { backReachesTwoStuds, STUD_CENTER_IN } from "./fitted";
 
 function letterLabel(i: number) {
   let n = i;
@@ -662,8 +663,19 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       unit: "pc",
       searchQuery: "adhesive bathroom cabinet mirror",
       estimatedCost: 14.98,
-      notes: "Glue to the outside of the door so the cabinet mirrors when closed. Order or cut close to the door size.",
+      notes: "Glue to the outside face of the door, flush with that face, so the cabinet mirrors when closed. Do not bury it in the door slab.",
     });
+    const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
+    if (backW > 0 && !backReachesTwoStuds(backW)) {
+      bom.push({
+        name: "Rated wall anchors",
+        quantity: 1,
+        unit: "pack",
+        searchQuery: "toggle bolt drywall anchors",
+        estimatedCost: 8.98,
+        notes: `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers. Anchors at the corners that miss a stud.`,
+      });
+    }
   }
   const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type) && !isFrameGlazing(p.name, p.type));
   if (glassMirrors.length && !medicine) {
@@ -869,7 +881,12 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
           : ironing || foldDown
             ? "4-6 screws through the back into studs. A person leaning on the fold-down board will rip it off drywall anchors. Guidance only — confirm wall type."
           : medicine
-            ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
+            ? (() => {
+                const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
+                return backReachesTwoStuds(backW)
+                  ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
+                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Lag the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
+              })()
           : overToilet
             ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
           : spice
