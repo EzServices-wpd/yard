@@ -137,7 +137,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     }
     // Unit is the hero. Do not steal the bench with the measure sidebar.
     // Measure button still opens the full card (pocket walls, kind, example pocket).
-    setSide(null);
+    // A live refit from the Size card keeps the card open so the next number can be typed;
+    // a new build from the prompt bar closes it (onBuilt below).
+    setSide((s) => (s === "measure" ? s : null));
   }, [project.id, setMeasureOpen, setMeasure, project.kind, project.pocket, project.fitted, project.overall.width, project.overall.height, project.overall.depth]);
 
   useEffect(() => {
@@ -313,7 +315,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       </header>
 
       <PromptBar
-        onBuilt={() => setPlanOpen(false)}
+        onBuilt={() => {
+          setPlanOpen(false);
+          setSide(null);
+        }}
         onStock={() => setSide("catalog")}
         onMeasure={() => setSide("measure")}
       />

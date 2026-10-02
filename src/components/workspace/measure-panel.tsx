@@ -26,7 +26,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
   // Every build refits live from the same model: closets, pockets, weekend forms, sticks or sheet.
   // A half-typed number ("31 1/") waits; the last whole number wins.
-  function liveIfFitted(delay = 450) {
+  function liveIfFitted(delay = 800) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       applyMeasure();
