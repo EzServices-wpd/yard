@@ -59,3 +59,27 @@ describe("a stand keeps the tank", () => {
     assert.ok(!rack.panels.some((panel) => /plywood/i.test(panel.materialId)));
   });
 });
+
+describe("a cooler stays the cooler", () => {
+  it("places an Igloo cooler, and a shelf keeps it, instead of a dome or a closet", () => {
+    const cooler = generateFromPrompt("Igloo Latitude 16 qt cooler");
+    assert.equal(cooler.kind, "custom");
+    assert.notEqual(cooler.kind, "dome");
+    const item = getCatalogItem(cooler.instances[0].catalogId);
+    assert.equal(item?.shape, "block");
+    assert.equal(item?.dims.length, 14.5);
+    assert.equal(item?.dims.width, 10.9);
+    assert.equal(item?.dims.height, 13.91);
+    assert.match(item?.notes ?? "", /14\.5/);
+    assert.ok(!cooler.notes.some((note) => /popsicle|craft stick|birch/i.test(note)));
+
+    const shelf = generateFromPrompt("shelf for an Igloo cooler");
+    assert.notEqual(shelf.kind, "closet");
+    assert.notEqual(shelf.kind, "dome");
+    const held = getCatalogItem(shelf.instances[0].catalogId);
+    assert.equal(held?.shape, "block");
+    assert.ok((held?.dims.length ?? 0) > 12);
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+  });
+});

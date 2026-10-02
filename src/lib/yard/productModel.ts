@@ -197,6 +197,8 @@ export function shapeOf(text: string): StockShape {
   if (/\b(crates?|cinder|cmu|pavers?|bricks?)\b/.test(q) || /\bconcrete\s+blocks?\b/.test(q)) return "block";
   if (/\b(wd-?\s*40|aerosol|spray\s*paint)\b/.test(q)) return "can";
   if (/\b(sharpies?|markers?|pens?|pencils?|crayons?)\b/.test(q)) return "tool";
+  // A cooler is the chest, not an igloo dome and not a closet.
+  if (/\bcoolers?\b/.test(q) && !/\bwine\b/.test(q)) return "block";
   return "object";
 }
 
@@ -263,6 +265,8 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /cat\s*trees?/.test(q), over: { shape: "object", length: 60, width: 20, height: 20, color: "#c8bfb0", note: "Usual cat tree, about 60″ tall. Not this tree’s drawing." } },
   { match: (q) => /rubber\s*ducks?|\bducks?\b/.test(q), over: { shape: "object", length: 4.2, width: 3.5, height: 3.5, color: "#f2c14e", note: "Usual rubber duck, about 4.2″ long. Not this duck’s drawing." } },
   { match: (q) => /gnomes?/.test(q), over: { shape: "object", length: 12, width: 5, height: 4, color: "#c23b3b", note: "Usual garden gnome, about 12″ tall. Not this gnome’s drawing." } },
+  { match: (q) => /igloo/.test(q) && /cooler/.test(q), over: { shape: "block", length: 14.5, width: 10.9, height: 13.91, color: "#d7e4ee", note: "Igloo Latitude 16 qt cooler, 14.5″ × 10.9″ × 13.91″. Listing outside size." } },
+  { match: (q) => /\bcoolers?\b/.test(q) && !/wine/.test(q), over: { shape: "block", length: 16, width: 12, height: 13, color: "#d7e4ee", note: "Usual picnic cooler, about 16″ × 12″ × 13″. Not this cooler’s drawing." } },
 ];
 
 const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
