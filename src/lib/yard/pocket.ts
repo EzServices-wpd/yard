@@ -58,16 +58,16 @@ export function parsePocket(prompt: string): PocketSpec | null {
 
   const measure = freezeOriginal ? "" : t;
   const backWidth = pick(measure, /back wall[:\s]+(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide/i, 38.5));
-  const saidLeft = /left(?: side)? depth[:\s]+\d/i.test(measure);
-  const saidRight = /right(?: side)? depth[:\s]+\d/i.test(measure);
+  const saidLeft = /left(?: side)? (?:depth|wall)[:\s]+\d/i.test(measure);
+  const saidRight = /right(?: side)? (?:depth|wall)[:\s]+\d/i.test(measure);
   const deepM = measure.match(/(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i);
   const leftDepth = saidLeft
-    ? pick(measure, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26)
+    ? pick(measure, /left(?: side)? (?:depth|wall)[:\s]+(\d+(?:\.\d+)?)/i, 26)
     : deepM
       ? num(deepM[1], 26)
       : 26;
   const rightDepth = saidRight
-    ? pick(measure, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5)
+    ? pick(measure, /right(?: side)? (?:depth|wall)[:\s]+(\d+(?:\.\d+)?)/i, 33.5)
     : deepM
       ? num(deepM[1], 33.5)
       : 33.5;
@@ -92,7 +92,11 @@ export function parsePocket(prompt: string): PocketSpec | null {
   let leftAngleDeg = pick(measure, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   let rightAngleDeg = pick(measure, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   const saidFlare = /angle|centerline|trapezoid/i.test(measure);
-  if (!saidFlare && leftDepth === rightDepth) {
+  // Uneven side depths are still a straight pocket unless the sentence gives a flare.
+  if (measure && !saidFlare) {
+    leftAngleDeg = 0;
+    rightAngleDeg = 0;
+  } else if (!saidFlare && leftDepth === rightDepth) {
     leftAngleDeg = 0;
     rightAngleDeg = 0;
   } else {
@@ -107,8 +111,8 @@ export function parsePocket(prompt: string): PocketSpec | null {
   const takeW = measure.match(/takes?\s+only\s+(\d+(?:\.\d+)?)\s+of the width/i);
   const takeD = measure.match(/(\d+(?:\.\d+)?)\s+of the depth/i);
   const takeH = measure.match(/(\d+(?:\.\d+)?)\s+of the height/i);
-  const leftShelf = measure.match(/left shelves?\s+(\d+(?:\.\d+)?)/i);
-  const rightShelf = measure.match(/right shelves?\s+(\d+(?:\.\d+)?)/i);
+  const leftShelf = measure.match(/left shel(?:f|ves)\s+(\d+(?:\.\d+)?)/i);
+  const rightShelf = measure.match(/right shel(?:f|ves)\s+(\d+(?:\.\d+)?)/i);
   const unitW = takeW
     ? num(takeW[1], backWidth)
     : pick(measure, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
@@ -354,7 +358,9 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   const straight = Math.abs(walls.leftAngleDeg) < 0.05 && Math.abs(walls.rightAngleDeg) < 0.05;
   const notes = [
     straight
-      ? `Pocket. Back ${walls.backWidth}" · both walls ${walls.leftDepth}" deep · ceiling ${walls.height}".`
+      ? walls.leftDepth === walls.rightDepth
+        ? `Pocket. Back ${walls.backWidth}" · both walls ${walls.leftDepth}" deep · ceiling ${walls.height}".`
+        : `Pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" · right depth ${walls.rightDepth}" · ceiling ${walls.height}".`
       : `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
     `Unit ${unit.width}" along the back × ${unit.depth}" out × ${unit.height}" tall. Front parallel to the back wall.`,
     `Left shelves ${bays.left.toFixed(1)}" wide. Right shelves ${bays.right.toFixed(1)}" wide.`,

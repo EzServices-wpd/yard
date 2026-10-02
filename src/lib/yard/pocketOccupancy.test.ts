@@ -19,6 +19,20 @@ describe("measured pocket occupancy", () => {
     assert.doesNotMatch(notes, /102"/);
   });
 
+
+  it("reads singular shelf and left wall depths", () => {
+    const project = generateFromPrompt(
+      "closet in a pocket: back wall 41.5 inches, left wall 15.25, right wall 18.75, ceiling 83. Opening the unit takes is 33 wide, 14 deep, 76 tall. Left shelf 12.5 wide, right shelf 17.25 wide.",
+    );
+    const notes = project.notes.join("\n");
+    assert.match(notes, /Back 41/);
+    assert.match(notes, /left depth 15/);
+    assert.match(notes, /right depth 18/);
+    assert.match(notes, /Left shelves 12/);
+    assert.match(notes, /Right shelves 17/);
+    assert.doesNotMatch(notes, /both walls 14/);
+  });
+
   it("still freezes the original pocket vanity survey", () => {
     const project = generateFromPrompt("pocket vanity");
     const notes = project.notes.join("\n");
