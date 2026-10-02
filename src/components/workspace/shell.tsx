@@ -478,31 +478,43 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   <button
                     type="button"
                     className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
-                    disabled={!steps.length}
+                    disabled={stepIndex <= 0}
                     onClick={() => {
-                      const i = stepIndex < 0 ? 0 : Math.max(0, stepIndex - 1);
-                      setActiveStep(steps[i].step);
+                      if (stepIndex <= 0) return;
+                      setActiveStep(steps[stepIndex - 1].step);
                     }}
                     aria-label="Previous step"
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <button type="button" onClick={() => setPlanOpen(true)} className="min-w-0 flex-1 truncate text-left">
+                  <button
+                    type="button"
+                    onClick={() => setPlanOpen(true)}
+                    className="min-w-0 flex-1 truncate text-left"
+                    aria-label={
+                      activeStep
+                        ? `Open the plan, step ${activeStep} of ${steps.length}`
+                        : `Open the plan, ${steps.length} steps`
+                    }
+                  >
                     <span className="font-mono text-faint">
-                      {activeStep ? String(activeStep).padStart(2, "0") : "—"} / {String(steps.length).padStart(2, "0")}
+                      {activeStep
+                        ? `${String(activeStep).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`
+                        : `${steps.length} ${steps.length === 1 ? "step" : "steps"}`}
                     </span>{" "}
                     <span className="text-fg">
-                      {activeStep ? steps.find((s) => s.step === activeStep)?.title : "Step through the build"}
+                      {activeStep ? steps.find((s) => s.step === activeStep)?.title : "Open the plan"}
                     </span>
                   </button>
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg"
+                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    disabled={stepIndex >= steps.length - 1 && stepIndex >= 0}
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
                       setActiveStep(steps[i].step);
                     }}
-                    aria-label="Next step"
+                    aria-label={stepIndex < 0 ? "Start step 1" : "Next step"}
                   >
                     <ChevronRight className="size-4" />
                   </button>
