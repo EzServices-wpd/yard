@@ -170,3 +170,17 @@ describe("a product the family list missed stays that product", () => {
     assert.ok(!bird.notes.some((note) => /popsicle|quadruped|longneck/i.test(note)));
   });
 });
+
+describe("shoe rack stays the cubbies", () => {
+  it("builds open shoe bays, not a stand around one shoe", () => {
+    const project = generateFromPrompt("shoe rack with cubbies");
+    assert.equal(project.kind, "closet");
+    assert.equal(project.instances.length, 0);
+    assert.equal(project.overall?.width, 36);
+    assert.equal(project.overall?.height, 18);
+    assert.equal(project.overall?.depth, 12);
+    assert.ok(project.panels.some((panel) => /cubby divider/i.test(panel.name)));
+    assert.ok(project.panels.some((panel) => /shoe shelf/i.test(panel.name)));
+    assert.ok(!project.notes.some((note) => /no drawing|named product stays/i.test(note)));
+  });
+});

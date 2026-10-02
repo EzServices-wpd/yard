@@ -8,7 +8,7 @@ import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { buildOddShape, isOddShapePrompt } from "./oddShapes";
-import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem } from "./family";
+import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { enforceHonesty } from "./honesty";
@@ -310,6 +310,8 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (/\bwine\b/.test(lower) && /\bracks?\b/.test(lower)) return null;
   // A wall shelf or rack for jars is the hung jar rack at the typed width, not a stand around one jar.
   if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
+  // A shoe rack is the cubbies, not a stand around one shoe. A stand/holder for a named product still keeps the piece.
+  if (wantsShoes(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
   const item = modeledProduct(prompt);
   if (!item?.shape) return null;
   // Object is the envelope for a product the family list missed (a flamingo). Still the piece, not a closet.
