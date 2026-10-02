@@ -21,7 +21,7 @@ const page = await desktop.newPage();
 await watch(page, "desktop");
 
 await page.goto(base + "/", { waitUntil: "networkidle" });
-const landOk = await page.evaluate(() => /Type it\. Buy the parts/.test(document.body.innerText));
+const landOk = await page.evaluate(() => /Think it up\.[\s\S]{0,8}Yard works it out/.test(document.body.innerText));
 console.log("LANDING", landOk);
 await page.screenshot({ path: "/workspace/screenshots/yard-landing.png", fullPage: true });
 

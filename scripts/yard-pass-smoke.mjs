@@ -22,7 +22,7 @@ await watch(page, "desktop");
 
 await page.goto(base + "/", { waitUntil: "networkidle" });
 const land = await page.evaluate(() => ({
-  hero: /Type it\. Buy the parts/.test(document.body.innerText),
+  hero: /Think it up\.[\s\S]{0,8}Yard works it out/.test(document.body.innerText),
   formerly: /formerly/i.test(document.body.innerText),
 }));
 console.log("LANDING", land);

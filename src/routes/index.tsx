@@ -122,11 +122,11 @@ function LandingPage() {
             The plan the lumber aisle should have printed
           </p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
-            Type it. Buy the parts. Build it.
+            <span className="block">Think it up.</span>
+            <span className="block">Yard works it out.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
-            Type what you want to build and choose the material. Yard gives you step-by-step instructions, a buy
-            list, and a cut list.
+            One model. Every cut, part and step.
           </p>
 
           <form

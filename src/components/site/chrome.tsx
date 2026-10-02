@@ -54,7 +54,7 @@ export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" 
   return (
     <footer className="border-t border-rule/80">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-ink-muted">Yard · type it, buy the parts, build it.</p>
+        <p className="text-sm text-ink-muted">Yard · Think it up. Yard works it out.</p>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {FOOT.map((n) => (
             <Link

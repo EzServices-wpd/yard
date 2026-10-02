@@ -59,7 +59,7 @@ await check("landing", async () => {
   if (!res || res.status() >= 400) throw new Error(`status ${res?.status()}`);
   await page.waitForTimeout(800);
   const text = await page.evaluate(() => document.body.innerText);
-  if (!/Type it\. Buy the parts/.test(text)) throw new Error("missing hero");
+  if (!/Think it up\.[\s\S]{0,8}Yard works it out/.test(text)) throw new Error("missing hero");
   if (/Dev User/.test(text)) throw new Error("Dev User leaked onto landing");
   return { status: res.status(), signIn: /Sign in/.test(text) };
 });
