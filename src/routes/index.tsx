@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { ArrowRight, Box, Ruler, ShoppingBag } from "lucide-react";
+import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
-import { HoleStart } from "@/components/site/hole-start";
-import { LinenNestHero } from "@/components/site/linen-nest";
+import { affiliateDisclosure } from "@/lib/yard/outbound";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -13,27 +12,32 @@ export const Route = createFileRoute("/")({
 
 const HOUSE = DREAMS.filter((d) => d.group === "house");
 const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
-const GAP_IDS = new Set(["corner", "slope", "ldesk", "pocket"]);
-const GAPS = HOUSE.filter((d) => GAP_IDS.has(d.id));
-const HOUSE_REST = HOUSE.filter((d) => !GAP_IDS.has(d.id));
 
-const LINEN = "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep";
-
+/** The material chooser. Leave it open and Yard picks the stock that suits the build. */
 const STOCKS = [
-  { id: "plywood", label: "¾ plywood", append: "from 3/4 plywood" },
-  { id: "popsicle", label: "popsicle", append: "from popsicle sticks" },
-  { id: "pvc", label: "PVC", append: "from 3/4 inch PVC" },
+  { id: "plywood", label: "¾″ plywood", say: "¾″ plywood", append: "from 3/4 plywood" },
+  { id: "2x4", label: "2×4 lumber", say: "2×4 lumber", append: "from 2x4" },
+  { id: "popsicle", label: "Popsicle sticks", say: "popsicle sticks", append: "from popsicle sticks" },
+  { id: "pvc", label: "PVC pipe", say: "PVC pipe", append: "from 3/4 inch PVC" },
 ] as const;
 
-const HEROES = [
+type StockId = (typeof STOCKS)[number]["id"];
+
+const STEPS = [
+  { n: "1", title: "Type what you want", body: "A shelf, a desk, a weekend build. Add the sizes you have." },
+  { n: "2", title: "Choose the material", body: "Plywood, 2×4, popsicle sticks, or PVC." },
+  { n: "3", title: "Get the plan", body: "Step-by-step instructions, a buy list, and a cut list." },
+] as const;
+
+/** Finished pieces. Each card opens that plan on the bench. */
+const PIECES = [
   {
     id: "pocket",
     src: "/heroes/pocket.jpg",
     label: "Pocket vanity",
     size: "38 × 102 × 17 · trapezoid fit",
     prompt: DREAMS.find((d) => d.id === "pocket")?.prompt ?? "pocket vanity",
-    caption: "Knee, drawers, uppers — the unit the pocket actually holds",
-    featured: true,
+    caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
     id: "linen",
@@ -41,8 +45,7 @@ const HEROES = [
     label: "Linen closet",
     size: "31.5 × 78 × 16",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
-    caption: "The alcove you typed is the unit you get",
-    featured: false,
+    caption: "Sized to the alcove you typed",
   },
   {
     id: "desk",
@@ -50,27 +53,26 @@ const HEROES = [
     label: "60″ desk",
     size: "60 × 30 × 29 · 24″ knee",
     prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
-    caption: "Drawers + clear knee space",
-    featured: false,
+    caption: "Drawers plus roomy knee space",
   },
 ] as const;
 
 const CHIP =
   "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
 
+const STOCK_CLAUSE = /\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC|2x4)\b/gi;
+
+function stripChipStock(text: string) {
+  return text.replace(STOCK_CLAUSE, " ").replace(/\s+/g, " ").trim();
+}
+
 function LandingPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
-  const [stockId, setStockId] = useState<(typeof STOCKS)[number]["id"] | null>(null);
+  const [stockId, setStockId] = useState<StockId | null>(null);
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
-
-  function stripChipStock(text: string) {
-    return text
-      .replace(/\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC)\b/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
+  const disclosure = affiliateDisclosure();
 
   function withStock(text: string) {
     const q = text.trim();
@@ -85,20 +87,22 @@ function LandingPage() {
     void navigate({ to: "/workspace", search: { q } });
   }
 
-  function pickStock(id: (typeof STOCKS)[number]["id"]) {
-    const next = stockId === id ? null : id;
-    setStockId(next);
-    const chosen = STOCKS.find((s) => s.id === next);
-    const t = prompt.trim();
-    if (!t || !chosen) return;
-    setPrompt(`${stripChipStock(t)} ${chosen.append}`.replace(/\s+/g, " ").trim());
+  /** Weekend chips and photo cards already name their stock, so they open as written. */
+  function open(text: string) {
+    const q = text.trim();
+    if (!q) return;
+    void navigate({ to: "/workspace", search: { q } });
+  }
+
+  function pickStock(id: StockId) {
+    setStockId((cur) => (cur === id ? null : id));
   }
 
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-rule/80 bg-paper/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
           <nav className="flex items-center gap-5">
@@ -112,183 +116,183 @@ function LandingPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:pt-12">
-        <section className="grid items-end gap-8 lg:grid-cols-12 lg:gap-10">
-          <div className="yard-hero-in lg:col-span-5 lg:pb-2">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-              The plan the lumber aisle should have printed
-            </p>
-            <h1 className="mt-4 max-w-xl font-display text-5xl leading-[1.04] tracking-tight text-ink sm:text-6xl lg:text-7xl">
-              Built for the corner the room forgot.
-            </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-ink-muted sm:text-lg">
-              Type the opening. Yard returns a cut list, hardware, and shop links — for the hole you actually have.
-            </p>
+      <main className="mx-auto max-w-6xl px-4 pb-24">
+        <section className="yard-hero-in mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+            The plan the lumber aisle should have printed
+          </p>
+          <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+            Type it. Buy the parts. Build it.
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
+            Type what you want to build and choose the material. Yard gives you step-by-step instructions, a buy
+            list, and a cut list.
+          </p>
 
-            <form
-              className="mt-8"
-              onSubmit={(e) => {
-                e.preventDefault();
-                go(prompt);
-              }}
-            >
-              <label htmlFor="dream" className="sr-only">
-                What do you want to build?
-              </label>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  id="dream"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="corner shelf, 24 inches along each wall"
-                  className="h-12 flex-1 rounded-lg border border-rule bg-paper px-4 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow,border-color] duration-150 focus:border-ink/30 focus:ring-2"
-                />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-medium text-paper transition-transform duration-150 ease-out active:scale-[0.96]"
-                >
-                  Build this
-                  <ArrowRight className="size-4" />
-                </button>
-              </div>
-              <p className="mt-3 text-sm text-ink-muted">
-                <span className="mr-1">from</span>
-                {STOCKS.map((s, i) => (
-                  <span key={s.id}>
-                    {i > 0 && <span className="mx-1.5 text-rule">/</span>}
+          <form
+            className="mt-9 w-full max-w-2xl"
+            data-yard-home-prompt="1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              go(prompt);
+            }}
+          >
+            <label htmlFor="dream" className="sr-only">
+              What do you want to build?
+            </label>
+            <div className="flex flex-col gap-2 rounded-2xl border border-rule bg-paper p-2 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_32px_-18px_rgba(18,16,14,0.25)] transition-[box-shadow,border-color] duration-150 focus-within:border-ink/30 focus-within:ring-2 focus-within:ring-ink/15 sm:flex-row sm:items-center">
+              <input
+                id="dream"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="bookshelf 30 wide, 60 tall, five shelves"
+                autoComplete="off"
+                enterKeyHint="go"
+                className="h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-ink-muted"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-medium text-paper transition-transform duration-150 ease-out active:scale-[0.96]"
+              >
+                Build this
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
+
+            <fieldset className="mt-4" data-yard-home-material="1">
+              <legend className="sr-only">Material</legend>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="mr-1 text-sm text-ink-muted">Material</span>
+                {STOCKS.map((s) => {
+                  const on = stockId === s.id;
+                  return (
                     <button
+                      key={s.id}
                       type="button"
+                      aria-pressed={on}
                       onClick={() => pickStock(s.id)}
-                      className={`rounded-full px-2 py-0.5 transition-colors duration-150 ${
-                        stockId === s.id
-                          ? "bg-ink text-paper"
-                          : "text-ink underline decoration-rule underline-offset-[5px] hover:decoration-ink"
+                      className={`rounded-full border px-3 py-1 text-sm transition-colors duration-150 ${
+                        on
+                          ? "border-ink bg-ink text-paper"
+                          : "border-rule bg-paper text-ink hover:border-ink/40"
                       }`}
                     >
                       {s.label}
                     </button>
-                  </span>
-                ))}
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-ink-muted">
+                {stock ? `Building from ${stock.say}.` : "Leave it open and Yard picks a good fit."}
               </p>
-              <p className="mt-3 text-sm text-ink-muted">
-                <span className="mr-1">Same closet, two stocks.</span>
-                <button type="button" onClick={() => go(LINEN)} className="underline decoration-rule underline-offset-[5px] hover:decoration-ink">
-                  ¾ plywood
-                </button>
-                <span className="mx-1.5 text-rule">/</span>
-                <button
-                  type="button"
-                  onClick={() => go(`${LINEN} from 2x4`)}
-                  className="underline decoration-rule underline-offset-[5px] hover:decoration-ink"
-                >
-                  2×4
-                </button>
-                <span className="ml-1.5">The size does not move.</span>
-              </p>
-            </form>
-
-            <HoleStart onPick={go} />
-
-            <div className="mt-8 grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the gap</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {GAPS.map((d) => (
-                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => go("corner bookshelf, 6 inches along each wall, 60 tall, five shelves")}
-                  className="mt-3 block text-left text-sm text-ink-muted underline decoration-rule underline-offset-[5px] hover:text-ink hover:decoration-ink"
-                >
-                  A corner too small for books
-                </button>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {WEEKEND.map((d) => (
-                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Also the house</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {HOUSE_REST.map((d) => (
-                    <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-                <Link
-                  to="/ideas"
-                  className="mt-3 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
-                >
-                  See more of the house
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => go(LINEN)}
-            className="yard-hero-in yard-hero-in-2 group rounded-xl border border-rule bg-surface/40 p-3 text-left lg:col-span-7"
-          >
-            <LinenNestHero />
-          </button>
+            </fieldset>
+          </form>
         </section>
 
-        <section className="yard-hero-in yard-hero-in-3 mt-4 grid gap-4 sm:grid-cols-3">
-          {HEROES.map((h) => (
-            <button
-              key={h.id}
-              type="button"
-              onClick={() => go(h.prompt)}
-              className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-surface/40 text-left transition-colors duration-150 hover:border-ink/30"
+        <ol className="yard-hero-in yard-hero-in-2 mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-2 sm:mt-12 sm:gap-3">
+          {STEPS.map((s) => (
+            <li
+              key={s.n}
+              className="flex flex-col items-center gap-2 rounded-xl border border-rule bg-white/50 px-2 py-3 text-center sm:flex-row sm:items-start sm:gap-3 sm:p-4 sm:text-left"
             >
-              <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
-                <img
-                  src={h.src}
-                  alt={`${h.label} ${h.size}`}
-                  className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
-                  width={1280}
-                  height={960}
-                />
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink font-mono text-xs text-paper">
+                {s.n}
+              </span>
+              <div>
+                <p className="text-[13px] font-medium leading-tight text-ink sm:text-sm">{s.title}</p>
+                <p className="mt-1 hidden text-xs leading-snug text-ink-muted sm:block">{s.body}</p>
               </div>
-              <div className="flex flex-1 flex-col justify-center p-4">
-                <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
-                <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
-                <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
-              </div>
-            </button>
+            </li>
           ))}
+        </ol>
+
+        <section className="yard-hero-in yard-hero-in-2 mx-auto mt-12 grid max-w-3xl gap-8 text-center sm:grid-cols-2 sm:text-left">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+              {HOUSE.map((d) => (
+                <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+              {WEEKEND.map((d) => (
+                <button key={d.id} type="button" onClick={() => open(d.prompt)} className={CHIP}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            <Link
+              to="/ideas"
+              className="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
+            >
+              More ideas
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        </section>
+
+        <section className="yard-hero-in yard-hero-in-3 mt-20">
+          <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
+          <p className="mt-2 text-center text-sm text-ink-muted">Tap a piece to open its full plan.</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {PIECES.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => open(h.prompt)}
+                className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
+              >
+                <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
+                  <img
+                    src={h.src}
+                    alt={`${h.label} ${h.size}`}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                    width={1280}
+                    height={960}
+                  />
+                </div>
+                <div className="flex flex-1 flex-col justify-center p-4">
+                  <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
+                  <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
+                  <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
           <Feature
-            icon={<Ruler className="size-5" />}
+            icon={<Hammer className="size-5" />}
             title="The size you typed"
-            body="31.5 × 78 × 16 means 31.5 × 78 × 16. Geometry is deterministic. Grok writes the assembly voice — it does not invent a 36″ closet."
+            body="Type 31.5 × 78 × 16 and you get a 31.5 × 78 × 16 build, with steps written in plain words."
           />
           <Feature
-            icon={<Box className="size-5" />}
+            icon={<ClipboardList className="size-5" />}
             title="Cut list + hardware"
-            body="¾″ plywood, screws, shelf pins, a window unit. Nominal retail sizes — not fake geometry."
+            body="Every part with its size, plus the screws, hinges, and shelf pins it takes. The sheet layout lives inside each plan."
           />
           <Feature
             icon={<ShoppingBag className="size-5" />}
             title="Shop, then build"
-            body="BOM with packs, prices, and deep links. Print the plan. Buy the parts. Crafts (Eiffel, arch, bridge) use the same bench."
+            body="A buy list with packs, prices, and shop links. Print the plan and head to the store."
           />
         </section>
+
+        {disclosure ? (
+          <p className="mt-10 text-center text-xs text-ink-muted" data-yard-affiliate-disclosure="1">
+            {disclosure}{" "}
+            <Link to="/about" className="underline decoration-rule underline-offset-4 hover:text-ink">
+              How shop links work
+            </Link>
+          </p>
+        ) : null}
       </main>
       <SiteFooter active="home" />
     </div>
@@ -297,7 +301,7 @@ function LandingPage() {
 
 function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-rule bg-surface/30 p-5">
+    <div className="rounded-xl border border-rule bg-white/50 p-5">
       <div className="flex size-9 items-center justify-center rounded-md border border-rule bg-paper text-ink">{icon}</div>
       <h2 className="mt-3 font-display text-lg text-ink">{title}</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
