@@ -145,4 +145,28 @@ describe("a product the family list missed stays that product", () => {
     assert.equal(getCatalogItem(cube.instances[0].catalogId)?.dims.length, 2.24);
     assert.equal(cube.kind, "custom");
   });
+
+  it("places a missed product as that product, and a shelf keeps it", () => {
+    const bottle = generateFromPrompt("CamelBak Chute Mag 32 oz");
+    assert.equal(bottle.instances.length, 1);
+    assert.equal(getCatalogItem(bottle.instances[0].catalogId)?.shape, "bottle");
+    assert.equal(getCatalogItem(bottle.instances[0].catalogId)?.dims.length, 10.83);
+    assert.ok(!bottle.notes.some((note) => /popsicle|creature|quadruped|carcase/i.test(note)));
+
+    const shelf = generateFromPrompt("shelf for a CamelBak Chute Mag 32 oz");
+    assert.equal(shelf.instances.length, 1);
+    assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "bottle");
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+
+    const owned = generateFromPrompt("my 11 inch Channellock pliers");
+    assert.equal(getCatalogItem(owned.instances[0].catalogId)?.dims.length, 11);
+    assert.match(getCatalogItem(owned.instances[0].catalogId)?.notes ?? "", /Size you typed/);
+
+    const bird = generateFromPrompt("pink flamingo");
+    assert.equal(bird.kind, "custom");
+    assert.equal(bird.instances.length, 1);
+    assert.equal(getCatalogItem(bird.instances[0].catalogId)?.dims.length, 24);
+    assert.ok(!bird.notes.some((note) => /popsicle|quadruped|longneck/i.test(note)));
+  });
 });

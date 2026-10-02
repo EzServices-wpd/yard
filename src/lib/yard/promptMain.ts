@@ -311,7 +311,8 @@ function placeHeldProduct(prompt: string): YardProject | null {
   // A wall shelf or rack for jars is the hung jar rack at the typed width, not a stand around one jar.
   if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
   const item = modeledProduct(prompt);
-  if (!item?.shape || item.shape === "object") return null;
+  if (!item?.shape) return null;
+  // Object is the envelope for a product the family list missed (a flamingo). Still the piece, not a closet.
   rememberCatalogItem(item);
   const tall = item.dims.length ?? 18;
   const across = item.dims.diameter ?? item.dims.width ?? 8;
@@ -391,7 +392,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
 function placeNamedProduct(prompt: string): YardProject | null {
   if (!isBareProductPrompt(prompt)) return null;
   const item = modeledProduct(prompt);
-  if (!item?.shape || item.shape === "object") return null;
+  if (!item?.shape) return null;
   rememberCatalogItem(item);
   const tall = item.dims.length ?? 8;
   const across = item.dims.diameter ?? item.dims.width ?? 3;

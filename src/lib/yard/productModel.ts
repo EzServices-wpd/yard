@@ -183,11 +183,12 @@ export function shapeOf(text: string): StockShape {
   if (/\b(mason|jars?)\b/.test(q)) return "jar";
   if (/\b(watering|trash|garbage|oil|gas|jerry|milk)\s+cans?\b/.test(q)) return "bucket";
   if (/\bcans?\b/.test(q) && !/\bcanvas\b/.test(q)) return "can";
-  if (/\b(bottles?|dasani|aquafina|evian|fiji|smartwater|pellegrino|poland|hydro\s*flask|ketchup|mustard)\b/.test(q)) return "bottle";
-  if (/\b(screw\s*drivers?|hammers?|wrenches?|pliers|drills?|saws?|chisels?|ratchets?|flashlights?|torches|lanterns?)\b/.test(q)) return "tool";
+  if (/\b(bottles?|dasani|aquafina|evian|fiji|smartwater|pellegrino|poland|hydro\s*flask|camelbak|contigo|owala|ketchup|mustard)\b/.test(q)) return "bottle";
+  if (/\b(screw\s*drivers?|hammers?|wrenches?|pliers|drills?|saws?|chisels?|ratchets?|flashlights?|torches|lanterns?|scissors|shears|snips)\b/.test(q)) return "tool";
   if (/\b(goggles|glasses|sunglasses)\b/.test(q)) return "eyewear";
   if (/\bfootballs?\b/.test(q)) return "ball";
   if (/\b(basketballs?|soccer\s*balls?|tennis\s*balls?|balls?)\b/.test(q)) return "ball";
+  if (/\b(frisbees?|flying\s+discs?)\b/.test(q) || (/\bdiscs?\b/.test(q) && !/\b(sander|brake|disc\s*golf)\b/.test(q))) return "ball";
   if (/\b(mugs?|cups?|tumblers?|ramblers?|quenchers?)\b/.test(q)) return "cup";
   if (/\btape\s*measures?\b/.test(q)) return "roll";
   if (/\b(door\s*knobs?|knobs?|deadbolts?|locksets?)\b/.test(q)) return "block";
@@ -197,6 +198,8 @@ export function shapeOf(text: string): StockShape {
   if (/\b(padlocks?)\b/.test(q)) return "block";
   if (/\b(totes?|storage\s+bins?|storage\s+box(?:es)?|latching\s+box(?:es)?)\b/.test(q)) return "block";
   if (/sterilite/.test(q) && /\b(box(?:es)?|bins?|totes?)\b/.test(q)) return "block";
+  if (/\bbatter(?:y|ies)\b/.test(q)) return "block";
+  if (/\b(flamingos?|lawn\s+ornaments?)\b/.test(q)) return "object";
   if (/\b(toilet\s*paper|paper\s*towels?|duct\s*tape|masking\s*tape|extension\s*cords?|cords?|ropes?|hoses?)\b/.test(q)) return "roll";
   if (/\b(crates?|cinder|cmu|pavers?|bricks?)\b/.test(q) || /\bconcrete\s+blocks?\b/.test(q)) return "block";
   if (/\b(wd-?\s*40|aerosol|spray\s*paint)\b/.test(q)) return "can";
@@ -277,6 +280,19 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /\b(storage\s+box(?:es)?|storage\s+bins?|latching\s+box(?:es)?)\b/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Usual small storage box, about 13.5″ × 8″ × 4.6″. Not this box’s drawing." } },
   { match: (q) => /igloo/.test(q) && /cooler/.test(q), over: { shape: "block", length: 14.5, width: 10.9, height: 13.91, color: "#d7e4ee", note: "Igloo Latitude 16 qt cooler, 14.5″ × 10.9″ × 13.91″. Listing outside size." } },
   { match: (q) => /\bcoolers?\b/.test(q) && !/wine/.test(q), over: { shape: "block", length: 16, width: 12, height: 13, color: "#d7e4ee", note: "Usual picnic cooler, about 16″ × 12″ × 13″. Not this cooler’s drawing." } },
+  { match: (q) => /camelbak/.test(q) && /32/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag 32 oz stainless, 10.83″ × 3.74″. Maker size (27.5 × 9.5 cm)." } },
+  { match: (q) => /camelbak/.test(q), over: { shape: "bottle", length: 10.83, diameter: 3.74, color: "#d7e4ee", metalness: 0.45, roughness: 0.28, note: "CamelBak Chute Mag, about 10.83″ × 3.74″. Usual of that bottle, not every CamelBak." } },
+  { match: (q) => /channellock/.test(q) && /430/.test(q), over: { shape: "tool", length: 10, width: 2.13, diameter: 0.44, color: "#1d4e89", note: "Channellock 430, 10″ × 2.13″ × 0.44″. Maker size." } },
+  { match: (q) => /fiskars/.test(q) && /scissors|shears/.test(q), over: { shape: "tool", length: 8, width: 3.2, diameter: 0.4, color: "#f04e23", note: "Fiskars 8″ scissors, 8″ overall. Maker length." } },
+  { match: (q) => /\b(scissors|shears)\b/.test(q), over: { shape: "tool", length: 8, width: 3.2, diameter: 0.4, color: "#c45c26", note: "Usual scissors, about 8″ long. Not this pair’s drawing." } },
+  { match: (q) => /iris/.test(q) && /tote|weatherpro/.test(q), over: { shape: "block", length: 17.5, width: 11.75, height: 7.88, color: "#e7eef2", note: "IRIS WeatherPro 19 qt tote, 17.5″ × 11.75″ × 7.88″. Listing outside size." } },
+  { match: (q) => /dewalt/.test(q) && /batter/.test(q), over: { shape: "block", length: 9.25, width: 7, height: 3.625, color: "#f5c400", note: "DeWalt DCB205 20V 5.0Ah, 9.25″ × 7″ × 3.625″. Listing size of one pack." } },
+  { match: (q) => /\bbatter(?:y|ies)\b/.test(q), over: { shape: "block", length: 5.2, width: 3.4, height: 2.4, color: "#f5c400", note: "Usual slide battery, about 5.2″ × 3.4″ × 2.4″. Not this pack’s drawing." } },
+  { match: (q) => /ultra-star|discraft/.test(q), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Discraft Ultra-Star, 10.75″ across. Listing diameter." } },
+  { match: (q) => /\b(frisbees?|flying\s+discs?)\b/.test(q) || (/\bdiscs?\b/.test(q) && !/sander|brake/.test(q)), over: { shape: "ball", length: 10.75, diameter: 10.75, width: 10.75, height: 1.1, color: "#f4f4f4", note: "Usual flying disc, about 10.75″ across. Not this disc’s stamp." } },
+  { match: (q) => /kwikset/.test(q) && /deadbolt/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Kwikset 660 deadbolt, 2.5″ rose and 1.06″ projection. Listing size." } },
+  { match: (q) => /\bdeadbolts?\b/.test(q), over: { shape: "block", length: 2.5, width: 2.5, height: 1.06, color: "#c5c8cc", metalness: 0.7, roughness: 0.3, note: "Usual deadbolt rose, about 2.5″ across and 1″ projection. Not this lock’s drawing." } },
+  { match: (q) => /flamingos?/.test(q), over: { shape: "object", length: 24, width: 16, height: 4, color: "#f4a4c0", note: "Usual lawn flamingo, about 24″ tall and 16″ wide. Not this bird’s drawing." } },
 ];
 
 const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
@@ -297,7 +313,19 @@ export function isBareProductPrompt(prompt: string): boolean {
   if (q.length < 3 || (BUILD_NOUN.test(q) && !isSoldStorageBox(q))) return false;
   if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
   if (SPECS.some((row) => row.match(q))) return true;
+  // A lawn flamingo is the ornament, not a creature. shapeOf stays object so a bare camel still can.
+  if (/\b(flamingos?|lawn\s+ornaments?)\b/.test(q)) return true;
   return shapeOf(q) !== "object";
+}
+
+/** An inch length they already own beats the listing and the usual size. */
+function applyTypedLength(query: string, env: Envelope): Envelope {
+  const said = query.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")\b/i);
+  if (!said) return env;
+  const n = parseFloat(said[1]);
+  if (!Number.isFinite(n) || n < 0.5 || n > 120) return env;
+  if (Math.abs(n - env.length) < 0.05) return env;
+  return { ...env, length: n, note: `Size you typed, ${n}″. The piece stays this shape.` };
 }
 
 /** The piece this name is, at a published size or the usual size of its family. */
@@ -308,7 +336,7 @@ export function productEnvelope(query: string): Envelope | null {
   const spec = SPECS.find((row) => row.match(q));
   if (spec) {
     const { match: _match, ...env } = spec;
-    return env;
+    return applyTypedLength(q, env);
   }
   const shape = shapeOf(q);
   const usual = USUAL[shape];
@@ -327,7 +355,7 @@ export function productEnvelope(query: string): Envelope | null {
     env.width = 12.2;
     env.note = "20 lb propane tank, about 18\u2033 tall and 12.2\u2033 across. Usual cylinder, not this tank\u2019s stamp.";
   }
-  return env;
+  return applyTypedLength(q, env);
 }
 
 export function modeledProduct(query: string): CatalogItem | null {
