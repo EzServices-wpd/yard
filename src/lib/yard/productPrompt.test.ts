@@ -169,6 +169,24 @@ describe("a product the family list missed stays that product", () => {
     assert.equal(getCatalogItem(bird.instances[0].catalogId)?.dims.length, 24);
     assert.ok(!bird.notes.some((note) => /popsicle|quadruped|longneck/i.test(note)));
   });
+
+  it("keeps a singular wrench as the tool, at the length they typed", () => {
+    const wrench = generateFromPrompt("Crescent 10 inch adjustable wrench");
+    assert.equal(wrench.kind, "custom");
+    assert.equal(wrench.instances.length, 1);
+    const item = getCatalogItem(wrench.instances[0].catalogId);
+    assert.equal(item?.shape, "tool");
+    assert.equal(item?.dims.length, 10);
+    assert.match(item?.notes ?? "", /Size you typed/);
+    assert.ok(!wrench.notes.some((note) => /carcase|quadruped|popsicle/i.test(note)));
+    assert.ok(!wrench.panels.some((panel) => /plywood/i.test(panel.materialId)));
+
+    const shelf = generateFromPrompt("shelf for a Crescent wrench");
+    assert.equal(shelf.instances.length, 1);
+    assert.equal(getCatalogItem(shelf.instances[0].catalogId)?.shape, "tool");
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+  });
 });
 
 describe("shoe rack stays the cubbies", () => {

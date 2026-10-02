@@ -184,7 +184,7 @@ export function shapeOf(text: string): StockShape {
   if (/\b(watering|trash|garbage|oil|gas|jerry|milk)\s+cans?\b/.test(q)) return "bucket";
   if (/\bcans?\b/.test(q) && !/\bcanvas\b/.test(q)) return "can";
   if (/\b(bottles?|dasani|aquafina|evian|fiji|smartwater|pellegrino|poland|hydro\s*flask|camelbak|contigo|owala|ketchup|mustard)\b/.test(q)) return "bottle";
-  if (/\b(screw\s*drivers?|hammers?|wrenches?|pliers|drills?|saws?|chisels?|ratchets?|flashlights?|torches|lanterns?|scissors|shears|snips)\b/.test(q)) return "tool";
+  if (/\b(screw\s*drivers?|hammers?|wrench(?:es)?|pliers|drills?|saws?|chisels?|ratchets?|flashlights?|torch(?:es)?|lanterns?|scissors|shears|snips)\b/.test(q)) return "tool";
   if (/\b(goggles|glasses|sunglasses)\b/.test(q)) return "eyewear";
   if (/\bfootballs?\b/.test(q)) return "ball";
   if (/\b(basketballs?|soccer\s*balls?|tennis\s*balls?|balls?)\b/.test(q)) return "ball";
