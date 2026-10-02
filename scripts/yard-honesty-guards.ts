@@ -27,12 +27,14 @@ import {
   assumedDensifyNotesTalk,
   densifyConfirmAssumedNotes,
   measureRefitTalk,
+  isExplicitPartRef,
 } from "../src/lib/yard/voiceHonesty";
 import { SHOP_GLOSSARY } from "../src/lib/yard/pdfGlossary";
 import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { guardFail, guardStart } from "./guard-known-failures";
-import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac } from "../src/lib/yard/inchText";
+import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac, nestLabelLayout, nestPartDims, partCardDims } from "../src/lib/yard/inchText";
+import { DRAINAGE_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
 import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
 import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
@@ -4273,6 +4275,200 @@ console.log("SOFT-TRUST OK", {
     }
   }
   console.log(`PASS fractions: ${CANARY.length} canaries — notes, steps, cut list, Buy and PDF text print shop fractions, no raw floats`);
+}
+
+// Shop fractions on the bench too: the picked-part card and every sheet-nest label print
+// tape-measure fractions, and a thin strip's label fits inside its own strip.
+{
+  const failNest = (msg: string, detail?: unknown) => failHonesty(`fractions bench ${msg}`, detail);
+  const DEC_IN_DIMS = /\d\.\d/;
+  for (const prompt of ["walnut desk", "oak coffee table", "linen closet 31.5 wide", "bookcase 31.3 wide 47.7 tall 11.6 deep", "dresser", "twelve-slot wine rack", "bathroom vanity 36 wide with two doors", "media console", "cedar chest"]) {
+    const p = generateFromPrompt(prompt);
+    for (const panel of p.panels) {
+      const card = partCardDims(panel.size);
+      if (DEC_IN_DIMS.test(card)) failNest("part card prints a decimal", { prompt, part: panel.name, card });
+    }
+    const nest = buildPlan(p).sheetNest;
+    for (const result of [nest?.sheets, nest?.backer]) {
+      for (const sheet of result?.sheets ?? []) {
+        for (const part of sheet.parts) {
+          const L = nestLabelLayout(part);
+          for (const t of [L.text, L.dims ?? "", nestPartDims(part.width, part.height)]) {
+            if (DEC_IN_DIMS.test(t)) failNest("nest label prints a decimal", { prompt, part: part.label, t });
+          }
+          const short = Math.min(part.width, part.height);
+          const long = Math.max(part.width, part.height);
+          if (short < 6) {
+            if (L.fontSize > short) failNest("thin strip label taller than the strip", { prompt, part: part.label, short, fs: L.fontSize });
+            if (L.text.length * L.fontSize * 0.55 > long - 1) failNest("thin strip label runs past the strip", { prompt, part: part.label, text: L.text, long });
+            if (L.rotate !== (part.width >= part.height ? 0 : 90)) failNest("thin strip label not run along the strip", { prompt, part: part.label });
+          }
+        }
+      }
+    }
+  }
+  console.log("PASS fractions bench: part card and sheet-nest labels print shop fractions; thin strip labels fit their strip");
+}
+
+// Part letters: a cut-list letter sits only on an explicit reference to that part — never after a
+// hyphen or a dimension, never after "a/an", never on a direction or inside a compound word, and
+// never inside the build's own title. Counts agree with their nouns ("1 piece", "3 pieces").
+{
+  const failLetter = (msg: string, detail?: unknown) => failHonesty(`part letters ${msg}`, detail);
+  const CANARY = [
+    "walnut desk", "desk", "oak table with walnut legs", "teak outdoor side table", "40 inch round oak table", "oak coffee table", "maple end table", "round coffee table", "end table",
+    "wine rack", "wine rack 24 wide 36 tall 12 deep with twelve slots", "twelve-slot wine rack", "pine wine rack for 12 bottles", "oak wine rack for 10 bottles 18 inches tall", "oak wine rack for 12 bottles, 36 inches tall",
+    "plate rack with 6 slots", "nightstand", "cherry nightstand", "bookcase", "oak bookcase", "dresser", "maple dresser", "ladder shelf", "plant stand", "shoe rack", "towel rack", "spice rack", "magazine rack", "lumber rack", "drying rack",
+    "bathroom vanity 36 wide with two doors", "media console", "walnut media console", "entry bench", "floating shelf", "cedar chest", "toy chest", "blanket chest with lift-off lid",
+    "linen closet 24 wide", "pantry cabinet", "kitchen island", "platform bed queen", "bunk bed", "workbench", "pegboard", "lounge chair", "rocking chair", "sofa console table", "printer stand", "standing desk",
+    "coat hook board", "picture ledge 36 wide", "cedar planter box", "adirondack chair", "raised garden bed 4x8", "radiator cover 36 wide", "step stool with a handrail", "coat rack with bench", "pocket vanity", "monitor stand", "laptop stand",
+    "cedar patio planter box, 36 inches long", "pine porch bench", "cat tree from 2x4",
+  ];
+  const COMPOUND = /^(?:stays?|supports?|chests?|edges?|faces?|pins?|kits?|boards?|tops?)\b/i;
+  for (const prompt of CANARY) {
+    const p = generateFromPrompt(prompt);
+    const plan = buildPlan(p);
+    const labels = new Map(plan.cutList.filter((c) => c.label).map((c) => [c.label!, c.name.toLowerCase()]));
+    const nameWords = p.name.replace(/[^A-Za-z\s-]/g, " ").split(/[\s-]+/).filter((w) => w.length > 2);
+    for (const st of plan.instructions) {
+      for (const t of [st.title, st.description, st.tips ?? ""]) {
+        for (const m of t.matchAll(/\b([A-Z]{1,2})\s+((?:[A-Za-z]+\s+){0,2}?)([A-Za-z]+)/g)) {
+          const L = m[1];
+          const part = labels.get(L);
+          if (!part) continue;
+          const noun = part.replace(/\s*\(.*$/, "").split(/[\s·]+/).filter(Boolean).pop()!.replace(/s$/, "");
+          const word = m[3].toLowerCase().replace(/(?:es|s)$/, "");
+          if (!(word === noun || word + "e" === noun || (m[2] + m[3]).toLowerCase().includes(noun))) continue;
+          const at = m.index ?? 0;
+          const prior = t.slice(0, at);
+          const after = t.slice(at + m[0].length);
+          const ctx = t.slice(Math.max(0, at - 40), at + m[0].length + 30);
+          if (/[-‐]$/.test(prior)) failLetter("letter after a hyphen", { prompt, ctx });
+          if (/(?:["″]|\d\/\d+)\s*$/.test(prior)) failLetter("letter after a dimension", { prompt, ctx });
+          if (/\ban?\s+$/i.test(prior)) failLetter("article before a letter", { prompt, ctx });
+          if (/\b(?:up|down) and\s+$/i.test(prior)) failLetter("letter on a direction", { prompt, ctx });
+          if (COMPOUND.test(after.trimStart()) && !/^\s*[—(]/.test(after)) failLetter("letter inside a compound word", { prompt, ctx });
+          if (nameWords.some((w, i) => i < nameWords.length - 1 && new RegExp(`\\b${w}\\s+${L}\\s+${nameWords[i + 1]}\\b`, "i").test(t))) failLetter("letter inside the title", { prompt, ctx });
+        }
+        const g = t.match(/\b1\s+(?:[a-z]+\s+)?(?:pieces|members|parts|boards|joints)\b|\b0\s+(?:pieces?\s+)?stay\b|\beach\s+(?:[A-Z]{1,2}\s+)?(?:aprons|legs|shelves|uprights|rails|members|pieces)\b|\b[Aa]\s+[AEFHILMNORSX]\s+[a-z]/);
+        if (g) failLetter("count / article grammar", { prompt, at: t.slice(Math.max(0, (g.index ?? 0) - 30), (g.index ?? 0) + 40) });
+      }
+    }
+  }
+  if (isExplicitPartRef === undefined) failLetter("isExplicitPartRef export missing");
+  console.log(`PASS part letters: ${CANARY.length} canaries — letters only on explicit part references, counts agree`);
+}
+
+// Outdoor package: the typed prompt alone switches it on (an outdoor place or "deck" as a place),
+// never the build's own part words or a species. Exterior glue and screws replace the indoor ones
+// on Buy (exactly one glue, one screw type); the seal step soaks the end grain of the legs or feet;
+// anything holding soil or water drains and is lined.
+{
+  const failOut = (msg: string, detail?: unknown) => failHonesty(`outdoor ${msg}`, detail);
+  const TRIGGER: [string, boolean][] = [
+    ["teak outdoor side table", true], ["deck box for cushions", true], ["bench for the deck", true], ["planter on my deck", true],
+    ["cedar patio planter box, 36 inches long", true], ["pine porch bench", true], ["garden bench", true], ["backyard picnic table", true],
+    ["cat tree from 2x4", false], ["cat tree with three decks", false], ["skateboard deck wall shelf", false], ["cedar chest", false],
+    ["teak side table", false], ["cedar planter box", false], ["walnut desk", false], ["exterior door framing 36x80", false],
+  ];
+  for (const [q, want] of TRIGGER) if (isOutdoorPrompt(q) !== want) failOut("prompt trigger", { q, want });
+  const glueRows = (bom: { name: string; catalogId?: string }[]) => bom.filter((b) => /\bglue\b|titebond/i.test(b.name) && !/epoxy|hot glue|cement|glue blocks?/i.test(b.name));
+  const woodScrewRows = (bom: { name: string; catalogId?: string }[]) => bom.filter((b) => /\bscrews?\b/i.test(b.name) && !/structural|\blag\b|tapcon|masonry|hinge|eye\b/i.test(b.name));
+  const OUT = ["teak outdoor side table", "cedar patio planter box, 36 inches long", "pine porch bench", "deck box for cushions", "outdoor wall shelf"];
+  for (const q of OUT) {
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    const wall = p.assumptions?.installMode === "wall";
+    if (!p.notes.includes(OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
+    const glue = glueRows(plan.bom);
+    if (glue.length !== 1 || glue[0].catalogId !== "outdoor-glue") failOut("exactly one glue — the exterior one", { q, glue: glue.map((b) => b.name) });
+    const screws = woodScrewRows(plan.bom);
+    if (p.panels.length && screws.length !== 1) failOut("exactly one screw type", { q, screws: screws.map((b) => b.name) });
+    if (screws.some((b) => b.catalogId !== "outdoor-screws")) failOut("indoor screws alongside the exterior screws", { q, screws: screws.map((b) => b.name) });
+    if (plan.bom.some((b) => b.catalogId === "glue" || b.catalogId === "screws-8")) failOut("indoor glue/screw row survived", { q });
+    if (!plan.bom.some((b) => b.catalogId === "outdoor-finish")) failOut("exterior finish missing", { q });
+    if (!wall && !plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides missing", { q });
+    for (const b of plan.bom.filter((r) => /^outdoor-/.test(r.catalogId ?? ""))) if (!b.offers?.length) failOut("outdoor Buy row without a store link", { q, row: b.name });
+    const seal = plan.instructions.find((s) => /^Seal it for outdoors/.test(s.title));
+    if (!seal) failOut("seal step missing", { q, steps: plan.instructions.map((s) => s.title) });
+    if (!/end grain/i.test(seal!.description)) failOut("seal step does not name the end grain", { q });
+    if (!wall && !/(?:legs?|sides?)\s*\(the feet\)|\bfeet\b/.test(seal!.description)) failOut("seal step does not name the legs or feet", { q, d: seal!.description });
+    if (wall && !/ends of every board/.test(seal!.description)) failOut("wall seal step does not name the board ends", { q });
+    const last = plan.instructions[plan.instructions.length - 1];
+    if (last !== seal && !/level|plumb|sit-test|check|hang|test/i.test(last.title)) failOut("seal step not just before the final check", { q, last: last.title });
+    for (const s of plan.instructions) {
+      const t = `${s.title} ${s.description} ${s.tips ?? ""}`;
+      if (/\bwood glue\b|felt pad/i.test(t)) failOut("indoor glue / felt pad wording in steps", { q, step: s.title });
+    }
+  }
+  // pine qualifies, not only teak and cedar: sealed feet on the porch bench.
+  {
+    const plan = buildPlan(generateFromPrompt("pine porch bench"));
+    const seal = plan.instructions.find((s) => /^Seal it for outdoors/.test(s.title));
+    if (!seal || !/feet/i.test(seal.title) || !/glide into each/.test(seal.description)) failOut("pine porch bench feet not sealed and lifted", seal?.description);
+  }
+  // Soil or water: drainage holes + liner, indoors or out.
+  for (const q of ["cedar patio planter box, 36 inches long", "cedar planter box"]) {
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    if (!p.notes.includes(DRAINAGE_NOTE)) failOut("drainage note missing", { q, notes: p.notes });
+    if (p.notes.some((n) => /drainage holes optional/i.test(n))) failOut("drainage still optional", { q });
+    if (!plan.bom.some((b) => b.catalogId === "outdoor-liner")) failOut("liner missing on Buy", { q });
+    const drill = plan.instructions.findIndex((s) => /drainage holes/i.test(s.title));
+    const seal = plan.instructions.findIndex((s) => /^Seal it for outdoors/.test(s.title));
+    if (drill < 0) failOut("drainage step missing", { q });
+    if (seal >= 0 && drill > seal) failOut("drainage holes drilled after the seal coats", { q });
+    if (!holdsSoilOrWater(q)) failOut("holdsSoilOrWater misses a planter", q);
+  }
+  // Indoor twins stay indoor (the build's own "deck" wording and species names never switch it on).
+  for (const q of ["cat tree from 2x4", "skateboard deck wall shelf", "cedar chest", "walnut desk", "cedar planter box"]) {
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    if (p.notes.includes(OUTDOOR_NOTE)) failOut("indoor twin got the outdoor note", q);
+    if (plan.bom.some((b) => /^outdoor-(?:glue|screws|finish|glides)$/.test(b.catalogId ?? ""))) failOut("indoor twin got exterior Buy rows", { q, bom: plan.bom.map((b) => b.name) });
+    if (plan.instructions.some((s) => /^Seal it for outdoors/.test(s.title))) failOut("indoor twin got the outdoor seal step", q);
+    if (glueRows(plan.bom).length > 1 || woodScrewRows(plan.bom).length > 1) failOut("indoor twin carries two glues or two screw types", { q });
+  }
+  if (!generateFromPrompt("cedar chest").notes.some((n) => /lining/i.test(n))) failOut("cedar chest lost its lining note");
+  // The package is for wood: a PVC garden arch keeps its solvent-weld joins, no glue or wood finish.
+  {
+    const p = generateFromPrompt("6 foot garden arch from 3/4 inch PVC pipe");
+    const plan = buildPlan(p);
+    if (p.notes.includes(OUTDOOR_NOTE) || plan.bom.some((b) => /^outdoor-/.test(b.catalogId ?? ""))) failOut("PVC build got the wood exterior package", plan.bom.map((b) => b.name));
+  }
+  console.log(`PASS outdoor: ${TRIGGER.length} trigger twins, ${OUT.length} outdoor builds — one exterior glue, one exterior screw type, end grain and feet sealed, drainage + liner on soil holders`);
+}
+
+// Fit-the-build wording: untyped tables state their assumed size, a desk knee is open to the
+// floor, plumbing talk only on plumbed builds, and the wine plinth reads as a recessed base.
+{
+  const failFit = (msg: string, detail?: unknown) => failHonesty(`fit wording ${msg}`, detail);
+  for (const q of ["oak coffee table", "maple end table", "round coffee table", "end table", "teak outdoor side table"]) {
+    const p = generateFromPrompt(q);
+    if (!p.notes.some((n) => /^Assumed\b/.test(n) && /tall/.test(n))) failFit("untyped table without an Assumed size line", { q, notes: p.notes });
+  }
+  for (const q of ["walnut desk", "desk"]) {
+    const p = generateFromPrompt(q);
+    const wide = p.panels.filter((pp) => /bottom/i.test(pp.name) && !/drawer/i.test(pp.name) && pp.size.width > p.overall.width * 0.6);
+    if (wide.length) failFit("desk bottom spans the knee", { q, wide: wide.map((pp) => [pp.name, pp.size.width]) });
+  }
+  for (const q of ["bookcase", "walnut desk", "dresser", "linen closet 24 wide", "media console", "nightstand"]) {
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    const all = [...p.notes, ...plan.instructions.flatMap((s) => [s.description, s.tips ?? ""])].join(" ");
+    if (/plumbing/i.test(all)) failFit("plumbing talk on a build without plumbing", q);
+  }
+  {
+    const p = generateFromPrompt("bathroom vanity 36 wide with two doors");
+    const plan = buildPlan(p);
+    const all = [...p.notes, ...plan.instructions.flatMap((s) => [s.description, s.tips ?? ""])].join(" ");
+    if (!/plumbing/i.test(all)) failFit("vanity lost its plumbing check");
+  }
+  for (const q of ["twelve-slot wine rack", "wine rack 24 wide 36 tall 12 deep with twelve slots"]) {
+    const plan = buildPlan(generateFromPrompt(q));
+    if (plan.instructions.some((s) => /\btoes?\b/i.test(`${s.description} ${s.tips ?? ""}`))) failFit("wine plinth talks about toes", q);
+  }
+  console.log("PASS fit wording: tables state assumed size, desk knee open, plumbing only where plumbed, wine base recessed");
 }
 
 // Batch37 storage/wall organize FAIL class pack — Wall shelf · Wine slots · Coat hook board · Wall cubby.
