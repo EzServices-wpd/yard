@@ -223,6 +223,8 @@ export type PocketSpec = {
   unit: PocketUnit;
   leftClear: number;
   rightClear: number;
+  /** Set when a typed size was pulled back into the hole. */
+  clampNote?: string;
 };
 
 export type FittedProgram =

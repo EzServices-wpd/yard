@@ -58,9 +58,32 @@ export function parsePocket(prompt: string): PocketSpec | null {
 
   const measure = freezeOriginal ? "" : t;
   const backWidth = pick(measure, /back wall[:\s]+(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide/i, 38.5));
-  const leftDepth = pick(measure, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26);
-  const rightDepth = pick(measure, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5);
-  const height = pick(measure, /(?:all walls|walls)[:\s]+(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high/i, 102));
+  const saidLeft = /left(?: side)? depth[:\s]+\d/i.test(measure);
+  const saidRight = /right(?: side)? depth[:\s]+\d/i.test(measure);
+  const deepM = measure.match(/(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i);
+  const leftDepth = saidLeft
+    ? pick(measure, /left(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 26)
+    : deepM
+      ? num(deepM[1], 26)
+      : 26;
+  const rightDepth = saidRight
+    ? pick(measure, /right(?: side)? depth[:\s]+(\d+(?:\.\d+)?)/i, 33.5)
+    : deepM
+      ? num(deepM[1], 33.5)
+      : 33.5;
+  const ceilingM = measure.match(/ceilings?\s*(?:height\s*)?(?:is|of|:|=)?\s*(\d+(?:\.\d+)?)/i);
+  const tallM = measure.match(/(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*tall/i);
+  const wallsHigh = measure.match(/(?:all walls|walls)[:\s]+(\d+(?:\.\d+)?)/i);
+  const highM = measure.match(/(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high/i);
+  const height = wallsHigh
+    ? num(wallsHigh[1], 102)
+    : ceilingM
+      ? num(ceilingM[1], 102)
+      : tallM
+        ? num(tallM[1], 102)
+        : highM
+          ? num(highM[1], 102)
+          : 102;
 
   const station = pick(measure, /at (\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:perpendicular )?from the back/i, 20);
   const leftOfCL = pick(measure, /left of centerline[^\d]{0,24}(\d+(?:\.\d+)?)/i, 25);
@@ -68,16 +91,33 @@ export function parsePocket(prompt: string): PocketSpec | null {
 
   let leftAngleDeg = pick(measure, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   let rightAngleDeg = pick(measure, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
-  if (!Number.isFinite(leftAngleDeg)) {
-    leftAngleDeg = (Math.atan((leftOfCL - backWidth / 2) / station) * 180) / Math.PI;
-  }
-  if (!Number.isFinite(rightAngleDeg)) {
-    rightAngleDeg = (Math.atan((rightOfCL - backWidth / 2) / station) * 180) / Math.PI;
+  const saidFlare = /angle|centerline|trapezoid/i.test(measure);
+  if (!saidFlare && leftDepth === rightDepth) {
+    leftAngleDeg = 0;
+    rightAngleDeg = 0;
+  } else {
+    if (!Number.isFinite(leftAngleDeg)) {
+      leftAngleDeg = (Math.atan((leftOfCL - backWidth / 2) / station) * 180) / Math.PI;
+    }
+    if (!Number.isFinite(rightAngleDeg)) {
+      rightAngleDeg = (Math.atan((rightOfCL - backWidth / 2) / station) * 180) / Math.PI;
+    }
   }
 
-  const unitW = pick(measure, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
-  const unitD = pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i, 17);
-  const unitH = pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*high(?! from)/i, height);
+  const takeW = measure.match(/takes?\s+only\s+(\d+(?:\.\d+)?)\s+of the width/i);
+  const takeD = measure.match(/(\d+(?:\.\d+)?)\s+of the depth/i);
+  const takeH = measure.match(/(\d+(?:\.\d+)?)\s+of the height/i);
+  const leftShelf = measure.match(/left shelves?\s+(\d+(?:\.\d+)?)/i);
+  const rightShelf = measure.match(/right shelves?\s+(\d+(?:\.\d+)?)/i);
+  const unitW = takeW
+    ? num(takeW[1], backWidth)
+    : pick(measure, /(?:unit|rectangular unit)[^\d]{0,40}(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:wide|w)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*wide\s*x/i, 38));
+  const unitD = takeD
+    ? num(takeD[1], 17)
+    : pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*deep/i, 17);
+  const unitH = takeH
+    ? num(takeH[1], height)
+    : pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*(?:high|tall)(?! from)/i, height);
   const vanityH = pick(measure, /counter(?:[^\d]{0,16})(\d+(?:\.\d+)?)/i, 34);
   const kneeW = pick(measure, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, pick(measure, /(\d+(?:\.\d+)?)\s*(?:inches?|")?\s*clear/i, 22));
   const upperStart = pick(measure, /upper[^\d]{0,40}(\d+(?:\.\d+)?)/i, pick(measure, /starting at (\d+(?:\.\d+)?)/i, 54));
@@ -95,11 +135,24 @@ export function parsePocket(prompt: string): PocketSpec | null {
     depth: Math.min(unitD, Math.min(leftDepth, rightDepth) - 1),
     height: unitH || height,
     vanityH,
-    kneeW: Math.min(kneeW, unitW - 8),
+    kneeW: Math.min(kneeW, Math.max(8, unitW - 8)),
     upperStart,
   };
-  const { leftClear, rightClear } = clearancesAt(walls, unit);
-  return { walls, unit, leftClear, rightClear };
+  if (leftShelf) unit.leftBay = num(leftShelf[1], 0);
+  if (rightShelf) unit.rightBay = num(rightShelf[1], 0);
+  const fit = fitPocketAsk(
+    { walls, unit, leftClear: 0, rightClear: 0 },
+    {
+      width: unit.width,
+      depth: unitD,
+      height: unit.height,
+      ceiling: walls.height,
+      leftBay: unit.leftBay,
+      rightBay: unit.rightBay,
+    },
+  );
+  if (fit.note) fit.spec.clampNote = fit.note;
+  return fit.spec;
 }
 
 export function wallX(walls: PocketWalls, side: "left" | "right", z: number) {
@@ -298,17 +351,21 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, bays.left, uH, P));
   panels.push(panel("door", "Right upper door", x1 - bays.right - 0.1, u0, D - P, bays.right, uH, P));
 
+  const straight = Math.abs(walls.leftAngleDeg) < 0.05 && Math.abs(walls.rightAngleDeg) < 0.05;
   const notes = [
-    `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
+    straight
+      ? `Pocket. Back ${walls.backWidth}" · both walls ${walls.leftDepth}" deep · ceiling ${walls.height}".`
+      : `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
     `Unit ${unit.width}" along the back × ${unit.depth}" out × ${unit.height}" tall. Front parallel to the back wall.`,
     `Left shelves ${bays.left.toFixed(1)}" wide. Right shelves ${bays.right.toFixed(1)}" wide.`,
     `At the unit front (${unit.depth}"): left clearance ${clr.leftClear.toFixed(2)}" · right clearance ${clr.rightClear.toFixed(2)}" · opening ${clr.opening.toFixed(2)}".`,
     `Vanity counter at ${unit.vanityH}". Knee ${unit.kneeW}" clear, centered. Drawers in the wings. Uppers ${unit.upperStart}" to ${unit.height}".`,
-    "Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a 102\" mixed-use unit.",
+    `Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a ${walls.height}" mixed-use unit.`,
     "Scribe the uprights if the back wall is out of plumb. The unit stays rectangular; the pocket is the thing that is wonky.",
     "Adjustable shelves on pins. Large doors. Mirror over the knee. Guidance only — confirm studs and plumbing before you cut.",
   ];
 
+  if (spec.clampNote) notes.unshift(spec.clampNote);
   if (clr.leftClear < 0.5 || clr.rightClear < 0.5) {
     notes.unshift("CRITICAL: the unit collides with a side wall at this depth. Pull the unit shallower or narrow it.");
   }
