@@ -39,5 +39,13 @@ describe("measured pocket occupancy", () => {
     assert.match(notes, /38 1\/2|38\.5/);
     assert.match(notes, /102/);
     assert.match(notes, /26/);
+    assert.match(notes, /16\.0/);
+    assert.match(notes, /5\.0/);
+    assert.doesNotMatch(notes, /CRITICAL/);
+    assert.ok(project.pocket);
+    assert.ok(project.pocket.walls.leftAngleDeg > 10);
+    assert.ok(project.pocket.walls.rightAngleDeg > 2);
+    assert.ok(project.pocket.leftClear > 1);
+    assert.ok(project.pocket.rightClear > 1);
   });
 });

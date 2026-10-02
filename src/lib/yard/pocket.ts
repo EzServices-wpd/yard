@@ -92,8 +92,10 @@ export function parsePocket(prompt: string): PocketSpec | null {
   let leftAngleDeg = pick(measure, /left wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   let rightAngleDeg = pick(measure, /right wall angle[^\d]{0,8}(\d+(?:\.\d+)?)/i, NaN);
   const saidFlare = /angle|centerline|trapezoid/i.test(measure);
-  // Uneven side depths are still a straight pocket unless the sentence gives a flare.
-  if (measure && !saidFlare) {
+  // A typed survey with no flare cue is a straight hole — uneven depths do not invent angles.
+  // A bare chip ("pocket vanity") has no survey numbers, so it keeps the example hole's flare.
+  const saidSurvey = /\d/.test(measure);
+  if (saidSurvey && !saidFlare) {
     leftAngleDeg = 0;
     rightAngleDeg = 0;
   } else if (!saidFlare && leftDepth === rightDepth) {
