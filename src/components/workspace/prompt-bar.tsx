@@ -72,9 +72,10 @@ export function PromptBar({
         <button
           type="submit"
           disabled={grokBusy}
+          aria-label="Build this"
           className="inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-full bg-accent px-4 text-sm font-medium text-accent-fg disabled:opacity-60"
         >
-          {grokBusy ? "…" : "Go"}
+          {grokBusy ? "…" : "Build"}
           <ArrowRight className="size-4" />
         </button>
       </form>

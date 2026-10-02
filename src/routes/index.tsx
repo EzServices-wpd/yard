@@ -124,7 +124,7 @@ function LandingPage() {
               Built for the corner the room forgot.
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-ink-muted sm:text-lg">
-              Measure a space. Yard returns a cut list, hardware, and shop links — for the hole you actually have.
+              Type the opening. Yard returns a cut list, hardware, and shop links — for the hole you actually have.
             </p>
 
             <form
