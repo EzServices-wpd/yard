@@ -157,7 +157,7 @@ export function CatalogPanel() {
               {matches.map((item) => {
                 const dim =
                   item.dims.length && item.dims.diameter
-                    ? `${inches(item.dims.length)} · ⌀${item.dims.diameter}`
+                    ? `${inches(item.dims.length)} · ⌀${inches(item.dims.diameter)}`
                     : item.dims.length && item.dims.width
                       ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
                       : "";
@@ -210,7 +210,7 @@ export function CatalogPanel() {
                     const selected = project.primaryMaterialId === item.id;
                     const dim =
                       item.dims.length && item.dims.diameter
-                        ? `${inches(item.dims.length)} · ⌀${item.dims.diameter}`
+                        ? `${inches(item.dims.length)} · ⌀${inches(item.dims.diameter)}`
                         : item.dims.length && item.dims.width
                           ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
                           : "";
