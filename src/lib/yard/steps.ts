@@ -2113,8 +2113,25 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Confirm the pocket — do not cut yet",
-      description: `Back ${pocket.walls.backWidth}" · left depth ${pocket.walls.leftDepth}" @ ${pocket.walls.leftAngleDeg.toFixed(1)}° · right depth ${pocket.walls.rightDepth}" @ ${pocket.walls.rightAngleDeg.toFixed(1)}° · ${pocket.walls.height}" high. Unit ${pocket.unit.width}" W × ${pocket.unit.depth}" D × ${pocket.unit.height}" H, centered, front parallel to the back wall. Measure three heights and both flares.`,
-      tips: "The walls are the trapezoid. The unit is a rectangle. Do not rack the box to follow the flare.",
+      description: (() => {
+        const w = pocket.walls;
+        const f = inchFrac;
+        const flared = Math.abs(w.leftAngleDeg) > 0.5 || Math.abs(w.rightAngleDeg) > 0.5;
+        const sides = flared
+          ? `left depth ${f(w.leftDepth)}" @ ${w.leftAngleDeg.toFixed(1)}° · right depth ${f(w.rightDepth)}" @ ${w.rightAngleDeg.toFixed(1)}°`
+          : `left depth ${f(w.leftDepth)}" · right depth ${f(w.rightDepth)}", sides square to the back`;
+        const notch = w.notch
+          ? w.notch.side === "back"
+            ? ` Ledge along the back: ${f(w.notch.depth)}" deep × ${f(w.notch.height)}" high — the unit stands in front of it.`
+            : ` Chase in the ${w.notch.side} corner: ${f(w.notch.width)}" wide × ${f(w.notch.depth)}" deep × ${f(w.notch.height)}" high — the unit stands beside it.`
+          : "";
+        const place = w.notch && w.notch.side !== "back" ? "beside the chase" : "centered";
+        return `Back ${f(w.backWidth)}" · ${sides} · ${f(w.height)}" high.${notch} Unit ${f(pocket.unit.width)}" W × ${f(pocket.unit.depth)}" D × ${f(pocket.unit.height)}" H, ${place}, front parallel to the back wall. Measure three heights${flared ? " and both flares" : " and both side walls"}.`;
+      })(),
+      tips:
+        Math.abs(pocket.walls.leftAngleDeg) > 0.5 || Math.abs(pocket.walls.rightAngleDeg) > 0.5
+          ? "The walls are the trapezoid. The unit is a rectangle. Do not rack the box to follow the flare."
+          : "The hole is square to the back, so the unit slides straight in. Check both side walls for plumb before you cut.",
       partsUsed: ["*"],
     });
   } else if (shoePortalCubbies) {
@@ -2334,7 +2351,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     title: alcove ? "Shim, then lag into studs" : wallHang ? "Hang it on studs" : "Level it",
     description: alcove
       ? pocket
-        ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${pocket.rightClear.toFixed(1)}" / L ${pocket.leftClear.toFixed(1)}"). Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
+        ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${inchFrac(pocket.rightClear)}" / L ${inchFrac(pocket.leftClear)}").${pocket.walls.notch?.side === "back" ? " Shim behind the back so it bears on the ledge face, and screw into studs above the ledge." : pocket.walls.notch ? " Leave the chase open — screw the chase-side upright to the chase face, clear of the pipes." : ""} Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
         : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
       : wallHang
         ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."

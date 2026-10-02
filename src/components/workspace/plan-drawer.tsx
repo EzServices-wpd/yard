@@ -1,6 +1,7 @@
 "use client";
 
 import { inchFrac } from "@/lib/yard/inchText";
+import { getCatalogItem } from "@/lib/yard/catalog";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
@@ -175,7 +176,17 @@ function PlanBody({
       const brief = [
         project.notes.slice(0, 4).join(" "),
         project.pocket
-          ? `Trapezoidal pocket vanity, ${project.pocket.unit.width} by ${project.pocket.unit.depth} by ${project.pocket.unit.height} inches, oak plywood, drawers, mirror, upper cabinets.`
+          ? (() => {
+              const w = project.pocket.walls;
+              const flared = Math.abs(w.leftAngleDeg) > 0.5 || Math.abs(w.rightAngleDeg) > 0.5;
+              const notch = w.notch
+                ? w.notch.side === "back"
+                  ? `, standing in front of a ${w.notch.depth} inch ledge along the back wall`
+                  : `, beside a ${w.notch.width} by ${w.notch.depth} inch chase in the ${w.notch.side} corner`
+                : "";
+              const stock = getCatalogItem(project.primaryMaterialId)?.name ?? "oak plywood";
+              return `${flared ? "Trapezoidal" : "Straight-sided"} pocket vanity${notch}, ${project.pocket.unit.width} by ${project.pocket.unit.depth} by ${project.pocket.unit.height} inches, ${stock}, drawers, mirror, upper cabinets.`;
+            })()
           : "",
         project.fitted ? `${project.fitted.program} in ${project.fitted.unit.width} by ${project.fitted.unit.depth} by ${project.fitted.unit.height} inch plywood.` : "",
         project.instances.length

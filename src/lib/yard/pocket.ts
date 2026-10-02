@@ -5,8 +5,9 @@
  */
 
 import { createId } from "@/lib/utils";
-import type { Panel, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
+import type { Panel, PocketNotch, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
 import { plySheetCatalogId } from "./nesting";
+import { inchFrac } from "./inchText";
 
 const PLY = "plywood-3-4-4x8";
 const P = 0.75;
@@ -167,12 +168,42 @@ export function wallX(walls: PocketWalls, side: "left" | "right", z: number) {
   return half + z * Math.tan((walls.rightAngleDeg * Math.PI) / 180);
 }
 
+/** A notch the build can actually go around: kept inside the hole, at least a hand's width of room left. */
+export function saneNotch(walls: PocketWalls): PocketNotch | undefined {
+  const n = walls.notch;
+  if (!n || !(n.width > 0) || !(n.depth > 0) || !(n.height > 0)) return undefined;
+  const shallow = Math.min(walls.leftDepth, walls.rightDepth);
+  return {
+    side: n.side,
+    width: n.side === "back" ? walls.backWidth : Math.min(n.width, Math.max(1, walls.backWidth - 12)),
+    depth: Math.min(n.depth, Math.max(1, shallow - 6.75)),
+    height: Math.min(n.height, walls.height),
+  };
+}
+
+/**
+ * Where the unit sits in the hole. Centered on the back wall; a corner chase slides it over just far
+ * enough to stand beside the chase, and a ledge along the back brings it forward to stand in front of it.
+ */
+export function unitSeat(walls: PocketWalls, unit: Pick<PocketUnit, "width">) {
+  const half = walls.backWidth / 2;
+  const notch = saneNotch(walls);
+  let x = 0;
+  let z = 0;
+  // ¼" off the chase face so the upright can be scribed and screwed to it.
+  if (notch?.side === "left") x = Math.max(0, -half + notch.width + 0.25 + unit.width / 2);
+  if (notch?.side === "right") x = -Math.max(0, unit.width / 2 - (half - notch.width - 0.25));
+  if (notch?.side === "back") z = notch.depth;
+  return { x, z, notch };
+}
+
 export function clearancesAt(walls: PocketWalls, unit: PocketUnit) {
-  const z = unit.depth;
+  const seat = unitSeat(walls, unit);
+  const z = seat.z + unit.depth;
   const leftWall = wallX(walls, "left", z);
   const rightWall = wallX(walls, "right", z);
-  const leftUnit = -unit.width / 2;
-  const rightUnit = unit.width / 2;
+  const leftUnit = seat.x - unit.width / 2;
+  const rightUnit = seat.x + unit.width / 2;
   return {
     leftClear: leftUnit - leftWall,
     rightClear: rightWall - rightUnit,
@@ -181,8 +212,7 @@ export function clearancesAt(walls: PocketWalls, unit: PocketUnit) {
 }
 
 function inch(n: number) {
-  const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  return inchFrac(n);
 }
 
 /** How much of a measured pocket the build is allowed to take. Clamps to the hole. */
@@ -197,16 +227,31 @@ export function fitPocketAsk(
   let width = ask.width;
   let depth = ask.depth;
   let height = ask.height;
-  if (width > walls.backWidth + 0.05) {
-    notes.push(`The back wall is ${inch(walls.backWidth)}". The build uses that, not ${inch(width)}".`);
-    width = walls.backWidth;
+  const notch = saneNotch(walls);
+  if (notch) walls.notch = notch;
+  else delete walls.notch;
+  const side = notch && notch.side !== "back" ? notch : undefined;
+  // Beside a chase: ¼" scribe room off the chase face and off the far wall.
+  const maxW = side ? walls.backWidth - side.width - 0.5 : walls.backWidth;
+  if (width > maxW + 0.05) {
+    notes.push(
+      side
+        ? `The ${inch(side.width)}" chase takes part of the ${inch(walls.backWidth)}" back, so the build is ${inch(maxW)}" wide and stands beside it.`
+        : `The back wall is ${inch(walls.backWidth)}". The build uses that, not ${inch(width)}".`,
+    );
+    width = maxW;
   }
   width = Math.max(12, width);
 
   const shallow = Math.min(walls.leftDepth, walls.rightDepth);
-  const maxD = Math.max(6, shallow - 0.75);
+  const ledge = notch?.side === "back" ? notch.depth : 0;
+  const maxD = Math.max(6, shallow - 0.75 - ledge);
   if (depth > maxD + 0.05) {
-    notes.push(`The shallower wall is ${inch(shallow)}". The build comes out ${inch(maxD)}", so it stays in the hole.`);
+    notes.push(
+      ledge
+        ? `The build stands in front of the ${inch(ledge)}" ledge, so it comes out ${inch(maxD)}" and stays in the ${inch(shallow)}" hole.`
+        : `The shallower wall is ${inch(shallow)}". The build comes out ${inch(maxD)}", so it stays in the hole.`,
+    );
     depth = maxD;
   }
   depth = Math.max(6, Math.min(depth, maxD));
@@ -295,13 +340,14 @@ function panel(
 export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   const { walls, unit } = spec;
   const clr = clearancesAt(walls, unit);
-  const x0 = -unit.width / 2;
-  const x1 = unit.width / 2;
+  const seat = unitSeat(walls, unit);
+  const x0 = seat.x - unit.width / 2;
+  const x1 = seat.x + unit.width / 2;
   const W = unit.width;
   const H = unit.height;
   const D = unit.depth;
-  const kneeL = -unit.kneeW / 2;
-  const kneeR = unit.kneeW / 2;
+  const kneeL = seat.x - unit.kneeW / 2;
+  const kneeR = seat.x + unit.kneeW / 2;
   const leftBankW = kneeL - x0;
   const rightBankW = x1 - kneeR;
 
@@ -357,24 +403,38 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, bays.left, uH, P));
   panels.push(panel("door", "Right upper door", x1 - bays.right - 0.1, u0, D - P, bays.right, uH, P));
 
+  if (seat.z > 0) for (const p of panels) p.position = { ...p.position, z: p.position.z + seat.z };
+
   const straight = Math.abs(walls.leftAngleDeg) < 0.05 && Math.abs(walls.rightAngleDeg) < 0.05;
+  const deg = (n: number) => `${n.toFixed(2)}°`;
+  const notch = seat.notch;
   const notes = [
     straight
       ? walls.leftDepth === walls.rightDepth
-        ? `Pocket. Back ${walls.backWidth}" · both walls ${walls.leftDepth}" deep · ceiling ${walls.height}".`
-        : `Pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" · right depth ${walls.rightDepth}" · ceiling ${walls.height}".`
-      : `Trapezoidal bathroom pocket. Back ${walls.backWidth}" · left depth ${walls.leftDepth}" @ ${walls.leftAngleDeg.toFixed(2)}° · right depth ${walls.rightDepth}" @ ${walls.rightAngleDeg.toFixed(2)}° · ${walls.height}" high.`,
-    `Unit ${unit.width}" along the back × ${unit.depth}" out × ${unit.height}" tall. Front parallel to the back wall.`,
-    `Left shelves ${bays.left.toFixed(1)}" wide. Right shelves ${bays.right.toFixed(1)}" wide.`,
-    `At the unit front (${unit.depth}"): left clearance ${clr.leftClear.toFixed(2)}" · right clearance ${clr.rightClear.toFixed(2)}" · opening ${clr.opening.toFixed(2)}".`,
-    `Vanity counter at ${unit.vanityH}". Knee ${unit.kneeW}" clear, centered. Drawers in the wings. Uppers ${unit.upperStart}" to ${unit.height}".`,
-    `Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a ${walls.height}" mixed-use unit.`,
-    "Scribe the uprights if the back wall is out of plumb. The unit stays rectangular; the pocket is the thing that is wonky.",
+        ? `Pocket. Back ${inch(walls.backWidth)}" · both walls ${inch(walls.leftDepth)}" deep · ceiling ${inch(walls.height)}".`
+        : `Pocket. Back ${inch(walls.backWidth)}" · left depth ${inch(walls.leftDepth)}" · right depth ${inch(walls.rightDepth)}" · ceiling ${inch(walls.height)}".`
+      : `Trapezoidal bathroom pocket. Back ${inch(walls.backWidth)}" · left depth ${inch(walls.leftDepth)}" @ ${deg(walls.leftAngleDeg)} · right depth ${inch(walls.rightDepth)}" @ ${deg(walls.rightAngleDeg)} · ${inch(walls.height)}" high.`,
+    `Unit ${inch(unit.width)}" along the back × ${inch(unit.depth)}" out × ${inch(unit.height)}" tall. Front parallel to the back wall.`,
+    ...(notch
+      ? [
+          notch.side === "back"
+            ? `Ledge along the back: ${inch(notch.depth)}" deep × ${inch(notch.height)}" high. The unit stands in front of it — shim behind the back and screw through into the studs above the ledge.`
+            : `Chase in the back ${notch.side} corner: ${inch(notch.width)}" wide × ${inch(notch.depth)}" deep × ${inch(notch.height)}" high. The unit stands beside it with ${inch(Math.max(0, notch.side === "left" ? x0 - (-walls.backWidth / 2 + notch.width) : walls.backWidth / 2 - notch.width - x1))}" to spare.`,
+        ]
+      : []),
+    `Left shelves ${inch(bays.left)}" wide. Right shelves ${inch(bays.right)}" wide.`,
+    `At the unit front (${inch(seat.z + unit.depth)}" from the back wall): left clearance ${inch(clr.leftClear)}" · right clearance ${inch(clr.rightClear)}" · opening ${inch(clr.opening)}".`,
+    `Vanity counter at ${inch(unit.vanityH)}". Knee ${inch(unit.kneeW)}" clear, centered on the unit. Drawers in the wings. Uppers ${inch(unit.upperStart)}" to ${inch(unit.height)}".`,
+    `Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a ${inch(walls.height)}" mixed-use unit.`,
+    straight
+      ? "Scribe the uprights if the back wall is out of plumb. The unit stays square in a square hole."
+      : "Scribe the uprights if the back wall is out of plumb. The unit stays rectangular; the pocket is the thing that is wonky.",
     "Adjustable shelves on pins. Large doors. Mirror over the knee. Guidance only — confirm studs and plumbing before you cut.",
   ];
 
   if (spec.clampNote) notes.unshift(spec.clampNote);
-  if (clr.leftClear < 0.5 || clr.rightClear < 0.5) {
+  // A 1/4" scribe gap each side is normal; less than that and the unit hits a wall.
+  if (clr.leftClear < 0.2 || clr.rightClear < 0.2) {
     notes.unshift("CRITICAL: the unit collides with a side wall at this depth. Pull the unit shallower or narrow it.");
   }
 
@@ -419,11 +479,26 @@ export function pocketStrokes(spec: PocketSpec): { points: [number, number, numb
   const fl = wallX(walls, "left", zL);
   const fr = wallX(walls, "right", zR);
   const v = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
-  return [
+  const out: { points: [number, number, number][]; weight: "main" | "fine" }[] = [
     { points: [v(bl, 0, 0), v(br, 0, 0), v(br, H, 0), v(bl, H, 0), v(bl, 0, 0)], weight: "main" },
     { points: [v(bl, 0, 0), v(fl, 0, zL), v(fl, H, zL), v(bl, H, 0)], weight: "main" },
     { points: [v(br, 0, 0), v(fr, 0, zR), v(fr, H, zR), v(br, H, 0)], weight: "main" },
     { points: [v(fl, 0, zL), v(fr, 0, zR)], weight: "fine" },
     { points: [v(fl, H, zL), v(fr, H, zR)], weight: "fine" },
   ];
+  // The notch (chase or ledge) drawn as a box in the hole, so the gap the unit leaves reads as on purpose.
+  const notch = saneNotch(walls);
+  if (notch) {
+    const xa = notch.side === "right" ? br - notch.width : bl;
+    const xb = notch.side === "left" ? bl + notch.width : br;
+    const d = notch.depth;
+    const h = notch.height;
+    out.push(
+      { points: [v(xa, h, 0), v(xa, h, d), v(xb, h, d), v(xb, h, 0)], weight: "main" },
+      { points: [v(xa, 0, d), v(xa, h, d)], weight: "main" },
+      { points: [v(xb, 0, d), v(xb, h, d)], weight: "main" },
+      { points: [v(xa, 0, d), v(xb, 0, d)], weight: "fine" },
+    );
+  }
+  return out;
 }
