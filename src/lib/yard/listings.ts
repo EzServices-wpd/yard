@@ -1034,6 +1034,8 @@ export function tagNote() {
 
 function guessCatalogId(line: BomLine): string | null {
   if (line.catalogId?.startsWith("piece-")) return line.catalogId;
+  // Exterior package rows (Titebond III, exterior screws, finish, glides, liner) shop by their own search.
+  if (line.catalogId?.startsWith("outdoor-")) return null;
   if (line.catalogId) {
     if (LISTINGS.some((o) => o.catalogId === line.catalogId)) return line.catalogId;
     if (FORGE_CATALOG.some((c) => c.id === line.catalogId)) return line.catalogId;

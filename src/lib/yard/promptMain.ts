@@ -37,6 +37,8 @@ import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldSt
 import { buildClimb, climbKind } from "./climb";
 import { localStockQuery } from "./stockQuery";
 import { rememberCatalogItem } from "./foundStock";
+import { withOutdoorNotes } from "./outdoor";
+import { notesWithFinishedDepth } from "./modelSize";
 
 export function emptyProject(): YardProject {
   return {
@@ -165,7 +167,9 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   const solved = solveModel(generateRaw(...args));
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
-  return addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
+  const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
+  const finished = sized.panels.length && !sized.pocket ? { ...sized, notes: notesWithFinishedDepth(sized.notes ?? [], sized.panels, sized.overall.depth) } : sized;
+  return withOutdoorNotes(finished, args[0]);
 }
 
 /**

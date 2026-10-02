@@ -18,6 +18,7 @@ import { CATALOG_LUMBER_BIND, namedLegLumberFromPrompt, namedLumberFromPrompt } 
 import { planSolidBoards } from "./solidStock";
 import { packLengths } from "./linearPack";
 import { panelJoints, screwTalk } from "./modelJoints";
+import { withOutdoorPackage } from "./outdoor";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
@@ -1164,7 +1165,7 @@ export function strangerWoodPieceCount(project: YardProject): number {
 
 /** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
 export function buildPlan(project: YardProject): BuildPlan {
-  return fractionPlanText(buyReadsModel(boardStockWording(project, withPlacementTalk(project, buildPlanCore(project)))));
+  return fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))));
 }
 
 /**
