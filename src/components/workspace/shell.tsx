@@ -542,16 +542,30 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                 className="flex items-baseline justify-between gap-3 border-t border-border/60 px-3.5 py-2 text-xs"
               >
                 <p className="min-w-0 truncate text-muted">
-                  {wire
-                    ? "Pick a real stock"
-                    : nestSheetLabel
-                      ? nestSheetLabel
-                      : stockLabel !== "stock"
-                        ? stockLabel
-                        : material?.name ?? "No stock"}
-                  {pieceCount ? (paperCraft ? ` · ${pieceCount} whole sticks` : ` · ${pieceCount} pieces`) : ""}
+                  {pieceCount > 0 && !pending && workMode !== "walk" && !wire
+                    ? paperCraft
+                      ? `${pieceCount} whole sticks`
+                      : `${pieceCount} ${pieceCount === 1 ? "piece" : "pieces"}`
+                    : wire
+                      ? "Pick a real stock"
+                      : nestSheetLabel
+                        ? nestSheetLabel
+                        : stockLabel !== "stock"
+                          ? stockLabel
+                          : material?.name ?? "No stock"}
+                  {pieceCount && (wire || pending || workMode === "walk")
+                    ? paperCraft
+                      ? ` · ${pieceCount} whole sticks`
+                      : ` · ${pieceCount} pieces`
+                    : ""}
                 </p>
-                <p className="shrink-0 font-mono text-[11px] text-faint">
+                <button
+                  type="button"
+                  onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                  className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
+                  aria-label={project.pocket ? "Edit the hole, how much of it, and the shelves" : "Edit the size"}
+                  title={project.pocket ? "The hole, the share, and the shelves" : "Edit wide, tall, and deep"}
+                >
                   {(() => {
                     const pocketUnit = project.pocket?.unit;
                     const inch = (n: number) => {
@@ -585,7 +599,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                       </>
                     );
                   })()}
-                </p>
+                </button>
               </div>
             </div>
           </div>
