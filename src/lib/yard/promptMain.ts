@@ -312,6 +312,17 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (/\bjars?\b/.test(lower) && /\b(shel(?:f|ves)|racks?)\b/.test(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
   // A shoe rack is the cubbies, not a stand around one shoe. A stand/holder for a named product still keeps the piece.
   if (wantsShoes(lower) && !/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
+  // Spoken "N shelves" densifies a house carcase (bookcase / utility / ladder shelf). Never invent a
+  // product-stand around the furniture noun. "shelf for an Igloo cooler" still holds (uses "for").
+  if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+shel(?:f|ves)\b/.test(lower)) return null;
+  // Ladder / leaning / utility / open shelving / bookcase IS the carcase — shelf word is the furniture.
+  if (
+    /bookcases?|bookshel(?:f|ves)/.test(lower) ||
+    /\bshelving\b/.test(lower) ||
+    /\b(?:utility|open(?:\s+kitchen)?|ladder|leaning(?:\s+ladder)?)\s+shel(?:f|ves|ving)\b/.test(lower)
+  ) {
+    return null;
+  }
   const item = modeledProduct(prompt);
   if (!item?.shape) return null;
   // Object is the envelope for a product the family list missed (a flamingo). Still the piece, not a closet.

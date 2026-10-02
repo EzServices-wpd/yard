@@ -7746,3 +7746,50 @@ console.log("STRANGER PLAN OK", {
     failHonesty("climb-handrail craft still densifies grip", craft.instances.map((i) => i.role));
   }
 }
+
+// Day-push 2026-10-02: spoken shelf count on bookcase/bookshelf/ladder/utility must densify
+// Shelf×N carcase — never a 4-post product stand around an invented "bookshelf" object.
+{
+  const failPrompt = "bookshelf 30 wide 12 deep 60 tall with five shelves";
+  const book = generateFromPrompt(failPrompt);
+  if (!/Bookcase|Bookshelf/i.test(book.name)) failHonesty("shelf-count-carcase title", book.name);
+  if (Math.abs(book.overall.width - 30) > 1.2 || Math.abs(book.overall.height - 60) > 1.2 || Math.abs(book.overall.depth - 12) > 1.2) {
+    failHonesty("shelf-count-carcase dims 30×60×12", book.overall);
+  }
+  const shelves = book.panels.filter((p) => /^Shelf\s+\d+/i.test(p.name) || p.type === "shelf");
+  if (shelves.length !== 5) failHonesty("shelf-count-carcase Shelf×5", shelves.map((p) => p.name));
+  if (book.panels.some((p) => /Stand post|Near rail|Far rail/i.test(p.name))) {
+    failHonesty("shelf-count-carcase not product-stand", book.panels.map((p) => p.name));
+  }
+  if ((book.notes ?? []).some((n) => /named product stays|no drawing on file/i.test(n))) {
+    failHonesty("shelf-count-carcase not invented product", book.notes);
+  }
+  // Same class: bookcase / kids bookcase / ladder shelf with spoken N shelves.
+  for (const [prompt, wantW, wantH, wantD, wantN, titleRe] of [
+    ["bookcase 36 wide 12 deep 72 tall with three shelves", 36, 72, 12, 3, /Bookcase/i],
+    ["kids bookcase 24 wide by 12 deep by 36 high, 5 shelves", 24, 36, 12, 5, /Bookcase|Kids/i],
+    ["leaning ladder shelf 24 wide 72 tall with five shelves", 24, 72, 10, 5, /Ladder|Leaning|Shelf/i],
+  ] as const) {
+    const p = generateFromPrompt(prompt);
+    if (!titleRe.test(p.name)) failHonesty("shelf-count-carcase sibling title", prompt, p.name);
+    if (Math.abs(p.overall.width - wantW) > 2 || Math.abs(p.overall.height - wantH) > 2) {
+      failHonesty("shelf-count-carcase sibling envelope", prompt, p.overall);
+    }
+    // Ladder shelf depth defaults ~10–12 when untyped.
+    if (wantD >= 12 && Math.abs(p.overall.depth - wantD) > 2) {
+      failHonesty("shelf-count-carcase sibling depth", prompt, p.overall);
+    }
+    const n = p.panels.filter((x) => /^Shelf\s+\d+/i.test(x.name) || x.type === "shelf").length;
+    if (n !== wantN) failHonesty("shelf-count-carcase sibling Shelf×N", prompt, n, p.panels.map((x) => x.name));
+    if (p.panels.some((x) => /Stand post/i.test(x.name))) {
+      failHonesty("shelf-count-carcase sibling not stand", prompt, p.panels.map((x) => x.name));
+    }
+  }
+  // Protect: shelf-for-product still holds the named piece.
+  const cooler = generateFromPrompt("shelf for an Igloo cooler");
+  if (cooler.kind === "closet") failHonesty("shelf-for-product not closet", cooler.kind);
+  if (!cooler.panels.some((p) => /post/i.test(p.name))) {
+    failHonesty("shelf-for-product still stand", cooler.panels.map((p) => p.name));
+  }
+  console.log("PASS shelf-count-carcase: bookshelf 30×60×12 Shelf×5; bookcase/kids/ladder siblings; shelf-for-cooler protect");
+}
