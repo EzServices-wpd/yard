@@ -852,6 +852,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const loft = decks.length === 1 || /loft/i.test(project.name) || /\bloft\s*bed\b/.test((project.prompt ?? "").toLowerCase());
     const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
     const rails = of("rail");
+    const bearers = rails.filter((p) => /bearer/i.test(p.name));
+    const guards = rails.filter((p) => !/bearer/i.test(p.name));
     return [
       {
         step: 1,
@@ -882,17 +884,17 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 4,
         title: loft ? "Set the loft sleep platform" : "Set the two sleep platforms",
         description: loft
-          ? `${decks.map(cutLine).join("; ")}. Screw the elevated deck into the posts. Leave the floor open under it. Glue the joints too.`
-          : `${decks.map(cutLine).join("; ")}. Screw each deck into the posts — lower first, then upper. The decks are the bunks. Glue the joints too.`,
-        tips: "Predrill near the ends so the ply does not split. A person will sleep on these — square them.",
-        partsUsed: names(decks.length ? decks : panels),
+          ? `${decks.map(cutLine).join("; ")}. ${bearers.length ? bearers.map(cutLine).join("; ") + ". " : ""}Screw the elevated deck into the posts. Set the bearers under the deck, not in the bed — they hold a person on ¾" ply. Leave the floor open under it. Glue the joints too.`
+          : `${decks.map(cutLine).join("; ")}. ${bearers.length ? bearers.map(cutLine).join("; ") + ". " : ""}Screw each deck into the posts — lower first, then upper. Set the bearers under the decks, not in the sleeping surface. The decks are the bunks. Glue the joints too.`,
+        tips: "Predrill near the ends so the ply does not split. A person will sleep on these — square them. Bearers stay under the deck.",
+        partsUsed: names([...(decks.length ? decks : panels), ...bearers]),
       },
       {
         step: 5,
         title: "Add the upper guard rails",
-        description: `${rails.map(cutLine).join("; ") || "Guard rails."}. Screw the rails to the posts above the upper deck so the mattress cannot slide off the long sides or the ends.`,
+        description: `${guards.map(cutLine).join("; ") || "Guard rails."}. Screw the rails to the posts above the upper deck so the mattress cannot slide off the long sides or the ends.`,
         tips: "Typical rail sits about 5\" above the upper deck. Guidance only — confirm your mattress thickness.",
-        partsUsed: names(rails.length ? rails : panels),
+        partsUsed: names(guards.length ? guards : panels),
       },
       {
         step: 6,

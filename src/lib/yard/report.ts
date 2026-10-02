@@ -223,7 +223,11 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
   );
   const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
   const sheet10 = getCatalogItem("plywood-3-4-4x10");
-  const structuralNestable = structural.filter((c) => Math.min(c.lengthIn, c.widthIn) > 2);
+  // 2x4 / 2x6 bearers are boards, not sheet parts. Nesting them onto plywood inflates Buy.
+  const stickBoards = structural.filter((c) => /^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id));
+  const structuralNestable = structural.filter(
+    (c) => Math.min(c.lengthIn, c.widthIn) > 2 && !stickBoards.includes(c),
+  );
   const on8 = structuralNestable.filter((c) => fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
   const on10 = structuralNestable.filter((c) => !fitsOnSheet(c.lengthIn, c.widthIn, SHEET_4X8));
   const nest8 = on8.length ? nestParts(cutListToNestParts(on8), SHEET_4X8) : null;
@@ -443,6 +447,48 @@ function closetBom(project: YardProject, cuts: CutLine[]): BuildPlan["bom"] {
       estimatedCost: (legItem?.unitCostUsd ?? 6.5) * legQty,
       notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
     });
+  }
+  if (stickBoards.length) {
+    const byStock = new Map<string, typeof stickBoards>();
+    for (const c of stickBoards) {
+      const id = c.id.split("|")[0] || "lumber-2x4-8";
+      const list = byStock.get(id) ?? [];
+      list.push(c);
+      byStock.set(id, list);
+    }
+    for (const [id, lines] of byStock) {
+      const item = getCatalogItem(id);
+      const stockLen = item?.dims.length ?? 96;
+      const lengths: number[] = [];
+      for (const c of lines) {
+        for (let i = 0; i < c.quantity; i++) lengths.push(Math.max(c.lengthIn, c.widthIn));
+      }
+      lengths.sort((a, b) => b - a);
+      const free: number[] = [];
+      for (const L of lengths) {
+        const kerf = 0.125;
+        let placed = false;
+        for (let i = 0; i < free.length; i++) {
+          if (free[i] >= L + kerf) {
+            free[i] -= L + kerf;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) free.push(stockLen - L);
+      }
+      const qty = Math.max(1, free.length);
+      const pieceQty = lines.reduce((s, c) => s + c.quantity, 0);
+      bom.push({
+        name: item?.name ?? "2×4 Stud (8 ft)",
+        quantity: qty,
+        unit: qty === 1 ? "pc" : "pcs",
+        catalogId: id,
+        searchQuery: item?.searchQuery ?? "2x4x8 stud",
+        estimatedCost: (item?.unitCostUsd ?? 5.5) * qty,
+        notes: `${pieceQty} bearer${pieceQty === 1 ? "" : "s"} under the deck · cut from ${qty} × 8 ft · solid lumber, not sheet goods.`,
+      });
+    }
   }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);

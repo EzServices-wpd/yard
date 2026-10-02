@@ -3441,12 +3441,17 @@ function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAf
 
 function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
-  const W = u.width;
   const H = u.height;
-  const D = u.depth;
-  const x0 = -W / 2;
   const post = Math.max(P, 1.5);
   const loft = isLoftBed(prompt.toLowerCase());
+  // Posts stand outside the mattress. A frame that only matches the mattress on the outside
+  // leaves a short deck (twin is 75 long; 1½" posts on each end ate that down to 72).
+  const mattress = mattressDeck(prompt.toLowerCase()) ?? { width: 38, length: 75 };
+  let W = u.width;
+  let D = u.depth;
+  if (W - post * 2 < mattress.width - 0.25) W = mattress.width + post * 2;
+  if (D - post * 2 < mattress.length - 0.25) D = mattress.length + post * 2;
+  const x0 = -W / 2;
   // Twin bunk: lower deck ~12", upper ~H-16" (guard room above mattress).
   // Loft: one elevated deck only — open floor under for desk/storage (not a second bunk).
   const lowerY = Math.min(14, Math.max(10, Math.round(H * 0.18)));
@@ -3455,6 +3460,19 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
   const innerW = Math.max(12, W - post * 2);
   const innerD = Math.max(24, D - post * 2);
   const panels: Panel[] = [];
+  const TWO_BY_FOUR = "lumber-2x4-8";
+  // Person load on ¾" wants a hold about every 21". Bearers sit under the deck, not in the bed.
+  const pushBearers = (label: string, deckY: number) => {
+    const allow = 20;
+    const bearerH = 3.5;
+    const bearerT = 1.5;
+    const n = Math.max(1, Math.ceil(innerD / allow) - 1);
+    const gap = innerD / (n + 1);
+    for (let i = 1; i <= n; i++) {
+      const z = post + gap * i - bearerT / 2;
+      panels.push(panel("rail", `${label} bearer ${i}`, x0 + post, deckY - bearerH, z, innerW, bearerH, bearerT, TWO_BY_FOUR));
+    }
+  };
   // Four corner posts — solid 2x2 (same class as platform/daybed; not laminated ply strips).
   panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, H));
   panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, H));
@@ -3462,21 +3480,24 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
   panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
   if (!loft) {
     panels.push(panel("deck", "Lower bunk", x0 + post, lowerY, post, innerW, P, innerD));
+    pushBearers("Lower", lowerY);
   }
   panels.push(panel("deck", loft ? "Loft deck" : "Upper bunk", x0 + post, upperY, post, innerW, P, innerD));
+  pushBearers(loft ? "Loft" : "Upper", upperY);
   // Guard rails on the elevated deck long sides.
   panels.push(panel("rail", "Upper left rail", x0 + post, upperY + P, post, innerW, guardH, P));
   panels.push(panel("rail", "Upper right rail", x0 + post, upperY + P, D - post - P, innerW, guardH, P));
   panels.push(panel("rail", "Upper head rail", x0 + post, upperY + P, post, P, guardH, innerD));
   panels.push(panel("rail", "Upper foot rail", x0 + W - post - P, upperY + P, post, P, guardH, innerD));
 
+  const sized = `${W}" × ${H}" × ${D}"`;
   const name = loft
     ? spec.name.match(/loft/i)
-      ? spec.name
-      : `Loft bed ${W}" × ${H}" × ${D}"`
+      ? spec.name.replace(/\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"/, sized)
+      : `Loft bed ${sized}`
     : spec.name.match(/bunk/i)
-      ? spec.name
-      : `Bunk bed ${W}" × ${H}" × ${D}"`;
+      ? spec.name.replace(/\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"/, sized)
+      : `Bunk bed ${sized}`;
   return {
     id: createId("proj"),
     name,
@@ -3490,7 +3511,7 @@ function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAfford
       loft
         ? `${name}. One elevated sleep platform on a post frame at ~${upperY}" — open floor under. Not a hollow box, not a twin bunk.`
         : `${name}. Two sleep platforms on a post frame — lower at ~${lowerY}", upper at ~${upperY}". Not a hollow box.`,
-      `2×2 posts + ¾" plywood decks. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
+      `2×2 posts stand outside the mattress (${mattress.width}" × ${mattress.length}"). ¾" plywood decks with 2×4 bearers under them, not in the bed. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
       "Guidance only — person load is heuristic, not stamped engineering. Confirm mattress size before you cut.",
     ],
     historic: false,
