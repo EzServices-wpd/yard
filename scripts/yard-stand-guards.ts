@@ -79,12 +79,24 @@ for (const noun of WEEKEND_NOUNS) {
 
   const litter = generateFromPrompt("cat litter box cabinet");
   if (litter.kind !== "closet" || !litter.panels.some((x) => x.type === "upright")) fail("litter box cabinet is a carcase", { kind: litter.kind, name: litter.name });
-  // TWIN-NEXT: litter entry hole
+  const entry = litter.panels.find((x) => /Entry panel/.test(x.name));
+  if (!entry || !(entry.polygon?.holes?.length) || (entry.polygon!.holes![0].r * 2) < 7) fail("litter cabinet has an entry panel with a cat hole", litter.panels.map((x) => x.name));
+  if (!litter.panels.some((x) => x.type === "door")) fail("litter cabinet keeps a scoop door");
+  if (!/litter/i.test(litter.name)) fail("litter cabinet title", litter.name);
   if (/^Cat\b/.test(litter.name) && litter.kind === "figure") fail("litter cabinet is not a cat figure", litter.name);
 
   const lego = generateFromPrompt("shelf for my Lego robot collection");
   if (isProductStand(lego) || lego.kind === "figure") fail("collection shelf is a display shelf", { name: lego.name, kind: lego.kind });
-  // TWIN-NEXT: collection display title
+  if (!/Display shelf for a Lego robot collection/.test(lego.name)) fail("collection shelf title names what it holds", lego.name);
+  const legoShelves = lego.panels.filter((x) => x.type === "shelf" || x.type === "bottom").map((x) => x.position.y + x.size.height).sort((a, b) => a - b);
+  const legoTop = lego.panels.find((x) => x.type === "top");
+  if (legoShelves.length < 2 || !legoTop) fail("collection shelf has tiers", lego.panels.map((x) => x.name));
+  else {
+    const ys = [...legoShelves, legoTop.position.y];
+    for (let i = 1; i < ys.length; i++) if (ys[i] - ys[i - 1] < 10 - 0.01) fail("collection tier clears a robot (10 in+)", ys);
+  }
+  const step0 = buildPlan(lego).instructions.map((x) => `${x.title} ${x.description}`).join(" ");
+  if (/Display [A-Z] shelf/.test(step0)) fail("cut-list letter stamped inside the title", step0.slice(0, 200));
 
   const horse = generateFromPrompt("horse-shaped coat rack from plywood");
   if (!horse.panels.some((x) => /Body profile/.test(x.name))) fail("horse-shaped coat rack is a horse silhouette", horse.panels.map((x) => x.name));
@@ -93,12 +105,92 @@ for (const noun of WEEKEND_NOUNS) {
 
   const bookend = generateFromPrompt("robot bookend out of 2x4 scraps");
   if (!/Robot/.test(bookend.name)) fail("robot bookend is a robot", bookend.name);
-  // TWIN-NEXT: robot bookend use
+  if (!/bookend/i.test(bookend.name)) fail("robot bookend title carries the use", bookend.name);
+  if (!(bookend.instances ?? []).some((i) => i.role === "bookend face") || !(bookend.instances ?? []).some((i) => i.role === "base")) fail("robot bookend has a flat face and a base", bookend.instances.map((i) => i.role));
+  if (!bookend.notes.some((n) => /books? (?:to )?lean/i.test(n))) fail("robot bookend note says the books lean on the face");
 
   const bench = generateFromPrompt("2x4 workbench, 60 inches long");
   if (!/Workbench/i.test(bench.name) || Math.abs(bench.overall.width - 60) > 1.5 || isOwnedBoard(bench) || isProductStand(bench)) {
     fail("2x4 workbench 60 long", { name: bench.name, overall: bench.overall });
   }
+}
+
+// ---------------------------------------------------------------- 3. Shelf classes: usable clear, counts, notes
+const clears = (p: YardProject) => {
+  const floors = p.panels.filter((x) => /^(bottom|shelf)$/.test(x.type)).map((x) => x.position.y + x.size.height);
+  const ceilings = p.panels.filter((x) => /^(shelf|top)$/.test(x.type)).map((x) => x.position.y);
+  const fl = [...new Set(floors.map((y) => Math.round(y * 100) / 100))].sort((a, b) => a - b);
+  const ce = [...new Set(ceilings.map((y) => Math.round(y * 100) / 100))].sort((a, b) => a - b);
+  return fl.map((y) => (ce.find((c) => c > y + 0.01) ?? NaN) - y).filter((n) => Number.isFinite(n));
+};
+{
+  const shoe = generateFromPrompt("shoe rack with 4 shelves");
+  const c = clears(shoe);
+  if (c.length !== 4) fail("shoe rack: 4 shelves means 4 usable tiers", c);
+  if (c.some((x) => x < 6 - 0.01)) fail("shoe rack tiers clear 6 in+", c);
+  if (shoe.notes.some((n) => /\d\.\d/.test(n.replace(/\d+\.\d+\s*(?:mm|ct)/g, "")) && /bays?/.test(n))) fail("shoe rack bay note uses decimals", shoe.notes);
+  const cub = shoe.panels.filter((x) => /Cubby divider/.test(x.name));
+  if (cub.length) {
+    const inner = shoe.overall.width - 1.5;
+    const bay = (inner - cub.length * 0.75) / (cub.length + 1);
+    if (bay < 9 - 0.01) fail("shoe bays hold a pair (9 in+)", bay);
+  }
+  const short = generateFromPrompt("shoe rack 36 wide 18 tall with 4 shelves");
+  if (Math.abs(short.overall.height - 18) > 0.1) fail("shoe rack typed height wins", short.overall);
+  if (!short.notes.some((n) => /4 tiers were asked; 2 fit/.test(n))) fail("shoe rack says the shortfall", short.notes);
+
+  const rec = generateFromPrompt("bookshelf for my record collection");
+  const rc = clears(rec);
+  if (!rc.length || rc.some((x) => x < 13 - 0.01)) fail("record shelf clears 13 in for LPs", rc);
+  if (rec.overall.depth < 13 || rec.overall.depth > 16) fail("record shelf 13–16 deep", rec.overall);
+  const spans = rec.panels.filter((x) => x.type === "shelf").map((x) => x.size.width);
+  if (spans.some((w) => w > 18)) fail("record shelf spans stay short (sag)", spans);
+  if (!rec.notes.some((n) => /sag/.test(n))) fail("record shelf sag note");
+
+  const kids = generateFromPrompt("kids bookcase with 3 shelves");
+  if (kids.overall.height < 36 || kids.overall.height > 48) fail("kids bookcase 36–48 tall", kids.overall);
+  if (!kids.notes.some((n) => /anti-tip/i.test(n))) fail("kids bookcase anti-tip note");
+  if (!buildPlan(kids).bom.some((b) => /anti-tip/i.test(b.name))) fail("kids bookcase anti-tip on Buy");
+
+  const must = generateFromPrompt("bookshelf 30 wide 12 deep 60 tall with five shelves");
+  const ms = must.panels.filter((x) => x.type === "shelf");
+  if (ms.length !== 5 || must.overall.width !== 30 || must.overall.height !== 60 || must.overall.depth !== 12) fail("must-pass bookshelf 30x60x12 Shelf x5", { o: must.overall, n: ms.length });
+  const adj = buildPlan(generateFromPrompt("bookcase with adjustable shelves"));
+  if (!adj.bom.some((b) => /shelf pins/i.test(b.name))) fail("adjustable bookcase keeps shelf pins");
+  const cooler = generateFromPrompt("shelf for an Igloo cooler");
+  if (/closet/i.test(cooler.name) || !cooler.panels.some((x) => /^(Leg|Stand post)\b/.test(x.name))) fail("shelf for an Igloo cooler has legs, not a closet", { name: cooler.name, parts: cooler.panels.map((x) => x.name) });
+
+  const fl = generateFromPrompt("three floating shelves, 24 inches wide");
+  const flShelves = fl.panels.filter((x) => /^Shelf \d/.test(x.name));
+  const cleats = fl.panels.filter((x) => /Wall cleat/.test(x.name));
+  if (flShelves.length !== 3 || cleats.length !== 3) fail("three floating shelves: 3 separate shelves on 3 cleats", fl.panels.map((x) => x.name));
+  const fc = clears(fl);
+  if (fc.some((x) => x < 7 - 0.01)) fail("floating shelves clear 7 in+", fc);
+  if (fl.notes.some((n) => /not floating boards/i.test(n))) fail("floating notes contradict geometry", fl.notes);
+  const flBom = buildPlan(fl).bom.map((b) => b.name).join(" | ");
+  if (!/screw/i.test(flBom)) fail("floating shelves Buy carries mounting screws", flBom);
+
+  const tank = generateFromPrompt("20 gallon fish tank stand");
+  const tdeck = tank.panels.find((x) => x.name === "Deck");
+  if (!tdeck || tdeck.size.width < 24 || tdeck.size.depth < 12) fail("fish tank deck fits a 20 gal tank", tdeck?.size);
+  if (!tank.panels.some((x) => /^Leg/.test(x.name) && x.materialId.includes("2x4"))) fail("fish tank stand stands on 2x4 legs", tank.panels.map((x) => `${x.name}:${x.materialId}`));
+  if (!tank.notes.some((n) => /lb/.test(n))) fail("fish tank load note");
+  for (const q of ["shelf for my microwave", "stand for my turntable", "riser for my toaster oven"]) {
+    const p = generateFromPrompt(q);
+    const h = (p.instances ?? []).find((i) => i.role === "held");
+    if (!h) { fail("held object proxy present", q); continue; }
+    const d = generateFromPrompt(q).overall;
+    if (d.width < 10 || d.depth < 8) fail("held stand is not a 6x4x3 placeholder", { q, d });
+  }
+}
+
+// ---------------------------------------------------------------- 4. Plain text: no template leaks
+for (const q of ["plant stand with three tiers", "shoe rack with 4 shelves", "robot bookend out of 2x4 scraps", "raised dog bowl stand, 12 inches tall", "cat litter box cabinet"]) {
+  const p = generateFromPrompt(q);
+  const plan = buildPlan(p);
+  const text = [...p.notes, ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join(" \n ");
+  if (/\b1 pieces\b|\b1 marked cuts\b|\b1 member members\b|\bmember members\b/.test(text)) fail("singular/plural template leak", { q, m: text.match(/.{30}\b1 (?:pieces|marked cuts|member members).{20}/)?.[0] });
+  if (!p.panels.some((x) => /plywood/.test(x.materialId)) && /¼″ backs stay plywood|1\/4" backs stay plywood/.test(text)) fail("plywood back text on a build with no plywood", q);
 }
 
 console.log(`stand guards: swept ${swept} weekend prompts`);

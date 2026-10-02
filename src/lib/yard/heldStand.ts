@@ -184,3 +184,85 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
     },
   } as YardProject;
 }
+
+const TIER_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+/** Spoken tier count on a plant / flower stand: "three tiers", "3-tier", "4 levels", "with 3 shelves". Null when none. */
+export function plantStandTiers(lower: string): number | null {
+  if (!/\b(?:plant|flower|pot(?:ted)?|succulent|orchid|herb)s?\s*(?:stands?|shel(?:f|ves)|racks?|towers?|holders?)\b|\btiered\s+(?:plant|flower)\b/.test(lower)) return null;
+  const m = lower.match(/\b(\d|two|three|four|five|six)\s*-?\s*(?:tiers?|tiered|levels?|steps?|shel(?:f|ves)|rows?)\b/);
+  if (m) {
+    const n = /\d/.test(m[1]) ? parseInt(m[1], 10) : TIER_WORDS[m[1]];
+    return n >= 2 && n <= 6 ? n : null;
+  }
+  return /\btiered\b|\bstepped\b|\btiers\b/.test(lower) ? 3 : null;
+}
+
+/**
+ * Stepped plant stand: N decks that climb front to back, so every pot gets light and no tier sits
+ * under another. Two side frames of 2×2 posts, rails under every deck, 3/4" plywood decks.
+ */
+export function buildTieredPlantStand(prompt: string, tiers: number): YardProject {
+  const lower = prompt.toLowerCase();
+  const N = Math.max(2, Math.min(6, tiers));
+  const typedW = typedAxis(lower, "wide|long");
+  const typedD = typedAxis(lower, "deep");
+  const tall = typedTall(lower);
+  const W = r16(typedW ?? 30);
+  const Td = r16(typedD ? typedD / N : 9);
+  const D = r16(Td * N);
+  const deckT = 0.75;
+  const post = 1.5;
+  const rail = 1.5;
+  const firstTop = 12;
+  const topTop = r16(tall ?? firstTop + (N - 1) * 10);
+  const rise = N > 1 ? (topTop - firstTop) / (N - 1) : 0;
+  // Tier i: 0 = front / lowest. Its deck spans z from (N-1-i)·Td (back edge) to (N-i)·Td (front edge).
+  const tierTop = (i: number) => r16(N > 1 ? firstTop + i * rise : topTop);
+  const panels: Panel[] = [];
+  const mk = (p: Omit<Panel, "id">) => panels.push({ id: createId("panel"), ...p });
+  const leg = "lumber-2x2-8";
+  const ply = "plywood-3-4-4x8";
+  // Posts at every tier boundary on both sides; each carries the tier whose front edge it marks
+  // (the back post carries the top tier).
+  for (const [side, x] of [["Left", 0], ["Right", r16(W - post)]] as const) {
+    for (let k = 0; k <= N; k++) {
+      const i = k === 0 ? N - 1 : N - k;
+      const h = r16(tierTop(i) - deckT);
+      const z = r16(Math.min(Math.max(0, k * Td - (k === N ? post : k === 0 ? 0 : post / 2)), D - post));
+      mk({ type: "upright", name: `${side} post ${k + 1}`, position: { x, y: 0, z }, size: { width: post, height: h, depth: post }, materialId: leg, cutNote: `${inchFrac(h)}" post, square ends.` });
+    }
+    // Floor rail ties the posts of one side together.
+    mk({ type: "rail", name: `${side} floor rail`, position: { x: side === "Left" ? r16(post) : r16(W - post - rail), y: 3, z: 0 }, size: { width: rail, height: rail, depth: D }, materialId: leg, cutNote: "Screws to the inside face of every post on this side, 3\" off the floor." });
+  }
+  for (let i = 0; i < N; i++) {
+    const top = tierTop(i);
+    const zBack = r16((N - 1 - i) * Td);
+    const zFront = r16((N - i) * Td);
+    const ry = r16(top - deckT - rail);
+    mk({ type: "rail", name: `Tier ${i + 1} front rail`, position: { x: post, y: ry, z: r16(zFront - rail - (i === 0 ? 0 : 0)) }, size: { width: r16(W - 2 * post), height: rail, depth: rail }, materialId: leg, cutNote: "Fits between the left and right posts; the deck screws down into it." });
+    mk({ type: "rail", name: `Tier ${i + 1} back rail`, position: { x: post, y: ry, z: zBack }, size: { width: r16(W - 2 * post), height: rail, depth: rail }, materialId: leg, cutNote: "Fits between the posts at the back edge of this tier." });
+    mk({ type: "top", name: `Tier ${i + 1} deck`, position: { x: 0, y: r16(top - deckT), z: zBack }, size: { width: W, height: deckT, depth: Td }, materialId: ply, cutNote: `Tier ${i + 1}: ${inchFrac(W)}" × ${inchFrac(Td)}" plywood deck; notch the back corners around the posts.` });
+  }
+  const pot = Math.floor(Td - 1);
+  const name = `${N}-tier plant stand`;
+  const notes = [
+    `${name}: ${N} decks that step up front to back, so every pot gets light and no tier sits under another. Deck tops at ${Array.from({ length: N }, (_, i) => `${inchFrac(tierTop(i))}"`).join(", ")}.`,
+    `Each deck is ${inchFrac(W)}" wide × ${inchFrac(Td)}" deep — room for pots up to about ${pot}" across, about ${Math.max(1, Math.floor(W / (pot + 1)))} per tier.`,
+    "2×2 posts at every tier edge on both sides, rails under every deck, a floor rail on each side. Glue and screw; finish with exterior poly or paint if it goes outside, and set saucers under the pots.",
+    ...(typedW == null ? [`Assumed ${inchFrac(W)}" wide — type a width to lock it.`] : []),
+    ...(tall == null ? [`Assumed ${inchFrac(topTop)}" to the top deck — type a height to lock it.`] : []),
+  ];
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "custom",
+    overall: { width: W, height: topTop, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: leg,
+    notes,
+    assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  } as YardProject;
+}

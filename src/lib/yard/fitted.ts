@@ -5,6 +5,7 @@
  */
 
 import { inchFrac } from "./inchText";
+import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
@@ -190,6 +191,17 @@ function typedDoorCount(text: string): number | null {
   // Bare singular "door" (not "doors") → one; bare plural "doors" → null (heuristic)
   if (/\bdoor\b/.test(lower) && !/\bdoors\b/.test(lower)) return 1;
   return null;
+}
+
+/** Spoken usable-tier count: "4 shelves", "three tiers", "5 levels", "4 rows". */
+function spokenTierCount(text: string): number | null {
+  const s = spokenShelfCount(text);
+  if (s != null) return s;
+  const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const m = text.toLowerCase().match(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[\w'-]+\s+)?(?:tiers?|levels?|rows?)\b/);
+  if (!m) return null;
+  const n = /\d/.test(m[1]) ? parseInt(m[1], 10) : words[m[1]];
+  return n >= 1 && n <= 12 ? n : null;
 }
 
 /** Spoken/typed shelf count — digits or words; honor "one lower shelf" / adjective between count and shelf. */
@@ -1426,6 +1438,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
           ? 48
           : /dresser/.test(lower)
             ? 36
+          : isKidsBookcase(lower)
+            ? KIDS_BOOKCASE_H
             : isBedsideShelf(lower)
               ? 6
             : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower))
@@ -2033,6 +2047,20 @@ export function parseBrief(prompt: string): FittedSpec | null {
     typedAxes,
   };
 }
+
+/** Universal usable clear height between shelves (general storage). */
+export const SHELF_MIN_CLEAR = 7;
+/** Kids bookcase: a child reaches the top shelf (36–48" range), and it still gets anchored. */
+const KIDS_BOOKCASE_H = 42;
+export function isKidsBookcase(lower: string): boolean {
+  return /\b(?:kids?|kid'?s|kids'|child(?:ren)?(?:'?s)?|toddlers?|nursery|playroom)\b/.test(lower) && /\b(?:bookcases?|bookshel(?:f|ves)|book\s+shel(?:f|ves))\b/.test(lower);
+}
+/** Shoe tier clear height (a pair of everyday shoes stands in about 6–7"). */
+const SHOE_TIER_CLEAR = 7;
+/** Shoe bay clear width (a pair side by side). */
+const SHOE_BAY_MIN = 9;
+/** Default clear between stacked wall shelves when no height is typed. */
+const SHELF_DEFAULT_CLEAR = 10;
 
 function panel(
   type: Panel["type"],
@@ -2978,42 +3006,221 @@ function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: HouseAf
 
 
 /** Floor shoe storage: open cubbies / shoe shelves — not bookcase pin shelves. */
-function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+/** What a collection shelf holds: the clear height, depth and longest unsupported span it needs. */
+type CollectionKind = { label: string; clear: number; depth: number; bayMax: number; heavy: boolean; tiers: number };
+function collectionKind(x: string): CollectionKind {
+  const l = x.toLowerCase();
+  if (/\b(?:records?|vinyl|lps?|albums?)\b/.test(l)) return { label: "LP records", clear: 13, depth: 14, bayMax: 17, heavy: true, tiers: 3 };
+  if (/\b(?:comics?|manga|graphic\s+novels?)\b/.test(l)) return { label: "comics", clear: 11, depth: 10, bayMax: 32, heavy: true, tiers: 4 };
+  if (/\b(?:books?|paperbacks?|novels?)\b/.test(l)) return { label: "books", clear: 11, depth: 11, bayMax: 32, heavy: true, tiers: 4 };
+  if (/\b(?:dvds?|blu-?rays?|games?|cds?|cassettes?|tapes?)\b/.test(l)) return { label: "cases", clear: 8, depth: 7, bayMax: 32, heavy: false, tiers: 4 };
+  if (/\b(?:model\s+cars?|die-?cast|hot\s+wheels|matchbox|minis?|miniatures?)\b/.test(l)) return { label: "small models", clear: 4, depth: 6, bayMax: 36, heavy: false, tiers: 5 };
+  if (/\b(?:mugs?|cups?|glass(?:es)?|teacups?)\b/.test(l)) return { label: "mugs", clear: 6, depth: 7, bayMax: 36, heavy: false, tiers: 4 };
+  if (/\b(?:robots?|lego|legos|figures?|figurines?|action\s+figures?|funkos?|pops?|toys?|statues?|models?|sneakers?|trophies)\b/.test(l))
+    return { label: "display pieces", clear: /\brobots?|statues?|trophies\b/.test(l) ? 12 : 10, depth: 10, bayMax: 36, heavy: false, tiers: 4 };
+  return { label: "display pieces", clear: 10, depth: 10, bayMax: 36, heavy: false, tiers: 4 };
+}
+
+/** "shelf / bookshelf for my X collection": an open display shelf with tiers sized for X. */
+function buildCollectionShelf(spec: FittedSpec, prompt: string, affordances: HouseAffordance[], what: string): YardProject {
   const u = spec.unit;
-  const W = u.width;
-  const H = u.height;
-  const D = u.depth;
-  const x0 = -W / 2;
-  const innerW = W - P * 2;
+  const k = collectionKind(what);
+  const typed = typedOpeningStorageAxes(prompt);
   const backT = 0.25;
-  // Shelf heights that fit shoes (~5–6" clear). Count includes bottom + upper platforms.
-  const shelfN =
-    u.shelfCount && u.shelfCount >= 2
-      ? Math.max(2, Math.min(6, u.shelfCount))
-      : Math.max(2, Math.min(5, Math.round((H - P) / 6)));
-  // Divider spacing ~4–6" wide open bays.
-  const cubbyN =
-    u.cubbies && u.cubbies >= 2
-      ? Math.max(2, Math.min(10, u.cubbies))
-      : Math.max(2, Math.min(8, Math.round(W / 6)));
+  const W = typed.width ? u.width : 36;
+  const D = typed.depth ? u.depth : Math.max(k.depth, 8);
+  const spokenTiers = spokenTierCount(prompt);
+  const asked = spokenTiers != null ? Math.min(10, spokenTiers) : null;
+  const pitch = k.clear + P;
+  const typedH = typed.height ? u.height : null;
+  const fitN = typedH != null ? Math.max(1, Math.floor((typedH - P + 1e-6) / pitch)) : null;
+  const tiers = asked != null ? (fitN != null ? Math.min(asked, fitN) : asked) : fitN ?? k.tiers;
+  const H = typedH ?? Math.round((tiers * pitch + P) * 16) / 16;
+  const tierClear = (H - P * (tiers + 1)) / tiers;
+  const innerW = W - 2 * P;
+  const bays = Math.max(1, Math.ceil((innerW + P) / (k.bayMax + P)));
+  const bayW = (innerW - (bays - 1) * P) / bays;
+  const x0 = -W / 2;
+  const at = prompt.toLowerCase().indexOf(what);
+  const whatTitle = (at >= 0 ? prompt.slice(at, at + what.length) : what).replace(/\s+/g, " ").trim();
+  const name = /^(?:records?|vinyl|lps?)$/i.test(whatTitle) ? "Record shelf" : `Display shelf for a ${whatTitle} collection`;
   const panels: Panel[] = [];
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-  for (let i = 0; i < shelfN; i++) {
-    const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
-    const label = i === 0 ? "Shoe shelf" : `Shoe shelf ${i + 1}`;
-    panels.push(panel("shelf", label, x0 + P, y, backT, innerW, P, D - backT));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  for (let i = 1; i < tiers; i++) {
+    const y = Math.round(i * (tierClear + P) * 16) / 16;
+    if (bays > 1) {
+      for (let b = 0; b < bays; b++) {
+        panels.push(panel("shelf", `Bay ${b + 1} shelf ${i}`, x0 + P + b * (bayW + P), y, backT, bayW, P, D - backT));
+      }
+    } else {
+      panels.push(panel("shelf", tiers - 1 === 1 ? "Shelf" : `Shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+    }
   }
-  // Cap the top if the last shoe shelf is not already at H-P (shelfN==1 edge case).
-  if (shelfN === 1) {
-    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  for (let b = 1; b < bays; b++) {
+    panels.push(panel("divider", bays === 2 ? "Center divider" : `Bay divider ${b}`, x0 + P + b * bayW + (b - 1) * P, P, backT, P, H - 2 * P, D - backT));
   }
+  const notes = [
+    `${name}. ${tiers} open tier${tiers === 1 ? "" : "s"}, ${inchFrac(tierClear)}" clear each and ${inchFrac(D - backT)}" deep inside — sized for ${k.label}. Fixed shelves, glued and screwed. ¾" plywood.`,
+    ...(k.heavy
+      ? [
+          `${k.label === "LP records" ? "LPs weigh about 35 lb per running foot" : `A full shelf of ${k.label} is heavy`}: ${bays > 1 ? `${bays === 2 ? "a center divider keeps" : "bay dividers keep"} every shelf span to ${inchFrac(bayW)}"` : `the span is ${inchFrac(bayW)}"`}, short enough that ¾" plywood will not sag.`,
+        ]
+      : []),
+    ...(asked != null && tiers < asked ? [`${asked} tiers were asked; ${tiers} fit in the typed ${inchFrac(H)}" with ${inchFrac(k.clear)}" clear each. The size wins — add height for the rest.`] : []),
+    ...(H > 30 ? ["Anti-tip: strap the top to a wall stud — a loaded shelf this tall can tip forward."] : []),
+    "Guidance only — measure the tallest piece in your collection before you cut.",
+    ...(typed.width ? [] : [`Assumed ${W}" wide — type a width to lock it.`]),
+    ...(typed.height ? [] : [`Assumed ${inchFrac(H)}" tall (${tiers} tiers of ${inchFrac(k.clear)}") — type a height to lock it.`]),
+    ...(typed.depth ? [] : [`Assumed ${inchFrac(D)}" deep for ${k.label} — type a depth to lock it.`]),
+  ];
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes,
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bookcase",
+      family: "floor-carcase",
+      affordances,
+      unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: Math.max(0, tiers - 1), drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined, mirror: false },
+    },
+    assumptions: { load: k.heavy ? "heavy" : "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+/** Litter box cabinet: a carcase that hides the box — a fixed entry panel with a cat hole, and a scoop door. */
+export function isLitterCabinet(prompt: string): boolean {
+  const l = prompt.toLowerCase();
+  return /\blitter\s*(?:box(?:es)?|pan)?\b/.test(l) && /\b(?:cabinet|enclosure|cupboard|furniture|hider|hideaway|cover|console|bench|box\s+house|house)\b/.test(l.replace(/\blitter\s*box(?:es)?\b/g, " "));
+}
+
+const LITTER_BOX = { width: 19, depth: 15, height: 11 };
+const LITTER_HOLE = 8;
+
+function buildLitterCabinet(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const typed = typedOpeningStorageAxes(prompt);
+  // Inside: the box plus room for the cat to step in beside it, and headroom to crouch.
+  const W = typed.width ? u.width : 36;
+  const D = typed.depth ? u.depth : 20;
+  const H = typed.height ? u.height : 26;
+  const x0 = -W / 2;
+  const innerW = W - 2 * P;
+  const innerH = H - 2 * P;
+  const innerD = D - 0.25;
+  const backT = 0.25;
+  const typedBits = [typed.width ? `${inchFrac(W)}" wide` : "", typed.height ? `${inchFrac(H)}" tall` : "", typed.depth ? `${inchFrac(D)}" deep` : ""].filter(Boolean);
+  const name = typedBits.length ? `Litter box cabinet ${typedBits.join(" × ")}` : "Litter box cabinet";
+  const halfW = Math.round((W / 2 - 0.1) * 16) / 16;
+  const holeY = Math.min(P + LITTER_HOLE / 2 + 2, H / 2);
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  const entry = panel("divider", "Entry panel", x0 + 0.1, 0, D, halfW, H, P);
+  const r16 = (n: number) => Math.round(n * 16) / 16;
+  entry.polygon = {
+    plane: "xy",
+    pts: [
+      [0, 0],
+      [r16(halfW), 0],
+      [r16(halfW), H],
+      [0, H],
+    ],
+    holes: [{ x: r16(halfW / 2), y: r16(holeY), r: LITTER_HOLE / 2 }],
+  };
+  entry.cutNote = `Cat entry: ${LITTER_HOLE}" round hole, center ${inchFrac(halfW / 2)}" from the left edge and ${inchFrac(holeY)}" up. Drill a starter hole and cut it with a jigsaw; sand the edge smooth.`;
+  panels.push(entry);
+  panels.push(panel("door", "Scoop door", x0 + W - halfW, 0, D, halfW, H, P));
+  const fits = innerW >= LITTER_BOX.width + 6 && innerD >= LITTER_BOX.depth + 1 && innerH >= LITTER_BOX.height + 8;
+  const notes = [
+    `${name}. A carcase that hides the litter box: the left front is a fixed entry panel with an ${LITTER_HOLE}" cat hole, the right front is a scoop door on two hinges. ¾" plywood.`,
+    `Inside ${inchFrac(innerW)}" wide × ${inchFrac(innerD)}" deep × ${inchFrac(innerH)}" tall — sized for a large ${LITTER_BOX.width}" × ${LITTER_BOX.depth}" × ${LITTER_BOX.height}" litter box with room for the cat to step in and crouch.`,
+    ...(fits ? [] : [`The typed size is tight for a ${LITTER_BOX.width}" × ${LITTER_BOX.depth}" box — measure yours; the size you typed wins.`]),
+    "Seal the inside (bottom and lower sides) with two coats of water-based poly so spills wipe up. Drill a few 1\" vent holes high in the back, or leave a ½\" gap under the top.",
+    "Level it on the floor. Guidance only — measure your litter box and your cat before you cut.",
+    ...(typed.width ? [] : [`Assumed 36" wide (litter cabinet default) — type a width to lock it.`]),
+    ...(typed.height ? [] : [`Assumed 26" tall (litter cabinet default) — type a height to lock it.`]),
+    ...(typed.depth ? [] : [`Assumed 20" deep (litter cabinet default) — type a depth to lock it.`]),
+  ];
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: H, depth: D + P },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes,
+    historic: false,
+    opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "storage",
+      family: "floor-carcase",
+      affordances: affordances.filter((a) => a !== "cubbies"),
+      unit: { ...u, width: W, height: H, depth: D, doors: true, shelfCount: 0, cubbies: undefined, drawersPerBank: undefined, rod: false, kneeW: undefined, counterH: undefined, mirror: false },
+    },
+    assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const W = u.width;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const innerW = W - P * 2;
+  const backT = 0.25;
+  // A spoken shelf count means usable shoe tiers (the floor board and the top are not counted).
+  // Each tier clears SHOE_TIER_CLEAR. A typed height wins: fewer tiers fit, and the notes say so.
+  const spokenTiers = spokenTierCount(prompt);
+  const asked = spokenTiers != null ? Math.min(8, spokenTiers) : null;
+  const typedH = typedHeightInches(prompt) ?? (asked == null ? 18 : null);
+  const tierPitch = SHOE_TIER_CLEAR + P;
+  const fitN = typedH != null ? Math.max(1, Math.floor((typedH - P + 1e-6) / tierPitch)) : null;
+  const tiers = asked != null ? (fitN != null ? Math.min(asked, fitN) : asked) : fitN ?? 2;
+  const H = typedH ?? Math.round((tiers * tierPitch + P) * 16) / 16;
+  const tierClear = (H - P * (tiers + 1)) / tiers;
+  // Bays wide enough for a pair of shoes (≥ 9" clear) unless a cubby count was spoken.
+  const spokenCubbies = spokenCubbyCount(prompt);
+  const cubbyN =
+    spokenCubbies && spokenCubbies >= 2
+      ? Math.max(2, Math.min(10, spokenCubbies))
+      : Math.max(1, Math.min(8, Math.floor((W - P) / (SHOE_BAY_MIN + P))));
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
+  for (let i = 1; i < tiers; i++) {
+    const y = Math.round(i * (tierClear + P) * 16) / 16;
+    panels.push(panel("shelf", tiers - 1 === 1 ? "Shoe shelf" : `Shoe shelf ${i}`, x0 + P, y, backT, innerW, P, D - backT));
+  }
+  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  const shelfN = tiers;
   for (let i = 1; i < cubbyN; i++) {
     const x = x0 + (W * i) / cubbyN - P / 2;
     panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
   }
-  const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+  const bayW = (W - P * (cubbyN + 1)) / cubbyN;
   const shoeStem = "Shoe rack";
   const name = classDefaultDensifyTitle(shoeStem, prompt, { width: W, height: H, depth: D });
   const shoeAssumed = classDefaultAssumedNotes(prompt, shoeStem, { width: W, height: H, depth: D });
@@ -3027,8 +3234,9 @@ function buildShoeRack(spec: FittedSpec, prompt: string, affordances: HouseAffor
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Open shoe cubbies with ${shelfN} shoe shelf line${shelfN === 1 ? "" : "s"} and ${cubbyN} bays (~${bayW}" wide) — not bookcase pin shelves. ¾" plywood.`,
-      `Glue and screw each cubby divider into the shoe shelves and back. Shelf pitch fits footwear (~5–6" clear). No leftover rails.`,
+      `${name}. ${tiers} open shoe tier${tiers === 1 ? "" : "s"}, ${inchFrac(tierClear)}" clear each${cubbyN > 1 ? `, in ${cubbyN} bays about ${inchFrac(bayW)}" wide` : ""}${bayW >= SHOE_BAY_MIN - 0.01 ? " — room for a pair of shoes in every spot" : " — narrow cubbies hold one shoe each (a pair needs about 9\" of width)"}. Fixed shelves, glued and screwed. ¾" plywood.`,
+      `${cubbyN > 1 ? "Glue and screw each cubby divider into the bottom, the shoe shelves and the top. " : ""}The floor board and the top close the box${asked != null ? "; the spoken count is the usable tiers" : ""}.`,
+      ...(asked != null && tiers < asked ? [`${asked} tiers were asked; ${tiers} fit in the typed ${inchFrac(H)}" with ${SHOE_TIER_CLEAR}" clear each. The size wins — add height for the rest.`] : []),
       "Level it on the floor. Guidance only — confirm height for your entry.",
       ...shoeAssumed,
     ],
@@ -4575,6 +4783,23 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
+  if (isLitterCabinet(prompt)) {
+    return buildLitterCabinet(spec, prompt, affordances);
+  }
+  {
+    const lower = prompt.toLowerCase();
+    const held =
+      heldCollection(lower) ??
+      (/\b(?:vinyl|records|lps|record\s+(?:shelf|shelves|bookshelf|bookcase|storage|cabinet|cube))\b/.test(lower) &&
+      /\b(?:shel(?:f|ves)|bookshelf|bookcase|storage|cabinet|cubes?)\b/.test(lower) &&
+      !/\b(?:player|turntable|stereo)\b/.test(lower)
+        ? "record"
+        : null);
+    if (held && !/\b(?:wine|bottles?|shoes?|jars?|spices?|plants?)\b/.test(held)) {
+      return buildCollectionShelf(spec, prompt, affordances, held);
+    }
+  }
+
   // Shoe storage on a floor carcase → cubbies / open bays (not pin shelves).
   // Seat (mudroom) keeps its own cubby bench; hung racks stay hung-open.
   if (
@@ -5787,33 +6012,37 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       };
     }
 
-    // Multi floating / wall shelves — pack into typed envelope H; do not invent gap past typed H.
-    const shelfBand = cleatH0 + P;
-    let gap =
-      n <= 1
-        ? 0
-        : Math.max(2, (envelopeH - n * shelfBand) / Math.max(1, n - 1));
-    // If typed H is too short for preferred cleat, shrink cleat/gap rather than overshoot.
-    let cleatH = cleatH0;
-    if (n * shelfBand + Math.max(0, n - 1) * gap > envelopeH + 0.05) {
-      const room = Math.max(0, envelopeH - n * P);
-      cleatH = Math.max(1.25, Math.min(cleatH0, room / n - 0.01));
-      const band = cleatH + P;
-      gap = n <= 1 ? 0 : Math.max(1, (envelopeH - n * band) / Math.max(1, n - 1));
+    // Multi floating / wall shelves: N separate shelves, each on its own wall cleat hidden behind a
+    // front fascia. Every opening clears a usable height (SHELF_MIN_CLEAR). A typed height is the
+    // envelope (the size wins); when the spoken count does not fit, fewer shelves are built and the
+    // notes state the shortfall.
+    const heightTypedStack = /(?:tall|high|height)\b/i.test(lowerPrompt);
+    const cleatH = cleatH0;
+    const fasciaH = cleatH + P;
+    let nBuilt = n;
+    let pitch = SHELF_DEFAULT_CLEAR + P;
+    if (heightTypedStack && n > 1) {
+      const room = Math.max(0, envelopeH - cleatH - P);
+      const fit = Math.max(1, Math.floor(room / (SHELF_MIN_CLEAR + P) + 1e-6) + 1);
+      nBuilt = Math.min(n, fit);
+      pitch = nBuilt > 1 ? room / (nBuilt - 1) : 0;
     }
-    for (let i = 0; i < n; i++) {
-      const y = i * (cleatH + P + gap);
+    const gap = pitch - P;
+    // With a typed-height backstop on the wall, the cleats screw through it (one ply forward).
+    const zOff = heightTypedStack ? P : 0;
+    for (let i = 0; i < nBuilt; i++) {
+      const y = Math.round(i * pitch * 16) / 16;
       const label = ` ${i + 1}`;
-      panels.push(panel("rail", `Wall cleat${label}`, x0, y, 0, W, cleatH, P));
-      panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, P, W, P, Df));
-      if (wantsLip) {
-        const thisLip = Math.min(1.25, Math.max(0.75, Math.min(gap > 0 ? gap * 0.4 : 1.25, 1.25)));
-        panels.push(panel("rail", `Front lip${label}`, x0, y + cleatH + P, Df - P, W, thisLip, P));
-      }
+      panels.push(panel("rail", `Wall cleat${label}`, x0, y, zOff, W, cleatH, P));
+      panels.push(panel("shelf", `Shelf${label}`, x0, y + cleatH, zOff, W, P, Df - zOff));
+      // Fascia under the front edge hides the cleat: the shelf reads as a floating slab.
+      panels.push(panel("rail", `Front fascia${label}`, x0, y, Df - P, W, wantsLip ? fasciaH + 1 : cleatH, P));
     }
-    // Envelope-counted face spans typed overall H so AABB == HUD (rails drop out of envelope).
-    panels.push(panel("back", "Shelf backstop", x0, 0, P, W, envelopeH, P));
-    const stackH = envelopeH;
+    const stackTop = Math.round(((nBuilt - 1) * pitch + cleatH + P) * 16) / 16;
+    // A typed height keeps the backstop so the envelope matches what was typed.
+    if (heightTypedStack) panels.push(panel("back", "Shelf backstop", x0, 0, 0, W, envelopeH, P));
+    void lipH;
+    const stackH = heightTypedStack ? envelopeH : stackTop;
     const name = /floating/.test(lowerPrompt)
       ? `Floating shelves ${W}" × ${stackH}" × ${Df}"`
       : `Wall shelves ${W}" × ${stackH}" × ${Df}"`;
@@ -5827,10 +6056,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        wantsLip
-          ? `${n} cleat-mounted ${W}" × ${Df}" shelves with front lips inside a ${stackH}" envelope — Shelf backstop spans typed overall H. ¾" plywood. No box — no uprights.`
-          : `${n} cleat-mounted ${W}" × ${Df}" shelves on wall cleats inside a ${stackH}" envelope — Shelf backstop spans typed overall H. ¾" plywood. No box — no uprights.`,
-        `Space shelves about ${gap.toFixed(1)}" apart. Each cleat lags into studs; the shelf screws down onto its cleat. Cleat-mounted.`,
+        `${nBuilt} separate ${inchFrac(W)}" × ${inchFrac(Df)}" ${/floating/.test(lowerPrompt) ? "floating" : "wall"} shelves, each on its own wall cleat hidden behind a front fascia${wantsLip ? " that stands up as a lip" : ""}. ¾" plywood.${heightTypedStack ? ` The Shelf backstop spans the typed ${inchFrac(stackH)}".` : ""}`,
+        `Shelves sit ${inchFrac(pitch)}" apart top to top, leaving ${inchFrac(gap)}" clear between them. Each cleat screws into at least two studs with 3" structural screws; the shelf screws down onto its cleat.`,
+        ...(nBuilt < n ? [`${n} shelves were asked; ${nBuilt} fit in the typed ${inchFrac(envelopeH)}" with at least ${SHELF_MIN_CLEAR}" clear between shelves. The size wins — add height for the rest.`] : []),
         "Guidance only — hit a stud. Confirm the wall type.",
       ],
       historic: false,
@@ -5838,7 +6066,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       fitted: {
         ...spec,
         name,
-        unit: { ...u, width: W, height: stackH, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: n },
+        unit: { ...u, width: W, height: stackH, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: nBuilt },
         opening: { width: W, height: stackH, depth: Df, kind: "room" },
         affordances: (spec.affordances ?? []).includes("cleats")
           ? spec.affordances
@@ -6288,6 +6516,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
       : "Level it. Add a back (already on the bench) so it cannot rack.",
+    ...(!alcove && isKidsBookcase(prompt.toLowerCase())
+      ? [
+          `Kids bookcase: ${inchFrac(H)}" tall so a child reaches the top shelf. Anti-tip: strap the top to a wall stud anyway — kids climb shelves.`,
+        ]
+      : []),
     "Guidance only — confirm plumbing, studs, and the real opening before you cut.",
   ];
 

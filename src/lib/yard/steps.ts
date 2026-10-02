@@ -174,7 +174,8 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
   if (project.flat && !project.flat.lifted) {
     return uniqueFlatSteps(project);
   }
-  if (project.panels.length && !project.instances.length) {
+  const heldOnly = project.panels.length > 0 && project.instances.length > 0 && project.instances.every((i) => i.role === "held" || /^piece-(?:held|model)-/.test(i.catalogId));
+  if (project.panels.length && (!project.instances.length || heldOnly)) {
     const prev = stepStockPrompt;
     stepStockPrompt = project.prompt ?? "";
     try {
@@ -437,6 +438,77 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const sheetCuts = groupSheetCuts(panels);
   const steps: AssemblyStep[] = [];
   let n = 1;
+
+  // Frame stands (held-object stands, risers, stepped plant stands): legs / posts, rails, plywood decks.
+  // They have no carcase, back or doors — say what is really there.
+  if (!project.fitted && !pocket && panels.some((p) => /^(Deck|Tier \d+ deck)$/.test(p.name))) {
+    const legs = panels.filter((p) => /^(Leg \d+|(Left|Right) post \d+)$/.test(p.name));
+    const frame = panels.filter((p) => p.type === "rail" && !/stretcher|floor rail/i.test(p.name));
+    const lowFrame = panels.filter((p) => /stretcher|floor rail/i.test(p.name));
+    const lowerShelf = panels.filter((p) => /^Lower shelf$/.test(p.name));
+    const decks = panels.filter((p) => /^(Deck|Tier \d+ deck)$/.test(p.name));
+    const held = project.instances.filter((i) => i.role === "held");
+    const heldName = held.length ? (getCatalogItem(held[0].catalogId)?.name ?? "object").toLowerCase() : "";
+    const out: AssemblyStep[] = [];
+    let k = 1;
+    out.push({
+      step: k++,
+      title: "Confirm the footprint — do not cut yet",
+      description: `${project.name}. ${round(W)}" wide × ${round(D)}" deep × ${round(project.overall.height)}" high overall. Freestanding frame — legs and rails under ${decks.length > 1 ? `${decks.length} plywood decks` : "a plywood deck"}. ${partsOnThisListPhrase(project)}.`,
+      tips: "If a number disagrees with the cut list, trust the cut list.",
+      partsUsed: ["*"],
+    });
+    out.push({
+      step: k++,
+      title: sheetCutTitle(panels, item),
+      description: sheetCutDescription(panels, item),
+      tips: tool.tip,
+      partsUsed: names(panels),
+    });
+    if (legs.length) {
+      out.push({
+        step: k++,
+        title: decks.length > 1 ? "Build the two side frames" : "Stand the legs and frame",
+        description: decks.length > 1
+          ? `${legs.map(cutLine).join("; ")}. Lay each side's posts flat in order, tallest at the back. ${lowFrame.length ? `${lowFrame.map(cutLine).join("; ")}. Screw the floor rail across the inside faces 3" off the floor. ` : ""}Predrill — 2×2 splits near the ends.`
+          : `${legs.map(cutLine).join("; ")}. ${frame.map(cutLine).join("; ")}. Set the legs plumb on the footprint. Glue and screw the aprons between the legs, flush with the leg tops. Predrill near the ends so the wood does not split.`,
+        tips: "Check both diagonals before the deck goes on.",
+        partsUsed: names(decks.length > 1 ? [...legs, ...lowFrame] : [...legs, ...frame]),
+      });
+    }
+    if (decks.length > 1) {
+      out.push({
+        step: k++,
+        title: "Join the side frames with the tier rails",
+        description: `${frame.map(cutLine).join("; ")}. Stand both side frames up and screw a front and a back rail between them under each tier, ¾" below the post tops so the deck lands flush.`,
+        tips: "Square the frame before the decks go on — measure both diagonals of the footprint.",
+        partsUsed: names(frame),
+      });
+    } else if (lowFrame.length || lowerShelf.length) {
+      out.push({
+        step: k++,
+        title: "Add the bottom frame and lower shelf",
+        description: `${[...lowFrame, ...lowerShelf].map(cutLine).join("; ")}. Screw the stretchers between the legs ${lowFrame[0] ? `${round(lowFrame[0].position.y)}"` : "4\""} off the floor; notch the shelf corners around the legs and screw it down onto the stretchers.`,
+        tips: "The bottom frame stiffens the legs — keep it square.",
+        partsUsed: names([...lowFrame, ...lowerShelf]),
+      });
+    }
+    out.push({
+      step: k++,
+      title: decks.length > 1 ? `Screw down ${decks.length} decks` : "Screw down the deck",
+      description: `${decks.map(cutLine).join("; ")}. ${decks.length > 1 ? "Notch the back corners around the posts, set each deck on its rails" : "Set the deck on the aprons"} and glue and screw down into the ${decks.length > 1 ? "rails" : "aprons"} every 6".${held.length ? ` The ${heldName} ${held.length > 1 || /^(?:two|three|four|\d+)\b/.test(heldName) ? "rest" : "rests"} on the deck — not a cut part.` : ""}`,
+      tips: "Countersink the screws so nothing scratches what sits on top.",
+      partsUsed: names(decks),
+    });
+    out.push({
+      step: k++,
+      title: "Level it",
+      description: `Set it where it lives. Shim the feet if the floor is out — do not twist the frame.${(project.notes ?? []).some((x) => /water weighs/i.test(x)) ? " Level the deck dead flat before you fill the tank." : ""}`,
+      tips: "Guidance only — confirm the load before you put anything heavy on it.",
+      partsUsed: ["*"],
+    });
+    return out;
+  }
 
   const coatPrompt = (project.prompt ?? "").toLowerCase();
   const shoePortalRail =
@@ -1571,7 +1643,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const cleats = rails.filter((p) => /cleat/i.test(p.name));
     const brackets = rails.filter((p) => /bracket/i.test(p.name));
     const shelfBoards = shelves.length ? shelves : panels.filter((p) => p.type === "shelf");
-    const lips = rails.filter((p) => /front lip|backstop/i.test(p.name));
+    const lips = rails.filter((p) => /front lip|backstop|front fascia/i.test(p.name));
+    const fascias = rails.filter((p) => /front fascia/i.test(p.name));
     // Spoken brackets path — shelf + N brackets (not cleat densify).
     if (brackets.length && !cleats.length) {
       return [
@@ -1623,7 +1696,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         title: "Confirm the wall span — do not cut yet",
         description: holdTalk
           ? `${project.name}. Bedside shelf across the ${round(W)}" span — ${holdTalk}; never a flat decal, never a Nightstand, never a Picture ledge. Mark studs. This is not a box — there are no uprights.`
-          : `${project.name}. ${shelfBoards.length} cleat-mounted shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. This is not a box — there are no uprights. Cleat-mounted — not floating boards.`,
+          : `${project.name}. ${shelfBoards.length} cleat-mounted shelf board${shelfBoards.length === 1 ? "" : "s"} and ${cleats.length || shelfBoards.length} wall cleat${(cleats.length || shelfBoards.length) === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. Each shelf rides its own wall cleat screwed into studs${fascias.length ? ", and a front fascia hides the cleat" : ""}.`,
         tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -1646,7 +1719,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         title: holdTalk ? "Sit the shelf on its cleat and add the upright envelope" : "Sit each shelf on its cleat and screw down",
         description: holdTalk
           ? `${shelfBoards.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Set the shelf on the cleat at the marked height so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. ${lips.map(cutLine).join("; ") || (printHold ? "Print front lip and Print backstop." : "Book front lip and Book backstop.")}. Screw the front lip and backstop so a real ${printHold ? (fiveBySeven ? "5×7 print" : "print") : "book"} sits upright — never a flat decal.`
-          : `${shelfBoards.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Set each shelf on its cleat at the marked height so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat. No pins, no uprights, no box to slide into an opening.`,
+          : `${shelfBoards.map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Set each shelf on its cleat at the marked height so the back edge is flush to the wall. Drive #8 × 1¼" screws down through the shelf into the cleat.${fascias.length ? " Glue and brad each front fascia under the shelf's front edge so it hides the cleat." : ""}`,
         tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out if you add glue.",
         partsUsed: names([...shelfBoards, ...cleats, ...lips]),
       },
@@ -2060,7 +2133,19 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (dividers.length) {
     const knee = dividers.filter((p) => /knee/i.test(p.name));
     const cubby = dividers.filter((p) => /cubby/i.test(p.name));
-    const rest = dividers.filter((p) => !/knee|cubby/i.test(p.name));
+    const entry = dividers.filter((p) => /entry panel/i.test(p.name));
+    const rest = dividers.filter((p) => !/knee|cubby|entry panel/i.test(p.name));
+    if (entry.length) {
+      const e = entry[0];
+      const hole = e.polygon?.holes?.[0];
+      steps.push({
+        step: n++,
+        title: "Cut the cat entry and fix the entry panel",
+        description: `${entry.map(cutLine).join("; ")}. ${hole ? `Mark the cat hole: a circle ${inchFrac(hole.r * 2)}" across, center ${inchFrac(hole.x)}" from the left edge and ${inchFrac(hole.y)}" up. Drill a ½" starter hole inside the line and cut the circle with a jigsaw. ` : ""}Sand the edge round so it is kind to paws. Glue and screw the panel to the front edges of the left side, the bottom and the top — it does not open.`,
+        tips: "Cut the hole before the panel goes on — it is easier to clamp flat on the bench.",
+        partsUsed: names(entry),
+      });
+    }
     if (knee.length) {
       const kneeClear = u?.kneeW ?? pocket?.unit.kneeW ?? 22;
       steps.push({

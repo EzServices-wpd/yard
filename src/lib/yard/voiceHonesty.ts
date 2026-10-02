@@ -205,6 +205,27 @@ function findPlate(entries: PlateEntry[], spoken: string): PlateEntry | undefine
  * "B Back" on the bench to letter B on the cut list / nest plate.
  */
 export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string {
+  return densifyPartsPlateTalkKeep(text, cutList);
+}
+
+/**
+ * Same, but the project's own name ("Display shelf for a Lego collection", "Ladder shelf") is a title,
+ * not a part: it never takes a cut-list letter ("Display E shelf").
+ */
+export function densifyPartsPlateTalkKeep(text: string, cutList: CutLine[], projectName?: string): string {
+  const name = (projectName ?? "").trim();
+  if (!name || name.length < 4 || !text) return densifyPartsPlateTalkRaw(text, cutList);
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const kept: string[] = [];
+  const masked = text.replace(new RegExp(esc, "gi"), (m) => {
+    kept.push(m);
+    return `\u0000${kept.length - 1}\u0000`;
+  });
+  if (!kept.length) return densifyPartsPlateTalkRaw(text, cutList);
+  return densifyPartsPlateTalkRaw(masked, cutList).replace(/\u0000(\d+)\u0000/g, (_m, i: string) => kept[Number(i)] ?? "");
+}
+
+function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
   const entries = partsPlateEntries(cutList);
   if (!entries.length || !text) return text;
   let out = text;
@@ -339,8 +360,9 @@ function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string
  * Confirm/cut/level steps stay as-is (not joins). Leaves freezes' titles intact
  * ("Stand the main box" kept on the first carcase join).
  */
-export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
+export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
   const entries = partsPlateEntries(cutList);
+  const densifyPartsPlateTalk = (text: string, lines: CutLine[]) => densifyPartsPlateTalkKeep(text, lines, projectName);
   const out: AssemblyStep[] = [];
 
   for (const step of instructions) {
@@ -535,9 +557,9 @@ export function densifyPartsCountTalk(
  * Full kit-craft densify for packPlan: plain shop words already applied;
  * then parts-plate refs + one-join split + honest parts-count + drawer-explode Voice honesty.
  */
-export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[]): AssemblyStep[] {
+export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
   const plated = stampPartsPlate(cutList);
-  const joined = densifyOneJoinInstructions(instructions, plated);
+  const joined = densifyOneJoinInstructions(instructions, plated, projectName);
   const counted = joined.map((s) => ({
     ...s,
     title: densifyPartsCountTalk(s.title, plated),

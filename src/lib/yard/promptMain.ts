@@ -1,8 +1,9 @@
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
+import { inchFrac } from "./inchText";
 import { isWholeStock, toPrimitive } from "./geometry";
-import { graphToInstances, type StructureGraph } from "./structureGraph";
+import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
 import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
@@ -32,7 +33,7 @@ import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, modeledProduct } from "./productModel";
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
-import { buildHeldStand } from "./heldStand";
+import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { localStockQuery } from "./stockQuery";
 import { rememberCatalogItem } from "./foundStock";
 
@@ -163,7 +164,93 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   const solved = solveModel(generateRaw(...args));
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
-  return fitWeekendSize(project, args[0], args[3]?.sizeOverride);
+  return addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
+}
+
+/**
+ * "robot bookend": the figure is the class, the bookend is its use. A stick-built figure gets a flat
+ * face on one side for the books to lean on, and a base that runs on under the first books so their
+ * weight holds it. Same stock and joinery as the figure. Shape templates (animals) carry their own.
+ */
+function addFigureBookend(project: YardProject, prompt: string): YardProject {
+  const lower = (prompt || "").toLowerCase();
+  if (!/\bbook\s*-?\s*ends?\b/.test(lower)) return project;
+  if (project.kind !== "figure" || project.panels.length || !project.instances.length) return project;
+  if (project.instances.some((i) => i.role === "base" || i.role === "bookend face")) return project;
+  const counts = new Map<string, number>();
+  for (const i of project.instances) counts.set(i.catalogId, (counts.get(i.catalogId) ?? 0) + 1);
+  const catId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const item = getCatalogItem(catId);
+  if (!item) return project;
+  const prim = toPrimitive(item);
+  const w = Math.max(0.25, prim.width);
+  const t = Math.max(0.1, prim.height);
+  const pts = project.instances.flatMap((i) => [i.from ?? i.position, i.to ?? i.position]);
+  const minX = Math.min(...pts.map((p) => p.x)) - w / 2;
+  const maxX = Math.max(...pts.map((p) => p.x)) + w / 2;
+  const minY = Math.min(...pts.map((p) => p.y)) - w / 2;
+  const maxY = Math.max(...pts.map((p) => p.y)) + w / 2;
+  const minZ = Math.min(...pts.map((p) => p.z)) - w / 2;
+  const maxZ = Math.max(...pts.map((p) => p.z)) + w / 2;
+  const lift = t - minY;
+  const up = (p: { x: number; y: number; z: number }) => ({ x: p.x, y: p.y + lift, z: p.z });
+  const lifted: YardInstance[] = project.instances.map((i) => ({
+    ...i,
+    position: up(i.position),
+    from: i.from ? up(i.from) : i.from,
+    to: i.to ? up(i.to) : i.to,
+    home: i.home ? up(i.home) : i.home,
+  }));
+  const r = (n: number) => Math.round(n * 1000) / 1000;
+  const mk = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }, role: string, face: { x: number; y: number; z: number }): YardInstance => {
+    const [rx, ry, rz] = rotationForDirection(a, b, false);
+    return {
+      id: createId("bkend"),
+      catalogId: catId,
+      position: { x: r((a.x + b.x) / 2), y: r((a.y + b.y) / 2), z: r((a.z + b.z) / 2) },
+      rotation: { x: rx, y: ry, z: rz },
+      cutLength: Math.round(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * 16) / 16,
+      role,
+      join: "screw",
+      from: a,
+      to: b,
+      face,
+    };
+  };
+  const zSpan = Math.max(maxZ - minZ, 2 * w);
+  const n = Math.max(2, Math.ceil(zSpan / w));
+  const z0 = (minZ + maxZ) / 2 - (n * w) / 2 + w / 2;
+  const figH = maxY - minY;
+  const faceH = Math.round(Math.min(10, Math.max(6, figH * 0.45)) * 2) / 2;
+  const bookRun = Math.round(Math.max(5, Math.min(8, (maxX - minX) * 0.75)) * 2) / 2;
+  const faceX = maxX + t / 2;
+  const baseX0 = minX - 0.5;
+  const baseX1 = faceX + t / 2 + bookRun;
+  const added: YardInstance[] = [];
+  for (let k = 0; k < n; k++) {
+    const z = r(z0 + k * w);
+    added.push(mk({ x: r(baseX0), y: r(t / 2), z }, { x: r(baseX1), y: r(t / 2), z }, "base", { x: 0, y: 1, z: 0 }));
+    added.push(mk({ x: r(faceX), y: r(t), z }, { x: r(faceX), y: r(t + faceH), z }, "bookend face", { x: 1, y: 0, z: 0 }));
+  }
+  const stock = item.name.replace(/\s*\(.*?\)\s*/g, " ").trim();
+  const label = project.name.replace(/\s+bookends?$/i, "");
+  const name = /bookend/i.test(project.name) ? project.name : `${label} bookend`;
+  const notes = [
+    `${name}: the ${label.toLowerCase()} is the figure, the bookend is its use. ${n} upright ${stock} pieces ${inchFrac(faceH)}" tall make a flat face on its right side for the books to lean on; ${n} more lie flat as a base that runs ${inchFrac(bookRun)}" past the face, under the first books — their weight keeps the bookend from sliding.`,
+    "Screw the face pieces down into the base, then stand the figure on the base and screw up through it. Stick felt pads under the base so it does not scratch the shelf.",
+    ...project.notes,
+  ];
+  return {
+    ...project,
+    name,
+    instances: [...lifted, ...added],
+    notes,
+    overall: {
+      width: Math.round((baseX1 - Math.min(minX, baseX0)) * 16) / 16,
+      height: Math.round(Math.max(figH + t, t + faceH) * 16) / 16,
+      depth: Math.round(Math.max(maxZ - minZ, n * w) * 16) / 16,
+    },
+  };
 }
 
 function axisLabeled(prompt: string): boolean {
@@ -440,6 +527,13 @@ function generateRaw(
   if (placed && !formOverride) return placed;
   const held = placeHeldProduct(prompt);
   if (held && !formOverride) return held;
+  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser.
+  // A craft stock pick (popsicle, dowel…) stays craft.
+  if (!formOverride && !opts.fittedOverride) {
+    const tiers = plantStandTiers(lower);
+    const ask = tiers ? requestedStock(prompt, materialOverride) : null;
+    if (tiers && (!ask || carcaseKind(ask) || /^lumber-/.test(ask.id))) return buildTieredPlantStand(prompt, tiers);
+  }
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
   const scale = opts.scale ?? "full";

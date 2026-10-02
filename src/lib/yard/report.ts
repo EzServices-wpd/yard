@@ -236,6 +236,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
     project.primaryMaterialId !== CATALOG_LUMBER_BIND;
 
   const bom: BuildPlan["bom"] = [];
+  let frameBought = false;
   // Honest Buy wood qty: cut-list quantity sum (same class as Confirm/chip/effort
   // woodPieces). Never last-resort to raw panels.length — bounding envelopes
   // under-count exploded kits / multi-piece named lumber.
@@ -256,15 +257,51 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
     });
   } else if (boardPrimary && sheet) {
     const label = namedStockDisplayName(project.prompt ?? "", sheet);
+    const thick = sheet.dims.thickness ?? sheet.dims.height ?? 0.75;
+    const face = sheet.dims.width ?? 3.5;
+    const feet = Math.round((sheet.dims.length ?? 96) / 12);
+    // Mixed frames (a 2×2 / 2×4 frame under a plywood deck): plywood parts are Bought as sheets and
+    // frame parts that already match the board's section are cut to length — no rip, no glue-up talk.
+    const isPlyCut = (c: (typeof structural)[number]) => /^plywood-/.test(c.id) || /plywood|sheet/i.test(`${c.material ?? ""}`);
+    const plyCuts = structural.filter(isPlyCut);
+    const frameCuts = structural.filter((c) => !isPlyCut(c));
+    const asSection = (c: (typeof structural)[number]) =>
+      Math.abs((c.thicknessIn ?? thick) - thick) < 0.05 && c.widthIn <= face + 0.05;
+    if (plyCuts.length && frameCuts.length && frameCuts.every(asSection)) {
+      frameBought = true;
+      const framePlan = planSolidBoards(frameCuts.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })));
+      const frameQty = frameCuts.reduce((s, c) => s + c.quantity, 0);
+      bom.push({
+        name: label,
+        quantity: framePlan.boards,
+        unit: framePlan.boards === 1 ? "board" : "boards",
+        catalogId: sheet.id,
+        searchQuery: sheet.searchQuery ?? label,
+        estimatedCost: (sheet.unitCostUsd ?? 4) * framePlan.boards,
+        notes: `${framePlan.boards} × ${feet} ft ${label} for the ${frameQty} frame part${frameQty === 1 ? "" : "s"}, cut to length — packed from the cut list with 1/8" kerf.`,
+      });
+      const plyItem = getCatalogItem("plywood-3-4-4x8");
+      const plyName = plyItem?.name ?? '3/4" Plywood 4×8';
+      const area = plyCuts.reduce((s, c) => s + c.lengthIn * c.widthIn * c.quantity, 0);
+      const plyQty = Math.max(1, Math.ceil(area / (48 * 96 * 0.8)));
+      const plyParts = plyCuts.reduce((s, c) => s + c.quantity, 0);
+      const small = area <= 24 * 48 * 0.8;
+      bom.push({
+        name: small ? '3/4" Plywood 2×4 project panel' : plyName,
+        quantity: small ? 1 : plyQty,
+        unit: small ? "panel" : plyQty === 1 ? "sheet" : "sheets",
+        catalogId: plyItem?.id ?? "plywood-3-4-4x8",
+        searchQuery: small ? '3/4 inch plywood project panel 2x4' : plyItem?.searchQuery ?? '3/4" x 4x8 sanded plywood',
+        estimatedCost: small ? 24.98 : (plyItem?.unitCostUsd ?? 38.43) * plyQty,
+        notes: `${plyParts} plywood part${plyParts === 1 ? "" : "s"} (${plyCuts.map((c) => `${c.quantity} × ${inchFrac(c.lengthIn)}" × ${inchFrac(c.widthIn)}"`).join(", ")}).`,
+      });
+    } else {
     const boardPlan = planSolidBoards(
       structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
     );
     const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
-    const thick = sheet.dims.thickness ?? sheet.dims.height ?? 0.75;
-    const face = sheet.dims.width ?? 3.5;
     const qty = boardPlan.boards;
     const partsQty = structural.reduce((s, c) => s + c.quantity, 0);
-    const feet = Math.round((sheet.dims.length ?? 96) / 12);
     bom.push({
       name: label,
       quantity: qty,
@@ -277,8 +314,9 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
         (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued` : "") +
         (thick > 0.9 ? `. Rip to ¾" (this board is ${thick}" thick; the drawing is still ¾")` : "") +
         (face < 3.2 ? `. The face is only ${face}" — buy extra when a part is wider` : "") +
-        `. ¼" backs stay plywood.`,
+        (thinBacks.length ? `. ¼" backs stay plywood.` : "."),
     });
+    }
   } else if (sheets8 > 0 || (project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber && structural.length > 0)) {
     const isNamedLumberPrimary =
       project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber;
@@ -434,7 +472,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
     });
   }
-  if (stickBoards.length) {
+  if (stickBoards.length && !frameBought) {
     const byStock = new Map<string, typeof stickBoards>();
     for (const c of stickBoards) {
       const id = c.id.split("|")[0] || "lumber-2x4-8";
@@ -643,6 +681,16 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       searchQuery: "coat hooks wall mount 6 pack",
       estimatedCost: 12.98,
       notes: `${hooks} hooks, 6" on center into the ${project.panels.some((p) => /peg rail/i.test(p.name)) ? "peg rail" : project.panels.some((p) => /body profile/i.test(p.name)) ? "body profile" : project.shape ? "body" : "rail"}.`,
+    });
+  }
+  if ((project.notes ?? []).some((n) => /\banti-tip\b/i.test(n)) && !bom.some((b) => /anti-tip/i.test(b.name))) {
+    bom.push({
+      name: "Furniture anti-tip kit",
+      quantity: 1,
+      unit: "kit",
+      searchQuery: "furniture anti tip kit wall anchor strap",
+      estimatedCost: 9.98,
+      notes: "Strap or bracket from the top back into a wall stud so the unit cannot tip forward.",
     });
   }
   const doors = project.panels.filter((panel) => panel.type === "door");
@@ -1010,7 +1058,7 @@ function packPlan(
     description: strangerPlainShopTalk(s.description),
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
-  const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList);
+  const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name);
   const assumedInstructions = densifyConfirmAssumedNotes(kitInstructions, project.notes);
   const plainBom = bom.map((b) => ({
     ...b,
