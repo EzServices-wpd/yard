@@ -611,8 +611,9 @@ function PlanBody({
             type="button"
             onClick={() => setExportOpen(true)}
             className="h-11 flex-1 rounded-md bg-accent text-sm font-medium text-accent-fg"
+            aria-label="Save the plan as PDF"
           >
-            Print the plan
+            Save PDF
           </button>
         </div>
       </div>

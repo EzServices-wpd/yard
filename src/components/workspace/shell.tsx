@@ -204,8 +204,10 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               setExportOpen(true);
             }}
             className="inline-flex h-9 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
+            aria-label="Save the plan as PDF"
+            title="Save the plan as PDF"
           >
-            Print
+            PDF
           </button>
           <div className="relative">
             <button
