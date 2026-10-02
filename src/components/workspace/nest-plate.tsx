@@ -1,6 +1,7 @@
 "use client";
 
 import { sheetSizeLabel, type NestSheet } from "@/lib/yard/nesting";
+import { nestLabelLayout } from "@/lib/yard/inchText";
 
 /** On-plan sheet: same letters as the cut list, laid on the matching 4×8 or 4×10. */
 export function NestPlate({ sheet, sheetCount }: { sheet: NestSheet; sheetCount?: number }) {
@@ -32,12 +33,10 @@ export function NestPlate({ sheet, sheetCount }: { sheet: NestSheet; sheetCount?
           />
         ))}
         {sheet.parts.map((p) => {
+          const L = nestLabelLayout(p);
           const cx = p.x + p.width / 2;
           const cy = p.y + p.height / 2;
-          const short = Math.min(p.width, p.height);
-          const fs = Math.min(7, Math.max(2.4, short * 0.28));
-          const showDims = short > 8;
-          const showName = short > 12 && Boolean(p.name);
+          const fs = L.fontSize;
           return (
             <g key={p.id}>
               <rect
@@ -50,17 +49,18 @@ export function NestPlate({ sheet, sheetCount }: { sheet: NestSheet; sheetCount?
                 strokeWidth={0.22}
               />
               <text
-                x={cx}
-                y={cy + (showName ? -fs * 0.35 : showDims ? -fs * 0.15 : fs * 0.35)}
-                textAnchor="middle"
+                x={L.x}
+                y={L.y}
+                textAnchor={L.anchor}
+                transform={L.rotate ? `rotate(${L.rotate} ${L.x} ${L.y})` : undefined}
                 fontFamily="Newsreader, Times New Roman, serif"
                 fontWeight={600}
                 fontSize={fs}
                 fill="#1a1612"
               >
-                {p.label || "?"}
+                {L.text}
               </text>
-              {showDims && (
+              {L.dims && (
                 <text
                   x={cx}
                   y={cy + fs * 0.85}
@@ -69,10 +69,10 @@ export function NestPlate({ sheet, sheetCount }: { sheet: NestSheet; sheetCount?
                   fontSize={Math.min(2.4, fs * 0.42)}
                   fill="#6b6358"
                 >
-                  {p.width.toFixed(1)}×{p.height.toFixed(1)}
+                  {L.dims}
                 </text>
               )}
-              {showName && (
+              {L.name && (
                 <text
                   x={cx}
                   y={cy + fs * 1.45}

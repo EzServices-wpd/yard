@@ -10,6 +10,7 @@
  * segment from its from→to ends on the chosen plane.
  */
 
+import { inchFrac } from "./inchText";
 import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
@@ -223,7 +224,7 @@ export function flatSvgString(
 
   const subLine = paperCraft
     ? `${map.pieceCount} whole sticks · glue ends · do not cut · ${escapeXml(map.materialName)}`
-    : `${escapeXml(map.planeLabel)} · ${map.pieceCount} pieces · ${escapeXml(map.materialName)} · ${map.widthIn.toFixed(1)}\" × ${map.heightIn.toFixed(1)}\"`;
+    : `${escapeXml(map.planeLabel)} · ${map.pieceCount} pieces · ${escapeXml(map.materialName)} · ${inchFrac(map.widthIn)}\" × ${inchFrac(map.heightIn)}\"`;
 
   const header = showLabels
     ? `\n  <text x="${margin}" y="${margin + 0.22}" font-family="ui-serif, Georgia, serif" font-size="0.28" fill="#1a1612">${escapeXml(project.name)}</text>\n  <text x="${margin}" y="${margin + 0.48}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.14" fill="#6b6358">${subLine}</text>\n  <text x="${paper.wIn - margin}" y="${margin + 0.22}" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="0.12" fill="#6b6358">${paper.label}</text>`

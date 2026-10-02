@@ -30,6 +30,64 @@ export function inchDims(...ns: number[]): string {
   return `${ns.map(inchFrac).join(" × ")}"`;
 }
 
+/** Picked-part card on the bench: W × H × D in shop fractions. */
+export function partCardDims(size: { width: number; height: number; depth: number }): string {
+  return inchDims(size.width, size.height, size.depth);
+}
+
+/** Short in-part nest size: 22 1/2×1 1/2 (shop fractions, no marks). */
+export function nestPartDims(w: number, h: number): string {
+  return `${inchFrac(w)}×${inchFrac(h)}`;
+}
+
+export type NestLabelLayout = {
+  /** Letter (and size, for strips) on one line that fits inside the part. */
+  text: string;
+  dims: string | null;
+  name: boolean;
+  fontSize: number;
+  x: number;
+  y: number;
+  anchor: "middle" | "start";
+  /** Degrees; 90 runs the label along a tall thin strip. */
+  rotate: number;
+};
+
+/**
+ * Where a sheet-nest label sits inside its part. Roomy parts center the letter with the size
+ * under it. Thin strips (rails stacked on a sheet) get one line sized to the strip and run along
+ * it from the end, so neighbouring strips never print on top of each other.
+ */
+export function nestLabelLayout(p: { x: number; y: number; width: number; height: number; label?: string; name?: string }): NestLabelLayout {
+  const short = Math.min(p.width, p.height);
+  const long = Math.max(p.width, p.height);
+  const letter = p.label || "?";
+  const dims = nestPartDims(p.width, p.height);
+  if (short < 6) {
+    const fs = Math.max(0.9, Math.min(2.4, short * 0.7));
+    const line = `${letter}  ${dims}`;
+    const fits = line.length * fs * 0.55 < long - 2;
+    const text = fits ? line : letter;
+    const horiz = p.width >= p.height;
+    return horiz
+      ? { text, dims: null, name: false, fontSize: fs, x: p.x + 1, y: p.y + p.height / 2 + fs * 0.35, anchor: "start", rotate: 0 }
+      : { text, dims: null, name: false, fontSize: fs, x: p.x + p.width / 2 + fs * 0.35, y: p.y + 1, anchor: "start", rotate: 90 };
+  }
+  const fs = Math.min(7, Math.max(2.4, short * 0.28));
+  const showDims = short > 8;
+  const showName = short > 12 && Boolean(p.name);
+  return {
+    text: letter,
+    dims: showDims ? dims : null,
+    name: showName,
+    fontSize: fs,
+    x: p.x + p.width / 2,
+    y: p.y + p.height / 2 + (showName ? -fs * 0.35 : showDims ? -fs * 0.15 : fs * 0.35),
+    anchor: "middle",
+    rotate: 0,
+  };
+}
+
 // A decimal inch value in running text: followed by an inch mark / "in" / "inch", or a
 // member of an "a × b × c" size chain. Money ($12.50), degrees, feet and ratios are untouched.
 const DEC = String.raw`\d*\.\d+`;

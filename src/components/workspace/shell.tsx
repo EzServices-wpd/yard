@@ -26,7 +26,7 @@ import { honestNestSheetStockName } from "@/lib/yard/report";
 import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
-import { inchFrac } from "@/lib/yard/inchText";
+import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
@@ -173,7 +173,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
         const dia = item?.dims.diameter;
         const sec = pickedInst.section;
         const dim = sec
-          ? `${inches(sec.width)} × ${inches(sec.height)}${len ? ` · ${inches(len)} long` : ""}`
+          ? `${inchDims(sec.width, sec.height)}${len ? ` · ${inches(len)} long` : ""}`
           : dia
             ? `${len ? `${inches(len)} long · ` : ""}⌀ ${inches(dia)}`
             : len
@@ -184,7 +184,7 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
     : pickedPanel
       ? {
           name: pickedPanel.name || getCatalogItem(pickedPanel.materialId)?.name || "Piece",
-          dim: `${inches(pickedPanel.size.width)} × ${inches(pickedPanel.size.height)} × ${inches(pickedPanel.size.depth)}`,
+          dim: partCardDims(pickedPanel.size),
           canLock: false,
         }
       : null;
