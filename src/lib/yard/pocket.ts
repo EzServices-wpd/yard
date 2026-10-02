@@ -343,9 +343,9 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   const bays = pocketBays(unit);
   panels.push(panel("bottom", "Upper bottom", x0 + P, u0, 0, W - P * 2, P, D));
   panels.push(panel("top", "Upper top", x0 + P, H - P, 0, W - P * 2, P, D));
-  panels.push(panel("divider", "Left shelf end", x0 + P + bays.left, u0, 0, P, uH, D));
+  panels.push(panel("divider", "Left upper divider", x0 + P + bays.left, u0, 0, P, uH, D));
   if (bays.usable - bays.left - bays.right > 1) {
-    panels.push(panel("divider", "Right shelf end", x1 - P - bays.right - P, u0, 0, P, uH, D));
+    panels.push(panel("divider", "Right upper divider", x1 - P - bays.right - P, u0, 0, P, uH, D));
   }
 
   const shelfYs = [u0 + uH * 0.28, u0 + uH * 0.52, u0 + uH * 0.76];

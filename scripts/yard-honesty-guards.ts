@@ -1507,7 +1507,9 @@ if (!loftHit || loftHit.family !== "bunk" || !loftHit.affordances.includes("slee
 const loft = generateFromPrompt(loftPrompt);
 if (!/^Loft bed/i.test(loft.name)) failHonesty("loft title", loft.name);
 if (!nearInch(loft.overall.width, 42)) failHonesty("loft twin width ~42", loft.overall);
-if (!nearInch(loft.overall.depth, 75)) failHonesty("loft twin depth ~75", loft.overall);
+// Twin mattress is 75" long; the 2×2 posts stand outside it (as with width 39 → 42), so the frame is ~78".
+if (!nearInch(loft.overall.depth, 78)) failHonesty("loft twin depth ~78 (75 mattress + posts)", loft.overall);
+if (!loft.notes.some((n) => /\b75"/.test(n))) failHonesty("loft note names the 75\" twin mattress", loft.notes);
 if (!nearInch(loft.overall.height, 65)) failHonesty("loft height ~65", loft.overall);
 const loftDecks = loft.panels.filter((p) => p.type === "deck");
 if (loftDecks.length !== 1) failHonesty("loft needs exactly one sleep deck", loft.panels.map((p) => p.name));
@@ -2292,7 +2294,9 @@ if (!bunkHit || bunkHit.family !== "bunk" || !bunkHit.affordances.includes("slee
 const bunk = generateFromPrompt(bunkPrompt);
 if (!/^Bunk bed/i.test(bunk.name)) failHonesty("bunk title", bunk.name);
 if (!nearInch(bunk.overall.width, 42)) failHonesty("bunk twin width ~42", bunk.overall);
-if (!nearInch(bunk.overall.depth, 75)) failHonesty("bunk twin depth ~75", bunk.overall);
+// Twin mattress is 75" long; the 2×2 posts stand outside it (as with width 39 → 42), so the frame is ~78".
+if (!nearInch(bunk.overall.depth, 78)) failHonesty("bunk twin depth ~78 (75 mattress + posts)", bunk.overall);
+if (!bunk.notes.some((n) => /\b75"/.test(n))) failHonesty("bunk note names the 75\" twin mattress", bunk.notes);
 if (!nearInch(bunk.overall.height, 65)) failHonesty("bunk height ~65", bunk.overall);
 const bunkDecks = bunk.panels.filter((p) => p.type === "deck");
 if (bunkDecks.length < 2) failHonesty("bunk needs two sleep decks", bunk.panels.map((p) => p.name));
@@ -4622,7 +4626,7 @@ console.log("SOFT-TRUST OK", {
   if (loungeKind !== "lounge_chair") failHonesty("b38b lounge Measure kind stem", loungeKind);
   const loungePlan = buildPlan(lounge);
   const loungeTitles = loungePlan.instructions.map((s) => s.title).join(" | ");
-  if (!/Attach the seat/i.test(loungeTitles)) failHonesty("b38b lounge attach seat step", loungeTitles);
+  if (!/Attach (?:the )?(?:[A-Z]{1,2} )?seat/i.test(loungeTitles)) failHonesty("b38b lounge attach seat step", loungeTitles);
   if (!/Attach the back/i.test(loungeTitles)) failHonesty("b38b lounge attach back step", loungeTitles);
   if (/^Confirm.*\|.*Cut.*\|.*Level it$/i.test(loungeTitles.replace(/\s+/g, " "))) {
     failHonesty("b38b lounge still thin Confirm/Cut/Level", loungeTitles);
@@ -4649,7 +4653,7 @@ console.log("SOFT-TRUST OK", {
   if (rockKind !== "rocking_chair") failHonesty("b38b rocking Measure kind stem", rockKind);
   const rockPlan = buildPlan(rock);
   const rockTitles = rockPlan.instructions.map((s) => s.title).join(" | ");
-  if (!/Attach the seat/i.test(rockTitles)) failHonesty("b38b rocking attach seat step", rockTitles);
+  if (!/Attach (?:the )?(?:[A-Z]{1,2} )?seat/i.test(rockTitles)) failHonesty("b38b rocking attach seat step", rockTitles);
   if (!/Attach the back/i.test(rockTitles)) failHonesty("b38b rocking attach back step", rockTitles);
   if (!/Mount the rockers/i.test(rockTitles)) failHonesty("b38b rocking mount rockers step", rockTitles);
 
@@ -4808,7 +4812,7 @@ console.log("SOFT-TRUST OK", {
   }
   if (seatPanel.size.width < 29) failHonesty("seatW lounge Seat panel still leg-inset", seatPanel.size);
   const loungePlan = buildPlan(lounge);
-  if (!loungePlan.instructions.some((s) => /Attach the seat/i.test(s.title))) {
+  if (!loungePlan.instructions.some((s) => /Attach (?:the )?(?:[A-Z]{1,2} )?seat/i.test(s.title))) {
     failHonesty("seatD lounge Attach the seat densify", loungePlan.instructions.map((s) => s.title));
   }
   const seatCut = loungePlan.cutList.find((c) => /^Seat$/i.test(c.name));
@@ -6089,7 +6093,9 @@ console.log("STRANGER PLAN OK", {
     if (/W\s*×\s*H\s*×\s*D/i.test(refitTalk.checkSuggestion) || /W\s*×\s*H\s*×\s*D/i.test(refitTalk.panelBlurb)) {
       failVoice2("round Measure refit talk still W×H×D", refitTalk);
     }
-    if (!/Dia\s*×\s*H/i.test(refitTalk.checkSuggestion) || !/Dia\s*×\s*H/i.test(refitTalk.panelBlurb)) {
+    // Plain words ("diameter and height") and the short form (Dia × H) name the same two axes.
+    const diaH = /Dia\s*×\s*H|diameter and height/i;
+    if (!diaH.test(refitTalk.checkSuggestion) || !diaH.test(refitTalk.panelBlurb)) {
       failVoice2("round Measure refit talk missing Dia×H", refitTalk);
     }
     const roundPlan = buildPlan(round);
@@ -6099,7 +6105,7 @@ console.log("STRANGER PLAN OK", {
     if (/Change\s+W\s*×\s*H\s*×\s*D\s+to\s+refit/i.test(sug)) {
       failVoice2("round Check suggestion still Change W×H×D to refit", sug);
     }
-    if (!/Change\s+Dia\s*×\s*H\s+to\s+refit/i.test(sug)) {
+    if (!/Change\s+(?:Dia\s*×\s*H|diameter and height)\s+to\s+refit/i.test(sug)) {
       failVoice2("round Check suggestion missing Change Dia×H to refit", sug);
     }
   }
@@ -6320,7 +6326,8 @@ console.log("STRANGER PLAN OK", {
     if (/the unit/i.test(talk.hudCompanion)) {
       failHonesty("bare HUD companion must not say the unit", talk.hudCompanion);
     }
-    if (!/type Measure to lock size/i.test(talk.hudCompanion)) {
+    // The bench button reads "Size" once built ("Measure" before); either name is the same action.
+    if (!/type (?:Measure|Size) to lock (?:the )?size/i.test(talk.hudCompanion)) {
       failHonesty("bare HUD companion action copy", talk.hudCompanion);
     }
     if (!/No size typed yet/i.test(talk.panelBlurb)) {

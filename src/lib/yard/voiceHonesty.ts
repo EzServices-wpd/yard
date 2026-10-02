@@ -257,6 +257,10 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[]): string {
       const after = whole.slice(offset + m.length);
       // "A Wall panel A" is already lettered. A lowercase word in front ("Stand ") is not.
       if (/[A-Z]\s$/.test(prior)) return m;
+      // A hyphenated compound ("shelf-pin spacing", "top-down") uses the word as a modifier, not the part.
+      if (/^-[a-z]/i.test(after) || /[a-z]-$/i.test(prior)) return m;
+      // An indefinite reference ("over an open shelf", "a top") is any such part, not the lettered one.
+      if (/\b(?:a|an)\s+(?:[a-z]+\s+)?$/i.test(prior) && !/\b(?:a|an)\s+(?:left|right|drawer)\s+$/i.test(prior)) return m;
       // "B Left door" already carries the plate letter — do not stamp "door" again ("B Left B door").
       if (/\b[A-Z]\s+(?:Left|Right|Drawer)\s+$/i.test(prior)) return m;
       // "from top and bottom" is the edge of the piece, not the Top and Bottom panels.
