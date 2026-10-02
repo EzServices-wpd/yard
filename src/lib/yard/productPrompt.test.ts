@@ -83,3 +83,26 @@ describe("a cooler stays the cooler", () => {
     assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
   });
 });
+
+describe("a storage box stays the box", () => {
+  it("places a Sterilite 6 qt box, and a shelf keeps it, instead of a closet", () => {
+    const box = generateFromPrompt("Sterilite 6 qt storage box");
+    assert.equal(box.kind, "custom");
+    assert.notEqual(box.kind, "closet");
+    const item = getCatalogItem(box.instances[0].catalogId);
+    assert.equal(item?.shape, "block");
+    assert.equal(item?.dims.length, 13.5);
+    assert.equal(item?.dims.width, 8);
+    assert.equal(item?.dims.height, 4.625);
+    assert.match(item?.notes ?? "", /13\.5/);
+    assert.ok(!box.notes.some((note) => /carcase|plywood/i.test(note)));
+
+    const shelf = generateFromPrompt("shelf for a Sterilite 6 qt box");
+    assert.notEqual(shelf.kind, "closet");
+    const held = getCatalogItem(shelf.instances[0].catalogId);
+    assert.equal(held?.shape, "block");
+    assert.equal(held?.dims.length, 13.5);
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+  });
+});

@@ -192,7 +192,8 @@ export function shapeOf(text: string): StockShape {
   if (/\b(buckets?|pails?)\b/.test(q)) return "bucket";
   if (/\btraffic\s*cones?\b/.test(q)) return "bucket";
   if (/\b(padlocks?)\b/.test(q)) return "block";
-  if (/\b(totes?|storage\s+bins?)\b/.test(q)) return "block";
+  if (/\b(totes?|storage\s+bins?|storage\s+box(?:es)?|latching\s+box(?:es)?)\b/.test(q)) return "block";
+  if (/sterilite/.test(q) && /\b(box(?:es)?|bins?|totes?)\b/.test(q)) return "block";
   if (/\b(toilet\s*paper|paper\s*towels?|duct\s*tape|masking\s*tape|extension\s*cords?|cords?|ropes?|hoses?)\b/.test(q)) return "roll";
   if (/\b(crates?|cinder|cmu|pavers?|bricks?)\b/.test(q) || /\bconcrete\s+blocks?\b/.test(q)) return "block";
   if (/\b(wd-?\s*40|aerosol|spray\s*paint)\b/.test(q)) return "can";
@@ -265,6 +266,8 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /cat\s*trees?/.test(q), over: { shape: "object", length: 60, width: 20, height: 20, color: "#c8bfb0", note: "Usual cat tree, about 60″ tall. Not this tree’s drawing." } },
   { match: (q) => /rubber\s*ducks?|\bducks?\b/.test(q), over: { shape: "object", length: 4.2, width: 3.5, height: 3.5, color: "#f2c14e", note: "Usual rubber duck, about 4.2″ long. Not this duck’s drawing." } },
   { match: (q) => /gnomes?/.test(q), over: { shape: "object", length: 12, width: 5, height: 4, color: "#c23b3b", note: "Usual garden gnome, about 12″ tall. Not this gnome’s drawing." } },
+  { match: (q) => /sterilite/.test(q) && /\b6\b/.test(q) && /box|bin/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Sterilite 6 qt storage box, 13.5″ × 8″ × 4.625″. Listing outside size." } },
+  { match: (q) => /\b(storage\s+box(?:es)?|storage\s+bins?|latching\s+box(?:es)?)\b/.test(q), over: { shape: "block", length: 13.5, width: 8, height: 4.625, color: "#e7eef2", note: "Usual small storage box, about 13.5″ × 8″ × 4.6″. Not this box’s drawing." } },
   { match: (q) => /igloo/.test(q) && /cooler/.test(q), over: { shape: "block", length: 14.5, width: 10.9, height: 13.91, color: "#d7e4ee", note: "Igloo Latitude 16 qt cooler, 14.5″ × 10.9″ × 13.91″. Listing outside size." } },
   { match: (q) => /\bcoolers?\b/.test(q) && !/wine/.test(q), over: { shape: "block", length: 16, width: 12, height: 13, color: "#d7e4ee", note: "Usual picnic cooler, about 16″ × 12″ × 13″. Not this cooler’s drawing." } },
 ];
@@ -275,9 +278,16 @@ const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|clos
  * A sentence that names a product and not a thing to build for it.
  * "Dasani bottle" is the bottle. "bottle shelf" and "wine rack" are builds.
  */
+/** A sold box is the piece. "Storage" alone still means a unit to build. */
+function isSoldStorageBox(q: string): boolean {
+  if (/\b(shel(?:f|ves)|racks?|stands?|holders?|cabinets?|closets?)\b/.test(q)) return false;
+  return /\b(storage\s+box(?:es)?|storage\s+bins?|latching\s+box(?:es)?)\b/.test(q)
+    || (/sterilite/.test(q) && /\b(box(?:es)?|bins?|totes?)\b/.test(q));
+}
+
 export function isBareProductPrompt(prompt: string): boolean {
   const q = prompt.trim().toLowerCase();
-  if (q.length < 3 || BUILD_NOUN.test(q)) return false;
+  if (q.length < 3 || (BUILD_NOUN.test(q) && !isSoldStorageBox(q))) return false;
   if (/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(q)) return false;
   if (SPECS.some((row) => row.match(q))) return true;
   return shapeOf(q) !== "object";
