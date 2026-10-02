@@ -233,8 +233,16 @@ export function densifyPartsPlateTalk(text: string, cutList: CutLine[]): string 
     const re = new RegExp(`\\b(${esc})\\b`, "gi");
     out = out.replace(re, (m, _g: string, offset: number, whole: string) => {
       const prior = whole.slice(0, offset);
+      const after = whole.slice(offset + m.length);
       // "A Wall panel A" is already lettered. A lowercase word in front ("Stand ") is not.
       if (/[A-Z]\s$/.test(prior)) return m;
+      // "B Left door" already carries the plate letter — do not stamp "door" again ("B Left B door").
+      if (/\b[A-Z]\s+(?:Left|Right|Drawer)\s+$/i.test(prior)) return m;
+      // "from top and bottom" is the edge of the piece, not the Top and Bottom panels.
+      if (/^(top|bottom)$/i.test(m) && /\bfrom\s+(?:the\s+)?$/i.test(prior)) return m;
+      if (/^(top|bottom)$/i.test(m) && /^\s+and\s+(top|bottom)\b/i.test(after)) return m;
+      if (/^(top|bottom)$/i.test(m) && /^\s+edge\b/i.test(after)) return m;
+      if (/^top$/i.test(m) && /\bon\s+$/i.test(prior) && /^\s+of\b/i.test(after)) return m;
       const buried = byLen.some((longer) => {
         if (longer.name.length <= e.name.length) return false;
         if (!longer.name.toLowerCase().endsWith(e.name.toLowerCase())) return false;
