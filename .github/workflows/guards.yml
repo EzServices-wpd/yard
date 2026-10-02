@@ -14,7 +14,8 @@ on:
 
 concurrency:
   group: guards-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep every main run (one per push); only superseded PR runs are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   guards:
