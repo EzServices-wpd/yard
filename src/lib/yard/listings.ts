@@ -536,7 +536,8 @@ export const LISTINGS: ListingOffer[] = [
     retailer: "amazon",
     title: "Soft-close concealed cabinet hinges, pair",
     href: "https://www.amazon.com/s?k=soft+close+concealed+cabinet+hinges",
-    packQty: 2,
+    // Sold as a pair. Buy quantity is pairs (one pair per door), not individual hinges.
+    packQty: 1,
     packPrice: 8.99,
     lengthIn: 0,
     checkedAt: CHECK,
