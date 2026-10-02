@@ -55,12 +55,16 @@ export function buildForgeBom(
     const unitCost = item.unitCostUsd;
 
     const whole = isWholeStock(item) && data.cuts.length === 0;
-    // Cut craft sticks: short cuts share a stick (first-fit, longest first), so the packs follow the
-    // sticks actually used, not one stick per piece.
+    // Cut sticks, pipe, and boards: short cuts share a stock length (first-fit, longest first),
+    // so the packs follow the sticks actually used, not one stick per piece.
+    const linearCut =
+      data.cuts.length > 0 &&
+      item.canCut !== false &&
+      (isWholeStock(item) || item.formFactor === "pipe" || item.formFactor === "board");
     let sticksUsed = 0;
-    if (isWholeStock(item) && data.cuts.length > 0) {
+    if (linearCut) {
       const S = Math.max(0.5, toPrimitive(item).length);
-      const snip = 0.0625;
+      const snip = isWholeStock(item) ? 0.0625 : 0.125;
       const room: number[] = [];
       for (const c of [...data.cuts].sort((a, b) => b - a)) {
         const need = Math.min(S, c);
