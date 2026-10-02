@@ -28,3 +28,17 @@ describe("named product on the bench", () => {
     assert.equal(getCatalogItem(driver.instances[0].catalogId)?.shape, "tool");
   });
 });
+
+describe("a stand keeps the tank", () => {
+  it("builds a 20 lb propane tank stand around the cylinder", () => {
+    const project = generateFromPrompt("stand for a 20 lb propane tank");
+    assert.match(project.name, /propane/i);
+    assert.equal(project.kind, "custom");
+    const item = getCatalogItem(project.instances[0].catalogId);
+    assert.equal(item?.shape, "tank");
+    assert.ok((item?.dims.diameter ?? 0) > 10);
+    assert.ok((item?.dims.length ?? 0) > 14);
+    assert.ok(project.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!project.notes.some((note) => /popsicle|creature|quadruped/i.test(note)));
+  });
+});

@@ -280,12 +280,20 @@ export function productEnvelope(query: string): Envelope | null {
   const usual = USUAL[shape];
   const named = NAMED.find((row) => row.match(q));
   const name = niceName(query, named?.over.shape ?? shape);
-  return {
+  const env: Envelope = {
     ...usual,
     ...named?.over,
     name,
     id: `${named?.over.shape ?? shape}-${hash(name.toLowerCase())}`,
   };
+  // A 20 lb grill cylinder is a published size, not the skinny usual tank.
+  if (shape === "tank" && /20\s*-?\s*lb/.test(q) && /propane/.test(q)) {
+    env.length = 18;
+    env.diameter = 12.2;
+    env.width = 12.2;
+    env.note = "20 lb propane tank, about 18\u2033 tall and 12.2\u2033 across. Usual cylinder, not this tank\u2019s stamp.";
+  }
+  return env;
 }
 
 export function modeledProduct(query: string): CatalogItem | null {

@@ -19,7 +19,7 @@ import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import type { BuildScale, CatalogItem, JoinMethod, StructureKind, YardInstance, YardProject } from "./types";
+import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
@@ -302,6 +302,89 @@ function placeOwnedBoard(prompt: string): YardProject | null {
   };
 }
 
+
+/** A stand for a tank, can, or ball keeps that object. Not a popsicle creature, not a plywood box. */
+function placeHeldProduct(prompt: string): YardProject | null {
+  const lower = prompt.toLowerCase();
+  if (!/\b(stands?|holders?|cradles?)\b/.test(lower)) return null;
+  if (!/\b(tanks?|propane|bottles?|cans?|goggles|balls?)\b/.test(lower)) return null;
+  const item = modeledProduct(prompt);
+  if (!item?.shape || item.shape === "object") return null;
+  rememberCatalogItem(item);
+  const tall = item.dims.length ?? 18;
+  const across = item.dims.diameter ?? item.dims.width ?? 8;
+  const post = 1.5;
+  const span = across + 4;
+  const legH = 14;
+  const x0 = -span / 2;
+  const z0 = -span / 2;
+  const corners: [number, number][] = [
+    [x0, z0],
+    [x0 + span - post, z0],
+    [x0, z0 + span - post],
+    [x0 + span - post, z0 + span - post],
+  ];
+  const panels: Panel[] = corners.map(([x, z], i) => ({
+    id: createId("panel"),
+    type: "upright",
+    name: `Stand post ${i + 1}`,
+    position: { x, y: 0, z },
+    size: { width: post, height: legH, depth: post },
+    materialId: "lumber-2x2-8",
+    cutNote: "2x2 post at a corner, outside the cylinder.",
+  }));
+  const railT = 1.5;
+  panels.push({
+    id: createId("panel"),
+    type: "rail",
+    name: "Near rail",
+    position: { x: x0, y: legH - railT, z: z0 },
+    size: { width: span, height: railT, depth: railT },
+    materialId: "lumber-2x4-8",
+    cutNote: "2x4 rail. The tank sits in the opening, not on a plywood deck.",
+  });
+  panels.push({
+    id: createId("panel"),
+    type: "rail",
+    name: "Far rail",
+    position: { x: x0, y: legH - railT, z: z0 + span - railT },
+    size: { width: span, height: railT, depth: railT },
+    materialId: "lumber-2x4-8",
+    cutNote: "2x4 rail. Opening stays clear for the tank.",
+  });
+  const pos = { x: 0, y: legH + tall / 2, z: 0 };
+  return {
+    id: createId("proj"),
+    name: item.name,
+    prompt,
+    kind: "custom",
+    overall: { width: span, height: legH + tall, depth: span },
+    instances: [
+      {
+        id: createId("inst"),
+        catalogId: item.id,
+        position: pos,
+        rotation: { x: 0, y: 0, z: 0 },
+        cutLength: tall,
+        role: "member",
+        home: pos,
+      },
+    ],
+    panels,
+    primaryMaterialId: "lumber-2x2-8",
+    notes: [
+      item.notes || `${item.name} at its usual size.`,
+      "The tank is the cylinder in the stand. Posts and rails stay outside it.",
+    ],
+    assumptions: {
+      load: "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+    },
+  };
+}
+
 /** A named product is the piece, not a carcase that happens to mention a bottle. */
 function placeNamedProduct(prompt: string): YardProject | null {
   if (!isBareProductPrompt(prompt)) return null;
@@ -368,6 +451,8 @@ function generateRaw(
   if (owned && !formOverride) return owned;
   const placed = placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
+  const held = placeHeldProduct(prompt);
+  if (held && !formOverride) return held;
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
   const scale = opts.scale ?? "full";
