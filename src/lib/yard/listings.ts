@@ -1118,6 +1118,11 @@ function guessCatalogId(line: BomLine): string | null {
   return line.catalogId ?? null;
 }
 
+/** Store search links priced at an estimate (no checked listing, so no "Best"). */
+export function estimateOffers(query: string, qty: number, lineTotal: number): ShopOffer[] {
+  return searchOffers(query, undefined, qty, lineTotal);
+}
+
 function searchOffers(
   query: string,
   asin: string | undefined,

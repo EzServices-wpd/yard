@@ -1,6 +1,10 @@
 import type { BomLine, YardInstance } from "./types";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
+import { kerfFor, packLengths } from "./linearPack";
+
+/** Stock bought by length. */
+const LINEAR_FORMS = new Set(["stick", "dowel", "tube", "pipe", "board"]);
 
 export type ForgeBomLine = {
   catalogId: string;
@@ -24,6 +28,17 @@ export type ForgeBomResult = {
   primaryMaterialId: string | null;
 };
 
+/** What one stock piece is called on Buy, read from the stock's own name ("Bamboo Skewer 12\"" → skewer). */
+function stockNoun(name: string): string {
+  const m = name.toLowerCase().match(/\b(skewer|dowel|stick|pipe|tube|rod|board|straw|stud)s?\b/);
+  return m ? m[1] : "stick";
+}
+
+function isCutLinear(catalogId: string): boolean {
+  const item = getCatalogItem(catalogId);
+  return !!item && item.canCut !== false && !isWholeStock(item) && LINEAR_FORMS.has(item.formFactor);
+}
+
 export function buildForgeBom(
   instances: YardInstance[],
   primaryMaterialId?: string | null,
@@ -34,6 +49,10 @@ export function buildForgeBom(
     const entry = byId.get(inst.catalogId) ?? { count: 0, cuts: [] };
     entry.count += 1;
     if (inst.cutLength != null) entry.cuts.push(inst.cutLength);
+    else if (inst.from && inst.to && isCutLinear(inst.catalogId)) {
+      // A drawn member on cut-to-length stock is a cut at its span, not a whole stick.
+      entry.cuts.push(Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z));
+    }
     byId.set(inst.catalogId, entry);
   }
 
@@ -55,24 +74,16 @@ export function buildForgeBom(
     const unitCost = item.unitCostUsd;
 
     const whole = isWholeStock(item) && data.cuts.length === 0;
-    // Cut sticks, pipe, and boards: short cuts share a stock length (first-fit, longest first),
-    // so the packs follow the sticks actually used, not one stick per piece.
+    // Anything bought by length and cut (craft sticks, dowels, tube, pipe, boards): cuts share a stock
+    // length through the one linear packer, so Buy follows the sticks actually used, not one per piece.
     const linearCut =
       data.cuts.length > 0 &&
       item.canCut !== false &&
-      (isWholeStock(item) || item.formFactor === "pipe" || item.formFactor === "board");
+      (isWholeStock(item) || LINEAR_FORMS.has(item.formFactor));
     let sticksUsed = 0;
     if (linearCut) {
-      const S = Math.max(0.5, toPrimitive(item).length);
-      const snip = isWholeStock(item) ? 0.0625 : 0.125;
-      const room: number[] = [];
-      for (const c of [...data.cuts].sort((a, b) => b - a)) {
-        const need = Math.min(S, c);
-        const k = room.findIndex((r) => r + 1e-6 >= need);
-        if (k >= 0) room[k] -= need + snip;
-        else room.push(S - need - snip);
-      }
-      sticksUsed = room.length + (data.count - data.cuts.length);
+      const pack = packLengths(data.cuts, toPrimitive(item).length, kerfFor(item, isWholeStock(item)));
+      sticksUsed = pack.sticks + (data.count - data.cuts.length);
       packsNeeded = Math.ceil(sticksUsed / Math.max(1, unitsPerPack));
     }
     const uniqueCuts = [
@@ -103,7 +114,7 @@ export function buildForgeBom(
       notes = whole
         ? `${data.count} full pieces. Glue. Do not cut.`
         : (item.canCut ?? true) && uniqueCuts.length
-          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole stick${sticksUsed === 1 ? "" : "s"}` : ""}`
+          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}`
           : item.notes;
     }
 

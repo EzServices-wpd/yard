@@ -908,21 +908,24 @@ export function weekendCutLines(project: YardProject): CutLine[] {
     // Towel/blanket ladder climb cut parts: Rung not Rail (role stays rail for anatomy counts).
     let family = (inst.role || "member").replace(/^\w/, (c) => c.toUpperCase());
     if (ladderRungs && inst.role === "rail") family = "Rung";
-    const key = `${inst.catalogId}|${family}|${len}`;
+    // The row's section is the member as drawn (ripped strip or the row's own stock), never the primary sheet's width.
+    const rowItem = getCatalogItem(inst.catalogId) ?? item;
+    const rowW = inst.section?.width ?? rowItem.dims.width ?? rowItem.dims.diameter ?? width;
+    const rowT = inst.section?.height ?? rowItem.dims.thickness ?? rowItem.dims.height ?? rowItem.dims.diameter ?? thick;
+    const key = `${inst.catalogId}|${family}|${len}|${rowW}x${rowT}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.quantity += 1;
       continue;
     }
-    const rowItem = getCatalogItem(inst.catalogId) ?? item;
     const rowLabel = namedStockDisplayName(project.prompt ?? "", rowItem);
     grouped.set(key, {
       id: key,
       name: family,
       quantity: 1,
       lengthIn: len,
-      widthIn: width,
-      thicknessIn: thick,
+      widthIn: rowW,
+      thicknessIn: rowT,
       material: rowLabel,
       whole: false,
     });

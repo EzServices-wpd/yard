@@ -1,22 +1,25 @@
 import { getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
-import { isWholeStock, toPrimitive } from "./geometry";
+import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
-import { decorateBom } from "./listings";
+import { decorateBom, estimateOffers } from "./listings";
+import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
-import { spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
+import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND, namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { planSolidBoards } from "./solidStock";
+import { packLengths } from "./linearPack";
+import { panelJoints, screwTalk } from "./modelJoints";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
-import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, YardProject } from "./types";
+import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
 import { panelStock } from "./partStock";
 import { backReachesTwoStuds, STUD_CENTER_IN } from "./fitted";
@@ -198,11 +201,34 @@ function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
   });
 }
 
+function panelBox(p: Panel) {
+  const c = panelWorldCorners(p);
+  const xs = c.map((q) => q.x), ys = c.map((q) => q.y), zs = c.map((q) => q.z);
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+}
+
+/** A shelf with a standing panel (side, upright, divider, back-to-front wall) at each end, beside it at its height. */
+export function shelfSpansUprights(shelf: Panel, panels: Panel[]): boolean {
+  const s = panelBox(shelf);
+  const tol = 0.26;
+  const ends = { left: false, right: false };
+  for (const q of panels) {
+    if (q === shelf || q.type === "shelf" || q.type === "top" || q.type === "bottom" || q.type === "back") continue;
+    const b = panelBox(q);
+    const standing = b.maxY - b.minY > Math.max(b.maxX - b.minX, 0.8) && b.maxZ - b.minZ > 0.8;
+    if (!standing) continue;
+    if (b.minY > s.maxY + tol || b.maxY < s.minY - tol) continue;
+    if (b.minZ > s.maxZ - 0.5 || b.maxZ < s.minZ + 0.5) continue;
+    if (Math.abs(b.maxX - s.minX) <= tol || (b.minX <= s.minX + tol && b.maxX >= s.minX - tol && b.maxX <= s.minX + 1)) ends.left = true;
+    if (Math.abs(b.minX - s.maxX) <= tol || (b.maxX >= s.maxX - tol && b.minX <= s.maxX + tol && b.minX >= s.maxX - 1)) ends.right = true;
+  }
+  return ends.left && ends.right;
+}
+
 function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = planSheetNest(cuts)): BuildPlan["bom"] {
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   // Join-screw estimate from honest cut wood qty (drawer explode + plies), not raw panels.length.
   const woodPieces = cuts.reduce((s, c) => s + c.quantity, 0);
-  const screws = Math.max(16, woodPieces * 6);
   const isTable = project.fitted?.program === "table";
   const namedLumber = namedStockFromPrompt(project.prompt ?? "");
   const coatHookBoard =
@@ -212,7 +238,8 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   const allLegCuts = cuts.filter(isLumberLegCut);
   // Named-wood legs are laminated from the leg species' 1×4 boards (cut line id carries the bind).
   const namedLegCuts = allLegCuts.filter((c) => c.id.startsWith(`${CATALOG_LUMBER_BIND}|`));
-  const legCuts = allLegCuts.filter((c) => !namedLegCuts.includes(c));
+  // Legs cut from plywood ride on the sheet nest with every other sheet part (Buy counts sheets once).
+  const legCuts = allLegCuts.filter((c) => !namedLegCuts.includes(c) && !isSheetStockCut(c));
   const namedLegLabel = namedLegCuts[0]?.material ?? "";
   const namedLegQty = namedLegCuts.reduce((s, c) => s + c.quantity, 0);
   const legStripParts = namedLegCuts.map((c) => ({ name: "Leg strip", lengthIn: c.lengthIn + 1, widthIn: 1.5, qty: 2 * c.quantity }));
@@ -230,11 +257,15 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   const sheets10 = counted.on10;
   const unplaced = counted.unplaced;
 
+  // A build made of one board stock (glue-ups and rips from that board). A frame of lumber under a
+  // plywood deck is not: its plywood rides the sheet nest and its lumber goes through the linear packer.
   const boardPrimary =
     !!sheet &&
     sheet.category === "lumber" &&
     sheet.formFactor === "board" &&
-    project.primaryMaterialId !== CATALOG_LUMBER_BIND;
+    project.primaryMaterialId !== CATALOG_LUMBER_BIND &&
+    !structural.some((c) => isSheetStockCut(c)) &&
+    structural.every((c) => c.id.startsWith(`${project.primaryMaterialId}|`));
 
   const bom: BuildPlan["bom"] = [];
   let frameBought = false;
@@ -396,9 +427,15 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
         ? honestBuyWoodQty(structuralQty)
         : nestSheetQty;
       // Named-species primary bind (board densify): Buy lead speaks densifyLabel.
+      // The nest line buys the sheet the parts are nested on (a 2×2 frame's deck is plywood, not 2×2).
+      const nestStock =
+        (sheet?.formFactor === "sheet" ? sheet : undefined) ??
+        getCatalogItem((structural.find((c) => isSheetStockCut(c))?.id ?? "").split("|")[0]) ??
+        getCatalogItem("plywood-3-4-4x8");
+      const buySheet = isNamedLumberPrimary ? sheet : nestStock;
       const sheetName = isNamedLumberPrimary
         ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber!)
-        : (sheet?.name ?? '3/4" plywood 4x8');
+        : (buySheet?.name ?? '3/4" plywood 4x8');
       bom.push({
         name: sheetName,
         quantity: n,
@@ -409,9 +446,9 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
           : n === 1
             ? "sheet"
             : "sheets",
-        catalogId: sheet?.id ?? "plywood-3-4-4x8",
-        searchQuery: sheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
-        estimatedCost: (sheet?.unitCostUsd ?? 38.43) * n,
+        catalogId: buySheet?.id ?? "plywood-3-4-4x8",
+        searchQuery: buySheet?.searchQuery ?? '3/4" x 4x8 sanded plywood',
+        estimatedCost: (buySheet?.unitCostUsd ?? 38.43) * n,
         notes: (() => {
           const base = isNamedLumberPrimary
             ? honestNamedLumberBuyWoodNote({ qty: n, legQty: legQtyForNote })
@@ -420,7 +457,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
                   ? " Some faces are splice segments — butt-join before assembly."
                   : ""
               }${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
-          const species = speciesStockHonestyTalk(project.prompt ?? "", sheet?.name ?? '3/4" plywood');
+          const species = speciesStockHonestyTalk(project.prompt ?? "", buySheet?.name ?? '3/4" plywood');
           return species ? `${base} ${species}` : base;
         })(),
       });
@@ -457,63 +494,41 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       notes: `${legPlan.boards} × 8 ft ${namedLegLabel} (¾" × 3½") for the ${namedLegQty} leg${namedLegQty === 1 ? "" : "s"} — each laminated from two 1 1/2" strips ripped from the board. Packed from the cut list with 1/8" kerf and 1" trim.`,
     });
   }
-  if (legCuts.length) {
-    const legQty = legCuts.reduce((s, c) => s + c.quantity, 0);
-    const legLen = legCuts[0]?.lengthIn ?? 30;
-    const legId =
-      project.panels.find((p) => /^leg\b/i.test(p.name))?.materialId ?? "lumber-2x2-8";
-    const legItem = getCatalogItem(legId);
-    bom.push({
-      name: legItem?.name ?? '2x2 (1-1/2" actual)',
-      quantity: legQty,
-      unit: legQty === 1 ? "pc" : "pcs",
-      catalogId: legItem?.id ?? "lumber-2x2-8",
-      searchQuery: legItem?.searchQuery ?? "2x2x8 pine poplar",
-      estimatedCost: (legItem?.unitCostUsd ?? 6.5) * legQty,
-      notes: `${legQty} table leg${legQty === 1 ? "" : "s"} · cut to ${legLen}" each · solid lumber, not sheet goods.`,
-    });
+  // Every solid-lumber part (legs, 2× rails and bearers, posts) is bought by stock length through the one
+  // linear packer, grouped per stock. Named-species boards and plywood are bought above.
+  const otherLumber =
+    boardPrimary || solidNamedBuy
+      ? []
+      : structural.filter(
+          (c) => /^lumber-/.test(c.id) && !c.id.startsWith(`${CATALOG_LUMBER_BIND}|`) && !stickBoards.includes(c) && (c.thicknessIn ?? 0) > 1,
+        );
+  const lumberCuts = [...legCuts, ...(frameBought ? [] : stickBoards), ...otherLumber];
+  const byStock = new Map<string, CutLine[]>();
+  for (const c of lumberCuts) {
+    const legPanel = /^leg$/i.test(c.name) ? project.panels.find((p) => /^leg\b/i.test(p.name))?.materialId : undefined;
+    const id = (c.id.split("|")[0] || legPanel || "lumber-2x2-8").replace(/^plywood-.*/, "lumber-2x2-8");
+    const list = byStock.get(id) ?? [];
+    list.push(c);
+    byStock.set(id, list);
   }
-  if (stickBoards.length && !frameBought) {
-    const byStock = new Map<string, typeof stickBoards>();
-    for (const c of stickBoards) {
-      const id = c.id.split("|")[0] || "lumber-2x4-8";
-      const list = byStock.get(id) ?? [];
-      list.push(c);
-      byStock.set(id, list);
-    }
-    for (const [id, lines] of byStock) {
-      const item = getCatalogItem(id);
-      const stockLen = item?.dims.length ?? 96;
-      const lengths: number[] = [];
-      for (const c of lines) {
-        for (let i = 0; i < c.quantity; i++) lengths.push(Math.max(c.lengthIn, c.widthIn));
-      }
-      lengths.sort((a, b) => b - a);
-      const free: number[] = [];
-      for (const L of lengths) {
-        const kerf = 0.125;
-        let placed = false;
-        for (let i = 0; i < free.length; i++) {
-          if (free[i] >= L + kerf) {
-            free[i] -= L + kerf;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) free.push(stockLen - L);
-      }
-      const qty = Math.max(1, free.length);
-      const pieceQty = lines.reduce((s, c) => s + c.quantity, 0);
-      bom.push({
-        name: item?.name ?? "2×4 Stud (8 ft)",
-        quantity: qty,
-        unit: qty === 1 ? "pc" : "pcs",
-        catalogId: id,
-        searchQuery: item?.searchQuery ?? "2x4x8 stud",
-        estimatedCost: (item?.unitCostUsd ?? 5.5) * qty,
-        notes: `${pieceQty} bearer${pieceQty === 1 ? "" : "s"} under the deck · cut from ${qty} × 8 ft · solid lumber, not sheet goods.`,
-      });
-    }
+  for (const [id, lines] of byStock) {
+    const item = getCatalogItem(id);
+    const stockLen = item?.dims.length ?? 96;
+    const lengths = lines.flatMap((c) => Array.from({ length: c.quantity }, () => Math.max(c.lengthIn, c.widthIn)));
+    const qty = Math.max(1, packLengths(lengths, stockLen, 0.125).sticks);
+    const pieceQty = lengths.length;
+    const feet = Math.round(stockLen / 12);
+    const names = [...new Set(lines.map((c) => c.name.toLowerCase()))];
+    const lens = [...new Set(lengths.map((n) => Math.round(n * 16) / 16))].sort((a, b) => b - a).map((n) => `${inchFrac(n)}"`).join(", ");
+    bom.push({
+      name: item?.name ?? "2×4 Stud (8 ft)",
+      quantity: qty,
+      unit: qty === 1 ? "pc" : "pcs",
+      catalogId: id,
+      searchQuery: item?.searchQuery ?? "2x4x8 stud",
+      estimatedCost: (item?.unitCostUsd ?? 5.5) * qty,
+      notes: `${pieceQty} part${pieceQty === 1 ? "" : "s"} (${names.join(", ")}) cut to ${lens}, from ${qty} × ${feet} ft solid lumber with 1/8" kerf.`,
+    });
   }
   if (thinBacks.length) {
     const thinQty = thinBacks.reduce((s, c) => s + c.quantity, 0);
@@ -600,13 +615,19 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   // Template builds that declare glue-only joinery (mitered frames) take no screws.
   const glueOnly = !!project.shape?.params?.glueOnly;
+  // Shelves on pins (the same rule the pin line below uses) take no screws.
+  const pinShelves =
+    !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
+    !wantsRackAffordance(project.prompt ?? "") && !wantsFixedGlueShelves(project);
+  const pinned = (p: Panel) => pinShelves && p.type === "shelf" && shelfSpansUprights(p, project.panels);
+  const modelScrews = screwTalk(panelJoints(project.panels, (a, b) => pinned(a) || pinned(b)));
   if (!headboard && !glueOnly) {
     const cornerUnit = project.fitted?.unit?.corner;
     const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
     const cornerWallPanelScrews = cornerUnit && !cornerUnit.wallHung ? Math.max(4, Math.ceil(cornerUnit.height / 8)) : 0;
     const joinScrews = cornerUnit
       ? cornerShelves * 4 + cornerWallPanelScrews
-      : floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : screws;
+      : floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : Math.max(4, modelScrews.screws);
     bom.push({
       name: '#8 x 1-1/4" wood screws',
       quantity: Math.ceil(joinScrews / SCREWS_PER_BOX),
@@ -622,7 +643,9 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
         ? hasBrackets
           ? `${joinScrews} screws shelf into brackets (no carcase joints).`
           : `${joinScrews} screws shelf into cleat (no carcase joints).`
-        : `${joinScrews} screws estimated at joints.`,
+        : modelScrews.screws >= 4
+          ? modelScrews.note
+          : `${joinScrews} screws for the few joints in the model.`,
     });
   }
   // Drawer fronts are typed as rail with "Drawer front" names — slides count boxes only.
@@ -874,7 +897,9 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       notes: `One pair of sockets/flanges per hanging rod (${hangingRods.length} rod${hangingRods.length === 1 ? "" : "s"}). Seat on that bay's uprights or dividers. A rod cannot pass through a divider.`,
     });
   }
-  const shelfCount = project.panels.filter((panel) => panel.type === "shelf").length;
+  // Pins hold a shelf that spans between two uprights (sides, dividers). A shelf screwed down on a
+  // frame, a profile or legs has nothing to drill, so it buys no pins.
+  const shelfCount = project.panels.filter((panel) => panel.type === "shelf" && shelfSpansUprights(panel, project.panels)).length;
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
   // Shoe cubbies / jar lips / bottle rails are glued and screwed — never pin-shelf bookcases.
   if (
@@ -899,7 +924,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
       catalogId: "shelf-pins",
       searchQuery: "5mm shelf pins",
       estimatedCost: 6.49 * packs,
-      notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Do not glue the shelves — the pins hold them.`,
+      notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
     });
   }
   const headboardPlies = project.panels.filter((p) => /headboard/i.test(p.name)).length;
@@ -1137,7 +1162,55 @@ export function strangerWoodPieceCount(project: YardProject): number {
 
 /** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
 export function buildPlan(project: YardProject): BuildPlan {
-  return fractionPlanText(boardStockWording(project, withPlacementTalk(project, buildPlanCore(project))));
+  return fractionPlanText(buyReadsModel(boardStockWording(project, withPlacementTalk(project, buildPlanCore(project)))));
+}
+
+/**
+ * Buy reads the same model as the cut list:
+ * - "Cut to" lengths are the cut-list rows for that stock (one rounding place, the cut list's).
+ * - A named species board is priced as that species (oak ≠ walnut ≠ pine).
+ * - The plan total is the sum of the Buy lines.
+ */
+export function buyReadsModel(plan: BuildPlan): BuildPlan {
+  const lengthsByStock = new Map<string, number[]>();
+  for (const c of plan.cutList) {
+    if (c.whole) continue;
+    const stock = (c.id ?? "").split("|")[0];
+    if (!stock || !(c.lengthIn > 0)) continue;
+    const list = lengthsByStock.get(stock) ?? [];
+    list.push(Math.round(c.lengthIn * 16) / 16);
+    lengthsByStock.set(stock, list);
+  }
+  let changed = false;
+  const bom = plan.bom.map((b) => {
+    let line = b;
+    const lengths = b.catalogId ? lengthsByStock.get(b.catalogId) : undefined;
+    if (lengths?.length && b.notes && /Cut to: /.test(b.notes)) {
+      const list = [...new Set(lengths)].sort((x, y) => y - x).map((n) => `${inchFrac(n)}"`).join(", ");
+      const notes = b.notes.replace(/Cut to: (?:(?! · ).)*/, `Cut to: ${list}`);
+      if (notes !== b.notes) line = { ...line, notes };
+    }
+    const species = speciesOfBoardLabel(line.name);
+    const each = species && species.id !== "pine" ? speciesBoardUsd(species) : null;
+    if (each != null && line.quantity > 0) {
+      const total = Math.round(each * line.quantity * 100) / 100;
+      const query = `${species!.display} 1x4 board 8 ft`;
+      line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
+      changed = true;
+    }
+    return line;
+  });
+  if (!changed) return { ...plan, bom };
+  const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
+  const was = plan.totals.estCostUsd;
+  const money = (n: number) => `~$${n >= 100 ? n.toFixed(0) : n.toFixed(2)}`;
+  const summary = plan.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, () => money(cost));
+  return {
+    ...plan,
+    bom,
+    totals: { ...plan.totals, estCostUsd: cost },
+    feasibility: { ...plan.feasibility, summary: Math.abs(cost - was) > 0.005 ? summary : plan.feasibility.summary },
+  };
 }
 
 /** Every plan string a stranger reads goes through the shared shop-fraction formatter. */

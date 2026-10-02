@@ -2,6 +2,7 @@
  * Stock-specific binders. PVC gets slip fittings, sticks get glue,
  * straws get tape — never one blob for every material.
  */
+import { screwTalk, stickJoints } from "./modelJoints";
 import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
 
@@ -167,7 +168,12 @@ export function binderBom(
     ];
   }
   if (kind === "fastener") {
-    const screws = Math.max(8, instances.length * 2);
+    // Screws follow the joints in the model: members meeting at welded ends, 2 per joint on lumber.
+    const across = Math.max(item.dims.width ?? 0, item.dims.thickness ?? 0, item.dims.diameter ?? 0, 0.25);
+    // Reach is the member as drawn: a 1" strip ripped from a sheet is 1" across, not the 48" sheet face.
+    const reachOf = (i: YardInstance) => (i.section ? Math.max(i.section.width, i.section.height) : across) * 0.6 + 0.1;
+    const talk = screwTalk(stickJoints(instances, item.category === "lumber" || item.category === "sheet_goods" || item.formFactor === "board" ? 2 : 1, reachOf));
+    const screws = Math.max(4, talk.screws);
     return [
       {
         name: '#8 × 1-1/4" wood screws',
@@ -176,7 +182,7 @@ export function binderBom(
         catalogId: "screws-8",
         searchQuery: "#8 1-1/4 wood screws",
         estimatedCost: 8,
-        notes: `${screws} screws estimated at joints.`,
+        notes: talk.screws >= 4 ? talk.note : `${screws} screws for the few joints in the model.`,
       },
     ];
   }
