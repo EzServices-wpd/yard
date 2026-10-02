@@ -188,7 +188,10 @@ export function shapeOf(text: string): StockShape {
   if (/\b(goggles|glasses|sunglasses)\b/.test(q)) return "eyewear";
   if (/\bfootballs?\b/.test(q)) return "ball";
   if (/\b(basketballs?|soccer\s*balls?|tennis\s*balls?|balls?)\b/.test(q)) return "ball";
-  if (/\b(mugs?|cups?|tumblers?|ramblers?)\b/.test(q)) return "cup";
+  if (/\b(mugs?|cups?|tumblers?|ramblers?|quenchers?)\b/.test(q)) return "cup";
+  if (/\btape\s*measures?\b/.test(q)) return "roll";
+  if (/\b(door\s*knobs?|knobs?|deadbolts?|locksets?)\b/.test(q)) return "block";
+  if (/\brubik|puzzle\s*cubes?/.test(q)) return "block";
   if (/\b(buckets?|pails?)\b/.test(q)) return "bucket";
   if (/\btraffic\s*cones?\b/.test(q)) return "bucket";
   if (/\b(padlocks?)\b/.test(q)) return "block";
@@ -235,6 +238,10 @@ function niceName(query: string, shape: StockShape): string {
 
 const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /yeti/.test(q) && /rambler|tumbler|20/.test(q), over: { shape: "cup", length: 6.6, diameter: 3.5, color: "#d7dde2", metalness: 0.55, roughness: 0.28, note: "YETI Rambler 20 oz, 6.6″ tall and 3.5″ across. Listing size, not a drawing." } },
+  { match: (q) => /quencher/.test(q) && /40/.test(q), over: { shape: "cup", length: 12.3, diameter: 3.86, width: 5.82, color: "#d7e4ee", metalness: 0.45, roughness: 0.35, note: "Stanley Quencher H2.0 40 oz, 12.3″ tall, 3.86″ × 5.82″ with the handle. Listing size." } },
+  { match: (q) => /stanley/.test(q) && /tape\s*measures?/.test(q), over: { shape: "roll", length: 3.13, diameter: 3, width: 1.75, color: "#c5c8cc", metalness: 0.55, roughness: 0.35, note: "Stanley PowerLock 25 ft case, 3.13″ × 1.75″ × 3″. Listing housing, not the blade." } },
+  { match: (q) => /schlage/.test(q) && /knob/.test(q), over: { shape: "block", length: 2.31, width: 2.09, height: 2.09, color: "#c5c9ce", metalness: 0.72, roughness: 0.32, note: "Schlage Plymouth knob, 2.09″ across and 2.31″ projection. Maker size." } },
+  { match: (q) => /rubik/.test(q), over: { shape: "block", length: 2.24, width: 2.24, height: 2.24, color: "#1c1c1c", roughness: 0.4, metalness: 0.05, note: "Rubik's Cube, 57 mm (2.24″) on a side. Official size." } },
   { match: (q) => /hydro\s*flask/.test(q) && /32/.test(q), over: { shape: "bottle", length: 11, diameter: 3.55, color: "#d5dde3", metalness: 0.55, roughness: 0.28, note: "Hydro Flask 32 oz wide mouth, 11″ tall and 3.55″ across. Maker size, not a PET bottle." } },
   { match: (q) => /estwing/.test(q) && /hammer/.test(q) && /12/.test(q), over: { shape: "tool", length: 11, diameter: 1.15, width: 5, color: "#3d5f8a", note: "Estwing 12 oz claw hammer, 11″ overall. Maker length." } },
   { match: (q) => /estwing/.test(q) && /hammer/.test(q), over: { shape: "tool", length: 13, diameter: 1.25, width: 5.5, color: "#3d5f8a", note: "Estwing 16 oz claw hammer, 13″ overall. Maker length, not an 8″ hand-tool guess." } },

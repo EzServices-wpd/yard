@@ -106,3 +106,43 @@ describe("a storage box stays the box", () => {
     assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
   });
 });
+
+describe("a product the family list missed stays that product", () => {
+  it("places a Stanley Quencher, and a shelf keeps the cup", () => {
+    const cup = generateFromPrompt("Stanley Quencher 40 oz");
+    assert.equal(cup.kind, "custom");
+    assert.equal(cup.instances.length, 1);
+    assert.equal(cup.panels.length, 0);
+    const item = getCatalogItem(cup.instances[0].catalogId);
+    assert.equal(item?.shape, "cup");
+    assert.equal(item?.dims.length, 12.3);
+    assert.equal(item?.dims.width, 5.82);
+    assert.match(item?.notes ?? "", /12\.3/);
+    assert.ok(!cup.notes.some((note) => /popsicle|craft stick/i.test(note)));
+
+    const shelf = generateFromPrompt("shelf for a Stanley Quencher 40 oz");
+    assert.notEqual(shelf.kind, "closet");
+    const held = getCatalogItem(shelf.instances[0].catalogId);
+    assert.equal(held?.shape, "cup");
+    assert.equal(held?.dims.length, 12.3);
+    assert.ok(shelf.panels.some((panel) => /post/i.test(panel.name)));
+    assert.ok(!shelf.panels.some((panel) => /plywood/i.test(panel.materialId)));
+  });
+
+  it("places a tape measure, a knob, and a cube instead of craft sticks", () => {
+    const tape = generateFromPrompt("Stanley 25 ft tape measure");
+    assert.equal(tape.instances.length, 1);
+    assert.equal(getCatalogItem(tape.instances[0].catalogId)?.shape, "roll");
+    assert.equal(getCatalogItem(tape.instances[0].catalogId)?.dims.length, 3.13);
+
+    const knob = generateFromPrompt("Schlage door knob");
+    assert.equal(knob.instances.length, 1);
+    assert.equal(getCatalogItem(knob.instances[0].catalogId)?.shape, "block");
+    assert.equal(getCatalogItem(knob.instances[0].catalogId)?.dims.length, 2.31);
+
+    const cube = generateFromPrompt("Rubik cube");
+    assert.equal(cube.instances.length, 1);
+    assert.equal(getCatalogItem(cube.instances[0].catalogId)?.dims.length, 2.24);
+    assert.equal(cube.kind, "custom");
+  });
+});
