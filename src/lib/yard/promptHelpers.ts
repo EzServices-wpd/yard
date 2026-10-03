@@ -317,6 +317,20 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
+  // A typed width is the finished outside of every build.
+  // The 24" cube default must not outgrow that width. A shorter untyped axis stays.
+  // An axis already set off the cube (a walk-through rise, a thin frame) stays too.
+  const widthTyped = !!(bareW || ftW || inW);
+  if (widthTyped) {
+    const W = ftW ? parseFloat(ftW[1]) * 12 : inW ? parseFloat(inW[1]) : parseFloat(bareW![1]) * (/ft|foot|feet/.test(bareW![0]) ? 12 : 1);
+    const heightTyped = !!(bareH || ftTall || inTall);
+    const depthTyped = !!(bareD || ftD || inD);
+    if (Number.isFinite(W) && W > 0 && W < 24) {
+      if (!heightTyped && Math.abs(height - 24) < 0.01) height = Math.max(2, Math.round(W * 16) / 16);
+      if (!depthTyped && Math.abs(depth - 24) < 0.01) depth = Math.max(1.5, Math.round(W * 16) / 16);
+    }
+  }
+
   return { height, width, depth };
 }
 
@@ -807,6 +821,20 @@ export function toProject(
     const publishedBase = height * (125 / 324);
     width = Math.max(width, publishedBase);
     depth = Math.max(depth, publishedBase);
+  }
+  // A typed width is the finished outside. Stock-face pad must not publish a wider
+  // envelope, and an untyped cube axis must not outgrow that width.
+  const widthWord = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:wide|width)\b/.test(prompt.toLowerCase());
+  if (widthWord) {
+    const typed = parseSize(prompt.toLowerCase());
+    const typedW = typed.width;
+    if (typedW > 0 && typedW < 24) {
+      width = typedW;
+      const heightWordNow = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:tall|high|height)\b/.test(prompt.toLowerCase());
+      const depthWordNow = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:deep|depth)\b/.test(prompt.toLowerCase());
+      if (!heightWordNow && height > typedW) height = typed.height;
+      if (!depthWordNow && depth > typedW) depth = typed.depth;
+    }
   }
   const names: Partial<Record<StructureKind, string>> = {
     eiffel: "Eiffel Tower",
