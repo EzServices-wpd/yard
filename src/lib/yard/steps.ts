@@ -98,7 +98,7 @@ function cutHow(item?: CatalogItem | null) {
       tip: "An angled end will not seat. Support the offcut.",
     };
   }
-  if (ff === "board" || ff === "lumber") {
+  if (ff === "board") {
     return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: "Cedar and 1× split. Predrill." };
   }
   if (item.category === "plastic") {
@@ -2976,6 +2976,24 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       title: "Cut the marked lengths — same size is the same letter",
       description: `${tool.how} Mark A, B, C on the first of each size, then batch the rest.`,
       tips: tool.tip,
+    });
+  }
+
+  // A member longer than one piece of stock is a splice. Say so before assembly.
+  if ((project.notes ?? []).some((n) => /lap splice/i.test(n))) {
+    const verb = stockJoinVerb(project);
+    const lap =
+      verb === "Screw"
+        ? "Overlap each splice and fasten the lap."
+        : verb === "Set"
+          ? "Overlap each splice and set the lap the way this stock joins."
+          : "Overlap each splice and glue the lap.";
+    steps.push({
+      step: n++,
+      title: "Join the long members before assembly",
+      description: `Some members are longer than one piece of this stock. ${lap} The finished member is the length on the model, not one short cut.`,
+      tips: "A stranger cannot cut a member longer than the stock. The splice is the honest length.",
+      partsUsed: ["*"],
     });
   }
 
