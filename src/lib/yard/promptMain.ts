@@ -26,7 +26,7 @@ import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardIns
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
-import { wantsSheetBox, buildSheetBox } from "./sheetBox";
+import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
@@ -785,6 +785,9 @@ function generateRaw(
   const members = memberView(item);
   const formName = stickFurnitureName(prompt, recipe.name);
 
+  if (wantsUnmatchedSheetShell(item, kind)) {
+    return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name)), item));
+  }
   if (wantsSheetBox(prompt, item, kind)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item));
   }

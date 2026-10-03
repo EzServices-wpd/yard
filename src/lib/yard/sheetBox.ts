@@ -128,3 +128,64 @@ export function buildSheetBox(
     },
   };
 }
+
+/**
+ * No build class matched. A named sheet is a shell at the typed size,
+ * not a quadruped wire. A matched figure, house, or castle stays on its own path.
+ */
+export function wantsUnmatchedSheetShell(item: CatalogItem, kind: StructureKind): boolean {
+  const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
+  return sheetish && kind === "custom";
+}
+
+/** Open-top sheet shell. Typed width, height, and depth are the outside. */
+export function buildTypedSheetShell(
+  prompt: string,
+  item: CatalogItem,
+  size: { width: number; height: number; depth: number },
+  name: string,
+): YardProject {
+  const W = Math.max(size.width, 1);
+  const D = Math.max(size.depth, 1);
+  const H = Math.max(size.height, 1);
+  const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.15, 0.08);
+  const x0 = -W / 2;
+  const z0 = -D / 2;
+  const panels: Panel[] = [];
+  const add = (type: Panel["type"], label: string, x: number, y: number, z: number, w: number, h: number, d: number) => {
+    panels.push({
+      id: createId(type.slice(0, 2)),
+      type,
+      name: label,
+      position: { x, y, z },
+      size: { width: w, height: h, depth: d },
+      materialId: item.id,
+    });
+  };
+  add("bottom", "Floor", x0, 0, z0, W, T, D);
+  add("upright", "Left wall", x0, 0, z0, T, H, D);
+  add("upright", "Right wall", x0 + W - T, 0, z0, T, H, D);
+  add("back", "Back wall", x0, 0, z0, W, H, T);
+  add("back", "Front wall", x0, 0, z0 + D - T, W, H, T);
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "furniture",
+    overall: { width: W, height: H, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: item.id,
+    notes: [
+      `${name} in ${item.name} — an open-top shell at the typed size. No class matched, so this is the sheet, not a stick figure.`,
+      `Outside ${W}" wide × ${H}" high × ${D}" deep. Walls are the sheet thickness. Tape or glue the corners. Leave the top open.`,
+    ],
+    assumptions: {
+      load: item.category === "cardboard" ? "light" : "medium",
+      units: "inches",
+      installMode: "freestanding",
+      wallType: "wood_stud",
+      use: "display",
+    },
+  };
+}
