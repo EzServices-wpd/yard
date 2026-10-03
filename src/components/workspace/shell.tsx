@@ -129,11 +129,14 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [undo, redo, deleteSelected, selectedId]);
 
   useEffect(() => {
-    const house = project.kind === "closet" || project.kind === "opening" || Boolean(project.pocket) || Boolean(project.fitted);
+    // Read the live project: the URL build runs in an earlier effect in this same pass, so the
+    // render-time project can be the empty starter — writing its 36" box would wipe the real card.
+    const live = useYard.getState().project;
+    const house = live.kind === "closet" || live.kind === "opening" || Boolean(live.pocket) || Boolean(live.fitted);
     setMeasureOpen(house);
-    if (!house && !project.recastFrom && project.overall.width > 1 && project.overall.height > 1) {
+    if (!house && !live.recastFrom && live.overall.width > 1 && live.overall.height > 1) {
       const n = inchFrac;
-      setMeasure({ width: n(project.overall.width), height: n(project.overall.height), depth: n(project.overall.depth) });
+      setMeasure({ width: n(live.overall.width), height: n(live.overall.height), depth: n(live.overall.depth) });
     }
     // Unit is the hero. Do not steal the bench with the measure sidebar.
     // Measure button still opens the full card (pocket walls, kind, example pocket).
