@@ -140,7 +140,7 @@ const HITS: Hit[] = [
   { re: /swing/, kind: "frame", name: "Swing", build: swingOps },
   { re: /lattice|space\s*frame/, kind: "lattice", name: "Lattice", build: () => [] },
   { re: /tower|spire|column|stack|skyscraper/, kind: "lattice", name: "Lattice tower", build: () => [] },
-  { re: /frame|box|cube|platform/, kind: "frame", name: "Frame", build: frameOps },
+  { re: /\b(?:frame|box|cube|platform)\b/, kind: "frame", name: "Frame", build: frameOps },
 ];
 
 export function isLockedForm(kind: StructureKind): boolean {
