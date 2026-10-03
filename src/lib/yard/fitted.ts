@@ -2198,7 +2198,7 @@ function buildCoatBench(spec: FittedSpec, prompt: string, affordances: HouseAffo
   const seatH = seatSaid
     ? Math.min(22, Math.max(16, parseFloat(seatSaid[1] || seatSaid[2] || "18")))
     : 18;
-  const overallH = typedH >= 48 ? typedH : 72;
+  const overallH = typedAxisOrUsual(prompt, "height", typedH >= 48 ? typedH : 72);
   const x0 = -W / 2;
   const post = 1.5;
   const rows = readHookRows(prompt);
@@ -2337,14 +2337,34 @@ function buildHallTree(spec: FittedSpec, prompt: string, affordances: HouseAffor
   };
 }
 
+
+/**
+ * A typed axis is the finished size, even when it is shorter than the class usual.
+ * The usual fills only an axis that was not typed. A class default is not a typed axis.
+ */
+function typedAxisNumber(prompt: string, kind: "length" | "width" | "height" | "depth"): number | null {
+  const t = prompt.toLowerCase().replace(/[″”]/g, '"');
+  const words = { length: "long|length", width: "wide|width", height: "tall|high|height", depth: "deep|depth" }[kind];
+  const n = String.raw`(\d+(?:\.\d+)?)`;
+  const unit = String.raw`(?:ft|foot|feet|in|inch|inches|["'])?`;
+  const m = t.match(new RegExp(n + String.raw`\s*` + unit + String.raw`\s*(?:` + words + String.raw`)\b`))
+    ?? t.match(new RegExp(String.raw`\b(?:` + words + String.raw`)\s*` + n));
+  if (!m) return null;
+  const raw = parseFloat(m[1]);
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return /(?:ft|foot|feet)/.test(m[0]) ? raw * 12 : raw;
+}
+
+function typedAxisOrUsual(prompt: string, kind: "length" | "width" | "height" | "depth", usual: number): number {
+  return typedAxisNumber(prompt, kind) ?? usual;
+}
+
 /** Picnic table: top, attached benches, A-frame legs. Not a square dining table. */
 function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
   const u = spec.unit;
-  const lower = prompt.toLowerCase();
-  const said = /(?:wide|width|deep|depth|tall|high|height|long)\b/.test(lower);
-  const length = said && u.width > 20 ? u.width : 72;
-  const tableH = said && u.height >= 24 && u.height <= 36 ? u.height : 29;
-  const topD = said && u.depth >= 16 && u.depth <= 40 && /deep|depth/.test(lower) ? u.depth : 28;
+  const length = typedAxisNumber(prompt, "length") ?? typedAxisNumber(prompt, "width") ?? 72;
+  const tableH = typedAxisOrUsual(prompt, "height", 29);
+  const topD = typedAxisOrUsual(prompt, "depth", 28);
   const benchH = 17;
   const benchW = 10;
   const gap = 8;
@@ -2354,8 +2374,9 @@ function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
   const leg = 1.5;
   const panels: Panel[] = [];
   panels.push(panel("top", "Table top", x0, tableH - P, topZ, length, P, topD));
-  // Two A-frames drawn as splayed posts (front/back) plus a stretcher under the top.
-  const inset = 10;
+  // End inset stays on the typed length. A short top does not park the legs past the ends.
+  const inset = Math.min(10, Math.max(leg, (length - leg * 2) / 4));
+  const seatLen = Math.max(leg * 2, length - 4);
   for (const x of [x0 + inset, x0 + length - inset - leg]) {
     panels.push(panel("upright", "Leg", x, 0, topZ + 1, leg, tableH - P, leg, TWO_BY_TWO));
     panels.push(panel("upright", "Leg", x, 0, topZ + topD - 1 - leg, leg, tableH - P, leg, TWO_BY_TWO));
@@ -2365,7 +2386,7 @@ function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
   for (const side of [-1, 1] as const) {
     const z = side < 0 ? topZ - gap - benchW : topZ + topD + gap;
     const label = side < 0 ? "Near bench" : "Far bench";
-    panels.push(panel("top", `${label} seat`, x0 + 2, benchYs, z, length - 4, P, benchW));
+    panels.push(panel("top", `${label} seat`, x0 + (length - seatLen) / 2, benchYs, z, seatLen, P, benchW));
     for (const x of [x0 + inset, x0 + length - inset - leg]) {
       panels.push(panel("upright", `${label} leg`, x, 0, z + 1, leg, benchH - P, leg, TWO_BY_TWO));
       panels.push(panel("upright", `${label} leg`, x, 0, z + benchW - 1 - leg, leg, benchH - P, leg, TWO_BY_TWO));
@@ -2553,8 +2574,8 @@ function buildOpenBench(spec: FittedSpec, prompt: string, affordances: HouseAffo
 /** Porch swing you can name from the shape: stand, beam, hanging seat, back. */
 function buildPorchSwing(spec: FittedSpec, prompt: string): YardProject {
   const u = spec.unit;
-  const W = u.width >= 36 ? u.width : 48;
-  const standH = u.height >= 48 ? u.height : 78;
+  const W = typedAxisNumber(prompt, "width") ?? typedAxisNumber(prompt, "length") ?? (u.width >= 36 ? u.width : 48);
+  const standH = typedAxisOrUsual(prompt, "height", u.height >= 48 ? u.height : 78);
   const seatD = 18;
   const standD = Math.max(36, u.depth || 0, seatD + 16);
   const x0 = -W / 2;
