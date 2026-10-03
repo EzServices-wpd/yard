@@ -267,6 +267,27 @@ for (const q of ["pine 20 at 12 inch", "20 pine boards at 12 inches", "cut 20 pi
   if (!/lego collection/i.test(lego.name)) fail("a collection shelf names the collection", lego.name);
 }
 
+// ---------------------------------------------------------------- 9. A plain bench is an open frame; storage only when typed or implied
+for (const q of ["pine porch bench", "garden bench", "bench", "dining bench 60 wide"]) {
+  const p = generateFromPrompt(q);
+  const names = p.panels.map((x) => x.name);
+  if (names.some((n) => /cubby|shoe shelf/i.test(n))) fail("a plain bench has no cubbies or shoe shelf", { q, names });
+  if (names.filter((n) => /\bleg\b/i.test(n)).length < 4 || !names.some((n) => /apron/i.test(n))) fail("a plain bench stands on legs with aprons", { q, names });
+}
+{
+  const back = generateFromPrompt("garden bench with a back");
+  if (!back.panels.some((x) => /back rail/i.test(x.name))) fail("a bench with a back gets back rails", back.panels.map((x) => x.name));
+}
+for (const q of ["entry bench 42 with shoe shelf", "mudroom bench with cubbies", "shoe bench"]) {
+  const p = generateFromPrompt(q);
+  if (!p.panels.some((x) => /shoe shelf|cubby/i.test(x.name))) fail("an entry/mudroom/shoe bench keeps its storage", { q, names: p.panels.map((x) => x.name) });
+  if (/ with Shelf/i.test(p.name)) fail("a bench's shoe shelf is part of the bench, not a second piece", { q, name: p.name });
+}
+{
+  const e = generateFromPrompt("entry bench 42 with shoe shelf");
+  if (Math.abs(e.overall.width - 42) > 0.5) fail("entry bench keeps its typed 42", e.overall);
+}
+
 console.log(`stand guards: swept ${swept} weekend prompts`);
 if (failed) {
   console.error(`FAIL stand guards: ${failed} failures`);

@@ -146,6 +146,8 @@ function accessory(stem: string, others: string[]): boolean {
   if (stem === "Mirror" && /vanity|dresser|medicine/.test(rest)) return true;
   if (stem === "Ladder" && /bunk|loft/.test(rest)) return true;
   if (stem === "Shelf" && /bookcase|bookshelf|closet|hutch|dresser|wardrobe|pantry|linen/.test(rest)) return true;
+  // A seat builds its own under-seat shelf: "entry bench with shoe shelf" is one bench.
+  if (stem === "Shelf" && /\bbench\b|window seat|banquette/.test(rest) && !/workbench|potting/.test(rest)) return true;
   if (stem === "Rack" && /shoe rack|coat rack/.test(rest)) return true;
   if (stem === "Table" && /coffee table|dining table|nightstand/.test(rest)) return true;
   if (stem === "Bench" && /potting bench|workbench/.test(rest)) return true;

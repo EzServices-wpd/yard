@@ -504,9 +504,16 @@ const seatHit = detectHouseFamily(seatPrompt);
 if (!seatHit || seatHit.family !== "seat" || seatHit.use !== "sit" || !seatHit.affordances.includes("cubbies")) {
   failHonesty("bench family", seatHit);
 }
-const seat = expectFamily(seatPrompt, "seat", { seat: true });
+// Storage under the seat comes from the class (shoe / entry / mudroom) or the prompt; a plain bench is an open frame.
+const seat = expectFamily("shoe bench 48 wide", "seat", { seat: true });
 if (!nearInch(seat.overall.width, 48)) failHonesty("bench width", seat.overall);
 if (!nearInch(seat.overall.height, 18)) failHonesty("bench default height should be sit height", seat.overall);
+const plainSeat = generateFromPrompt(seatPrompt);
+if (!nearInch(plainSeat.overall.width, 48) || !nearInch(plainSeat.overall.height, 18)) failHonesty("plain bench size", plainSeat.overall);
+if (plainSeat.panels.filter((p) => /\bleg\b/i.test(p.name)).length < 4 || !plainSeat.panels.some((p) => /apron/i.test(p.name))) {
+  failHonesty("plain bench is an open frame on legs with aprons", plainSeat.panels.map((p) => p.name));
+}
+if (plainSeat.fitted?.program !== "bench") failHonesty("plain bench program", plainSeat.fitted);
 
 if (detectHouseFamily("kitchen chair from 1x4")) failHonesty("chair should not be a house family");
 if (classifyAnatomy("kitchen chair from 1x4").anatomy === "fitted") failHonesty("chair anatomy drifted to fitted");

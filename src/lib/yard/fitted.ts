@@ -1577,7 +1577,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 4
                   : isOverToilet(lower)
                     ? 9
-                  : /coat/.test(lower) && /bench/.test(lower)
+                  : (/coat/.test(lower) || program === "bench") && /\bbench\b/.test(lower)
                     ? 16
                   : /coat/.test(lower) && /rack/.test(lower)
                     ? 8
@@ -2459,6 +2459,79 @@ function buildShopTop(spec: FittedSpec, prompt: string): YardProject {
         drawersPerBank: undefined,
         kneeW: undefined,
       },
+    },
+    assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+  };
+}
+
+/**
+ * Open-frame bench — a seat on four legs tied by aprons and low stretchers (porch, garden, dining,
+ * plain bench). Storage under the seat comes only when it is typed or the class implies it
+ * (mudroom, entry, shoe, boot, window seat). A back rises off the rear legs only when asked.
+ */
+function buildOpenBench(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
+  const u = spec.unit;
+  const lower = prompt.toLowerCase();
+  const W = u.width;
+  const H = u.height;
+  const D = u.depth;
+  const x0 = -W / 2;
+  const legStock = "lumber-2x4-8";
+  const legW = 1.5;
+  const legD = 3.5;
+  const seatT = P;
+  const legH = H - seatT;
+  const apronH = 3.5;
+  const wantBack = /\b(?:back|backrest|back\s*rest)\b/.test(lower) && !/\bbackless\b|no\s+back/.test(lower);
+  const backH = wantBack ? 16 : 0;
+  const panels: Panel[] = [];
+  panels.push(panel("upright", "Front left leg", x0, 0, D - legD, legW, legH, legD, legStock));
+  panels.push(panel("upright", "Front right leg", x0 + W - legW, 0, D - legD, legW, legH, legD, legStock));
+  panels.push(panel("upright", wantBack ? "Back left post" : "Back left leg", x0, 0, 0, legW, legH + (wantBack ? seatT + backH : 0), legD, legStock));
+  panels.push(panel("upright", wantBack ? "Back right post" : "Back right leg", x0 + W - legW, 0, 0, legW, legH + (wantBack ? seatT + backH : 0), legD, legStock));
+  panels.push(panel("top", "Seat", x0, H - seatT, 0, W, seatT, D));
+  panels.push(panel("rail", "Front apron", x0 + legW, legH - apronH, D - legD, W - legW * 2, apronH, P));
+  panels.push(panel("rail", "Back apron", x0 + legW, legH - apronH, legD - P, W - legW * 2, apronH, P));
+  panels.push(panel("rail", "Left end apron", x0 + (legW - P) / 2, legH - apronH, legD, P, apronH, D - legD * 2));
+  panels.push(panel("rail", "Right end apron", x0 + W - legW + (legW - P) / 2, legH - apronH, legD, P, apronH, D - legD * 2));
+  const stretchY = Math.max(4, Math.round(H * 0.25));
+  panels.push(panel("rail", "Left stretcher", x0, stretchY, legD, legW, apronH, D - legD * 2, legStock));
+  panels.push(panel("rail", "Right stretcher", x0 + W - legW, stretchY, legD, legW, apronH, D - legD * 2, legStock));
+  if (wantBack) {
+    panels.push(panel("rail", "Top back rail", x0 + legW, H + backH - apronH, 0, W - legW * 2, apronH, P));
+    panels.push(panel("rail", "Lower back rail", x0 + legW, H + 3, 0, W - legW * 2, apronH, P));
+  }
+  const stem = sitBenchTitleStem(lower) ?? (/\bgarden\s+bench\b/.test(lower) ? "Garden bench" : /\bporch\s+bench\b/.test(lower) ? "Porch bench" : "Bench");
+  const totalH = H + backH;
+  const name = classDefaultDensifyTitle(stem, prompt, { width: W, height: totalH, depth: D });
+  const assumed = classDefaultAssumedNotes(prompt, stem, { width: W, height: totalH, depth: D });
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "closet",
+    overall: { width: W, height: totalH, depth: D },
+    instances: [],
+    panels,
+    primaryMaterialId: PLY,
+    notes: [
+      `${name}. Open-frame bench — the seat sits ${H}" high on four 2×4 legs, tied by aprons under the seat and stretchers near the floor${wantBack ? `, with a ${backH}" back on the rear posts` : ""}.`,
+      "The aprons keep the legs square and carry the seat edges; the stretchers stop racking. Glue and screw each apron into the legs, then screw the seat down through the aprons.",
+      wantBack
+        ? "The back posts are the rear legs run up past the seat, so the back is part of the frame."
+        : "Say \"with a back\" for a backrest on the rear legs, or \"with a shoe shelf\" / \"with cubbies\" for storage under the seat.",
+      "Level it on the floor and sit-test before you finish.",
+      ...assumed,
+    ],
+    historic: false,
+    opening: { ...spec.opening, width: W, height: totalH, depth: D, kind: "room" },
+    fitted: {
+      ...spec,
+      name,
+      program: "bench",
+      family: "seat",
+      affordances,
+      unit: { ...u, width: W, height: totalH, depth: D, doors: false, cubbies: 0, shelfCount: 0, drawersPerBank: undefined, kneeW: undefined },
     },
     assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
   };
@@ -4974,6 +5047,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if ((spec.program === "bench" || family === "seat") && !isDaybed(prompt.toLowerCase()) && !isSeatingLoungeClass(prompt.toLowerCase())) {
     if (/coat/.test(prompt.toLowerCase()) && /bench/.test(prompt.toLowerCase())) {
       return buildCoatBench(spec, prompt, affordances);
+    }
+    // Storage under the seat only when typed or implied by the class; a plain bench is an open frame.
+    {
+      const bl = prompt.toLowerCase();
+      const storageBench =
+        affordances.includes("hooks") ||
+        isBootTrayBench(bl) ||
+        isBookBinBench(bl) ||
+        /window\s*seat|banquette|mudroom|\bentry|hall|foyer|shoes?\b|boots?\b|cubb|storage|\bbays?\b|shel(?:f|ves)|\bbins?\b|basket|cabinet|drawer|\blid\b|\btoys?\b|\bbooks?\b|opening|fitted/.test(bl);
+      if (!storageBench) return buildOpenBench(spec, prompt, affordances);
     }
     const innerW = W - P * 2;
     const cubbyN =
