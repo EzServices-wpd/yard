@@ -154,9 +154,21 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (/tree|cactus|plant/.test(hay)) return { anatomy: "figure", kind: "plant", stance: "biped" };
 
   const sizeTall = /foot|ft|inch|in/.test(hay);
-  // Pot-hold / floor-lamp stands are envelope frames — never loft Lattice just because they are N″ tall.
-  if (sizeTall && /tall|high|tower/.test(hay) && !wantsPotHold(hay) && detectWeekendMech(hay) !== "pot-hold") {
+  // A tower / mast / lookout noun is a loft. A height word alone is not.
+  // Pot-hold stands stay envelope frames — never loft Lattice just because they are N″ tall.
+  if (
+    sizeTall &&
+    /\b(?:tower|mast|spire|lookout|pylon)\b/.test(hay) &&
+    !wantsPotHold(hay) &&
+    detectWeekendMech(hay) !== "pot-hold"
+  ) {
     return { anatomy: "loft", kind: "lattice" };
+  }
+  // Typed width and typed height, and no tower noun: an opening, not a mast and not a figure.
+  const widthSaid = /\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width)\b/.test(hay);
+  const heightSaid = /\d+(?:\.\d+)?\s*["″']?\s*(?:tall|high|height)\b/.test(hay);
+  if (widthSaid && heightSaid && !wantsPotHold(hay) && detectWeekendMech(hay) !== "pot-hold") {
+    return { anatomy: "span", kind: "frame" };
   }
   return { anatomy: "figure", kind: "custom", stance: "quadruped" };
 }

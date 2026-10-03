@@ -36,6 +36,7 @@ import {
   archOps,
   ladderOps,
   frameOps,
+  openFrameOps,
   launcherFrameOps,
   rampLauncherOps,
   mediaHoldStandOps,
@@ -443,11 +444,24 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
     };
   }
   if (hit.anatomy === "span") {
+    const opening = hit.kind === "frame" && !hit.named;
+    const sized = opening ? openingSize(prompt, size) : size;
     return {
       name: hit.named || subjectTitle(prompt),
       kind: hit.kind,
-      notes: ["Span · deck + posts, one frame."],
-      ops: hit.kind === "arch" ? archOps(size) : hit.kind === "wall" ? wallOps(size) : bridgeOps(size),
+      notes: opening
+        ? [
+            `${subjectTitle(prompt)} · open frame at the typed width and height.`,
+            "Four posts and a top rail. Untyped depth is a shallow return, not a mast base.",
+          ]
+        : ["Span · deck + posts, one frame."],
+      ops: opening
+        ? openFrameOps(sized)
+        : hit.kind === "arch"
+          ? archOps(size)
+          : hit.kind === "wall"
+            ? wallOps(size)
+            : bridgeOps(size),
     };
   }
   return {
@@ -459,6 +473,16 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
     ],
     ops: guessOps(prompt.toLowerCase(), size),
   };
+}
+
+
+function openingSize(prompt: string, size: Size3): Size3 {
+  const hay = prompt.toLowerCase();
+  const depthTyped = /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(hay);
+  if (depthTyped) return size;
+  const span = Math.min(size.width, size.height);
+  const depth = Math.round(Math.max(6, Math.min(span * 0.3, 16)) * 16) / 16;
+  return { ...size, depth };
 }
 
 function subjectTitle(prompt: string): string {

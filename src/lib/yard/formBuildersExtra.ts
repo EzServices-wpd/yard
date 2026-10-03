@@ -117,6 +117,34 @@ export function frameOps(s: Size3): FormOp[] {
 }
 
 /**
+ * Unrecognized opening: four posts, a top rail, and a shallow return.
+ * Typed width is the span. Typed height is the top. Untyped depth is already shallow.
+ */
+export function openFrameOps(s: Size3): FormOp[] {
+  const W = Math.max(s.width, 6);
+  const H = Math.max(s.height, 6);
+  const D = Math.max(s.depth, 4);
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -D / 2;
+  const z1 = D / 2;
+  return [
+    { op: "column", x: x0, z: z0, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x1, z: z0, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x0, z: z1, y0: 0, y1: H, role: "leg" },
+    { op: "column", x: x1, z: z1, y0: 0, y1: H, role: "leg" },
+    { op: "poly", role: "rail", points: [{ x: x0, y: H, z: z0 }, { x: x1, y: H, z: z0 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: H, z: z1 }, { x: x1, y: H, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: H, z: z0 }, { x: x0, y: H, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: H, z: z0 }, { x: x1, y: H, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x1, y: 0, z: z0 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z1 }, { x: x1, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x0, y: 0, z: z0 }, { x: x0, y: 0, z: z1 }] },
+    { op: "poly", role: "rail", points: [{ x: x1, y: 0, z: z0 }, { x: x1, y: 0, z: z1 }] },
+  ];
+}
+
+/**
  * Launcher class (catapult / trebuchet / ballista / …) — one recipe, not a noun .ts.
  * Densify may lace faces, but must KEEP base + pivot/axle + throwing arm + payload path
  * as distinct roles (support / deck). Tip lands at typed H.
