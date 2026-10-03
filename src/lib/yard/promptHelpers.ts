@@ -320,14 +320,16 @@ export function parseSize(lower: string): { height: number; width: number; depth
   // A typed width is the finished outside of every build.
   // The 24" cube default must not outgrow that width. A shorter untyped axis stays.
   // An axis already set off the cube (a walk-through rise, a thin frame) stays too.
+  // A typed length is not the cube. Shrinking an untyped axis must not erase it.
+  const lengthSaid = /(\d+(?:\.\d+)?)\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*long\b/.test(dimText);
   const widthTyped = !!(bareW || ftW || inW);
   if (widthTyped) {
     const W = ftW ? parseFloat(ftW[1]) * 12 : inW ? parseFloat(inW[1]) : parseFloat(bareW![1]) * (/ft|foot|feet/.test(bareW![0]) ? 12 : 1);
     const heightTyped = !!(bareH || ftTall || inTall);
     const depthTyped = !!(bareD || ftD || inD);
     if (Number.isFinite(W) && W > 0 && W < 24) {
-      if (!heightTyped && Math.abs(height - 24) < 0.01) height = Math.max(2, Math.round(W * 16) / 16);
-      if (!depthTyped && Math.abs(depth - 24) < 0.01) depth = Math.max(1.5, Math.round(W * 16) / 16);
+      if (!heightTyped && !lengthSaid && Math.abs(height - 24) < 0.01) height = Math.max(2, Math.round(W * 16) / 16);
+      if (!depthTyped && !lengthSaid && Math.abs(depth - 24) < 0.01) depth = Math.max(1.5, Math.round(W * 16) / 16);
     }
   }
 
