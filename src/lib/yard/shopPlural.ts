@@ -151,6 +151,7 @@ export function cutListName(name: string, type?: string): string {
   if (/shoe peg/i.test(name)) return "Shoe peg";
   if (/shoe cubb/i.test(name)) return "Shoe cubbies";
   if (/shoe rail/i.test(name)) return "Shoe rail";
+  if (/^center support/i.test(name)) return "Center support";
   if (/cubby divider/i.test(name)) return "Cubby divider";
   if (/shoe shelf/i.test(name)) return "Shoe shelf";
   if (/boot tray/i.test(name)) return "Boot tray";

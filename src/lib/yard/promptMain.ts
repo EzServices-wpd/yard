@@ -2,6 +2,7 @@ import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
+import { autoSupportSpans } from "./spanCheck";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
@@ -174,7 +175,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
   const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
   const finished = sized.panels.length && !sized.pocket ? { ...sized, notes: notesWithFinishedDepth(sized.notes ?? [], sized.panels, sized.overall.depth) } : sized;
-  return withOutdoorNotes(finished, args[0]);
+  return withOutdoorNotes(autoSupportSpans(finished, args[0]), args[0]);
 }
 
 /**

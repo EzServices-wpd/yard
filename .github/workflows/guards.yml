@@ -76,6 +76,10 @@ jobs:
         if: always()
         run: npx tsx scripts/yard-climb-buy-guards.ts
 
+      - name: Span guards (seats never over their span unless asked open)
+        if: always()
+        run: npx tsx scripts/yard-span-guards.ts
+
       - name: Unit tests (TypeScript, via tsx)
         if: always()
         run: npx tsx scripts/run-unit-tests.ts

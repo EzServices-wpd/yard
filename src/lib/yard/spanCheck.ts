@@ -5,6 +5,7 @@
  */
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
+import { inchFrac } from "./inchText";
 
 export type SpanLoad = "person" | "shelf" | "surface" | "light";
 
@@ -150,10 +151,48 @@ function sectionOf(panel: Panel, panels: Panel[]): number {
   return t;
 }
 
+/**
+ * Standing panels that carry this plate between its ends: a divider, partition, upright or center
+ * support whose top is right under the plate and that runs across most of it. Centers along the span.
+ */
+export function bearingCenters(panel: Panel, panels: Panel[]): { at: number; panel: Panel }[] {
+  const longX = panel.size.width >= panel.size.depth;
+  const a0 = longX ? panel.position.x : panel.position.z;
+  const a1 = a0 + (longX ? panel.size.width : panel.size.depth);
+  const across = longX ? panel.size.depth : panel.size.width;
+  const out: { at: number; panel: Panel }[] = [];
+  for (const q of panels) {
+    if (q === panel || q.type === "back" || isFlatPlate(q)) continue;
+    const thin = longX ? q.size.width : q.size.depth;
+    if (thin > 2 || q.size.height < 2) continue;
+    const top = q.position.y + q.size.height;
+    if (Math.abs(top - panel.position.y) > 0.35) continue;
+    const at = longX ? q.position.x + q.size.width / 2 : q.position.z + q.size.depth / 2;
+    if (at <= a0 + 0.5 || at >= a1 - 0.5) continue;
+    const ox = longX
+      ? overlap(panel.position.z, panel.position.z + panel.size.depth, q.position.z, q.position.z + q.size.depth)
+      : overlap(panel.position.x, panel.position.x + panel.size.width, q.position.x, q.position.x + q.size.width);
+    if (ox < across * 0.5) continue;
+    out.push({ at, panel: q });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** Gaps along the span between the plate's ends and the standing panels under it. */
+function spanGaps(panel: Panel, panels: Panel[]): [number, number][] {
+  const longX = panel.size.width >= panel.size.depth;
+  const a0 = longX ? panel.position.x : panel.position.z;
+  const a1 = a0 + (longX ? panel.size.width : panel.size.depth);
+  const stops = [a0, ...bearingCenters(panel, panels).map((b) => b.at), a1];
+  const gaps: [number, number][] = [];
+  for (let i = 1; i < stops.length; i++) gaps.push([stops[i - 1], stops[i]]);
+  return gaps;
+}
+
 /** Longest gap between supports already under this plate. */
 function clearSpan(panel: Panel, panels: Panel[]): number {
   const longX = panel.size.width >= panel.size.depth;
-  const span0 = longX ? panel.size.width : panel.size.depth;
+  const span0 = Math.max(...spanGaps(panel, panels).map(([a, b]) => b - a));
   const across0 = longX ? panel.size.depth : panel.size.width;
   const c0 = longX ? panel.position.z : panel.position.x;
   const rails = panels.filter((q) => {
@@ -208,6 +247,8 @@ export function spanFindings(project: YardProject): SpanFinding[] {
   const out: SpanFinding[] = [];
   for (const panel of project.panels) {
     if (!isFlatPlate(panel)) continue;
+    // A plate lying on the floor is carried along its whole length.
+    if (panel.position.y < 0.3) continue;
     const load = loadOf(project, panel);
     const span = clearSpan(panel, project.panels);
     const thick = sectionOf(panel, project.panels);
@@ -380,4 +421,110 @@ export function withSupports(project: YardProject): YardProject {
         : "Support is in, under the surface. The space you use is clear.",
     },
   };
+}
+
+/** "no middle leg", "no center support", "without a center leg": the user wants it open underneath. */
+export function wantsOpenSpan(prompt: string): boolean {
+  return /\b(?:no|without(?: an?)?)\s+(?:middle|center|centre|mid)\s*-?\s*(?:legs?|supports?|posts?|dividers?|braces?)\b/i.test(prompt || "");
+}
+
+function drawerNear(panels: Panel[], x0: number, x1: number, y0: number, y1: number): boolean {
+  return panels.some(
+    (q) =>
+      /drawer/i.test(q.name) &&
+      overlap(x0, x1, q.position.x, q.position.x + q.size.width) > -0.5 &&
+      overlap(y0, y1, q.position.y, q.position.y + q.size.height) > 0,
+  );
+}
+
+/**
+ * Universal span rule. A seat (or a loaded top over closed storage) that spans farther than its stock
+ * holds gets a center support under it — so no clear span is over the limit. Same model: the support
+ * is a panel, so the render, cut list, Buy (screws from joints), steps and PDF all carry it.
+ * "no middle leg" keeps it open: middle dividers under a seat come out and the span warning stays.
+ */
+export function autoSupportSpans(project: YardProject, prompt: string): YardProject {
+  if (!project.panels.length || project.pocket || project.windowPkg) return project;
+  const findings = spanFindings(project);
+  const seatLike = (p: Panel) => loadOf(project, p) === "person";
+  if (wantsOpenSpan(prompt)) {
+    const plates = project.panels.filter((p) => isFlatPlate(p) && seatLike(p) && p.position.y >= 0.3);
+    const drop = new Set<Panel>();
+    for (const plate of plates) for (const b of bearingCenters(plate, project.panels)) if (b.panel.type === "divider") drop.add(b.panel);
+    if (!drop.size && !findings.some((f) => f.load === "person")) return project;
+    const panels = project.panels.filter((p) => !drop.has(p));
+    const next = { ...project, panels };
+    const left = spanFindings(next).filter((f) => f.load === "person");
+    const note = left.length
+      ? `Open underneath, as asked — the ${left[0].name.toLowerCase()} spans ${inchFrac(left[0].span)}" with no middle support. A 1 1/2" thick seat or a deep apron under its back edge keeps it from sagging.`
+      : "Open underneath, as asked.";
+    const notes = drop.size
+      ? project.notes
+          .filter((n) => !/divider/i.test(n))
+          .map((n) => n.replace(/\bwith \d+ (open )?(shoe )?bays\b/i, "with one open bay"))
+      : project.notes;
+    return { ...next, notes: [...notes, note] };
+  }
+  if (!findings.length) return project;
+  const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const boxes = usableBoxes(panels, project);
+  const added: string[] = [];
+  for (const f of findings) {
+    const plate = panels.find((p) => p.id === f.panelId);
+    if (!plate) continue;
+    const person = f.load === "person";
+    const loadedTop = (plate.type === "top" || plate.type === "counter") && plateBelow(panels, plate) > 0.3;
+    if (!person && !loadedTop) continue;
+    const longX = plate.size.width >= plate.size.depth;
+    const t = Math.max(0.5, Math.min(1.5, plate.size.height));
+    const limit = f.allow;
+    let count = 0;
+    let worst = 0;
+    for (const [a, b] of spanGaps(plate, panels)) {
+      const len = b - a;
+      if (len <= limit * TOL) {
+        worst = Math.max(worst, len);
+        continue;
+      }
+      const k = Math.ceil(len / limit);
+      worst = Math.max(worst, len / k);
+      for (let i = 1; i < k; i++) {
+        const at = a + (len * i) / k;
+        // Stand it on whatever is under the plate (floor or a shelf), and carry a shelf down to the floor too.
+        let top = plate.position.y;
+        let carrier: Panel = plate;
+        while (top > 0.3) {
+          const base = plateBelow(panels, carrier);
+          const h = top - base;
+          if (h < 1) break;
+          const piece = longX
+            ? { x: at - t / 2, y: base, z: carrier.position.z, w: t, h, d: carrier.size.depth }
+            : { x: carrier.position.x, y: base, z: at - t / 2, w: carrier.size.width, h, d: t };
+          if (hitsUse(piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, boxes)) break;
+          if (drawerNear(panels, piece.x, piece.x + piece.w, piece.y, piece.y + piece.h)) break;
+          pushPanel(panels, "divider", `Center support ${added.length + 1}`, piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, plate.materialId);
+          added.push(plate.name);
+          count++;
+          if (base <= 0.3) break;
+          const next = panels.find((q) => q !== carrier && isFlatPlate(q) && Math.abs(q.position.y + q.size.height - base) < 0.05 &&
+            overlap(piece.x, piece.x + piece.w, q.position.x, q.position.x + q.size.width) > 0 &&
+            overlap(piece.z, piece.z + piece.d, q.position.z, q.position.z + q.size.depth) > 0);
+          if (!next) break;
+          carrier = next;
+          top = next.position.y;
+        }
+      }
+    }
+    if (count) {
+      project = {
+        ...project,
+        notes: [
+          ...project.notes,
+          `Center support under the ${plate.name.toLowerCase()}: ${inchFrac(f.span)}" is a long reach for ${thickLabel(f.thick).replace("″", '"')} stock (${person ? "a person" : "a loaded top"} wants it held about every ${Math.round(limit)}"), so ${count === 1 ? "a support stands" : `${count} supports stand`} under it and every span is ${inchFrac(worst)}" or less. Type "no middle leg" to leave it open.`,
+        ],
+      };
+    }
+  }
+  if (!added.length) return project;
+  return { ...project, panels };
 }
