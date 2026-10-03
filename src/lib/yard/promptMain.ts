@@ -83,14 +83,17 @@ function honestHouse(project: YardProject, prompt: string, honorUnit = false, ma
 function requestedStock(prompt: string, materialOverride?: string): CatalogItem | null {
   const picked = materialOverride ? getCatalogItem(materialOverride) : undefined;
   if (picked && !isWireStock(picked)) return picked;
-  if (!bodyStockClauses(prompt).length) return null;
   const named = detectMaterial(prompt);
-  return isWireStock(named) ? null : named;
+  if (isWireStock(named)) return null;
+  // "from plywood" already wins inside detectMaterial. A leading sheet word is the same ask.
+  if (bodyStockClauses(prompt).length) return named;
+  if (named.formFactor === "sheet" || named.category === "cardboard" || named.category === "sheet_goods") return named;
+  return null;
 }
 
 function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
   if (!item) return null;
-  if (item.category === "sheet_goods") return "sheet";
+  if (item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard") return "sheet";
   if (item.category === "lumber" && item.formFactor === "board") return "board";
   return null;
 }

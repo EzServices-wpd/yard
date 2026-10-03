@@ -661,7 +661,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   // Single-slab headboard has no carcase joints — skip join screws.
   // Floating shelves only need a few screws shelf→cleat (not a carcase box).
   // Template builds that declare glue-only joinery (mitered frames) take no screws.
-  const glueOnly = !!project.shape?.params?.glueOnly;
+  const glueOnly = !!project.shape?.params?.glueOnly || stockJoinsWithoutScrews(project);
   // Shelves on pins (the same rule the pin line below uses) take no screws.
   const pinShelves =
     !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
@@ -765,7 +765,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     });
   }
   const doors = project.panels.filter((panel) => panel.type === "door");
-  if (doors.length) {
+  if (doors.length && !stockJoinsWithoutScrews(project)) {
     if (crate) {
       bom.push({
         name: '3" utility hinges',
@@ -1218,6 +1218,14 @@ export function strangerWoodPieceCount(project: YardProject): number {
 }
 
 /** Every plan leaves with placement talk: each attach/position step says where, from geometry. */
+
+function stockJoinsWithoutScrews(project: { primaryMaterialId?: string }): boolean {
+  const item = project.primaryMaterialId ? getCatalogItem(project.primaryMaterialId) : undefined;
+  const joins = item?.preferredJoins ?? [];
+  if (!joins.length) return false;
+  return !joins.includes("screw") && !joins.includes("nail");
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
   return fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))));
 }

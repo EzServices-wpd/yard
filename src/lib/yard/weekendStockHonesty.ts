@@ -259,29 +259,49 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
 }
 
 /** The picked sheet replaces ¾" faces. A face longer than that sheet stays on a sheet that fits. ¼" backs stay ¼" unless the pick is the thin sheet. */
+function faceAtSheetThickness(size: { width: number; height: number; depth: number }, thick: number) {
+  const axes = (["width", "height", "depth"] as const).slice().sort((a, b) => size[a] - size[b]);
+  const thin = axes[0];
+  if (size[thin] <= thick + 0.02) return size;
+  return { ...size, [thin]: Math.round(thick * 1000) / 1000 };
+}
+
 export function applyExplicitSheetCarcase(project: YardProject, item: CatalogItem): YardProject {
   if (item.formFactor !== "sheet" && item.category !== "sheet_goods") return project;
   const sheetL = item.dims.length ?? 96;
   const thick = item.dims.thickness ?? 0.75;
   const thinPick = thick < 0.4;
+  // A craft sheet is not plywood wearing a new name. Faces take that sheet's thickness.
+  const craftSheet = item.category !== "sheet_goods";
   const panels = project.panels.map((p) => {
     const id = p.materialId ?? "";
     if (!/^plywood-/i.test(id)) return p;
     const long = Math.max(p.size.width, p.size.height, p.size.depth);
-    if (long > sheetL + 0.5) {
+    if (long > sheetL + 0.5 && !craftSheet) {
       const taller = thinPick || /^plywood-1-4/i.test(id) ? "plywood-1-4-4x10" : "plywood-3-4-4x10";
       return { ...p, materialId: taller };
     }
     if (!thinPick && /^plywood-1-4/i.test(id)) return p;
-    return { ...p, materialId: item.id };
+    const size = craftSheet ? faceAtSheetThickness(p.size, thick) : p.size;
+    return { ...p, materialId: item.id, size };
   });
-  const note = thinPick
-    ? `Stock: ${item.name}. Every plywood face is this sheet.`
-    : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
-  const notes = (project.notes ?? []).filter(
-    (n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n),
-  );
-  return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
+  const joins = item.preferredJoins ?? [];
+  const fastener = joins.includes("screw") || joins.includes("nail");
+  const note = craftSheet
+    ? `Stock: ${item.name}. Every face is this sheet, at this sheet's thickness. Join it the way this sheet joins.`
+    : thinPick
+      ? `Stock: ${item.name}. Every plywood face is this sheet.`
+      : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
+  const notes = (project.notes ?? [])
+    .filter((n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n))
+    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : n));
+  return {
+    ...project,
+    primaryMaterialId: item.id,
+    panels,
+    notes: [...notes, note],
+    joinMethod: craftSheet && !fastener ? (joins[0] as YardProject["joinMethod"]) ?? "glue" : project.joinMethod,
+  };
 }
 
 
