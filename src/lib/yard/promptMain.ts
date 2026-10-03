@@ -88,6 +88,9 @@ function requestedStock(prompt: string, materialOverride?: string): CatalogItem 
   // "from plywood" already wins inside detectMaterial. A leading sheet word is the same ask.
   if (bodyStockClauses(prompt).length) return named;
   if (named.formFactor === "sheet" || named.category === "cardboard" || named.category === "sheet_goods") return named;
+  // A named member (dowel, pipe, stick, tube, roll, block) is the stock even without "from".
+  // A house noun must not put that ask back on sheet goods. Species boards stay on the species path.
+  if (named.formFactor === "dowel" || named.formFactor === "pipe" || named.formFactor === "tube" || named.formFactor === "stick" || named.formFactor === "block" || named.formFactor === "roll") return named;
   return null;
 }
 
