@@ -296,12 +296,24 @@ export function parseSize(lower: string): { height: number; width: number; depth
     }
   }
 
-  const longM = dimText.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*long\b/);
-  if (longM && /\bbed\b|bench|doll/.test(lower)) {
-    const L = parseFloat(longM[1]);
+  // A typed length is the finished long axis of every build, not only a bed or a doll.
+  // Untyped axes stay in proportion and must not outgrow that length (a 24" cube default is a lie).
+  const longM = dimText.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*long\b/);
+  if (longM) {
+    const raw = parseFloat(longM[1]);
+    const feet = /(?:ft|foot|feet)\s*long\b/.test(dimText);
+    const L = feet ? raw * 12 : raw;
     if (Number.isFinite(L) && L > 0) {
-      width = L;
-      if (Math.abs(height - L) < 0.05 && !/(?:tall|high|height)\b/.test(dimText)) height = 24;
+      const widthTyped = /(?:wide|width)\b/.test(dimText);
+      const heightTyped = /(?:tall|high|height)\b/.test(dimText);
+      const depthTyped = /(?:deep|depth)\b/.test(dimText);
+      // Length fills the long axis that was not already typed (60 wide × 80 long stays 60 × 80).
+      if (!widthTyped) width = L;
+      else if (!depthTyped) depth = L;
+      else if (!heightTyped) height = L;
+      // Only the cube default is a lie. A shorter untyped axis (a bed's 24" rise) stays.
+      if (!heightTyped && height > L) height = Math.max(2, Math.round(L * 0.45 * 16) / 16);
+      if (!depthTyped && !widthTyped && depth > L) depth = Math.max(1.5, Math.round(L * 0.35 * 16) / 16);
     }
   }
 
@@ -341,7 +353,7 @@ export function hasExplicitSize(prompt: string): boolean {
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
   // Bare labeled dims — same cues parseSize already honors ("24 wide", "72 high", "16 deep", "60" wide").
-  if (/\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width|tall|high|height|deep|depth)\b/.test(dim)) return true;
+  if (/\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width|tall|high|height|deep|depth|long|length)\b/.test(dim)) return true;
   // Bare "6 foot ladder" / "3 foot tower" / "2 foot catapult" count as typed size.
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\b/.test(dim)) return true;
   if (/\d+(?:\.\d+)?\s*'(?!')/.test(dim)) return true;
@@ -760,10 +772,13 @@ export function toProject(
     if (typed.height > 0 && typed.height !== 24) height = typed.height;
     depth = typed.depth;
   }
-  const longBit = prompt.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″])?\s*long\b/);
-  if (longBit && (kind === "furniture" || kind === "figure") && /\bbed\b|doll/.test(prompt.toLowerCase())) {
-    const L = parseFloat(longBit[1]);
-    if (Number.isFinite(L) && L >= 6 && L <= 96) width = L;
+  // parseSize already bound a typed length onto the axis that was not already typed.
+  const longBit = prompt.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*long\b/);
+  if (longBit && !/(?:wide|width)\b/.test(prompt.toLowerCase())) {
+    const raw = parseFloat(longBit[1]);
+    const feet = /(?:ft|foot|feet)\s*long\b/.test(prompt.toLowerCase());
+    const L = feet ? raw * 12 : raw;
+    if (Number.isFinite(L) && L > 0) width = L;
   }
   if (kind === "eiffel") {
     const publishedBase = height * (125 / 324);
