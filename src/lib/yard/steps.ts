@@ -91,6 +91,13 @@ function cutHow(item?: CatalogItem | null) {
   if (ff === "stick" || item.category === "craft_wood") {
     return { how: "Snips or a razor on a scrap board.", tip: "One wrong cut wastes a stick. Cut long, then sneak up on the line." };
   }
+  // Round stock is a crosscut. Sheet-rip talk stays on the sheet default below.
+  if (ff === "dowel") {
+    return {
+      how: "Fine saw or a miter box. Mark the length, cut square across the round, and ease the end with sandpaper. Write the letter on the end.",
+      tip: "An angled end will not seat. Support the offcut.",
+    };
+  }
   if (ff === "board" || ff === "lumber") {
     return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: "Cedar and 1× split. Predrill." };
   }
@@ -104,6 +111,16 @@ function cutHow(item?: CatalogItem | null) {
     how: "Circular saw and a straightedge — or take this cut list to the lumber aisle and have them cut the sheets. Good face up. Write the letter from the cut list on the waste face (the side nobody sees).",
     tip: "Support the offcut so it does not splinter. If a number here disagrees with the cut list, trust the cut list.",
   };
+}
+
+
+/** Join verb from the stock's own join. Screws only when that stock joins with screws or nails. */
+function stockJoinVerb(project: YardProject): "Screw" | "Glue" | "Set" {
+  const id = project.primaryMaterialId || project.instances[0]?.catalogId;
+  const join = (id ? getCatalogItem(id)?.preferredJoins?.[0] : undefined) ?? "";
+  if (join === "glue" || join === "tape" || join === "friction" || join === "pin") return "Glue";
+  if (join === "solvent" || join === "zip") return "Set";
+  return "Screw";
 }
 
 /** Prompt of the panel project being written (named solid stock labels / glue-up). */
@@ -3049,7 +3066,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     if (isClimbTriangle(prompt) && !isClimbStepStool(prompt)) {
       return [
         { role: "leg", title: "Cut the sloping side rails", why: "Four rails make two triangles. Both sides match." },
-        { role: "rail", title: "Screw the rungs", why: "Rungs span the triangle. Level each one. Predrill." },
+        { role: "rail", title: `${stockJoinVerb(project)} the rungs`, why: stockJoinVerb(project) === "Screw" ? "Rungs span the triangle. Level each one. Predrill." : "Rungs span the triangle. Level each one. Join the ends where they meet the rails." },
         { role: "brace", title: "Add the base stretchers", why: "The wide base keeps a toddler triangle from tipping." },
         { role: "member", title: "Place remaining members", why: "No floating pieces." },
       ];
@@ -3094,7 +3111,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     }
     return [
       { role: "leg", title: "Cut and mark the two rails", why: "Both rails the same length." },
-      { role: "rail", title: "Screw the rungs", why: "Level every rung. Predrill." },
+      { role: "rail", title: `${stockJoinVerb(project)} the rungs`, why: stockJoinVerb(project) === "Screw" ? "Level every rung. Predrill." : "Level every rung. Join the ends where they meet the rails." },
       { role: "brace", title: "Add any remaining stretchers", why: "They keep the rails from walking apart." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
