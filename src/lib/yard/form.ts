@@ -1,5 +1,6 @@
 import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
+import { stripTypedSizes } from "./inchText";
 import { figureStrokes } from "./figure";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 export type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
@@ -496,7 +497,8 @@ export function subjectFromPrompt(prompt: string): string {
   let s = prompt.toLowerCase();
   const looks = s.match(/looks like (?:an? |the )?([a-z0-9][a-z0-9\s'-]{1,60})/);
   if (looks) s = looks[1];
-  s = s.replace(/\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|cm|m|meter|metre)s?/g, " ");
+  // Word-bounded units, fractions and all: "12 inch" must not leave "ch", "1/4 inch" must not leave "1/".
+  s = stripTypedSizes(s).replace(/(?<![\w/])\d+(?:\.\d+)?\s*(?:cm|mm|meters?|metres?|m)\b/g, " ");
   s = s.replace(/\bfrom\b.+$/g, " ");
   s = s.replace(/\b(build|make|a|an|the|of|that|with|using|out|model|replica|mini|miniature|scale)\b/g, " ");
   return s.replace(/\s+/g, " ").trim() || prompt.trim();

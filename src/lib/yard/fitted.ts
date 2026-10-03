@@ -20,7 +20,7 @@ import type {
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
 import { detectWeekendMech } from "./weekendFamily";
-import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
+import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isStorageBox, storageBoxTitleStem, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
@@ -773,7 +773,7 @@ export function looksLikeFitted(prompt: string) {
   const dimText = lower
     .replace(/\b(?:from\s+)?(?:[1-8]\s*[x×]\s*(?:2|3|4|6|8|10|12)|two by four|two by six|one by four|four by four)\b/gi, " ");
   const nums = (dimText.match(/\d+(?:\.\d+)?/g) ?? []).length;
-  if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|deep|depth|high|height)/.test(lower) && !/\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|')/.test(lower)) {
+  if (/workbench/.test(lower) && !/drawer|plywood|cabinet/.test(lower) && !/(?:wide|width|long|length|deep|depth|high|height|tall)/.test(lower) && !/\d+(?:\.\d+)?\s*(?:in|inch|inches|ft|foot|feet|')/.test(lower)) {
     return false;
   }
   // Seating lounge class stays fitted (plywood sit anatomy) — not craft House-wire.
@@ -1102,6 +1102,18 @@ export function parseBrief(prompt: string): FittedSpec | null {
     const rodW = pick(t, /\brod\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?/i, NaN);
     if (Number.isFinite(rodW) && rodW >= 18 && rodW <= 192) width = rodW;
   }
+
+  // Casegoods and shop tops run their length along the front: "workbench 60 long" is 60 wide.
+  if (
+    program !== "table" &&
+    !isPlatformBed(lower) &&
+    !isBunkBed(lower) &&
+    !isLoftBed(lower) &&
+    !Number.isFinite(width) &&
+    Number.isFinite(labeledLong)
+  ) {
+    width = labeledLong;
+  }
   if (!Number.isFinite(width)) {
     width =
       trip.w ??
@@ -1429,10 +1441,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
         !trip.d &&
         Number.isFinite(depth) &&
         Math.abs(depth - trip.h) < 0.05;
+      // A standing shop top works at counter height, not a 29" desk.
+      const deskH = isStandingShopTop(lower) ? 36 : 29;
       if (unlabeledWd || pairIsDepth) {
-        height = 29;
+        height = deskH;
       } else {
-        height = trip.d && trip.d < 42 ? trip.d : trip.h ?? 29;
+        height = trip.d && trip.d < 42 ? trip.d : trip.h ?? deskH;
         if (trip.h && trip.h < 42 && trip.d && trip.d > 14) {
           depth = trip.h;
           height = trip.d;
@@ -1966,7 +1980,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
         : /file\s*cabinet|filing\s*cabinet|\bfiling\b/.test(lower)
           ? "File cabinet"
           : isHingedLidChest(lower)
-            ? isToyChest(lower) ? "Toy chest" : "Chest"
+            ? isToyChest(lower) ? "Toy chest" : isStorageBox(lower) ? storageBoxTitleStem(lower) : "Chest"
           : /\bchest\b/.test(lower) && !/medicine/.test(lower)
             ? isToyChest(lower) || /toy/.test(lower) ? "Toy chest" : "Chest"
             : /dresser/.test(lower)
@@ -5661,7 +5675,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
       // Hinged Operate matches /^Lid\b/; lift-off uses "Lift-off lid" so no Open/Shut swing.
       panels.push(panel("top", liftOff ? "Lift-off lid" : "Lid", x0, H - P, 0, W, P, D));
-      const stem = honorSpeciesInTitle(toy ? "Toy chest" : "Chest", prompt);
+      const stem = honorSpeciesInTitle(toy ? "Toy chest" : isStorageBox(lidLower) ? storageBoxTitleStem(lidLower) : "Chest", prompt);
       // Class-default densify honesty — bare "cedar chest with hinged lid" must not stamp stock W×H×D as typed.
       const chestAxes = typedClassDefaultAxes(prompt);
       const name =

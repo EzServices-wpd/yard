@@ -39,6 +39,7 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { localStockQuery } from "./stockQuery";
+import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
 import { withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
@@ -581,6 +582,9 @@ function generateRaw(
   const buildClass = namedBuildClass(prompt);
   const owned = buildClass ? null : placeOwnedBoard(prompt);
   if (owned && !formOverride) return owned;
+  // Stock, a count and a length with no subject is a cut order: build the pieces, not a creature.
+  const cut = buildClass || formOverride ? null : placeCutOrder(prompt);
+  if (cut) return cut;
   const placed = buildClass ? null : placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
   const held = placeHeldProduct(prompt);

@@ -17,7 +17,7 @@ import { detectBlockSubject } from "./blocks";
 import { detectWeekendFamily } from "./weekendFamily";
 import { climbIdentityLabel, identityTitleStem, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isWallMediaLedge } from "./family";
 import { isOddShapePrompt } from "./oddShapes";
-import { inchFrac } from "./inchText";
+import { INCH_NUM, inchFrac } from "./inchText";
 
 /** Animal word + the pet thing it uses. The animal is the user; the object noun is the build. */
 export const PET_USE =
@@ -31,13 +31,21 @@ export function stripPetUse(text: string): string {
 /** "for my Lego robot collection" / "record collection": the shelf displays X; X is not the build. */
 export function heldCollection(lower: string): string | null {
   const m = lower.match(/\bfor\s+(?:(?:my|our|the|a|an|your)\s+)?([a-z0-9][a-z0-9\s'-]{1,40}?)\s+(?:collection|display)\b/);
-  return m ? m[1].trim() : null;
+  if (m) return m[1].trim();
+  // "<X> collection shelf / display case / cabinet": the compound names what is held, the noun names the build.
+  const c = lower.match(/^(?:(?:my|our|the|a|an|your)\s+)?([a-z0-9][a-z0-9\s'-]{1,40}?)\s+collection\s+(?:shel(?:f|ves)|display(?:\s+case)?|case|cabinet|rack|bookcase|bookshelf|storage|cubes?)\b/);
+  return c ? c[1].trim() : null;
 }
 
 /** The hold phrase after "for", or before a stand/riser noun. Null when nothing is held. */
 export function heldPhrase(lower: string): string | null {
   const forM = lower.match(/\bfor\s+(?:(?:a|an|the|my|our|your|two|2|three|3)\s+)?([^,.;]+)/);
-  if (forM) return forM[1].replace(/\s*\b\d+(?:\.\d+)?\s*(?:(?:in|inch|inches|"|ft|feet|foot)\b\s*(?:tall|high|wide|long|deep)?|(?:tall|high|wide|long|deep)\b).*$/, "").trim();
+  if (forM) {
+    // Trailing sizes go, fractions and all ("for a 3 1/2 inch figurine 6 tall" → "3 1/2 inch figurine").
+    const tail = new RegExp(String.raw`\s*(?<![\w/])${INCH_NUM}\s*(?:(?:in|inch|inches|"|ft|feet|foot)\b\s*(?:tall|high|wide|long|deep)|(?:tall|high|wide|long|deep)\b).*$`);
+    const lead = new RegExp(String.raw`(?<![\w/])${INCH_NUM}\s*(?:in|inch|inches|"|″)(?=\s)`, "g");
+    return forM[1].replace(tail, "").replace(lead, " ").replace(/\s+/g, " ").trim();
+  }
   const before = lower.match(/([a-z0-9][a-z0-9\s'-]{1,40}?)\s+(?:stands?|holders?|cradles?|risers?|shel(?:f|ves)|carts?)\b/);
   return before ? before[1].trim() : null;
 }

@@ -245,6 +245,28 @@ for (const q of ["basketball", "poland spring water bottle", "watering can", "ce
   }
 }
 
+// ---------------------------------------------------------------- 8. Storage boxes, cut orders, typed lengths, collections
+for (const q of ["deck box for cushions", "outdoor storage box for pool toys", "patio cushion bin with a lid"]) {
+  const p = generateFromPrompt(q);
+  if (!/^(?:Deck box|Storage box)\b/.test(p.name)) fail("a box that stores things builds a storage box", { q, name: p.name });
+  if (!p.panels.some((x) => /lid/i.test(x.name))) fail("a storage box has a lid", { q, parts: p.panels.map((x) => x.name) });
+  if (p.kind === "frame" || p.instances.some((i) => /popsicle/.test(i.catalogId))) fail("a storage box is lumber/plywood, never a craft frame", { q, kind: p.kind });
+}
+for (const q of ["pine 20 at 12 inch", "20 pine boards at 12 inches", "cut 20 pieces of 1x4 12 inches long"]) {
+  const p = generateFromPrompt(q);
+  if (/\bch\b|\bAt\b/.test(p.name)) fail("title ate part of a unit word", { q, name: p.name });
+  if (p.instances.length !== 20 || p.instances.some((i) => Math.abs((i.cutLength ?? 0) - 12) > 0.01)) fail("a cut order builds its pieces", { q, name: p.name, n: p.instances.length });
+  if (p.notes.some((n) => /armature|creature/i.test(n))) fail("a cut order never becomes a creature", { q, notes: p.notes });
+}
+{
+  const wb = generateFromPrompt("2x4 workbench 60 long");
+  if (!/^Workbench/.test(wb.name) || Math.abs(wb.overall.width - 60) > 0.5) fail("workbench honors a typed length", { name: wb.name, overall: wb.overall });
+  if (wb.overall.height < 33) fail("a workbench stands at shop height, not desk height", wb.overall);
+  if (!wb.panels.some((x) => /leg/i.test(x.name) && x.materialId === "lumber-2x4-8")) fail("workbench legs are 2x4", wb.panels.map((x) => [x.name, x.materialId]));
+  const lego = generateFromPrompt("lego collection shelf");
+  if (!/lego collection/i.test(lego.name)) fail("a collection shelf names the collection", lego.name);
+}
+
 console.log(`stand guards: swept ${swept} weekend prompts`);
 if (failed) {
   console.error(`FAIL stand guards: ${failed} failures`);

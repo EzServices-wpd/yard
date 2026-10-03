@@ -565,6 +565,32 @@ export function isLiftOffLidPrompt(lower: string) {
 }
 
 /**
+ * Storage box class — a box, bin or trunk that keeps things (deck box, cushion bin with a lid,
+ * box for pool toys). It builds as a lidded chest, never a weekend frame. Boxes with their own
+ * class (planter, litter, bird/nest, shadow, tool, sand, mail) and boxes that are parts of other
+ * furniture (shelf with bins) stay out.
+ */
+export function isStorageBox(lower: string) {
+  if (!/\b(?:box|boxes|bin|bins|trunk)\b/.test(lower)) return false;
+  if (
+    /planter|window\s*box|flower\s*box|garden\s*box|litter|shadow\s*box|bird|nest|\bbat\b|\bbee\b|jewel|popsicle|craft\s*stick|box\s*(?:frame|joint|fan|kite|girder|truss|beam|spring)|ballot|music\s*box|toolbox|tool\s*box|mail\s*box|mailbox|sand\s*box|sandbox|lunch|pizza|cable|tv\s*box|bread\s*box|cigar|tissue|light\s*box|xbox|juke/.test(lower)
+  ) {
+    return false;
+  }
+  if (/shel(?:f|ves)|cabinet|cubb|bench|\brack\b|bookcase|dresser|\bunit\b|\bwall\b|organizer|tower|\bcart\b|\btable\b|\bdesk\b|\bstand\b/.test(lower)) {
+    return false;
+  }
+  // A volume (6 qt, 18 gallon) names a bought tote; a built box is sized in inches.
+  if (/\b\d+(?:\.\d+)?\s*-?\s*(?:qt|quarts?|gal|gallons?|l|liters?|litres?|oz)\b/.test(lower)) return false;
+  return /\blid(?:s|ded)?\b|storage|\bstores?\b|\bstow|deck\s*box|patio|outdoor|porch|cushion|pillow|blanket|\btoys?\b|keepsake|\bfor\s+(?:my\s+|the\s+|our\s+|all\s+)?(?:[a-z]+\s+)?[a-z]+s\b/.test(lower);
+}
+
+/** Storage box title — "Deck box" when said, else "Storage box". */
+export function storageBoxTitleStem(lower: string) {
+  return /deck\s*box/.test(lower) ? "Deck box" : "Storage box";
+}
+
+/**
  * Chest / trunk / box lid anatomy (hinged OR lift-off).
  * Not medicine / file / tool cabinet drawer chests.
  */
@@ -574,6 +600,7 @@ export function isLidChestAnatomy(lower: string) {
   // Drawer-bank / chest of drawers stay drawer path unless a lid is typed.
   if (/of\s+drawers/.test(lower)) return false;
   if (/drawer/.test(lower) && !/hinged\s*lid|\blid\b/.test(lower)) return false;
+  if (isStorageBox(lower)) return true;
   // Explicit lid on chest/trunk/box (includes lift-off / removable / hinged wording).
   if (/(?:\bchest\b|\btrunk\b|\bbox\b)/.test(lower) && /hinged\s*lid|\blid\b/.test(lower)) {
     return true;
@@ -1085,6 +1112,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isBookBinBench(lower)) return sitBenchTitleStem(lower) || "Book bin bench";
   if (isToyChest(lower)) return "Toy chest";
   if (/\bhutch\b/.test(lower)) return /kitchen/.test(lower) ? "Kitchen hutch" : "Hutch";
+  if (isStorageBox(lower)) return storageBoxTitleStem(lower);
   if (isHingedLidChest(lower)) return "Chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";
