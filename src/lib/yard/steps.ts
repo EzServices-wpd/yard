@@ -3290,6 +3290,14 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
+  if (project.kind === "vehicle" || project.kind === "vessel") {
+    return [
+      { role: "rail", title: "Lay the body along the length", why: "The long member is the body. It lies on the bench — it does not stand on legs." },
+      { role: "brace", title: "Glue the cross member across the body", why: "The cross member sets the width. It meets the body, it does not plant on the floor." },
+      { role: "support", title: "Stand the short fin on the body", why: "The fin rises from the body, not from the bench." },
+      { role: "member", title: "Place remaining members", why: "No floating pieces." },
+    ];
+  }
   return [
     { role: "base", title: "Dry-fit the base, then glue it", why: "Everything above sits on this." },
     { role: "support", title: "Stand the arches and pier props first", why: "These take the splay and thrust." },

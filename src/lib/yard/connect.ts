@@ -385,7 +385,9 @@ export function needsSpine(
   const height = Math.max(...ys) - Math.min(...ys);
   const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 0.5);
   const slender = height / span > 2.8;
-  const figure = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
+  // A vehicle or vessel lies along its length. It is not a standing figure, so it does not get a spine banner.
+  if (kind === "vehicle" || kind === "vessel") return { needed: false, reason: "" };
+  const figure = kind === "figure" || kind === "plant";
   if (kind === "arch" || kind === "bridge" || kind === "opening" || kind === "closet" || kind === "pyramid" || kind === "furniture" || kind === "ladder" || kind === "frame") {
     return { needed: false, reason: "" };
   }
@@ -802,7 +804,9 @@ export function finishGraph(
   if (!memberKeep) next = stitchComponents(next, kind);
   const spanKind = kind === "arch" || kind === "bridge" || kind === "opening" || kind === "pyramid";
   const memberBuilt = kind === "furniture" || kind === "ladder" || kind === "frame" || kind === "figure";
-  if (!spanKind && !memberBuilt) next = ensureDownwardPath(next);
+  // Vehicle / vessel body lies on the typed length. Do not plant standing legs under it.
+  const liesAlong = kind === "vehicle" || kind === "vessel";
+  if (!spanKind && !memberBuilt && !liesAlong) next = ensureDownwardPath(next);
   next = weldGraph(next, weldTol);
   const offerBase = needsSpine(next, kind);
   const offer: SupportOffer = { ...offerBase, included: includeSpine && offerBase.needed };

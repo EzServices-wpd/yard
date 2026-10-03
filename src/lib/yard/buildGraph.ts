@@ -271,11 +271,14 @@ export function buildFormGraph(
     }
   };
 
-  const snapped = snapStrokes(recipe.strokes ?? [], Math.max(policy.thick * 2, 0.35));
+  // A vehicle or vessel is a body along the typed length, not a standing leg armature.
+  const liesAlong = kind === "vehicle" || kind === "vessel";
+  const ops = liesAlong ? bodyAlongLength(recipe) : recipe.ops;
+  const snapped = snapStrokes(liesAlong ? [] : (recipe.strokes ?? []), Math.max(policy.thick * 2, 0.35));
   for (const stroke of snapped) {
     apply({ op: "poly", points: stroke.points, role: stroke.role || "leg" });
   }
-  for (const op of recipe.ops) apply(op);
+  for (const op of ops) apply(op);
 
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
   // Thin craft weekend frames also get face X-braces between uprights — densify at stock
@@ -344,13 +347,16 @@ export function buildFormGraph(
         : `${item.name} is thin — long members are laced into a truss.`,
       `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
       "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
+      ...(kind === "vehicle" || kind === "vessel"
+        ? ["Body lies along the typed length. No standing legs under it."]
+        : []),
     ],
     notes: [...recipe.notes],
     structureClass: recipe.kind === "eiffel" ? "eiffel" : recipe.kind === "pyramid" ? "pyramid" : "generic",
   };
 
   const finished = finishGraph(raw, item, kind, !!opts.includeSpine, opts.grain ?? 1);
-  const fig = kind === "figure" || kind === "plant" || kind === "vehicle" || kind === "vessel";
+  const fig = kind === "figure" || kind === "plant";
   let g = finished.graph;
   // Arch / bridge / Eiffel stay intentional wires. Thin weekend frames densify at stock pitch.
   const keepWire =
@@ -367,7 +373,9 @@ export function buildFormGraph(
     kind === "furniture" ||
     kind === "ladder" ||
     (kind === "frame" && policy.fat) ||
-    kind === "figure";
+    kind === "figure" ||
+    kind === "vehicle" ||
+    kind === "vessel";
   if (!keepWire) {
     g = densifyTriangles(
       g,
@@ -388,6 +396,51 @@ export function buildFormGraph(
     };
   }
   return { graph: g, offer: finished.offer };
+}
+
+
+/** Vehicle / vessel: spine on the long axis, one cross member, a short fin. Not a planted leg lattice. */
+/** Vehicle / vessel: spine on the long axis, one cross member, a short fin. Not a planted leg lattice. */
+function bodyAlongLength(recipe: FormRecipe): FormOp[] {
+  let maxX = 0;
+  let maxY = 0;
+  let maxZ = 0;
+  for (const op of recipe.ops) {
+    if (op.op === "poly") {
+      for (const pt of op.points) {
+        maxX = Math.max(maxX, Math.abs(pt.x));
+        maxY = Math.max(maxY, pt.y);
+        maxZ = Math.max(maxZ, Math.abs(pt.z));
+      }
+    } else if (op.op === "column") {
+      maxX = Math.max(maxX, Math.abs(op.x));
+      maxY = Math.max(maxY, op.y1);
+      maxZ = Math.max(maxZ, Math.abs(op.z));
+    } else if (op.op === "taper") {
+      maxY = Math.max(maxY, op.y1);
+      maxX = Math.max(maxX, op.r0, op.r1);
+    } else if (op.op === "box") {
+      maxX = Math.max(maxX, Math.abs(op.x) + op.w / 2);
+      maxY = Math.max(maxY, op.y + op.h / 2);
+      maxZ = Math.max(maxZ, Math.abs(op.z) + op.d / 2);
+    } else if (op.op === "ring") {
+      maxX = Math.max(maxX, op.rx);
+      maxY = Math.max(maxY, op.y);
+      maxZ = Math.max(maxZ, op.rz ?? op.rx);
+    } else if (op.op === "legs") {
+      maxX = Math.max(maxX, op.radius);
+      maxY = Math.max(maxY, op.y1);
+      maxZ = Math.max(maxZ, op.radius);
+    }
+  }
+  const L = Math.max(maxX, maxY, 6);
+  const y = Math.max(1.25, Math.min(maxY > 0 ? maxY * 0.35 : L * 0.12, L * 0.2));
+  const half = Math.max(maxZ, L * 0.16);
+  return [
+    { op: "poly", role: "rail", points: [{ x: 0, y, z: 0 }, { x: L, y, z: 0 }] },
+    { op: "poly", role: "brace", points: [{ x: L * 0.42, y, z: -half }, { x: L * 0.42, y, z: half }] },
+    { op: "poly", role: "support", points: [{ x: L * 0.82, y, z: 0 }, { x: L * 0.82, y: y + L * 0.14, z: 0 }] },
+  ];
 }
 
 function pyramidEnvelope(ops: FormOp[]) {
