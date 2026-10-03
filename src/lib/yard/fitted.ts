@@ -1785,6 +1785,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 3
                 : /nightstand|bedside/.test(lower)
                   ? 1
+                // A rack is posts plus the tiers that hold the load. A rail or arm rack stays open.
+                : /\bracks?\b/.test(lower) && !isLumberRack(lower) && !isDryingRack(lower) && !/rail|peg|hook|coat/.test(lower)
+                  ? 3
+                // A cabinet is an enclosed carcase. Named contents do not erase the shelves.
+                : /cabinet/.test(lower) && !/rack|open/.test(lower)
+                  ? 2
                   : 0,
   );
   const spokenCubbies = spokenCubbyCount(t);
@@ -1812,6 +1818,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       (isStandingShopTop(lower) && /drawer/.test(lower)) ||
       (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
   const doors =
+    (/cabinet/.test(lower) && !/rack|open/.test(lower)) ||
     (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
@@ -2046,6 +2053,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                             ? "Wall rack"
                                             : house?.family === "hung-cabinet"
                                               ? "Wall cabinet"
+                                              : /cabinet/.test(lower) && !/\\bracks?\\b/.test(lower)
+                                                ? "Cabinet"
                                               : names[program];
 
   if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {

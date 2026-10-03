@@ -596,7 +596,9 @@ function snapName(
 }
 
 function injectRackRails(project: YardProject): YardProject {
-  const intent = rackIntent(project.prompt ?? "");
+  const prompt = project.prompt ?? "";
+  if (/cabinet/.test(prompt.toLowerCase()) && !/\bracks?\b/.test(prompt.toLowerCase())) return project;
+  const intent = rackIntent(prompt);
   if (!intent || hasRackAffordance(project)) return project;
   const shelves = project.panels.filter((p) => p.type === "shelf");
   if (!shelves.length) return project;

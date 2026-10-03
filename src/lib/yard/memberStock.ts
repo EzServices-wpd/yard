@@ -92,6 +92,21 @@ function worldOf(panel: Panel, lx: number, ly: number, lz: number): Vec3 {
  */
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
+  const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
+  if (rack) {
+    const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
+    if (shelves.length) {
+      const posts = project.panels.filter((panel) => panel.type === "upright" || /post|upright/i.test(panel.name));
+      const keep = [...posts, ...shelves].map((panel) => ({ ...panel, materialId: item.id }));
+      return {
+        ...project,
+        panels: keep,
+        instances: project.instances,
+        primaryMaterialId: item.id,
+        notes: [`Tiers stay tiers in ${item.name}.`, ...recastNotes(project.notes ?? [], item)],
+      };
+    }
+  }
   const prim = toPrimitive(item);
   const stockL = Math.max(0.4, prim.length);
   const across = Math.max(prim.width, prim.height, 0.08);

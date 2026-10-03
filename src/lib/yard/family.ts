@@ -1428,7 +1428,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     isIroning(lower) ||
     fold ||
     /crate|dog\s*-?\s*house|doghouse|kennel/.test(lower) ||
-    (/cabinet/.test(lower) && !isOverToilet(lower) && !/spice|wine/.test(lower)) ||
+    (/cabinet/.test(lower) && !isOverToilet(lower) && !/\bracks?\b/.test(lower)) ||
     (/closet|pantry|wardrobe/.test(lower) && !/coat/.test(lower));
   const opening: HouseOpening = isBunkBed(lower) ? "open" : fold ? "fold-down" : door ? "door" : "open";
 
@@ -1458,7 +1458,8 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   const add = (a: HouseAffordance) => {
     if (!affordances.includes(a)) affordances.push(a);
   };
-  if (wantsJars(lower) || isSpiceRack(lower)) add("jar-lips");
+  // A cabinet is the carcase. Named contents do not turn it into a rack.
+  if ((wantsJars(lower) || isSpiceRack(lower)) && !(/cabinet/.test(lower) && !/\bracks?\b/.test(lower))) add("jar-lips");
   if (wantsBottles(lower) || isWineRack(lower)) add("bottle-rails");
   if ((fold || isIroning(lower)) && !isIroningWallMount(lower)) add("fold-down-board");
   if (!isDaybed(lower) && !isSeatingLoungeClass(lower) && (program === "bench" || /cubb/.test(lower) || (sit && family === "seat"))) add("cubbies");

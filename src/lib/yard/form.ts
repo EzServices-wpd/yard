@@ -139,7 +139,7 @@ const HITS: Hit[] = [
   { re: /guitar|violin|ukulele/, kind: "custom", name: "Guitar", build: guitarOps },
   { re: /swing/, kind: "frame", name: "Swing", build: swingOps },
   { re: /lattice|space\s*frame/, kind: "lattice", name: "Lattice", build: () => [] },
-  { re: /tower|spire|column|stack|skyscraper/, kind: "lattice", name: "Lattice tower", build: () => [] },
+  { re: /(?:lattice|space\s*frame).{0,24}(?:tower|spire)|(?:tower|spire).{0,24}(?:lattice|space\s*frame)/, kind: "lattice", name: "Lattice tower", build: () => [] },
   { re: /\b(?:frame|box|cube|platform)\b/, kind: "frame", name: "Frame", build: frameOps },
 ];
 
