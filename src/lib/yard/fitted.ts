@@ -789,6 +789,19 @@ export function looksLikeFitted(prompt: string) {
   )
     return false;
   if (detectHouseFamily(prompt)) return true;
+  // Three finished axes and no named stock: a sheet carcase at those numbers.
+  // A named material still densifies in that stock. A figure or climb stays that build.
+  if (
+    /\d+(?:\.\d+)?\s*["″']?\s*(?:wide|width)\b/.test(lower) &&
+    /\d+(?:\.\d+)?\s*["″']?\s*(?:tall|high|height)\b/.test(lower) &&
+    /\d+(?:\.\d+)?\s*["″']?\s*(?:deep|depth)\b/.test(lower) &&
+    !namedStockFromPrompt(prompt) &&
+    !CRAFT.test(lower) &&
+    !MAKER.test(lower) &&
+    !climbIdentityLabel(lower)
+  ) {
+    return true;
+  }
   if (isPortalHookRail(lower) || isPortalSpanShelf(lower) || isTowelPortalRail(lower) || isShoePortalRail(lower) || isShoePortalCubbies(lower)) {
     return true;
   }
