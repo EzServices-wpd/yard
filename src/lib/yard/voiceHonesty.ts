@@ -1,8 +1,9 @@
 /** Voice/PDF honesty helpers — hardware↔Buy class match, species title/stock, footprint talk, plain shop words, parts-plate + one-join densify. */
 
+import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
-import type { AssemblyStep, CutLine } from "./types";
+import type { AssemblyStep, CatalogItem, CutLine } from "./types";
 
 /**
  * Map BOM / step hardware language to a Buy catalogId class.
@@ -357,6 +358,28 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
   return out;
 }
 
+
+/** Join sentence follows the stock on the cut list. Screws only when that stock joins with screws. */
+function stockJoinHold(cutList: CutLine[]): string | null {
+  const items: CatalogItem[] = [];
+  for (const c of cutList) {
+    const item = getCatalogItem(c.material) ?? searchCatalog(c.material, 4).find((i) => i.name === c.material);
+    if (item) items.push(item);
+  }
+  if (!items.length) return null;
+  const structural = items.some((item) => {
+    const join = item.preferredJoins?.[0];
+    return !join || join === "screw" || join === "nail";
+  });
+  if (structural) return null;
+  const join = items[0].preferredJoins?.[0] ?? "glue";
+  if (join === "tape") return "Masking or packing tape on both faces. No screws.";
+  if (join === "zip") return "Zip ties or twist ties. Cinch, then trim.";
+  if (join === "solvent") return "Solvent cement. Twist a quarter turn and hold until it grabs.";
+  if (join === "friction") return "Press until the pieces lock. No glue.";
+  return "Craft glue on the mating faces. Hold until it grabs. No screws.";
+}
+
 const SCREW_HW = '#8 × 1¼" screws';
 const JOIN_BLOB =
   /Glue and (#8[^:]*?):\s*([^.]*?)(\.|$)(?:\s*)(Do NOT[^.]*\.)?/i;
@@ -415,7 +438,7 @@ function joinTitle(bit: JoinBit, entries: PlateEntry[], keepStand: boolean, isFi
   return `Attach ${partTalk} to ${ontoTalk}`;
 }
 
-function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string, coda: string): string {
+function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string, coda: string, stockHold?: string | null): string {
   const partPlate = findPlate(entries, bit.part);
   const pair = uprightPairTalk(entries);
   const partTalk = partPlate ? plateRef(partPlate, cutListWord(partPlate, bit.part.replace(/^\w/, (c) => c.toUpperCase()))) : bit.part;
@@ -423,6 +446,7 @@ function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string
   const ontoTalk = pair && /upright/i.test(ontoRaw)
     ? `both ${pair.both} uprights`
     : bit.onto;
+  if (stockHold) return `One join: attach ${partTalk} to ${ontoTalk}. ${stockHold}${coda ? ` ${coda}` : ""}`;
   const count = bit.hardware || `4 × ${SCREW_HW} (2 per upright)`;
   // Prefer exact screw class from source when present.
   const hw = /#8/.test(screwClass) ? count.replace(SCREW_HW, SCREW_HW) : count;
@@ -438,6 +462,7 @@ function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string
  */
 export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
   const entries = partsPlateEntries(cutList);
+  const stockHold = stockJoinHold(cutList);
   const densifyPartsPlateTalk = (text: string, lines: CutLine[], opts: { title?: boolean } = {}) => densifyPartsPlateTalkKeep(text, lines, projectName, opts);
   const out: AssemblyStep[] = [];
 
@@ -483,7 +508,7 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
               : joinTitle(bit, entries, keepStand, isFirst) || title;
           const d = [
             isFirst && lead ? lead : "",
-            joinDescription(bit, entries, screwClass, isFirst ? coda : ""),
+            joinDescription(bit, entries, screwClass, isFirst ? coda : "", stockHold),
           ]
             .filter(Boolean)
             .join(" ");

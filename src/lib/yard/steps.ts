@@ -97,6 +97,9 @@ function cutHow(item?: CatalogItem | null) {
   if (item.category === "plastic") {
     return { how: "Sharp snips. Square the cut so tape has a face to grab.", tip: "A crushed straw will not take a joint." };
   }
+  if (item.category === "cardboard" || item.category === "paper_tube" || item.category === "foam") {
+    return { how: "Box cutter on a mat. Score fold lines with a dull edge. Write the letter on the waste face.", tip: "A saw tears this stock. Support the offcut so it does not rip." };
+  }
   return {
     how: "Circular saw and a straightedge — or take this cut list to the lumber aisle and have them cut the sheets. Good face up. Write the letter from the cut list on the waste face (the side nobody sees).",
     tip: "Support the offcut so it does not splinter. If a number here disagrees with the cut list, trust the cut list.",
@@ -2474,11 +2477,22 @@ function cutStockGroups(
     if (talk) g.tool = { how: `${talk} ${g.tool.how}`, tip: g.tool.tip };
   }
   if (thin.length) {
-    groups.push({
-      label: '1/4" plywood (backer)',
-      panels: thin,
-      tool: cutHow(fallbackItem ?? getCatalogItem("plywood-3-4-4x8")),
-    });
+    const byMat = new Map<string, Panel[]>();
+    for (const p of thin) {
+      const key = p.materialId || "thin";
+      const list = byMat.get(key) ?? [];
+      list.push(p);
+      byMat.set(key, list);
+    }
+    for (const [key, matPanels] of byMat) {
+      const item = getCatalogItem(key);
+      const ply = /plywood/i.test(key) || /plywood/i.test(item?.name ?? "");
+      groups.push({
+        label: ply ? '1/4" plywood (backer)' : (item?.name ?? fallbackItem?.name ?? "thin sheet"),
+        panels: matPanels,
+        tool: cutHow(ply ? (fallbackItem ?? getCatalogItem("plywood-3-4-4x8")) : (item ?? fallbackItem)),
+      });
+    }
   }
   if (!groups.length && panels.length) {
     groups.push({
