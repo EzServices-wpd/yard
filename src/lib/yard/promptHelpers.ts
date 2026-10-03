@@ -780,6 +780,29 @@ export function toProject(
     const L = feet ? raw * 12 : raw;
     if (Number.isFinite(L) && L > 0) width = L;
   }
+  // A typed height is the finished top. Overhanging members and stock-face pad
+  // scale inside that height; they must not publish a taller envelope.
+  const heightWord = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:tall|high|height)\b/.test(prompt.toLowerCase());
+  if (heightWord && list.length) {
+    const typedH = parseSize(prompt.toLowerCase()).height;
+    const top = Math.max(...list.map((i) => (i.to ? Math.max(i.from!.y, i.to.y) : i.position.y + (i.size?.height ?? 0))), 0);
+    if (typedH > 0 && top > typedH + 1 / 16) {
+      const k = typedH / top;
+      for (const i of list) {
+        i.position = { ...i.position, y: i.position.y * k };
+        if (i.from && i.to) {
+          i.from = { ...i.from, y: i.from.y * k };
+          i.to = { ...i.to, y: i.to.y * k };
+          if (i.cutLength != null) {
+            i.cutLength = Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z);
+          }
+        } else if (i.size) {
+          i.size = { ...i.size, height: i.size.height * k };
+        }
+      }
+    }
+    if (typedH > 0) height = typedH;
+  }
   if (kind === "eiffel") {
     const publishedBase = height * (125 / 324);
     width = Math.max(width, publishedBase);
