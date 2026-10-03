@@ -586,6 +586,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*6|2x6/, "lumber-2x6-8"],
     [/1\s*[x×]\s*3\b/, "lumber-1x3-8"],
     [/1\s*[x×]\s*2\b/, "lumber-1x2-8"],
+    [/1\s*[x×]\s*8(?!\d)|1x8(?!\d)/, "lumber-1x8-8"],
+    [/1\s*[x×]\s*6(?!\d)|1x6(?!\d)/, "lumber-1x6-8"],
     [/1\s*[x×]\s*4|1x4/, "lumber-1x4-8"],
     [/4\s*[x×]\s*4|4x4/, "lumber-4x4-8"],
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],

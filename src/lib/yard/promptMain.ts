@@ -91,6 +91,8 @@ function requestedStock(prompt: string, materialOverride?: string): CatalogItem 
   // A named member (dowel, pipe, stick, tube, roll, block) is the stock even without "from".
   // A house noun must not put that ask back on sheet goods. Species boards stay on the species path.
   if (named.formFactor === "dowel" || named.formFactor === "pipe" || named.formFactor === "tube" || named.formFactor === "stick" || named.formFactor === "block" || named.formFactor === "roll") return named;
+  // A named board section is the member stock even without "from". The species default is not a section.
+  if (named.category === "lumber" && named.formFactor === "board" && named.id !== CATALOG_LUMBER_BIND) return named;
   return null;
 }
 

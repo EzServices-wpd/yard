@@ -202,6 +202,30 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "lumber-1x6-8",
+    retailer: "homedepot",
+    title: "1x6x8 pine board (3/4\" × 5-1/2\" actual)",
+    href: "https://www.homedepot.com/s/1x6x8%20pine",
+    packQty: 1,
+    packPrice: 7.5,
+    lengthIn: 96,
+    widthIn: 5.5,
+    thickIn: 0.75,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "lumber-1x8-8",
+    retailer: "homedepot",
+    title: "1x8x8 pine board (3/4\" × 7-1/4\" actual)",
+    href: "https://www.homedepot.com/s/1x8x8%20pine",
+    packQty: 1,
+    packPrice: 9.5,
+    lengthIn: 96,
+    widthIn: 7.25,
+    thickIn: 0.75,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "lumber-2x2-8",
     retailer: "homedepot",
     title: "2x2x8 lumber (1-1/2\" actual)",
@@ -1053,6 +1077,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*2|two by two/.test(hay)) return "lumber-2x2-8";
   if (/2\s*[x×]\s*8/.test(hay)) return "lumber-2x8-8";
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
+  if (/1\s*[x×]\s*8(?!\d)|one by eight/.test(hay)) return "lumber-1x8-8";
+  if (/1\s*[x×]\s*6(?!\d)|one by six/.test(hay)) return "lumber-1x6-8";
   if (/1\s*[x×]\s*3(?!\d)|one by three/.test(hay)) return "lumber-1x3-8";
   if (/1\s*[x×]\s*2(?!\d)|one by two/.test(hay)) return "lumber-1x2-8";
   if (/2\s*[x×]\s*4|two by four|stud/.test(hay)) return "lumber-2x4-8";

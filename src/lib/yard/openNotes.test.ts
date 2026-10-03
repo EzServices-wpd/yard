@@ -52,4 +52,19 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     expect(p.kind).not.toBe("figure");
     expect(p.primaryMaterialId).toMatch(/cardboard/);
   });
+
+  it("a named board section is the member stock, not a class usual", () => {
+    const p = generateFromPrompt("pine 1x6 bench 36 long");
+    expect(p.primaryMaterialId).toBe("lumber-1x6-8");
+    const legs = p.panels.filter((panel) => /leg/i.test(panel.name));
+    expect(legs.length).toBeGreaterThan(0);
+    for (const leg of legs) {
+      expect(leg.materialId).toBe("lumber-1x6-8");
+      const cross = [leg.size.width, leg.size.depth].sort((a, b) => a - b);
+      expect(cross[0]).toBeCloseTo(0.75, 1);
+      expect(cross[1]).toBeCloseTo(5.5, 1);
+    }
+    expect(p.notes.join(" ")).not.toMatch(/2×4|2x4/);
+    expect(p.overall.width).toBeCloseTo(36, 0);
+  });
 });

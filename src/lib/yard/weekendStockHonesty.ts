@@ -221,6 +221,39 @@ function solidNamedPanels(project: YardProject, speciesName: string): YardProjec
 }
 
 /** Catalog or "from 2x4" / "from 1x4" — the carcase is that board. ¼" backs and 2×2 posts stay put. */
+const BOARD_SECTIONS: { id: string; thick: number; face: number }[] = [
+  { id: "lumber-1x2-8", thick: 0.75, face: 1.5 },
+  { id: "lumber-1x3-8", thick: 0.75, face: 2.5 },
+  { id: "lumber-1x4-8", thick: 0.75, face: 3.5 },
+  { id: "lumber-1x6-8", thick: 0.75, face: 5.5 },
+  { id: "lumber-1x8-8", thick: 0.75, face: 7.25 },
+  { id: "lumber-2x2-8", thick: 1.5, face: 1.5 },
+  { id: "lumber-2x4-8", thick: 1.5, face: 3.5 },
+  { id: "lumber-2x6-8", thick: 1.5, face: 5.5 },
+  { id: "lumber-4x4-8", thick: 3.5, face: 3.5 },
+];
+
+function nearSection(a: number, b: number) {
+  return Math.abs(a - b) < 0.08;
+}
+
+/** A member drawn as a different board section takes the named section's thickness and face. */
+function sectionSize(
+  size: { width: number; height: number; depth: number },
+  item: CatalogItem,
+): { width: number; height: number; depth: number } {
+  const thick = item.dims.thickness ?? item.dims.height ?? 0.75;
+  const face = item.dims.width ?? 3.5;
+  const axes = (["width", "height", "depth"] as const).slice().sort((a, b) => size[a] - size[b]);
+  const t = size[axes[0]];
+  const w = size[axes[1]];
+  const other = BOARD_SECTIONS.find(
+    (s) => s.id !== item.id && nearSection(t, s.thick) && nearSection(w, s.face),
+  );
+  if (!other) return size;
+  return { ...size, [axes[0]]: thick, [axes[1]]: face };
+}
+
 export function applyExplicitBoardCarcase(project: YardProject, item: CatalogItem): YardProject {
   if (item.category !== "lumber" || item.formFactor !== "board") return project;
   const panels = project.panels.map((p) => {
@@ -236,7 +269,7 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     if (post && item.id !== "lumber-2x2-8" && item.id !== "lumber-4x4-8") return p;
     if (p.materialId === "closet-rod") return p;
     if (p.materialId === "lumber-2x2-8" && item.id !== p.materialId) return p;
-    return { ...p, materialId: item.id };
+    return { ...p, materialId: item.id, size: sectionSize(p.size, item) };
   });
   const label = namedStockDisplayName(project.prompt ?? "", item);
   const thick = item.dims.thickness ?? item.dims.height ?? 0.75;
@@ -251,9 +284,15 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
   ]
     .filter(Boolean)
     .join(" ");
+  const short = item.name.replace(/\s*\(.*\)$/, "");
   const notes = (project.notes ?? [])
     .filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n))
-    .map((n) => n.replace(/(\d"?\s*H\.)\s*¾"\s*plywood\./, `$1 ${label}.`))
+    .map((n) =>
+      n
+        .replace(/(\d"?\s*H\.)\s*¾"\s*plywood\./, `$1 ${label}.`)
+        .replace(/2×4 legs|2x4 legs/g, `${short} legs`)
+        .replace(/four 2×4\b|four 2x4\b/g, `four ${short}`),
+    )
     .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
 }
