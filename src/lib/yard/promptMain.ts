@@ -785,7 +785,7 @@ function generateRaw(
   const members = memberView(item);
   const formName = stickFurnitureName(prompt, recipe.name);
 
-  if (wantsUnmatchedSheetShell(item, kind)) {
+  if (wantsUnmatchedSheetShell(item, kind, recipe.notes.some((n) => /stock mapped onto the form/.test(n)) || recipe.ops.length > 1)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name)), item));
   }
   if (wantsSheetBox(prompt, item, kind)) {

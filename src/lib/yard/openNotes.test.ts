@@ -26,4 +26,21 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     expect(p.fitted?.unit.doors).toBe(true);
     expect((p.fitted?.unit.shelfCount ?? 0) > 0 || p.panels.some((panel) => panel.type === "shelf")).toBe(true);
   });
+
+  it("a form that already places members stays that form on a named sheet", () => {
+    const p = generateFromPrompt("cardboard robot 14 tall");
+    expect(p.kind).toBe("figure");
+    expect(p.name.toLowerCase()).toContain("robot");
+    expect(p.primaryMaterialId).toMatch(/cardboard/);
+    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(false);
+    expect(p.overall.height).toBeGreaterThan(12);
+    expect(p.overall.height).toBeLessThan(18);
+  });
+
+  it("a named sheet with no form of its own stays a shell", () => {
+    const p = generateFromPrompt("cardboard mailbox 8 wide 18 tall");
+    expect(p.panels.length).toBeGreaterThan(0);
+    expect(p.kind).not.toBe("figure");
+    expect(p.primaryMaterialId).toMatch(/cardboard/);
+  });
 });
