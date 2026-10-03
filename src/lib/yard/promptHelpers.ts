@@ -312,8 +312,11 @@ export function parseSize(lower: string): { height: number; width: number; depth
       else if (!depthTyped) depth = L;
       else if (!heightTyped) height = L;
       // Only the cube default is a lie. A shorter untyped axis (a bed's 24" rise) stays.
-      if (!heightTyped && height > L) height = Math.max(2, Math.round(L * 0.45 * 16) / 16);
-      if (!depthTyped && !widthTyped && depth > L) depth = Math.max(1.5, Math.round(L * 0.35 * 16) / 16);
+      // A typed length is the long axis only. An untyped axis still on the cube default
+      // is not a copy of that length, even when the length itself is 24.
+      const cubeCopy = (n: number) => Math.abs(n - 24) < 0.01 && Math.abs(L - 24) < 0.01;
+      if (!heightTyped && (height > L || cubeCopy(height))) height = Math.max(2, Math.round(L * 0.45 * 16) / 16);
+      if (!depthTyped && !widthTyped && (depth > L || cubeCopy(depth))) depth = Math.max(1.5, Math.round(L * 0.35 * 16) / 16);
     }
   }
 
