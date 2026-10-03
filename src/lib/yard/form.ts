@@ -398,6 +398,30 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
   const weekend = detectWeekendFamily(prompt);
   if (weekend) return recipeFromWeekend(weekend, prompt, size);
   const hit = classifyAnatomy(prompt);
+  // A general stance wire is not a form. An unmatched noun is a body along the typed length.
+  if (hit.anatomy === "figure" && hit.kind === "vehicle" && !hit.named) {
+    const L = Math.max(size.width, size.height, size.depth, 6);
+    const title = subjectTitle(prompt);
+    return {
+      name: title,
+      kind: "vehicle",
+      notes: [
+        `${title} lies along the typed length. No class matched, so this is a body, not a standing frame.`,
+        "No arches, no pier props, no planted legs.",
+      ],
+      ops: [
+        { op: "poly", role: "rail", points: [{ x: 0, y: 1.5, z: 0 }, { x: L, y: 1.5, z: 0 }] },
+        {
+          op: "poly",
+          role: "brace",
+          points: [
+            { x: L * 0.45, y: 1.5, z: -L * 0.16 },
+            { x: L * 0.45, y: 1.5, z: L * 0.16 },
+          ],
+        },
+      ],
+    };
+  }
   if (hit.anatomy === "figure") {
     const strokes = figureStrokes({
       height: size.height,

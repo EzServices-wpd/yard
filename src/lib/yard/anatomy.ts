@@ -177,7 +177,9 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (widthSaid && heightSaid && !wantsPotHold(hay) && detectWeekendMech(hay) !== "pot-hold") {
     return { anatomy: "span", kind: "frame" };
   }
-  return { anatomy: "figure", kind: "custom", stance: "quadruped" };
+  // An unmatched noun is not a standing figure. Known figures, plants, and monuments returned above.
+  // A general stance wire is not a form — the body lies along the typed length.
+  return { anatomy: "figure", kind: "vehicle" };
 }
 
 /** Second pass: encyclopedia extract can flip a generic class to the right anatomy. */
