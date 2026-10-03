@@ -275,6 +275,13 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
   const craftSheet = item.category !== "sheet_goods";
   const panels = project.panels.map((p) => {
     const id = p.materialId ?? "";
+    // A picked sheet outside the sheet-good class is the stock of every panel.
+    // A recipe post left on lumber is not a second stock the sentence named.
+    if (craftSheet) {
+      if (id === item.id) return p;
+      const size = faceAtSheetThickness(p.size, thick);
+      return { ...p, materialId: item.id, size };
+    }
     if (!/^plywood-/i.test(id)) return p;
     const long = Math.max(p.size.width, p.size.height, p.size.depth);
     if (long > sheetL + 0.5 && !craftSheet) {
@@ -288,7 +295,7 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
   const joins = item.preferredJoins ?? [];
   const fastener = joins.includes("screw") || joins.includes("nail");
   const note = craftSheet
-    ? `Stock: ${item.name}. Every face is this sheet, at this sheet's thickness. Join it the way this sheet joins.`
+    ? `Stock: ${item.name}. Every panel is this sheet, at this sheet's thickness. Join it the way this sheet joins.`
     : thinPick
       ? `Stock: ${item.name}. Every plywood face is this sheet.`
       : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;

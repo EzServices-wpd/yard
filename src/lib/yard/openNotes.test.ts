@@ -11,6 +11,15 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     expect(p.primaryMaterialId).toMatch(/dowel/);
   });
 
+  it("a picked sheet outside the sheet-good class is every panel", () => {
+    const p = generateFromPrompt("console table 54 wide 30 tall 14 deep from cardboard");
+    expect(p.primaryMaterialId).toMatch(/cardboard/);
+    expect(p.panels.length).toBeGreaterThan(0);
+    expect(p.panels.every((panel) => /cardboard/.test(panel.materialId ?? ""))).toBe(true);
+    expect(p.overall.width).toBeGreaterThan(50);
+    expect(p.overall.height).toBeGreaterThan(28);
+  });
+
   it("a closed shaft is not a lattice graph", () => {
     expect(weekendUsesLatticeGraph("lighthouse 18 wide 48 tall", "tower")).toBe(false);
     expect(detectForm("lighthouse 18 wide 48 tall", { width: 18, height: 48, depth: 18 }).kind).not.toBe("lattice");
