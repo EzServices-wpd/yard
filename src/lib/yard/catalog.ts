@@ -485,7 +485,7 @@ export const FORGE_CATALOG: CatalogItem[] = [
   },
   {
     id: "chipboard-sheet",
-    name: "Chipboard sheet 8.5×11",
+    name: "Chipboard sheet 8 1/2×11",
     category: "cardboard",
     formFactor: "sheet",
     dims: { length: 11, width: 8.5, thickness: 0.06 },

@@ -226,7 +226,51 @@ export function shelfSpansUprights(shelf: Panel, panels: Panel[]): boolean {
   return ends.left && ends.right;
 }
 
-function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = planSheetNest(cuts)): BuildPlan["bom"] {
+/**
+ * Panels cut from the build's own craft sheet (chipboard, card, foam board…) are bought as that sheet,
+ * counted from the cut list — never swapped for a 1/4" plywood backer.
+ */
+function craftSheetCuts(project: YardProject, cuts: CutLine[]) {
+  const item = getCatalogItem(project.primaryMaterialId);
+  if (!item || item.formFactor !== "sheet" || /^plywood-/.test(item.id) || item.category === "lumber") return null;
+  const mine = cuts.filter((c) => c.id.split("|")[0] === item.id);
+  if (!mine.length) return null;
+  const L = item.dims.length ?? 11;
+  const W = item.dims.width ?? 8.5;
+  const area = mine.reduce((s, c) => s + c.lengthIn * c.widthIn * c.quantity, 0);
+  const parts = mine.reduce((s, c) => s + c.quantity, 0);
+  const oversize = mine.filter((c) => !(Math.max(c.lengthIn, c.widthIn) <= L + 0.01 && Math.min(c.lengthIn, c.widthIn) <= W + 0.01));
+  const sheets = Math.max(parts - oversize.reduce((s, c) => s + c.quantity, 0) > 0 ? 1 : 0, Math.ceil(area / (L * W * 0.8)));
+  const perPack = item.unitsPerPack ?? 1;
+  const name = item.name;
+  const line: BuildPlan["bom"][number] = {
+    name,
+    quantity: sheets,
+    unit: sheets === 1 ? "sheet" : "sheets",
+    catalogId: item.id,
+    searchQuery: item.searchQuery ?? name,
+    estimatedCost: (item.unitCostUsd ?? 0.5) * sheets,
+    notes:
+      `${sheets} × ${name} for the ${parts} part${parts === 1 ? "" : "s"}, counted from the cut list with a little waste` +
+      (perPack > 1 ? ` (sold in packs of ${perPack})` : "") +
+      (oversize.length
+        ? `. ${oversize.length} part${oversize.length === 1 ? " is" : "s are"} bigger than one sheet — butt-join sheets edge to edge with a glued strip behind the seam`
+        : "") +
+      ". Glue it — craft glue or hot glue holds sheet stock best.",
+  };
+  return { mine, line };
+}
+
+function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest = planSheetNest(allCuts)): BuildPlan["bom"] {
+  const craft = craftSheetCuts(project, allCuts);
+  const cuts = craft ? allCuts.filter((c) => !craft.mine.includes(c)) : allCuts;
+  if (craft && !cuts.length) {
+    return [
+      craft.line,
+      { name: "Multi-purpose craft glue", quantity: 1, unit: "bottle", catalogId: "glue", searchQuery: "multi-purpose craft glue", estimatedCost: 4.99 },
+      ...templateAccessories(project),
+    ];
+  }
   const sheet = getCatalogItem(project.primaryMaterialId) ?? getCatalogItem("plywood-3-4-4x8");
   // Join-screw estimate from honest cut wood qty (drawer explode + plies), not raw panels.length.
   const woodPieces = cuts.reduce((s, c) => s + c.quantity, 0);
@@ -948,6 +992,7 @@ function closetBom(project: YardProject, cuts: CutLine[], nest: PlanSheetNest = 
   }
   // Template pivots (figure joints): one paper fastener per joint.
   if (project.shape?.params?.pivots) bom.push(pivotLine(project.shape.params.pivots));
+  if (craft) bom.unshift(craft.line);
   bom.push(...templateAccessories(project));
   // Template spring (catapult arm): the rubber band is part of the build.
   if (project.shape?.params?.rubberBands) {
