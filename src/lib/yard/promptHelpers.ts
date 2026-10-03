@@ -526,6 +526,22 @@ export function hasExplicitStock(prompt: string): boolean {
   return !isWireStock(detectMaterial(prompt));
 }
 
+const HOME_CHIP_CLAUSE = /\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC|2x4)\b/gi;
+
+/**
+ * A home stock chip fills a sentence that names no stock.
+ * A sentence that already names a stock keeps that stock —
+ * the chip must not append a second clause that would win.
+ */
+export function promptWithHomeStock(prompt: string, append: string | null | undefined): string {
+  const q = prompt.trim();
+  if (!q) return "";
+  if (!append) return q;
+  if (hasExplicitStock(q)) return q.replace(/\s+/g, " ").trim();
+  const stripped = q.replace(HOME_CHIP_CLAUSE, " ").replace(/\s+/g, " ").trim();
+  return `${stripped} ${append}`.replace(/\s+/g, " ").trim();
+}
+
 /** Keep a piece the user already picked, unless this sentence names a different one. */
 export function materialUnlessNamed(currentId: string | undefined, prompt: string): string | undefined {
   if (!currentId || currentId === "wire-frame") return undefined;

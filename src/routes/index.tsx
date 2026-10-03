@@ -4,6 +4,7 @@ import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
+import { promptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
 
 export const Route = createFileRoute("/")({
@@ -60,12 +61,6 @@ const PIECES = [
 const CHIP =
   "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
 
-const STOCK_CLAUSE = /\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC|2x4)\b/gi;
-
-function stripChipStock(text: string) {
-  return text.replace(STOCK_CLAUSE, " ").replace(/\s+/g, " ").trim();
-}
-
 function LandingPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
@@ -75,10 +70,7 @@ function LandingPage() {
   const disclosure = affiliateDisclosure();
 
   function withStock(text: string) {
-    const q = text.trim();
-    if (!q) return "";
-    if (!stock) return q;
-    return `${stripChipStock(q)} ${stock.append}`.replace(/\s+/g, " ").trim();
+    return promptWithHomeStock(text, stock?.append);
   }
 
   function go(text: string) {
@@ -183,7 +175,11 @@ function LandingPage() {
                 })}
               </div>
               <p className="mt-2 text-xs text-ink-muted">
-                {stock ? `Building from ${stock.say}.` : "Leave it open and Yard picks a good fit."}
+                {stock
+                  ? prompt.trim() && promptWithHomeStock(prompt, stock.append) === prompt.trim().replace(/\s+/g, " ").trim()
+                    ? "The material in the sentence wins."
+                    : `Building from ${stock.say}.`
+                  : "Leave it open and Yard picks a good fit."}
               </p>
             </fieldset>
           </form>

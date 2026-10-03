@@ -3,6 +3,27 @@ import { describe, it } from "node:test";
 import { getCatalogItem } from "./catalog.ts";
 import { rememberCatalogItem } from "./foundStock.ts";
 import { localStockQuery, measuredProduct, stockHint, stockOffer, typedStockQuery, withStoreHit } from "./stockQuery.ts";
+import { promptWithHomeStock } from "./promptHelpers.ts";
+
+describe("home stock chip", () => {
+  it("fills a sentence that names no stock", () => {
+    assert.equal(
+      promptWithHomeStock("laundry hamper cabinet 18 wide 32 tall 16 deep", "from 3/4 plywood"),
+      "laundry hamper cabinet 18 wide 32 tall 16 deep from 3/4 plywood",
+    );
+  });
+
+  it("keeps a stock the sentence already names", () => {
+    assert.equal(
+      promptWithHomeStock("cardboard birdhouse 8 wide 10 tall", "from 3/4 plywood"),
+      "cardboard birdhouse 8 wide 10 tall",
+    );
+    assert.equal(
+      promptWithHomeStock("1/2 inch dowel plant stand 18 wide 30 tall", "from popsicle sticks"),
+      "1/2 inch dowel plant stand 18 wide 30 tall",
+    );
+  });
+});
 
 describe("stock query", () => {
   it("turns 2x4 scraps said as 5x5 into a real 2x4 at 5 inches", () => {
