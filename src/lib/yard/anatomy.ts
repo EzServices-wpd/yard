@@ -49,7 +49,14 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     /\b(?:slider|glider)\b/.test(hay) &&
     !/drawer|slide\s*rail/.test(hay) &&
     /\d+\s*(?:x|×|by)\s*\d+/.test(hay);
-  if ((WINDOW_OPENING.test(hay) || sliderWindow) && !/stained/.test(hay) && !/window seat/.test(hay))
+  // A window or door word that names a box, cabinet, or seat is that object, not a rough opening.
+  if (
+    (WINDOW_OPENING.test(hay) || sliderWindow) &&
+    !/stained/.test(hay) &&
+    !/window seat/.test(hay) &&
+    !isPlanterBox(hay) &&
+    !/\b(?:box|cabinet|seat)\b/.test(hay)
+  )
     return { anatomy: "opening", kind: "opening" };
   if (looksLikeDoorFrame(hay) && !/window seat/.test(hay)) {
     return { anatomy: "opening", kind: "opening" };

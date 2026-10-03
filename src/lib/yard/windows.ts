@@ -967,5 +967,7 @@ export function buildDoorProject(
 export function looksLikeWindow(prompt: string) {
   const lower = prompt.toLowerCase();
   if (/window seat/.test(lower)) return false;
+  // A box, cabinet, or seat that mentions a window is that object, not a unit to frame.
+  if (/\b(?:box|cabinet|seat)\b/.test(lower) && !/rough opening|casement|double.?hung|single.?hung|awning|hopper|andersen|pella|jeld-?wen|marvin/.test(lower)) return false;
   return /window|casement|double.?hung|single.?hung|awning|hopper|slider window|picture window|rough opening|andersen|pella|jeld-?wen|marvin/.test(lower);
 }

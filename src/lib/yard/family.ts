@@ -60,6 +60,8 @@ function isWindowPrompt(lower: string) {
 
 function isNotHouse(lower: string) {
   if (isWindowPrompt(lower)) return true;
+  // A container that mentions a window or a door stays the container, even in a named species.
+  if (isPlanterBox(lower)) return false;
   if (/eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/.test(lower)) return true;
   if (
     /popsicle|craft stick|toothpick|paper towel|lego|mailing tube|cedar/.test(lower) &&
@@ -332,6 +334,11 @@ export function isPorchSwingFrame(lower: string) {
 /** Planter box / garden box / raised bed — open-top box; honor typed W×D×H. */
 export function isPlanterBox(lower: string) {
   if (/plant\s*stand|pot\s*stand/.test(lower)) return false;
+  // A manufactured unit (brand, hung style, rough opening) is not a container.
+  if (/andersen|pella|jeld-?wen|marvin|rough opening|casement|double.?hung|single.?hung|awning|hopper|picture window/.test(lower)) return false;
+  // A box, chest, bin, or crate that only mentions a window or a door is that container.
+  if (/\b(?:window|door)\s+(?:box|chest|bin|crate)s?\b/.test(lower)) return true;
+  if (/\b(?:box|chest|bin|crate)s?\s+(?:under|for|at)\s+(?:the\s+|a\s+)?(?:window|door)\b/.test(lower)) return true;
   return /planter(?:\s*box)?|raised\s*(?:garden\s*)?bed|garden\s*box|flower\s*bed/.test(lower);
 }
 
