@@ -284,6 +284,40 @@ function fitWeekendSize(
   return scaleToBox(project, box);
 }
 
+/** Parts already inside the typed box — envelope padding is not a reason to shrink them. */
+function partsAlreadyInside(
+  project: YardProject,
+  box: { width: number; height: number; depth: number },
+): boolean {
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let n = 0;
+  for (const panel of project.panels) {
+    n += 1;
+    minX = Math.min(minX, panel.position.x);
+    minY = Math.min(minY, panel.position.y);
+    minZ = Math.min(minZ, panel.position.z);
+    maxX = Math.max(maxX, panel.position.x + panel.size.width);
+    maxY = Math.max(maxY, panel.position.y + panel.size.height);
+    maxZ = Math.max(maxZ, panel.position.z + panel.size.depth);
+  }
+  for (const inst of project.instances) {
+    const pts = [inst.position, inst.from, inst.to].filter(Boolean) as { x: number; y: number; z: number }[];
+    for (const pt of pts) {
+      n += 1;
+      minX = Math.min(minX, pt.x);
+      minY = Math.min(minY, pt.y);
+      minZ = Math.min(minZ, pt.z);
+      maxX = Math.max(maxX, pt.x);
+      maxY = Math.max(maxY, pt.y);
+      maxZ = Math.max(maxZ, pt.z);
+    }
+  }
+  if (!n) return false;
+  const slack = 0.75;
+  return maxX - minX <= box.width + slack && maxY - minY <= box.height + slack && maxZ - minZ <= box.depth + slack;
+}
+
 function scaleToBox(
   project: YardProject,
   box: { width: number; height: number; depth: number },
@@ -295,6 +329,18 @@ function scaleToBox(
   const sz = box.depth / o.depth;
   if (![sx, sy, sz].every((n) => Number.isFinite(n) && n > 0 && n < 40)) return project;
   if (Math.abs(sx - 1) < 0.03 && Math.abs(sy - 1) < 0.03 && Math.abs(sz - 1) < 0.03) return project;
+  // Typed outside size wins. Padding on overall (roof clearance, battlement margin) must not shrink parts that already fit.
+  const shrinking = sx < 0.97 || sy < 0.97 || sz < 0.97;
+  const growing = sx > 1.03 || sy > 1.03 || sz > 1.03;
+  if (shrinking && !growing && partsAlreadyInside(project, box)) {
+    const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1));
+    const note = `Sized to ${fmt(box.width)}" wide × ${fmt(box.height)}" high × ${fmt(box.depth)}" deep.`;
+    return {
+      ...project,
+      overall: { width: box.width, height: box.height, depth: box.depth },
+      notes: [note, ...(project.notes ?? []).filter((n) => !n.startsWith("Sized to "))],
+    };
+  }
   const s = (p: { x: number; y: number; z: number }) => ({ x: p.x * sx, y: p.y * sy, z: p.z * sz });
   const dist = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
     Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
