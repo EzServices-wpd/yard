@@ -8,9 +8,9 @@ import { POCKET_DREAM } from "@/lib/yard/pocket";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk, measureRefitTalk } from "@/lib/yard/voiceHonesty";
 import { parseInch, fieldInch } from "@/lib/yard/inchText";
 import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
+import { planDiffLine } from "@/lib/yard/shopJoin";
+import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
-  JOIN_ALIASES,
-  JOIN_CHOICES,
   bayClearTalk,
   changeLine,
   classPresets,
@@ -468,14 +468,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           </div>
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Joints</p>
           <div className="mt-1 flex flex-wrap gap-1">
-            {JOIN_CHOICES.map((j) => (
-              <button key={j.id} type="button" onClick={() => pickJoin(j.id, j.changes)} className={`h-12 rounded-full border px-3 text-xs ${project.joinMethod === j.id ? "border-fg/40 text-fg" : "border-border text-muted"}`}>
-                {j.label}
-              </button>
-            ))}
-            {JOIN_ALIASES.map((j) => (
-              <button key={j.id} type="button" onClick={() => pickJoin(j.join, j.changes)} className="h-12 rounded-full border border-border px-3 text-xs text-muted">
-                {j.label}
+            {(["screw", "pocket", "dowel", "biscuit", "glue"] as ShopJoin[]).map((id) => (
+              <button key={id} type="button" onClick={() => pickJoin(id)} className={`h-12 min-h-11 rounded-full border px-3 text-xs ${project.shopJoin === id ? "border-fg/40 text-fg" : "border-border text-muted"}`}>
+                {id === "screw" ? "Screws" : id === "pocket" ? "Pocket holes" : id === "dowel" ? "Dowels" : id === "biscuit" ? "Biscuits" : "Glue"}
               </button>
             ))}
           </div>
@@ -514,12 +509,15 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     </div>
   );
 
-  function pickJoin(join: JoinMethod, changes: string) {
-    const before = snap();
-    setJoinMethod(join);
-    generate(project.prompt || project.name, project.primaryMaterialId, undefined, { restock: true, joinMethod: join, keepView: true });
-    makePlan();
-    setSummary(changeLine(before, snap()) || changes);
+  function pickJoin(join: ShopJoin) {
+    const before = useYard.getState().plan ?? makePlan() ?? useYard.getState().plan;
+    const method = join === "dowel" ? "pin" : join === "glue" || join === "biscuit" ? "glue" : "screw";
+    setJoinMethod(method);
+    const projectNow = useYard.getState().project;
+    useYard.getState().commit({ ...projectNow, shopJoin: join, joinMethod: method });
+    const after = makePlan();
+    const line = before && after ? planDiffLine(before, after) : "";
+    setSummary(line || "Join updated");
   }
 }
 

@@ -6,6 +6,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { applyShopJoin } from "./shopJoin";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
@@ -1227,7 +1228,7 @@ function stockJoinsWithoutScrews(project: { primaryMaterialId?: string }): boole
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))));
+  return applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))));
 }
 
 /**

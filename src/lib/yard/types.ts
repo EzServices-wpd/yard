@@ -344,6 +344,8 @@ export type YardProject = {
   panels: Panel[];
   primaryMaterialId: string;
   joinMethod?: JoinMethod;
+  /** Shop join the person picked. Buy and steps follow this, not the stock default. */
+  shopJoin?: "screw" | "pocket" | "dowel" | "biscuit" | "glue";
   notes: string[];
   historic?: boolean;
   supportOffer?: {
