@@ -11,6 +11,17 @@ describe("home stock chip", () => {
       promptWithHomeStock("laundry hamper cabinet 18 wide 32 tall 16 deep", "from 3/4 plywood"),
       "laundry hamper cabinet 18 wide 32 tall 16 deep from 3/4 plywood",
     );
+    assert.equal(
+      promptWithHomeStock("plant stand 18 wide 30 tall", "from 1/2 inch dowel"),
+      "plant stand 18 wide 30 tall from 1/2 inch dowel",
+    );
+  });
+
+  it("switching class chips replaces the previous class clause", () => {
+    assert.equal(
+      promptWithHomeStock("plant stand 18 wide 30 tall from 3/4 plywood", "from 1/2 inch dowel"),
+      "plant stand 18 wide 30 tall from 1/2 inch dowel",
+    );
   });
 
   it("keeps a stock the sentence already names", () => {

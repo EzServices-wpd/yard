@@ -14,19 +14,19 @@ export const Route = createFileRoute("/")({
 const HOUSE = DREAMS.filter((d) => d.group === "house");
 const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
 
-/** The material chooser. Leave it open and Yard picks the stock that suits the build. */
+/** One class row for every build: sheet, board, round, pipe. A chip names the class, not a brand. */
 const STOCKS = [
-  { id: "plywood", label: "¾″ plywood", say: "¾″ plywood", append: "from 3/4 plywood" },
-  { id: "2x4", label: "2×4 lumber", say: "2×4 lumber", append: "from 2x4" },
-  { id: "popsicle", label: "Popsicle sticks", say: "popsicle sticks", append: "from popsicle sticks" },
-  { id: "pvc", label: "PVC pipe", say: "PVC pipe", append: "from 3/4 inch PVC" },
+  { id: "sheet", label: "¾″ plywood", say: "¾″ plywood", append: "from 3/4 plywood" },
+  { id: "board", label: "2×4 lumber", say: "2×4 lumber", append: "from 2x4" },
+  { id: "round", label: "½″ dowel", say: "½″ dowel", append: "from 1/2 inch dowel" },
+  { id: "pipe", label: "PVC pipe", say: "PVC pipe", append: "from 3/4 inch PVC" },
 ] as const;
 
 type StockId = (typeof STOCKS)[number]["id"];
 
 const STEPS = [
   { n: "1", title: "Type what you want", body: "A shelf, a desk, a weekend build. Add the sizes you have." },
-  { n: "2", title: "Choose the material", body: "Plywood, 2×4, popsicle sticks, or PVC." },
+  { n: "2", title: "Choose the material", body: "Sheet, board, round, or pipe." },
   { n: "3", title: "Get the plan", body: "Step-by-step instructions, a buy list, and a cut list." },
 ] as const;
 

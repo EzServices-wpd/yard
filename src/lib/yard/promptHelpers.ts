@@ -526,19 +526,21 @@ export function hasExplicitStock(prompt: string): boolean {
   return !isWireStock(detectMaterial(prompt));
 }
 
-const HOME_CHIP_CLAUSE = /\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|3\/4 inch PVC|2x4)\b/gi;
+const HOME_CHIP_CLAUSE = /\s+from\s+(?:3\/4(?:\s+inch)?\s+plywood|popsicle sticks|1\/2 inch dowel|3\/4 inch PVC|2x4)\b/gi;
 
 /**
- * A home stock chip fills a sentence that names no stock.
+ * A home class chip fills a sentence that names no stock.
  * A sentence that already names a stock keeps that stock —
  * the chip must not append a second clause that would win.
+ * Switching chips replaces the previous class clause.
  */
 export function promptWithHomeStock(prompt: string, append: string | null | undefined): string {
   const q = prompt.trim();
   if (!q) return "";
   if (!append) return q;
-  if (hasExplicitStock(q)) return q.replace(/\s+/g, " ").trim();
+  // A trailing class clause is the chip's own words. A stock named in the body wins.
   const stripped = q.replace(HOME_CHIP_CLAUSE, " ").replace(/\s+/g, " ").trim();
+  if (hasExplicitStock(stripped)) return stripped;
   return `${stripped} ${append}`.replace(/\s+/g, " ").trim();
 }
 
