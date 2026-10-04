@@ -30,6 +30,7 @@ describe("finish list", () => {
   it("says a popsicle stool is a display model and a PVC birdhouse joins with cement", () => {
     const stool = generateFromPrompt("popsicle stick step stool");
     assert.match(stool.notes[0], /display model/);
+    assert.equal(stool.holdStockId, "lumber-2x4-8");
     const bird = generateFromPrompt("PVC birdhouse");
     assert.match(bird.notes[0], /solvent cement/);
     assert.doesNotMatch(bird.notes.join(" "), /popsicle|stick wall/);

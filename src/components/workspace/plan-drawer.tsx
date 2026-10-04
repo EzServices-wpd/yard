@@ -58,6 +58,7 @@ function PlanBody({
   onClose: () => void;
 }) {
   const project = useYard((s) => s.project);
+  const generate = useYard((s) => s.generate);
   const activeStep = useYard((s) => s.activeStep);
   const setActiveStep = useYard((s) => s.setActiveStep);
   const setRender = useYard((s) => s.setRender);
@@ -363,6 +364,18 @@ function PlanBody({
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
                 <p className="font-medium text-fg">Shop words used in this plan</p>
                 <p className="mt-1">{shopWordsChipTalk(`${project.prompt ?? ""} ${project.name}`)}</p>
+              </div>
+            )}
+            {project.holdStockId && (project.notes ?? []).some((n) => n.startsWith("This is a display model")) && (
+              <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <p>{(project.notes ?? []).find((n) => n.startsWith("This is a display model"))}</p>
+                <button
+                  type="button"
+                  className="mt-2 h-11 min-h-11 rounded-full border border-fg/40 px-3 text-xs text-fg"
+                  onClick={() => generate(project.prompt, project.holdStockId, undefined, { fresh: true })}
+                >
+                  Switch to {getCatalogItem(project.holdStockId)?.name ?? "stock that holds"}
+                </button>
               </div>
             )}
             {assumedDensifyNotes(project.notes).length > 0 && (

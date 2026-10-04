@@ -1494,9 +1494,11 @@ function craftDisplay(project: YardProject, prompt: string): YardProject {
   const stock = `${item?.name ?? ""} ${item?.id ?? ""} ${prompt}`.toLowerCase();
   if (!CRAFT_STOCK.test(stock) || !LOADED.test(prompt.toLowerCase())) return project;
   if ((project.notes ?? []).some((note) => note.startsWith("This is a display model"))) return project;
-  const hold = /planter|outdoor|porch/.test(prompt.toLowerCase()) ? HOLDS.planter : /shelf|rack/.test(prompt.toLowerCase()) ? HOLDS.shelf : HOLDS.stool;
+  const lower = prompt.toLowerCase();
+  const hold = /planter|outdoor|porch/.test(lower) ? HOLDS.planter : /shelf|rack/.test(lower) ? HOLDS.shelf : HOLDS.stool;
+  const holdStockId = /planter|outdoor|porch/.test(lower) ? "lumber-1x4-8" : /shelf|rack/.test(lower) ? "plywood-3-4-4x8" : "lumber-2x4-8";
   const line = `This is a display model in ${item?.name ?? "craft stock"}. A piece that holds needs ${hold}. Switch the stock to that.`;
-  return { ...project, notes: [line, ...(project.notes ?? [])] };
+  return { ...project, holdStockId, notes: [line, ...(project.notes ?? [])] };
 }
 
 /** A pipe birdhouse joins like pipe. Notes do not borrow stick walls or wood screws. */

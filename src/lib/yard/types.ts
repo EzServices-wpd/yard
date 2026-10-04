@@ -349,6 +349,8 @@ export type YardProject = {
   /** Shop join the person picked. Buy and steps follow this, not the stock default. */
   shopJoin?: "screw" | "pocket" | "dowel" | "biscuit" | "glue";
   notes: string[];
+  /** Stock that can hold this load. The plan offers a one-tap switch to it. */
+  holdStockId?: string;
   historic?: boolean;
   supportOffer?: {
     needed: boolean;
