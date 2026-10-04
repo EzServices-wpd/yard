@@ -39,11 +39,17 @@ describe("finish list", () => {
     assert.ok(bird.instances.length < 20, `pipe house should be a frame, got ${bird.instances.length}`);
     assert.ok(bird.instances.some((i) => i.role === "post"));
     assert.equal(bird.panels.length, 0);
-    const stool = buildPlan(generateFromPrompt("popsicle stick step stool"));
-    const after = stool.instructions.slice(stool.instructions.findIndex((s) => /Do not cut/.test(s.title)) + 1);
+    const wholeStool = buildPlan(generateFromPrompt("popsicle stick step stool"));
+    const after = wholeStool.instructions.slice(wholeStool.instructions.findIndex((s) => /Do not cut/.test(s.title)) + 1);
     assert.ok(after.length > 0);
     assert.equal(after.some((s) => /^Cut\b/.test(s.title)), false);
     assert.equal(detectMaterial("bamboo pole").id, "bamboo-pole-6");
     assert.equal(detectMaterial("thick dowel rack").id, "dowel-1-36");
+    assert.equal(detectMaterial("1 1/4 dowel rack").id, "dowel-1-1-4-36");
+    assert.equal(detectMaterial("cardboard playhouse 36 wide").id, "cardboard-corrugated-sheet");
+    assert.equal(detectMaterial("cardboard craft card").id, "chipboard-sheet");
+    assert.ok((detectMaterial("bamboo pole").unitCostUsd ?? 0) > 0);
+    assert.ok((detectMaterial("corrugated cardboard").unitCostUsd ?? 0) > 0);
+
   });
 });

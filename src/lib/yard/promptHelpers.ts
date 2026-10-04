@@ -598,6 +598,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bcloset rods?\b|\bcloset poles?\b/, "closet-rod"],
     [/(?:1\s*\/\s*2|half(?:\s|-)?inch)\s*(?:"|in(?:ch(?:es)?)?\.?)?\s*(?:hardwood\s+)?dowels?/, "dowel-1-2-36"],
+    [/(?:1\s*1\s*\/\s*4|1-1\/4|1\s*1\/4)\s*(?:inch|")?\s*dowels?/, "dowel-1-1-4-36"],
     [/thick dowel|1\s*(?:inch|")\s*dowel/, "dowel-1-36"],
     [/bamboo poles?/, "bamboo-pole-6"],
     [/\bdowels?\b/, "dowel-1-4-36"],
@@ -674,7 +675,21 @@ export function detectMaterial(prompt: string): CatalogItem {
     const item = detectMaterialPhrases(clauses[i].tail);
     if (!isWireStock(item)) return item;
   }
-  return detectMaterialPhrases(stockPrompt);
+  return preferCardboardSheet(detectMaterialPhrases(stockPrompt), stockPrompt);
+}
+
+/** A large cardboard build is corrugated. A small craft is chipboard. A named sheet stays that sheet. */
+function preferCardboardSheet(item: CatalogItem, prompt: string): CatalogItem {
+  const lower = prompt.toLowerCase();
+  if (/\bcorrugated\b/.test(lower) || /\bchipboard\b/.test(lower)) return item;
+  if (item.id !== "cardboard-corrugated-sheet" && item.id !== "chipboard-sheet") return item;
+  const nums = [...lower.matchAll(/(\d+(?:\.\d+)?)/g)].map((m) => parseFloat(m[1]));
+  const feet = /\d+(?:\.\d+)?\s*(?:feet|foot|ft)\b/.test(lower);
+  const large = feet || /house|fort|castle|playhouse|garage|doghouse|shed|play house|fits inside/.test(lower) || nums.some((n) => n >= 24);
+  const small = !large && (/\b(?:card|model|craft|miniature|diorama)\b/.test(lower) || (nums.length > 0 && nums.every((n) => n < 18)));
+  if (large) return getCatalogItem("cardboard-corrugated-sheet") ?? item;
+  if (small) return getCatalogItem("chipboard-sheet") ?? item;
+  return item;
 }
 
 /** Drop earlier stock clauses and append one "from {phrase}" so the next generate agrees with the pick. */
