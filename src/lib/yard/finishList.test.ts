@@ -10,6 +10,8 @@ describe("finish list", () => {
     const seal = buildPlan(generateFromPrompt("porch bench")).instructions.find((s) => /Seal it/.test(s.title));
     assert.match(seal?.description ?? "", /Front left leg/);
     assert.doesNotMatch(seal?.description ?? "", /2 sides \(the feet\)/);
+    const pine = buildPlan(generateFromPrompt("pine porch bench"));
+    assert.equal(pine.instructions.some((s) => /cubby divider/i.test(s.title)), false);
   });
 
   it("puts exterior finish on the cart", () => {

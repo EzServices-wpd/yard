@@ -1502,12 +1502,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     }
   }
 
+  const benchPrompt = (project.prompt ?? "").toLowerCase();
+  const askedForBays = /cubb|shoe|boot/.test(benchPrompt);
+  const openFrameBench = /porch|outdoor|deck|garden/.test(benchPrompt) && !askedForBays;
   const mudroomBench =
-    !isSeatingLoungeClass((project.prompt ?? "").toLowerCase()) &&
+    !openFrameBench &&
+    !isSeatingLoungeClass(benchPrompt) &&
     (/mudroom bench|^bench\b/i.test(project.name) ||
-      ((/mudroom|window seat/.test((project.prompt ?? "").toLowerCase()) ||
-        (/\bbench\b/.test((project.prompt ?? "").toLowerCase()) &&
-          !/workbench|park bench/.test((project.prompt ?? "").toLowerCase()))) &&
+      ((/mudroom|window seat/.test(benchPrompt) ||
+        (/\bbench\b/.test(benchPrompt) &&
+          !/workbench|park bench/.test(benchPrompt))) &&
         project.fitted?.program === "bench"));
   if (mudroomBench) {
     const seats = panels.filter((p) => /seat/i.test(p.name) || p.type === "top");
@@ -1538,13 +1542,24 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
         partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
       },
-      {
-        step: 4,
-        title: "Set cubby dividers and front apron",
-        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. ${stockThrough(project, `the seat, ${bayName.toLowerCase()}, and back into each divider`)} These carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron under the front edge of the seat between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron under the front edge of the seat between the uprights." : "Tape or glue the front apron under the front edge of the seat between the uprights."}`,
-        tips: `A ${round(W)}" seat without dividers will sag under a sitting adult. Do not skip the dividers.`,
-        partsUsed: names([...cubbies, ...aprons]),
-      },
+      ...(cubbies.length
+        ? [{
+            step: 4,
+            title: "Set cubby dividers",
+            description: `${cubbies.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, `the seat, ${bayName.toLowerCase()}, and back into each divider`)} These carry sit load across the span.`,
+            tips: "Dividers only exist when the cut list has them.",
+            partsUsed: names(cubbies),
+          }]
+        : []),
+      ...(aprons.length
+        ? [{
+            step: 4,
+            title: "Set the front apron",
+            description: `${aprons.map(cutLine).join("; ")}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron under the front edge of the seat between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron under the front edge of the seat between the uprights." : "Tape or glue the front apron under the front edge of the seat between the uprights."}`,
+            tips: "The apron is the rail under the front edge, not a cubby wall.",
+            partsUsed: names(aprons),
+          }]
+        : []),
       {
         step: 5,
         title: "Level it and sit-test",
