@@ -1235,7 +1235,7 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
   "platform-tower": [
-    { role: "base", word: "base piece", title: "Build the wide base", why: "Rails on the bench, decking across them: the base is at least 0.4 of the height on a side so it cannot tip." },
+    { role: "base", word: "base piece", title: "Build the wide base", why: "Rails on the bench, decking across them: the base is at least about two-fifths of the height on a side so it cannot tip." },
     { role: "sisal", word: "scratching-post member", title: "Stand the tall scratching post at the back corner", why: "Then wrap it tight in 3/8\" sisal rope, stapled at both ends; the cat scratches here." },
     { role: "post", word: "post member", title: "Stand the two shorter posts", why: "Front-right post carries the low platform; back-right post the middle one." },
     { role: "rail", word: "rail", title: "Glue a rail each side of every post top", why: "The rails carry each platform's decking." },
@@ -1623,7 +1623,7 @@ const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = 
     { match: /^Backer$/, title: "Drop the photo and backer into the rabbet", why: "Stack, front to back: lip, glazing if any, photo, backer. Four turn buttons hold the backer; then the sawtooth hanger on the top back." },
   ],
   "platform-tower": [
-    { match: /^Base$/, title: "Cut the wide base", why: "A square at least 0.4 of the height on a side keeps it from tipping." },
+    { match: /^Base$/, title: "Cut the wide base", why: "A square at least about two-fifths of the height on a side keeps it from tipping." },
     { match: /^(Sisal post|Post)$/, title: "Glue and screw the three box posts, then screw them to the base", why: "Tall scratching post at the back corner, two shorter posts for the low and middle platforms; screw up through the base." },
     { match: /^(Platform|Top perch)$/, title: "Screw the staggered platforms onto the post tops", why: "Low front-right, middle back-right, top perch over the tall post." },
     { match: /^Perch rim$/, title: "Screw the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },

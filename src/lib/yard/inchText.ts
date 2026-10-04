@@ -185,3 +185,18 @@ export function parseInchNum(s: string): number {
 export function stripTypedSizes(text: string): string {
   return text.replace(new RegExp(String.raw`(?<![\w/])${INCH_NUM}\s*(?:-\s*)?(?:in\b|inch(?:es)?\b|ft\b|foot\b|feet\b|"|″|'|′)`, "gi"), " ");
 }
+
+const FIFTHS = ["", "one-fifth", "two-fifths", "three-fifths", "four-fifths"];
+
+/** A ratio or a share of the height, said in words. 2.0:1 is "2 to 1". 0.42 is "about two-fifths". */
+export function speakDecimals(text: string): string {
+  return text
+    .replace(/(\d+)\.0:1/g, "$1 to 1")
+    .replace(/(\d+\.\d+):1/g, (_, raw) => {
+      const n = Number(raw);
+      const whole = Math.round(n);
+      return Math.abs(n - whole) < 0.05 ? `${whole} to 1` : `about ${n.toFixed(1)} to 1`;
+    })
+    .replace(/0\.4\d* of the height/g, "about two-fifths of the height")
+    .replace(/\b0\.42\b/g, "about two-fifths");
+}

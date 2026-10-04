@@ -1,3 +1,4 @@
+import { speakDecimals } from "./inchText";
 /**
  * Subject-class shape templates — one registry of form classes shared by every stock.
  *
@@ -1173,7 +1174,7 @@ function materializeAt(hit: NonNullable<ReturnType<typeof detectShapeClass>>, it
   const span = (f: (p: Vec3) => number) => Math.max(...pts.map(f)) - Math.min(...pts.map(f));
   const r1 = (n: number) => Math.round(n * 10) / 10;
   const overall = { width: r1(span((p) => p.x) + pad), height: r1(Math.max(...pts.map((p) => p.y)) + pad / 2), depth: r1(span((p) => p.z) + pad) };
-  notes.push(`${model.label} · ${hit.profile.torsoH ? `body ${(1 / hit.profile.torsoH).toFixed(1)}:1 long to tall` : ""}, legs ${Math.round(hit.profile.legL * 100)}% of the body length${model.pose === "sit" ? ", sitting on its haunches" : ""}.`);
+  notes.push(speakDecimals(`${model.label} · ${hit.profile.torsoH ? `body ${(1 / hit.profile.torsoH).toFixed(1)}:1 long to tall` : ""}, legs ${Math.round(hit.profile.legL * 100)}% of the body length${model.pose === "sit" ? ", sitting on its haunches" : ""}.`));
   if (use === "hooks") {
     const hooks = Math.max(3, Math.min(8, Math.round(overall.width / 6)));
     notes.push(`Wall-hung ${hit.profile.useNoun ?? "coat rack"}: ${hooks} hooks screw into the body ${cls === "sheet" ? "profile" : "boards"} along the belly line, about 6" on center. ${cls === "sheet" ? "The wall cleat behind the body screws into studs." : "Two screws through the body into studs hang it."}`);
