@@ -23,6 +23,7 @@ import { detectWeekendMech } from "./weekendFamily";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isLadderShelfFurniture, ladderShelfTitleStem, mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper, isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed, isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover, isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail, isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isStorageBox, storageBoxTitleStem, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix, wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily, type TableTopShape } from "./family";
 import { honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt, tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle, classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
+import { detectMaterial } from "./promptHelpers";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 
@@ -1629,6 +1630,30 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         : /shelf|rack/.test(lower)
                           ? 12
                           : 16);
+  }
+
+  // Member stock: an untyped axis does not outgrow a typed axis.
+  // A class usual is capped by the typed size. Sheet carcases keep the class height.
+  const member = detectMaterial(prompt);
+  const memberFace =
+    member.formFactor === "stick" ||
+    member.formFactor === "dowel" ||
+    member.formFactor === "pipe" ||
+    member.formFactor === "tube" ||
+    member.formFactor === "block" ||
+    member.formFactor === "roll";
+  if (memberFace) {
+    const typed = [
+      typedAxes.width ? width : NaN,
+      typedAxes.height ? height : NaN,
+      typedAxes.depth ? depth : NaN,
+    ].filter((n) => Number.isFinite(n));
+    if (typed.length > 0 && typed.length < 3) {
+      const cap = Math.max(...typed);
+      if (!typedAxes.width) width = Math.min(width, cap);
+      if (!typedAxes.height) height = Math.min(height, cap);
+      if (!typedAxes.depth) depth = Math.min(depth, cap);
+    }
   }
 
   // Opening-fit W×H×D must win over furniture defaults (e.g. bookcase depth 12).

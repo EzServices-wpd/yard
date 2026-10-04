@@ -225,7 +225,9 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     const midN = axes[1].n;
     const longN = axes[2].n;
     if (longN < 0.2) continue;
-    const nAcross = Math.max(1, Math.round(midN / Math.max(pitch, 0.08)));
+    // Member stock traces the two long edges of the face. It does not comb
+    // across the face or tile the interior solid.
+    const nAcross = midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
@@ -366,7 +368,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     }
   }
 
-  const note = `Same ${project.name} in ${item.name}. Each face is that stock.`;
+  const note = `Same ${project.name} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
   const notes = recastNotes(project.notes ?? [], item).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
   if (instances.length >= budget) {
     notes.unshift(`Stopped at ${budget} pieces so the bench can draw it. A solid tile of ${item.name} would be denser.`);
