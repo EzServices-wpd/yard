@@ -7,6 +7,7 @@ import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyShopJoin } from "./shopJoin";
+import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
@@ -1228,7 +1229,11 @@ function stockJoinsWithoutScrews(project: { primaryMaterialId?: string }): boole
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))));
+  const plan = applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))));
+  const extra = spaceCutStep(project);
+  if (!extra) return plan;
+  const step = plan.instructions.length + 1;
+  return { ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] };
 }
 
 /**

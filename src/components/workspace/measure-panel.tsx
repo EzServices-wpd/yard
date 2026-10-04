@@ -9,6 +9,7 @@ import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyT
 import { parseInch, fieldInch } from "@/lib/yard/inchText";
 import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
+import { applySpaceCuts, type SpaceAsk } from "@/lib/yard/spaceCuts";
 import { applyInsideCount } from "@/lib/yard/insideCount";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
@@ -196,6 +197,28 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     makePlan();
   }
 
+  function applyOpening(patch: Partial<typeof measure>) {
+    setMeasure(patch);
+    const next = { ...useYard.getState().measure, ...patch };
+    const rise = parseInch(next.archRise ?? "") || 4;
+    const low = parseInch(next.lowSide ?? "") || project.overall.height * 0.66;
+    const ask: SpaceAsk = {
+      shape: next.spaceShape ?? "rectangle",
+      archRise: rise,
+      lowSide: low,
+      outlet: next.outletOn
+        ? { x: parseInch(next.outletX ?? "") || 6, y: parseInch(next.outletY ?? "") || 12, width: parseInch(next.outletW ?? "") || 4.5, height: parseInch(next.outletH ?? "") || 2.75 }
+        : null,
+      baseboard: next.baseboardOn
+        ? { height: parseInch(next.baseboardH ?? "") || 3.5, depth: parseInch(next.baseboardD ?? "") || 0.5 }
+        : null,
+    };
+    const before = snap();
+    useYard.getState().commit(applySpaceCuts(project, ask));
+    makePlan();
+    setSummary(changeLine(before, snap()) || "Opening cut updated");
+  }
+
   function addSupport() {
     const before = snap();
     generate(`${project.prompt} with a center divider`, project.primaryMaterialId, undefined, { restock: true });
@@ -278,7 +301,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "space" && (
         <section className="mt-4" data-yard-measure-section="space">
-          <Sketch openingW={openingW} pieceW={pieceW} height={Number.isFinite(hNum) ? hNum : project.overall.height} depth={Number.isFinite(dNum) ? dNum : project.overall.depth} shape={isCorner ? "corner" : isSlope ? "sloped" : shape === "flared" ? "flared" : "rectangle"} notch={notchSide} />
+          <Sketch openingW={openingW} pieceW={pieceW} height={Number.isFinite(hNum) ? hNum : project.overall.height} depth={Number.isFinite(dNum) ? dNum : project.overall.depth} shape={isCorner ? "corner" : measure.spaceShape === "arch" ? "arch" : measure.spaceShape === "slope" || isSlope ? "sloped" : shape === "flared" ? "flared" : "rectangle"} notch={notchSide} outlet={Boolean(measure.outletOn)} baseboard={Boolean(measure.baseboardOn)} />
           <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-faint">Top and front</p>
           {spare.line ? <p className="mt-1 text-[11px] text-muted">{spare.line}</p> : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -331,10 +354,38 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               )}
             </>
           )}
-          {!isPocket && (
-            <p className="mt-2 text-[11px] text-muted">Rectangle, or the slope and corner this build already has. An arch, outlet, or baseboard is not a cut until the model can make it.</p>
+          <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Opening cut</p>
+          <Segmented
+            label="Opening cut"
+            value={measure.spaceShape ?? "rectangle"}
+            options={[["rectangle", "Rectangle"], ["arch", "Arch"], ["slope", "Slope"]]}
+            onChange={(v) => applyOpening({ spaceShape: v as "rectangle" | "arch" | "slope", archRise: measure.archRise || "4", lowSide: measure.lowSide || fieldInch(project.overall.height * 0.66) })}
+          />
+          {measure.spaceShape === "arch" && (
+            <Inch label="Arch rise" value={measure.archRise ?? "4"} onChange={(v) => setMeasure({ archRise: v })} onCommit={() => applyOpening({ archRise: measure.archRise })} />
+          )}
+          {measure.spaceShape === "slope" && (
+            <Inch label="Low side" value={measure.lowSide ?? ""} onChange={(v) => setMeasure({ lowSide: v })} onCommit={() => applyOpening({ lowSide: measure.lowSide })} />
           )}
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">In the way</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            <button type="button" className={`h-12 rounded-full border px-3 text-xs ${measure.outletOn ? "border-fg/40 text-fg" : "border-border text-muted"}`} onClick={() => applyOpening({ outletOn: !measure.outletOn, outletX: measure.outletX || "6", outletY: measure.outletY || "12", outletW: measure.outletW || "4 1/2", outletH: measure.outletH || "2 3/4" })}>Outlet</button>
+            <button type="button" className={`h-12 rounded-full border px-3 text-xs ${measure.baseboardOn ? "border-fg/40 text-fg" : "border-border text-muted"}`} onClick={() => applyOpening({ baseboardOn: !measure.baseboardOn, baseboardH: measure.baseboardH || "3 1/2", baseboardD: measure.baseboardD || "1/2" })}>Baseboard</button>
+          </div>
+          {measure.outletOn && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Inch label="Outlet from left" value={measure.outletX ?? "6"} onChange={(v) => setMeasure({ outletX: v })} onCommit={() => applyOpening({})} />
+              <Inch label="Outlet up" value={measure.outletY ?? "12"} onChange={(v) => setMeasure({ outletY: v })} onCommit={() => applyOpening({})} />
+              <Inch label="Outlet wide" value={measure.outletW ?? "4 1/2"} onChange={(v) => setMeasure({ outletW: v })} onCommit={() => applyOpening({})} />
+              <Inch label="Outlet tall" value={measure.outletH ?? "2 3/4"} onChange={(v) => setMeasure({ outletH: v })} onCommit={() => applyOpening({})} />
+            </div>
+          )}
+          {measure.baseboardOn && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Inch label="Baseboard tall" value={measure.baseboardH ?? "3 1/2"} onChange={(v) => setMeasure({ baseboardH: v })} onCommit={() => applyOpening({})} />
+              <Inch label="Baseboard deep" value={measure.baseboardD ?? "1/2"} onChange={(v) => setMeasure({ baseboardD: v })} onCommit={() => applyOpening({})} />
+            </div>
+          )}
           {isPocket && (
             <Segmented
               label="Notch in the hole"
@@ -606,7 +657,7 @@ function blurb({ isPocket, isCorner, isSlope, slopeDeg, project, envOpts }: {
   return "Wide, tall, and deep. Change a number and the same build refits — model, cut list, Buy list and steps.";
 }
 
-function Sketch({ openingW, pieceW, height, depth, shape, notch }: { openingW?: number; pieceW: number; height: number; depth: number; shape: string; notch: string }) {
+function Sketch({ openingW, pieceW, height, depth, shape, notch, outlet, baseboard }: { openingW?: number; pieceW: number; height: number; depth: number; shape: string; notch: string; outlet?: boolean; baseboard?: boolean }) {
   const ow = openingW && openingW > 0 ? openingW : pieceW;
   const scale = 70 / Math.max(ow, height, 1);
   const pw = Math.min(ow, pieceW) * scale;
@@ -620,6 +671,9 @@ function Sketch({ openingW, pieceW, height, depth, shape, notch }: { openingW?: 
       <text x="100" y="10" className="fill-current text-[8px] text-faint">Front</text>
       <rect x="118" y="14" width={ow * scale} height={height * scale} fill="none" stroke="currentColor" className="text-faint" />
       {shape === "sloped" && <line x1="118" y1="28" x2={118 + ow * scale} y2="14" stroke="currentColor" className="text-faint" />}
+      {shape === "arch" && <path d={`M118 28 Q${118 + (ow * scale) / 2} 8 ${118 + ow * scale} 28`} fill="none" stroke="currentColor" className="text-faint" />}
+      {outlet && <rect x="126" y={14 + height * scale - 22} width="8" height="6" fill="none" stroke="currentColor" className="text-faint" />}
+      {baseboard && <rect x="118" y={14 + height * scale - 4} width={ow * scale} height="4" fill="currentColor" className="text-fg/30" />}
       {shape === "corner" && <path d={`M118 ${14 + height * scale} L${118 + ow * scale} ${14 + height * scale} L118 14 Z`} fill="none" stroke="currentColor" className="text-faint" />}
       <rect x={118 + (ow * scale - pw) / 2} y={18} width={pw} height={Math.max(8, height * scale - 8)} fill="currentColor" className="text-fg/15" />
       {notch !== "none" && <rect x="118" y={14 + height * scale - 16} width="10" height="16" fill="currentColor" className="text-fg/30" />}

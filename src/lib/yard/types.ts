@@ -556,6 +556,17 @@ export type MeasureDraft = {
   clearance?: string;
   /** Height of each shelf when spacing is set one by one. */
   shelfAt?: string[];
+  /** Opening cut from Your space. Rectangle until the person picks an arch or a slope. */
+  spaceShape?: "rectangle" | "arch" | "slope";
+  archRise?: string;
+  outletOn?: boolean;
+  outletX?: string;
+  outletY?: string;
+  outletW?: string;
+  outletH?: string;
+  baseboardOn?: boolean;
+  baseboardH?: string;
+  baseboardD?: string;
   /** Opening size, separate from the piece. The piece is the opening minus clearance. */
   openingWidth?: string;
   openingHeight?: string;

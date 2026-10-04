@@ -157,6 +157,17 @@ export function PanelMesh({
         path.absarc(hole.x - w / 2, hole.y - h / 2, hole.r, 0, Math.PI * 2, true);
         shape.holes.push(path);
       }
+      for (const cut of panel.cutouts ?? []) {
+        const path = new THREE.Path();
+        const x = cut.x - w / 2;
+        const y = cut.y - h / 2;
+        path.moveTo(x, y);
+        path.lineTo(x + cut.width, y);
+        path.lineTo(x + cut.width, y + cut.height);
+        path.lineTo(x, y + cut.height);
+        path.closePath();
+        shape.holes.push(path);
+      }
       const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false, curveSegments: 24 });
       geo.translate(0, 0, -d / 2);
       geo.computeVertexNormals();
