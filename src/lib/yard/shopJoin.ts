@@ -9,6 +9,16 @@ import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 
 export type ShopJoin = NonNullable<YardProject["shopJoin"]>;
 
+/** The sentence names the joint. The Stock tab is the other way to set it. */
+export function spokenJoin(prompt: string): ShopJoin | undefined {
+  const lower = prompt.toLowerCase();
+  if (/dowel[-\s]?joint/.test(lower)) return "dowel";
+  if (/biscuit[-\s]?join/.test(lower)) return "biscuit";
+  if (/pocket[-\s]?hole/.test(lower)) return "pocket";
+  return undefined;
+}
+
+
 export function stockThickness(project: YardProject): number {
   const item = getCatalogItem(project.primaryMaterialId);
   return item?.dims.thickness ?? item?.dims.diameter ?? item?.dims.height ?? 0.75;

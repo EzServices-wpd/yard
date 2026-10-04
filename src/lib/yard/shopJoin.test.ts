@@ -42,3 +42,16 @@ describe("thickness picker", () => {
     assert.match(thick.bom.map((b) => b.name).join("|"), /1-1\/4/);
   });
 });
+
+describe("a typed join", () => {
+  it("dowel, biscuit, and pocket hole come from the sentence", () => {
+    const dowel = buildPlan(generateFromPrompt("dowel-jointed bookshelf"));
+    assert.equal(dowel.bom.some((line) => /fluted dowel/i.test(line.name)), true);
+    assert.equal(dowel.bom.some((line) => /wood screw/i.test(line.name)), false);
+    const biscuit = buildPlan(generateFromPrompt("biscuit-joined oak end table"));
+    assert.equal(biscuit.bom.some((line) => /biscuit/i.test(line.name)), true);
+    assert.equal(biscuit.bom.some((line) => /glue/i.test(line.name)), true);
+    const pocket = buildPlan(generateFromPrompt("pocket hole 2x4 workbench 60 in"));
+    assert.match(pocket.bom.map((line) => line.name).join(" "), /2 1\/2/);
+  });
+});

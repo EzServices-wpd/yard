@@ -1,3 +1,4 @@
+import { spokenJoin } from "./shopJoin";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
@@ -185,7 +186,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
   const tabled = honorTableTriple(sized, args[0]);
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
-  return withOutdoorNotes(autoSupportSpans(stampStockThickness(finished), args[0]), args[0]);
+  const joined = spokenJoin(args[0]);
+  const stamped = joined ? { ...finished, shopJoin: joined } : finished;
+  return withOutdoorNotes(autoSupportSpans(stampStockThickness(stamped), args[0]), args[0]);
 }
 
 /** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
