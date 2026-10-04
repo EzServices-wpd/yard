@@ -134,10 +134,18 @@ export function buildSheetBox(
  * House and castle already have a walled sheet path. Every other class on sheet stock
  * is that shell — a frame, tower, or figure word does not turn the sheet into a wire.
  */
-export function wantsUnmatchedSheetShell(item: CatalogItem, kind: StructureKind, hasOwnMembers = false): boolean {
+export function wantsUnmatchedSheetShell(
+  item: CatalogItem,
+  kind: StructureKind,
+  hasOwnMembers = false,
+  notes: string[] = [],
+): boolean {
   const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
   if (!sheetish) return false;
   if (kind === "house" || kind === "castle") return false;
+  // A width-and-height fallback is an open frame in member stock. Sheet stock is faces
+  // of that envelope, not battens ripped from the frame recipe.
+  if (notes.some((n) => /open frame at the typed width and height/.test(n))) return true;
   // A catalog form that already maps members stays that form. The sheet is its stock.
   // A general stance wire is not a form — that ask stays a shell.
   if (hasOwnMembers) return false;

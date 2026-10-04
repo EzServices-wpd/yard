@@ -46,6 +46,16 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     expect(p.overall.height).toBeLessThan(18);
   });
 
+  it("a sheet at a typed width and height is faces, not a ripped frame", () => {
+    const p = generateFromPrompt("cardboard drum 12 wide 16 tall");
+    expect(p.primaryMaterialId).toMatch(/cardboard/);
+    expect(p.overall.width).toBeCloseTo(12, 0);
+    expect(p.overall.height).toBeCloseTo(16, 0);
+    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(true);
+    expect(p.panels.some((panel) => /leg|brace/i.test(panel.name))).toBe(false);
+    expect(p.panels.length).toBeLessThan(12);
+  });
+
   it("a named sheet with no form of its own stays a shell", () => {
     const p = generateFromPrompt("cardboard mailbox 8 wide 18 tall");
     expect(p.panels.length).toBeGreaterThan(0);
