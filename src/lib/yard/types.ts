@@ -230,6 +230,8 @@ export type PocketUnit = {
   leftBay?: number;
   /** Upper shelves toward the right wall, inches along the back. */
   rightBay?: number;
+  /** Shelves in each upper bay. Absent = 3, the pocket usual. */
+  shelfRows?: number;
 };
 
 export type PocketSpec = {
@@ -552,6 +554,8 @@ export type MeasureDraft = {
   lowSide?: string;
   /** Clearance left on each side of the piece, shop inches. Default 1/8. */
   clearance?: string;
+  /** Height of each shelf when spacing is set one by one. */
+  shelfAt?: string[];
   /** Opening shape on the sketch when the build is not a flared pocket. */
   spaceShape?: "rectangle" | "arched" | "sloped" | "corner";
 };

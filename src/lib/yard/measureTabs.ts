@@ -157,12 +157,19 @@ export function measureWarnings(input: {
   return out;
 }
 
-export function bayClearTalk(clearW: number, clearH: number): string {
+export function bayClearTalk(clearW: number, clearH: number, shoe = false): string {
   if (!Number.isFinite(clearW) || clearW <= 0) return "";
   const w = inchFrac(clearW);
   const h = Number.isFinite(clearH) && clearH > 0 ? inchFrac(clearH) : "";
-  const fit = clearW >= 12 ? ", fits a size-12 shoe" : clearW >= 8 ? ", fits a paperback" : "";
+  const fit = shoe && clearW >= 12 ? ", fits a size-12 shoe" : "";
   return h ? `each bay ${w}" wide × ${h}" clear${fit}` : `each bay ${w}" wide${fit}`;
+}
+
+/** Clear opening is the inner width: outer minus the two sides and every divider. */
+export function clearOpening(outer: number, thickness: number, dividers: number): number {
+  if (!Number.isFinite(outer) || outer <= 0) return NaN;
+  const t = Number.isFinite(thickness) && thickness > 0 ? thickness : 0.75;
+  return Math.max(0, outer - t * 2 - Math.max(0, dividers) * t);
 }
 
 export type ChangeSnap = { shelves: number; sheets: number; steps: number };

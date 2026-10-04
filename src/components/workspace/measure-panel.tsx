@@ -15,7 +15,7 @@ import {
   changeLine,
   classPresets,
   clearanceTalk,
-  commitInch,
+  clearOpening,
   factsFromProject,
   measureTabs,
   measureWarnings,
@@ -158,6 +158,55 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     liveIfFitted(0);
   }
 
+  function applyInside(patch: { shelves?: number; cubbies?: number; drawers?: number }) {
+    const before = snap();
+    const fitted = project.fitted ?? project.recastFrom?.fitted;
+    const pocket = project.pocket ?? project.recastFrom?.pocket;
+    if (pocket && patch.shelves != null) {
+      generate(project.prompt, project.primaryMaterialId, undefined, {
+        fresh: true,
+        restock: true,
+        pocketOverride: { ...pocket, unit: { ...pocket.unit, shelfRows: Math.max(1, Math.round(patch.shelves / 2)) } },
+      });
+    } else if (fitted) {
+      generate(project.prompt, project.primaryMaterialId, undefined, {
+        fresh: true,
+        restock: true,
+        honorUnit: true,
+        fittedOverride: {
+          ...fitted,
+          unit: {
+            ...fitted.unit,
+            shelfCount: patch.shelves ?? fitted.unit.shelfCount,
+            cubbies: patch.cubbies ?? fitted.unit.cubbies,
+            drawersPerBank: patch.drawers != null ? Math.max(1, Math.ceil(patch.drawers / 2)) : fitted.unit.drawersPerBank,
+          },
+        },
+      });
+    }
+    makePlan();
+    const line = changeLine(before, snap());
+    setSummary(line || "Inside updated");
+  }
+
+  function placeShelves(raw: string[]) {
+    const ys = raw.map((v) => parseInch(v)).filter((n) => Number.isFinite(n));
+    if (!ys.length) return;
+    const shelves = project.panels.filter((p) => p.type === "shelf");
+    if (!shelves.length) return;
+    const next = {
+      ...project,
+      panels: project.panels.map((p) => {
+        if (p.type !== "shelf") return p;
+        const i = shelves.indexOf(p);
+        const y = ys[Math.min(i, ys.length - 1)];
+        return { ...p, position: { ...p.position, y } };
+      }),
+    };
+    useYard.getState().commit(next);
+    makePlan();
+  }
+
   function addSupport() {
     const before = snap();
     generate(`${project.prompt} with a center divider`, project.primaryMaterialId, undefined, { restock: true });
@@ -175,8 +224,11 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const shelfN = facts.shelves ?? 0;
   const cubbyN = facts.cubbies ?? 0;
   const drawerN = facts.drawers ?? 0;
-  const clearW = cubbyN > 1 ? pieceW / cubbyN : pieceW;
-  const clearH = shelfN > 0 ? (Number.isFinite(hNum) ? hNum : project.overall.height) / (shelfN + 1) : NaN;
+  const dividers = project.panels.filter((p) => p.type === "divider").length;
+  const thick = stock?.dims.thickness ?? 0.75;
+  const inner = cubbyN > 1 ? clearOpening(pieceW, thick, Math.max(0, cubbyN - 1)) / cubbyN : clearOpening(pieceW, thick, dividers);
+  const clearH = shelfN > 0 ? ((Number.isFinite(hNum) ? hNum : project.overall.height) - thick * (shelfN + 2)) / Math.max(1, shelfN + 1) : NaN;
+  const shoe = /\bshoes?\b/i.test(project.prompt || project.name);
 
   const stockChoices = useMemo(() => {
     const seen = new Set<string>();
@@ -421,17 +473,22 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "inside" && (
         <section className="mt-4" data-yard-measure-section="inside">
-          <p className="text-[11px] text-muted">{bayClearTalk(clearW, clearH) || "Count what is inside. Even spacing splits the opening."}</p>
+          <p className="text-[11px] text-muted">{bayClearTalk(inner, clearH, shoe) || "Count what is inside. Even spacing splits the opening."}</p>
           <div className="mt-2 grid grid-cols-3 gap-2">
-            <Count label="Shelves" value={shelfN} onChange={(n) => { generate(stampCount(project.prompt || project.name, "shelves", n), project.primaryMaterialId, undefined, { restock: true }); makePlan(); }} />
-            <Count label="Cubbies" value={cubbyN} onChange={(n) => { generate(stampCount(project.prompt || project.name, "cubbies", n), project.primaryMaterialId, undefined, { restock: true }); makePlan(); }} />
-            <Count label="Drawers" value={drawerN} onChange={(n) => { generate(stampCount(project.prompt || project.name, "drawers", n), project.primaryMaterialId, undefined, { restock: true }); makePlan(); }} />
+            <Count label="Shelves" value={shelfN} onChange={(n) => applyInside({ shelves: n })} />
+            <Count label="Cubbies" value={cubbyN} onChange={(n) => applyInside({ cubbies: n })} />
+            <Count label="Drawers" value={drawerN} onChange={(n) => applyInside({ drawers: n })} />
           </div>
           <Segmented label="Spacing" value={spacing} options={[["even", "Even"], ["each", "Set each"]]} onChange={(v) => setSpacing(v as "even" | "each")} />
           {spacing === "each" && shelfN > 0 && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               {Array.from({ length: Math.min(shelfN, 6) }, (_, i) => (
-                <Inch key={i} label={`Shelf ${i + 1} up`} value="" onChange={() => {}} />
+                <Inch key={i} label={`Shelf ${i + 1} up`} value={measure.shelfAt?.[i] ?? ""} onChange={(v) => {
+                  const shelfAt = [...(measure.shelfAt ?? [])];
+                  shelfAt[i] = v;
+                  setMeasure({ shelfAt });
+                  placeShelves(shelfAt);
+                }} />
               ))}
             </div>
           )}

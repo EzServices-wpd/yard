@@ -74,8 +74,9 @@ describe("measure tabs", () => {
   });
 
   it("bay talk uses the clear opening", () => {
-    assert.match(bayClearTalk(14.875, 8), /14 7\/8/);
-    assert.match(bayClearTalk(14.875, 8), /size-12 shoe/);
+    assert.match(bayClearTalk(14.875, 8, true), /14 7\/8/);
+    assert.match(bayClearTalk(14.875, 8, true), /size-12 shoe/);
+    assert.doesNotMatch(bayClearTalk(14.875, 8), /shoe/);
   });
 
   it("changing a size updates Buy and steps", () => {
