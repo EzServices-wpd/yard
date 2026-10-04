@@ -6,6 +6,7 @@ export function shopPlural(label: string, qty: number): string {
   if (qty === 1) return label;
   if (/shelves$/i.test(label)) return label;
   if (/shelf$/i.test(label)) return label.replace(/shelf$/i, "shelves");
+  if (/^foot$/i.test(label)) return "feet";
   if (label === "Kick strip" || label === "kick strip") return "Kick strips";
   if (label === "toekick" || label === "Toekick") return "Kick strips";
   if (/box$/i.test(label)) return label.replace(/box$/i, "boxes");

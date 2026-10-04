@@ -3089,12 +3089,27 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       ladderRungVoice && spec.role === "rail"
         ? "rung"
         : (spec as { word?: string }).word ?? spec.role;
+    const named = shopPlural(roleWord, listI.length);
+    const title = listI.length === 1 && /segments in an S/i.test(spec.title) ? "Glue the neck" : spec.title;
+    const why = listI.length === 1 && /segments in an S/i.test(spec.title) ? "One neck piece. Glue it where it meets the body." : spec.why;
     steps.push({
       step: n++,
-      title: `${spec.title} — ${listI.length} ${roleWord}${listI.length === 1 ? "" : "s"}`,
-      description: `${countWord(listI.length, `${roleWord} member`)}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${spec.why}`,
+      title: `${title} — ${listI.length} ${named}`,
+      description: `${listI.length} ${named}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${why}`,
       partsUsed: [spec.role],
-      tips: spec.why,
+      tips: why,
+    });
+  }
+  const covered = new Set(order.map((spec) => spec.role));
+  for (const [role, listI] of byRole) {
+    if (!listI?.length || covered.has(role)) continue;
+    const named = shopPlural(role, listI.length);
+    steps.push({
+      step: n++,
+      title: `Join the ${named} — ${listI.length} ${named}`,
+      description: `${listI.length} ${named}. Dry-fit each one, then join it where it meets the body.`,
+      partsUsed: [role],
+      tips: "Every part on the bench is in a step.",
     });
   }
   if (

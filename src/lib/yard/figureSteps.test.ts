@@ -14,3 +14,16 @@ describe("figure steps", () => {
     assert.match(tree, /scratching post/);
   });
 });
+
+describe("dowel robot steps", () => {
+  it("covers all 26 parts and does not borrow an S neck", () => {
+    const project = generateFromPrompt("poseable dowel robot");
+    const plan = buildPlan(project);
+    const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
+    assert.equal(project.instances.length, 26);
+    const used = new Set(plan.instructions.flatMap((s) => s.partsUsed ?? []));
+    for (const role of new Set(project.instances.map((i) => i.role))) assert.ok(used.has(role), role);
+    assert.doesNotMatch(text, /in an S|1 pieces/);
+    assert.match(text, /2 feet/);
+  });
+});
