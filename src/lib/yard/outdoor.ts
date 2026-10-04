@@ -73,11 +73,17 @@ const isPlainScrewRow = (b: BomLine) =>
 
 function footTalk(project: YardProject): { where: string; count: number } {
   if (wallHung(project)) return { where: "the bottom edges and both ends of every board", count: 0 };
-  const legs = project.panels.filter((p) => /\bleg\b|\blegs\b|^leg/i.test(p.name)).length + project.instances.filter((i) => /leg/i.test(i.role ?? "") && Math.min(i.from?.y ?? i.position.y, i.to?.y ?? i.position.y) < 0.5).length;
-  if (legs >= 3) return { where: `the bottom ends of the ${legs} legs (the feet)`, count: legs };
-  const sides = project.panels.filter((p) => /\b(?:side|upright|end|stile|post)\b/i.test(p.name) && p.position.y < 0.5).length;
-  if (sides >= 2) return { where: `the bottom edges of the ${sides} sides (the feet)`, count: Math.max(4, sides * 2) };
-  return { where: "the bottom edges where it meets the ground (the feet)", count: 4 };
+  const legs = project.panels.filter((panel) => /\bleg\b/i.test(panel.name));
+  if (legs.length >= 1) {
+    const names = legs.map((panel) => panel.name);
+    return { where: `the bottom ends of ${names.join(", ")}`, count: legs.length };
+  }
+  const ground = project.panels.filter((panel) => panel.position.y < 1 && /\b(?:side|upright|end|stile|post)\b/i.test(panel.name));
+  if (ground.length >= 2) {
+    const names = ground.map((panel) => panel.name);
+    return { where: `the bottom ends of ${names.join(", ")}`, count: ground.length };
+  }
+  return { where: "the bottom edges where it meets the ground", count: 4 };
 }
 
 /** Plain-screw wording in a step becomes the exterior screw the Buy list carries. */
@@ -150,6 +156,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
             searchQuery: `${b.name.match(/#\s?\d+\s*[x×]\s*[\d-\/]+"?/)?.[0] ?? "#8 x 1-1/4\""} exterior coated wood screws`,
             estimatedCost: (b.estimatedCost ?? 9) * 1.35,
             offers: undefined,
+            asin: "B09NNZB6M9",
             notes: `${b.notes ? `${b.notes} ` : ""}Exterior-coated or stainless so they stay bright in the rain and leave no rust streaks.`,
           }
         : b,
@@ -162,6 +169,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
       unit: "can",
       catalogId: "outdoor-finish",
       searchQuery: "spar urethane exterior 1 quart",
+      asin: "B000C0140S",
       estimatedCost: 18.98,
       notes: `Three coats on every face. Flood ${feet.where} and every other cut end until they stop soaking it in.`,
     });
