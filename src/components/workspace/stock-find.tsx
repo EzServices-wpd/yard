@@ -12,6 +12,7 @@ import {
   typedStockQuery,
   withStoreHit,
 } from "@/lib/yard/stockQuery";
+import { inchFrac } from "@/lib/yard/inchText";
 import type { CatalogItem } from "@/lib/yard/types";
 
 type Cache = { until: number; hit: StoreHit | null; error?: string };
@@ -20,8 +21,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const QUIET = 15 * 60 * 1000;
 
 function stockInches(n: number): string {
-  if (Number.isInteger(n)) return `${n}"`;
-  return `${n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}"`;
+  return `${inchFrac(n)}"`;
 }
 
 function dimLine(item: CatalogItem): string {

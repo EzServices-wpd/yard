@@ -37,6 +37,16 @@ export const STUD_CENTER_IN = 16;
 export const HINGE_ARM_CLEAR_IN = 0.75;
 const DOOR_MIRROR_T = 0.12;
 
+/** Keep the typed noun. "spice cabinet" stays Spice cabinet, not a bare Cabinet. */
+function cabinetStem(lower: string): string {
+  const m = lower.match(/\b([a-z][a-z-]{2,}(?:\s+[a-z][a-z-]{2,}){0,2})\s+cabinets?\b/);
+  if (!m) return "Cabinet";
+  const words = m[1].split(/\s+/).filter((w) => !/^(?:a|an|the|my|our|your|small|large|tall|new|old)$/.test(w));
+  if (!words.length) return "Cabinet";
+  return `${words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")} cabinet`;
+}
+
+
 /**
  * Shallow hung cabinet: the typed depth is the finished depth, door included.
  * The overlay door's outer face is that number — it does not add a slab past the label.
@@ -2081,8 +2091,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                             ? "Wall rack"
                                             : house?.family === "hung-cabinet"
                                               ? "Wall cabinet"
-                                              : /cabinet/.test(lower) && !/\\bracks?\\b/.test(lower)
-                                                ? "Cabinet"
+                                              : /cabinet/.test(lower) && !/\bracks?\b/.test(lower)
+                                                ? cabinetStem(lower)
                                               : names[program];
 
   if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {

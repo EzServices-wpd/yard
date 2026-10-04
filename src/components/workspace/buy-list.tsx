@@ -104,7 +104,9 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
                     </p>
                   )}
                 </div>
-                {b.estimatedCost != null && <p className="shrink-0 font-mono text-xs text-muted">{usd(b.estimatedCost)}</p>}
+                {b.estimatedCost != null && b.estimatedCost > 0 && (!b.offers?.length || b.offers.some((o) => o.unitPrice > 0)) && (
+                  <p className="shrink-0 font-mono text-xs text-muted">{usd(b.estimatedCost)}</p>
+                )}
               </div>
               {b.offers && b.offers.length > 0 ? (
                 <ul className="mt-2 space-y-1">
@@ -123,7 +125,7 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
                         {o.label} · {o.title}
                       </a>
                       <span className="shrink-0 font-mono text-xs text-muted">
-                        {o.quote === "search" ? "Search" : `${o.packsNeeded} × ${usd(o.packPrice)} · ${usd(o.unitPrice)}/ea`}
+                        {o.quote === "search" || !(o.unitPrice > 0) ? (o.quote === "search" ? "Search" : "No price") : `${o.packsNeeded} × ${usd(o.packPrice)} · ${usd(o.unitPrice)}/ea`}
                       </span>
                     </li>
                   ))}

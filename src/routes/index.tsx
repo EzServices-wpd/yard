@@ -44,7 +44,7 @@ const PIECES = [
     id: "linen",
     src: "/heroes/linen.jpg",
     label: "Linen closet",
-    size: "31.5 × 78 × 16",
+    size: "31 1/2 × 78 × 16",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
     caption: "Sized to the alcove you typed",
   },
@@ -267,7 +267,7 @@ function LandingPage() {
           <Feature
             icon={<Hammer className="size-5" />}
             title="The size you typed"
-            body="Type 31.5 × 78 × 16 and you get a 31.5 × 78 × 16 build, with steps written in plain words."
+            body="Type 31 1/2 × 78 × 16 and you get a 31 1/2 × 78 × 16 build, with steps written in plain words."
           />
           <Feature
             icon={<ClipboardList className="size-5" />}

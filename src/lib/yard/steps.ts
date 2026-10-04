@@ -2549,10 +2549,14 @@ function sheetCutTitle(panels: Panel[], fallbackItem?: CatalogItem | null): stri
   const rest = groups.filter((g) => !ply10.includes(g) && !ply8.includes(g));
   if (ply10.length && ply8.length) {
     const head = '3/4" plywood (4×10 for full-height faces, 4×8 for the rest)';
-    return `Cut the ${[head, ...rest.map((g) => g.label)].join(" and ")}`;
+    const restLabels: string[] = [];
+    for (const g of rest) if (!restLabels.includes(g.label)) restLabels.push(g.label);
+    return `Cut the ${[head, ...restLabels].join(" and ")}`;
   }
-  if (groups.length === 1) return `Cut the ${groups[0].label}`;
-  return `Cut the ${groups.map((g) => g.label).join(" and ")}`;
+  const labels: string[] = [];
+  for (const g of groups) if (!labels.includes(g.label)) labels.push(g.label);
+  if (labels.length === 1) return `Cut the ${labels[0]}`;
+  return `Cut the ${labels.join(" and ")}`;
 }
 
 function sheetCutDescription(

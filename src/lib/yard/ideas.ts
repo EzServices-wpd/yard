@@ -66,7 +66,7 @@ export const IDEAS: Idea[] = [
     group: "house",
     section: "Fitted to a hole",
     label: "Linen closet",
-    size: "31.5 × 78 × 16",
+    size: "31 1/2 × 78 × 16",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
     blurb: "The alcove you typed is the unit you get.",
   },

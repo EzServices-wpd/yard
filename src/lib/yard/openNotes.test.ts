@@ -1,90 +1,92 @@
-import { describe, expect, it } from "vitest";
-import { generateFromPrompt } from "./promptMain";
-import { weekendUsesLatticeGraph } from "./weekendFamily";
-import { detectForm } from "./form";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { generateFromPrompt } from "./promptMain.ts";
+import { weekendUsesLatticeGraph } from "./weekendFamily.ts";
+import { detectForm } from "./form.ts";
 
 describe("open notes — rack tiers, closed shaft, cabinet", () => {
-  it("a rack on member stock keeps tiers", () => {
+  it("a dowel rack is an open frame, not pin shelves", () => {
     const p = generateFromPrompt("dowel rack 24 wide 36 tall");
     const shelves = p.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
-    expect(shelves.length).toBeGreaterThan(0);
-    expect(p.primaryMaterialId).toMatch(/dowel/);
+    assert.equal(shelves.length, 0);
+    assert.match(p.primaryMaterialId, /dowel/);
+    assert.ok(p.instances.length > 0);
   });
 
   it("a picked sheet outside the sheet-good class is every panel", () => {
     const p = generateFromPrompt("console table 54 wide 30 tall 14 deep from cardboard");
-    expect(p.primaryMaterialId).toMatch(/cardboard/);
-    expect(p.panels.length).toBeGreaterThan(0);
-    expect(p.panels.every((panel) => /cardboard/.test(panel.materialId ?? ""))).toBe(true);
-    expect(p.overall.width).toBeGreaterThan(50);
-    expect(p.overall.height).toBeGreaterThan(28);
+    assert.match(p.primaryMaterialId, /cardboard/);
+    assert.ok(p.panels.length > 0);
+    assert.equal(p.panels.every((panel) => /cardboard/.test(panel.materialId ?? "")), true);
+    assert.ok(p.overall.width > 50);
+    assert.ok(p.overall.height > 28);
   });
 
   it("a closed shaft is not a lattice graph", () => {
-    expect(weekendUsesLatticeGraph("lighthouse 18 wide 48 tall", "tower")).toBe(false);
-    expect(detectForm("lighthouse 18 wide 48 tall", { width: 18, height: 48, depth: 18 }).kind).not.toBe("lattice");
+    assert.equal(weekendUsesLatticeGraph("lighthouse 18 wide 48 tall", "tower"), false);
+    assert.notEqual(detectForm("lighthouse 18 wide 48 tall", { width: 18, height: 48, depth: 18 }).kind, "lattice");
     const p = generateFromPrompt("lighthouse 18 wide 48 tall from cardboard");
-    expect(p.kind).not.toBe("lattice");
-    expect(p.kind).not.toBe("eiffel");
+    assert.notEqual(p.kind, "lattice");
+    assert.notEqual(p.kind, "eiffel");
   });
 
   it("a cabinet stays a cabinet", () => {
     const p = generateFromPrompt("spice cabinet 12 wide 20 tall 6 deep");
-    expect(p.name.toLowerCase()).toContain("cabinet");
-    expect(p.name.toLowerCase()).not.toContain("rack");
-    expect(p.fitted?.unit.doors).toBe(true);
-    expect((p.fitted?.unit.shelfCount ?? 0) > 0 || p.panels.some((panel) => panel.type === "shelf")).toBe(true);
+    assert.match(p.name.toLowerCase(), /cabinet/);
+    assert.equal(p.name.toLowerCase().includes("rack"), false);
+    assert.equal(p.fitted?.unit.doors, true);
+    assert.equal((p.fitted?.unit.shelfCount ?? 0) > 0 || p.panels.some((panel) => panel.type === "shelf"), true);
   });
 
   it("a form that already places members stays that form on a named sheet", () => {
     const p = generateFromPrompt("cardboard robot 14 tall");
-    expect(p.kind).toBe("figure");
-    expect(p.name.toLowerCase()).toContain("robot");
-    expect(p.primaryMaterialId).toMatch(/cardboard/);
-    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(false);
-    expect(p.overall.height).toBeGreaterThan(12);
-    expect(p.overall.height).toBeLessThan(18);
+    assert.equal(p.kind, "figure");
+    assert.match(p.name.toLowerCase(), /robot/);
+    assert.match(p.primaryMaterialId, /cardboard/);
+    assert.equal(p.panels.some((panel) => /wall|floor/i.test(panel.name)), false);
+    assert.ok(p.overall.height > 12);
+    assert.ok(p.overall.height < 18);
   });
 
   it("a sheet at a typed width and height is faces, not a ripped frame", () => {
     const p = generateFromPrompt("cardboard drum 12 wide 16 tall");
-    expect(p.primaryMaterialId).toMatch(/cardboard/);
-    expect(p.overall.width).toBeCloseTo(12, 0);
-    expect(p.overall.height).toBeCloseTo(16, 0);
-    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(true);
-    expect(p.panels.some((panel) => /leg|brace/i.test(panel.name))).toBe(false);
-    expect(p.panels.length).toBeLessThan(12);
+    assert.match(p.primaryMaterialId, /cardboard/);
+    assert.ok(Math.abs(p.overall.width - 12) < 0.5);
+    assert.ok(Math.abs(p.overall.height - 16) < 0.5);
+    assert.equal(p.panels.some((panel) => /wall|floor/i.test(panel.name)), true);
+    assert.equal(p.panels.some((panel) => /leg|brace/i.test(panel.name)), false);
+    assert.ok(p.panels.length < 12);
   });
 
   it("a general lying body on sheet stock is faces of the typed envelope", () => {
     const p = generateFromPrompt("cardboard suitcase 18 long 12 tall");
-    expect(p.primaryMaterialId).toMatch(/cardboard/);
-    expect(p.kind).not.toBe("vehicle");
-    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(true);
-    expect(p.notes.join(" ")).not.toMatch(/Ripped into/);
-    expect(p.overall.width).toBeCloseTo(18, 0);
-    expect(p.overall.height).toBeCloseTo(12, 0);
+    assert.match(p.primaryMaterialId, /cardboard/);
+    assert.notEqual(p.kind, "vehicle");
+    assert.equal(p.panels.some((panel) => /wall|floor/i.test(panel.name)), true);
+    assert.equal(/Ripped into/.test(p.notes.join(" ")), false);
+    assert.ok(Math.abs(p.overall.width - 18) < 0.5);
+    assert.ok(Math.abs(p.overall.height - 12) < 0.5);
   });
 
   it("a named sheet with no form of its own stays a shell", () => {
     const p = generateFromPrompt("cardboard mailbox 8 wide 18 tall");
-    expect(p.panels.length).toBeGreaterThan(0);
-    expect(p.kind).not.toBe("figure");
-    expect(p.primaryMaterialId).toMatch(/cardboard/);
+    assert.ok(p.panels.length > 0);
+    assert.notEqual(p.kind, "figure");
+    assert.match(p.primaryMaterialId, /cardboard/);
   });
 
   it("a named board section is the member stock, not a class usual", () => {
     const p = generateFromPrompt("pine 1x6 bench 36 long");
-    expect(p.primaryMaterialId).toBe("lumber-1x6-8");
+    assert.equal(p.primaryMaterialId, "lumber-1x6-8");
     const legs = p.panels.filter((panel) => /leg/i.test(panel.name));
-    expect(legs.length).toBeGreaterThan(0);
+    assert.ok(legs.length > 0);
     for (const leg of legs) {
-      expect(leg.materialId).toBe("lumber-1x6-8");
+      assert.equal(leg.materialId, "lumber-1x6-8");
       const cross = [leg.size.width, leg.size.depth].sort((a, b) => a - b);
-      expect(cross[0]).toBeCloseTo(0.75, 1);
-      expect(cross[1]).toBeCloseTo(5.5, 1);
+      assert.ok(Math.abs(cross[0] - 0.75) < 0.05);
+      assert.ok(Math.abs(cross[1] - 5.5) < 0.05);
     }
-    expect(p.notes.join(" ")).not.toMatch(/2×4|2x4/);
-    expect(p.overall.width).toBeCloseTo(36, 0);
+    assert.equal(/2×4|2x4/.test(p.notes.join(" ")), false);
+    assert.ok(Math.abs(p.overall.width - 36) < 0.5);
   });
 });

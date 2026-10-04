@@ -341,8 +341,8 @@ function scaleToBox(
   const shrinking = sx < 0.97 || sy < 0.97 || sz < 0.97;
   const growing = sx > 1.03 || sy > 1.03 || sz > 1.03;
   if (shrinking && !growing && partsAlreadyInside(project, box)) {
-    const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1));
-    const note = `Sized to ${fmt(box.width)}" wide × ${fmt(box.height)}" high × ${fmt(box.depth)}" deep.`;
+    const fmt = (n: number) => inchFrac(n);
+    const note = `Sized to ${inchFrac(box.width)}" wide × ${inchFrac(box.height)}" high × ${inchFrac(box.depth)}" deep.`;
     return {
       ...project,
       overall: { width: box.width, height: box.height, depth: box.depth },
@@ -392,7 +392,7 @@ function scaleToBox(
   };
   });
   const fmt = (n: number) => inchFrac(n);
-  const note = `Sized to ${fmt(box.width)}" wide × ${fmt(box.height)}" high × ${fmt(box.depth)}" deep.`;
+  const note = `Sized to ${inchFrac(box.width)}" wide × ${inchFrac(box.height)}" high × ${inchFrac(box.depth)}" deep.`;
   const steps = Math.max(1, climbStepCount(project.prompt || ""));
   const fixRise = (s: string) =>
     s.replace(

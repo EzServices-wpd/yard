@@ -753,7 +753,7 @@ export function toProject(
       height = typedH;
     } else if (kind === "frame" || kind === "ladder") {
       // Thinner face pad only on frames — 2x4 width was the ladder inflate.
-      const padH = Math.max(0.35, Math.min(stockW, prim.height || prim.thickness || stockW) * 0.55);
+      const padH = Math.max(0.35, Math.min(stockW, prim.height || stockW) * 0.55);
       height = Math.max(8, spanY + padH);
       if (typedH && Math.abs(spanY - typedH) <= 1.25) height = typedH;
     }
@@ -827,7 +827,7 @@ export function toProject(
   const heightWord = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:tall|high|height)\b/.test(prompt.toLowerCase());
   if (heightWord && list.length) {
     const typedH = parseSize(prompt.toLowerCase()).height;
-    const top = Math.max(...list.map((i) => (i.to ? Math.max(i.from!.y, i.to.y) : i.position.y + (i.size?.height ?? 0))), 0);
+    const top = Math.max(...list.map((i) => (i.to && i.from ? Math.max(i.from.y, i.to.y) : i.position.y)), 0);
     if (typedH > 0 && top > typedH + 1 / 16) {
       const k = typedH / top;
       for (const i of list) {
@@ -838,8 +838,6 @@ export function toProject(
           if (i.cutLength != null) {
             i.cutLength = Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z);
           }
-        } else if (i.size) {
-          i.size = { ...i.size, height: i.size.height * k };
         }
       }
     }

@@ -982,7 +982,9 @@ export function offersFor(
       item?.category === "paper_tube" ||
       (item?.tags ?? []).includes("recycled");
     const piece = Boolean(item?.id.startsWith("piece-"));
-    const price = piece ? (item?.unitCostUsd ?? 0) : recycled ? 0 : (item?.unitCostUsd ?? 0) * pack || 9.99;
+    const known = item?.unitCostUsd;
+    // No catalog price stays no price. Do not invent the same number at every store.
+    const price = piece ? (known ?? 0) : recycled ? 0 : known != null && known > 0 ? known * pack : 0;
     rows = shopLinks(q, item?.asin).map((l) => ({
       catalogId,
       retailer: l.retailer,
