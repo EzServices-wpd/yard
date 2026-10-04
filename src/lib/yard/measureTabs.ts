@@ -34,12 +34,15 @@ const SPACE_OPENINGS = new Set(["alcove", "pocket", "window", "door"]);
 /** A build that sits in a hole: alcove, pocket, closet, opening, wall run, under-stair, corner. A freestanding shelf or bench does not. */
 export function fitsASpace(facts: MeasureFacts): boolean {
   if (facts.pocket || facts.corner) return true;
-  if (facts.kind === "closet" || facts.kind === "opening") return true;
   if (facts.installMode === "alcove") return true;
   if (facts.openingKind && SPACE_OPENINGS.has(facts.openingKind)) return true;
   if (facts.oddKind === "sloped" || facts.oddKind === "wrap-opening" || facts.oddKind === "angled-corner" || facts.oddKind === "l-footprint") {
     return true;
   }
+  if (facts.kind === "opening") return true;
+  // A freestanding shelf, bench, table or desk is not a hole, even when the engine kind is closet.
+  if (facts.program === "bookcase" || facts.program === "bench" || facts.program === "table" || facts.program === "desk") return false;
+  if (facts.kind === "closet") return true;
   return false;
 }
 

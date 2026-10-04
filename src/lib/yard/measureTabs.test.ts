@@ -34,18 +34,28 @@ describe("measure tabs", () => {
   });
 
   it("a freestanding shelf or bench does not open Your space", () => {
-    assert.equal(fitsASpace({ fitted: true, program: "bookcase" }), false);
-    assert.equal(fitsASpace({ fitted: true, program: "bench" }), false);
-    assert.ok(!measureTabs({ fitted: true, program: "bookcase" }).some((t) => t.id === "space"));
+    assert.equal(fitsASpace({ kind: "closet", program: "bookcase", openingKind: "room", installMode: "freestanding" }), false);
+    assert.equal(fitsASpace({ kind: "closet", program: "bench", openingKind: "room" }), false);
+    assert.equal(fitsASpace({ kind: "closet", program: "table" }), false);
+    assert.ok(!measureTabs({ kind: "closet", program: "bookcase" }).some((t) => t.id === "space"));
+    assert.equal(fitsASpace({ kind: "closet", program: "closet" }), true);
     assert.equal(fitsASpace({ fitted: true, program: "closet", openingKind: "alcove" }), true);
     assert.equal(fitsASpace({ pocket: true }), true);
     assert.equal(fitsASpace({ kind: "opening" }), true);
-    assert.equal(fitsASpace({ corner: true }), true);
+    assert.equal(fitsASpace({ corner: true, program: "bookcase" }), true);
     assert.equal(fitsASpace({ oddKind: "sloped" }), true);
     assert.equal(fitsASpace({ installMode: "alcove" }), true);
     assert.equal(fitsASpace({ kind: "weekend" }), false);
     assert.ok(measureTabs({ fitted: true, program: "vanity", openingKind: "alcove" }).some((t) => t.id === "space"));
     assert.ok(!measureTabs({ kind: "weekend" }).some((t) => t.id === "space"));
+  });
+
+  it("a bookshelf 36 wide does not open Your space; a linen closet does", () => {
+    const shelf = factsFromProject(generateFromPrompt("bookshelf 36 wide"));
+    assert.equal(fitsASpace(shelf), false);
+    const linen = factsFromProject(generateFromPrompt("linen closet 31.5x78x16"));
+    assert.equal(linen.kind, "closet");
+    assert.equal(fitsASpace(linen), true);
   });
 
   it("inside appears only when the model has shelves, drawers, cubbies, doors or tiers", () => {
