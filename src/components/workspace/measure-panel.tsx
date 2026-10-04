@@ -259,10 +259,10 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   }, []);
 
   return (
-    <div className={`p-4 ${phone ? "max-h-[50vh] overflow-y-auto" : ""}`} data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>
+    <div className={`p-4 ${phone ? "max-h-[50vh] overflow-y-auto" : ""}`} style={phone ? { maxHeight: "50vh" } : undefined} data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="font-display text-lg text-fg">Measure</h2>
-        <button type="button" onClick={() => { undo(); makePlan(); setSummary(""); }} className="min-h-11 min-w-11 px-3 text-sm text-muted hover:text-fg">
+        <button type="button" onClick={() => { undo(); makePlan(); setSummary(""); }} className="inline-flex h-11 min-h-11 min-w-11 items-center px-3 text-sm text-muted hover:text-fg">
           Undo
         </button>
       </div>
@@ -309,15 +309,15 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             <Inch label={isPocket ? "Ceiling" : "Opening tall"} value={isPocket ? measure.ceiling ?? measure.height : measure.openingHeight ?? measure.height} onChange={(v) => { setMeasure(isPocket ? { ceiling: v } : { openingHeight: v }); }} onCommit={() => liveIfFitted(0)} />
             {isPocket ? (
               <>
-                <Inch label="Left depth" value={measure.leftDepth ?? ""} onChange={(v) => { setMeasure({ leftDepth: v }); liveIfFitted(); }} />
-                <Inch label="Right depth" value={measure.rightDepth ?? ""} onChange={(v) => { setMeasure({ rightDepth: v }); liveIfFitted(); }} />
+                <Inch label="Left depth" value={measure.leftDepth ?? ""} onChange={(v) => setMeasure({ leftDepth: v })} onCommit={() => liveIfFitted(0)} />
+                <Inch label="Right depth" value={measure.rightDepth ?? ""} onChange={(v) => setMeasure({ rightDepth: v })} onCommit={() => liveIfFitted(0)} />
               </>
             ) : (
               <Inch label="Opening deep" value={measure.openingDepth ?? measure.depth} onChange={(v) => setMeasure({ openingDepth: v })} />
             )}
             <Inch label="Clearance a side" value={measure.clearance ?? "1/8"} onChange={(v) => setMeasure({ clearance: v })} />
           </div>
-          <button type="button" className="mt-2 h-11 text-xs text-fg underline" onClick={() => {
+          <button type="button" className="mt-2 inline-flex h-11 min-h-11 items-center text-xs text-fg underline" onClick={() => {
             const ow = parseInch(measure.openingWidth ?? "");
             const oh = parseInch(measure.openingHeight ?? "");
             const od = parseInch(measure.openingDepth ?? "");
@@ -348,8 +348,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               />
               {shape === "flared" && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <Inch label="Left flare" unit="°" value={measure.leftAngle ?? ""} onChange={(v) => { setMeasure({ leftAngle: v }); liveIfFitted(); }} />
-                  <Inch label="Right flare" unit="°" value={measure.rightAngle ?? ""} onChange={(v) => { setMeasure({ rightAngle: v }); liveIfFitted(); }} />
+                  <Inch label="Left flare" unit="°" value={measure.leftAngle ?? ""} onChange={(v) => setMeasure({ leftAngle: v })} onCommit={() => liveIfFitted(0)} />
+                  <Inch label="Right flare" unit="°" value={measure.rightAngle ?? ""} onChange={(v) => setMeasure({ rightAngle: v })} onCommit={() => liveIfFitted(0)} />
                 </div>
               )}
             </>
@@ -496,7 +496,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           {!isPocket && (
             <label className="mt-3 block text-xs text-muted">
               This is a
-              <select value={measure.kind} onChange={(e) => { setMeasure({ kind: e.target.value as SpaceKind }); liveIfFitted(); }} className="mt-1 h-12 w-full rounded-md border border-border bg-bg px-2 text-sm text-fg">
+              <select value={measure.kind} onChange={(e) => { setMeasure({ kind: e.target.value as SpaceKind }); }} className="mt-1 h-12 w-full rounded-md border border-border bg-bg px-2 text-sm text-fg">
                 <option value="closet_niche">Closet / alcove</option>
                 <option value="window_rough_opening">Window rough opening</option>
                 <option value="desk">Desk</option>
@@ -541,8 +541,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           )}
           {isPocket && (
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Inch label="Left shelves" value={measure.leftBay ?? ""} onChange={(v) => { setMeasure({ leftBay: v }); liveIfFitted(); }} />
-              <Inch label="Right shelves" value={measure.rightBay ?? ""} onChange={(v) => { setMeasure({ rightBay: v }); liveIfFitted(); }} />
+              <Inch label="Left shelves" value={measure.leftBay ?? ""} onChange={(v) => setMeasure({ leftBay: v })} onCommit={() => liveIfFitted(0)} />
+              <Inch label="Right shelves" value={measure.rightBay ?? ""} onChange={(v) => setMeasure({ rightBay: v })} onCommit={() => liveIfFitted(0)} />
             </div>
           )}
         </section>
