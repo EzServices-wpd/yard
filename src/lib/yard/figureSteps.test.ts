@@ -6,8 +6,10 @@ import { buildPlan } from "./report";
 describe("figure steps", () => {
   it("a figure shelf names its parts and skips closet pin lines", () => {
     for (const prompt of ["plywood cat bookshelf", "dachshund shelf"]) {
-      const text = buildPlan(generateFromPrompt(prompt)).instructions.map((s) => `${s.title} ${s.description}`).join(" ");
+      const plan = buildPlan(generateFromPrompt(prompt));
+      const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
       assert.doesNotMatch(text, /pin hole|back is already/i);
+      assert.equal(plan.bom.some((line) => /shelf pin/i.test(line.name)), false);
       assert.match(text, /parts on this list|parts on the bench/);
     }
     const tree = buildPlan(generateFromPrompt("cat tree")).instructions.map((s) => s.title).join(" ");

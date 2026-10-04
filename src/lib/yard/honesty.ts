@@ -9,6 +9,7 @@ import { aabbOfPanels, aabbSize, type Aabb3 } from "./geometry";
 import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox, isCoatHookBoard } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
+import { figureIdentityLabel } from "./weekendFamily";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -275,6 +276,8 @@ export function wantsRackAffordance(prompt: string) {
 export function wantsFixedGlueShelves(project: YardProject): boolean {
   const prompt = project.prompt ?? "";
   const lower = prompt.toLowerCase();
+  // A figure's shelves are part of the body. They fasten. They do not sit on pins.
+  if (figureIdentityLabel(lower)) return true;
   if (wantsRackAffordance(prompt)) return true;
   // Corner-unit shelves are glued and screwed through both wall panels / onto cleats.
   if (project.fitted?.unit?.corner) return true;
