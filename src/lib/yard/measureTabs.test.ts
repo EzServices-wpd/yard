@@ -5,6 +5,7 @@ import { generateFromPrompt } from "./promptMain";
 import {
   bayClearTalk,
   changeLine,
+  classSizeWarning,
   clearanceTalk,
   commitInch,
   factsFromProject,
@@ -117,5 +118,19 @@ describe("measure tabs", () => {
   it("stampCount keeps the noun", () => {
     assert.equal(stampCount("pine bookcase 36 wide", "shelves", 5), "pine bookcase 36 wide with 5 shelves");
     assert.equal(stampCount("bookcase with 3 shelves", "shelves", 5), "bookcase with 5 shelves");
+  });
+});
+
+describe("class size warnings", () => {
+  it("a bench under 12 inches wide offers a wider seat", () => {
+    const warn = classSizeWarning({ program: "bench", shelves: 0 }, 8, 16);
+    assert.equal(warn?.id, "narrow-seat");
+    assert.match(warn?.fix ?? "", /16/);
+  });
+  it("a bookshelf under 8 inches deep offers a paperback depth", () => {
+    const warn = classSizeWarning({ program: "bookcase", shelves: 5 }, 36, 5 + 15 / 16);
+    assert.equal(warn?.id, "shallow-shelf");
+    assert.match(warn?.text ?? "", /5 15\/16/);
+    assert.match(warn?.fix ?? "", /11/);
   });
 });

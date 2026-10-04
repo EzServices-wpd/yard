@@ -161,6 +161,10 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     if (axis !== "height" && Number.isFinite(hNum)) patch.height = fieldInch(hNum * ratio);
     if (axis !== "depth" && Number.isFinite(dNum)) patch.depth = fieldInch(dNum * ratio);
     setMeasure(patch);
+    const nextW = parseInch(String(patch.width ?? measure.width));
+    const nextD = parseInch(String(patch.depth ?? measure.depth));
+    const warn = classSizeWarning(facts, Number.isFinite(nextW) ? nextW : pieceW, Number.isFinite(nextD) ? nextD : project.overall.depth);
+    if (warn) setSummary(warn.text);
   }
 
   function resetTab() {
