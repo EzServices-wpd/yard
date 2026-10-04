@@ -395,7 +395,9 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
   }
 
   const rows = Math.max(1, Math.min(8, unit.shelfRows ?? 3));
-  const shelfYs = Array.from({ length: rows }, (_, i) => u0 + (uH * (i + 1)) / (rows + 1));
+  const shelfYs = unit.shelfRows != null && unit.shelfRows !== 3
+    ? Array.from({ length: rows }, (_, i) => u0 + (uH * (i + 1)) / (rows + 1))
+    : [u0 + uH * 0.28, u0 + uH * 0.52, u0 + uH * 0.76];
   shelfYs.forEach((y, i) => {
     panels.push(panel("shelf", `Left linen shelf ${i + 1}`, x0 + P, y, 0.1, bays.left, P, D - 0.2));
     panels.push(panel("shelf", `Right towel shelf ${i + 1}`, x1 - P - bays.right, y, 0.1, bays.right, P, D - 0.2));
