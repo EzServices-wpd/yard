@@ -51,13 +51,7 @@ export function CatalogPanel() {
       (i) => !i.tags?.includes("binder") && i.id !== "wire-frame" && !i.tags?.includes("wire") && i.id !== direct?.id,
     );
   }, [q, searching, direct?.id, rev]);
-  const kinds = useMemo(
-    () => CATALOG_CATEGORIES.filter((cat) => items.some((i) => i.category === cat.id)),
-    [items],
-  );
   const active = getCatalogItem(project.primaryMaterialId);
-  const [kind, setKind] = useState(active?.category ?? kinds[0]?.id ?? "sheet_goods");
-  const kindOk = kinds.some((k) => k.id === kind) ? kind : (kinds[0]?.id ?? kind);
   const kept = useMemo(() => (searching ? [] : listFoundStock().slice(0, 8)), [rev, searching]);
   const joins = (active?.preferredJoins ?? []) as JoinMethod[];
   const currentJoin = project.joinMethod ?? joins[0];
@@ -106,25 +100,6 @@ export function CatalogPanel() {
           aria-label="Search stock"
           className="mt-3 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint"
         />
-        {!searching && (
-        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-          {kinds.map((cat) => {
-            const on = cat.id === kindOk;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setKind(cat.id)}
-                className={`h-9 shrink-0 rounded-full border px-3 text-xs ${
-                  on ? "border-fg/40 bg-elevated text-fg" : "border-border text-muted hover:text-fg"
-                }`}
-              >
-                {KIND_SHORT[cat.id] ?? cat.label}
-              </button>
-            );
-          })}
-        </div>
-        )}
         {joins.length > 0 && (
           <div className="mt-3">
             <p className="text-[11px] uppercase tracking-wider text-faint">Join</p>
@@ -201,11 +176,15 @@ export function CatalogPanel() {
                 </ul>
               </div>
             )}
-            {CATALOG_CATEGORIES.filter((cat) => cat.id === kindOk).map((cat) => {
+            {CATALOG_CATEGORIES.filter((cat) => items.some((i) => i.category === cat.id)).map((cat) => {
               const group = items.filter((i) => i.category === cat.id);
               if (!group.length) return null;
               return (
-                <ul key={cat.id}>
+                <div key={cat.id} className="mt-2">
+                  <p className="px-2 pt-1 text-[11px] uppercase tracking-wider text-faint">
+                    {KIND_SHORT[cat.id] ?? cat.label}
+                  </p>
+                <ul>
                   {group.map((item) => {
                     const selected = project.primaryMaterialId === item.id;
                     const dim =
@@ -235,6 +214,7 @@ export function CatalogPanel() {
                     );
                   })}
                 </ul>
+                </div>
               );
             })}
           </>
