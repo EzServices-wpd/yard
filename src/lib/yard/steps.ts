@@ -201,9 +201,17 @@ function combinedSteps(project: YardProject): AssemblyStep[] {
   ];
 }
 
+function withDisplayModel(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const line = (project.notes ?? []).find((n) => n.startsWith("This is a display model"));
+  if (!line || !steps.length) return steps;
+  const first = steps[0];
+  if ((first.description ?? "").includes("display model")) return steps;
+  return [{ ...first, description: `${line} ${first.description ?? ""}`.trim() }, ...steps.slice(1)];
+}
+
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
   if ((project.notes ?? []).some((n) => n.startsWith("Combined:"))) {
-    return combinedSteps(project);
+    return withDisplayModel(project, combinedSteps(project));
   }
   if (project.flat && !project.flat.lifted) {
     return uniqueFlatSteps(project);
@@ -214,12 +222,12 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
     stepStockPrompt = project.prompt ?? "";
     try {
       const steps = uniquePanelSteps(project);
-      return solidStockVoice(project) ? steps.map(solidWordsInStep) : steps;
+      return withDisplayModel(project, solidStockVoice(project) ? steps.map(solidWordsInStep) : steps);
     } finally {
       stepStockPrompt = prev;
     }
   }
-  if (project.instances.length) return uniqueForgeSteps(project);
+  if (project.instances.length) return withDisplayModel(project, uniqueForgeSteps(project));
   return [
     {
       step: 1,

@@ -3,7 +3,9 @@
  * Cardboard castle, plywood doghouse, cedar birdhouse — not a stick loft.
  */
 import { createId } from "@/lib/utils";
-import type { CatalogItem, Panel, StructureKind, YardProject } from "./types";
+import { inchFrac } from "./inchText";
+import { subjectFromPrompt } from "./form";
+import type { CatalogItem, JoinMethod, Panel, StructureKind, YardProject } from "./types";
 
 export function wantsSheetBox(prompt: string, item: CatalogItem, kind: StructureKind): boolean {
   const lower = prompt.toLowerCase();
@@ -149,13 +151,14 @@ export function wantsUnmatchedSheetShell(
   return true;
 }
 
-/** Open-top sheet shell. Typed width, height, and depth are the outside. */
+/** Closed sheet shell at the typed size. A named window or door is a cut opening, not a wire cube. */
 export function buildTypedSheetShell(
   prompt: string,
   item: CatalogItem,
   size: { width: number; height: number; depth: number },
   name: string,
 ): YardProject {
+  const lower = prompt.toLowerCase();
   const W = Math.max(size.width, 1);
   const D = Math.max(size.depth, 1);
   const H = Math.max(size.height, 1);
@@ -173,23 +176,39 @@ export function buildTypedSheetShell(
       materialId: item.id,
     });
   };
+  const openTop = /\bopen\s+top\b/.test(lower);
+  const opening = /\b(?:windows?|doors?)\b/.test(lower);
+  const titled = name === "Frame" || name === "Custom form"
+    ? (subjectFromPrompt(prompt).replace(/\b\w/g, (c) => c.toUpperCase()) || name)
+    : name;
   add("bottom", "Floor", x0, 0, z0, W, T, D);
   add("upright", "Left wall", x0, 0, z0, T, H, D);
   add("upright", "Right wall", x0 + W - T, 0, z0, T, H, D);
   add("back", "Back wall", x0, 0, z0, W, H, T);
   add("back", "Front wall", x0, 0, z0 + D - T, W, H, T);
+  if (!openTop) add("top", "Top", x0, H - T, z0, W, T, D);
+  if (opening) {
+    const ow = Math.max(4, Math.min(W * 0.45, W - 2 * T));
+    const oh = Math.max(4, Math.min(H * 0.45, H - 2 * T));
+    add("back", /\bdoors?\b/.test(lower) ? "Door opening" : "Window opening", x0 + (W - ow) / 2, H * 0.28, z0 + D - T, ow, oh, T);
+  }
+  const join = item.preferredJoins?.[0];
+  const glue = join === "glue" || join === "tape" || item.category === "cardboard";
+  const joinTalk = glue ? "Tape or glue the corners." : "Glue and screw the corners.";
+  const inch = (n: number) => `${inchFrac(n)}"`;
   return {
     id: createId("proj"),
-    name,
+    name: titled,
     prompt,
     kind: "furniture",
     overall: { width: W, height: H, depth: D },
     instances: [],
     panels,
     primaryMaterialId: item.id,
+    joinMethod: (glue ? "glue" : join === "solvent" ? "solvent" : "screw") as JoinMethod,
     notes: [
-      `${name} in ${item.name} — faces of the typed envelope, not battens ripped from the sheet.`,
-      `Outside ${W}" wide × ${H}" high × ${D}" deep. Walls are the sheet thickness. Tape or glue the corners. Leave the top open.`,
+      `${titled} in ${item.name} — a closed shell of the typed envelope, not battens ripped from the sheet.`,
+      `Outside ${inch(W)} wide × ${inch(H)} high × ${inch(D)} deep. Walls are the sheet thickness. ${joinTalk}${openTop ? " Leave the top open." : " The top closes the box."}${opening ? " Cut the opening in the front before that wall goes on." : ""}`,
     ],
     assumptions: {
       load: item.category === "cardboard" ? "light" : "medium",

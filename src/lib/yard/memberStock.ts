@@ -225,9 +225,14 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     const midN = axes[1].n;
     const longN = axes[2].n;
     if (longN < 0.2) continue;
-    // Member stock traces the two long edges of the face. It does not comb
-    // across the face or tile the interior solid.
-    const nAcross = midN < 0.2 ? 1 : 2;
+    // Edges trace the face. A shelf, seat, or top needs slats so something can sit on it.
+    // A section under 1/2" cannot be that face — the note says it is a display model.
+    const bearing = panel.type === "shelf" || panel.type === "deck" || panel.type === "top" || /shelf|seat|top/i.test(panel.name);
+    const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
+    const practicalFace = section >= 0.5;
+    const nAcross = bearing && practicalFace
+      ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
+      : midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
@@ -370,6 +375,11 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
 
   const note = `Same ${project.name} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
   const notes = recastNotes(project.notes ?? [], item).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
+  const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
+  const bearing = project.panels.some((panel) => panel.type === "shelf" || panel.type === "deck" || panel.type === "top" || /shelf|seat|top/i.test(panel.name));
+  if (bearing && section < 0.5) {
+    notes.unshift(`This is a display model in ${item.name}. A shelf, seat, or top that holds needs ¾" plywood or 1× boards.`);
+  }
   if (instances.length >= budget) {
     notes.unshift(`Stopped at ${budget} pieces so the bench can draw it. A solid tile of ${item.name} would be denser.`);
   }
@@ -388,7 +398,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     recastFrom: project.fitted || project.pocket ? { fitted: project.fitted, pocket: project.pocket } : project.recastFrom,
     instances,
     primaryMaterialId: item.id,
-    notes: [note, ...notes],
+    notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
 }
 
