@@ -60,7 +60,7 @@ function mentions(step: AssemblyStep, part: Part): boolean {
 }
 
 function isBuild(step: AssemblyStep): boolean {
-  return !PREP.test(step.title);
+  return !PREP.test(step.title) && !/^Cut\b/i.test(step.title);
 }
 
 function ontoTalk(project: YardProject, part: Part): string {
