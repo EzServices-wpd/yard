@@ -678,15 +678,17 @@ export function detectMaterial(prompt: string): CatalogItem {
   return preferCardboardSheet(detectMaterialPhrases(stockPrompt), stockPrompt);
 }
 
-/** A large cardboard build is corrugated. A small craft is chipboard. A named sheet stays that sheet. */
+/** A large cardboard build is corrugated. A small craft with no class form is chipboard. A named sheet stays that sheet. */
 function preferCardboardSheet(item: CatalogItem, prompt: string): CatalogItem {
   const lower = prompt.toLowerCase();
   if (/\bcorrugated\b/.test(lower) || /\bchipboard\b/.test(lower)) return item;
   if (item.id !== "cardboard-corrugated-sheet" && item.id !== "chipboard-sheet") return item;
+  // A class form already chose this sheet. Size must not swap it for a craft card.
+  const classForm = /robot|drum|suitcase|mailbox|house|fort|castle|playhouse|garage|doghouse|shed|rack|cabinet|shaft|tower|figure|bird|cat\b|shelf|bench/.test(lower);
   const nums = [...lower.matchAll(/(\d+(?:\.\d+)?)/g)].map((m) => parseFloat(m[1]));
   const feet = /\d+(?:\.\d+)?\s*(?:feet|foot|ft)\b/.test(lower);
-  const large = feet || /house|fort|castle|playhouse|garage|doghouse|shed|play house|fits inside/.test(lower) || nums.some((n) => n >= 24);
-  const small = !large && (/\b(?:card|model|craft|miniature|diorama)\b/.test(lower) || (nums.length > 0 && nums.every((n) => n < 18)));
+  const large = classForm || feet || /fits inside/.test(lower) || nums.some((n) => n >= 24);
+  const small = !large && /\b(?:card|model|craft|miniature|diorama)\b/.test(lower);
   if (large) return getCatalogItem("cardboard-corrugated-sheet") ?? item;
   if (small) return getCatalogItem("chipboard-sheet") ?? item;
   return item;
