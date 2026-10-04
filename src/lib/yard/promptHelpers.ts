@@ -656,9 +656,19 @@ function detectMaterialPhrases(text: string): CatalogItem {
  * ("from popsicle sticks from 3/4 plywood" is plywood, "pine desk from oak" is oak).
  * A prompt with no stock clause keeps first-match ("pine 2x4", "jumbo stick tower").
  */
+/** A join word is the joint, not the stock. "Dowel-jointed" is not a dowel. */
+export function stripJoinWords(prompt: string): string {
+  return prompt
+    .replace(/\bdowel[-\s]?joint(?:ed)?\b/gi, " ")
+    .replace(/\bbiscuit[-\s]?join(?:ed)?\b/gi, " ")
+    .replace(/\bpocket[-\s]?holes?\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function detectMaterial(prompt: string): CatalogItem {
   // Contents are not stock. A from / in / out of clause, or a leading material word, still is.
-  const stockPrompt = stripHeldPurpose(prompt);
+  const stockPrompt = stripJoinWords(stripHeldPurpose(prompt));
   const clauses = bodyStockClauses(stockPrompt);
   for (let i = clauses.length - 1; i >= 0; i--) {
     const item = detectMaterialPhrases(clauses[i].tail);

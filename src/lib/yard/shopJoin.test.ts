@@ -45,8 +45,13 @@ describe("thickness picker", () => {
 
 describe("a typed join", () => {
   it("dowel, biscuit, and pocket hole come from the sentence", () => {
-    const dowel = buildPlan(generateFromPrompt("dowel-jointed bookshelf"));
+    const dowelProject = generateFromPrompt("dowel-jointed bookshelf");
+    assert.notEqual(dowelProject.primaryMaterialId, "dowel-1-4-36");
+    assert.ok(dowelProject.panels.length > 0, "a join word is not the carcase stock");
+    assert.equal(dowelProject.shopJoin, "dowel");
+    const dowel = buildPlan(dowelProject);
     assert.equal(dowel.bom.some((line) => /fluted dowel/i.test(line.name)), true);
+    assert.equal(dowel.bom.some((line) => /Hardwood Dowel/i.test(line.name)), false);
     assert.equal(dowel.bom.some((line) => /wood screw/i.test(line.name)), false);
     const biscuit = buildPlan(generateFromPrompt("biscuit-joined oak end table"));
     assert.equal(biscuit.bom.some((line) => /biscuit/i.test(line.name)), true);
