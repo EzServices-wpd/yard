@@ -8,6 +8,8 @@ export type LinearPack = {
   sticks: number;
   /** Cuts on each stock piece, longest first. */
   layout: number[][];
+  /** Why one extra piece was bought, when the leftover was shorter than the longest cut. */
+  spare?: string;
 };
 
 export function packLengths(cuts: number[], stockLen: number, kerf = 0.125): LinearPack {
@@ -36,7 +38,17 @@ export function packLengths(cuts: number[], stockLen: number, kerf = 0.125): Lin
       layout.push([c]);
     }
   }
-  return { sticks: room.length, layout };
+  const longest = pieces.reduce((m, n) => Math.max(m, n), 0);
+  const leftover = room.reduce((m, n) => Math.max(m, n), 0);
+  const shares = layout.some((board) => board.length > 1 && board.some((cut) => Math.abs(cut - longest) < 1e-6));
+  let spare: string | undefined;
+  // Count the share first. A spare is only for a long cut that sits alone, and only when there are more than four cuts.
+  if (pieces.length > 4 && longest > 0 && leftover + 1e-6 < longest && !shares) {
+    room.push(S);
+    layout.push([]);
+    spare = "One extra piece — after the saw cuts, less than the longest piece was left.";
+  }
+  return { sticks: room.length, layout, spare };
 }
 
 /** Kerf for a stock: snips / a fine saw on craft sticks and thin dowels, a saw blade on the rest. */

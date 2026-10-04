@@ -81,10 +81,12 @@ export function buildForgeBom(
       item.canCut !== false &&
       (isWholeStock(item) || LINEAR_FORMS.has(item.formFactor));
     let sticksUsed = 0;
+    let spare = "";
     if (linearCut) {
       const pack = packLengths(data.cuts, toPrimitive(item).length, kerfFor(item, isWholeStock(item)));
       sticksUsed = pack.sticks + (data.count - data.cuts.length);
       packsNeeded = Math.ceil(sticksUsed / Math.max(1, unitsPerPack));
+      spare = pack.spare ? ` ${pack.spare}` : "";
     }
     const uniqueCuts = [
       ...new Set(data.cuts.map((c) => Math.round(c * 100) / 100).filter((c) => c > 0)),
@@ -130,7 +132,7 @@ export function buildForgeBom(
       notes = whole
         ? `${data.count} full pieces. Glue. Do not cut.`
         : (item.canCut ?? true) && uniqueCuts.length
-          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}`
+          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}${spare}`
           : item.notes;
     }
 

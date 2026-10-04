@@ -564,7 +564,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const item = getCatalogItem(id);
     const stockLen = item?.dims.length ?? 96;
     const lengths = lines.flatMap((c) => Array.from({ length: c.quantity }, () => Math.max(c.lengthIn, c.widthIn)));
-    const qty = Math.max(1, packLengths(lengths, stockLen, 0.125).sticks);
+    const packed = packLengths(lengths, stockLen, 0.125);
+    const qty = Math.max(1, packed.sticks);
     const pieceQty = lengths.length;
     const feet = Math.round(stockLen / 12);
     const names = [...new Set(lines.map((c) => c.name.toLowerCase()))];
@@ -576,7 +577,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: id,
       searchQuery: item?.searchQuery ?? "2x4x8 stud",
       estimatedCost: (item?.unitCostUsd ?? 5.5) * qty,
-      notes: `${pieceQty} part${pieceQty === 1 ? "" : "s"} (${names.join(", ")}) cut to ${lens}, from ${qty} × ${feet} ft solid lumber with 1/8" kerf.`,
+      notes: `${pieceQty} part${pieceQty === 1 ? "" : "s"} (${names.join(", ")}) cut to ${lens}, from ${qty} × ${feet} ft solid lumber with 1/8" kerf.${packed.spare ? ` ${packed.spare}` : ""}`,
     });
   }
   if (thinBacks.length) {
