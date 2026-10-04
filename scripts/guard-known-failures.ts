@@ -29,8 +29,6 @@ export const KNOWN_FAILURES: KnownFailure[] = [
   // ---- yard-honesty-smoke.ts --------------------------------------------------------------
   // The smoke exited at the desk check for months, so every check after it went unseen. These were
   // already failing on origin/main before the CI work (2026-10-02 audit); each needs its own fix.
-  { guard: "honesty-smoke", message: "desk cut list still says Left instead of grouping", why: "desk cut rows not grouped by part (pre-existing, hidden behind the desk exit) — owner: desk pass" },
-  { guard: "honesty-smoke", message: "desk uprights not batched", why: "desk steps install uprights one by one (pre-existing) — owner: desk pass" },
   { guard: "honesty-smoke", message: "pyramid piece count drifted", why: "popsicle pyramid grew to ~7,200 pieces (pre-existing; prompt re-added to the smoke on 2026-10-02) — owner: craft structures" },
   { guard: "honesty-smoke", message: "pyramid structure should stay stepped courses", why: "pyramid courses read as a lattice (pre-existing) — owner: craft structures" },
   { guard: "honesty-smoke", message: "pyramid faces got laced shut", why: "pyramid faces skinned shut (pre-existing) — owner: craft structures" },

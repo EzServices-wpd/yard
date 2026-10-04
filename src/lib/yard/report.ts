@@ -79,6 +79,17 @@ function closetCuts(project: YardProject): CutLine[] {
     note?: string,
   ) => {
     let family = partFamily(name, type);
+    const side = name.match(/^(Left|Right)\s+(.+)$/i);
+    if (side) {
+      const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";
+      const other = project.panels.find((panel) => panel.name.toLowerCase() === `${twin} ${side[2]}`.toLowerCase());
+      if (other) {
+        const ow = Math.round(other.size.width * 8) / 8;
+        const oh = Math.round(other.size.height * 8) / 8;
+        const od = Math.round(other.size.depth * 8) / 8;
+        if (ow === w && oh === h && od === d) family = partFamily(side[2], type);
+      }
+    }
     let dims = sheetCutDims(w, h, d);
     let qty = 1;
     const isPly =
