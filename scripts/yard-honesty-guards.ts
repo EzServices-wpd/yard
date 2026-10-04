@@ -1,4 +1,5 @@
 import { planSolidBoards } from "../src/lib/yard/solidStock";
+import { placementIndex } from "../src/lib/yard/placeEveryPart";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { BENCH_VIEWPORTS, benchModelBox, benchView, fitBench, projectCorners } from "../src/lib/yard/benchFrame";
 import { planOverviewSvg, planStepSvg, pictureFramed } from "../src/lib/yard/planStepPicture";
@@ -8370,4 +8371,30 @@ console.log("STRANGER PLAN OK", {
     failHonesty("shelf-for-product still stand", cooler.panels.map((p) => p.name));
   }
   console.log("PASS shelf-count-carcase: bookshelf 30×60×12 Shelf×5; bookcase/kids/ladder siblings; shelf-for-cooler protect");
+}
+
+{
+  const prompts = [
+    "dining chair 18 seat height",
+    "step stool 18 inches",
+    "bench 48 wide",
+    "desk 60 inches wide by 30 deep by 29 high",
+    "bookcase 30 wide 48 tall",
+    "linen closet 31.5 wide 78 tall 16 deep",
+    "popsicle stick catapult",
+    "PVC birdhouse",
+  ];
+  for (const prompt of prompts) {
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const placed = placementIndex(project, plan.instructions);
+    const parts = project.panels.length
+      ? project.panels.filter((p) => p.type !== "drawer")
+      : [...new Set(project.instances.map((i) => i.role || "member"))].map((role) => ({ id: role, name: role }));
+    for (const part of parts) {
+      const key = project.panels.length ? part.id : part.name;
+      if (!placed.has(key)) failHonesty("part never placed", { prompt, part: part.name });
+    }
+  }
+  console.log("PASS every part placed");
 }
