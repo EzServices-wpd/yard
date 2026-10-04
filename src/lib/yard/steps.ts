@@ -900,6 +900,17 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         tips: "Guidance only.",
         partsUsed: names(panels),
       },
+      ...((() => {
+        const rails = panels.filter((p) => /handrail/i.test(p.name));
+        if (!rails.length) return [];
+        return [{
+          step: 4,
+          title: "Bolt the handrail on",
+          description: `${rails.map(cutLine).join("; ")}. Bolt each handrail post to the back post with two 3/8" carriage bolts, then seat the grip across the post tops.`,
+          tips: "The bolts are on the Buy list.",
+          partsUsed: names(rails),
+        }];
+      })()),
     ];
   }
 

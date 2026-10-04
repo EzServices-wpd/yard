@@ -1229,8 +1229,27 @@ function stockJoinsWithoutScrews(project: { primaryMaterialId?: string }): boole
   return !joins.includes("screw") && !joins.includes("nail");
 }
 
+/** Hardware the notes already name, so Buy and the notes agree. */
+export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): BuildPlan["bom"] {
+  const notes = (project.notes ?? []).join(" ");
+  const have = bom.map((line) => line.name.toLowerCase()).join(" ");
+  const extra = [...bom];
+  if (/carriage bolt/i.test(notes) && !/carriage bolt/i.test(have)) {
+    const posts = Math.max(1, project.panels.filter((panel) => /handrail post/i.test(panel.name)).length);
+    extra.push({
+      name: '3/8" carriage bolts',
+      quantity: posts * 2,
+      unit: "each",
+      searchQuery: "3/8 inch carriage bolts",
+      notes: "Two per handrail post, through the back post.",
+    });
+  }
+  return extra;
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
-  const plan = stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))));
+  const built = stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))));
+  const plan = { ...built, bom: hardwareFromNotes(project, built.bom) };
   const extra = spaceCutStep(project);
   if (!extra) return plan;
   const step = plan.instructions.length + 1;
