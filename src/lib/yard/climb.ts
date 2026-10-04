@@ -270,6 +270,9 @@ export function buildClimb(prompt: string, kind: ClimbKind, sizeOverride?: { wid
         : "Built to carry a grown-up, so a kid standing on it is well inside its strength.",
     );
     if (s.handrail) notes.push(`Handrail grip ${inchFrac(s.railRise)}" above the top tread — hold it while climbing. Bolt the handrail posts to the back posts with two 3/8" carriage bolts each.`);
+    if (/\b(kid|kids|child|toddler|bathroom|bath)\b/.test(lower)) {
+      notes.push("Round every corner a child can bump. Stick a non-slip pad under each foot. A bathroom stool gets a water-resistant finish.");
+    }
   } else {
     const l = ladderPanels(prompt, sizeOverride);
     built = l;

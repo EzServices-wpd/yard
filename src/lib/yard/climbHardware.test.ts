@@ -16,3 +16,16 @@ describe("handrail hardware", () => {
     assert.ok(project.panels.every((panel) => named.includes(panel.name) || named.includes("*")));
   });
 });
+
+describe("kids and bathroom stools", () => {
+  it("a kids bathroom stool gets pads, rounded corners, and a water-resistant finish", () => {
+    const project = generateFromPrompt("kids bathroom step stool");
+    const notes = project.notes.join(" ");
+    assert.match(notes, /Round every corner/);
+    assert.match(notes, /non-slip pad/);
+    assert.match(notes, /water-resistant finish/);
+    const plan = buildPlan(project);
+    assert.ok(plan.bom.some((line) => /non-slip/i.test(line.name)));
+    assert.ok(plan.bom.some((line) => /water-resistant/i.test(line.name)));
+  });
+});

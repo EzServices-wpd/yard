@@ -1244,6 +1244,25 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: "Two per handrail post, through the back post.",
     });
   }
+  if (/non-slip pad/i.test(notes) && !/non-slip/i.test(have)) {
+    const feet = Math.max(4, project.panels.filter((panel) => /leg/i.test(panel.name)).length);
+    extra.push({
+      name: "Non-slip pads",
+      quantity: feet,
+      unit: "each",
+      searchQuery: "non slip furniture pads",
+      notes: "One pad under each foot.",
+    });
+  }
+  if (/water-resistant finish/i.test(notes) && !/finish/i.test(have)) {
+    extra.push({
+      name: "Water-resistant finish",
+      quantity: 1,
+      unit: "can",
+      searchQuery: "water resistant wood finish",
+      notes: "For a stool that lives in a bathroom.",
+    });
+  }
   return extra;
 }
 
