@@ -37,10 +37,15 @@ function armBuilding() {
   dropLampTimer();
 }
 
+function panelCutSig(project: YardProject): string {
+  return project.panels.map((panel) => `${panel.name}|${panel.cutNote ?? ""}|${panel.cutouts?.length ?? 0}|${panel.polygon ? 1 : 0}|${panel.size.height.toFixed(2)}`).join(";");
+}
+
 function sameMeasureBuild(a: YardProject, b: YardProject): boolean {
   if (a === b) return true;
   if (a.prompt !== b.prompt || a.primaryMaterialId !== b.primaryMaterialId || a.shopJoin !== b.shopJoin) return false;
   if (a.panels.length !== b.panels.length || a.instances.length !== b.instances.length) return false;
+  if (panelCutSig(a) !== panelCutSig(b)) return false;
   const o = a.overall;
   const p = b.overall;
   return Math.abs(o.width - p.width) < 0.02 && Math.abs(o.height - p.height) < 0.02 && Math.abs(o.depth - p.depth) < 0.02;

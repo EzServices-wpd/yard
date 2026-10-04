@@ -47,3 +47,14 @@ describe("opening cuts change the model", () => {
     assert.match(b.instructions.map((s) => s.description).join("\n"), /baseboard/);
   });
 });
+
+describe("the panel action", () => {
+  it("arched top and outlet on a linen closet change the model and add the step", () => {
+    const linen = generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep");
+    const cut = applySpaceCuts(linen, { shape: "arch", archRise: 4, outlet: { x: 6, y: 12, width: 4.5, height: 2.75 } });
+    assert.equal(cut.panels.some((p) => p.name === "Curved top rail"), true);
+    assert.equal(cut.panels.find((p) => p.type === "back")?.cutouts?.some((c) => c.id === "space-outlet"), true);
+    const plan = buildPlan(cut);
+    assert.match(plan.instructions.map((s) => s.title).join(" "), /Cut the opening/);
+  });
+});
