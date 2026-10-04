@@ -79,7 +79,7 @@ function closetCuts(project: YardProject): CutLine[] {
     note?: string,
   ) => {
     let family = partFamily(name, type);
-    const side = name.match(/^(Left|Right)\s+(.+)$/i);
+    const side = name.match(/^(Left|Right)\s+(upright|side|post|apron|stretcher|end)$/i);
     if (side) {
       const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";
       const other = project.panels.find((panel) => panel.name.toLowerCase() === `${twin} ${side[2]}`.toLowerCase());
