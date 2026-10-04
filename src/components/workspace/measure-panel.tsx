@@ -11,6 +11,7 @@ import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
+  bayClearTalk,
   classSizeWarning,
   commitInch,
   stockFitsClass,
