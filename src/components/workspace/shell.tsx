@@ -333,9 +333,9 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
               type="button"
               aria-label="Close panel"
               onClick={() => setSide(null)}
-              className="absolute inset-0 z-10 bg-bg/50 md:hidden"
+              className={`absolute z-10 md:hidden ${side === "measure" ? "inset-x-0 top-0 h-[50vh] bg-transparent" : "inset-0 bg-bg/50"}`}
             />
-            <aside className="absolute inset-y-0 left-0 z-20 w-[min(20rem,92vw)] overflow-y-auto border-r border-border bg-surface md:static md:w-80 md:shrink-0">
+            <aside className={`absolute z-20 overflow-y-auto border-border bg-surface md:static md:inset-y-0 md:left-0 md:w-80 md:shrink-0 md:border-r ${side === "measure" ? "inset-x-0 bottom-0 top-auto h-[50vh] w-full border-t md:h-auto md:w-80" : "inset-y-0 left-0 w-[min(20rem,92vw)] border-r"}`} data-yard-panel={side === "measure" ? "half" : "side"}>
               {side === "catalog" ? <CatalogPanel /> : <MeasurePanel onBuilt={() => setPlanOpen(false)} />}
             </aside>
           </>
