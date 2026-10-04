@@ -28,6 +28,21 @@ export function stripPetUse(text: string): string {
   return text.replace(PET_USE, "").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * A noun after "for my", "to hold", "for", "collection", or "display" is what the build holds.
+ * Stock needs "from", "in", "out of", or a leading material word — those clauses stay.
+ */
+export function stripHeldPurpose(prompt: string): string {
+  let t = prompt || "";
+  t = t.replace(/\bfor\s+(?:my|our|your)\s+[^.]+/gi, " ");
+  t = t.replace(/\bto\s+hold\s+[^.]+/gi, " ");
+  t = t.replace(/\bfor\s+(?:the|a|an)\s+[a-z][^.]{0,60}?\s+(?:collection|display)\b/gi, " ");
+  t = t.replace(/\bfor\s+(?!(?:a|an|the)\s+\d)([a-z][\w'-]*)(?:\s+[a-z][\w'-]*){0,5}/gi, " ");
+  t = t.replace(/\b[\w][\w'-]*(?:\s+[\w][\w'-]*){0,5}\s+collection\b/gi, " collection ");
+  t = t.replace(/\bdisplay(?:ing)?\s+(?!cases?\b|cabinets?\b|shel(?:f|ves)\b)[\w][\w\s'-]{0,40}/gi, " display ");
+  return t.replace(/\s+/g, " ").trim();
+}
+
 /** "for my Lego robot collection" / "record collection": the shelf displays X; X is not the build. */
 export function heldCollection(lower: string): string | null {
   const m = lower.match(/\bfor\s+(?:(?:my|our|the|a|an|your)\s+)?([a-z0-9][a-z0-9\s'-]{1,40}?)\s+(?:collection|display)\b/);

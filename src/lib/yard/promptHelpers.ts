@@ -1,6 +1,7 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
+import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
@@ -652,12 +653,14 @@ function detectMaterialPhrases(text: string): CatalogItem {
  * A prompt with no stock clause keeps first-match ("pine 2x4", "jumbo stick tower").
  */
 export function detectMaterial(prompt: string): CatalogItem {
-  const clauses = bodyStockClauses(prompt);
+  // Contents are not stock. A from / in / out of clause, or a leading material word, still is.
+  const stockPrompt = stripHeldPurpose(prompt);
+  const clauses = bodyStockClauses(stockPrompt);
   for (let i = clauses.length - 1; i >= 0; i--) {
     const item = detectMaterialPhrases(clauses[i].tail);
     if (!isWireStock(item)) return item;
   }
-  return detectMaterialPhrases(prompt);
+  return detectMaterialPhrases(stockPrompt);
 }
 
 /** Drop earlier stock clauses and append one "from {phrase}" so the next generate agrees with the pick. */
