@@ -1,6 +1,6 @@
 import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
-import { jobFurnitureSteps, wantsJobFurniture } from "./jobFurniture";
+import { jobFurnitureSteps } from "./jobFurniture";
 import { placeEveryPart } from "./placeEveryPart";
 import type { AssemblyStep, YardProject } from "./types";
 
