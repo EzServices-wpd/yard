@@ -35,7 +35,7 @@ export const DREAMS = [
   {
     id: "linen",
     group: "house" as const,
-    label: "31.5″ linen closet",
+    label: "31 1/2″ linen closet",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
     blurb: "The alcove you typed is the unit you get.",
   },

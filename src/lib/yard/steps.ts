@@ -2572,7 +2572,13 @@ function sheetCutDescription(
     const cuts = groupSheetCuts(groups[0]?.panels ?? panels).join(" ");
     return `${how} ${cuts} Label every piece on the waste face before you move the stack.${especially ? ` ${especially}` : ""}`;
   }
-  const bodies = groups
+  const merged = new Map<string, typeof groups[number]>();
+  for (const g of groups) {
+    const prev = merged.get(g.label);
+    if (prev) prev.panels = [...prev.panels, ...g.panels];
+    else merged.set(g.label, { ...g, panels: [...g.panels] });
+  }
+  const bodies = [...merged.values()]
     .map((g) => `From the ${g.label}: ${groupSheetCuts(g.panels).join(" ")}`)
     .join(" ");
   return `${how} ${bodies} Label every piece on the waste face before you move the stack.${especially ? ` ${especially}` : ""}`;

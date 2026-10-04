@@ -130,12 +130,15 @@ export function CatalogPanel() {
           matches.length > 0 && (
             <ul>
               {matches.map((item) => {
+                const thick = item.dims.thickness ?? item.dims.height;
                 const dim =
                   item.dims.length && item.dims.diameter
                     ? `${inches(item.dims.length)} · ⌀${inches(item.dims.diameter)}`
-                    : item.dims.length && item.dims.width
-                      ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
-                      : "";
+                    : item.dims.length && item.dims.width && thick
+                      ? `${inches(item.dims.length)} × ${inches(item.dims.width)} × ${inches(thick)}`
+                      : item.dims.length && item.dims.width
+                        ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
+                        : "";
                 return (
                   <li key={item.id}>
                     <button
@@ -187,12 +190,15 @@ export function CatalogPanel() {
                 <ul>
                   {group.map((item) => {
                     const selected = project.primaryMaterialId === item.id;
+                    const thick = item.dims.thickness ?? item.dims.height;
                     const dim =
                       item.dims.length && item.dims.diameter
                         ? `${inches(item.dims.length)} · ⌀${inches(item.dims.diameter)}`
-                        : item.dims.length && item.dims.width
-                          ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
-                          : "";
+                        : item.dims.length && item.dims.width && thick
+                          ? `${inches(item.dims.length)} × ${inches(item.dims.width)} × ${inches(thick)}`
+                          : item.dims.length && item.dims.width
+                            ? `${inches(item.dims.length)} × ${inches(item.dims.width)}`
+                            : "";
                     return (
                       <li key={item.id}>
                         <button

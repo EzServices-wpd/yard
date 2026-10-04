@@ -102,6 +102,7 @@ type YardState = {
   measure: MeasureDraft;
   measureOpen: boolean;
   measureNote: string | null;
+  undoTick: number;
   history: YardProject[];
   future: YardProject[];
   building: boolean;
@@ -225,6 +226,7 @@ export const useYard = create<YardState>((set, get) => ({
   measure: defaultMeasure,
   measureOpen: false,
   measureNote: null,
+      undoTick: 0,
   history: [],
   future: [],
   building: false,
@@ -341,6 +343,7 @@ export const useYard = create<YardState>((set, get) => ({
       selectedId: null,
       facesOpen: false,
       measureNote: null,
+      undoTick: 0,
       measure: srcPocket
         ? {
             ...pocketMeasure(srcPocket),
@@ -415,6 +418,7 @@ export const useYard = create<YardState>((set, get) => ({
     persist(next);
   },
   undo: () => {
+    set({ undoTick: get().undoTick + 1 });
     const { history, future, project } = get();
     let stack = history;
     while (stack.length && sameMeasureBuild(stack[stack.length - 1], project)) stack = stack.slice(0, -1);
@@ -618,6 +622,7 @@ export const useYard = create<YardState>((set, get) => ({
         const next = angleMeasureFromProject(built);
         set({
           measureNote: null,
+      undoTick: 0,
           measure: next ? { ...measure, ...next, kind: measure.kind } : measure,
         });
         get().makePlan();
@@ -650,6 +655,7 @@ export const useYard = create<YardState>((set, get) => ({
         const next = angleMeasureFromProject(built);
         set({
           measureNote: null,
+      undoTick: 0,
           measure: next ? { ...measure, ...next, kind: measure.kind } : measure,
         });
         get().makePlan();

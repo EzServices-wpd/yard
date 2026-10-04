@@ -42,6 +42,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const project = useYard((s) => s.project);
   const makePlan = useYard((s) => s.makePlan);
   const undo = useYard((s) => s.undo);
+  const undoTick = useYard((s) => s.undoTick);
   const setJoinMethod = useYard((s) => s.setJoinMethod);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phone, setPhone] = useState(false);
@@ -52,6 +53,10 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const [summary, setSummary] = useState("");
   const [spacing, setSpacing] = useState<"even" | "each">("even");
   const tabSnap = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    setSummary("");
+  }, [undoTick]);
 
   useEffect(() => {
     setMeasureOpen(true);
