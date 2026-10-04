@@ -123,6 +123,14 @@ function stockJoinVerb(project: YardProject): "Screw" | "Glue" | "Set" {
   return "Screw";
 }
 
+/** A through-fastener sentence follows the picked stock. Screws only when that stock joins with screws. */
+function stockThrough(project: YardProject, into: string): string {
+  const verb = stockJoinVerb(project);
+  if (verb === "Set") return `Set the joints the stock uses, through ${into}.`;
+  if (verb === "Glue") return `Tape or glue through ${into}.`;
+  return `Screw through ${into}.`;
+}
+
 /** Prompt of the panel project being written (named solid stock labels / glue-up). */
 let stepStockPrompt = "";
 
@@ -830,14 +838,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps0.push({
       step: n0++,
       title: "Stand the main box",
-      description: `Glue and screw uprights, back, bottom, and top. Keep ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}" square.`,
+      description: `${stockJoinVerb(project) === "Screw" ? "Glue and screw uprights, back, bottom, and top." : stockJoinVerb(project) === "Set" ? "Set the joints the stock uses: uprights, back, bottom, and top." : "Tape or glue uprights, back, bottom, and top."} Keep ${Math.round(W)}" × ${Math.round(H)}" × ${Math.round(D)}" square.`,
       tips: "Predrill near the ends so the ply does not split.",
       partsUsed: names(uprights),
     });
     steps0.push({
       step: n0++,
       title: "Seat the weight-bearing climb step-shelf",
-      description: `${tread ? cutLine(tread) : "Climb step-shelf"}. Mid-height tread to reach the top — weight-bearing, not a pin shelf. Screw through the uprights into the tread.`,
+      description: `${tread ? cutLine(tread) : "Climb step-shelf"}. Mid-height tread to reach the top — weight-bearing, not a pin shelf. ${stockThrough(project, "the uprights into the tread").replace(/\.$/, "")}.`,
       tips: "Confirm freeze dims stay green before you cut.",
       partsUsed: names(panels.filter((p) => /Climb step-shelf|Step nosing|Shelf/i.test(p.name))),
     });
@@ -1472,14 +1480,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Stand the main box",
-        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || `${bayName}.`}. ${seats.map(cutLine).join("; ") || "Seat."}. Glue and #8 × 1¼" screws: back into both uprights, then ${bayName.toLowerCase()}, then seat. Predrill near the ends so the ply does not split.`,
+        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || `${bayName}.`}. ${seats.map(cutLine).join("; ") || "Seat."}. ${stockJoinVerb(project) === "Screw" ? `Glue and #8 × 1¼" screws: back into both uprights, then ${bayName.toLowerCase()}, then seat. Predrill near the ends so the ply does not split.` : stockJoinVerb(project) === "Set" ? `Set the joints the stock uses: back into both uprights, then ${bayName.toLowerCase()}, then seat.` : `Tape or glue the corners: back into both uprights, then ${bayName.toLowerCase()}, then seat.`}`,
         tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
         partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
       },
       {
         step: 4,
         title: "Set cubby dividers and front apron",
-        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. Screw through the seat, ${bayName.toLowerCase()}, and back into each divider — these carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. Glue and screw the front apron under the front edge of the seat between the uprights.`,
+        description: `${cubbies.map(cutLine).join("; ") || "Cubby dividers."}. Space them evenly. ${stockThrough(project, `the seat, ${bayName.toLowerCase()}, and back into each divider`)} These carry sit load across the span. ${aprons.map(cutLine).join("; ") || "Front apron."}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron under the front edge of the seat between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron under the front edge of the seat between the uprights." : "Tape or glue the front apron under the front edge of the seat between the uprights."}`,
         tips: `A ${round(W)}" seat without dividers will sag under a sitting adult. Do not skip the dividers.`,
         partsUsed: names([...cubbies, ...aprons]),
       },
@@ -2247,7 +2255,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: n++,
         title: `Keep ${kneeClear}" knee clear — set the knee dividers`,
-        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. ${kneeScrewTalk(panels, knee)} Leave the middle open to the floor — that is the knee.`,
+        description: `${knee.map(cutLine).join("; ")}. They land ${kneeClear}" apart, centered — ${kneeClear}" knee clear stays open. ${kneeScrewTalk(project, panels, knee)} Leave the middle open to the floor — that is the knee.`,
         tips: "Hang drawer slides on these faces before the last divider goes in — you can still get a screwdriver in.",
         partsUsed: names(knee),
       });
@@ -2256,7 +2264,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: n++,
         title: "Set cubby dividers",
-        description: `${cubby.map(cutLine).join("; ")}. Space them evenly. Screw through the top, bottom, and back into each divider.`,
+        description: `${cubby.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, "the top, bottom, and back into each divider")}`,
         partsUsed: names(cubby),
       });
     }
@@ -2264,7 +2272,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: n++,
         title: "Set remaining dividers",
-        description: `${rest.map(cutLine).join("; ")}. Plumb each one. Screw through the back and the nearest shelf or top.`,
+        description: `${rest.map(cutLine).join("; ")}. Plumb each one. ${stockThrough(project, "the back and the nearest shelf or top")}`,
         partsUsed: names(rest),
       });
     }
@@ -2277,8 +2285,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: program === "desk" ? `Set the desktop at ${round(u?.counterH ?? H)}"` : `Set the counter at ${round(u?.counterH ?? pocket?.unit.vanityH ?? 34)}"`,
       description: `${counters.map(cutLine).join("; ")}. ${
         (counters[0]?.size.height ?? 0) > 0.8
-          ? "Cut list has two ¾\" plies — glue them face-to-face (laminate) so the finished work surface is 1½\" thick, then glue and screw the stack down into the uprights and the knee dividers."
-          : "Glue and screw down into the uprights and the knee dividers."
+          ? stockJoinVerb(project) === "Screw"
+            ? "Cut list has two ¾\" plies — glue them face-to-face (laminate) so the finished work surface is 1½\" thick, then glue and screw the stack down into the uprights and the knee dividers."
+            : "Tape or glue the faces together, then tape or glue the stack down into the uprights and the knee dividers."
+          : stockJoinVerb(project) === "Screw"
+            ? "Glue and screw down into the uprights and the knee dividers."
+            : "Tape or glue down into the uprights and the knee dividers."
       } Front edge flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the front if people will see it.`,
       partsUsed: names(counters),
     });
@@ -3311,11 +3323,16 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
 }
 
 /** Knee dividers: banks with their own bottoms stand the dividers on the floor; the work top screws down into them. */
-function kneeScrewTalk(panels: Panel[], knee: Panel[]): string {
+function kneeScrewTalk(project: YardProject, panels: Panel[], knee: Panel[]): string {
   const top = panels.find((p) => p.type === "counter")?.name.toLowerCase() ?? "counter";
   const kneeL = Math.min(...knee.map((p) => p.position.x));
   const kneeR = Math.max(...knee.map((p) => p.position.x + p.size.width));
   const spans = panels.some((p) => p.type === "bottom" && p.position.x < kneeL && p.position.x + p.size.width > kneeR);
+  if (stockJoinVerb(project) !== "Screw") {
+    return spans
+      ? stockThrough(project, `the bottom and the ${top} into each divider`)
+      : `Stand each divider on the floor at the inner end of its bank bottom. ${stockThrough(project, "the bottom into it")} The ${top} follows the same join down into the divider tops.`;
+  }
   return spans
     ? `Screw through the bottom and the ${top} into each divider.`
     : `Stand each divider on the floor at the inner end of its bank bottom and screw through the bottom into it; the ${top} screws down into the divider tops.`;
