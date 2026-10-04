@@ -2,6 +2,7 @@
  * A furniture job with no craft stock is full-size wood.
  * Popsicle, cardboard, and Lego only when the person types them.
  */
+import { detectMaterial } from "./promptHelpers";
 import { createId } from "./structureGraph";
 import type { AssemblyStep, Panel, YardProject } from "./types";
 
@@ -16,6 +17,8 @@ export function namesCraftStock(prompt: string, materialOverride?: string): bool
 export function wantsJobFurniture(prompt: string, materialOverride?: string): boolean {
   const lower = prompt.toLowerCase().replace(/chair[\s-]+space/g, " ");
   if (!JOB.test(lower) || namesCraftStock(prompt, materialOverride)) return false;
+  const named = detectMaterial(prompt);
+  if (named && !/wire/i.test(named.id) && !/popsicle/i.test(named.id)) return false;
   if (/step-?stool|step-?up|climb\s+stool|adirondack|lounge\s*chair|rocking\s*chair|ottoman/.test(lower)) return false;
   if (/\bcloset\b|\balcove\b|\bpocket\b/.test(lower)) return false;
   return true;

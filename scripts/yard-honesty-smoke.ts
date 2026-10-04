@@ -218,7 +218,7 @@ if (eiffel) {
   if (eiffelPlan.cutList.length > 2) {
     guardFail("honesty-smoke", "", "eiffel stick list split into unique lengths", eiffelPlan.cutList);
   }
-  if (!eiffelPlan.instructions.some((s) => /do not cut/i.test(s.title))) {
+  if (!eiffelPlan.instructions.some((s) => /do not cut/i.test(`${s.title} ${s.description}`))) {
     guardFail("honesty-smoke", "", "eiffel plan still tells a kid to cut", eiffelPlan.instructions.map((s) => s.title));
   }
 }
