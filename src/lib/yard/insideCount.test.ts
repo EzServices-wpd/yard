@@ -31,3 +31,57 @@ describe("inside counts change the plan", () => {
     assert.notEqual(qty(a), qty(b));
   });
 });
+
+import { applyInsideCount } from "./insideCount";
+
+function planText(p: ReturnType<typeof generateFromPrompt>) {
+  const plan = buildPlan(p);
+  return (
+    plan.cutList.map((c) => `${c.name}×${c.quantity}`).join("|") +
+    "\n" +
+    plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n")
+  );
+}
+
+describe("shelf-family counts drive the cut list", () => {
+  it("bookshelf 36 wide: shelves 5 to 3 changes the cut list and the pin step", () => {
+    const a = generateFromPrompt("bookshelf 36 wide");
+    assert.equal(a.panels.filter((p) => p.type === "shelf").length, 5);
+    const b = applyInsideCount(a, { shelves: 3 });
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 3);
+    const text = planText(b);
+    assert.notEqual(planText(a), text);
+    assert.match(text, /Pin 3 adjustable shelves/);
+    assert.doesNotMatch(text, /Pin 5 adjustable shelves/);
+    assert.match(text, /Shelf×3/);
+  });
+
+  it("a shoe rack cubby count changes the dividers and the steps", () => {
+    const a = generateFromPrompt("shoe rack 36 wide");
+    const before = a.panels.filter((p) => p.type === "divider").length;
+    const b = applyInsideCount(a, { cubbies: 4 });
+    assert.equal(b.panels.filter((p) => p.type === "divider").length, 3);
+    assert.notEqual(before, 3);
+    assert.notEqual(planText(a), planText(b));
+  });
+
+  it("a drawer count changes the cut list and the steps", () => {
+    const a = generateFromPrompt("drawer unit 24 wide");
+    assert.equal(a.panels.filter((p) => p.type === "drawer").length, 3);
+    const b = applyInsideCount(a, { drawers: 1 });
+    assert.equal(b.panels.filter((p) => p.type === "drawer").length, 1);
+    const text = planText(b);
+    assert.notEqual(planText(a), text);
+    assert.match(text, /Drawer front×1/);
+    assert.doesNotMatch(text, /3 drawers/);
+  });
+
+  it("a shelf family with no fitted spec still changes the cut list", () => {
+    const a = generateFromPrompt("bookshelf 36 wide");
+    const bare = { ...a, fitted: undefined, recastFrom: undefined };
+    const b = applyInsideCount(bare, { shelves: 2 });
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 2);
+    assert.notEqual(planText(bare), planText(b));
+    assert.match(planText(b), /Pin 2 adjustable shelves/);
+  });
+});

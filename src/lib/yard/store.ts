@@ -292,7 +292,10 @@ export const useYard = create<YardState>((set, get) => ({
     } = { ...opts, scale, cutStock: stockFlag(mode) };
     // Same object, new stock: a pocket or fitted unit rebuilds from the hole and unit on the bench
     // (with every edit made there), not from re-reading the sentence.
-    if (opts?.restock && materialId) {
+    // Restock rebuilds from the hole already on the bench. A caller that already
+    // passed a count (shelves, cubbies, drawers) keeps that override — copying the
+    // bench spec back would snap the field to the old count.
+    if (opts?.restock && materialId && !opts.fittedOverride && !opts.pocketOverride) {
       const srcPocket = current.pocket ?? current.recastFrom?.pocket;
       const srcFitted = current.fitted ?? current.recastFrom?.fitted;
       if (srcPocket) genOpts.pocketOverride = srcPocket;

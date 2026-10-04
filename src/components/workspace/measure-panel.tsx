@@ -9,6 +9,7 @@ import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyT
 import { parseInch, fieldInch } from "@/lib/yard/inchText";
 import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
+import { applyInsideCount } from "@/lib/yard/insideCount";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
   bayClearTalk,
@@ -170,30 +171,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
   function applyInside(patch: { shelves?: number; cubbies?: number; drawers?: number }) {
     const before = snap();
-    const fitted = project.fitted ?? project.recastFrom?.fitted;
-    const pocket = project.pocket ?? project.recastFrom?.pocket;
-    if (pocket && patch.shelves != null) {
-      generate(project.prompt, project.primaryMaterialId, undefined, {
-        fresh: true,
-        restock: true,
-        pocketOverride: { ...pocket, unit: { ...pocket.unit, shelfRows: Math.max(1, Math.round(patch.shelves / 2)) } },
-      });
-    } else if (fitted) {
-      generate(project.prompt, project.primaryMaterialId, undefined, {
-        fresh: true,
-        restock: true,
-        honorUnit: true,
-        fittedOverride: {
-          ...fitted,
-          unit: {
-            ...fitted.unit,
-            shelfCount: patch.shelves ?? fitted.unit.shelfCount,
-            cubbies: patch.cubbies ?? fitted.unit.cubbies,
-            drawersPerBank: patch.drawers != null ? Math.max(1, Math.ceil(patch.drawers / 2)) : fitted.unit.drawersPerBank,
-          },
-        },
-      });
-    }
+    const next = applyInsideCount(project, patch);
+    useYard.getState().commit(next);
     makePlan();
     const line = changeLine(before, snap());
     setSummary(line || "Inside updated");
