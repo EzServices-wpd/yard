@@ -713,16 +713,18 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       unit: drawers.length === 1 ? "pair" : "pairs",
       catalogId: `drawer-slides-${slide}`,
       searchQuery: `${slide} inch side mount drawer slides`,
+      asin: "B0CLGQP8TL",
       estimatedCost: 14.98 * drawers.length,
       notes: `One pair per drawer (${drawers.length} drawers). Confirm slide length against the ${carcaseD}" carcase.`,
     });
     bom.push({
       name: "Cup pulls",
-      quantity: 1,
-      unit: "pack",
+      quantity: drawers.length,
+      unit: drawers.length === 1 ? "pull" : "pulls",
       catalogId: "cup-pulls",
       searchQuery: "3 inch cup pulls cabinet drawer",
-      estimatedCost: 12.98,
+      asin: "B09TVX1TWZ",
+      estimatedCost: 3.5 * drawers.length,
       notes: `One cup pull centered on each drawer front (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}).`,
     });
     bom.push({
@@ -798,14 +800,16 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         notes: `Two hinges per door (${doors.length * 2} hinges / ${doors.length} pair${doors.length === 1 ? "" : "s"}).`,
       });
       // Door pulls densify with hinged doors (bench shows BarPull) — not crate latch path.
+      const pulls = doors.length + project.panels.filter((panel) => /drawer front/i.test(panel.name)).length;
       bom.push({
         name: "Cabinet bar pulls",
-        quantity: 1,
-        unit: "pack",
+        quantity: Math.max(1, pulls),
+        unit: pulls === 1 ? "pull" : "pulls",
         catalogId: "cabinet-bar-pulls",
         searchQuery: "cabinet bar pulls door handle",
-        estimatedCost: 12.98,
-        notes: `One bar pull centered on each door (${doors.length} door${doors.length === 1 ? "" : "s"}).`,
+        asin: "B09TVX1TWZ",
+        estimatedCost: 2.6 * Math.max(1, pulls),
+        notes: `One bar pull on each door or drawer (${pulls} pull${pulls === 1 ? "" : "s"}).`,
       });
     }
   }
