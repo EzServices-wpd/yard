@@ -31,7 +31,7 @@ export type MeasureFacts = {
 
 const SPACE_OPENINGS = new Set(["alcove", "pocket", "window", "door"]);
 
-/** A build that sits in a hole: alcove, pocket, closet, opening, wall run, under-stair, corner. */
+/** A build that sits in a hole: alcove, pocket, closet, opening, wall run, under-stair, corner. A freestanding shelf or bench does not. */
 export function fitsASpace(facts: MeasureFacts): boolean {
   if (facts.pocket || facts.corner) return true;
   if (facts.kind === "closet" || facts.kind === "opening") return true;
@@ -40,8 +40,6 @@ export function fitsASpace(facts: MeasureFacts): boolean {
   if (facts.oddKind === "sloped" || facts.oddKind === "wrap-opening" || facts.oddKind === "angled-corner" || facts.oddKind === "l-footprint") {
     return true;
   }
-  // Fitted house classes are built into a space. A freestanding weekend form is not.
-  if (facts.fitted && facts.program && facts.program !== "table") return true;
   return false;
 }
 
@@ -193,6 +191,41 @@ export function stampCount(prompt: string, noun: "shelves" | "cubbies" | "drawer
   if (re.test(prompt)) return prompt.replace(re, `${n} ${noun}`);
   const base = prompt.replace(/\s+$/, "").replace(/\.$/, "");
   return `${base} with ${n} ${noun}`;
+}
+
+/** The piece sits inside the opening. Default clearance is 1/8" a side, so the piece is 1/4" under the opening. */
+export function pieceFromOpening(opening: number, clearance = 0.125): number {
+  if (!Number.isFinite(opening) || opening <= 0) return NaN;
+  const c = Number.isFinite(clearance) && clearance >= 0 ? clearance : 0.125;
+  return Math.max(1, Math.round((opening - c * 2) * 16) / 16);
+}
+
+/** A class minimum, said next to the field. Never blocks. The fix is one tap. */
+export function classSizeWarning(facts: MeasureFacts, width: number, depth: number): MeasureWarning | null {
+  const seat = facts.program === "bench" || facts.program === "table" || facts.program === "desk";
+  if (seat && Number.isFinite(width) && width > 0 && width < 12) {
+    return {
+      id: "narrow-seat",
+      text: `a seat ${inchFrac(width)}" wide is hard to sit; 16" is a usable width`,
+      fix: "Use 16\" wide",
+    };
+  }
+  const shelf = facts.program === "bookcase" || (facts.shelves ?? 0) > 0;
+  if (shelf && !seat && Number.isFinite(depth) && depth > 0 && depth < 8) {
+    return {
+      id: "shallow-shelf",
+      text: `a shelf ${inchFrac(depth)}" deep holds little; 11" fits a paperback`,
+      fix: "Use 11\" deep",
+    };
+  }
+  return null;
+}
+
+/** House stock is sheet or board. Craft sticks, straws and edge banding are not vanity stock. */
+export function stockFitsClass(name: string, facts: MeasureFacts): boolean {
+  const craft = /popsicle|straw|edge band|banding/i.test(name);
+  const house = facts.fitted || facts.pocket || facts.kind === "closet" || facts.kind === "opening" || facts.program === "vanity";
+  return !(house && craft);
 }
 
 export function sheetCountOf(nest: { sheets: { totalSheets: number } | null; backer: { totalSheets: number } | null } | null | undefined): number {

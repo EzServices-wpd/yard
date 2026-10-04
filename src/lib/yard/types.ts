@@ -556,8 +556,10 @@ export type MeasureDraft = {
   clearance?: string;
   /** Height of each shelf when spacing is set one by one. */
   shelfAt?: string[];
-  /** Opening shape on the sketch when the build is not a flared pocket. */
-  spaceShape?: "rectangle" | "arched" | "sloped" | "corner";
+  /** Opening size, separate from the piece. The piece is the opening minus clearance. */
+  openingWidth?: string;
+  openingHeight?: string;
+  openingDepth?: string;
 };
 
 export type ExportOptions = {

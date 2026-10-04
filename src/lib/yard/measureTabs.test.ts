@@ -32,7 +32,10 @@ describe("measure tabs", () => {
     }
   });
 
-  it("fitted and pocket classes show Your space", () => {
+  it("a freestanding shelf or bench does not open Your space", () => {
+    assert.equal(fitsASpace({ fitted: true, program: "bookcase" }), false);
+    assert.equal(fitsASpace({ fitted: true, program: "bench" }), false);
+    assert.ok(!measureTabs({ fitted: true, program: "bookcase" }).some((t) => t.id === "space"));
     assert.equal(fitsASpace({ fitted: true, program: "closet", openingKind: "alcove" }), true);
     assert.equal(fitsASpace({ pocket: true }), true);
     assert.equal(fitsASpace({ kind: "opening" }), true);

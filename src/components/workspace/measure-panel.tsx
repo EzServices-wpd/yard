@@ -11,7 +11,9 @@ import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
-  bayClearTalk,
+  classSizeWarning,
+  commitInch,
+  stockFitsClass,
   changeLine,
   classPresets,
   clearanceTalk,
@@ -122,15 +124,21 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const openingW = pocketSrc?.walls.backWidth ?? project.fitted?.opening.width ?? project.opening?.width;
   const pieceW = Number.isFinite(wNum) ? wNum : project.overall.width;
   const clearance = parseInch(measure.clearance ?? "") || 0.125;
-  const spare = clearanceTalk(openingW ?? NaN, pieceW, clearance);
+  const typedOpening = parseInch(measure.openingWidth ?? "");
+  const openingForTalk = Number.isFinite(typedOpening) ? typedOpening : (openingW ?? pieceW) + clearance * 2;
+  const spare = clearanceTalk(isPocket ? (openingW ?? NaN) : openingForTalk, pieceW, clearance);
   const shelfSpan = Math.max(0, ...project.panels.filter((p) => p.type === "shelf").map((p) => Math.max(p.size.width, p.size.depth)));
-  const warnings = measureWarnings({
-    shelfSpan,
-    hasDivider: project.panels.some((p) => p.type === "divider") || Boolean(project.supportOffer?.included),
-    openingW,
-    pieceW,
-    clearance,
-  });
+  const classWarn = classSizeWarning(facts, pieceW, Number.isFinite(dNum) ? dNum : project.overall.depth);
+  const warnings = [
+    ...measureWarnings({
+      shelfSpan,
+      hasDivider: project.panels.some((p) => p.type === "divider") || Boolean(project.supportOffer?.included),
+      openingW: isPocket ? openingW : openingForTalk,
+      pieceW,
+      clearance,
+    }),
+    ...(classWarn ? [classWarn] : []),
+  ];
   const presets = classPresets(facts);
   const stock = getCatalogItem(project.primaryMaterialId);
   const thickness = stock?.dims.thickness ?? stock?.dims.diameter ?? stock?.dims.height;
@@ -217,8 +225,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   function shrinkToFit() {
     if (!openingW) return;
     const next = Math.max(1, openingW - clearance * 2);
-    setMeasure({ width: fieldInch(next) });
+    setMeasure({ width: fieldInch(next), clearance: fieldInch(clearance) });
     liveIfFitted(0);
+    setSummary(`Piece is ${fieldInch(next)}" wide, ${fieldInch(clearance)}" clear a side`);
   }
 
   const shelfN = facts.shelves ?? 0;
@@ -234,6 +243,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     const seen = new Set<string>();
     return FORGE_CATALOG.filter((item) => {
       if (!item.canCut || item.id === "wire-frame") return false;
+      if (!stockFitsClass(`${item.name} ${item.id}`, facts)) return false;
       if (seen.has(item.formFactor)) return false;
       seen.add(item.formFactor);
       return true;
@@ -241,10 +251,10 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   }, []);
 
   return (
-    <div className="p-4" data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>
+    <div className={`p-4 ${phone ? "max-h-[50vh] overflow-y-auto" : ""}`} data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="font-display text-lg text-fg">Measure</h2>
-        <button type="button" onClick={() => { undo(); makePlan(); }} className="text-xs text-muted hover:text-fg">
+        <button type="button" onClick={() => { undo(); makePlan(); }} className="min-h-11 min-w-11 px-3 text-sm text-muted hover:text-fg">
           Undo
         </button>
       </div>
@@ -283,21 +293,34 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "space" && (
         <section className="mt-4" data-yard-measure-section="space">
-          <Sketch openingW={openingW} pieceW={pieceW} height={Number.isFinite(hNum) ? hNum : project.overall.height} shape={measure.spaceShape ?? (isCorner ? "corner" : isSlope ? "sloped" : shape === "flared" ? "flared" : "rectangle")} notch={notchSide} />
+          <Sketch openingW={openingW} pieceW={pieceW} height={Number.isFinite(hNum) ? hNum : project.overall.height} depth={Number.isFinite(dNum) ? dNum : project.overall.depth} shape={isCorner ? "corner" : isSlope ? "sloped" : shape === "flared" ? "flared" : "rectangle"} notch={notchSide} />
+          <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-faint">Top and front</p>
           {spare.line ? <p className="mt-1 text-[11px] text-muted">{spare.line}</p> : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Inch label={isPocket ? "Back wall" : "Opening wide"} value={isPocket ? measure.backWidth ?? "" : fieldInch(openingW)} onChange={(v) => { setMeasure(isPocket ? { backWidth: v } : { width: v }); liveIfFitted(); }} />
-            <Inch label={isPocket ? "Ceiling" : "Opening tall"} value={isPocket ? measure.ceiling ?? measure.height : measure.height} onChange={(v) => { setMeasure(isPocket ? { ceiling: v } : { height: v }); liveIfFitted(); }} />
+            <Inch label={isPocket ? "Back wall" : "Opening wide"} value={isPocket ? measure.backWidth ?? "" : measure.openingWidth ?? fieldInch(openingW)} onChange={(v) => { setMeasure(isPocket ? { backWidth: v } : { openingWidth: v }); }} onCommit={() => liveIfFitted(0)} />
+            <Inch label={isPocket ? "Ceiling" : "Opening tall"} value={isPocket ? measure.ceiling ?? measure.height : measure.openingHeight ?? measure.height} onChange={(v) => { setMeasure(isPocket ? { ceiling: v } : { openingHeight: v }); }} onCommit={() => liveIfFitted(0)} />
             {isPocket ? (
               <>
                 <Inch label="Left depth" value={measure.leftDepth ?? ""} onChange={(v) => { setMeasure({ leftDepth: v }); liveIfFitted(); }} />
                 <Inch label="Right depth" value={measure.rightDepth ?? ""} onChange={(v) => { setMeasure({ rightDepth: v }); liveIfFitted(); }} />
               </>
             ) : (
-              <Inch label="Opening deep" value={measure.depth} onChange={(v) => { setMeasure({ depth: v }); liveIfFitted(); }} />
+              <Inch label="Opening deep" value={measure.openingDepth ?? measure.depth} onChange={(v) => setMeasure({ openingDepth: v })} />
             )}
             <Inch label="Clearance a side" value={measure.clearance ?? "1/8"} onChange={(v) => setMeasure({ clearance: v })} />
           </div>
+          <button type="button" className="mt-2 h-11 text-xs text-fg underline" onClick={() => {
+            const ow = parseInch(measure.openingWidth ?? "");
+            const oh = parseInch(measure.openingHeight ?? "");
+            const od = parseInch(measure.openingDepth ?? "");
+            const c = parseInch(measure.clearance ?? "") || 0.125;
+            setMeasure({
+              ...(Number.isFinite(ow) ? { width: fieldInch(Math.max(1, ow - c * 2)) } : {}),
+              ...(Number.isFinite(oh) ? { height: fieldInch(Math.max(1, oh - c * 2)) } : {}),
+              ...(Number.isFinite(od) ? { depth: fieldInch(Math.max(1, od - c * 2)) } : {}),
+            });
+            liveIfFitted(0);
+          }}>Fit the piece inside the opening</button>
           {isPocket && (
             <>
               <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Shape of the hole</p>
@@ -324,25 +347,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             </>
           )}
           {!isPocket && (
-            <Segmented
-              label="Shape"
-              value={measure.spaceShape ?? (isCorner ? "corner" : isSlope ? "sloped" : "rectangle")}
-              options={[["rectangle", "Rectangle"], ["arched", "Arched top"], ["sloped", "Sloped ceiling"], ["corner", "Corner"]]}
-              onChange={(v) => setMeasure({ spaceShape: v as "rectangle" | "arched" | "sloped" | "corner" })}
-            />
+            <p className="mt-2 text-[11px] text-muted">Rectangle, or the slope and corner this build already has. An arch, outlet, or baseboard is not a cut until the model can make it.</p>
           )}
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">In the way</p>
-          <Segmented
-            label="In the way"
-            value={notchSide === "none" ? "none" : "pipe"}
-            options={[["none", "Clear"], ["baseboard", "Baseboard"], ["outlet", "Outlet"], ["pipe", "Pipe or notch"]]}
-            onChange={(v) => {
-              if (v === "pipe" || v === "baseboard") {
-                setMeasure({ notchSide: "back", notchDepth: measure.notchDepth || "4", notchHeight: measure.notchHeight || (v === "baseboard" ? "4" : "36") });
-              } else if (v === "none") setMeasure({ notchSide: "none" });
-              liveIfFitted(0);
-            }}
-          />
           {isPocket && (
             <Segmented
               label="Notch in the hole"
@@ -361,10 +368,11 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             />
           )}
           {notchSide !== "none" && (
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              <Inch label="Notch wide" value={measure.notchWidth ?? ""} onChange={(v) => { setMeasure({ notchWidth: v }); liveIfFitted(); }} />
-              <Inch label="Notch deep" value={measure.notchDepth ?? ""} onChange={(v) => { setMeasure({ notchDepth: v }); liveIfFitted(); }} />
-              <Inch label="Notch tall" value={measure.notchHeight ?? ""} onChange={(v) => { setMeasure({ notchHeight: v }); liveIfFitted(); }} />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Inch label="Notch wide" value={measure.notchWidth ?? ""} onChange={(v) => setMeasure({ notchWidth: v })} onCommit={() => liveIfFitted(0)} />
+              <Inch label="Notch deep" value={measure.notchDepth ?? ""} onChange={(v) => setMeasure({ notchDepth: v })} onCommit={() => liveIfFitted(0)} />
+              <Inch label="From the floor" value={measure.notchHeight ?? ""} onChange={(v) => setMeasure({ notchHeight: v })} onCommit={() => liveIfFitted(0)} />
+              <Inch label="From the left" value={measure.leftBay ?? ""} onChange={(v) => setMeasure({ leftBay: v })} onCommit={() => liveIfFitted(0)} />
             </div>
           )}
           {measure.kind === "window_rough_opening" && (
@@ -402,20 +410,23 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               label={roundUnit ? "Across" : isPocket ? "Along the back" : isCorner ? "Wall A" : "Wide"}
               value={measure.width}
               hint={yardsPick(facts.typed?.width, Boolean(touched.width)) ? "Yard's pick" : undefined}
-              onChange={(v) => { scaleLocked(roundUnit ? "width" : "width", v); if (roundUnit) setMeasure({ width: v, depth: v }); liveIfFitted(); }}
+              onChange={(v) => { scaleLocked(roundUnit ? "width" : "width", v); if (roundUnit) setMeasure({ width: v, depth: v }); }}
+              onCommit={() => liveIfFitted(0)}
             />
             <Inch
               label={isSlope ? "High" : "Tall"}
               value={measure.height}
               hint={yardsPick(facts.typed?.height, Boolean(touched.height)) ? "Yard's pick" : undefined}
-              onChange={(v) => { scaleLocked("height", v); liveIfFitted(); }}
+              onChange={(v) => { scaleLocked("height", v); }}
+              onCommit={() => liveIfFitted(0)}
             />
             {!roundUnit && (
               <Inch
                 label={isPocket ? "Comes out" : isCorner ? "Wall B" : "Deep"}
                 value={measure.depth}
                 hint={yardsPick(facts.typed?.depth, Boolean(touched.depth)) ? "Yard's pick" : undefined}
-                onChange={(v) => { scaleLocked("depth", v); liveIfFitted(); }}
+                onChange={(v) => { scaleLocked("depth", v); }}
+                onCommit={() => liveIfFitted(0)}
               />
             )}
           </div>
@@ -523,6 +534,14 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               </button>
             ))}
           </div>
+          <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Thickness</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {["1/4", "1/2", "3/4", "1 1/2"].map((t) => (
+              <button key={t} type="button" className="min-h-11 rounded-full border border-border px-3 text-xs text-muted" onClick={() => setSummary(`Thickness stays the stock's own ${thickness ? fieldInch(thickness) : t}" — pick a stock class to change it`)}>
+                {t}"
+              </button>
+            ))}
+          </div>
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Joints</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {(["screw", "pocket", "dowel", "biscuit", "glue"] as ShopJoin[]).map((id) => (
@@ -537,7 +556,12 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       {warnings.map((w) => (
         <p key={w.id} className="mt-3 text-[11px] leading-snug text-muted" data-yard-measure-warn={w.id}>
           {w.text}{" "}
-          <button type="button" className="text-fg underline" onClick={() => (w.id === "span" ? addSupport() : shrinkToFit())}>
+          <button type="button" className="inline-flex min-h-11 items-center text-fg underline" onClick={() => {
+            if (w.id === "span") addSupport();
+            else if (w.id === "narrow-seat") { setMeasure({ width: "16" }); liveIfFitted(0); }
+            else if (w.id === "shallow-shelf") { setMeasure({ depth: "11" }); liveIfFitted(0); }
+            else shrinkToFit();
+          }}>
             {w.fix}
           </button>
         </p>
@@ -597,18 +621,23 @@ function blurb({ isPocket, isCorner, isSlope, slopeDeg, project, envOpts }: {
   return "Wide, tall, and deep. Change a number and the same build refits — model, cut list, Buy list and steps.";
 }
 
-function Sketch({ openingW, pieceW, height, shape, notch }: { openingW?: number; pieceW: number; height: number; shape: string; notch: string }) {
+function Sketch({ openingW, pieceW, height, depth, shape, notch }: { openingW?: number; pieceW: number; height: number; depth: number; shape: string; notch: string }) {
   const ow = openingW && openingW > 0 ? openingW : pieceW;
-  const scale = 120 / Math.max(ow, 1);
+  const scale = 70 / Math.max(ow, height, 1);
   const pw = Math.min(ow, pieceW) * scale;
+  const dw = Math.max(8, depth * scale);
   return (
-    <svg viewBox="0 0 160 90" className="mt-2 h-24 w-full rounded-md border border-border bg-bg" aria-label="Opening sketch">
-      <rect x="16" y="10" width={ow * scale} height="70" fill="none" stroke="currentColor" className="text-faint" />
-      {shape === "sloped" && <line x1="16" y1="28" x2={16 + ow * scale} y2="10" stroke="currentColor" className="text-faint" />}
-      {shape === "corner" && <path d={`M16 80 L${16 + ow * scale} 80 L16 10 Z`} fill="none" stroke="currentColor" className="text-faint" />}
-      <rect x={16 + (ow * scale - pw) / 2} y="18" width={pw} height="54" fill="currentColor" className="text-fg/15" />
-      {notch !== "none" && <rect x="16" y="48" width="18" height="32" fill="currentColor" className="text-fg/30" />}
-      <text x="16" y="88" className="fill-current text-[8px] text-faint">{fieldInch(height)} tall</text>
+    <svg viewBox="0 0 180 78" className="mt-2 h-24 w-full rounded-md border border-border bg-bg" aria-label="Opening sketch, top and front">
+      <text x="4" y="10" className="fill-current text-[8px] text-faint">Top</text>
+      <rect x="22" y="4" width={ow * scale} height={dw} fill="none" stroke="currentColor" className="text-faint" />
+      <rect x={22 + (ow * scale - pw) / 2} y={4 + 4} width={pw} height={Math.max(4, dw - 8)} fill="currentColor" className="text-fg/15" />
+      {notch !== "none" && <rect x="22" y="4" width="10" height="8" fill="currentColor" className="text-fg/30" />}
+      <text x="100" y="10" className="fill-current text-[8px] text-faint">Front</text>
+      <rect x="118" y="14" width={ow * scale} height={height * scale} fill="none" stroke="currentColor" className="text-faint" />
+      {shape === "sloped" && <line x1="118" y1="28" x2={118 + ow * scale} y2="14" stroke="currentColor" className="text-faint" />}
+      {shape === "corner" && <path d={`M118 ${14 + height * scale} L${118 + ow * scale} ${14 + height * scale} L118 14 Z`} fill="none" stroke="currentColor" className="text-faint" />}
+      <rect x={118 + (ow * scale - pw) / 2} y={18} width={pw} height={Math.max(8, height * scale - 8)} fill="currentColor" className="text-fg/15" />
+      {notch !== "none" && <rect x="118" y={14 + height * scale - 16} width="10" height="16" fill="currentColor" className="text-fg/30" />}
     </svg>
   );
 }
@@ -625,7 +654,7 @@ function Segmented({ label, value, options, onChange }: { label: string; value: 
   );
 }
 
-function Inch({ label, value, onChange, unit = "″", hint }: { label: string; value: string; onChange: (v: string) => void; unit?: string; hint?: string }) {
+function Inch({ label, value, onChange, onCommit, unit = "″", hint }: { label: string; value: string; onChange: (v: string) => void; onCommit?: () => void; unit?: string; hint?: string }) {
   const [text, setText] = useState(value);
   const [focus, setFocus] = useState(false);
   useEffect(() => {
@@ -644,6 +673,7 @@ function Inch({ label, value, onChange, unit = "″", hint }: { label: string; v
           setFocus(false);
           const committed = commitInch(text);
           if (committed.ready) onChange(committed.text);
+          onCommit?.();
         }}
         onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
         inputMode="text"

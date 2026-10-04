@@ -37,6 +37,44 @@ function armBuilding() {
   dropLampTimer();
 }
 
+function sameMeasureBuild(a: YardProject, b: YardProject): boolean {
+  if (a === b) return true;
+  if (a.prompt !== b.prompt || a.primaryMaterialId !== b.primaryMaterialId || a.shopJoin !== b.shopJoin) return false;
+  if (a.panels.length !== b.panels.length || a.instances.length !== b.instances.length) return false;
+  const o = a.overall;
+  const p = b.overall;
+  return Math.abs(o.width - p.width) < 0.02 && Math.abs(o.height - p.height) < 0.02 && Math.abs(o.depth - p.depth) < 0.02;
+}
+
+function isBlankCube(project: YardProject): boolean {
+  if (project.prompt?.trim()) return false;
+  if (project.panels.length || project.instances.length) return false;
+  return Math.abs(project.overall.width - 36) < 0.1 && Math.abs(project.overall.height - 36) < 0.1;
+}
+
+function measureFromProject(project: YardProject, prev: MeasureDraft): MeasureDraft {
+  const fitted = project.fitted ?? project.recastFrom?.fitted;
+  const pocket = project.pocket ?? project.recastFrom?.pocket;
+  if (pocket) return { ...prev, ...pocketMeasure(pocket) };
+  if (fitted) {
+    return {
+      ...prev,
+      width: fieldInch(fitted.unit.width),
+      height: fieldInch(fitted.unit.height),
+      depth: fieldInch(fitted.unit.depth),
+      openingWidth: fieldInch(fitted.opening.width),
+      openingHeight: fieldInch(fitted.opening.height),
+      openingDepth: fieldInch(fitted.opening.depth),
+    };
+  }
+  return {
+    ...prev,
+    width: fieldInch(project.overall.width),
+    height: fieldInch(project.overall.height),
+    depth: fieldInch(project.overall.depth),
+  };
+}
+
 type YardState = {
   project: YardProject;
   plan: BuildPlan | null;
@@ -213,6 +251,7 @@ export const useYard = create<YardState>((set, get) => ({
   commit: (next) => {
     const stamped = stampSpanOffer(next);
     const { project, history } = get();
+    if (sameMeasureBuild(project, stamped)) return;
     set({
       project: stamped,
       history: [...history.slice(-40), project],
@@ -374,14 +413,18 @@ export const useYard = create<YardState>((set, get) => ({
   },
   undo: () => {
     const { history, future, project } = get();
-    if (!history.length) return;
-    const prev = history[history.length - 1];
+    let stack = history;
+    while (stack.length && sameMeasureBuild(stack[stack.length - 1], project)) stack = stack.slice(0, -1);
+    if (!stack.length) return;
+    const prev = stack[stack.length - 1];
+    if (isBlankCube(prev)) return;
     set({
       project: prev,
-      history: history.slice(0, -1),
+      history: stack.slice(0, -1),
       future: [project, ...future],
       plan: null,
       selectedId: null,
+      measure: measureFromProject(prev, get().measure),
     });
     persist(prev);
   },
@@ -610,7 +653,7 @@ export const useYard = create<YardState>((set, get) => ({
       }
       return;
     }
-    let prompt = stampPromptSize(project.prompt || project.name, widthIn, heightIn, depth ?? (parseInch(measure.depth) || 16));
+    let prompt = project.prompt || project.name;
     if (roundUnit) {
       const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(n));
       const dia = fmt(widthIn);
@@ -740,9 +783,9 @@ export const useYard = create<YardState>((set, get) => ({
         ...fittedSrc,
         opening: {
           ...fittedSrc.opening,
-          width: widthIn,
-          height: heightIn,
-          depth: depth ?? fittedSrc.opening.depth,
+          width: Number.isFinite(parseInch(measure.openingWidth ?? "")) ? parseInch(measure.openingWidth ?? "") : widthIn,
+          height: Number.isFinite(parseInch(measure.openingHeight ?? "")) ? parseInch(measure.openingHeight ?? "") : heightIn,
+          depth: Number.isFinite(parseInch(measure.openingDepth ?? "")) ? parseInch(measure.openingDepth ?? "") : depth ?? fittedSrc.opening.depth,
         },
         unit: {
           ...fittedSrc.unit,
