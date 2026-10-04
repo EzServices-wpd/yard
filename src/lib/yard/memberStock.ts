@@ -90,9 +90,71 @@ function worldOf(panel: Panel, lx: number, ly: number, lz: number): Vec3 {
  * The same carcase, tiled in a stock that is not a sheet or a board.
  * Faces stay where they were. The plan follows the sticks, bricks, or pipe.
  */
+function isFaceStock(item: CatalogItem): boolean {
+  return isSheetStock(item) || item.formFactor === "board";
+}
+
+/**
+ * A rack keeps its tiers only in sheet or board stock.
+ * Pipe, round, and stick stock are cut lengths — an open frame, not sheet panels.
+ */
+function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
+  const W = Math.max(8, project.overall?.width ?? 36);
+  const H = Math.max(8, project.overall?.height ?? 30);
+  const D = Math.max(6, project.overall?.depth ?? 12);
+  const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
+  const arms = Math.max(2, Math.min(6, shelves.length || 2));
+  const join = item.preferredJoins?.[0] ?? "glue";
+  const r = (n: number) => Math.round(n * 8) / 8;
+  const member = (role: string, a: Vec3, b: Vec3): YardInstance => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    return {
+      id: createId("rk"),
+      catalogId: item.id,
+      position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: r(len),
+      role,
+      join,
+      from: a,
+      to: b,
+    };
+  };
+  const instances: YardInstance[] = [
+    member("upright", { x: 0, y: 0, z: 0 }, { x: 0, y: H, z: 0 }),
+    member("upright", { x: W, y: 0, z: 0 }, { x: W, y: H, z: 0 }),
+    member("rail", { x: 0, y: 1, z: 0 }, { x: W, y: 1, z: 0 }),
+    member("rail", { x: 0, y: H - 1, z: 0 }, { x: W, y: H - 1, z: 0 }),
+  ];
+  for (let i = 0; i < arms; i++) {
+    const y = r(H * (0.35 + (0.45 * i) / Math.max(1, arms - 1)));
+    instances.push(member(`arm ${i + 1}`, { x: 0, y, z: 0 }, { x: 0, y, z: D }));
+    instances.push(member(`arm ${i + 1}`, { x: W, y, z: 0 }, { x: W, y, z: D }));
+  }
+  const name = /^Storage unit\b/i.test(project.name)
+    ? `Rack ${r(W)}" × ${r(H)}" × ${r(D)}"`
+    : project.name;
+  return {
+    ...project,
+    name,
+    panels: [],
+    fitted: undefined,
+    pocket: undefined,
+    instances,
+    primaryMaterialId: item.id,
+    joinMethod: join as YardProject['joinMethod'],
+    overall: { width: r(W), height: r(H), depth: r(D) },
+    notes: [
+      `Open frame of ${item.name}. ${arms} arms at the typed depth. Not a pin-shelf box.`,
+      ...recastNotes(project.notes ?? [], item).filter((n) => !/Tiers stay tiers/.test(n)),
+    ],
+  };
+}
+
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
   const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
+  if (rack && !isFaceStock(item)) return openMemberRack(project, item);
   if (rack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
     if (shelves.length) {
