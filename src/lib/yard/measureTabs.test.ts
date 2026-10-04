@@ -11,6 +11,7 @@ import {
   fitsASpace,
   measureTabs,
   measureWarnings,
+  pieceFromOpening,
   sheetCountOf,
   stampCount,
 } from "./measureTabs";
@@ -70,6 +71,14 @@ describe("measure tabs", () => {
     assert.equal(tight[0]?.fix, "Shrink to fit");
     const span = measureWarnings({ shelfSpan: 48, hasDivider: false });
     assert.match(span[0]?.text ?? "", /middle support/);
+  });
+
+  it("shrink to fit is the opening minus clearance a side", () => {
+    assert.equal(pieceFromOpening(31, 0.125), 30.75);
+    const tight = measureWarnings({ openingW: 31, pieceW: 31, clearance: 0.125 });
+    assert.equal(tight[0]?.id, "tight");
+    const fitted = measureWarnings({ openingW: 31, pieceW: pieceFromOpening(31, 0.125), clearance: 0.125 });
+    assert.equal(fitted.length, 0);
   });
 
   it("change line names shelves and sheets", () => {

@@ -17,6 +17,7 @@ import {
   stockFitsClass,
   changeLine,
   classPresets,
+  pieceFromOpening,
   clearanceTalk,
   clearOpening,
   factsFromProject,
@@ -224,11 +225,15 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   }
 
   function shrinkToFit() {
-    if (!openingW) return;
-    const next = Math.max(1, openingW - clearance * 2);
-    setMeasure({ width: fieldInch(next), clearance: fieldInch(clearance) });
+    const typed = parseInch(measure.openingWidth ?? "");
+    const opening = Number.isFinite(typed) ? typed : openingW;
+    if (!opening || !Number.isFinite(opening)) return;
+    const c = parseInch(measure.clearance ?? "");
+    const clearanceIn = Number.isFinite(c) ? c : 0.125;
+    const next = pieceFromOpening(opening, clearanceIn);
+    setMeasure({ width: fieldInch(next), clearance: fieldInch(clearanceIn), openingWidth: fieldInch(opening) });
     liveIfFitted(0);
-    setSummary(`Piece is ${fieldInch(next)}" wide, ${fieldInch(clearance)}" clear a side`);
+    setSummary(`Piece is ${fieldInch(next)}" wide, ${fieldInch(clearanceIn)}" clear a side`);
   }
 
   const shelfN = facts.shelves ?? 0;
