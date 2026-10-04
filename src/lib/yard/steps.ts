@@ -27,6 +27,7 @@ import {
   monitorEnvelopeTalk,
   lampEnvelopeTalk,
   figureHoldEnvelopeTalk,
+  figureIdentityLabel,
   basketEnvelopeTalk,
   potHoldDiameterIn,
   potHoldHeightIn,
@@ -221,7 +222,8 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
     const prev = stepStockPrompt;
     stepStockPrompt = project.prompt ?? "";
     try {
-      const steps = uniquePanelSteps(project);
+      const raw = uniquePanelSteps(project);
+      const steps = figurePartSteps(project, raw) ?? raw;
       return withDisplayModel(project, solidStockVoice(project) ? steps.map(solidWordsInStep) : steps);
     } finally {
       stepStockPrompt = prev;
@@ -233,6 +235,39 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
       step: 1,
       title: "Empty bench",
       description: "Generate a thing first. These steps are written from the pieces on the bench.",
+    },
+  ];
+}
+
+
+/** A figure's steps name its own parts. A closet pin layout and a "back is already on" line do not belong. */
+function figurePartSteps(project: YardProject, current: AssemblyStep[]): AssemblyStep[] | null {
+  if (!figureIdentityLabel(project.prompt ?? "") && project.kind !== "figure") return null;
+  const text = current.map((step) => `${step.title} ${step.description}`).join(" ");
+  if (!/pin hole|back is already/i.test(text)) return null;
+  const parts = project.panels;
+  if (!parts.length) return null;
+  const shelves = parts.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
+  const body = parts.filter((panel) => !shelves.includes(panel));
+  const names = (list: typeof parts) => list.map((panel) => panel.name);
+  return [
+    {
+      step: 1,
+      title: "Cut the parts on this list",
+      description: `${names(parts).join(", ")}. These steps follow the parts on the bench.`,
+      partsUsed: names(parts),
+    },
+    {
+      step: 2,
+      title: "Join the body pieces",
+      description: `${names(body).join(", ")}. Join them into the silhouette. Shelves fasten to the body, not on pins.`,
+      partsUsed: names(body),
+    },
+    {
+      step: 3,
+      title: "Set the remaining parts on the body",
+      description: `${shelves.length ? names(shelves).join(", ") : "Every part is already in the body step."} Glue or screw each part where it meets the body. A back, if there is one, is a part you attach.`,
+      partsUsed: names(shelves.length ? shelves : parts),
     },
   ];
 }
