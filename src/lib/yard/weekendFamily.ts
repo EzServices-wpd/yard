@@ -857,7 +857,7 @@ export function weekendUsesLatticeGraph(prompt: string, kind: StructureKind): bo
   const framework = /lattice|space\s*frame|geodesic|eiffel/.test(lower);
   const towerNoun = /\b(?:towers?|spires?)\b/.test(lower) && !isAvTower(lower) && !isHouseMediaCarcase(lower);
   if (!framework && !towerNoun) return false;
-  if (kind === "eiffel" || kind === "lattice") return true;
+  if ((kind as string) === "eiffel" || (kind as string) === "lattice") return true;
   const hit = detectWeekendFamily(prompt);
   return hit?.family === "lattice" && (kind === "tower" || kind === "lattice" || kind === "eiffel");
 }

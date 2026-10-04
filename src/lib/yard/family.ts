@@ -36,7 +36,8 @@ export type HouseAffordance =
   | "hooks"
   | "cleats"
   | "sleep-platforms"
-  | "hinged-lid";
+  | "hinged-lid"
+  | "brackets";
 
 export type HouseHit = {
   family: HouseFamily;

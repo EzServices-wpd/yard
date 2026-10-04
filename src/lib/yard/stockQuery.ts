@@ -3,9 +3,9 @@
  * A 2×4 scrap is the real dressed section at the length you have.
  * A bottle or anything else is the size you measured — never a guessed SKU.
  */
-import { getCatalogItem, searchCatalog } from "./catalog.ts";
-import { namedLumberFromPrompt } from "./namedLumberSpecies.ts";
-import { modeledProduct, pieceFromEnvelope, productEnvelope } from "./productModel.ts";
+import { getCatalogItem, searchCatalog } from "./catalog";
+import { namedLumberFromPrompt } from "./namedLumberSpecies";
+import { modeledProduct, pieceFromEnvelope, productEnvelope } from "./productModel";
 import type { CatalogItem, FormFactor } from "./types";
 import { INCH_NUM, parseInchNum, stripTypedSizes } from "./inchText";
 

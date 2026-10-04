@@ -1209,8 +1209,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     Boolean(trip.w && trip.h && !trip.d) &&
     (/\bopening\b/.test(lower) || /fitted\s+to/.test(lower));
   if (seatOpeningWd) {
-    width = trip.w;
-    if (!Number.isFinite(depth)) depth = trip.h;
+    if (trip.w) width = trip.w;
+    if (!Number.isFinite(depth) && trip.h) depth = trip.h;
     // height already from "seat height" / tall|high|height pick when present
   }
 

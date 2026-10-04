@@ -1,6 +1,6 @@
 # Yard guard suite — runs on every push to main and every pull request.
 #
-# This check reports only; it does not block Vercel (Vercel deploys from main on its own).
+# Typecheck fails this job. The Vercel build runs the same tsc --noEmit before vite, so a missing import cannot deploy.
 # A red run means a guard found a regression that is NOT on the skip list.
 # The one skip list for known, pre-existing failures lives in scripts/guard-known-failures.ts:
 # every entry says why it is tolerated and who owns the fix. Delete an entry when its fix lands
@@ -31,6 +31,9 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
 
       - name: Honesty smoke
         run: npx tsx scripts/yard-honesty-smoke.ts

@@ -45,6 +45,8 @@ export const JOIN_LABELS: Record<JoinMethod, string> = {
   pin: "Pin",
   slot: "Slot",
   cable_tie: "Cable tie",
+  staple: "Staple",
+  zip: "Zip tie",
   none: "None",
 };
 

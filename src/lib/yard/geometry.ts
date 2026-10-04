@@ -10,7 +10,7 @@
  */
 
 import type { CatalogItem, FormFactor, Panel } from "./types";
-import { getCatalogItem } from "./catalog.ts";
+import { getCatalogItem } from "./catalog";
 
 export interface PrimitiveDims {
   length: number;

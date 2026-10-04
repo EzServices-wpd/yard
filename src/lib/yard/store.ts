@@ -112,7 +112,7 @@ type YardState = {
   beginBuild: () => void;
   commit: (next: YardProject) => void;
   setProject: (next: YardProject) => void;
-  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean; fittedOverride?: import("./types").FittedSpec; keepView?: boolean; restock?: boolean }) => YardProject;
+  generate: (prompt: string, materialId?: string, form?: FormRecipe, opts?: { includeSpine?: boolean; joinMethod?: JoinMethod; scale?: BuildScale; fresh?: boolean; cutStock?: boolean; fittedOverride?: import("./types").FittedSpec; pocketOverride?: import("./types").PocketSpec; honorUnit?: boolean; sizeOverride?: { width: number; height: number; depth: number }; keepView?: boolean; restock?: boolean }) => YardProject;
   setJoinMethod: (join: JoinMethod) => void;
   setDetail: (v: DetailLevel) => void;
   setBuildScale: (v: BuildScale) => void;
@@ -485,7 +485,7 @@ export const useYard = create<YardState>((set, get) => ({
     if (lockedIds.includes(id)) return;
     const inst = project.instances.find((i) => i.id === id);
     if (!inst) return;
-    const snapped = maybeSnap(position, homeOf(inst), 1.25);
+    const snapped = maybeSnap(position, homeOf(inst));
     const next = {
       ...project,
       instances: project.instances.map((i) => (i.id === id ? { ...i, position: snapped } : i)),

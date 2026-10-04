@@ -4,8 +4,8 @@
  */
 
 import type { CatalogItem } from "./types";
-import { foundCatalogItem, listFoundStock } from "./foundStock.ts";
-import { catalogLumberAliases, catalogLumberTags } from "./namedLumberSpecies.ts";
+import { foundCatalogItem, listFoundStock } from "./foundStock";
+import { catalogLumberAliases, catalogLumberTags } from "./namedLumberSpecies";
 
 export const FORGE_CATALOG: CatalogItem[] = [
   {

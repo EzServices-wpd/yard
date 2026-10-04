@@ -163,7 +163,7 @@ export function applyShopJoin(project: YardProject, plan: BuildPlan): BuildPlan 
     ...lines,
   ];
   const thick = stockThickness(project);
-  const instructions = plan.instructions.map((st) => ({
+  const instructions: AssemblyStep[] = plan.instructions.map((st) => ({
     ...st,
     title: rewriteStep(st.title, join, thick),
     description: rewriteStep(st.description, join, thick),
@@ -174,6 +174,7 @@ export function applyShopJoin(project: YardProject, plan: BuildPlan): BuildPlan 
       step: 1,
       title: "Drill the pocket holes",
       description: `Set the pocket-hole jig for ${inchFrac(thick)}" stock. Two pockets per joint, ${jointCount(project) * 2} pocket screws at ${inchFrac(pocketScrewLength(thick))}".`,
+      tips: undefined,
     };
     instructions.unshift(jig);
     instructions.forEach((s, i) => { s.step = i + 1; });
