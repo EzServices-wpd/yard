@@ -37,6 +37,10 @@ describe("finish list", () => {
     assert.ok(bird.instances.length < 20, `pipe house should be a frame, got ${bird.instances.length}`);
     assert.ok(bird.instances.some((i) => i.role === "post"));
     assert.equal(bird.panels.length, 0);
+    const stool = buildPlan(generateFromPrompt("popsicle stick step stool"));
+    const after = stool.instructions.slice(stool.instructions.findIndex((s) => /Do not cut/.test(s.title)) + 1);
+    assert.ok(after.length > 0);
+    assert.equal(after.some((s) => /^Cut\b/.test(s.title)), false);
     assert.equal(detectMaterial("bamboo pole").id, "bamboo-pole-6");
     assert.equal(detectMaterial("thick dowel rack").id, "dowel-1-36");
   });

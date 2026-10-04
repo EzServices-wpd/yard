@@ -3090,12 +3090,13 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
         ? "rung"
         : (spec as { word?: string }).word ?? spec.role;
     const named = shopPlural(roleWord, listI.length);
-    const title = listI.length === 1 && /segments in an S/i.test(spec.title) ? "Glue the neck" : spec.title;
+    const rawTitle = listI.length === 1 && /segments in an S/i.test(spec.title) ? "Glue the neck" : spec.title;
+    const title = whole && /^cut\b/i.test(rawTitle) ? rawTitle.replace(/^cut\b/i, "Place") : rawTitle;
     const why = listI.length === 1 && /segments in an S/i.test(spec.title) ? "One neck piece. Glue it where it meets the body." : spec.why;
     steps.push({
       step: n++,
       title: `${title} — ${listI.length} ${named}`,
-      description: `${listI.length} ${named}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${why}`,
+      description: `${listI.length} ${named}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${whole ? why.replace(/\bcut\b/gi, "place") : why}`,
       partsUsed: [spec.role],
       tips: why,
     });
