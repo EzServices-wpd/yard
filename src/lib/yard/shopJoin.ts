@@ -19,6 +19,28 @@ export function pocketScrewLength(thickness: number): number {
   return thickness >= 1.25 ? 2.5 : 1.25;
 }
 
+/** Face-screw length follows the stock the model is cut from. 1/2" takes 1", 3/4" takes 1 1/4". */
+export function faceScrewInches(thickness: number): number {
+  if (thickness <= 0.5) return 1;
+  if (thickness >= 1.25) return 2.5;
+  return 1.25;
+}
+
+/** Steps name the same screw the Buy line bought. */
+export function stepsUseFaceScrew(project: YardProject, plan: BuildPlan): BuildPlan {
+  const len = inchFrac(faceScrewInches(stockThickness(project)));
+  const phrase = `#8 × ${len}" screws`;
+  const fix = (text?: string) => text?.replace(/#8\s*[×x]\s*(?:1\s*1\/4|1-1\/4|1¼)"?\s*screws/gi, phrase);
+  return {
+    ...plan,
+    instructions: plan.instructions.map((step) => ({
+      ...step,
+      description: fix(step.description) ?? step.description,
+      tips: fix(step.tips),
+    })),
+  };
+}
+
 export function jointCount(project: YardProject): number {
   const fromPanels = panelJoints(project.panels).length;
   if (fromPanels > 0) return fromPanels;
