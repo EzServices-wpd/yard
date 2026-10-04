@@ -260,7 +260,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     <div className={`p-4 ${phone ? "max-h-[50vh] overflow-y-auto" : ""}`} data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="font-display text-lg text-fg">Measure</h2>
-        <button type="button" onClick={() => { undo(); makePlan(); }} className="min-h-11 min-w-11 px-3 text-sm text-muted hover:text-fg">
+        <button type="button" onClick={() => { undo(); makePlan(); setSummary(""); }} className="min-h-11 min-w-11 px-3 text-sm text-muted hover:text-fg">
           Undo
         </button>
       </div>
