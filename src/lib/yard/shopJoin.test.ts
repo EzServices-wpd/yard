@@ -29,3 +29,16 @@ describe("shop join changes Buy and steps", () => {
     assert.equal(glue.length, 1);
   });
 });
+
+describe("thickness picker", () => {
+  it("1/2 plywood changes the cut list and the screw length", () => {
+    const thick = buildPlan(generateFromPrompt("bookshelf 36 wide", "plywood-3-4-4x8"));
+    const half = buildPlan(generateFromPrompt("bookshelf 36 wide", "plywood-1-2-4x8"));
+    assert.notEqual(
+      thick.cutList.map((c) => c.thicknessIn).join(","),
+      half.cutList.map((c) => c.thicknessIn).join(","),
+    );
+    assert.match(half.bom.map((b) => b.name).join("|"), /#8 x 1" wood screws/);
+    assert.match(thick.bom.map((b) => b.name).join("|"), /1-1\/4/);
+  });
+});

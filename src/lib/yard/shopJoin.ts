@@ -110,7 +110,7 @@ export function fastenerLines(project: YardProject, join: ShopJoin): BomLine[] {
   }
   const talk = screwTalk(panelJoints(project.panels));
   const screws = Math.max(4, talk.screws || joints * 2);
-  const len = thick >= 1.25 ? 2.5 : 1.25;
+  const len = thick >= 1.25 ? 2.5 : thick <= 0.5 ? 1 : 1.25;
   return [{
     name: `#8 x ${inchFrac(len)}" wood screws`,
     quantity: Math.ceil(screws / 50),

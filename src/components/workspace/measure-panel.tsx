@@ -251,6 +251,18 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const clearH = shelfN > 0 ? ((Number.isFinite(hNum) ? hNum : project.overall.height) - thick * (shelfN + 2)) / Math.max(1, shelfN + 1) : NaN;
   const shoe = /\bshoes?\b/i.test(project.prompt || project.name);
 
+  const thicknessChoices = useMemo(() => {
+    if (!stock) return [];
+    const seen = new Set<number>();
+    return FORGE_CATALOG.filter((item) => {
+      if (!item.canCut || item.formFactor !== stock.formFactor || item.category !== stock.category) return false;
+      const thick = item.dims.thickness ?? item.dims.diameter;
+      if (!thick || seen.has(thick)) return false;
+      seen.add(thick);
+      return true;
+    }).sort((a, b) => (a.dims.thickness ?? a.dims.diameter ?? 0) - (b.dims.thickness ?? b.dims.diameter ?? 0));
+  }, [stock]);
+
   const stockChoices = useMemo(() => {
     const seen = new Set<string>();
     return FORGE_CATALOG.filter((item) => {
@@ -576,9 +588,14 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
           </div>
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Thickness</p>
           <div className="mt-1 flex flex-wrap gap-1">
-            {["1/4", "1/2", "3/4", "1 1/2"].map((t) => (
-              <button key={t} type="button" className="min-h-11 rounded-full border border-border px-3 text-xs text-muted" onClick={() => setSummary(`Thickness stays the stock's own ${thickness ? fieldInch(thickness) : t}" — pick a stock class to change it`)}>
-                {t}"
+            {thicknessChoices.map((item) => (
+              <button key={item.id} type="button" data-yard-thickness={item.id} className={`h-11 min-h-11 rounded-full border px-3 text-xs ${item.id === project.primaryMaterialId ? "border-fg/40 text-fg" : "border-border text-muted"}`} onClick={() => {
+                const before = snap();
+                generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true });
+                makePlan();
+                setSummary(changeLine(before, snap()) || `Thickness is ${fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}`);
+              }}>
+                {fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}"
               </button>
             ))}
           </div>

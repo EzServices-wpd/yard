@@ -6,7 +6,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
-import { applyShopJoin } from "./shopJoin";
+import { applyShopJoin, stockThickness } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
@@ -677,12 +677,13 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const joinScrews = cornerUnit
       ? cornerShelves * 4 + cornerWallPanelScrews
       : floating ? Math.max(8, project.panels.filter((p) => p.type === "shelf").length * 4) : Math.max(4, modelScrews.screws);
+    const screwLen = stockThickness(project) <= 0.5 ? "1" : stockThickness(project) >= 1.25 ? "2 1/2" : "1-1/4";
     bom.push({
-      name: '#8 x 1-1/4" wood screws',
+      name: `#8 x ${screwLen}" wood screws`,
       quantity: Math.ceil(joinScrews / SCREWS_PER_BOX),
       unit: screwBoxUnit(Math.ceil(joinScrews / SCREWS_PER_BOX)),
       catalogId: "screws-8",
-      searchQuery: "#8 wood screws 1-1/4",
+      searchQuery: `#8 wood screws ${screwLen}`,
       estimatedCost: 8,
       notes: cornerUnit
         ? cornerUnit.wallHung
