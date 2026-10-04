@@ -43,6 +43,7 @@ function partsOf(project: YardProject): Part[] {
 
 function supportFor(name: string, kind: string): string {
   const hay = `${name} ${kind}`.toLowerCase();
+  if (/\bleg\b/.test(hay)) return "";
   if (/back|backrest|door|brace/.test(hay)) return "seat";
   if (/seat|top|lid|shelf|tread|deck|desktop/.test(hay)) return "legs";
   if (/rail|apron|stretcher|slat/.test(hay)) return "legs";
