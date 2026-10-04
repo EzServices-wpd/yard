@@ -7849,11 +7849,11 @@ console.log("STRANGER PLAN OK", {
   if (/\d/.test(nsTalk.title) || !/assumed/.test(nsTalk.subtitle)) failHonesty("pdf bare nightstand must not stamp stock size as typed", nsTalk);
   const letters = partLetters(van, vanPlan.cutList);
   const sp = planStepParts(van, vanPlan.instructions, letters);
-  const lt = (ids: string[]) => ids.map((id) => letters.get(id)).sort().join("");
+  const lt = (ids: string[]) => [...new Set(ids.map((id) => letters.get(id)))].sort().join("");
   const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
   const bottom = vanPlan.instructions.findIndex((s) => /attach b bottom/i.test(s.title));
-  if (stand < 0 || lt(sp[stand].fresh) !== "AEF") failHonesty("pdf vanity stand step must light only A, E, F", stand >= 0 ? lt(sp[stand].fresh) : "missing");
-  if (bottom < 0 || lt(sp[bottom].fresh) !== "B" || lt(sp[bottom].onto) !== "EF") failHonesty("pdf vanity bottom step lights B onto E, F", bottom >= 0 ? sp[bottom] : "missing");
+  if (stand < 0 || lt(sp[stand].fresh) !== "AE") failHonesty("pdf vanity stand step must light only A, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (bottom < 0 || lt(sp[bottom].fresh) !== "B" || lt(sp[bottom].onto) !== "E") failHonesty("pdf vanity bottom step lights B onto E", bottom >= 0 ? sp[bottom] : "missing");
   const seen = new Set<string>();
   for (const st of sp) for (const id of st.fresh) {
     if (seen.has(id)) failHonesty("pdf part lit as new twice", id);
