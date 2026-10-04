@@ -188,7 +188,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
-  return withOutdoorNotes(autoSupportSpans(stampStockThickness(stamped), args[0]), args[0]);
+  return withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]);
 }
 
 /** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
@@ -1476,4 +1476,37 @@ function projectFromGraph(
     joinMethod: joinMethod ?? item.preferredJoins?.[0],
     name: displayName,
   });
+}
+
+const CRAFT_STOCK = /popsicle|chipboard|cardboard|straw/;
+const LOADED = /step stool|stool|bench|chair|climb|sit|shelf|rack|outdoor|porch|deck|planter/;
+const HOLDS: Record<string, string> = {
+  stool: "2x4 and 3/4 plywood",
+  bench: "2x4 and 3/4 plywood",
+  chair: "2x4 and 3/4 plywood",
+  shelf: "3/4 plywood",
+  planter: "cedar 1x and exterior screws",
+};
+
+/** Craft stock that is asked to carry a person or live outside is a display model. */
+function craftDisplay(project: YardProject, prompt: string): YardProject {
+  const item = getCatalogItem(project.primaryMaterialId);
+  const stock = `${item?.name ?? ""} ${item?.id ?? ""} ${prompt}`.toLowerCase();
+  if (!CRAFT_STOCK.test(stock) || !LOADED.test(prompt.toLowerCase())) return project;
+  if ((project.notes ?? []).some((note) => note.startsWith("This is a display model"))) return project;
+  const hold = /planter|outdoor|porch/.test(prompt.toLowerCase()) ? HOLDS.planter : /shelf|rack/.test(prompt.toLowerCase()) ? HOLDS.shelf : HOLDS.stool;
+  const line = `This is a display model in ${item?.name ?? "craft stock"}. A piece that holds needs ${hold}. Switch the stock to that.`;
+  return { ...project, notes: [line, ...(project.notes ?? [])] };
+}
+
+/** A pipe birdhouse joins like pipe. Notes do not borrow stick walls or wood screws. */
+function pipeHouse(project: YardProject, prompt: string): YardProject {
+  if (!/birdhouse|bird house/.test(prompt.toLowerCase())) return project;
+  const item = getCatalogItem(project.primaryMaterialId);
+  if (!/pvc|pipe/i.test(`${item?.name ?? ""} ${item?.id ?? ""}`)) return project;
+  const notes = [
+    `Birdhouse in ${item?.name ?? "PVC"}. Join with solvent cement. No wood screws.`,
+    ...(project.notes ?? []).filter((note) => !/popsicle|flat stick|wood screw/i.test(note)),
+  ];
+  return { ...project, notes };
 }

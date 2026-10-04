@@ -572,6 +572,7 @@ export function weekendCraftStockPhrases(): [RegExp, string][] {
     [/(?:picture|photo)\s*frame.{0,40}\bbamboo\b|\bbamboo\b.{0,40}(?:picture|photo)\s*frame|\bbamboo\b.{0,40}\bframe\b.{0,40}(?:photo|picture|print|\b\d+(?:\.\d+)?\s*(?:x|×|by)\s*\d+)/, "bamboo-skewer-12"],
     // Plural-safe: "bamboo skewers" must not fall through to bare bamboo lumber.
     [/\bskewers?\b|bamboo sticks?|kebab sticks?/, "bamboo-skewer-12"],
+    [/bamboo poles?/, "bamboo-pole-6"],
   ];
 }
 
@@ -597,6 +598,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bcloset rods?\b|\bcloset poles?\b/, "closet-rod"],
     [/(?:1\s*\/\s*2|half(?:\s|-)?inch)\s*(?:"|in(?:ch(?:es)?)?\.?)?\s*(?:hardwood\s+)?dowels?/, "dowel-1-2-36"],
+    [/thick dowel|1\s*(?:inch|")\s*dowel/, "dowel-1-36"],
+    [/bamboo poles?/, "bamboo-pole-6"],
     [/\bdowels?\b/, "dowel-1-4-36"],
     [/1\s*\/\s*4.{0,24}4\s*[x×]\s*10|quarter(?:\s|-)?inch 4\s*[x×]\s*10|tall backer plywood|ten foot backer/, "plywood-1-4-4x10"],
     [/3\s*\/\s*4.{0,24}4\s*[x×]\s*10|4\s*[x×]\s*10 plywood|ten foot plywood/, "plywood-3-4-4x10"],
@@ -604,6 +607,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/1\s*\/\s*2.{0,16}plywood|half(?:\s|-)?inch plywood|header spacer/, "plywood-1-2-4x8"],
     [/plywood|sheet goods/, "plywood-3-4-4x8"],
     [/paper.?towel/, "paper-towel-roll"],
+    [/\bchipboard\b|cardboard\s+(?:card|model|craft)/, "chipboard-sheet"],
     [/\bcardboard\b(?!\s*(?:tubes?|rolls?|cores?))|\bcorrugated\b/, "cardboard-corrugated-sheet"],
   ];
 }
