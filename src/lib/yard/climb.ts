@@ -70,7 +70,7 @@ export function stoolLayout(prompt: string, sizeOverride?: { width: number; heig
   }
   let n = explicitOne ? 1 : Math.max(1, said);
   if (H && H > 0) {
-    if (!explicitCount) n = Math.max(n, Math.ceil(H / 12));
+    if (!explicitCount) n = Math.max(1, Math.ceil(H / 9));
   } else if (rr) {
     H = n * rr.rise;
   } else {
@@ -84,7 +84,8 @@ export function stoolLayout(prompt: string, sizeOverride?: { width: number; heig
   const topD = r16(Math.max(10, n === 1 && sizeOverride ? sizeOverride.depth : run));
   let W = r16(sizeOverride?.width ?? typedAlong(lower, "wide|long|across") ?? 16);
   W = r16(Math.max(14, W, H * 0.5));
-  return { H, n, rise, run, topD, W, handrail, railRise };
+  const tallRail = n >= 4;
+  return { H, n, rise, run, topD, W, handrail: handrail || tallRail, railRise, railRecommended: tallRail && !handrail };
 }
 
 /** "9" rise × 11" run" for a stool prompt — the numbers the model is built to. */
