@@ -850,9 +850,13 @@ export function weekendFamilyOf(prompt: string): WeekendFamily | null {
 
 /** True when generate should densify via the lattice-tower graph (not a hollow taper). */
 export function weekendUsesLatticeGraph(prompt: string, kind: StructureKind): boolean {
-  // Lattice is an open framework the ask named. A shaft, tower, or building word alone is a shell.
-  const asked = /lattice|space\s*frame|geodesic|eiffel/.test(prompt.toLowerCase());
-  if (!asked) return false;
+  const lower = prompt.toLowerCase();
+  // Lattice / space frame / Eiffel is the open framework the ask named.
+  // A tower or spire noun is a slender tapered lattice, never the default cube.
+  // A closed shaft (lighthouse, mailbox) is not a tower noun and stays a shell.
+  const framework = /lattice|space\s*frame|geodesic|eiffel/.test(lower);
+  const towerNoun = /\b(?:towers?|spires?)\b/.test(lower) && !isAvTower(lower) && !isHouseMediaCarcase(lower);
+  if (!framework && !towerNoun) return false;
   if (kind === "eiffel" || kind === "lattice") return true;
   const hit = detectWeekendFamily(prompt);
   return hit?.family === "lattice" && (kind === "tower" || kind === "lattice" || kind === "eiffel");
