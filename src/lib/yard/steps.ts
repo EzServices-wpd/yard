@@ -306,7 +306,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: s++,
     title: `Count out ${n} whole ${name}`,
-    description: `${n} full pieces from the pack. Leave every stick whole. Open the glue.`,
+    description: `${n === 1 ? "1 full piece" : `${n} full pieces`} from the pack. Leave every stick whole. Open the glue.`,
     tips: "A pack and a bottle of glue is the whole kit.",
     partsUsed: ["*"],
   });
@@ -2731,7 +2731,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Do not cut — ${stockLabel}s stay whole`,
-      description: `${project.instances.length} full pieces from the pack. Glue them as they come. The bench is a gluing diagram.`,
+      description: `${project.instances.length === 1 ? "1 full piece" : `${project.instances.length} full pieces`} from the pack. Glue them as they come. The bench is a gluing diagram.`,
       partsUsed: ["*"],
     });
   }
@@ -2858,7 +2858,7 @@ function uniqueRecastCarcaseSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Do not cut — ${stockLabel} stays whole`,
-      description: `${project.instances.length} full pieces from the pack. ${hold}`,
+      description: `${project.instances.length === 1 ? "1 full piece" : `${project.instances.length} full pieces`} from the pack. ${hold}`,
       tips: "A pack and the join is the whole kit.",
       partsUsed: ["*"],
     });
@@ -3044,7 +3044,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: `Do not cut — ${stockLabel}s stay whole`,
-      description: `${project.instances.length} full pieces from the pack. Glue them as they come.`,
+      description: `${project.instances.length === 1 ? "1 full piece" : `${project.instances.length} full pieces`} from the pack. Glue them as they come.`,
       tips: "A pack and a bottle of glue is the whole kit.",
       partsUsed: ["*"],
     });

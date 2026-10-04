@@ -27,8 +27,8 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
       <h3 className="font-display text-lg text-fg">Buy</h3>
       <p className="mt-1 text-xs text-muted">
         {plan.partsKind === "whole"
-          ? `${plan.totals.pieces} full pieces · glue · do not cut`
-          : `${plan.totals.pieces} pieces`}{" "}
+          ? `${plan.totals.pieces === 1 ? "1 full piece" : `${plan.totals.pieces} full pieces`} · glue · do not cut`
+          : `${plan.totals.pieces === 1 ? "1 piece" : `${plan.totals.pieces} pieces`}`}{" "}
         · {usd(plan.totals.estCostUsd)} estimated{plan.bom.some((b) => b.estimatedCost == null || b.estimatedCost === 0) ? " · plus unpriced items" : ""} · cheapest first for the amount you need, any store, same size only
       </p>
       <p className="mt-1 text-[11px] text-faint">

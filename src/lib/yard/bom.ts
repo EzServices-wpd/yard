@@ -1,3 +1,4 @@
+import { pieceTalk } from "./shopPlural";
 import type { BomLine, YardInstance } from "./types";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -130,7 +131,7 @@ export function buildForgeBom(
       notes = `${data.count} strips, ${ripped.width}" × ${ripped.height}", ripped from ${packsNeeded} sheet${packsNeeded === 1 ? "" : "s"}.`;
     } else {
       notes = whole
-        ? `${data.count} full pieces. Glue. Do not cut.`
+        ? `${pieceTalk(data.count, true)}. Glue. Do not cut.`
         : (item.canCut ?? true) && uniqueCuts.length
           ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}${spare}`
           : item.notes;
@@ -203,7 +204,7 @@ export function bomLinesFromForge(result: ForgeBomResult): BomLine[] {
       asin: l.asin,
       catalogId: l.catalogId,
       estimatedCost: l.estCostUsd,
-      notes: `${l.quantityPieces} pieces${l.notes ? ` · ${l.notes}` : ""}`,
+      notes: l.notes?.includes("full") ? l.notes : `${pieceTalk(l.quantityPieces)}${l.notes ? ` · ${l.notes}` : ""}`,
     }));
 }
 

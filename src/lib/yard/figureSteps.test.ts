@@ -26,6 +26,11 @@ describe("dowel robot steps", () => {
     const used = new Set(plan.instructions.flatMap((s) => s.partsUsed ?? []));
     for (const role of new Set(project.instances.map((i) => i.role))) assert.ok(used.has(role), role);
     assert.doesNotMatch(text, /in an S|1 pieces/);
+    const robot = buildPlan(generateFromPrompt("poseable dowel robot"));
+    const buy = robot.bom.map((line) => line.notes ?? "").join(" ");
+    assert.doesNotMatch(buy, /1 pieces/);
+    assert.match(buy, /1 full piece/);
+
     assert.match(text, /2 feet/);
   });
 });

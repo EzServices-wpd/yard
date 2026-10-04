@@ -282,8 +282,8 @@ export function ExportDialog({
               <h2 className="font-display text-xl text-ink">Buy</h2>
               <p className="mt-1 text-xs text-ink-muted">
                 {plan.partsKind === "whole"
-                  ? `${plan.totals.pieces} full pieces · glue · do not cut`
-                  : `${plan.totals.pieces} pieces`}{" "}
+                  ? `${plan.totals.pieces === 1 ? "1 full piece" : `${plan.totals.pieces} full pieces`} · glue · do not cut`
+                  : `${plan.totals.pieces === 1 ? "1 piece" : `${plan.totals.pieces} pieces`}`}{" "}
                 · {usd(plan.totals.estCostUsd)} estimated
               </p>
               <ul className="mt-3 space-y-2 text-sm">

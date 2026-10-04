@@ -2,6 +2,13 @@ import { oddCutName } from "./oddShapes";
 import { inchFrac } from "./inchText";
 import { templateCutName } from "./formTemplates";
 /** Shop-plan plurals — avoid "shelfs" on a cut list. */
+/** "1 piece", "2 pieces", "1 full piece". Never "1 pieces". */
+export function pieceTalk(count: number, full = false): string {
+  const n = Math.max(0, count);
+  const word = n === 1 ? "piece" : "pieces";
+  return full ? `${n} full ${word}` : `${n} ${word}`;
+}
+
 export function shopPlural(label: string, qty: number): string {
   if (qty === 1) return label;
   if (/shelves$/i.test(label)) return label;
