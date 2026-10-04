@@ -131,26 +131,21 @@ export function buildSheetBox(
 
 /**
  * A named sheet is faces of the typed envelope, not battens ripped for a stick recipe.
- * House and castle already have a walled sheet path. Every other class on sheet stock
- * is that shell — a frame, tower, or figure word does not turn the sheet into a wire.
+ * House and castle already have a walled sheet path. A figure stays a figure.
+ * Every other class on sheet stock is that shell — a mapped frame does not rip the sheet into battens.
  */
 export function wantsUnmatchedSheetShell(
   item: CatalogItem,
   kind: StructureKind,
-  hasOwnMembers = false,
-  notes: string[] = [],
+  _hasOwnMembers = false,
+  _notes: string[] = [],
 ): boolean {
   const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
   if (!sheetish) return false;
   if (kind === "house" || kind === "castle") return false;
-  // A width-and-height fallback is an open frame in member stock. A general lying body
-  // is not a catalog form either. Sheet stock is faces of the typed envelope, not battens
-  // ripped from that recipe. A form that already maps members stays that form.
-  if (notes.some((n) => /open frame at the typed width and height/.test(n))) return true;
-  if (notes.some((n) => /No class matched, so this is a body/.test(n))) return true;
-  // A catalog form that already maps members stays that form. The sheet is its stock.
-  // A general stance wire is not a form — that ask stays a shell.
-  if (hasOwnMembers) return false;
+  // A figure is the figure, even on a sheet. Everything else is faces of the typed envelope.
+  // A catalog member map must not rip the sheet into battens.
+  if (kind === "figure" || kind === "eiffel") return false;
   return true;
 }
 
@@ -193,7 +188,7 @@ export function buildTypedSheetShell(
     panels,
     primaryMaterialId: item.id,
     notes: [
-      `${name} in ${item.name} — an open-top shell at the typed size. No class matched, so this is the sheet, not a stick figure.`,
+      `${name} in ${item.name} — faces of the typed envelope, not battens ripped from the sheet.`,
       `Outside ${W}" wide × ${H}" high × ${D}" deep. Walls are the sheet thickness. Tape or glue the corners. Leave the top open.`,
     ],
     assumptions: {

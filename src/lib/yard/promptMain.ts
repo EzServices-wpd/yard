@@ -783,7 +783,7 @@ function generateRaw(
   const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
   const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
   const whole = forceCut ? false : forceWhole ? true : isWholeStock(item);
-  // A sheet is ripped into battens before it tiles a form. The bought id stays the sheet.
+  // A sheet is faces of the typed envelope unless the form is a figure. The bought id stays the sheet.
   const members = memberView(item);
   const formName = stickFurnitureName(prompt, recipe.name);
 
