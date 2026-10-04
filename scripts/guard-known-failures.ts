@@ -37,7 +37,6 @@ export const KNOWN_FAILURES: KnownFailure[] = [
   { guard: "honesty-smoke", message: "golden gate needs a road you can walk", why: "popsicle Golden Gate has no deck (pre-existing) — owner: craft structures (bridges)" },
   { guard: "honesty-smoke", message: "straw bridge needs a road", why: "straw bridge has no deck (pre-existing) — owner: craft structures (bridges)" },
   { guard: "honesty-smoke", message: "golden gate plan lost the forge steps / road", why: "Golden Gate steps lost the road/forge steps (pre-existing) — owner: craft structures (bridges)" },
-  { guard: "honesty-smoke", message: "chair plan never sits", why: "1x4 kitchen chair steps never seat the build (pre-existing) — owner: seating pass" },
 
   // ---- yard-honesty-guards.ts ------------------------------------------------------------
   // None: c7306d3 ("Honesty guards to zero") cleared the last ones on 2026-10-02.

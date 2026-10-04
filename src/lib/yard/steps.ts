@@ -39,7 +39,7 @@ import {
 } from "./weekendFamily";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { glueUpTalk, planSolidBoards } from "./solidStock";
-import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman} from "./family";
+import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman, namesSitChair} from "./family";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
@@ -3171,6 +3171,15 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     }
   }
 
+  if (namesSitChair((project.prompt ?? "").toLowerCase()) && !steps.some((s) => /sit on it/i.test(s.title))) {
+    steps.push({
+      step: n++,
+      title: "Sit on it",
+      description: "Sit on the seat. It should feel solid, not springy. If a rail rocks, re-join that joint before you finish.",
+      tips: "A chair is done when someone can sit on it.",
+      partsUsed: ["*"],
+    });
+  }
   steps.push({
     step: n++,
     title: "Check plumb and square",
