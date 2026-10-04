@@ -159,7 +159,12 @@ export function applyShopJoin(project: YardProject, plan: BuildPlan): BuildPlan 
   if (!join) return plan;
   const lines = fastenerLines(project, join);
   const bom = [
-    ...plan.bom.filter((b) => !/wood screw|pocket-hole|pocket screw|fluted dowel|#20 biscuit/i.test(b.name) || /structural/i.test(b.name)),
+    ...plan.bom.filter((b) => {
+      if (/structural/i.test(b.name)) return true;
+      if (/wood screw|pocket-hole|pocket screw|fluted dowel|#20 biscuit/i.test(b.name)) return false;
+      if (join !== "screw" && /glue/i.test(b.name)) return false;
+      return true;
+    }),
     ...lines,
   ];
   const thick = stockThickness(project);

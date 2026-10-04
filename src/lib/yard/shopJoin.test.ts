@@ -22,4 +22,10 @@ describe("shop join changes Buy and steps", () => {
       assert.doesNotMatch(lines, /#8 x 1-1\/4" wood screws/);
     });
   }
+
+  it("dowels list wood glue once", () => {
+    const next = applyShopJoin({ ...project, shopJoin: "dowel" }, buildPlan({ ...project, shopJoin: "dowel" }));
+    const glue = next.bom.filter((b) => /glue/i.test(b.name));
+    assert.equal(glue.length, 1);
+  });
 });
