@@ -132,6 +132,55 @@ export function buildSheetBox(
 }
 
 /**
+ * A sheet boat is a hull: tapered bow, two sides, a transom and a seat. Not a closed crate.
+ */
+export function buildSheetHull(
+  prompt: string,
+  item: CatalogItem,
+  size: { width: number; height: number; depth: number },
+  name: string,
+): YardProject {
+  const L = Math.max(size.width, 12);
+  const beam = Math.max(size.depth, 8);
+  const H = Math.max(size.height * 0.45, 6);
+  const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.15, 0.08);
+  const panels: Panel[] = [];
+  const add = (type: Panel["type"], label: string, x: number, y: number, z: number, w: number, h: number, d: number) => {
+    panels.push({
+      id: createId(type.slice(0, 2)),
+      type,
+      name: label,
+      position: { x, y, z },
+      size: { width: w, height: h, depth: d },
+      materialId: item.id,
+      cutNote: label.startsWith("Bow") ? "Tapers to the bow. Cut the long edge on a slant." : undefined,
+    });
+  };
+  add("bottom", "Hull bottom", -L / 2, 0, -beam / 2, L, T, beam * 0.72);
+  add("upright", "Bow side", L * 0.15, 0, -beam * 0.28, T, H, L * 0.4);
+  add("upright", "Port side", -L / 2, 0, -beam / 2, T, H, L * 0.7);
+  add("upright", "Starboard side", -L / 2, 0, beam / 2 - T, T, H, L * 0.7);
+  add("back", "Transom", -L / 2, 0, -beam / 2, beam, H, T);
+  add("shelf", "Seat", -L * 0.05, H * 0.45, -beam * 0.3, beam * 0.7, T, L * 0.18);
+  return {
+    id: createId("proj"),
+    name: name || "Boat",
+    prompt,
+    kind: "furniture",
+    overall: { width: L, height: H, depth: beam },
+    instances: [],
+    panels,
+    primaryMaterialId: item.id,
+    joinMethod: (item.preferredJoins?.[0] === "glue" ? "glue" : "screw") as JoinMethod,
+    notes: [
+      `${name || "Boat"} in ${item.name} — a hull with a tapered bow, two sides, a transom and a seat. Not a closed crate.`,
+      `Outside ${inchFrac(L)}" long × ${inchFrac(beam)}" across × ${inchFrac(H)}" to the gunwale.`,
+    ],
+    assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
+  };
+}
+
+/**
  * A named sheet is faces of the typed envelope, not battens ripped for a stick recipe.
  * House and castle already have a walled sheet path. A figure stays a figure.
  * Every other class on sheet stock is that shell — a mapped frame does not rip the sheet into battens.
@@ -177,10 +226,12 @@ export function buildTypedSheetShell(
     });
   };
   const openTop = /\bopen\s+top\b/.test(lower);
-  const opening = /\b(?:windows?|doors?)\b/.test(lower);
   const titled = name === "Frame" || name === "Custom form"
     ? (subjectFromPrompt(prompt).replace(/\b\w/g, (c) => c.toUpperCase()) || name)
     : name;
+  const hull = /\bboats?\b|\bhull\b/.test(lower);
+  if (hull) return buildSheetHull(prompt, item, size, titled);
+  const opening = /\b(?:windows?|doors?)\b/.test(lower);
   add("bottom", "Floor", x0, 0, z0, W, T, D);
   add("upright", "Left wall", x0, 0, z0, T, H, D);
   add("upright", "Right wall", x0 + W - T, 0, z0, T, H, D);
@@ -190,7 +241,16 @@ export function buildTypedSheetShell(
   if (opening) {
     const ow = Math.max(4, Math.min(W * 0.45, W - 2 * T));
     const oh = Math.max(4, Math.min(H * 0.45, H - 2 * T));
-    add("back", /\bdoors?\b/.test(lower) ? "Door opening" : "Window opening", x0 + (W - ow) / 2, H * 0.28, z0 + D - T, ow, oh, T);
+    const front = panels[panels.length - (openTop ? 1 : 2)];
+    if (front) {
+      front.name = "Front wall";
+      front.cutNote = `Cut a ${inchFrac(ow)}" × ${inchFrac(oh)}" opening in this face, ${inchFrac((W - ow) / 2)}" in from the left and ${inchFrac(H * 0.28)}" up. Do not glue a patch over it.`;
+      front.polygon = {
+        plane: "xy",
+        pts: [[0, 0], [W, 0], [W, H], [0, H]],
+        holes: [{ x: (W - ow) / 2 + ow / 2, y: H * 0.28 + oh / 2, r: Math.min(ow, oh) / 2 }],
+      };
+    }
   }
   const join = item.preferredJoins?.[0];
   const glue = join === "glue" || join === "tape" || item.category === "cardboard";

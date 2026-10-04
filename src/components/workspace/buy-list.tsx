@@ -29,7 +29,7 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
         {plan.partsKind === "whole"
           ? `${plan.totals.pieces} full pieces · glue · do not cut`
           : `${plan.totals.pieces} pieces`}{" "}
-        · {usd(plan.totals.estCostUsd)} estimated · cheapest first for the amount you need, any store, same size only
+        · {usd(plan.totals.estCostUsd)} estimated{plan.bom.some((b) => b.estimatedCost == null || b.estimatedCost === 0) ? " · plus unpriced items" : ""} · cheapest first for the amount you need, any store, same size only
       </p>
       <p className="mt-1 text-[11px] text-faint">
         Estimates, not a quote. Best is the cheapest checked listing; rows with search links only show an estimate.

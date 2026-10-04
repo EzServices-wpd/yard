@@ -64,6 +64,10 @@ export function stoolLayout(prompt: string, sizeOverride?: { width: number; heig
   const handrail = /hand\s*-?\s*rails?|grab\s*(?:bar|rail)|\bgrip\b|safety\s+rail/.test(lower);
   const railRise = Math.max(12, typedAlong(lower, "(?:hand\\s*-?\\s*)?rail") ?? 24);
   let H = sizeOverride ? sizeOverride.height - (handrail ? railRise : 0) : typedAlong(lower, "tall|high|to\\s+the\\s+top");
+  if (!H) {
+    const bare = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
+    if (bare && !/\b(?:wide|width|deep|depth|long|length)\b/.test(lower)) H = parseFloat(bare[1]);
+  }
   let n = explicitOne ? 1 : Math.max(1, said);
   if (H && H > 0) {
     if (!explicitCount) n = Math.max(n, Math.ceil(H / 12));

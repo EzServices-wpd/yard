@@ -330,8 +330,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       unit: qty === 1 ? "pc" : "pcs",
       catalogId: namedLumber.id,
       searchQuery: namedLumber.searchQuery ?? label,
-      estimatedCost: (namedLumber.unitCostUsd ?? 4) * qty,
-      notes: `${qty} piece${qty === 1 ? "" : "s"} · Cut to: ${cutTo}"`,
+      estimatedCost: namedLumber.unitCostUsd != null ? namedLumber.unitCostUsd * qty : undefined,
+      notes: `${qty} piece${qty === 1 ? "" : "s"} · Cut to: ${cutTo}"${namedLumber.unitCostUsd == null ? " · No price — plus unpriced items" : ""}`,
     });
   } else if (boardPrimary && sheet) {
     const label = namedStockDisplayName(project.prompt ?? "", sheet);
@@ -355,7 +355,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         unit: framePlan.boards === 1 ? "board" : "boards",
         catalogId: sheet.id,
         searchQuery: sheet.searchQuery ?? label,
-        estimatedCost: (sheet.unitCostUsd ?? 4) * framePlan.boards,
+        estimatedCost: sheet.unitCostUsd != null ? sheet.unitCostUsd * framePlan.boards : undefined,
         notes: `${framePlan.boards} × ${feet} ft ${label} for the ${frameQty} frame part${frameQty === 1 ? "" : "s"}, cut to length — packed from the cut list with 1/8" kerf.`,
       });
       const plyItem = getCatalogItem("plywood-3-4-4x8");
@@ -388,7 +388,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       unit: qty === 1 ? "board" : "boards",
       catalogId: sheet.id,
       searchQuery: sheet.searchQuery ?? label,
-      estimatedCost: (sheet.unitCostUsd ?? 4) * qty,
+      estimatedCost: sheet.unitCostUsd != null ? sheet.unitCostUsd * qty : undefined,
       notes:
         `${qty} × ${feet} ft ${label} for the ${partsQty} carcase part${partsQty === 1 ? "" : "s"}` +
         (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued` : "") +
@@ -1257,7 +1257,9 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
       if (notes !== b.notes) line = { ...line, notes };
     }
     const species = speciesOfBoardLabel(line.name);
-    const each = species && species.id !== "pine" ? speciesBoardUsd(species) : null;
+    const catalog = line.catalogId ? getCatalogItem(line.catalogId) : undefined;
+    const sold = catalog?.unitCostUsd != null && catalog.unitCostUsd > 0;
+    const each = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
     if (each != null && line.quantity > 0) {
       const total = Math.round(each * line.quantity * 100) / 100;
       const query = `${species!.display} 1x4 board 8 ft`;

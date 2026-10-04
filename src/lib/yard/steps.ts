@@ -1474,7 +1474,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Confirm the footprint — do not cut yet",
-        description: `${project.name}. Freestanding sittable bench ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high with open shoe bays under the seat. Mark the rectangle on the floor and check it is square. ${partsOnThisListPhrase(project)}.`,
+        description: `${project.name}. Freestanding sittable bench ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high${/\bshoes?\b/i.test(project.prompt || project.name) ? " with open shoe bays under the seat" : ""}. Mark the rectangle on the floor and check it is square. ${partsOnThisListPhrase(project)}.`,
         tips: "This is a bench people sit on, not a hollow storage box. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
@@ -2211,6 +2211,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           ? `Fitted to a ${opening?.width}" × ${opening?.height}" × ${opening?.depth}" ${opening?.kind}. Measure width, height, and depth in three places. Cut to the smallest width.`
           : wallHang
             ? "This hangs on the wall — do not mark a footprint on the floor. Find two studs."
+            : project.panels.some((p) => /bow|hull/i.test(p.name))
+              ? "Hull on the floor. The bow tapers. Check the two sides match before the seat goes in."
             : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
       } ${partsOnThisListPhrase(project)}.`,
       tips: "If a number on this plan disagrees with the cut list, trust the cut list. Geometry is from the bench, not from the prompt's adjectives.",

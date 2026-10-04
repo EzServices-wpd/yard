@@ -183,7 +183,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const solved = solveModel(generateRaw(...args));
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
   const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
-  const finished = sized.panels.length && !sized.pocket ? { ...sized, notes: notesWithFinishedDepth(sized.notes ?? [], sized.panels, sized.overall.depth) } : sized;
+  const tabled = honorTableTriple(sized, args[0]);
+  const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   return withOutdoorNotes(autoSupportSpans(finished, args[0]), args[0]);
 }
 
@@ -278,6 +279,48 @@ function axisLabeled(prompt: string): boolean {
   return /(?:wide|width)\b/.test(l) && /(?:tall|high|height)\b/.test(l) && /(?:deep|depth)\b/.test(l);
 }
 
+/** Three typed numbers on a table or bench are width × depth × height. */
+function honorTableTriple(project: YardProject, prompt: string): YardProject {
+  const lower = (prompt || "").toLowerCase();
+  if (!/\b(?:tables?|benches|bench)\b/.test(lower)) return project;
+  if (/\bfold/.test(lower)) return project;
+  if (/\b(?:wide|width|deep|depth|tall|high|height|long|length)\b/.test(lower)) return project;
+  const m = lower.match(/(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/);
+  if (!m) return project;
+  const width = parseFloat(m[1]);
+  const depth = parseFloat(m[2]);
+  const height = parseFloat(m[3]);
+  if (!(width > 0 && depth > 0 && height > 0)) return project;
+  if (Math.abs(project.overall.width - width) < 0.6 && Math.abs(project.overall.depth - depth) < 0.6 && Math.abs(project.overall.height - height) < 0.6) {
+    return project;
+  }
+  const sy = project.overall.height > 0 ? height / project.overall.height : 1;
+  const sz = project.overall.depth > 0 ? depth / project.overall.depth : 1;
+  const panels = project.panels.map((p) => ({
+    ...p,
+    position: { x: p.position.x, y: p.position.y * sy, z: p.position.z * sz },
+    size: { width: p.size.width, height: p.size.height * (p.size.height > 1 ? sy : 1), depth: p.size.depth * (p.size.depth > 1 ? sz : 1) },
+  }));
+  const fitted = project.fitted
+    ? { ...project.fitted, unit: { ...project.fitted.unit, width, height, depth }, opening: { ...project.fitted.opening, width, height, depth } }
+    : project.fitted;
+  return {
+    ...project,
+    panels,
+    fitted,
+    overall: { width, height, depth },
+    name: project.name.replace(/\d[^"]*"/, `${width}" × ${height}" × ${depth}"`),
+  };
+}
+function bareFigureHeight(prompt: string): number | null {
+  const l = prompt.toLowerCase();
+  if (/\b(?:wide|width|deep|depth|long|length|tall|high)\b/.test(l)) return null;
+  const m = l.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches)\b/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return n > 0 ? n : null;
+}
+
 function fitWeekendSize(
   project: YardProject,
   prompt: string,
@@ -287,6 +330,11 @@ function fitWeekendSize(
     return project;
   }
   if (!project.instances.length && !project.panels.length) return project;
+  const bare = bareFigureHeight(prompt);
+  if (project.kind === "figure" && bare && Math.abs(project.overall.height - bare) > 0.5) {
+    const k = bare / project.overall.height;
+    return scaleToBox(project, { width: project.overall.width * k, height: bare, depth: project.overall.depth * k });
+  }
   const box = override ?? (axisLabeled(prompt) ? parseSize(prompt.toLowerCase()) : null);
   if (!box || !(box.width > 0) || !(box.height > 0) || !(box.depth > 0)) return project;
   return scaleToBox(project, box);

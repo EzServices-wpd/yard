@@ -95,6 +95,11 @@ function isSpiceRack(text: string) {
   return /spice/.test(lower) && /rack/.test(lower);
 }
 
+function isSpiceCabinet(text: string) {
+  const lower = text.toLowerCase();
+  return /spice/.test(lower) && /cabinet/.test(lower);
+}
+
 function isWineRack(text: string) {
   const lower = text.toLowerCase();
   return /wine/.test(lower) && /rack/.test(lower);
@@ -1167,6 +1172,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 16
                 : isMedicineCabinet(lower)
                   ? 16
+                : isSpiceCabinet(lower)
+                  ? 12
                 : isOverToilet(lower)
                   ? 27
                 : isWineRack(lower)
@@ -1322,8 +1329,18 @@ export function parseBrief(prompt: string): FittedSpec | null {
       depth = trip.h;
     }
 
-    // Bare oval/square triples: typed order is long×wide×tall (plan L×plan W×H), not laundry W×H×D.
-    // "oval coffee table 42×24×18" → W42 × H18 × D24; "square dining 36×36×30" → W=D=36 H=30.
+    // Three typed numbers on a table or bench are W × D × H.
+    // "coffee table 48 x 24 x 18" is 48 wide, 24 deep, 18 tall.
+    if (
+      trip.w &&
+      trip.h &&
+      trip.d &&
+      !/(?:wide|width|deep|depth|tall|high|height|long|length)/.test(lower)
+    ) {
+      width = trip.w;
+      depth = trip.h;
+      height = trip.d;
+    }
     if (
       (isOval || isSquareTop) &&
       trip.w &&
@@ -1529,6 +1546,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 30
                 : isMedicineCabinet(lower)
                   ? 24
+                : isSpiceCabinet(lower)
+                  ? 20
                 : isOverToilet(lower)
                   ? 68
                 : isSpiceRack(lower)
@@ -1599,6 +1618,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 10
                   : isMedicineCabinet(lower)
                     ? 4
+                  : isSpiceCabinet(lower)
+                    ? 4.5
                   : isOverToilet(lower)
                     ? 9
                   : (/coat/.test(lower) || program === "bench") && /\bbench\b/.test(lower)
@@ -1917,6 +1938,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (typeof seatOpeningWd !== "undefined" && seatOpeningWd) {
     width = Number(trip.w);
     depth = Number(trip.h);
+  }
+
+  // Three typed numbers on a table or bench are W × D × H, after every other axis pass.
+  if (
+    (program === "table" || program === "bench") &&
+    trip.w &&
+    trip.h &&
+    trip.d &&
+    !/\bfold/.test(lower) &&
+    !/(?:wide|width|deep|depth|tall|high|height|long|length)/.test(lower) &&
+    !/\bopening\b/.test(lower)
+  ) {
+    width = trip.w;
+    depth = trip.h;
+    height = trip.d;
   }
 
   const unit: FittedUnit = {
