@@ -408,6 +408,52 @@ function smallHousePanels(item: CatalogItem, hole: number, perch: boolean, typed
   };
 }
 
+
+/** Pipe stock is an open frame: posts, a floor ring, an eave ring, a ridge, and an entrance ring. Not stick walls. */
+function smallHousePipe(item: CatalogItem, hole: number, perch: boolean, typed: { width?: number; height?: number; depth?: number }): TemplateBuild {
+  const prim = toPrimitive(item);
+  const W = Math.max(6, typed.width ?? 8);
+  const D = Math.max(6, typed.depth ?? typed.width ?? 8);
+  const H = Math.max(8, typed.height ?? 12);
+  const eave = H * 0.72;
+  const ridge = H;
+  const x0 = -W / 2;
+  const x1 = W / 2;
+  const z0 = -D / 2;
+  const z1 = D / 2;
+  const segs: TSeg[] = [];
+  const Y = v3(0, 1, 0);
+  const Z = v3(0, 0, 1);
+  for (const x of [x0, x1]) for (const z of [z0, z1]) segs.push({ a: v3(x, 0, z), b: v3(x, eave, z), role: "post", face: Y });
+  const ring = (y: number, role: string) => {
+    segs.push({ a: v3(x0, y, z0), b: v3(x1, y, z0), role, face: Z });
+    segs.push({ a: v3(x0, y, z1), b: v3(x1, y, z1), role, face: Z });
+    segs.push({ a: v3(x0, y, z0), b: v3(x0, y, z1), role, face: Y });
+    segs.push({ a: v3(x1, y, z0), b: v3(x1, y, z1), role, face: Y });
+  };
+  ring(prim.width / 2, "floor");
+  ring(eave, "eave");
+  for (const z of [z0, z1]) {
+    segs.push({ a: v3(x0, eave, z), b: v3(0, ridge, z), role: "rafter", face: Z });
+    segs.push({ a: v3(x1, eave, z), b: v3(0, ridge, z), role: "rafter", face: Z });
+  }
+  segs.push({ a: v3(0, ridge, z0), b: v3(0, ridge, z1), role: "ridge", face: Y });
+  const holeY = Math.min(eave - hole, Math.max(hole + 1.5, eave * 0.55));
+  segs.push({ a: v3(-hole / 2, holeY, z1), b: v3(hole / 2, holeY, z1), role: "entrance", face: Z });
+  if (perch) segs.push({ a: v3(0, holeY - 1.25, z1), b: v3(0, holeY - 1.25, z1 + 2.5), role: "perch", face: Z });
+  return {
+    classId: "small-house",
+    subject: "birdhouse",
+    label: "Birdhouse",
+    kind: "house",
+    segs,
+    params: { hole, holeY, eave, ridge, width: W, depth: D, perch: perch ? 1 : 0, floorIn: Math.min(W, D) },
+    notes: [
+      `Birdhouse in ${item.name}: four posts, a floor ring, an eave ring, a ridge and a ${fmt(hole)}" entrance ring. Join with solvent cement. No wood screws.`,
+    ],
+  };
+}
+
 export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }, whole: boolean): TemplateBuild | null {
   const kind = templateStock(item);
   const entry = birdhouseHole(prompt);
@@ -428,6 +474,7 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
     return withSaid(thin);
   }
   if (kind === "panel") return withSaid(smallHousePanels(item, hole, perch, typed));
+  if (item.formFactor === "pipe" || item.formFactor === "tube") return withSaid(smallHousePipe(item, hole, perch, typed));
   // A bottle, a tank, a ball — still the same house, each member one whole piece.
   const stand = getCatalogItem("popsicle-standard");
   if (!stand) return null;
