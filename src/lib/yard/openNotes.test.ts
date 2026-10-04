@@ -56,6 +56,16 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     expect(p.panels.length).toBeLessThan(12);
   });
 
+  it("a general lying body on sheet stock is faces of the typed envelope", () => {
+    const p = generateFromPrompt("cardboard suitcase 18 long 12 tall");
+    expect(p.primaryMaterialId).toMatch(/cardboard/);
+    expect(p.kind).not.toBe("vehicle");
+    expect(p.panels.some((panel) => /wall|floor/i.test(panel.name))).toBe(true);
+    expect(p.notes.join(" ")).not.toMatch(/Ripped into/);
+    expect(p.overall.width).toBeCloseTo(18, 0);
+    expect(p.overall.height).toBeCloseTo(12, 0);
+  });
+
   it("a named sheet with no form of its own stays a shell", () => {
     const p = generateFromPrompt("cardboard mailbox 8 wide 18 tall");
     expect(p.panels.length).toBeGreaterThan(0);

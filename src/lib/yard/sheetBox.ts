@@ -143,9 +143,11 @@ export function wantsUnmatchedSheetShell(
   const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
   if (!sheetish) return false;
   if (kind === "house" || kind === "castle") return false;
-  // A width-and-height fallback is an open frame in member stock. Sheet stock is faces
-  // of that envelope, not battens ripped from the frame recipe.
+  // A width-and-height fallback is an open frame in member stock. A general lying body
+  // is not a catalog form either. Sheet stock is faces of the typed envelope, not battens
+  // ripped from that recipe. A form that already maps members stays that form.
   if (notes.some((n) => /open frame at the typed width and height/.test(n))) return true;
+  if (notes.some((n) => /No class matched, so this is a body/.test(n))) return true;
   // A catalog form that already maps members stays that form. The sheet is its stock.
   // A general stance wire is not a form — that ask stays a shell.
   if (hasOwnMembers) return false;
