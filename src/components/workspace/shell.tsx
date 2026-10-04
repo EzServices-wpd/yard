@@ -598,8 +598,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
                   type="button"
                   onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
                   className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
-                  aria-label={project.pocket ?? project.recastFrom?.pocket ? "Edit the hole (size, shape, notch), how much of it, and the shelves" : "Edit the size"}
-                  title={project.pocket ?? project.recastFrom?.pocket ? "The hole: size, shape, notch, the share, and the shelves" : "Edit wide, tall, and deep"}
+                  aria-label={project.pocket ?? project.recastFrom?.pocket ? "Measure the hole, the piece, and the shelves" : "Measure this build"}
+                  title="Measure"
                 >
                   {(() => {
                     const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;

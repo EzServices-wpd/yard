@@ -548,6 +548,10 @@ export type MeasureDraft = {
   angle?: string;
   /** Low side of a slope. The high side is `height`. */
   lowSide?: string;
+  /** Clearance left on each side of the piece, shop inches. Default 1/8. */
+  clearance?: string;
+  /** Opening shape on the sketch when the build is not a flared pocket. */
+  spaceShape?: "rectangle" | "arched" | "sloped" | "corner";
 };
 
 export type ExportOptions = {
