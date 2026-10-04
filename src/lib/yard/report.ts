@@ -1266,9 +1266,20 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   return extra;
 }
 
+/** The join step quotes the same screw total Buy already summed from the joints. */
+export function stepsAccountForScrews(plan: BuildPlan): BuildPlan {
+  const line = plan.bom.find((item) => /screws from the model's joints/.test(item.notes ?? ""));
+  const sentence = line?.notes;
+  if (!sentence || plan.instructions.some((step) => (step.description ?? "").includes("from the model's joints"))) return plan;
+  const idx = plan.instructions.findIndex((step) => /screw/i.test(step.description ?? ""));
+  if (idx < 0) return plan;
+  const instructions = plan.instructions.map((step, i) => i === idx ? { ...step, description: `${step.description} ${sentence}` } : step);
+  return { ...plan, instructions };
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
   const built = stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))));
-  const plan = { ...built, bom: hardwareFromNotes(project, built.bom) };
+  const plan = stepsAccountForScrews({ ...built, bom: hardwareFromNotes(project, built.bom) });
   const extra = spaceCutStep(project);
   if (!extra) return plan;
   const step = plan.instructions.length + 1;
