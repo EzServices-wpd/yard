@@ -314,7 +314,17 @@ export function stockOffer(query: string): CatalogItem | null {
   if (local) return local;
   const typed = typedStockQuery(query);
   if (typed) return typed;
-  if (libraryOwns(query)) return null;
+  if (libraryOwns(query)) {
+    // A section the seed library does not sell may still be the member. It is offered with no price.
+    const q = query.trim().toLowerCase();
+    const owns = (label: string) =>
+      label === q || label.startsWith(`${q} `) || (label.length >= 4 && (q.startsWith(`${label} `) || q.includes(label)));
+    const owned = searchCatalog(q, 6)
+      .filter((item) => !item.id.startsWith("piece-"))
+      .find((item) => owns(item.name.toLowerCase()) || (item.aliases ?? []).some((alias) => owns(alias.toLowerCase())));
+    if (owned && owned.unitCostUsd == null) return owned;
+    return null;
+  }
   const modeled = modeledProduct(query);
   if (modeled) return modeled;
   if (stockHint(query)) return null;
