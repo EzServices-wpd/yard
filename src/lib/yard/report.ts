@@ -12,6 +12,7 @@ import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
+import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
@@ -79,7 +80,7 @@ function closetCuts(project: YardProject): CutLine[] {
     note?: string,
   ) => {
     let family = partFamily(name, type);
-    const side = name.match(/^(Left|Right)\s+(upright|side|post|apron|stretcher|end)$/i);
+    const side = name.match(/^(Left|Right)\s+(.+)$/i);
     if (side) {
       const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";
       const other = project.panels.find((panel) => panel.name.toLowerCase() === `${twin} ${side[2]}`.toLowerCase());
@@ -87,7 +88,13 @@ function closetCuts(project: YardProject): CutLine[] {
         const ow = Math.round(other.size.width * 8) / 8;
         const oh = Math.round(other.size.height * 8) / 8;
         const od = Math.round(other.size.depth * 8) / 8;
-        if (ow === w && oh === h && od === d) family = partFamily(side[2], type);
+        if (ow === w && oh === h && od === d) {
+          const shaped = oddCutName(name);
+          const role = (shaped && !/^(?:Left|Right)\b/.test(shaped) ? shaped : side[2])
+            .replace(/\s+\d+(?:-\d+)?$/, "")
+            .replace(/^\w/, (c) => c.toUpperCase());
+          family = /^(Upright|Side|Post|Apron|Stretcher|End)$/.test(role) ? partFamily(role, type) : role;
+        }
       }
     }
     let dims = sheetCutDims(w, h, d);
