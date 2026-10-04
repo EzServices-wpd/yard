@@ -40,9 +40,8 @@ describe("finish list", () => {
     assert.ok(bird.instances.some((i) => i.role === "post"));
     assert.equal(bird.panels.length, 0);
     const wholeStool = buildPlan(generateFromPrompt("popsicle stick step stool"));
-    const after = wholeStool.instructions.slice(wholeStool.instructions.findIndex((s) => /Do not cut/.test(s.title)) + 1);
-    assert.ok(after.length > 0);
-    assert.equal(after.some((s) => /^Cut\b/.test(s.title)), false);
+    assert.equal(wholeStool.instructions.some((s) => /^Do not cut\b/.test(s.title)), false);
+    assert.equal(wholeStool.instructions.some((s) => /^Cut\b/.test(s.title)), false);
     assert.equal(detectMaterial("bamboo pole").id, "bamboo-pole-6");
     assert.equal(detectMaterial("thick dowel rack").id, "dowel-1-36");
     assert.equal(detectMaterial("1 1/4 dowel rack").id, "dowel-1-1-4-36");

@@ -1,4 +1,5 @@
 import { spokenJoin } from "./shopJoin";
+import { buildJobFurniture, wantsJobFurniture } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
@@ -796,6 +797,7 @@ function generateRaw(
     return enforceWeekendHonesty(withWireNote(buildFlatProject(prompt, item, flatIntent), item));
   }
 
+  if (wantsJobFurniture(prompt, materialOverride)) return buildJobFurniture(prompt);
   const item = buildStock(prompt, materialOverride);
   // Subject-class shape templates (quadruped…) are deterministic: they beat any LLM form override.
   if (detectShapeClass(prompt) && !weekendMech) {

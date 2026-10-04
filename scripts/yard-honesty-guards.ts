@@ -8398,3 +8398,20 @@ console.log("STRANGER PLAN OK", {
   }
   console.log("PASS every part placed");
 }
+
+{
+  const chair = generateFromPrompt("dining chair 18 seat height");
+  const plan = buildPlan(chair);
+  if (/popsicle|cardboard|lego/i.test(chair.primaryMaterialId)) failHonesty("dining chair stock", { id: chair.primaryMaterialId });
+  const legs = chair.panels.filter((p) => /leg$/i.test(p.name));
+  if (legs.length !== 4) failHonesty("dining chair legs", { n: legs.length });
+  const titles = plan.instructions.map((s) => s.title);
+  const seatAt = titles.findIndex((t) => /seat/i.test(t));
+  const apronAt = titles.findIndex((t) => /apron/i.test(t));
+  const backAt = titles.findIndex((t) => /back/i.test(t));
+  if (seatAt < 0 || apronAt < 0 || seatAt < apronAt) failHonesty("seat after aprons", { titles });
+  if (backAt < seatAt) failHonesty("back after seat", { titles });
+  const stick = buildPlan(generateFromPrompt("popsicle stick chair"));
+  if (stick.instructions.some((s) => /sit on it/i.test(s.title))) failHonesty("display sit", { titles: stick.instructions.map((s) => s.title) });
+  console.log("PASS dining chair is full-size wood");
+}
