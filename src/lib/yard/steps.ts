@@ -903,7 +903,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 2,
-        title: "Stand the legs and set the tread",
+        title: "Stand the legs",
         description: `Assemble the frame so the tread carries a ${
           /\badult\b|adult\s+stands|adult\s+tread/.test((project.prompt ?? "").toLowerCase())
             ? "standing adult"
