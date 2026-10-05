@@ -1,3 +1,4 @@
+import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { spokenJoin } from "./shopJoin";
 import { buildJobFurniture, wantsJobFurniture } from "./jobFurniture";
 import { solveModel } from "./solve";
@@ -855,6 +856,10 @@ function generateRaw(
   const members = memberView(item);
   const formName = stickFurnitureName(prompt, recipe.name);
 
+  // Class anatomy fallback: a pet bed is a low box, a cardboard figure is folded boxes — never a stick lattice.
+  const anatomy = formOverride ? null : classAnatomy(prompt, item, kind);
+  if (anatomy === "pet-bed") return enforceWeekendHonesty(withWireNote(attachFunction(buildPetBed(prompt, item)), item));
+  if (anatomy === "box-figure") return enforceWeekendHonesty(withWireNote(attachFunction(buildBoxFigure(prompt, item, box, recipe.name)), item));
   if (wantsUnmatchedSheetShell(item, kind, recipe.notes.some((n) => /stock mapped onto the form/.test(n)) || recipe.ops.length > 1, recipe.notes)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name)), item));
   }

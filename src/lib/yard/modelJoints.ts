@@ -53,6 +53,21 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       if (g < -tol && !declared && g < -0.8) continue;
       if (noScrew(parts[i], parts[j])) continue;
       const [l1, l2] = others.sort((x, y) => y - x);
+      // Boards laid side by side (or stacked) in one plane, touching along their full length, are not
+      // fastened to each other — each one fastens to what it rests on. Ends and short edges still join.
+      const thinAxis = (b: Box) => {
+        const ext = [0, 1, 2].map((k) => b.max[k] - b.min[k]);
+        return ext.indexOf(Math.min(...ext));
+      };
+      const longest = (b: Box) => Math.max(...[0, 1, 2].map((k) => b.max[k] - b.min[k]));
+      const coplanar =
+        !declared &&
+        thinAxis(A) === thinAxis(B) &&
+        thinAxis(A) !== axis &&
+        Math.abs(A.min[thinAxis(A)] - B.min[thinAxis(A)]) < 0.07 &&
+        Math.abs(A.max[thinAxis(A)] - B.max[thinAxis(A)]) < 0.07 &&
+        l1 >= 0.9 * Math.min(longest(A), longest(B));
+      if (coplanar) continue;
       const thinBack = thinnest(parts[i]) < 0.5 || thinnest(parts[j]) < 0.5;
       let kind: JointKind;
       let screws: number;

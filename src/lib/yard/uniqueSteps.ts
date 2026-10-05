@@ -2,12 +2,13 @@ import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
 import { jobFurnitureSteps } from "./jobFurniture";
 import { placeEveryPart } from "./placeEveryPart";
+import { classAnatomySteps } from "./classAnatomy";
 import type { AssemblyStep, YardProject } from "./types";
 
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
-  const raw = (project.notes ?? []).some((n) => /no craft stock was named/.test(n))
+  const raw = classAnatomySteps(project) ?? ((project.notes ?? []).some((n) => /no craft stock was named/.test(n))
     ? jobFurnitureSteps(project)
-    : project.fitted?.program === "table" ? uniqueTableSteps(project) : uniqueDefault(project);
+    : project.fitted?.program === "table" ? uniqueTableSteps(project) : uniqueDefault(project));
   const display = (project.notes ?? []).some((n) => /display model/i.test(n));
   const steps = raw
     .filter((s) => !/^Do not cut\b/i.test(s.title))

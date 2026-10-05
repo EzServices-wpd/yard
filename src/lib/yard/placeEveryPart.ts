@@ -6,6 +6,7 @@ import { faceScrewInches, stockThickness } from "./shopJoin";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
+import { ANATOMY_NOTE } from "./classAnatomy";
 
 type Part = { key: string; name: string; kind: string };
 
@@ -95,7 +96,8 @@ function plural(word: string, n: number): string {
 
 /** The real support named in plain words: "the floor", "both uprights", "the 4 legs", "the Bottom". */
 function supportTalk(project: YardProject, info: SupportInfo | undefined): string {
-  if (!info || info.how === "floor" || !info.on.length) return "the floor";
+  if (!info || info.how === "floor") return "the floor";
+  if (!info.on.length) return "the parts it meets";
   const names = project.panels.length
     ? info.on.map((id) => project.panels.find((p) => p.id === id)?.name ?? "").filter(Boolean)
     : info.on.map((role) => {
@@ -134,8 +136,12 @@ function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInf
   if (info.how === "hinges") return /hinge/.test(text);
   if (info.how === "front") return /drawer box|drawer/.test(text) && /screw|glue/.test(text);
   if (!/glue|screw|dowel|biscuit|pocket|cement|pin|nail|tape|tab/.test(text)) return false;
+  // The support's family word ("leg front") or its assembly word ("leg", "body", "floor").
   const words = project.panels.length
-    ? info.on.map((id) => familyWord(project.panels.find((p) => p.id === id)?.name ?? ""))
+    ? info.on.flatMap((id) => {
+        const fam = familyWord(project.panels.find((p) => p.id === id)?.name ?? "");
+        return [fam, fam.split(" ")[0]];
+      })
     : info.on.map((r) => r.toLowerCase());
   return words.some((w) => w && (text.includes(w) || text.includes(plural(w, 2))));
 }
@@ -169,7 +175,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   const firstBuild = () => Math.max(0, out.findIndex(isBuild));
   const dependents = (key: string) => parts.filter((p) => supports.get(p.key)?.on.includes(key));
 
-  out = splitByLayer(project, out, parts, supports, fix);
+  // Class-anatomy steps are written in support order (floor, base, body, top) and name each support.
+  const handWritten = (project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE));
+  if (!handWritten) out = splitByLayer(project, out, parts, supports, fix);
   for (const part of parts) {
     const info = supports.get(part.key);
     const at = placed().get(part.key);
@@ -193,7 +201,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       continue;
     }
     const step = out[at];
-    if (namesSupport(project, step, info)) continue;
+    if (handWritten || namesSupport(project, step, info)) continue;
     step.description = `${step.description} ${placeSentence(project, part, info, fix)}`;
   }
 
@@ -260,7 +268,8 @@ function splitByLayer(
   steps.forEach((step, i) => {
     const mine = parts.filter((p) => where.get(p.key) === i);
     const layers = [...new Set(mine.map((p) => lv.get(p.key) ?? 99))].sort((a, b) => a - b);
-    if (mine.length < 6 || layers.length < 2 || !isBuild(step)) {
+    const unnamed = mine.some((p) => !namesSupport(project, step, supports.get(p.key)));
+    if (mine.length < 6 || layers.length < 2 || !isBuild(step) || !unnamed) {
       out.push(step);
       return;
     }

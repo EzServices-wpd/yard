@@ -74,7 +74,11 @@ function list(panels: Panel[]) {
 
 function joinHold(item?: CatalogItem | null) {
   const join = (item?.preferredJoins && item.preferredJoins[0]) || "glue";
-  if (join === "glue") return { join, hold: "Wood glue. Hold 30–60 seconds. Wipe squeeze-out. Overnight before any load." };
+  // The adhesive follows the stock: paper and cardboard take hot glue or craft glue, wood takes wood glue.
+  if (join === "glue" && (item?.category === "cardboard" || /cardboard|chipboard|paper|foam/i.test(item?.id ?? ""))) {
+    return { join, hold: "Hot glue (or craft glue). Hold 15–30 seconds until it grabs." };
+  }
+  if (join === "glue") return { join, hold: "Wood glue. Hold 30–60 seconds. Wipe squeeze-out. Let it cure overnight before it carries weight." };
   if (join === "tape") return { join, hold: "Masking or packing tape. Wrap both faces." };
   if (join === "zip") return { join, hold: "Zip ties or twist ties. Cinch, then trim." };
   if (join === "screw") return { join, hold: "Predrill. #8 screws, plus a drop of glue in the joint if a person will sit or stand on it." };
