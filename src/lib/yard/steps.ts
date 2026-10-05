@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stoolRiseRunTalk, stoolStepCount } from "./climb";
 import { inchFrac } from "./inchText";
@@ -45,7 +46,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { slideInches } from "./stockLook";
-import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel } from "./shopPlural";
+import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
@@ -75,9 +76,7 @@ function list(panels: Panel[]) {
 function joinHold(item?: CatalogItem | null) {
   const join = (item?.preferredJoins && item.preferredJoins[0]) || "glue";
   // The adhesive follows the stock: paper and cardboard take hot glue or craft glue, wood takes wood glue.
-  if (join === "glue" && (item?.category === "cardboard" || /cardboard|chipboard|paper|foam/i.test(item?.id ?? ""))) {
-    return { join, hold: "Hot glue (or craft glue). Hold 15–30 seconds until it grabs." };
-  }
+  if (join === "glue" && usesHotGlue(item)) return { join, hold: HOT_GLUE_HOLD };
   if (join === "glue") return { join, hold: "Wood glue. Hold 30–60 seconds. Wipe squeeze-out. Let it cure overnight before it carries weight." };
   if (join === "tape") return { join, hold: "Masking or packing tape. Wrap both faces." };
   if (join === "zip") return { join, hold: "Zip ties or twist ties. Cinch, then trim." };
@@ -488,7 +487,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
   const item = getCatalogItem(panels[0]?.materialId ?? project.primaryMaterialId);
   const tool = cutHow(item);
-  const of = (t: Panel["type"]) => panels.filter((p) => p.type === t);
+  // Bought hardware drawn in the model (coat hooks) is placed by its own step, never cut or listed with the boards.
+  const of = (t: Panel["type"]) => panels.filter((p) => p.type === t && !isBoughtHardwareName(p.name));
   const names = (list: Panel[]) => list.map((p) => p.name);
   const cutLine = (p: Panel) =>
     `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`;
@@ -821,7 +821,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${keyMail && shelf ? cutLine(shelf) + "." : ""} Label the waste face. ${keyMail ? "Key and mail shelf" : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "") ? "Leash rail" : pegRail ? "Peg rail" : coatHookBoard ? "Coat hook board" : "Tool rail"} spanning ${Math.round(project.opening?.width ?? W)}" — clear wall mount. PDF states mount height.`
             : `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${!shoe && shelf ? cutLine(shelf) + "." : ""} Label the waste face.`,
         tips: portal ? "Mount height from the opening — keep clear swing." : toolRail || keyMail ? "PDF states mount height. Clear wall mount." : tool.tip,
-        partsUsed: names(panels),
+        partsUsed: names(panels.filter((p) => !isBoughtHardwareName(p.name))),
       },
       {
         step: 2,
@@ -832,7 +832,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? `${rail ? cutLine(rail) : hookRailLabel || "Peg rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`
           : `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
         tips: shoe ? "Portal envelope is the opening — peg length is the typed depth; keep clear swing." : portal && !shelf ? "Portal envelope is the opening — keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
-        partsUsed: names(panels),
+        partsUsed: names(panels.filter((p) => !isBoughtHardwareName(p.name))),
       },
       {
         step: 3,

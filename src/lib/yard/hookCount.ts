@@ -16,8 +16,9 @@ export function typedHookCount(text: string, pegs = false): number | null {
 
 export function hookCount(opts: { prompt?: string; name?: string; railWidth: number; pegs?: boolean }): number {
   return (
-    typedHookCount(opts.prompt ?? "", opts.pegs) ??
-    typedHookCount(opts.name ?? "", opts.pegs) ??
+    // "4 pegs" and "4 hooks" both name what hangs the coats.
+    typedHookCount(opts.prompt ?? "", true) ??
+    typedHookCount(opts.name ?? "", true) ??
     Math.max(3, Math.min(8, Math.round(opts.railWidth / 6)))
   );
 }

@@ -4,6 +4,7 @@ import { stepsDriveJointScrews } from "./stepJointScrews";
 import { getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
+import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
@@ -15,7 +16,7 @@ import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
@@ -280,7 +281,7 @@ function craftSheetCuts(project: YardProject, cuts: CutLine[]) {
       (oversize.length
         ? `. ${oversize.length} part${oversize.length === 1 ? " is" : "s are"} bigger than one sheet — butt-join sheets edge to edge with a glued strip behind the seam`
         : "") +
-      ". Glue it — craft glue or hot glue holds sheet stock best.",
+      (usesHotGlue(item) ? ". Hot glue holds it (sticks are on this list)." : ". Glue it — craft glue or hot glue holds sheet stock best."),
   };
   return { mine, line };
 }
@@ -291,7 +292,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   if (craft && !cuts.length) {
     return [
       craft.line,
-      { name: "Multi-purpose craft glue", quantity: 1, unit: "bottle", catalogId: "glue", searchQuery: "multi-purpose craft glue", estimatedCost: 4.99 },
+      usesHotGlue(getCatalogItem(project.primaryMaterialId))
+        ? hotGlueBom()
+        : { name: "Multi-purpose craft glue", quantity: 1, unit: "bottle", catalogId: "glue", searchQuery: "multi-purpose craft glue", estimatedCost: 4.99 },
       ...templateAccessories(project),
     ];
   }
@@ -857,7 +860,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       });
     }
   }
-  const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type) && !isFrameGlazing(p.name, p.type));
+  const glassMirrors = project.panels.filter((p) => isBuyMirrorPanel(p.name, p.type) && !isFrameGlazing(p.name, p.type) && !isBoughtHardwareName(p.name));
   if (glassMirrors.length && !medicine) {
     const m = glassMirrors[0];
     const dims = sheetCutDims(m.size.width, m.size.height, m.size.depth);

@@ -2,6 +2,7 @@
  * Stock-specific binders. PVC gets slip fittings, sticks get glue,
  * straws get tape — never one blob for every material.
  */
+import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { screwTalk, stickJoints } from "./modelJoints";
 import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
@@ -143,6 +144,7 @@ export function binderBom(
 ): BomLine[] {
   const kind = binderKind(item, override);
   const joints = Math.max(1, Math.round(instances.length * 0.6));
+  if (kind === "glue" && usesHotGlue(item)) return [{ ...hotGlueBom(), notes: `${hotGlueBom().notes} About ${joints} joints.` }];
   if (kind === "glue") {
     return [
       {

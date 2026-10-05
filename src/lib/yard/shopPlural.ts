@@ -1,5 +1,7 @@
 import { oddCutName } from "./oddShapes";
 import { inchFrac } from "./inchText";
+import { isBoughtHardwareName } from "./boughtHardware";
+export { isBoughtHardwareName };
 import { templateCutName } from "./formTemplates";
 /** Shop-plan plurals — avoid "shelfs" on a cut list. */
 /** "1 piece", "2 pieces", "1 full piece". Never "1 pieces". */
@@ -34,9 +36,9 @@ export function isBoundingDrawerPanel(name: string, type?: string): boolean {
   return type === "drawer" && !/drawer\s*front/i.test(name);
 }
 
-/** Glass vanity/door mirror — buy, do not cut from the plywood nest. */
+/** Glass vanity/door mirror (and drawn hardware) — bought, kept off the plywood nest. */
 export function isBuyMirrorPanel(name: string, type?: string): boolean {
-  return type === "mirror" || /^vanity mirror$/i.test(name) || isFrameGlazing(name, type);
+  return type === "mirror" || /^vanity mirror$/i.test(name) || isFrameGlazing(name, type) || isBoughtHardwareName(name);
 }
 
 /** Picture-frame glass / acrylic: bought (cut to the photo size), never cut from the frame stock. */

@@ -142,7 +142,8 @@ function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInf
   const words = project.panels.length
     ? info.on.flatMap((id) => {
         const fam = familyWord(project.panels.find((p) => p.id === id)?.name ?? "");
-        return [fam, fam.split(" ")[0]];
+        const words = fam.split(" ");
+        return [fam, words[0], words[words.length - 1]];
       })
     : info.on.map((r) => r.toLowerCase());
   return words.some((w) => w && (text.includes(w) || text.includes(plural(w, 2))));

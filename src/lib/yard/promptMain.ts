@@ -1,5 +1,6 @@
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
+import { hooksShowInModel } from "./boughtHardware";
 import { spokenJoin } from "./shopJoin";
 import { buildJobFurniture, wantsJobFurniture } from "./jobFurniture";
 import { solveModel } from "./solve";
@@ -191,7 +192,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
-  return withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]));
+  return hooksShowInModel(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])));
 }
 
 /** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
@@ -861,6 +862,15 @@ function generateRaw(
   const anatomy = formOverride ? null : classAnatomy(prompt, item, kind);
   if (anatomy === "pet-bed") return enforceWeekendHonesty(withWireNote(attachFunction(buildPetBed(prompt, item)), item));
   if (anatomy === "box-figure") return enforceWeekendHonesty(withWireNote(attachFunction(buildBoxFigure(prompt, item, box, recipe.name)), item));
+  // An upright figure (robot, person) with no stock typed and only the generic mapped form: the class picks
+  // folded cardboard boxes, the easy honest default, and the plan says how to change it.
+  const noStockTyped = !materialOverride && isWireStock(detectMaterial(prompt)) && !/\bwire\b/i.test(prompt);
+  const cardboard = getCatalogItem("cardboard-corrugated-sheet");
+  if (!formOverride && !anatomy && noStockTyped && cardboard && kind === "figure" && /^(?:Robot|Figure)$/.test(recipe.name) && recipe.notes.some((n) => /stock mapped onto the form/.test(n))) {
+    const built = buildBoxFigure(prompt, cardboard, box, recipe.name);
+    const note = "No material typed, so this builds from cardboard boxes, the easy default. Type a material (plywood, popsicle sticks) to change it.";
+    return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
+  }
   if (wantsUnmatchedSheetShell(item, kind, recipe.notes.some((n) => /stock mapped onto the form/.test(n)) || recipe.ops.length > 1, recipe.notes)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name)), item));
   }

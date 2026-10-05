@@ -172,9 +172,9 @@ export function classAnatomySteps(project: YardProject): AssemblyStep[] | null {
     ];
   }
   if (/box figure/.test(note)) {
-    const glue = "hot glue (or the craft glue on the Buy list) on the tab, hold 15–30 seconds until it grabs";
+    const glue = "hot glue on the tab from a low-temp glue gun, hold 15–30 seconds until it grabs";
     return [
-      { step: 1, title: "Read the figure before you cut", description: `${project.name}. Six boxes: two leg tubes, a body box, a head box and two arm tubes. Every face is on the cut list.`, partsUsed: ["*"] },
+      { step: 1, title: "Read the figure before you cut", description: `${project.name}. Six boxes: two leg tubes, a body box, a head box and two arm tubes. Every face is on the cut list.${(project.notes ?? []).filter((n) => /^No material typed/.test(n)).map((n) => ` ${n}`).join("")}`, partsUsed: ["*"] },
       { step: 2, title: "Cut and score every face", description: "Box cutter on a mat, steel ruler as the guide. Leave a 1\" glue tab on one edge of each face. Score fold lines with a dull edge so they bend clean.", partsUsed: ["*"] },
       { step: 3, title: "Fold the two leg tubes and stand them on the floor", description: `Fold each leg's four faces into a tube, ${glue}. Stand both tubes on the floor, a hand's width apart.`, partsUsed: names(/^Leg tube/) },
       { step: 4, title: "Build the body box and set it on the legs", description: `Fold the body's four sides, then glue in the bottom and the top, ${glue}. Set the body on the leg tubes and hot-glue it down to both.`, partsUsed: names(/^Body/) },

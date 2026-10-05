@@ -9,6 +9,7 @@
  * Sticks: members meet at welded ends. Every member past the first at a node is one joint, 2 screws
  * on lumber and boards (one screw lets the joint spin), 1 on thin stock.
  */
+import { isBoughtHardwareName } from "./boughtHardware";
 import { panelWorldCorners } from "./geometry";
 import type { Panel, YardInstance } from "./types";
 
@@ -33,7 +34,7 @@ function thinnest(p: Panel) {
 
 /** Joints between panels. `noScrew(a, b)` marks pairs held some other way (shelf pins). */
 export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => boolean = () => false): ModelJoint[] {
-  const parts = panels.filter((p) => !HARDWARE_TYPES.has(p.type) && !/drawer front|false front/i.test(p.name) && thinnest(p) > 0.1);
+  const parts = panels.filter((p) => !HARDWARE_TYPES.has(p.type) && !isBoughtHardwareName(p.name) && !/drawer front|false front/i.test(p.name) && thinnest(p) > 0.1);
   const boxes = parts.map(boxOf);
   const out: ModelJoint[] = [];
   const tol = 0.07;
