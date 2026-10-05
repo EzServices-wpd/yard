@@ -942,6 +942,36 @@ export function toProject(
 const OBJECT_WORD =
   /\b(eiffel|pyramid|taj|giraffe|robot|castle|arch|bridge|chair|desk|vanity|closet|ladder|table|birdhouse|window|stool|bench|tower)\b/;
 
+const THEN_SUFFIX = /\. Then:[\s\S]*$/;
+
+function samePromptText(a: string, b: string): boolean {
+  const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.\s]+$/, "");
+  return norm(a) === norm(b);
+}
+
+/**
+ * A typed prompt that is empty or repeats what is already on the bench (with or without its
+ * ". Then: …" refinement, or by the bench's own name when the prompt was remapped to a primitive
+ * like "table 48 wide …") is a rebuild, not a refinement — it must never grow ". Then:".
+ */
+export function isRepeatPrompt(prompt: string, currentPrompt: string, currentName?: string): boolean {
+  if (!prompt.trim()) return true;
+  const base = currentPrompt.replace(THEN_SUFFIX, "");
+  return (
+    samePromptText(prompt, base) ||
+    samePromptText(prompt, currentPrompt) ||
+    (!!currentName?.trim() && samePromptText(prompt, currentName))
+  );
+}
+
+/** The prompt a refinement builds from: base + ". Then: " + the new words, unless it is a repeat. */
+export function refinedPrompt(currentPrompt: string, prompt: string): string {
+  const base = currentPrompt.replace(THEN_SUFFIX, "");
+  if (!prompt.trim()) return currentPrompt;
+  if (isRepeatPrompt(prompt, currentPrompt)) return base.trim() ? base : prompt;
+  return `${base}. Then: ${prompt}`;
+}
+
 export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolean {
   const p = prompt.trim();
   if (!currentPrompt.trim() || p.length > 160) return false;

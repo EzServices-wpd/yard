@@ -2,6 +2,7 @@ import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
 import { stripTypedSizes } from "./inchText";
 import { figureStrokes } from "./figure";
+import { stripEntityIds } from "./wiki";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 export type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 import {
@@ -394,14 +395,19 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
   };
 }
 
-export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
+/**
+ * `titleFrom` is the maker's own words when `prompt` carries looked-up context (an encyclopedia
+ * summary) for classification only — the title and notes read from what was typed, not the lookup.
+ */
+export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: string): FormRecipe {
+  const typedTitle = () => subjectTitleOf(titleFrom?.trim() ? titleFrom : prompt);
   const weekend = detectWeekendFamily(prompt);
   if (weekend) return recipeFromWeekend(weekend, prompt, size);
   const hit = classifyAnatomy(prompt);
   // A general stance wire is not a form. An unmatched noun is a body along the typed length.
   if (hit.anatomy === "figure" && hit.kind === "vehicle" && !hit.named) {
     const L = Math.max(size.width, size.height, size.depth, 6);
-    const title = subjectTitle(prompt);
+    const title = typedTitle();
     return {
       name: title,
       kind: "vehicle",
@@ -429,10 +435,10 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
       width: size.width,
     });
     return {
-      name: hit.named || subjectTitle(prompt),
+      name: hit.named || typedTitle(),
       kind: hit.kind,
       notes: [
-        `${hit.named || subjectTitle(prompt)} · ${hit.stance ?? "figure"} armature.`,
+        `${hit.named || typedTitle()} · ${hit.stance ?? "figure"} armature.`,
         "None of the shared parts blocks (neck, wheels, tube, perched body, figure, towers) fits this subject yet, so it uses the general stance wire — the closest honest build. Grok can replace the wire when the key is set.",
       ],
       ops: [],
@@ -441,7 +447,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
   }
   if (hit.anatomy === "shell") {
     return {
-      name: hit.named || subjectTitle(prompt),
+      name: hit.named || typedTitle(),
       kind: hit.kind,
       historic: !!hit.named,
       notes: [`${hit.named || "Dome"} · continuous shell, meridians + belts.`],
@@ -451,17 +457,17 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
   if (hit.anatomy === "loft") {
     if (!hit.named) {
       return {
-        name: hit.named || subjectTitle(prompt),
+        name: hit.named || typedTitle(),
         kind: "lattice",
         notes: [
-          `${hit.named || subjectTitle(prompt)} · lattice densified at the named stock.`,
+          `${hit.named || typedTitle()} · lattice densified at the named stock.`,
           "Four chords, Warren faces, hoops at the stock's bay. Not a hollow taper.",
         ],
         ops: [],
       };
     }
     return {
-      name: hit.named || subjectTitle(prompt),
+      name: hit.named || typedTitle(),
       kind: hit.kind,
       notes: [`${hit.named || "Tower"} · continuous loft.`],
       ops: [taper(0, size.height, size.width * 0.35, size.width * 0.12, 4, "leg")],
@@ -471,11 +477,11 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
     const opening = hit.kind === "frame" && !hit.named;
     const sized = opening ? openingSize(prompt, size) : size;
     return {
-      name: hit.named || subjectTitle(prompt),
+      name: hit.named || typedTitle(),
       kind: hit.kind,
       notes: opening
         ? [
-            `${subjectTitle(prompt)} · open frame at the typed width and height.`,
+            `${typedTitle()} · open frame at the typed width and height.`,
             "Four posts and a top rail. Untyped depth is a shallow return, not a mast base.",
           ]
         : ["Span · deck + posts, one frame."],
@@ -489,7 +495,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3): FormRecipe {
     };
   }
   return {
-    name: hit.named || subjectTitle(prompt),
+    name: hit.named || typedTitle(),
     kind: hit.kind,
     notes: [
       "No published wire for this name — built from its anatomy class.",
@@ -509,8 +515,8 @@ function openingSize(prompt: string, size: Size3): Size3 {
   return { ...size, depth };
 }
 
-function subjectTitle(prompt: string): string {
-  const s = subjectFromPrompt(prompt);
+function subjectTitleOf(prompt: string): string {
+  const s = subjectFromPrompt(stripEntityIds(prompt));
   if (!s) return "Custom form";
   return s.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 48);
 }

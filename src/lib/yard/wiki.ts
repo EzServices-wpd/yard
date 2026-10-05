@@ -9,6 +9,18 @@ export type RealMeasures = {
   summary: string;
 };
 
+/**
+ * Wikidata entity ids (Q135209751) are internal lookup keys, never words for the maker.
+ * Strips "(Q123)", "[Q123]", "(wd:Q123)" and "wikidata Q123" from any text bound for a title or note.
+ */
+export function stripEntityIds(text: string): string {
+  return text
+    .replace(/\s*[([]\s*(?:wd:)?Q\d+\s*[)\]]/g, "")
+    .replace(/\bwikidata(?:\s+(?:entity|item|id))?:?\s*Q\d+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function meters(claim: { mainsnak?: { datavalue?: { value?: { amount?: string; unit?: string } } } } | undefined): number | undefined {
   const v = claim?.mainsnak?.datavalue?.value;
   if (!v?.amount) return undefined;
@@ -33,7 +45,7 @@ export async function lookupRealMeasures(subject: string): Promise<RealMeasures 
     });
     if (!sres.ok) return null;
     const sjson = (await sres.json()) as { search?: { id: string; label: string; description?: string }[] };
-    const skip = /album|song|film|band|musician|single|novel|episode|television|company|surname|video game|constellation|painting/i;
+    const skip = /album|song|film|band|musician|single|novel|episode|television|company|surname|video game|constellation|painting|podcast|radio|website|web series|magazine|newspaper|record label/i;
     const prefer = /tower|building|mausoleum|monument|animal|species|mammal|statue|bridge|pyramid|temple|church|mosque|castle|lighthouse|skyscraper|structure/i;
     const hits = sjson.search ?? [];
     const hit =
@@ -60,16 +72,18 @@ export async function lookupRealMeasures(subject: string): Promise<RealMeasures 
     const heightM = meters(claims.P2048?.[0]);
     const lengthM = meters(claims.P2043?.[0]);
     const widthM = meters(claims.P2049?.[0]);
+    // hit.id stays on the result for internal use; the words the maker sees carry the English label only.
+    const label = stripEntityIds(ent?.labels?.en?.value ?? hit.label);
     const parts = [
-      `${ent?.labels?.en?.value ?? hit.label} (${hit.id})`,
+      label,
       heightM ? `height ${heightM.toFixed(2)} m` : null,
       lengthM ? `length ${lengthM.toFixed(2)} m` : null,
       widthM ? `width ${widthM.toFixed(2)} m` : null,
-      hit.description ?? null,
+      hit.description ? stripEntityIds(hit.description) : null,
     ].filter(Boolean);
     return {
       id: hit.id,
-      label: ent?.labels?.en?.value ?? hit.label,
+      label,
       heightM,
       lengthM,
       widthM,
@@ -93,7 +107,7 @@ export async function lookupWikipediaSummary(subject: string): Promise<string | 
     const json = (await res.json()) as { extract?: string; title?: string; description?: string };
     const extract = json.extract?.trim();
     if (!extract) return null;
-    return `${json.title ?? q}: ${extract.slice(0, 500)}`;
+    return stripEntityIds(`${json.title ?? q}: ${extract.slice(0, 500)}`);
   } catch {
     return null;
   }
@@ -101,6 +115,6 @@ export async function lookupWikipediaSummary(subject: string): Promise<string | 
 
 export async function lookupRealForm(subject: string): Promise<{ summary: string; measures: RealMeasures | null }> {
   const [measures, wiki] = await Promise.all([lookupRealMeasures(subject), lookupWikipediaSummary(subject)]);
-  const summary = [measures?.summary, wiki].filter(Boolean).join(" — ");
+  const summary = stripEntityIds([measures?.summary, wiki].filter(Boolean).join(" — "));
   return { summary: summary || subject, measures };
 }

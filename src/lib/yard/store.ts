@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createId } from "@/lib/utils";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, PocketNotch, PocketSpec, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
-import { applyFollowOnSize, followOnNamesStock, looksLikeFollowOn, materialUnlessNamed } from "./promptHelpers";
+import { applyFollowOnSize, followOnNamesStock, isRepeatPrompt, looksLikeFollowOn, materialUnlessNamed, refinedPrompt } from "./promptHelpers";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
 import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
@@ -280,8 +280,10 @@ export const useYard = create<YardState>((set, get) => ({
     get().beginBuild();
     const scale = opts?.scale ?? get().buildScale;
     const current = get().project;
-    let used = prompt;
-    const follow = !opts?.fresh && current.prompt.trim() && looksLikeFollowOn(prompt, current.prompt);
+    // Re-running the prompt already on the bench (or an empty box) rebuilds it; only different words refine.
+    const repeat = isRepeatPrompt(prompt, current.prompt, current.name);
+    let used = prompt.trim() ? prompt : current.prompt;
+    const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
     let mode: "auto" | "cut" | "whole" = get().cutMode;
     if (opts?.cutStock === true) mode = "cut";
     else if (opts?.cutStock === false) mode = "whole";
@@ -312,7 +314,7 @@ export const useYard = create<YardState>((set, get) => ({
       }
     }
     if (follow) {
-      used = `${current.prompt.replace(/\. Then:[\s\S]*$/, "")}. Then: ${prompt}`;
+      used = refinedPrompt(current.prompt, prompt);
       genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
       if (!materialId && !followOnNamesStock(prompt)) materialId = current.primaryMaterialId;
       if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) {

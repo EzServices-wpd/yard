@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { FORGE_CATALOG } from "@/lib/yard/catalog";
 import { isFormOp, isFormStroke, subjectFromPrompt, type FormOp, type FormRecipe, type FormStroke } from "@/lib/yard/form";
 import { parseModelJson } from "@/lib/yard/parseJson";
-import { lookupRealForm } from "@/lib/yard/wiki";
+import { lookupRealForm, stripEntityIds } from "@/lib/yard/wiki";
 import type { StructureKind } from "@/lib/yard/types";
 
 const KINDS: StructureKind[] = [
@@ -124,10 +124,10 @@ export const interpretPrompt = createServerFn({ method: "POST" })
       const form: FormRecipe | null =
         strokes.length >= 2 || ops.length > 0
           ? {
-              name: parsed.form?.name || subject,
+              name: stripEntityIds(parsed.form?.name || "") || subject,
               kind: structure ?? "custom",
               historic: !!parsed.form?.historic,
-              notes: parsed.notes ? [parsed.notes] : [],
+              notes: parsed.notes ? [stripEntityIds(parsed.notes)] : [],
               source: parsed.form?.source,
               strokes,
               ops,
@@ -139,7 +139,7 @@ export const interpretPrompt = createServerFn({ method: "POST" })
         materialId,
         heightIn: parsed.heightIn ?? heightIn,
         widthIn: parsed.widthIn ?? widthIn,
-        notes: parsed.notes ?? null,
+        notes: parsed.notes ? stripEntityIds(parsed.notes) : null,
         real: looked.summary || null,
         form,
       };

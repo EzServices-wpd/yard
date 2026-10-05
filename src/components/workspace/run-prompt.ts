@@ -385,7 +385,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       !wantsMediaTipHold(prompt) &&
       !detectWeekendMech(prompt)
     ) {
-      const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall);
+      // The lookup steers the anatomy class; the title stays the maker's typed words.
+      const form = recipeFromAnatomy(`${prompt} ${hint.summary}`, next.overall, prompt);
       generate(prompt, namedStock, form);
       makePlan();
       const current = useYard.getState().project;
