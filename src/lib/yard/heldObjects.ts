@@ -202,6 +202,7 @@ const ROWS: Row[] = [
   },
   { re: /\blitter\s*box(?:es)?\b/, make: () => ({ label: "large litter box", width: 19, depth: 15, height: 11, pounds: 25, water: false, standHeight: 6 }) },
   { re: /\b(?:water\s+jugs?|water\s+bottles?\s+5\s*gal|5\s*gal(?:lon)?\s+(?:water|jug))\b/, make: () => ({ label: "5 gallon water jug", width: 11, depth: 11, height: 19, pounds: 42, water: true, standHeight: 24 }) },
+  { re: /\bbathroom\s+(?:trash|garbage|waste)\s*(?:cans?|bins?|baskets?)?\b/, make: () => ({ label: "bathroom trash can", width: 10, depth: 10, height: 12, pounds: 3, water: false, standHeight: 4 }) },
   { re: /\b(?:trash|garbage|recycling)\s+(?:cans?|bins?)\b/, make: () => ({ label: "13 gallon kitchen bin", width: 16, depth: 12, height: 26, pounds: 15, water: false, standHeight: 4 }) },
   {
     re: /\b(?:plants?|pots?|planters?|ferns?|succulents?|monstera)\b/,
@@ -230,4 +231,23 @@ export function heldObjectFor(phrase: string): HeldObject | null {
 
 function fmt(n: number): string {
   return inchFrac(n);
+}
+
+/** A typed feature bay: "a pocket for the trash can", "a cubby to hold the laundry basket". */
+export type FeatureBay = { word: string; object: HeldObject };
+
+const BAY = /\b(pocket|bay|cubby|slot|spot|space|nook|opening|cutout)\s+(?:for|to\s+hold|that\s+holds)\s+(?:the\s+|a\s+|an\s+|my\s+|our\s+)?([a-z][a-z -]{2,40}?)(?=\s*(?:[,.;]|$|\bwith\b|\band\b|\bthat\b))/;
+
+export function featureBay(prompt: string): FeatureBay | null {
+  const lower = (prompt || "").toLowerCase();
+  const m = lower.match(BAY);
+  if (!m) return null;
+  const room = /bathroom|vanity|powder room/.test(lower) && /trash|garbage|waste/.test(m[2]) ? "bathroom " : "";
+  const object = heldObjectFor(`${room}${m[2]}`);
+  return object ? { word: m[1], object } : null;
+}
+
+/** The prompt with feature-bay phrases taken out, so "pocket for the trash can" never reads as a wall pocket. */
+export function withoutFeatureBay(prompt: string): string {
+  return (prompt || "").replace(new RegExp(BAY.source, "gi"), " ").replace(/\s+/g, " ").trim();
 }

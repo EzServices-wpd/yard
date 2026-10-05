@@ -4,6 +4,7 @@
  * program (vanity / closet / desk / …) third. Trapezoid walls if they gave them.
  */
 
+import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
@@ -1743,6 +1744,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Drawers+doors vanity also skips knee unless knee/sit/chair/open is typed.
   const vanityDoorsSaid =
     program === "vanity" && /door/.test(lower) && !isDoorPortal(lower);
+  // A typed feature bay ("pocket for the trash can") sizes the open bay to the object it holds.
+  const bayObject = featureBay(prompt)?.object ?? null;
   const kneeW = isStandingShopTop(lower)
     ? /knee|sit|chair/.test(lower)
       ? pick(
@@ -1757,9 +1760,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
           /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
           pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
         )
-      : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
-        ? Math.round(Math.min(24, Math.max(18, width * 0.4)) * 16) / 16
-        : undefined;
+      : bayObject && (program === "vanity" || program === "desk")
+        ? Math.max(bayObject.width + 2, 8.5)
+        : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
+          ? Math.round(Math.min(24, Math.max(18, width * 0.4)) * 16) / 16
+          : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
   const upperStart =
     /upper/.test(lower) && !isKitchenUpper(lower) && !/upper\s+cabinet/.test(lower)

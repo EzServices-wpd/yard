@@ -4,6 +4,7 @@
  * back-wall centerline, inside an angled alcove. Vanity + drawers + uppers.
  */
 
+import { withoutFeatureBay } from "./heldObjects";
 import { createId } from "@/lib/utils";
 import type { Panel, PocketNotch, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
 import { plySheetCatalogId } from "./nesting";
@@ -35,7 +36,8 @@ function pick(text: string, re: RegExp, fallback: number) {
 }
 
 export function looksLikePocket(prompt: string) {
-  const lower = prompt.toLowerCase();
+  // "a pocket for the trash can" is a feature bay inside the build, not a wonky wall pocket.
+  const lower = withoutFeatureBay(prompt).toLowerCase();
   // Wonky geometry only — "alcove" alone is a rectangular fitted unit.
   const wonky =
     /pocket|trapezoid|centerline|angled|wonky/.test(lower) ||

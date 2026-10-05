@@ -1,3 +1,4 @@
+import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews } from "./stepJointScrews";
 import { getCatalogItem } from "./catalog";
@@ -1303,8 +1304,40 @@ export function stepsAccountForScrews(plan: BuildPlan): BuildPlan {
   return { ...plan, instructions };
 }
 
+/**
+ * A typed feature bay ("a pocket for the trash can") is the open bay of the model, sized to the object.
+ * The plan calls it by its use and says what fits, instead of calling it knee space.
+ */
+function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
+  const bay = featureBay(project.prompt ?? "");
+  const knee = project.fitted?.unit?.kneeW;
+  if (!bay || !knee) return plan;
+  const o = bay.object;
+  const pocket = `${o.label} ${bay.word}`;
+  const fix = (t?: string) =>
+    t
+      ?.replace(/\bknee clear\b/gi, `${pocket} clear`)
+      .replace(/\bknee clear stays open\b/gi, `${pocket} stays open`)
+      .replace(/\bKnee dividers?\b/g, (m) => m.replace("Knee", "Pocket"))
+      .replace(/\bknee dividers?\b/g, (m) => m.replace("knee", "pocket"))
+      .replace(/that is the knee\b/gi, `that is the ${pocket}`)
+      .replace(/\bthe knee\b/gi, `the ${pocket}`)
+      .replace(/\bknee space\b/gi, pocket);
+  const fits = `The open ${inchFrac(knee)}" bay between the drawer banks is the ${pocket}, open to the floor. It fits a ${o.label} about ${inchFrac(o.width)}" wide × ${inchFrac(o.depth)}" deep × ${inchFrac(o.height)}" tall with room to lift it out.`;
+  return {
+    ...plan,
+    cutList: plan.cutList.map((c) => ({ ...c, name: fix(c.name) ?? c.name })),
+    instructions: plan.instructions.map((st, i) => ({
+      ...st,
+      title: fix(st.title) ?? st.title,
+      description: `${fix(st.description) ?? st.description}${i === 0 ? ` ${fits}` : ""}`,
+      tips: fix(st.tips),
+    })),
+  };
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
-  const built = stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))));
+  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
   const plan = stepsAccountForScrews(stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }));
   const extra = spaceCutStep(project);
   if (!extra) return plan;
