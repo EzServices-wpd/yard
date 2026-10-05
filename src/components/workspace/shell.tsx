@@ -17,6 +17,7 @@ import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { BenchTools } from "@/components/workspace/bench-tools";
 import { hydrateYard, useYard } from "@/lib/yard/store";
+import { decodeShare, loadSaved } from "@/lib/yard/shareBuild";
 import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -86,13 +87,19 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
   }, [orbited]);
 
   useEffect(() => {
-    const fromUrl =
-      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") : null;
-    const prompt = (initialPrompt || fromUrl || "").trim();
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const shared = params?.get("y") ? decodeShare(params.get("y")!) : null;
+    const fromUrl = params?.get("q");
+    const prompt = (shared?.prompt || initialPrompt || fromUrl || "").trim();
     if (prompt) {
       void (async () => {
         try {
           await runYardPrompt(prompt, { fresh: true });
+          if (shared) {
+            useYard.getState().setMeasure(shared.measure);
+            if (shared.stockId) useYard.getState().commit({ ...useYard.getState().project, primaryMaterialId: shared.stockId, shopJoin: shared.join as never });
+            useYard.getState().applyMeasure(true);
+          }
         } catch (err) {
           useYard.setState({
             grokError: err instanceof Error ? err.message : "Could not generate that structure.",
@@ -104,6 +111,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
       return;
     }
     hydrateYard();
+    const saved = loadSaved();
+    if (saved) useYard.getState().setMeasure(saved.measure);
     setReady(true);
   }, [initialPrompt, generate, makePlan, revealBench]);
 

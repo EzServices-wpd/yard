@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
+import { fitBadge } from "@/lib/yard/fitBadge";
+import { saveBuild, shareUrl } from "@/lib/yard/shareBuild";
 import type { JoinMethod, SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
@@ -148,6 +150,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
     }),
     ...(classWarn ? [classWarn] : []),
   ];
+  const fit = fitBadge({ warnings, hasSpace: tabs.some((tab) => tab.id === "space"), depth: Number.isFinite(dNum) ? dNum : project.overall.depth, width: pieceW });
   const presets = classPresets(facts);
   const stock = getCatalogItem(project.primaryMaterialId);
   const thickness = stock?.dims.thickness ?? stock?.dims.diameter ?? stock?.dims.height;
@@ -462,8 +465,17 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "piece" && (
         <section className="mt-4" data-yard-measure-section="piece">
+          <button
+            type="button"
+            data-yard-fit={fit.tone}
+            onClick={() => document.querySelector(`[data-yard-field="${fit.field}"]`)?.scrollIntoView({ block: "center" })}
+            className={`mb-2 inline-flex min-h-11 items-center rounded-full border px-3 text-left text-xs ${fit.tone === "green" ? "border-emerald-700/50 text-emerald-300" : "border-amber-600/50 text-amber-200"}`}
+          >
+            {fit.text}
+          </button>
           <div className="grid grid-cols-3 gap-2">
             <Inch
+              field="width"
               label={roundUnit ? "Across" : isPocket ? "Along the back" : isCorner ? "Wall A" : "Wide"}
               value={measure.width}
               hint={yardsPick(facts.typed?.width, Boolean(touched.width)) ? "Yard's pick" : undefined}
@@ -471,6 +483,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               onCommit={() => liveIfFitted(0)}
             />
             <Inch
+              field="height"
               label={isSlope ? "High" : "Tall"}
               value={measure.height}
               hint={yardsPick(facts.typed?.height, Boolean(touched.height)) ? "Yard's pick" : undefined}
@@ -479,6 +492,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             />
             {!roundUnit && (
               <Inch
+                field="depth"
                 label={isPocket ? "Comes out" : isCorner ? "Wall B" : "Deep"}
                 value={measure.depth}
                 hint={yardsPick(facts.typed?.depth, Boolean(touched.depth)) ? "Yard's pick" : undefined}
@@ -629,6 +643,10 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
         </p>
       ))}
 
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { saveBuild({ prompt: project.prompt, measure, stockId: project.primaryMaterialId, join: project.shopJoin }); setSummary("Saved on this phone"); }}>Save</button>
+        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { const url = shareUrl({ prompt: project.prompt, measure, stockId: project.primaryMaterialId, join: project.shopJoin }); void navigator.clipboard?.writeText(url); setSummary("Link copied"); }}>Share</button>
+      </div>
       <button type="button" onClick={resetTab} className="mt-4 h-12 w-full rounded-md border border-border text-sm text-muted">
         Reset this tab
       </button>
@@ -719,14 +737,14 @@ function Segmented({ label, value, options, onChange }: { label: string; value: 
   );
 }
 
-function Inch({ label, value, onChange, onCommit, unit = "″", hint }: { label: string; value: string; onChange: (v: string) => void; onCommit?: () => void; unit?: string; hint?: string }) {
+function Inch({ label, value, onChange, onCommit, unit = "″", hint, field }: { label: string; value: string; onChange: (v: string) => void; onCommit?: () => void; unit?: string; hint?: string; field?: string }) {
   const [text, setText] = useState(value);
   const [focus, setFocus] = useState(false);
   useEffect(() => {
     if (!focus) setText(value);
   }, [value, focus]);
   return (
-    <label className="text-xs text-muted">
+    <label className="text-xs text-muted" data-yard-field={field}>
       {label}
       {unit}
       {hint ? <span className="ml-1 text-faint">{hint}</span> : null}
