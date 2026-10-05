@@ -8064,7 +8064,9 @@ console.log("STRANGER PLAN OK", {
       // Stick crafts: the model is instances of one stock stick — one cut piece per instance.
       // No cut table (stock bought cut-to-length): the Buy line carries the piece count instead.
       const buyPieces = plan.bom.map((b) => Number((b.notes ?? "").match(/^(\d+) pieces/)?.[1] ?? 0)).reduce((a, b) => a + b, 0);
-      const pieces = plan.cutList.length ? plan.cutList.reduce((n, c) => n + c.quantity, 0) : buyPieces;
+      // The glazing and backer rows are the sheet parts, cut from their own sheets; the rest are the sticks.
+      const stickRows = plan.cutList.filter((c) => !/^(?:acrylic-sheet|frame-glass|chipboard-sheet)\|/.test(c.id ?? ""));
+      const pieces = stickRows.length ? stickRows.reduce((n, c) => n + c.quantity, 0) : buyPieces;
       if (pieces !== proj.instances.length) failHonesty(`tracking: ${prompt} cut pieces ${pieces} vs model sticks ${proj.instances.length}`);
       rows += plan.cutList.length;
       parts += proj.instances.length;

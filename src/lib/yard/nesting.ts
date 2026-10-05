@@ -565,6 +565,8 @@ export function isLumberLegCut(c: CutLine): boolean {
 /** Lumber legs, 2× bearers and named solid boards are bought as lumber — never nested on a sheet. */
 function sheetNestable(c: CutLine): boolean {
   if (c.whole) return false;
+  // Frame glazing and a craft backer are cut from their own small sheets on Buy, apart from the plywood nest.
+  if (/^(?:acrylic-sheet|frame-glass|chipboard-sheet)\|/.test(c.id ?? "")) return false;
   if (isLumberLegCut(c)) return false;
   if (/^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id ?? "")) return false;
   if (isNamedBoardMaterial(c.material)) return false;
