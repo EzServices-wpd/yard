@@ -68,7 +68,7 @@ function isBuild(step: AssemblyStep): boolean {
 function ontoTalk(project: YardProject, part: Part): string {
   const hay = `${part.name} ${part.kind}`.toLowerCase();
   if (/base|bottom|leg|post|upright/.test(hay)) return "the floor";
-  const hasSeat = project.panels.some((p) => p.type === "seat" || /seat/i.test(p.name));
+  const hasSeat = project.panels.some((p) => /seat/i.test(p.name));
   if (part.support === "seat" && hasSeat) return "the seat";
   const hasLegs = project.panels.some((p) => /leg/i.test(p.name)) || project.instances.some((i) => i.role === "leg");
   if (hasLegs) return "the legs and aprons";

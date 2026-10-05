@@ -3174,7 +3174,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (namesSitChair((project.prompt ?? "").toLowerCase()) && !steps.some((s) => /sit on it/i.test(s.title))) {
     steps.push({
       step: n++,
-      title: project.panels.some((p) => p.type === "seat" || /seat/i.test(p.name)) ? "Sit on it" : "Set it in place",
+      title: project.panels.some((p) => /seat/i.test(p.name)) ? "Sit on it" : "Set it in place",
       description: "Sit on the seat. It should feel solid, not springy. If a rail rocks, re-join that joint before you finish.",
       tips: "A chair is done when someone can sit on it.",
       partsUsed: ["*"],
