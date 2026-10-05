@@ -1,0 +1,1430 @@
+[
+  {
+    "id": "linen-closet",
+    "prompt": "linen closet 31.5 wide 78 tall 16 deep",
+    "bucket": "fitted-house",
+    "name": "Linen 31 1/2\" × 78\" × 16\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 31.5,
+      "height": 78,
+      "depth": 16
+    },
+    "panels": 11,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Left door",
+      "Left upright",
+      "Right door",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3",
+      "Shelf 4",
+      "Top"
+    ],
+    "notesHead": [
+      "Linen 31 1/2\" × 78\" × 16 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Unit 31 1/2\" W × 16 3/4\" D × 78\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "linenExact": true,
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "pocket-vanity",
+    "prompt": "bathroom vanity with a pocket for the trash can",
+    "bucket": "fitted-house",
+    "name": "Vanity",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 34,
+      "depth": 21
+    },
+    "panels": 23,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Counter",
+      "Left bottom",
+      "Left drawer 1",
+      "Left drawer 2",
+      "Left drawer 3",
+      "Left drawer front 1",
+      "Left drawer front 2",
+      "Left drawer front 3",
+      "Left knee divider",
+      "Left toekick",
+      "Left upright",
+      "Mirror",
+      "Right bottom",
+      "Right drawer 1",
+      "Right drawer 2",
+      "Right drawer 3",
+      "Right drawer front 1",
+      "Right drawer front 2",
+      "Right drawer front 3",
+      "Right knee divider",
+      "Right toekick",
+      "Right upright"
+    ],
+    "notesHead": [
+      "Vanity. Freestanding carcase — still square, still a cut list.",
+      "Unit 36\" W × 21 3/4\" D × 34\" H (finished depth — drawer fronts stand proud). ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "desk-60",
+    "prompt": "desk 60 x 30 x 29 with 24 inch knee",
+    "bucket": "fitted-house",
+    "name": "Desk 60\" × 29\" × 30\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 60,
+      "height": 29,
+      "depth": 30
+    },
+    "panels": 22,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Desktop",
+      "Left bottom",
+      "Left drawer 1",
+      "Left drawer 2",
+      "Left drawer 3",
+      "Left drawer front 1",
+      "Left drawer front 2",
+      "Left drawer front 3",
+      "Left knee divider",
+      "Left toekick",
+      "Left upright",
+      "Right bottom",
+      "Right drawer 1",
+      "Right drawer 2",
+      "Right drawer 3",
+      "Right drawer front 1",
+      "Right drawer front 2",
+      "Right drawer front 3",
+      "Right knee divider",
+      "Right toekick",
+      "Right upright"
+    ],
+    "notesHead": [
+      "Desk 60\" × 29\" × 30 3/4\" (finished depth — drawer fronts stand proud). Freestanding carcase — still square, still a cut list.",
+      "Unit 60\" W × 30 3/4\" D × 29\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": true,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "andersen-hung",
+    "prompt": "Andersen 100 Series 36x48 double hung",
+    "bucket": "fitted-house",
+    "name": "Andersen 100 Series 36×48 double hung",
+    "kind": "opening",
+    "material": "lumber-2x4-8",
+    "overall": {
+      "width": 46,
+      "height": 98,
+      "depth": 7.5
+    },
+    "panels": 15,
+    "instances": 0,
+    "uniqueParts": [
+      "2-ply 2x6 header",
+      "Andersen 100 Series 36×48 double hung",
+      "Bottom plate",
+      "Head cripple 1",
+      "Head cripple 2",
+      "Head cripple 3",
+      "Left jack",
+      "Left king",
+      "Right jack",
+      "Right king",
+      "Rough sill",
+      "Sill cripple 1",
+      "Sill cripple 2",
+      "Sill cripple 3",
+      "Top plate"
+    ],
+    "notesHead": [
+      "Stock unit: Andersen 100 Series 36×48 double hung. Call 36\" × 48\". Unit 35 1/2\" × 47 1/2\". Published RO 36\" × 48\".",
+      "Call size is the published rough opening. Unit is ½\" under that for shims. Confirm the current shop drawing before you cut."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "hall-pantry",
+    "prompt": "hall pantry 24 wide 84 tall 14 deep 5 shelves",
+    "bucket": "fitted-house",
+    "name": "Pantry 24\" × 84\" × 14\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 24,
+      "height": 84,
+      "depth": 14
+    },
+    "panels": 11,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Door",
+      "Left upright",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3",
+      "Shelf 4",
+      "Shelf 5",
+      "Top"
+    ],
+    "notesHead": [
+      "Pantry 24\" × 84\" × 14 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Unit 24\" W × 14 3/4\" D × 84\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "mudroom-bench",
+    "prompt": "mudroom bench 48 wide 18 deep 18 high with 3 cubbies",
+    "bucket": "fitted-house",
+    "name": "Mudroom bench 48\" × 18\" × 18\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 48,
+      "height": 18,
+      "depth": 18
+    },
+    "panels": 8,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Cubby divider 1",
+      "Cubby divider 2",
+      "Front apron",
+      "Left upright",
+      "Right upright",
+      "Seat",
+      "Shoe shelf"
+    ],
+    "notesHead": [
+      "Mudroom bench 48\" × 18\" × 18\". Sittable cubby bench with 3 open shoe bays — not a hollow storage box. ¾\" plywood.",
+      "The cubby dividers and front apron carry sit load so the 46 1/2\" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "kids-bookcase",
+    "prompt": "kids bookcase 30 wide 11 deep 48 high 4 shelves",
+    "bucket": "fitted-house",
+    "name": "Bookcase 30\" × 48\" × 11\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 30,
+      "height": 48,
+      "depth": 11
+    },
+    "panels": 9,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Left upright",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3",
+      "Shelf 4",
+      "Top"
+    ],
+    "notesHead": [
+      "Bookcase 30\" × 48\" × 11\". Freestanding carcase — still square, still a cut list.",
+      "Unit 30\" W × 11\" D × 48\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "media-console",
+    "prompt": "media console 60 wide 16 deep 24 high two doors open center",
+    "bucket": "fitted-house",
+    "name": "Media console 60\" × 24\" × 16\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 60,
+      "height": 24,
+      "depth": 16
+    },
+    "panels": 13,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bay 1 shelf 1",
+      "Bay 1 shelf 2",
+      "Bay 2 shelf 1",
+      "Bay 2 shelf 2",
+      "Bay divider 1",
+      "Bottom",
+      "Left door",
+      "Left upright",
+      "Right door",
+      "Right upright",
+      "Toekick",
+      "Top"
+    ],
+    "notesHead": [
+      "Media console 60\" × 24\" × 16 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Unit 60\" W × 16 3/4\" D × 24\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "wine-rack-12",
+    "prompt": "wine rack for 12 bottles",
+    "bucket": "fitted-house",
+    "name": "Wine rack 24\" × 14 1/4\" × 12\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 24,
+      "height": 14.25,
+      "depth": 12
+    },
+    "panels": 14,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottle divider 1",
+      "Bottle divider 2",
+      "Bottle divider 3",
+      "Bottle divider 4",
+      "Bottle rail 1",
+      "Bottle rail 2",
+      "Bottle rail 3",
+      "Grid shelf 1",
+      "Grid shelf 2",
+      "Left upright",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 4"
+    ],
+    "notesHead": [
+      "Wine rack 24\" × 14 1/4\" × 12\". Wall-mounted open wine rack. Holds 15 bottles (room for the 12 bottles you asked for; 3 rows × 5 across, one opening per bottle, rows on a 4 1/2\" pitch, one bottle high). Built 14 1/4\" tall — just the rows the bottles need. Not a bookcase and not a hollow box.",
+      "Bottles lie on their sides, necks facing out. Each opening is 3 7/8\" wide × 3 3/4\" tall clear (at least 3 1/2\" both ways so a bottle fits, one bottle high). Glue a 1 1/2\" scalloped cradle rail on the front of every bottle-row shelf: one 3 1/2\" wide scallop per bottle, cut down to 3/16\", so each bottle slides in with 3 9/16\" clear above the cradle and its neck rests in the scallop. The 4 dividers half-lap over the 2 middle shelves (egg-crate). Glue the shelves; do not pin them — a loaded row is heavy."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "coat-hooks",
+    "prompt": "coat hooks",
+    "bucket": "fitted-house",
+    "name": "Coat rack 36\" × 6\" × 12\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 6,
+      "depth": 12
+    },
+    "panels": 8,
+    "instances": 0,
+    "uniqueParts": [
+      "Coat hook 1",
+      "Coat hook 2",
+      "Coat hook 3",
+      "Coat hook 4",
+      "Coat hook 5",
+      "Coat hook 6",
+      "Hat shelf",
+      "Peg rail"
+    ],
+    "notesHead": [
+      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 12\" hat shelf. ¾\" plywood.",
+      "6 pegs stand about 3\" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6\" on center. Hit studs."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "spice-rack",
+    "prompt": "spice rack 18 wide 3 deep 24 tall",
+    "bucket": "fitted-house",
+    "name": "Spice rack 18\" × 24\" × 3\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 18,
+      "height": 24,
+      "depth": 3
+    },
+    "panels": 9,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Jar lip 1",
+      "Jar lip 2",
+      "Jar lip 3",
+      "Left upright",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3"
+    ],
+    "notesHead": [
+      "Spice rack 18\" × 24\" × 3\". Wall-mounted open spice rack with jar lips — not a floor box and not a medicine cabinet. ¾\" plywood.",
+      "Hang the rack on studs through the back. Typical bottom sits about 48–54\" off the floor so jars are at counter height. Glue the shelves; do not pin them."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "shoe-rack",
+    "prompt": "shoe rack 36 wide 12 deep 18 tall",
+    "bucket": "fitted-house",
+    "name": "Shoe rack 36\" × 18\" × 12\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 18,
+      "depth": 12
+    },
+    "panels": 8,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Cubby divider 1",
+      "Cubby divider 2",
+      "Left upright",
+      "Right upright",
+      "Shoe shelf",
+      "Top"
+    ],
+    "notesHead": [
+      "Shoe rack 36\" × 18\" × 12\". 2 open shoe tiers, 7 7/8\" clear each, in 3 bays about 11\" wide — room for a pair of shoes in every spot. Fixed shelves, glued and screwed. ¾\" plywood.",
+      "Glue and screw each cubby divider into the bottom, the shoe shelves and the top. The floor board and the top close the box."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "litter-cabinet",
+    "prompt": "litter box cabinet 30 wide 20 deep 28 tall",
+    "bucket": "fitted-house",
+    "name": "Litter box cabinet 30\" wide × 28\" tall × 20\" deep",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 30,
+      "height": 28,
+      "depth": 20.75
+    },
+    "panels": 7,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Entry panel",
+      "Left side",
+      "Right side",
+      "Scoop door",
+      "Top"
+    ],
+    "notesHead": [
+      "Litter box cabinet 30\" wide × 28\" tall × 20\" deep. A carcase that hides the litter box: the left front is a fixed entry panel with an 8\" cat hole, the right front is a scoop door on two hinges. ¾\" plywood.",
+      "Inside 28 1/2\" wide × 19 3/4\" deep × 26 1/2\" tall — sized for a large 19\" × 15\" × 11\" litter box with room for the cat to step in and crouch."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "floating-shelf",
+    "prompt": "floating shelf 36 wide 8 deep",
+    "bucket": "fitted-house",
+    "name": "Floating shelf 36\" × 8\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 0.75,
+      "depth": 8
+    },
+    "panels": 2,
+    "instances": 0,
+    "uniqueParts": [
+      "Shelf",
+      "Wall cleat"
+    ],
+    "notesHead": [
+      "One cleat-mounted 36\" × 8\" floating shelf on a Wall cleat — Shelf backstop is 3/4\". ¾\" plywood. No box — no uprights.",
+      "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "chair-1x4",
+    "prompt": "kitchen chair from 1x4",
+    "bucket": "weekend-named-stock",
+    "name": "Kitchen chair 18\" × 18\" seat",
+    "kind": "furniture",
+    "material": "lumber-1x4-8",
+    "overall": {
+      "width": 18,
+      "height": 34,
+      "depth": 18.25
+    },
+    "panels": 18,
+    "instances": 0,
+    "uniqueParts": [
+      "Back apron",
+      "Back board 1",
+      "Back board 2",
+      "Back left leg (inner board)",
+      "Back left leg (outer board)",
+      "Back right leg (inner board)",
+      "Back right leg (outer board)",
+      "Front apron",
+      "Front left leg (inner board)",
+      "Front left leg (outer board)",
+      "Front right leg (inner board)",
+      "Front right leg (outer board)",
+      "Left apron",
+      "Right apron",
+      "Seat board 1",
+      "Seat board 2",
+      "Seat board 3",
+      "Seat board 4"
+    ],
+    "notesHead": [
+      "Kitchen chair 18\" × 18\" seat, every part from 1×4 Board (8 ft). Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "dog-bed-pallet",
+    "prompt": "dog bed from a pallet",
+    "bucket": "weekend-named-stock",
+    "name": "Dog bed 36\" × 28\"",
+    "kind": "furniture",
+    "material": "pallet-board",
+    "overall": {
+      "width": 36,
+      "height": 7.75,
+      "depth": 28
+    },
+    "panels": 15,
+    "instances": 0,
+    "uniqueParts": [
+      "Back wall board",
+      "Floor board",
+      "Low front board",
+      "Side wall board"
+    ],
+    "notesHead": [
+      "Class anatomy: low bed. Dog bed 36\" × 28\", 7 3/4\" tall, at dog scale from Pallet board. A floor of boards side by side, walls stacked on its edges, and a lower front so the dog steps in. Add a cushion about 34\" × 26\".",
+      "Walk around it on the bench (WASD + mouse look)."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "picnic-table-2x4",
+    "prompt": "picnic table from 2x4",
+    "bucket": "weekend-named-stock",
+    "name": "Picnic table 72\" × 29\" × 64\"",
+    "kind": "closet",
+    "material": "lumber-2x4-8",
+    "overall": {
+      "width": 72,
+      "height": 29,
+      "depth": 64
+    },
+    "panels": 22,
+    "instances": 0,
+    "uniqueParts": [
+      "Center support 1",
+      "Center support 2",
+      "Center support 3",
+      "Center support 4",
+      "Center support 5",
+      "Center support 6",
+      "Far bench leg",
+      "Far bench seat",
+      "Leg",
+      "Near bench leg",
+      "Near bench seat",
+      "Table stretcher",
+      "Table top"
+    ],
+    "notesHead": [
+      "Picnic table 72\" × 29\" × 64\". Picnic table — 72\" top, two attached benches at 17\". Not a dining table.",
+      "The benches sit outside the top, 8\" clear of the table legs so you can sit. 2×2 legs, ¾\" top and seats."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "workbench-2x4",
+    "prompt": "workbench from 2x4",
+    "bucket": "weekend-named-stock",
+    "name": "Workbench 48\" × 36\" × 24\"",
+    "kind": "closet",
+    "material": "lumber-2x4-8",
+    "overall": {
+      "width": 48,
+      "height": 36,
+      "depth": 24
+    },
+    "panels": 7,
+    "instances": 0,
+    "uniqueParts": [
+      "Back apron",
+      "Back left leg",
+      "Back right leg",
+      "Front apron",
+      "Front left leg",
+      "Front right leg",
+      "Work top"
+    ],
+    "notesHead": [
+      "Workbench 48\" × 36\" × 24\". Workbench — work top at 36\" on 2×4 Stud legs. Standing shop top, not a desk and not a bin.",
+      "No lower shelf unless you ask for one. The aprons keep the legs from racking."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "garden-arch-pvc",
+    "prompt": "6 foot garden arch from 3/4 inch PVC pipe",
+    "bucket": "weekend-named-stock",
+    "name": "Garden arch",
+    "kind": "arch",
+    "material": "pvc-3-4-sch40",
+    "overall": {
+      "width": 53,
+      "height": 72.6,
+      "depth": 17
+    },
+    "panels": 0,
+    "instances": 18,
+    "uniqueParts": [
+      "brace",
+      "leg",
+      "rail",
+      "support"
+    ],
+    "notesHead": [
+      "Garden arch · stock mapped onto the form, not a hull.",
+      "Parametric form. Frame first, then brace. Support if it is slender."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "raised-bed-cedar",
+    "prompt": "raised bed from cedar 1x6",
+    "bucket": "weekend-named-stock",
+    "name": "Planter box 36\" × 30\" × 16\"",
+    "kind": "closet",
+    "material": "lumber-1x6-8",
+    "overall": {
+      "width": 36,
+      "height": 30,
+      "depth": 16
+    },
+    "panels": 5,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Right side"
+    ],
+    "notesHead": [
+      "Planter box 36\" × 30\" × 16\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood.",
+      "Open top: fill with soil; typed 36\" wide × 16\" deep × 30\" tall. Not a Wire-frame skeleton and not a sealed storage cube."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "bookshelf-1x10",
+    "prompt": "bookshelf from 1x10",
+    "bucket": "weekend-named-stock",
+    "name": "Bookcase",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 84,
+      "depth": 12
+    },
+    "panels": 10,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Left upright",
+      "Right upright",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3",
+      "Shelf 4",
+      "Shelf 5",
+      "Top"
+    ],
+    "notesHead": [
+      "Bookcase. Freestanding carcase — still square, still a cut list.",
+      "Unit 36\" W × 12\" D × 84\" H. ¾\" plywood. Front reads straight."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "plant-stand-dowel",
+    "prompt": "plant stand from dowel",
+    "bucket": "weekend-named-stock",
+    "name": "Plant stand",
+    "kind": "frame",
+    "material": "dowel-1-4-36",
+    "overall": {
+      "width": 23.5,
+      "height": 24.5,
+      "depth": 22.4
+    },
+    "panels": 0,
+    "instances": 32,
+    "uniqueParts": [
+      "brace",
+      "deck",
+      "leg",
+      "rail",
+      "ring",
+      "support"
+    ],
+    "notesHead": [
+      "Plant stand · upright pot envelope for a real pot — densify keeps the whole stand at the named stock; pot sits upright, not a Tree silhouette.",
+      "30 joints · 32 members after weld"
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "ladder-shelf-2x3",
+    "prompt": "ladder shelf from 2x3",
+    "bucket": "weekend-named-stock",
+    "name": "Ladder shelf",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 24,
+      "height": 70,
+      "depth": 17
+    },
+    "panels": 9,
+    "instances": 0,
+    "uniqueParts": [
+      "Left back post",
+      "Left leaning rail",
+      "Right back post",
+      "Right leaning rail",
+      "Shelf 1",
+      "Shelf 2",
+      "Shelf 3",
+      "Shelf 4",
+      "Shelf 5"
+    ],
+    "notesHead": [
+      "Ladder shelf. 5 shelves between two leaning rails and two plumb back posts — 15 5/8\" deep at the bottom, 8 1/8\" deep at the top. 14\" clear between shelves. ¾\" plywood, fixed shelves, glued and screwed.",
+      "The leaning rails tip back 7° from plumb: 17\" from the wall at the floor, 8\" at the top."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "coat-rack-1x4",
+    "prompt": "coat rack from 1x4",
+    "bucket": "weekend-named-stock",
+    "name": "Coat rack 36\" × 6\" × 8\"",
+    "kind": "closet",
+    "material": "lumber-1x4-8",
+    "overall": {
+      "width": 36,
+      "height": 6,
+      "depth": 8
+    },
+    "panels": 8,
+    "instances": 0,
+    "uniqueParts": [
+      "Coat hook 1",
+      "Coat hook 2",
+      "Coat hook 3",
+      "Coat hook 4",
+      "Coat hook 5",
+      "Coat hook 6",
+      "Hat shelf",
+      "Peg rail"
+    ],
+    "notesHead": [
+      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 8\" hat shelf. ¾\" plywood.",
+      "6 pegs stand about 3\" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6\" on center. Hit studs."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "eiffel-popsicle",
+    "prompt": "3 foot Eiffel Tower from popsicle sticks",
+    "bucket": "craft-kit",
+    "name": "Eiffel Tower",
+    "kind": "eiffel",
+    "material": "popsicle-standard",
+    "overall": {
+      "width": 14.4,
+      "height": 37.4,
+      "depth": 14.4
+    },
+    "panels": 0,
+    "instances": 516,
+    "uniqueParts": [
+      "brace",
+      "leg",
+      "rail",
+      "ring",
+      "support"
+    ],
+    "notesHead": [
+      "Eiffel frame · 36\" high",
+      "225 nodes · 522 members before stock cuts"
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "cardboard-robot",
+    "prompt": "cardboard robot",
+    "bucket": "craft-kit",
+    "name": "Cardboard robot 24\" tall",
+    "kind": "figure",
+    "material": "cardboard-corrugated-sheet",
+    "overall": {
+      "width": 15.3125,
+      "height": 24,
+      "depth": 6.75
+    },
+    "panels": 28,
+    "instances": 0,
+    "uniqueParts": [
+      "Arm back",
+      "Arm front",
+      "Arm side",
+      "Body back",
+      "Body bottom",
+      "Body front",
+      "Body side",
+      "Body top",
+      "Head back",
+      "Head bottom",
+      "Head front",
+      "Head side",
+      "Head top",
+      "Leg tube back",
+      "Leg tube front",
+      "Leg tube side"
+    ],
+    "notesHead": [
+      "Class anatomy: box figure. Built from folded cardboard boxes: two leg tubes, a body box, a head box and two arm tubes, joined with hot glue. Each face is cut from the sheet; fold each box on scored lines with a 1\" glue tab.",
+      "Walk around it on the bench (WASD + mouse look)."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "popsicle-birdhouse",
+    "prompt": "popsicle stick birdhouse",
+    "bucket": "craft-kit",
+    "name": "Birdhouse",
+    "kind": "house",
+    "material": "popsicle-standard",
+    "overall": {
+      "width": 7.8,
+      "height": 7,
+      "depth": 5.6
+    },
+    "panels": 0,
+    "instances": 103,
+    "uniqueParts": [
+      "batten",
+      "floor",
+      "rafter",
+      "roof",
+      "wall"
+    ],
+    "notesHead": [
+      "Birdhouse · Standard Popsicle Stick walls laid flat side by side, a floor, a slatted gable roof on two rafters each end.",
+      "Entrance 1 1/2\" square — leave out 4 front slats and close the gap above and below with flat sticks glued behind (whole sticks, no cutting)."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "doll-bed",
+    "prompt": "doll bed",
+    "bucket": "craft-kit",
+    "name": "Doll Bed",
+    "kind": "closet",
+    "material": "popsicle-standard",
+    "overall": {
+      "width": 4.5,
+      "height": 2.5,
+      "depth": 3.5
+    },
+    "panels": 0,
+    "instances": 12,
+    "uniqueParts": [
+      "deck",
+      "leg",
+      "rail"
+    ],
+    "notesHead": [
+      "Yard built a doll bed as a simple bed frame on legs sized for it. Change any size in Measure."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "straw-warren",
+    "prompt": "straw Warren truss bridge",
+    "bucket": "craft-kit",
+    "name": "Bridge",
+    "kind": "bridge",
+    "material": "straw-plastic",
+    "overall": {
+      "width": 97,
+      "height": 22.1,
+      "depth": 14.4
+    },
+    "panels": 0,
+    "instances": 519,
+    "uniqueParts": [
+      "brace",
+      "leg",
+      "rail"
+    ],
+    "notesHead": [
+      "Bridge · stock mapped onto the form, not a hull.",
+      "Parametric form. Frame first, then brace. Support if it is slender."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "toothpick-tower",
+    "prompt": "toothpick tower 12 inches",
+    "bucket": "craft-kit",
+    "name": "Lattice tower",
+    "kind": "lattice",
+    "material": "toothpick",
+    "overall": {
+      "width": 8,
+      "height": 12.5,
+      "depth": 8
+    },
+    "panels": 0,
+    "instances": 531,
+    "uniqueParts": [
+      "brace",
+      "leg",
+      "rail",
+      "ring"
+    ],
+    "notesHead": [
+      "Lattice tower · 12\" high",
+      "249 nodes · 596 members before stock cuts"
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "popsicle-airplane",
+    "prompt": "popsicle stick airplane",
+    "bucket": "craft-kit",
+    "name": "Airplane",
+    "kind": "vehicle",
+    "material": "popsicle-standard",
+    "overall": {
+      "width": 11.8,
+      "height": 8,
+      "depth": 8
+    },
+    "panels": 0,
+    "instances": 12,
+    "uniqueParts": [
+      "brace",
+      "rail",
+      "support"
+    ],
+    "notesHead": [
+      "Airplane · stock mapped onto the form, not a hull.",
+      "Parametric form. Frame first, then brace. Support if it is slender."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "cardboard-castle",
+    "prompt": "cardboard castle",
+    "bucket": "craft-kit",
+    "name": "Castle",
+    "kind": "castle",
+    "material": "cardboard-corrugated-sheet",
+    "overall": {
+      "width": 27.1,
+      "height": 23.8,
+      "depth": 24.2
+    },
+    "panels": 0,
+    "instances": 112,
+    "uniqueParts": [
+      "battlement",
+      "drawbridge",
+      "gate lintel",
+      "tower",
+      "tower roof",
+      "wall"
+    ],
+    "notesHead": [
+      "Castle · towers block: 4 round towers 6 3/4\" across with pointed roofs, walls between them with battlements, a 7 3/16\" gate and a drawbridge that lets down on two strings.",
+      "All cut from Corrugated cardboard sheet 48×96: score the tower staves and roll them round, tape the roof gores to a point, and slot the walls into the towers."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": true,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "lemonade-stand",
+    "prompt": "lemonade stand",
+    "bucket": "unknown-fallback",
+    "name": "Lemonade Stand",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 48,
+      "height": 42,
+      "depth": 24
+    },
+    "panels": 9,
+    "instances": 0,
+    "uniqueParts": [
+      "Back apron",
+      "Front apron",
+      "Left apron",
+      "Leg 1",
+      "Leg 2",
+      "Leg 3",
+      "Leg 4",
+      "Right apron",
+      "Top"
+    ],
+    "notesHead": [
+      "Yard built a lemonade stand as a simple counter on legs sized for it. Change any size in Measure.",
+      "Table 48\" × 42\" × 24\". Freestanding table — top + 4 legs + 4 aprons."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "mailbox",
+    "prompt": "mailbox",
+    "bucket": "unknown-fallback",
+    "name": "Mailbox",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 10,
+      "height": 10,
+      "depth": 8
+    },
+    "panels": 5,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Right side"
+    ],
+    "notesHead": [
+      "Yard built a mailbox as a simple open box sized for it. Change any size in Measure.",
+      "Planter box 10\" × 10\" × 8\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "record-crate",
+    "prompt": "record crate",
+    "bucket": "unknown-fallback",
+    "name": "Crate 36\" × 30\" × 24\"",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 30,
+      "depth": 24
+    },
+    "panels": 19,
+    "instances": 0,
+    "uniqueParts": [
+      "Back slat 1",
+      "Back slat 2",
+      "Back slat 3",
+      "Back slat 4",
+      "Door",
+      "Floor",
+      "Left back post",
+      "Left front post",
+      "Left slat 1",
+      "Left slat 2",
+      "Left slat 3",
+      "Left slat 4",
+      "Right back post",
+      "Right front post",
+      "Right slat 1",
+      "Right slat 2",
+      "Right slat 3",
+      "Right slat 4",
+      "Top"
+    ],
+    "notesHead": [
+      "Crate 36\" × 30\" × 24\". Wooden kennel the dog goes inside — slatted sides and back, a floor, a top, and a hinged door you can see through. ¾\" plywood. No shelves.",
+      "The door is 27\" tall, leaving a 1 1/2\" air gap at the top. Drill three 1½\" holes near the top of each side and the back so it can breathe."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "boot-tray",
+    "prompt": "boot tray",
+    "bucket": "unknown-fallback",
+    "name": "Boot Tray",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 30,
+      "height": 2,
+      "depth": 15
+    },
+    "panels": 5,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Right side"
+    ],
+    "notesHead": [
+      "Yard built a boot tray as a simple shallow tray sized for it. Change any size in Measure.",
+      "Planter box 30\" × 2\" × 15\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "firewood-rack",
+    "prompt": "firewood rack",
+    "bucket": "unknown-fallback",
+    "name": "Firewood Rack",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 48,
+      "height": 48,
+      "depth": 16
+    },
+    "panels": 6,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Center support 1",
+      "Left upright",
+      "Right upright",
+      "Top"
+    ],
+    "notesHead": [
+      "Yard built a firewood rack as a simple open frame sized for it. Change any size in Measure.",
+      "Storage unit 48\" × 48\" × 16\". Freestanding carcase — still square, still a cut list."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "toy-chest",
+    "prompt": "toy chest",
+    "bucket": "unknown-fallback",
+    "name": "Toy chest",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 36,
+      "height": 30,
+      "depth": 16
+    },
+    "panels": 6,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Lid",
+      "Right side"
+    ],
+    "notesHead": [
+      "Toy chest. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾\" plywood.",
+      "Lid 36\" × 16\". Class defaults fill untyped axes — type Measure to lock size. Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid cannot slam."
+    ],
+    "signals": {
+      "mentionsYardBuilt": false,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "bird-feeder",
+    "prompt": "bird feeder",
+    "bucket": "unknown-fallback",
+    "name": "Bird Feeder",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 10,
+      "height": 10,
+      "depth": 8
+    },
+    "panels": 5,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Right side"
+    ],
+    "notesHead": [
+      "Yard built a bird feeder as a simple open box sized for it. Change any size in Measure.",
+      "Planter box 10\" × 10\" × 8\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  },
+  {
+    "id": "toolbox",
+    "prompt": "toolbox",
+    "bucket": "unknown-fallback",
+    "name": "Toolbox",
+    "kind": "closet",
+    "material": "plywood-3-4-4x8",
+    "overall": {
+      "width": 20,
+      "height": 8,
+      "depth": 10
+    },
+    "panels": 5,
+    "instances": 0,
+    "uniqueParts": [
+      "Back",
+      "Bottom",
+      "Front",
+      "Left side",
+      "Right side"
+    ],
+    "notesHead": [
+      "Yard built a toolbox as a simple open box sized for it. Change any size in Measure.",
+      "Planter box 20\" × 8\" × 10\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood."
+    ],
+    "signals": {
+      "mentionsYardBuilt": true,
+      "craftStock": false,
+      "hasKnee24": false,
+      "partBudgetOk": true
+    }
+  }
+]

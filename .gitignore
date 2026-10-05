@@ -10,3 +10,6 @@ dist
 *.log
 .DS_Store
 .nitro
+
+# Optional: keep agent skills versioned; ignore only local Cursor junk if added later
+# .cursor/
