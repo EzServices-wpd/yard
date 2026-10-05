@@ -1,4 +1,5 @@
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
+import { withPairedLeafReveals } from "./pairedLeaves";
 import { spokenJoin } from "./shopJoin";
 import { buildJobFurniture, wantsJobFurniture } from "./jobFurniture";
 import { solveModel } from "./solve";
@@ -190,7 +191,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
-  return withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]);
+  return withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]));
 }
 
 /** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
