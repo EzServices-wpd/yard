@@ -460,7 +460,12 @@ function joinDescription(bit: JoinBit, entries: PlateEntry[], screwClass: string
  * Confirm/cut/level steps stay as-is (not joins). Leaves freezes' titles intact
  * ("Stand the main box" kept on the first carcase join).
  */
-export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
+export function densifyOneJoinInstructions(
+  instructions: AssemblyStep[],
+  cutList: CutLine[],
+  projectName?: string,
+  restsOnLater?: (family: string, stepIndex: number) => boolean,
+): AssemblyStep[] {
   const entries = partsPlateEntries(cutList);
   const stockHold = stockJoinHold(cutList);
   const densifyPartsPlateTalk = (text: string, lines: CutLine[], opts: { title?: boolean } = {}) => densifyPartsPlateTalkKeep(text, lines, projectName, opts);
@@ -496,10 +501,21 @@ export function densifyOneJoinInstructions(instructions: AssemblyStep[], cutList
             (o.partsUsed ?? []).every((n) => findPlate(entries, n)?.label === e.label),
         );
       };
-      const bits = parseJoinSequence(blob[2], screwClass).filter((bit, i) => i === 0 || (!!findPlate(entries, bit.part) && !ownStep(bit)));
+      // A part that rests on parts a later step sets joins after them, not here.
+      const laterStep = (bit: { part: string }) => {
+        const e = findPlate(entries, bit.part);
+        return !!e && !!restsOnLater?.(e.family, instructions.indexOf(step));
+      };
+      const all = parseJoinSequence(blob[2], screwClass);
+      const bits = all.filter((bit) => !!findPlate(entries, bit.part) && !ownStep(bit) && !laterStep(bit));
       const coda = (blob[4] ?? "").trim();
       const lead = densifyPartsPlateTalk(raw.slice(0, blob.index ?? 0).trim(), cutList);
-      if (bits.length >= 2) {
+      if (bits.length === 0 && all.length >= 2) {
+        // Every listed join belongs elsewhere: the step keeps its own lead.
+        out.push({ ...step, title, description: densifyHardwareCountTalk([lead, coda].filter(Boolean).join(" ")), tips });
+        continue;
+      }
+      if (bits.length >= 1 && all.length >= 2) {
         bits.forEach((bit, i) => {
           const isFirst = i === 0;
           const t =
@@ -669,9 +685,14 @@ export function densifyPartsCountTalk(
  * Full kit-craft densify for packPlan: plain shop words already applied;
  * then parts-plate refs + one-join split + honest parts-count + drawer-explode Voice honesty.
  */
-export function densifyKitCraftInstructions(instructions: AssemblyStep[], cutList: CutLine[], projectName?: string): AssemblyStep[] {
+export function densifyKitCraftInstructions(
+  instructions: AssemblyStep[],
+  cutList: CutLine[],
+  projectName?: string,
+  restsOnLater?: (family: string, stepIndex: number) => boolean,
+): AssemblyStep[] {
   const plated = stampPartsPlate(cutList);
-  const joined = densifyOneJoinInstructions(instructions, plated, projectName);
+  const joined = densifyOneJoinInstructions(instructions, plated, projectName, restsOnLater);
   const counted = joined.map((s) => ({
     ...s,
     title: densifyPartsCountTalk(s.title, plated),

@@ -2278,14 +2278,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   });
 
   // Exclude panels named Lid from the fixed-top carcase join — lids hinge, they do not glue on.
-  const carcaseTops = of("top").filter((p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name));
-  if (uprights.length && (backs.length || bottoms.length || carcaseTops.length)) {
+  // A leg frame takes its top after the aprons it rests on, in its own step.
+  const legFrame = uprights.length > 0 && uprights.every((p) => /\bleg\b/i.test(p.name));
+  const carcaseTops = legFrame ? [] : of("top").filter((p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name));
+  if (uprights.length && (backs.length || bottoms.length || carcaseTops.length || legFrame)) {
     const uDesc = uprights.map(cutLine).join("; ");
     const box = [...backs, ...bottoms, ...carcaseTops].map(cutLine).join("; ");
     steps.push({
       step: n++,
       title: "Stand the main box",
-      description: `Lay the two uprights on edge. ${uDesc}. ${stockJoinVerb(project) === "Screw" ? "Glue and #8 × 1¼\" screws: back into both uprights, then bottom, then top." : stockJoinVerb(project) === "Set" ? "Set the joints the stock uses: back into both uprights, then bottom, then top." : "Tape or glue the corners: back into both uprights, then bottom, then the front."} ${box || "Back, top, and bottom as labeled."}${stockJoinVerb(project) === "Screw" ? " Predrill near the ends so the ply does not split." : ""}`,
+      description: `${standLead(uprights)} ${uDesc}. ${[joinRun(stockJoinVerb(project), [backs.length ? "back" : "", bottoms.length ? "bottom" : "", carcaseTops.length ? "top" : ""]), box || (legFrame ? "The aprons and top follow, each on the parts under it." : "Back, top, and bottom as labeled.")].filter(Boolean).join(" ")}${stockJoinVerb(project) === "Screw" ? " Predrill near the ends so the ply does not split." : ""}`,
       tips: doors.length
         ? "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box."
         : "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
@@ -2464,8 +2466,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${inchFrac(pocket.rightClear)}" / L ${inchFrac(pocket.leftClear)}").${pocket.walls.notch?.side === "back" ? " Shim behind the back so it bears on the ledge face, and screw into studs above the ledge." : pocket.walls.notch ? " Leave the chase open — screw the chase-side upright to the chase face, clear of the pipes." : ""} Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
         : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
       : wallHang
-        ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."
-        : "Level the unit. The back is already on it so the box stays square. If it sits on a floor that is out, shim the feet — do not twist the main box.",
+        ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. It hangs clear of the floor, so mark only the wall."
+        : `Level the unit. ${backs.length ? "The back is already on it so the box stays square." : "Check both diagonals match so the frame stays square."} If it sits on a floor that is out, shim the feet — do not twist the main box.`,
     tips: `${guidanceConfirmTalk(`${project.prompt ?? ""} ${project.name}`, alcove ? "alcove" : wallHang ? "wall" : "floor")} Not stamped engineering.`,
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
   });
@@ -3351,7 +3353,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "leg", title: "Stand the posts in the slip fittings", why: "Posts go in dry." },
       { role: "support", title: "Set the two crowns", why: "Each crown is one shop-length bend." },
       { role: "rail", title: "Side rails — not across the opening", why: "Rails on the sides only." },
-      { role: "brace", title: "Last braces, still clear of the portal", why: "Only if they do not close the walk-through." },
+      { role: "brace", title: "Last braces, still clear of the portal", why: "Keep the walk-through open: each brace stays clear of the portal." },
       { role: "member", title: "Place remaining members", why: "No floating pipe." },
     ];
   }
@@ -3432,3 +3434,20 @@ function kneeScrewTalk(project: YardProject, panels: Panel[], knee: Panel[]): st
     : `Stand each divider on the floor at the inner end of its bank bottom and screw through the bottom into it; the ${top} screws down into the divider tops.`;
 }
 
+
+/** "Lay the two uprights on edge." with the real count, or "Stand the 4 legs." for a leg frame. */
+function standLead(uprights: Panel[]): string {
+  const legs = uprights.length > 0 && uprights.every((p) => /\bleg\b/i.test(p.name));
+  if (legs) return `Stand the ${uprights.length} legs.`;
+  return uprights.length === 2 ? "Lay the two uprights on edge." : `Lay the ${uprights.length} uprights on edge.`;
+}
+
+/** The carcase join run, naming only the parts this box has: "back into both uprights, then top." */
+function joinRun(verb: string, families: string[]): string {
+  const [first, ...rest] = families.filter(Boolean);
+  if (!first) return "";
+  const seq = `${first} into both uprights${rest.map((f) => `, then ${f}`).join("")}.`;
+  if (verb === "Screw") return `Glue and #8 × 1¼" screws: ${seq}`;
+  if (verb === "Set") return `Set the joints the stock uses: ${seq}`;
+  return `Tape or glue the corners: ${seq}`;
+}

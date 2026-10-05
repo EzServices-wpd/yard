@@ -1,6 +1,6 @@
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
-import { stepsDriveJointScrews } from "./stepJointScrews";
+import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
 import { getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -30,6 +30,7 @@ import { withOutdoorPackage } from "./outdoor";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
+import { restsOnLaterStep } from "./placeEveryPart";
 import { panelStock } from "./partStock";
 import { backReachesTwoStuds, STUD_CENTER_IN } from "./fitted";
 
@@ -695,7 +696,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
     !wantsRackAffordance(project.prompt ?? "") && !wantsFixedGlueShelves(project);
   const pinned = (p: Panel) => pinShelves && p.type === "shelf" && shelfSpansUprights(p, project.panels);
-  const modelScrews = screwTalk(panelJoints(project.panels, (a, b) => pinned(a) || pinned(b)));
+  const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b));
+  BUY_JOINTS.set(project, buyJoints);
+  const modelScrews = screwTalk(buyJoints);
   if (!headboard && !glueOnly) {
     const cornerUnit = project.fitted?.unit?.corner;
     const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
@@ -1166,7 +1169,7 @@ function packPlan(
     description: strangerPlainShopTalk(s.description),
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
-  const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name);
+  const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name, restsOnLaterStep(project, plainInstructions));
   const assumedInstructions = densifyConfirmAssumedNotes(kitInstructions, project.notes);
   // Money is finite or absent: a piece with no listing price never reads "$NaN" on Buy.
   const finite = (n: unknown) => typeof n === "number" && Number.isFinite(n);
@@ -1342,7 +1345,7 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 
 export function buildPlan(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })));
+  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(plan);
   const step = plan.instructions.length + 1;

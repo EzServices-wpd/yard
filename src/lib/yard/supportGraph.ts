@@ -1,7 +1,8 @@
 /**
  * What each part really rests on, read from the model's geometry (not from its name).
  *
- * A part whose underside is at the floor rests on the floor. Otherwise it rests on the parts whose top
+ * A part whose underside is at the floor rests on the floor. A flat span between two uprights hangs on
+ * those end supports. Otherwise it rests on the parts whose top
  * face meets its underside; failing that, on the lower parts it is fastened against (side contact).
  * Doors hang on the box sides, drawer fronts on their drawer boxes, drawer boxes on the box sides.
  * Stick members rest on the members that share their lower end.
@@ -62,6 +63,23 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       continue;
     }
     const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer");
+    // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
+    // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
+    const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
+    if (ext[1] <= Math.min(ext[0], ext[2])) {
+      const endOn = (side: 0 | 1) =>
+        others.filter((q) => {
+          if (!vertical(q)) return false;
+          const B = boxes.get(q.id)!;
+          const meets = side === 0 ? Math.abs(B.max[0] - A.min[0]) <= 0.1 : Math.abs(B.min[0] - A.max[0]) <= 0.1;
+          return meets && overlap(A, B, 1) >= ext[1] - 0.05 && overlap(A, B, 2) >= 0.5 * ext[2];
+        });
+      const [l, r] = [endOn(0), endOn(1)];
+      if (l.length && r.length) {
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r].map((q) => q.id) });
+        continue;
+      }
+    }
     const rests = others.filter((q) => {
       const B = boxes.get(q.id)!;
       return Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;

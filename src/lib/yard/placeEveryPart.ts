@@ -54,7 +54,9 @@ function mentions(step: AssemblyStep, part: Part): boolean {
       used.includes(kind) ||
       used.includes(name) ||
       used.includes(part.key.toLowerCase()) ||
-      (fam.includes(" ") && (used.includes(fam) || used.includes(plural(fam, 2))))
+      (fam.includes(" ") && (used.includes(fam) || used.includes(plural(fam, 2)))) ||
+      // A join step named for the part's type ("Attach A Top to both uprights") places that part.
+      (/^(?:attach|fasten|set|hang|glue|screw)\b/.test(title) && kind.length > 2 && new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${kind}s?\\b`).test(title))
     );
   }
   const text = `${step.title} ${step.description}`.toLowerCase();
@@ -65,7 +67,8 @@ function mentions(step: AssemblyStep, part: Part): boolean {
 }
 
 function isBuild(step: AssemblyStep): boolean {
-  return !PREP.test(step.title) && !/^Cut\b/i.test(step.title);
+  // "Level it" checks the finished box; it places no part.
+  return !PREP.test(step.title) && !/^Cut\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
 }
 
 const POSITION = /^(left|right|front|back|top|bottom|lower|upper|middle|inner|outer|center|centre)$/;
@@ -191,7 +194,28 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       const before = dependents(part.key).map((p) => where.get(p.key)).filter((n): n is number => n != null);
       const lo = after.length ? Math.max(...after) + 1 : info?.how === "floor" ? firstBuild() : Math.max(firstBuild(), out.length - 1);
       const hi = before.length ? Math.min(...before) : out.length;
-      const insertAt = Math.max(0, Math.min(lo, hi, out.length));
+      // A part that rests on this one shares a step with this part's own support: lift it out so it
+      // goes on right after this part.
+      const lift = hi < lo && project.panels.length
+        ? dependents(part.key).filter((d) => { const w = where.get(d.key); return w != null && w < lo; })
+        : [];
+      const insertAt = lift.length ? Math.min(lo, out.length) : Math.max(0, Math.min(lo, hi, out.length));
+      if (lift.length) {
+        const liftNames = new Set(lift.map((d) => d.name));
+        out = out.map((s, i) => (i < insertAt ? { ...s, partsUsed: (s.partsUsed ?? []).filter((n) => !liftNames.has(n)) } : s));
+        // Parts a later step already places (by name or title) go on there; the rest get their own step.
+        const after = placed();
+        const loose = lift.filter((d) => after.get(d.key) == null || after.get(d.key)! < insertAt);
+        if (loose.length) {
+          out.splice(insertAt, 0, {
+            step: insertAt + 1,
+            title: `Set the ${listNames(loose.map((d) => d.name))}`,
+            description: loose.map((d) => placeSentence(project, d, supports.get(d.key), fix)).join(" "),
+            tips: "It goes on once every part under it is in place.",
+            partsUsed: loose.map((d) => d.name),
+          });
+        }
+      }
       const sentence = placeSentence(project, part, info, fix);
       const verb = info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
       out.splice(insertAt, 0, {
@@ -227,7 +251,40 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
     }
     if (!moved) break;
   }
-  return renumber(out);
+  return renumber(supportOrder(project, out, parts, supports));
+}
+
+/**
+ * Build steps in support order: a step whose parts rest on parts from a later step moves after it.
+ * A stable sort — steps keep their written order unless a support says otherwise; prep and cut steps
+ * stay first, and a loop of mutual supports keeps its written order.
+ */
+function supportOrder(project: YardProject, steps: AssemblyStep[], parts: Part[], supports: Map<string, SupportInfo>): AssemblyStep[] {
+  const where = placementIndex(project, steps);
+  const deps = steps.map(() => new Set<number>());
+  for (const p of parts) {
+    const at = where.get(p.key);
+    if (at == null || !isBuild(steps[at])) continue;
+    for (const k of supports.get(p.key)?.on ?? []) {
+      const j = where.get(k);
+      if (j != null && j !== at && isBuild(steps[j])) deps[at].add(j);
+    }
+  }
+  if (!deps.some((d, i) => [...d].some((j) => j > i))) return steps;
+  // Only steps that place parts move; prep, cut and check steps keep their slots.
+  const placing = steps.map((_, i) => i).filter((i) => isBuild(steps[i]) && [...where.values()].includes(i));
+  const done = new Set<number>(steps.map((_, i) => i).filter((i) => !placing.includes(i)));
+  const order: number[] = [];
+  const left = [...placing];
+  while (left.length) {
+    const k = left.findIndex((i) => [...deps[i]].every((j) => done.has(j)));
+    const i = left.splice(k < 0 ? 0 : k, 1)[0];
+    done.add(i);
+    order.push(i);
+  }
+  const out = [...steps];
+  placing.forEach((slot, n) => (out[slot] = steps[order[n]]));
+  return out;
 }
 
 /** Support depth: floor parts 0, a part on them 1, and so on. */
@@ -310,4 +367,18 @@ function splitByLayer(
 function listNames(names: string[]): string {
   const u = [...new Set(names)];
   return u.length > 1 ? `${u.slice(0, -1).join(", ")} and ${u[u.length - 1]}` : u[0] ?? "";
+}
+
+/**
+ * For the one-join split: true when a part of this family rests on a part first placed after
+ * step `stepIndex` (a work top on aprons fastened later), so its join waits for that step.
+ */
+export function restsOnLaterStep(project: YardProject, steps: AssemblyStep[]): (family: string, stepIndex: number) => boolean {
+  if (!project.panels.length) return () => false;
+  const supports = supportsOf(project);
+  const where = placementIndex(project, steps);
+  return (family, stepIndex) =>
+    project.panels
+      .filter((p) => p.type === family || p.name.toLowerCase().split(/\s+/).pop() === family)
+      .some((p) => (supports.get(p.id)?.on ?? []).some((k) => (where.get(k) ?? -1) > stepIndex));
 }

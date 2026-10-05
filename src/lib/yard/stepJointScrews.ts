@@ -6,6 +6,7 @@
  * once the box stands square, along every edge it touches, so its step names each real support.
  */
 import { panelJoints, type ModelJoint } from "./modelJoints";
+import { placementIndex } from "./placeEveryPart";
 import type { BuildPlan, CutLine, Panel, YardProject } from "./types";
 
 const sorted3 = (a: number, b: number, c: number) => [a, b, c].sort((x, y) => y - x);
@@ -65,7 +66,8 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
         const key = line ? `${line.label} ${line.name.replace(/\s*\d+$/, "")}` : p.name;
         byLetter.set(key, (byLetter.get(key) ?? 0) + 1);
       }
-      const talk = [...byLetter.entries()].map(([k, n]) => (n === 2 ? `both ${k}s` : n > 2 ? `all ${n} ${k}s` : k));
+      const many = (k: string) => (/shelf$/i.test(k) ? `${k.slice(0, -1)}ves` : `${k}s`);
+      const talk = [...byLetter.entries()].map(([k, n]) => (n === 2 ? `both ${many(k)}` : n > 2 ? `all ${n} ${many(k)}` : k));
       const list = talk.length > 1 ? `${talk.slice(0, -1).join(", ")} and ${talk[talk.length - 1]}` : talk[0];
       const text = `attach ${xl} ${xName} to the back edges of ${list} with ${n} × ${hw}, one about every 8" along each edge. Square the box first: both diagonals measure the same`;
       changed = true;
@@ -89,6 +91,14 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     instructions.forEach((s, i) => {
       if (i > backAt && touches(s) && !/hinge/i.test(s.title)) last = i;
     });
+    // Every part the back fastens to (dividers, shelves, aprons) is in place before the back goes on.
+    const thinIds = new Set(project.panels.filter(isThin).map((p) => p.id));
+    const backTouches = joints.filter((j) => thinIds.has(j.a) !== thinIds.has(j.b)).map((j) => (thinIds.has(j.a) ? j.b : j.a));
+    const placed = placementIndex(project, instructions);
+    for (const id of backTouches) {
+      const at = placed.get(id);
+      if (at != null && at > last && !/hinge/i.test(instructions[at].title)) last = at;
+    }
     if (last > backAt) {
       const lead = back.description.slice(0, back.description.indexOf("One join:")).trim();
       const rest = instructions.filter((_, i) => i !== backAt);
@@ -110,11 +120,57 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
   return { ...plan, instructions: instructions.map((s, i) => ({ ...s, step: i + 1 })) };
 }
 
-/** Screws the steps drive: the sum of every "with N × #8" join. */
+/** Screws the steps drive: a step's own "drives N" total when it states one, else every "with N × #8" join. */
 export function stepScrewCount(plan: BuildPlan): number {
   let n = 0;
   for (const s of plan.instructions) {
+    const all = s.description.match(/(?:Drive|drives) (\d+) × #8 /);
+    if (all) {
+      n += Number(all[1]);
+      continue;
+    }
     for (const m of s.description.matchAll(/with (\d+) × #8 /g)) n += Number(m[1]);
   }
   return n;
+}
+
+/** The joints the Buy screw line summed, kept per project so the steps read the very same joints. */
+export const BUY_JOINTS = new WeakMap<YardProject, ModelJoint[]>();
+
+/**
+ * Every step that fastens parts states its screws: each model joint belongs to the step that places
+ * the later of its two parts, so the steps add up to the Buy screw line exactly.
+ */
+export function stepsStateJointScrews(project: YardProject, plan: BuildPlan): BuildPlan {
+  const joints = BUY_JOINTS.get(project);
+  const line = plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""));
+  if (!joints || !line || !project.panels.length) return plan;
+  const total = Number(line.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+  const screwed = joints.filter((j) => j.screws > 0);
+  if (screwed.reduce((n, j) => n + j.screws, 0) !== total) return plan;
+  const where = placementIndex(project, plan.instructions);
+  const perStep = new Map<number, number>();
+  for (const j of screwed) {
+    const a = where.get(j.a), b = where.get(j.b);
+    if (a == null || b == null) return plan; // a part outside every step: leave the plan as Buy wrote it
+    const at = Math.max(a, b);
+    perStep.set(at, (perStep.get(at) ?? 0) + j.screws);
+  }
+  const len = line.name.match(/#8 x ([\d/ -]+)"/)?.[1]?.replace("-", " ") ?? "1 1/4";
+  const instructions = plan.instructions.map((s, i) => {
+    const t = perStep.get(i) ?? 0;
+    const stated = [...s.description.matchAll(/with (\d+) × #8 /g)].reduce((n, m) => n + Number(m[1]), 0);
+    if (t === stated) return s;
+    const sentence = stated
+      ? `In all, this step drives ${t} × #8 × ${len}" screws, from the model's joints.`
+      : `Drive ${t} × #8 × ${len}" screws in this step, from the model's joints: one about every 8" along each joint (at least 2).`;
+    return { ...s, description: `${s.description.replace(/\s*$/, "")}${/[.!?]$/.test(s.description.trim()) ? "" : "."} ${sentence}` };
+  });
+  // The last screw step sums the build, in the Buy line's own words.
+  const last = Math.max(...perStep.keys());
+  if (last >= 0 && instructions[last]) {
+    const s = instructions[last];
+    instructions[last] = { ...s, description: `${s.description.replace(/\s*$/, "")} That brings the build to ${total} screws from the model's joints, the count on the Buy list.` };
+  }
+  return { ...plan, instructions };
 }
