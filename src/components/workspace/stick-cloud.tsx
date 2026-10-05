@@ -9,8 +9,10 @@ import type { Panel } from "@/lib/yard/types";
 import { isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
+import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
 import {
   BarPull,
+  CoatHook,
   CupPull,
   DoorHinges,
   EdgeBand,
@@ -195,6 +197,23 @@ export function PanelMesh({
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
   if (hiddenInStep) return null;
+
+  // Bought coat hooks: steel hook glyph, never a wood box the same color as the rail.
+  if (isBoughtHardwareName(panel.name)) {
+    return (
+      <group position={groupPos} rotation={groupRot}>
+        <group
+          position={meshPos}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+        >
+          <CoatHook w={w} h={h} d={d} />
+        </group>
+      </group>
+    );
+  }
 
   return (
     <group position={groupPos} rotation={groupRot}>

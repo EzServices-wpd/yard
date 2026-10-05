@@ -19,7 +19,8 @@ describe("Hardware on Buy shows in the model, with no phantom parts", () => {
     it(prompt, () => {
       const project = generateFromPrompt(prompt);
       const plan = buildPlan(project);
-      const drawn = project.panels.filter((p) => /^Coat hook \d+$/.test(p.name)).length;
+      const hooks = project.panels.filter((p) => /^Coat hook \d+$/.test(p.name));
+      const drawn = hooks.length;
       const buy = Number(plan.bom.find((b) => /coat hooks/i.test(b.name))?.notes?.match(/^(\d+) hooks/)?.[1] ?? NaN);
       const step = plan.instructions.find((s) => /^Screw \d+ (?:coat )?hooks/.test(s.title));
       assert.ok(step, plan.instructions.map((s) => s.title).join(" | "));
@@ -28,8 +29,22 @@ describe("Hardware on Buy shows in the model, with no phantom parts", () => {
       assert.ok(!project.panels.some((p) => /^Peg \d+$|^Peg stop$/.test(p.name)), "no wooden pegs beside bought hooks");
       assert.ok(!plan.cutList.some((c) => /hook/i.test(c.name)), "hooks are bought, not cut");
       assert.ok(!plan.bom.some((b) => /mirror/i.test(b.name)), "no phantom mirror");
+      const rail = project.panels.find((p) => /peg rail/i.test(p.name));
+      if (rail) {
+        const railFront = rail.position.z + rail.size.depth;
+        for (const h of hooks) {
+          assert.ok(h.size.depth >= 1.5, `${h.name} depth ${h.size.depth}`);
+          assert.ok(h.position.z + h.size.depth > railFront + 0.5, `${h.name} must stick out past the rail`);
+        }
+      }
     });
   }
+  it("coat rack 36 wide five hooks draws five visible hooks", () => {
+    const project = generateFromPrompt("coat rack 36 wide five hooks");
+    const hooks = project.panels.filter((p) => /^Coat hook \d+$/.test(p.name));
+    assert.equal(hooks.length, 5);
+    assert.ok(hooks.every((h) => h.materialId === "coat-hooks"));
+  });
 });
 
 describe("Buy lists the adhesive the steps use", () => {
