@@ -1235,18 +1235,6 @@ function finalize(
   if (next.instances.length === 0 && next.panels.length === 0) {
     next = neverEmpty(next, item, box);
   }
-  if (/\bchair\b/.test(next.prompt.toLowerCase()) && next.instances.length && !next.instances.some((i) => i.role === "seat")) {
-    const seat = next.instances[0];
-    next = {
-      ...next,
-      instances: [
-        ...next.instances,
-        { ...seat, id: seat.id + "-seat", role: "seat", position: { ...seat.position, y: 18 } },
-        { ...seat, id: seat.id + "-back", role: "back", position: { ...seat.position, y: 28 } },
-      ],
-      notes: ["Named stock keeps the chair anatomy: a seat and a back sit on the legs.", ...next.notes],
-    };
-  }
   if (
     /table|desk|workbench|picnic/.test(next.prompt.toLowerCase()) &&
     !/chair|stool|planter/.test(next.prompt.toLowerCase()) &&

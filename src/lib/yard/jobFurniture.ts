@@ -2,6 +2,8 @@
  * A furniture job with no craft stock is full-size wood.
  * Popsicle, cardboard, and Lego only when the person types them.
  */
+import { getCatalogItem } from "./catalog";
+import { inchFrac } from "./inchText";
 import { detectMaterial } from "./promptHelpers";
 import { createId } from "./structureGraph";
 import type { AssemblyStep, Panel, YardProject } from "./types";
@@ -18,7 +20,9 @@ export function wantsJobFurniture(prompt: string, materialOverride?: string): bo
   const lower = prompt.toLowerCase().replace(/chair[\s-]+space/g, " ");
   if (!JOB.test(lower) || namesCraftStock(prompt, materialOverride)) return false;
   const named = detectMaterial(prompt);
-  if (named && !/wire/i.test(named.id) && !/popsicle/i.test(named.id)) return false;
+  // A named board builds a real chair from that board (seat boards side by side, doubled legs).
+  const boardChair = !!named && boardOf(named.id) != null && /\bchair\b/.test(lower) && !materialOverride;
+  if (named && !boardChair && !/wire/i.test(named.id) && !/popsicle/i.test(named.id)) return false;
   if (/step-?stool|step-?up|climb\s+stool|adirondack|lounge\s*chair|rocking\s*chair|ottoman/.test(lower)) return false;
   if (/\bcloset\b|\balcove\b|\bpocket\b/.test(lower)) return false;
   return true;
@@ -33,8 +37,82 @@ function panel(type: Panel["type"], name: string, x: number, y: number, z: numbe
   return { id: createId("p"), type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId };
 }
 
+/** A named dimensional board (1x4, 1x6, 2x4…): its real width and thickness. */
+function boardOf(id: string): { id: string; w: number; t: number; label: string } | null {
+  const item = getCatalogItem(id);
+  if (!item || item.category !== "lumber" || item.formFactor !== "board") return null;
+  const w = item.dims?.width ?? 0;
+  const t = item.dims?.height ?? 0;
+  if (!(w > 0 && t > 0)) return null;
+  return { id, w, t, label: item.name };
+}
+
+/**
+ * A chair from one named board: every part is that board.
+ * Legs are two boards glued face to face. The seat is boards laid side by side across the aprons so
+ * they cover the whole seat; the back is two boards across the back legs.
+ */
+function buildBoardChair(prompt: string, board: { id: string; w: number; t: number; label: string }): YardProject {
+  const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, 18);
+  const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, 18);
+  const { w: bw, t: bt, id } = board;
+  const legT = bt * 2;
+  const legD = bw;
+  const gap = 0.25;
+  const typedDepth = prompt.match(/(\d+(?:\.\d+)?)\s*(?:deep|depth)/i);
+  const boards = typedDepth
+    ? Math.max(2, Math.floor((Number(typedDepth[1]) - legD + gap) / (bw + gap)))
+    : Math.max(3, Math.ceil(13 / (bw + gap)));
+  const span = typedDepth ? Number(typedDepth[1]) - legD : boards * bw + (boards - 1) * gap;
+  const depth = Math.round((legD + span) * 16) / 16;
+  const step = boards > 1 ? (span - bw) / (boards - 1) : 0;
+  const backH = 16;
+  const x0 = -width / 2;
+  const apronTop = seatH - bt;
+  const panels: Panel[] = [];
+  const leg = (label: string, x: number, z: number, h: number) => {
+    panels.push(panel("upright", `${label} leg (outer board)`, x, 0, z, bt, h, legD, id));
+    panels.push(panel("upright", `${label} leg (inner board)`, x + bt, 0, z, bt, h, legD, id));
+  };
+  leg("Front left", x0, depth - legD, apronTop);
+  leg("Front right", x0 + width - legT, depth - legD, apronTop);
+  leg("Back left", x0, 0, seatH + backH);
+  leg("Back right", x0 + width - legT, 0, seatH + backH);
+  const inX = x0 + legT;
+  const inW = width - legT * 2;
+  panels.push(panel("rail", "Front apron", inX, apronTop - bw, depth - bt, inW, bw, bt, id));
+  panels.push(panel("rail", "Back apron", inX, apronTop - bw, legD - bt, inW, bw, bt, id));
+  panels.push(panel("rail", "Left apron", inX, apronTop - bw, legD, bt, bw, depth - legD * 2, id));
+  panels.push(panel("rail", "Right apron", x0 + width - legT - bt, apronTop - bw, legD, bt, bw, depth - legD * 2, id));
+  for (let i = 0; i < boards; i++) {
+    panels.push(panel("deck", `Seat board ${i + 1}`, x0, apronTop, legD + step * i, width, bt, bw, id));
+  }
+  const backTop = seatH + backH;
+  panels.push(panel("back", "Back board 1", x0, backTop - bw, legD, width, bw, bt, id));
+  panels.push(panel("back", "Back board 2", x0, backTop - bw * 2 - 3, legD, width, bw, bt, id));
+  const name = `Kitchen chair ${inchFrac(width)}" × ${inchFrac(seatH)}" seat`;
+  return {
+    id: createId("proj"),
+    name,
+    prompt,
+    kind: "furniture",
+    overall: { width, height: backTop, depth },
+    instances: [],
+    panels,
+    primaryMaterialId: id,
+    notes: [
+      `${name}, every part from ${board.label}. Each leg is two boards glued face to face (${inchFrac(legT)}" × ${inchFrac(legD)}"). ${boards} seat boards lie side by side across the aprons and cover the ${inchFrac(width)}" × ${inchFrac(span)}" seat. Full-size wood — no craft stock was named.`,
+    ],
+    historic: false,
+    assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "person" },
+  };
+}
+
 export function buildJobFurniture(prompt: string): YardProject {
   const lower = prompt.toLowerCase();
+  const named = detectMaterial(prompt);
+  const board = named && /\bchair\b/.test(lower) ? boardOf(named.id) : null;
+  if (board) return buildBoardChair(prompt, board);
   const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, 18);
   const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, /\bchair\b|\bstool\b/.test(lower) ? 18 : 36);
   const depth = num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, /\bchair\b|\bstool\b/.test(lower) ? 16 : 18);
@@ -76,7 +154,51 @@ export function buildJobFurniture(prompt: string): YardProject {
   };
 }
 
+function boardChairSteps(project: YardProject): AssemblyStep[] {
+  const names = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).map((p) => p.name);
+  const seat = names(/^Seat board/);
+  const back = names(/^Back board/);
+  const fix = '#8 x 1 1/4" screws, the same screws on the Buy list';
+  const steps: AssemblyStep[] = [
+    { step: 1, title: "Confirm the footprint — read before you cut", description: "Mark the four leg spots on the bench. Check both diagonals.", partsUsed: ["*"] },
+    { step: 2, title: "Cut every board to its mark", description: "Every part is the same board. Cut the leg boards, the four aprons, the seat boards and the back boards to the cut list.", partsUsed: ["*"] },
+    {
+      step: 3,
+      title: "Glue each leg pair",
+      description: `Each leg is two boards. Spread glue on one face, clamp the pair flush, and drive ${fix} from the inner face, every 6". Make all 4 legs, then stand them on the floor at the leg spots.`,
+      partsUsed: names(/ leg \(/),
+    },
+    {
+      step: 4,
+      title: "Build the two chair sides",
+      description: `One join: each apron end takes glue and 2 screws. Glue and screw the left apron between the front left and back left legs, and the right apron between the right legs, top edges level, with ${fix}. Each side is a front leg, a back leg and an apron.`,
+      partsUsed: ["Left apron", "Right apron"],
+    },
+    {
+      step: 5,
+      title: "Join the two sides with the front and back aprons",
+      description: `One join: each apron end takes glue and 2 screws. Stand both sides up. Glue and screw the front apron between the front legs and the back apron between the back legs with ${fix}. Measure the diagonals equal.`,
+      partsUsed: ["Front apron", "Back apron"],
+    },
+    {
+      step: 6,
+      title: `Set the ${seat.length} seat boards on the aprons`,
+      description: `Lay the ${seat.length} seat boards side by side across the side aprons, front board flush with the front apron, small even gaps between boards. Two screws through each board end into the side apron, with ${fix}. Together they cover the whole seat.`,
+      partsUsed: seat,
+    },
+    {
+      step: 7,
+      title: "Screw the back boards to the back legs",
+      description: `Set the ${back.length} back boards across the front faces of the back legs, the top board flush with the leg tops. Two screws at each leg, with ${fix}.`,
+      partsUsed: back,
+    },
+    { step: 8, title: "Sit on it", description: "With the seat boards and back boards fastened, sit on the seat. It should feel solid. If a joint moves, re-drive its screws.", partsUsed: seat },
+  ];
+  return steps;
+}
+
 export function jobFurnitureSteps(project: YardProject): AssemblyStep[] {
+  if (project.panels.some((p) => /^Seat board/.test(p.name))) return boardChairSteps(project);
   const seat = project.panels.some((p) => p.name === "Seat");
   const back = project.panels.some((p) => p.name === "Back");
   const steps: AssemblyStep[] = [

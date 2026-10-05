@@ -168,10 +168,14 @@ for (const inst of chair.project.instances) {
   const r = inst.role || "member";
   chairRoles[r] = (chairRoles[r] ?? 0) + 1;
 }
-if ((chairRoles.leg ?? 0) !== 4) {
+// A board chair is built from panels: legs are named leg assemblies (two boards glued face to face).
+const chairLegs = new Set(chair.project.panels.filter((p) => /\bleg\b/i.test(p.name)).map((p) => p.name.replace(/\s*\(.*\)\s*/, "")));
+if ((chairRoles.leg ?? chairLegs.size) !== 4) {
   guardFail("honesty-smoke", "", "chair should have 4 legs", chairRoles, chair.pieces);
 }
-if ((chairRoles.rail ?? 0) < 6) {
+const seatBoards = chair.project.panels.filter((p) => /^seat board/i.test(p.name));
+const seatCover = seatBoards.reduce((s, p) => s + p.size.depth, 0);
+if ((chairRoles.rail ?? 0) < 6 && (seatBoards.length < 2 || seatCover < chair.project.overall.depth * 0.6)) {
   guardFail("honesty-smoke", "", "chair lost seat rails / slats", chairRoles);
 }
 if (chair.pieces < 12 || chair.pieces > 28) {

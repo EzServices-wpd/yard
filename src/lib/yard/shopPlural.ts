@@ -182,6 +182,9 @@ export function cutListName(name: string, type?: string): string {
   if (/picture ledge/i.test(name)) return "Picture ledge";
   if (/^apron\b/i.test(name) || (type === "rail" && /apron/i.test(name))) return "Apron";
   if (/^leg\b/i.test(name)) return "Leg";
+  // Board-built parts keep the board word: "Front left leg (outer board)" → "Leg board", "Seat board 3" → "Seat board".
+  if (/\bleg\b.*\bboard\b/i.test(name)) return "Leg board";
+  if (/^(seat|back) board\b/i.test(name)) return name.replace(/^(seat|back) board\b.*$/i, (_m, w: string) => `${w[0].toUpperCase()}${w.slice(1).toLowerCase()} board`);
   if (/cut round/i.test(name)) return name;
   // Drawer box parts — name wins BEFORE carcase type aliases. Cut-step explode
   // remaps drawer-side→upright, drawer-back→back, drawer-bottom→bottom; without
