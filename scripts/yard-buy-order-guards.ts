@@ -189,7 +189,8 @@ console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest ($
     }
     const sheetRows = plan.bom.filter((b) => /^sheets?$/.test(b.unit));
     const buyBacker = sheetRows.filter((b) => /^plywood-1-4-/.test(b.catalogId ?? "")).reduce((s, b) => s + b.quantity, 0);
-    const buyStructural = sheetRows.filter((b) => !/^plywood-1-4-/.test(b.catalogId ?? "")).reduce((s, b) => s + b.quantity, 0);
+    // Frame glazing (acrylic or glass) is bought cut to the photo, apart from the plywood layout.
+    const buyStructural = sheetRows.filter((b) => !/^(?:plywood-1-4-|acrylic-sheet|frame-glass)/.test(b.catalogId ?? "")).reduce((s, b) => s + b.quantity, 0);
     if (buyStructural !== structural) fail(`Buy sheets ≠ layout sheets: ${p}`, { buy: buyStructural, layout: structural, rows: sheetRows.map((b) => `${b.name} ${b.quantity}`) });
     if (buyBacker !== backer) fail(`Buy backer sheets ≠ backer layout: ${p}`, { buy: buyBacker, layout: backer });
     if (layout.sheets?.unplaced.length) fail(`parts left off every sheet: ${p}`, layout.sheets.unplaced.map((x) => x.name));

@@ -43,7 +43,7 @@ import { climbStepCount, spokenRungCount, detectWeekendFamily, detectWeekendMech
 import { classifyAnatomy } from "../src/lib/yard/anatomy";
 import { detectShapeClass, inspectShape } from "../src/lib/yard/shapeTemplates";
 import { bindsDeterministically } from "../src/lib/yard/weekendFamily";
-import { inspectTemplate, frameHangs } from "../src/lib/yard/formTemplates";
+import { inspectTemplate, frameHangs, frameGlazing } from "../src/lib/yard/formTemplates";
 import { boxGap, contactReport, projectBoxes } from "../src/lib/yard/contact";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
@@ -1254,7 +1254,8 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     if (b.instances.length && b.instances.filter((i) => i.role === "spacer").length < 4) failWeekend(`frame stack: ${p} no spacer sticks`);
     if (!b.instances.length && !(n("rabbet") > n("lip"))) failWeekend(`frame stack: ${p} rabbet does not seat the photo`);
     const stack = (b.notes ?? []).find((x) => /^Stack, front to back:/.test(x)) ?? "";
-    const glazeAsked = /\bglass\b|\bacrylic\b/.test(p);
+    // A frame protects its photo: clear acrylic by default, glass when typed, none when "no glass" is typed.
+    const glazeAsked = frameGlazing(p) > 0;
     const order = [/lip/, ...(glazeAsked ? [/glass|acrylic/] : []), /the photo/, /backer/, frameHangs(p) || P.hanger ? /sawtooth hanger/ : /stand feet/];
     let at = 0;
     for (const re of order) {
