@@ -972,20 +972,52 @@ export function refinedPrompt(currentPrompt: string, prompt: string): string {
   return `${base}. Then: ${prompt}`;
 }
 
+/** Size, stock, and join filler — not the build's subject noun. */
+const SUBJECT_STOP =
+  /^(?:the|a|an|and|or|of|in|on|to|for|with|from|only|each|by|at|into|onto|over|under|using|made|build|builds|building|make|makes|making|add|adds|adding|cut|cuts|cutting|don'?t|inches?|inch|feet|foot|ft|wide|width|tall|high|height|deep|depth|long|length|taller|shorter|wider|deeper|narrower|bigger|smaller|more|less|sticks?|stick|plywood|popsicle|craft|dowel|lumber|pine|oak|cedar|pvc|cardboard|sheet|board|bamboo|balsa|basswood|skewers?|straws?|pipe|pipes|2x4|2x6|1x2|1x3|1x4|1x6|1x8|4x4|then)$/;
+
+/** Subject nouns in a prompt (sizes, stock words, and ". Then:" refinements stripped). */
+export function subjectWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(THEN_SUFFIX, " ")
+    .replace(/\d+(?:\.\d+)?/g, " ")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !SUBJECT_STOP.test(w));
+}
+
+/**
+ * True when two prompts name the same build — sizes and stock clauses ignored.
+ * Used so a new subject without typed stock does not inherit the bench's stock.
+ */
+export function sameBuildSubject(a: string, b: string): boolean {
+  const wa = subjectWords(a);
+  const wb = subjectWords(b);
+  if (!wa.length || !wb.length) return false;
+  if (wa[wa.length - 1] === wb[wb.length - 1]) return true;
+  const setB = new Set(wb);
+  const shared = wa.filter((w) => setB.has(w)).length;
+  return shared > 0 && shared >= Math.min(wa.length, wb.length);
+}
+
+const FOLLOW_START =
+  /^(make |add |remove |taller|shorter|wider|narrower|from |cut the |cut each |don'?t cut|without |with \d|more |less |bigger|smaller|whole sticks|glue only)/i;
+
 export function looksLikeFollowOn(prompt: string, currentPrompt: string): boolean {
   const p = prompt.trim();
   if (!currentPrompt.trim() || p.length > 160) return false;
   const lower = p.toLowerCase();
   const current = currentPrompt.toLowerCase();
   const named = lower.match(OBJECT_WORD);
-  if (named && !current.includes(named[0]) && !/^(make |add |from |cut |don'?t|taller|shorter|wider)/i.test(lower)) {
+  if (named && !current.includes(named[0]) && !FOLLOW_START.test(lower)) {
     return false;
   }
-  return (
-    /^(make |add |remove |taller|shorter|wider|narrower|from |cut the |don'?t cut|without |with \d|more |less |bigger|smaller|whole sticks|glue only)/i.test(
-      p,
-    ) || (p.length < 56 && !OBJECT_WORD.test(lower))
-  );
+  if (FOLLOW_START.test(p)) return true;
+  // Short size/stock-only edits ("24 wide", "plywood") refine the same build.
+  // A typed subject ("lemonade stand") is a new prompt, not ". Then:".
+  if (p.length < 56 && !OBJECT_WORD.test(lower) && subjectWords(lower).length === 0) return true;
+  return false;
 }
 
 export function followOnNamesStock(prompt: string): boolean {

@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createId } from "@/lib/utils";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, PocketNotch, PocketSpec, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
-import { applyFollowOnSize, followOnNamesStock, isRepeatPrompt, looksLikeFollowOn, materialUnlessNamed, refinedPrompt } from "./promptHelpers";
+import { applyFollowOnSize, followOnNamesStock, hasExplicitStock, isRepeatPrompt, looksLikeFollowOn, materialUnlessNamed, refinedPrompt } from "./promptHelpers";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
 import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
@@ -330,7 +330,16 @@ export const useYard = create<YardState>((set, get) => ({
         genOpts.cutStock = false;
       }
     }
-    if (!materialId) materialId = materialUnlessNamed(current.primaryMaterialId, used);
+    // A new subject with no stock typed must not inherit the bench stock — that
+    // skipped honest fallback (popsicle birdhouse → "lemonade stand" stayed craft).
+    // Keep prior stock for ". Then:" refinements, exact repeats, Measure restock,
+    // or when the typed words name stock (hasExplicitStock / detectMaterial).
+    if (!materialId) {
+      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat);
+      if (keepPrior || hasExplicitStock(used)) {
+        materialId = materialUnlessNamed(current.primaryMaterialId, used);
+      }
+    }
     const built = generateFromPrompt(used, materialId, form, genOpts);
     // A remapped primitive keeps showing the typed words across restock and refinement.
     const typedPrompt =

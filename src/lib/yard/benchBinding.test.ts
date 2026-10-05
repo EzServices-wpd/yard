@@ -97,3 +97,67 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
     assert.equal(useYard.getState().project.typedPrompt, "lemonade stand. Then: taller");
   });
 });
+
+describe("new subject without typed stock does not inherit bench stock", () => {
+  it("after a popsicle birdhouse, lemonade stand lands plywood fallback", async () => {
+    const mem = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const { useYard } = await import("./store.ts");
+    useYard.getState().generate("popsicle stick birdhouse", undefined, undefined, { fresh: true });
+    assert.match(useYard.getState().project.primaryMaterialId, /popsicle/);
+    useYard.getState().generate("lemonade stand");
+    const next = useYard.getState().project;
+    assert.doesNotMatch(next.primaryMaterialId, /popsicle|craft/);
+    assert.match(next.primaryMaterialId, /plywood|lumber|wood/);
+    assert.doesNotMatch(next.prompt, /Then:/);
+    assert.equal(next.typedPrompt, "lemonade stand");
+  });
+
+  it("lemonade stand 60 wide after a plywood lemonade rebuilds at 60, not as Then:", async () => {
+    const mem = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const { useYard } = await import("./store.ts");
+    useYard.getState().generate("lemonade stand", undefined, undefined, { fresh: true });
+    assert.match(useYard.getState().project.primaryMaterialId, /plywood|lumber/);
+    useYard.getState().generate("lemonade stand 60 wide");
+    const next = useYard.getState().project;
+    assert.doesNotMatch(next.prompt, /Then:/);
+    assert.equal(next.overall.width, 60);
+    assert.ok(next.overall.height >= 36, `height ${next.overall.height}`);
+    assert.doesNotMatch(next.primaryMaterialId, /popsicle|craft/);
+    assert.equal(next.typedPrompt, "lemonade stand 60 wide");
+  });
+
+  it("taller after lemonade still refines and keeps stock", async () => {
+    const mem = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const { useYard } = await import("./store.ts");
+    useYard.getState().generate("lemonade stand", undefined, undefined, { fresh: true });
+    const stock = useYard.getState().project.primaryMaterialId;
+    useYard.getState().generate("taller");
+    const next = useYard.getState().project;
+    assert.match(next.prompt, /Then: taller/);
+    assert.equal(next.primaryMaterialId, stock);
+  });
+});
