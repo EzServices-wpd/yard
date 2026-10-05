@@ -84,3 +84,23 @@ describe("Stick groups build up from the frame, never in a loop", () => {
     assert.ok(titles.findIndex((t) => /arm/i.test(t)) < titles.findIndex((t) => /\bcup\b/i.test(t)), titles.join(" | "));
   });
 });
+
+describe("Outdoor seat family has seat and back, and Buy screw length matches the cart", () => {
+  it("adirondack chair", () => {
+    const project = generateFromPrompt("adirondack chair");
+    const plan = buildPlan(project);
+    const roles = (project.instances ?? []).map((i) => i.role ?? "");
+    assert.ok(roles.includes("leg"), "legs");
+    assert.ok(roles.includes("seat"), `seat in ${roles.join(",")}`);
+    assert.ok(roles.includes("back"), `back in ${roles.join(",")}`);
+    assert.ok(!roles.includes("ring"), "no rings");
+    const screw = plan.bom.find((b) => /#8.*wood screws/i.test(b.name));
+    assert.ok(screw, "Buy lists #8 screws");
+    assert.match(screw!.name, /2-1\/2/);
+    const offerTitles = (screw!.offers ?? []).map((o) => o.title).join(" | ");
+    assert.match(offerTitles, /2-1\/2/, offerTitles);
+    assert.doesNotMatch(offerTitles, /1-1\/4/, offerTitles);
+    assert.ok(plan.instructions.some((s) => /seat/i.test(s.title)), plan.instructions.map((s) => s.title).join(" | "));
+    assert.ok(plan.instructions.some((s) => /back/i.test(s.title)), plan.instructions.map((s) => s.title).join(" | "));
+  });
+});

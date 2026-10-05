@@ -451,6 +451,46 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "screws-8",
+    retailer: "homedepot",
+    title: "#8 x 2-1/2\" wood screws, 1 lb",
+    href: "https://www.homedepot.com/s/%238%202-1%2F2%20wood%20screws",
+    packQty: 1,
+    packPrice: 9.47,
+    lengthIn: 2.5,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "screws-8",
+    retailer: "amazon",
+    title: "#8 x 2-1/2\" wood screws, 50 count",
+    href: "https://www.amazon.com/s?k=%238+2-1%2F2+wood+screws+50",
+    packQty: 1,
+    packPrice: 10.49,
+    lengthIn: 2.5,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "screws-8",
+    retailer: "homedepot",
+    title: "#8 x 1\" wood screws, 1 lb",
+    href: "https://www.homedepot.com/s/%238%201%20inch%20wood%20screws",
+    packQty: 1,
+    packPrice: 7.97,
+    lengthIn: 1,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "screws-8",
+    retailer: "amazon",
+    title: "#8 x 1\" wood screws, 50 count",
+    href: "https://www.amazon.com/s?k=%238+1+inch+wood+screws+50",
+    packQty: 1,
+    packPrice: 8.79,
+    lengthIn: 1,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "edge-banding",
     retailer: "amazon",
     title: "Iron-on birch edge banding, 3/4\" × 25 ft roll",
@@ -1240,12 +1280,28 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     const prim = item ? toPrimitive(item) : undefined;
     const packMatch = line.unit.match(/pack of (\d+)/i);
     const pieces = packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
+    // #8 screw Buy lines name the length; match listings by that length (1", 1-1/4", 2-1/2").
+    const screwLen = /#8|wood screw/i.test(line.name)
+      ? (() => {
+          const m = line.name.match(/[×x]\s*(\d+(?:[- ]\d+\/\d+)?|\d+\/\d+)\s*"/i);
+          if (!m) return null;
+          const tok = m[1].trim();
+          const mixed = tok.match(/^(\d+)[- ](\d+)\/(\d+)$/);
+          const fr = tok.match(/^(\d+)\/(\d+)$/);
+          if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+          if (fr) return Number(fr[1]) / Number(fr[2]);
+          const n = Number(tok);
+          return n > 0 && n < 12 ? n : null;
+        })()
+      : null;
+    const dims =
+      screwLen != null
+        ? { lengthIn: screwLen }
+        : prim
+          ? { lengthIn: prim.length, widthIn: prim.width, thickIn: prim.height }
+          : undefined;
     const priced = canPriceFromCatalog
-      ? offersFor(
-          id!,
-          Math.max(1, pieces),
-          prim ? { lengthIn: prim.length, widthIn: prim.width, thickIn: prim.height } : undefined,
-        )
+      ? offersFor(id!, Math.max(1, pieces), dims)
       : [];
     let offers: ShopOffer[] = priced.map((o) => ({
       retailer: o.retailer,

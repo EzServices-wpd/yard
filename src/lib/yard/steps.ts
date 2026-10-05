@@ -3346,6 +3346,9 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     return [
       { role: "base", title: "Screw the stretchers that sit on the floor", why: "The seat sits on this. Square it." },
       { role: "leg", title: "Stand the legs — two sides first", why: "Each side is a front leg, a back leg, and a side rail." },
+      { role: "seat", title: "Build the seat", why: "Seat rails and slats you sit on — not a ring or open box." },
+      { role: "arm", title: "Set the arms", why: "Arms rest on the front legs and meet the back." },
+      { role: "back", title: "Build the backrest", why: "Back rails and slats between the back legs." },
       { role: "rail", title: "Seat rails, slats, and stretchers", why: "Aprons keep the legs from walking apart." },
       { role: "brace", title: "Backrest", why: "The back, not bay lacing." },
       { role: "member", title: "Place remaining members", why: "Anything without a role still has to meet a joint." },

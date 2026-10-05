@@ -626,41 +626,52 @@ export function towerOps(s: Size3): FormOp[] {
 }
 
 export function chairOps(s: Size3): FormOp[] {
+  // Outdoor-seat family: legs + seat deck + backrest + arms — never a ring or open box.
   const h = Math.max(s.height, 32);
   const w = Math.max(14, Math.min(s.width, 22));
   const d = Math.max(14, Math.min(s.depth, 20));
-  const seat = h * 0.5;
+  const seat = h * 0.45;
   const hx = w / 2;
   const hz = d / 2;
-  const stretch = Math.max(5, seat * 0.3);
+  const stretch = Math.max(5, seat * 0.28);
+  const armY = seat + Math.max(4, (h - seat) * 0.22);
   const ops: FormOp[] = [
+    // Back legs tall; front legs to the seat.
     { op: "column", x: -hx, z: -hz, y0: 0, y1: h, role: "leg" },
     { op: "column", x: hx, z: -hz, y0: 0, y1: h, role: "leg" },
     { op: "column", x: -hx, z: hz, y0: 0, y1: seat, role: "leg" },
     { op: "column", x: hx, z: hz, y0: 0, y1: seat, role: "leg" },
-    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: -hz }, { x: hx, y: seat, z: -hz }] },
-    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: hz }, { x: hx, y: seat, z: hz }] },
-    { op: "poly", role: "rail", points: [{ x: -hx, y: seat, z: -hz }, { x: -hx, y: seat, z: hz }] },
-    { op: "poly", role: "rail", points: [{ x: hx, y: seat, z: -hz }, { x: hx, y: seat, z: hz }] },
+    // Seat frame.
+    { op: "poly", role: "seat", points: [{ x: -hx, y: seat, z: -hz }, { x: hx, y: seat, z: -hz }] },
+    { op: "poly", role: "seat", points: [{ x: -hx, y: seat, z: hz }, { x: hx, y: seat, z: hz }] },
+    { op: "poly", role: "seat", points: [{ x: -hx, y: seat, z: -hz }, { x: -hx, y: seat, z: hz }] },
+    { op: "poly", role: "seat", points: [{ x: hx, y: seat, z: -hz }, { x: hx, y: seat, z: hz }] },
+    // Lower stretchers under the seat.
     { op: "poly", role: "rail", points: [{ x: -hx, y: stretch, z: hz }, { x: hx, y: stretch, z: hz }] },
     { op: "poly", role: "rail", points: [{ x: -hx, y: stretch, z: -hz }, { x: -hx, y: stretch, z: hz }] },
     { op: "poly", role: "rail", points: [{ x: hx, y: stretch, z: -hz }, { x: hx, y: stretch, z: hz }] },
-    { op: "poly", role: "brace", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
-    { op: "poly", role: "brace", points: [{ x: -hx, y: seat + (h - seat) * 0.55, z: -hz }, { x: hx, y: seat + (h - seat) * 0.55, z: -hz }] },
+    // Top back rail + mid back rail.
+    { op: "poly", role: "back", points: [{ x: -hx, y: h, z: -hz }, { x: hx, y: h, z: -hz }] },
+    { op: "poly", role: "back", points: [{ x: -hx, y: seat + (h - seat) * 0.55, z: -hz }, { x: hx, y: seat + (h - seat) * 0.55, z: -hz }] },
+    // Arms: front leg up to the back leg at arm height.
+    { op: "poly", role: "arm", points: [{ x: -hx, y: armY, z: hz }, { x: -hx, y: armY, z: -hz }] },
+    { op: "poly", role: "arm", points: [{ x: hx, y: armY, z: hz }, { x: hx, y: armY, z: -hz }] },
   ];
   for (let i = 1; i <= 3; i++) {
     const x = -hx + (2 * hx * i) / 4;
+    // Seat slats front-to-back.
     ops.push({
       op: "poly",
-      role: "rail",
+      role: "seat",
       points: [
         { x, y: seat, z: -hz },
         { x, y: seat, z: hz },
       ],
     });
+    // Back slats up the backrest.
     ops.push({
       op: "poly",
-      role: "brace",
+      role: "back",
       points: [
         { x, y: seat, z: -hz },
         { x, y: h, z: -hz },
