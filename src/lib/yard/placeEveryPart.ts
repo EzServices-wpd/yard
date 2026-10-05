@@ -89,6 +89,8 @@ export function familyWord(name: string): string {
 
 function plural(word: string, n: number): string {
   if (n === 1) return word;
+  if (/(?:shelf|half|leaf|loaf)$/.test(word)) return `${word.slice(0, -1)}ves`;
+  if (/(?:knife|life|wife)$/.test(word)) return `${word.slice(0, -2)}ves`;
   if (/(s|sh|ch|x)$/.test(word)) return `${word}es`;
   if (/[^aeiou]y$/.test(word)) return `${word.slice(0, -1)}ies`;
   return `${word}s`;

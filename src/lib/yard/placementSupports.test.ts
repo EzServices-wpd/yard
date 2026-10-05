@@ -56,3 +56,10 @@ describe("working parts exist before the plan claims the use", () => {
     assert.doesNotMatch(all(pl), /lies? flat on the floor/);
   });
 });
+
+describe("Step titles use plain plurals", () => {
+  it("coat rack: hat shelves, never 'shelfs'", () => {
+    const plan = buildPlan(generateFromPrompt("coat rack 36 wide five hooks"));
+    assert.ok(!plan.instructions.some((s) => /shelfs\b/i.test(`${s.title} ${s.description}`)), plan.instructions.map((s) => s.title).join(" | "));
+  });
+});
