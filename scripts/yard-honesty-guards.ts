@@ -7983,7 +7983,8 @@ console.log("STRANGER PLAN OK", {
   // Pocket vanity: shelf G (the upper bottom) says how high, from the floor, in fractions.
   const pv = buildPlan(generateFromPrompt("pocket vanity"));
   // Letter-agnostic: the upper bottom's letter follows the cut-list order (it was G before the interference solve).
-  const gStep = pv.instructions.find((s) => /Attach [A-Z]{1,2} Bottom/i.test(s.title));
+  // The bottom join may be the "Stand the main box" step (the thin back goes on last), so read title and words.
+  const gStep = pv.instructions.find((s) => /Attach [A-Z]{1,2} Bottom/i.test(`${s.title} ${s.description}`));
   if (!gStep || !/Top of [A-Z]{1,2} Bottom sits 54 3\/4" up from the floor/.test(gStep.description)) failHonesty("placement: pocket vanity G step lost its height", gStep?.description);
   const pinStep = pv.instructions.find((s) => /adjustable shelves/i.test(s.title));
   if (!pinStep || !/11 1\/2" apart, measured top to top/.test(pinStep.description) || !/Adjustable: /.test(pinStep.description)) {
