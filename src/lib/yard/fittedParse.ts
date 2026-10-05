@@ -31,7 +31,7 @@ import {
   honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt,
   tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle,
   typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle,
-  classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk,
+  classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, spokenDiameterInches, guidanceConfirmTalk,
 } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { detectMaterial, isWireStock } from "./promptHelpers";
@@ -129,16 +129,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const isRound = topShape === "round" || (program === "table" && /\b(?:round|circular)\b|\bdiameter\b|\bdia\b/.test(lower) && topShape !== "oval");
   const isOval = topShape === "oval";
   const isSquareTop = topShape === "square";
-  // Prefer N diameter / N dia (Tail) over diameter N (Raw): Raw otherwise steals the
-  // height from "40 diameter 30 tall" as diameter 30. Harden Raw so a captured number
-  // that is immediately an axis label (tall/high/wide/deep/long) is not treated as dia.
-  const diameterRaw = pick(
-    t,
-    /(?:diameter|dia\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:in|inch|inches|["″])?\s*(?:tall|high|height|H|wide|width|deep|depth|long|length))/i,
-    NaN,
-  );
-  const diameterTail = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)/i, NaN);
-  const diameter = Number.isFinite(diameterTail) ? diameterTail : diameterRaw;
+  // Diameter is a keyword axis: one number, both plan axes (W = D). Shared with typedExtents.
+  const diameter = spokenDiameterInches(t);
   const legs = Math.max(
     3,
     Math.min(4, Math.round(pick(t, /(\d+)\s*(?:-?\s*)legs?/i, program === "table" ? (isRound ? 3 : 4) : 4))),
@@ -450,6 +442,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     if (!Number.isFinite(height)) {
       height = trip.h && trip.h < 42 ? trip.h : /coffee/.test(lower) ? 18 : 30;
     }
+  }
+
+  // Any round object: a typed diameter is both width and depth, whatever the noun.
+  if (program !== "table" && Number.isFinite(diameter)) {
+    width = diameter;
+    depth = diameter;
   }
 
   // Table plan axes (universal): height must not steal a plan dim; long×wide×tall is L×planW×H.

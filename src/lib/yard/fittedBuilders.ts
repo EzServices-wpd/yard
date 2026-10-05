@@ -1302,7 +1302,9 @@ export function buildShoeRack(spec: FittedSpec, prompt: string, affordances: Hou
   // Each tier clears SHOE_TIER_CLEAR. A typed height wins: fewer tiers fit, and the notes say so.
   const spokenTiers = spokenTierCount(prompt);
   const asked = spokenTiers != null ? Math.min(8, spokenTiers) : null;
-  const typedH = typedHeightInches(prompt) ?? (asked == null ? 18 : null);
+  // A positional triple ("40x18x14") already put its height on the unit — the box is that tall, not 18.
+  const tripleH = typedOpeningStorageAxes(prompt).height && Number.isFinite(u.height) ? u.height : null;
+  const typedH = typedHeightInches(prompt) ?? tripleH ?? (asked == null ? 18 : null);
   const tierPitch = SHOE_TIER_CLEAR + P;
   const fitN = typedH != null ? Math.max(1, Math.floor((typedH - P + 1e-6) / tierPitch)) : null;
   const tiers = asked != null ? (fitN != null ? Math.min(asked, fitN) : asked) : fitN ?? 2;

@@ -187,12 +187,23 @@ export function typedDoorCount(text: string): number | null {
   return null;
 }
 
+/**
+ * Feature nouns a count can bind to. A number never reaches past another one:
+ * "2 doors and 6 shelves" is 6 shelves, not 2.
+ */
+export const FEATURE_NOUN = "(?:doors?|drawers?|shel(?:f|ves|ving)|cubb(?:y|ies)|hooks?|steps?)";
+
+/** Up to `max` filler words between a count and its noun — never another feature noun, never another number. */
+export function countBridge(max = 3): string {
+  return `(?:(?!${FEATURE_NOUN}\\b)(?!\\d)[\\w'-]+\\s+){0,${max}}`;
+}
+
 /** Spoken usable-tier count: "4 shelves", "three tiers", "5 levels", "4 rows". */
 export function spokenTierCount(text: string): number | null {
   const s = spokenShelfCount(text);
   if (s != null) return s;
   const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-  const m = text.toLowerCase().match(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[\w'-]+\s+)?(?:tiers?|levels?|rows?)\b/);
+  const m = text.toLowerCase().match(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s+${countBridge(1)}(?:tiers?|levels?|rows?)\\b`));
   if (!m) return null;
   const n = /\d/.test(m[1]) ? parseInt(m[1], 10) : words[m[1]];
   return n >= 1 && n <= 12 ? n : null;
@@ -202,7 +213,7 @@ export function spokenTierCount(text: string): number | null {
 export function spokenShelfCount(text: string): number | null {
   const lower = text.toLowerCase();
   // Allow short intervening adjectives: "two floating shelves", "3 wall shelves", "one open shelf".
-  const bridge = "(?:[\\w'-]+\\s+){0,3}";
+  const bridge = countBridge(3);
   const adj = "(?:lower|upper|bottom|top|open|middle|adjustable|floating|wall|cleat-?mounted)\\s+";
   const digit = lower.match(new RegExp(`\\b(\\d+)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`));
   if (digit) {

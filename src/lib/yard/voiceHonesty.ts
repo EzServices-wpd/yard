@@ -886,6 +886,26 @@ export function spokenAxisInches(prompt: string, axis: "w" | "h" | "d"): number 
 }
 
 /**
+ * Typed diameter of a round object — "18 dia", "dia 18", "diameter of 18".
+ * A round thing is as deep as it is wide, so callers bind it to both W and D.
+ * "N dia" wins over "dia N" so "40 diameter 30 tall" never reads 30 as the diameter.
+ * Hardware diameters (rod, dowel, pipe, hole…) are not the object's size. NaN when unspoken.
+ */
+export function spokenDiameterInches(prompt: string): number {
+  const t = prompt.replace(/×/g, "x").replace(/[″""]/g, '"');
+  const hardware = String.raw`(?!\s*(?:in|inch|inches|")?\s*(?:rod|dowel|pipe|pole|hole|knob|cut-?out|port|tube)s?\b)`;
+  const tail = t.match(new RegExp(String.raw`(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:diameter|dia\b)\.?` + hardware, "i"));
+  const raw = t.match(
+    new RegExp(
+      String.raw`\b(?:diameter|dia\.?)\s*(?:of\s*|is\s*|:\s*|=\s*)?(\d+(?:\.\d+)?)(?!\d)(?!\s*(?:in|inch|inches|")?\s*(?:tall|high|height|h|wide|width|deep|depth|long|length)\b)` + hardware,
+      "i",
+    ),
+  );
+  const n = parseFloat((tail ?? raw)?.[1] ?? "");
+  return Number.isFinite(n) && n >= 4 && n < 400 ? n : NaN;
+}
+
+/**
  * Bare size beside a desk / writing-desk noun.
  * "60\" desk with drawers 30\" deep × 29\" tall" must bind W=60 — never let the
  * deep×tall pair echo as title 30×29×30 (same axis-honesty class as round Dia×H).
@@ -1120,6 +1140,10 @@ export function typedOpeningStorageAxes(prompt: string): {
         width = true;
         height = true;
         depth = true;
+      } else if (!/closet|wardrobe|pantry|linen|opening|alcove|niche|table/.test(lower) && b <= 36 && a >= b) {
+        // Furniture pair is the footprint W×D — same read as parseBrief, so the default H gets its Assumed note.
+        width = true;
+        depth = true;
       } else {
         // Closet opening order W×H
         width = true;
@@ -1206,6 +1230,34 @@ export function classDefaultAssumedNotes(
   if (!axes.height) notes.push(`Assumed ${overall.height}" tall (${klass}) — type a height to lock it.`);
   if (!axes.depth) notes.push(`Assumed ${overall.depth}" deep (${klass}) — type a depth to lock it.`);
   return notes;
+}
+
+/**
+ * Universal backstop for classDefaultAssumedNotes: every axis that fell to a default says so.
+ * Skips an axis an existing "Assumed …" note already covers, and any value that is a number
+ * the person typed (so a typed axis is never relabeled as assumed).
+ */
+export function untypedAxisAssumedNotes(
+  prompt: string,
+  notes: string[],
+  overall: { width: number; height: number; depth: number },
+  typed: { width: boolean; height: boolean; depth: boolean },
+): string[] {
+  const assumed = notes.filter((n) => /\bassumed\b/i.test(n)).join(" ");
+  const typedNums = (prompt.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).flatMap((n) => [n, n * 12]);
+  const axes = [
+    ["width", "wide", "a width", /\b(?:wide|width|across|along each wall)\b/i],
+    ["height", "tall", "a height", /\b(?:tall|height|high|to the top)\b/i],
+    ["depth", "deep", "a depth", /\b(?:deep|depth|across|along each wall)\b/i],
+  ] as const;
+  const out: string[] = [];
+  for (const [axis, word, ask, covered] of axes) {
+    const v = overall[axis];
+    if (typed[axis] || !Number.isFinite(v) || covered.test(assumed)) continue;
+    if (typedNums.some((n) => Math.abs(n - v) < 0.01)) continue;
+    out.push(`Assumed ${inchFrac(v)}" ${word} (default size) — type ${ask} to lock it.`);
+  }
+  return out;
 }
 
 export function openingWidthFromPrompt(prompt: string): number {

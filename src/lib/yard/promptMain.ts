@@ -18,8 +18,8 @@ import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
-import { normalizeUserPrompt } from "./voiceHonesty";
-import { enforceHonesty } from "./honesty";
+import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
+import { enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
@@ -30,7 +30,7 @@ import { pruneTopology } from "./topo";
 import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
-import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
+import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell } from "./sheetBox";
@@ -188,8 +188,32 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
   hooks: { length: 36 },
 };
 
+/**
+ * Every build says which axes it assumed. Fitted builds read typed axes from typedExtents;
+ * anything else only when no size was typed at all. Bench edits (Measure / overrides) are typed facts.
+ */
+function withAssumedAxes(project: YardProject, args: Parameters<typeof generateRaw>): YardProject {
+  const [prompt = "", , formOverride, opts] = args;
+  if (formOverride || opts?.sizeOverride || opts?.fittedOverride || opts?.pocketOverride || opts?.honorUnit) return project;
+  let typed = { width: false, height: false, depth: false };
+  if (project.fitted) {
+    typed = typedExtents(prompt)?.labeled ?? typed;
+  } else {
+    const counts = /\b\d+\s*-?\s*(?:legs?|doors?|drawers?|shel(?:f|ves)|cubb(?:y|ies)|hooks?|pegs?|steps?|treads?|tiers?|rows?|bottles?|slots?|bins?|arms?|rungs?|lids?|brackets?)\b/g;
+    const sized = /\d/.test(stripLumberStock(prompt.toLowerCase()).replace(counts, " ")) ||
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
+    if (sized) return project;
+  }
+  const extra = untypedAxisAssumedNotes(prompt, project.notes ?? [], project.overall, typed);
+  return extra.length ? { ...project, notes: [...(project.notes ?? []), ...extra] } : project;
+}
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  return withAssumedAxes(generateTyped(...args), args);
+}
+
+function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   const core = generateCore(...args);
   const prompt = args[0] ?? "";
   const noun = prompt.replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ").replace(/\s+/g, " ").trim();

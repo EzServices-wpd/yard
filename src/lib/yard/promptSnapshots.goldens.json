@@ -573,7 +573,8 @@
       "Seat board 4"
     ],
     "notesHead": [
-      "Kitchen chair 18\" × 18\" seat, every part from 1×4 Board (8 ft). Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named."
+      "Kitchen chair 18\" × 18\" seat, every part from 1×4 Board (8 ft). Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named.",
+      "Assumed 18\" wide (default size) — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1018,7 +1019,8 @@
       "rail"
     ],
     "notesHead": [
-      "Yard built a doll bed as a simple bed frame on legs sized for it. Change any size in Measure."
+      "Yard built a doll bed as a simple bed frame on legs sized for it. Change any size in Measure.",
+      "Assumed 4 1/2\" wide (default size) — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": true,

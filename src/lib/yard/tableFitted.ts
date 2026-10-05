@@ -19,6 +19,7 @@ import { createId } from "@/lib/utils";
 import type { FittedSpec, Panel, YardProject } from "./types";
 import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { isSideEndTable } from "./family";
+import { countBridge } from "./fittedShared";
 
 const PLY = "plywood-3-4-4x8";
 const TWO_BY_TWO = "lumber-2x2-8";
@@ -76,7 +77,7 @@ function tableAssumedNote(prompt: string, W: number, D: number, H: number, round
 /** Spoken shelf count for freestanding tables — never invent when the prompt is silent. */
 function spokenTableShelfCount(prompt: string): number | null {
   const lower = prompt.toLowerCase();
-  const bridge = "(?:[\\w'-]+\\s+){0,3}";
+  const bridge = countBridge(3);
   const adj = "(?:lower|upper|bottom|top|open|middle|adjustable)\\s+";
   const digit = lower.match(new RegExp(`\\b(\\d+)\\s+(?:${adj}|${bridge})?shel(?:f|ves|ving)\\b`));
   if (digit) {

@@ -348,7 +348,7 @@ export function buildFormGraph(
       `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
       "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
       ...(kind === "vehicle" || kind === "vessel"
-        ? ["Body lies along the typed length. No standing legs under it."]
+        ? ["Body lies along its long axis. No standing legs under it."]
         : []),
     ],
     notes: [...recipe.notes],

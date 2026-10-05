@@ -10,7 +10,7 @@ import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox, isCoatHookBoard } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
-import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt } from "./voiceHonesty";
+import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -58,6 +58,14 @@ function pickLabeled(text: string, axis: RegExp): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** "24 h" / "24\" H" — a bare axis letter after the number (space or unit required, so "3d" is not depth). */
+function pickLetter(text: string, letter: "w" | "h" | "d"): number | undefined {
+  const m = text.match(new RegExp(String.raw`(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")\s*|\s+)${letter}\b(?![-'])`, "i"));
+  if (!m) return undefined;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function unlabeledTriple(text: string): { a: number; b: number; c?: number } | null {
   const m = stripLumber(text).match(
     /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
@@ -78,18 +86,23 @@ export function typedExtents(prompt: string): TypedExtents | null {
   if (
     !hasExplicitSize(prompt) &&
     !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|width|height|depth)/i.test(prompt) &&
-    !Number.isFinite(bareTable)
+    !Number.isFinite(bareTable) &&
+    !Number.isFinite(spokenDiameterInches(prompt))
   ) {
     const trip = unlabeledTriple(prompt);
     if (!trip) return null;
   }
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');
   const lower = t.toLowerCase();
-  const labeledWide = pickLabeled(t, /wide|width/);
+  // Keywords bind first (wide / tall / deep / long, letter H, diameter); position only fills what is left.
+  const diameter = spokenDiameterInches(t);
+  const dia = Number.isFinite(diameter) ? diameter : undefined;
+  const labeledWide = pickLabeled(t, /wide|width/) ?? dia;
   const labeledLong = pickLabeled(t, /long|length/);
-  const height = pickLabeled(t, /tall|high|height/);
-  const depth = pickLabeled(t, /deep|depth/);
-  const saidAxis = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
+  const height = pickLabeled(t, /tall|high|height/) ?? pickLetter(t, "h");
+  const depth = pickLabeled(t, /deep|depth/) ?? dia;
+  const saidAxis =
+    /wide|width|deep|depth|tall|high|height|long|length/.test(lower) || dia != null || height != null;
   const trip = unlabeledTriple(t);
   const program = detectProgram(lower);
 

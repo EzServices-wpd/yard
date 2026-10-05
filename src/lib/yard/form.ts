@@ -445,7 +445,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: strin
       name: title,
       kind: "vehicle",
       notes: [
-        `${title} lies along the typed length. No class matched, so this is a body, not a standing frame.`,
+        `${title} lies along its long axis. No class matched, so this is a body, not a standing frame.`,
         "No arches, no pier props, no planted legs.",
       ],
       ops: [
