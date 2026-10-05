@@ -74,9 +74,10 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     else extra.push(`${m[3] ? `${clean(m[3]).replace(/\s*(?:class\s+)?default$/i, "")} ` : ""}${frac(v)} ${AXIS_WORD[axis]}`);
   }
   const noDigits = !/\d/.test(prompt);
-  const stock = noDigits && !Object.keys(assumed).length && !extra.length;
-  if (stock) (["width", "height", "depth"] as Axis[]).forEach((a) => (assumed[a] = true));
   const axes: Axis[] = ["width", "height", "depth"];
+  // Nothing typed is still stock size when the build's own Assumed notes cover every axis.
+  const stock = noDigits && !extra.length && (!Object.keys(assumed).length || axes.every((a) => assumed[a]));
+  if (stock) axes.forEach((a) => (assumed[a] = true));
   const finished = modelFinishedDepth(project.panels, o.depth);
   const shown = { ...o, depth: finished };
   const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
