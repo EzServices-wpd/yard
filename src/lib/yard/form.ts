@@ -28,7 +28,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, wantsClimbHandrail, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
+import { bindsDeterministically, detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, wantsClimbHandrail, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
@@ -148,6 +148,46 @@ export function isLockedForm(kind: StructureKind): boolean {
   return kind === "eiffel" || kind === "pyramid" || kind === "arch" || kind === "bridge";
 }
 
+/** The first HITS recipe the prompt names, with the same steals detectForm refuses. Weekend mechs win first. */
+function matchHit(prompt: string): Hit | null {
+  const lower = prompt.toLowerCase();
+  const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
+  const hay = looks ? `${looks[1]} ${lower}` : lower;
+  if (detectWeekendFamily(prompt) && detectWeekendMech(prompt)) return null;
+  for (const hit of HITS) {
+    // AV / media component tower is house floor-carcase — never Lattice tower HITS steal.
+    // Pot-hold stands (floor lamp / monitor / hose / umbrella) never Lattice / climb lace.
+    if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower) || wantsPotHold(lower) || isFloorLampHold(lower))) continue;
+    // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
+    if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
+    if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
+    if (hit.re.test(hay)) return hit;
+  }
+  return null;
+}
+
+/**
+ * Catch-all HITS: a general stance wire, an empty build Grok is meant to fill, or a bare frame.
+ * Everything else in HITS is a dedicated recipe (chairOps, houseOps, ferrisOps, …).
+ */
+const GENERIC_HITS = new Set(["Figure", "Animal", "Wagon", "Frame", "Lattice", "Lattice tower", "Wyvern"]);
+
+/**
+ * True when the bench already holds a dedicated named recipe for this prompt (Adirondack chair from
+ * chairOps, Birdhouse from houseOps, Ferris wheel, …). The LLM interpretation must not swap a ring/box
+ * form in over it. Matching kind means the bench really built that recipe, not a remapped fallback.
+ */
+export function bindsNamedForm(prompt: string, project: { kind: StructureKind }): boolean {
+  const hit = matchHit(prompt);
+  if (!hit || GENERIC_HITS.has(hit.name)) return false;
+  return hit.kind === project.kind;
+}
+
+/** Deterministic bench binding: weekend families + shape templates, plus any dedicated named recipe. */
+export function benchBindsForm(prompt: string, project: { kind: StructureKind; shape?: unknown }): boolean {
+  return bindsDeterministically(prompt, project) || bindsNamedForm(prompt, project);
+}
+
 export function detectForm(prompt: string, size: Size3): FormRecipe {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
@@ -157,51 +197,44 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   if (weekendMech && detectWeekendMech(prompt)) {
     return recipeFromWeekend(weekendMech, prompt, size);
   }
-  for (const hit of HITS) {
-    // AV / media component tower is house floor-carcase — never Lattice tower HITS steal.
-    // Pot-hold stands (floor lamp / monitor / hose / umbrella) never Lattice / climb lace.
-    if (hit.name === "Lattice tower" && (isAvTower(lower) || isHouseMediaCarcase(lower) || wantsPotHold(lower) || isFloorLampHold(lower))) continue;
-    // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
-    if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
-    if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
-    if (hit.re.test(hay)) {
-      const sized = hit.fit ? hit.fit(size, prompt) : size;
-      const ops = hit.build(sized);
-      const stance =
-        hit.kind === "figure"
-          ? classifyAnatomy(hay).stance
-          : undefined;
-      const strokes =
-        hit.kind === "figure" || hit.name === "Giraffe" || hit.name === "Liberty"
-          ? figureStrokes({
-              height: size.height,
-              stance: stance ?? (hit.name === "Giraffe" ? "longneck" : hit.name === "Liberty" ? "liberty" : "biped"),
-              width: size.width,
-            })
-          : undefined;
-      const figLabel = hit.kind === "figure" ? figureIdentityLabel(hay) : null;
-      const seatLabel = isRockingChair(lower)
-        ? "Rocking chair"
-        : isLoungeChair(lower)
-          ? "Lounge chair"
-          : isOttoman(lower)
-            ? "Ottoman"
-            : null;
-      const name = figLabel ?? seatLabel ?? hit.name;
-      return {
-        name,
-        kind: hit.kind,
-        historic: hit.historic,
-        notes: [
-          `${name} · stock mapped onto the form, not a hull.`,
-          hit.historic
-            ? "Published / historic proportions, scaled to the size you asked for."
-            : "Parametric form. Frame first, then brace. Support if it is slender.",
-        ],
-        ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
-        strokes,
-      };
-    }
+  const hit = matchHit(prompt);
+  if (hit) {
+    const sized = hit.fit ? hit.fit(size, prompt) : size;
+    const ops = hit.build(sized);
+    const stance =
+      hit.kind === "figure"
+        ? classifyAnatomy(hay).stance
+        : undefined;
+    const strokes =
+      hit.kind === "figure" || hit.name === "Giraffe" || hit.name === "Liberty"
+        ? figureStrokes({
+            height: size.height,
+            stance: stance ?? (hit.name === "Giraffe" ? "longneck" : hit.name === "Liberty" ? "liberty" : "biped"),
+            width: size.width,
+          })
+        : undefined;
+    const figLabel = hit.kind === "figure" ? figureIdentityLabel(hay) : null;
+    const seatLabel = isRockingChair(lower)
+      ? "Rocking chair"
+      : isLoungeChair(lower)
+        ? "Lounge chair"
+        : isOttoman(lower)
+          ? "Ottoman"
+          : null;
+    const name = figLabel ?? seatLabel ?? hit.name;
+    return {
+      name,
+      kind: hit.kind,
+      historic: hit.historic,
+      notes: [
+        `${name} · stock mapped onto the form, not a hull.`,
+        hit.historic
+          ? "Published / historic proportions, scaled to the size you asked for."
+          : "Parametric form. Frame first, then brace. Support if it is slender.",
+      ],
+      ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
+      strokes,
+    };
   }
   const weekend = detectWeekendFamily(prompt);
   if (weekend) return recipeFromWeekend(weekend, prompt, size);

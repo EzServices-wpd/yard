@@ -340,6 +340,11 @@ export type YardProject = {
   id: string;
   name: string;
   prompt: string;
+  /**
+   * The words the person typed, when the bench built from an internal primitive prompt instead
+   * ("lemonade stand" → "table 48 wide 42 tall 24 deep"). The prompt box shows this, never the remap.
+   */
+  typedPrompt?: string;
   kind: StructureKind;
   overall: { width: number; height: number; depth: number };
   instances: YardInstance[];

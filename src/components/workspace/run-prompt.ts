@@ -2,14 +2,14 @@
 
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
-import { recipeFromAnatomy, isLockedForm } from "@/lib/yard/form";
+import { recipeFromAnatomy, isLockedForm, benchBindsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { isBareProductPrompt } from "@/lib/yard/productModel";
-import { bindsDeterministically, detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
+import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
 import type { FittedSpec } from "@/lib/yard/types";
 
@@ -377,7 +377,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     const hint = await hintSubject({ data: { prompt } });
-    const bound = bindsDeterministically(prompt, useYard.getState().project);
+    const bound = benchBindsForm(prompt, useYard.getState().project);
     if (
       !bound &&
       hint.summary &&
@@ -408,7 +408,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       wantsMediaTipHold(prompt) ||
       !!detectWeekendMech(prompt) ||
       bound ||
-      bindsDeterministically(prompt, after);
+      benchBindsForm(prompt, after);
     // Named stock from the prompt binds like CatalogPanel. Unnamed stays wire-frame —
     // LLM must not silently pick popsicle.
     if (interp.ok && interp.form && !locked) {

@@ -207,7 +207,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   }
   const built = generateCore(remapped, ...(args.slice(1) as []));
   const title = noun.replace(/\b\w/g, (c) => c.toUpperCase());
-  return { ...built, name: title, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
+  // The bench builds from the primitive; the prompt box keeps the person's own words.
+  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {

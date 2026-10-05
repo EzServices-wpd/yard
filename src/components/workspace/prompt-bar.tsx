@@ -21,7 +21,9 @@ export function PromptBar({
 }) {
   const project = useYard((s) => s.project);
   const grokBusy = useYard((s) => s.grokBusy);
-  const [value, setValue] = useState(project.prompt);
+  // A fallback build runs on an internal primitive prompt; the box shows what was typed.
+  const shown = project.typedPrompt || project.prompt;
+  const [value, setValue] = useState(shown);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -29,8 +31,8 @@ export function PromptBar({
   const housePath = project.kind === "closet" || project.kind === "opening" || Boolean(project.fitted) || Boolean(project.pocket);
 
   useEffect(() => {
-    if (project.prompt) setValue(project.prompt);
-  }, [project.prompt]);
+    if (shown) setValue(shown);
+  }, [shown]);
 
   const closeOptions = useCallback((focusToggle?: boolean) => {
     setOptionsOpen(false);

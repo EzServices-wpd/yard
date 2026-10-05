@@ -42,7 +42,8 @@ export function pickPrimitive(noun: string): Prim | null {
   if (/birdhouse|bird house|nest ?box/.test(whole)) return null;
   // Bed-class head words beat figure / toy early exits: a doll bed is a small platform bed.
   if (BED_HEAD.test(head) || /bedframe|bassinet/.test(whole)) {
-    if (TOY.test(lower)) return prim("planter box", "open box", 14, 5, 10);
+    // A small bed frame — legs, side rails and a slatted deck — not an open planter box of loose sticks.
+    if (TOY.test(lower)) return prim("platform bed", "bed frame on legs", 14, 5, 10);
   }
   if (TOY.test(lower)) return null;
   if (/(hutch|coop|kennel|house|cabinet|theater|theatre|shed|cupboard|locker)$/.test(head)) {

@@ -281,8 +281,12 @@ export const useYard = create<YardState>((set, get) => ({
     const scale = opts?.scale ?? get().buildScale;
     const current = get().project;
     // Re-running the prompt already on the bench (or an empty box) rebuilds it; only different words refine.
-    const repeat = isRepeatPrompt(prompt, current.prompt, current.name);
-    let used = prompt.trim() ? prompt : current.prompt;
+    const repeat =
+      isRepeatPrompt(prompt, current.prompt, current.name) || (!!current.typedPrompt && isRepeatPrompt(prompt, current.typedPrompt));
+    // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
+    // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
+    const retypedFallback = !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt);
+    let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
     const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
     let mode: "auto" | "cut" | "whole" = get().cutMode;
     if (opts?.cutStock === true) mode = "cut";
@@ -327,7 +331,16 @@ export const useYard = create<YardState>((set, get) => ({
       }
     }
     if (!materialId) materialId = materialUnlessNamed(current.primaryMaterialId, used);
-    const next = generateFromPrompt(used, materialId, form, genOpts);
+    const built = generateFromPrompt(used, materialId, form, genOpts);
+    // A remapped primitive keeps showing the typed words across restock and refinement.
+    const typedPrompt =
+      built.typedPrompt ??
+      (current.typedPrompt && used === current.prompt
+        ? current.typedPrompt
+        : current.typedPrompt && follow
+          ? refinedPrompt(current.typedPrompt, prompt)
+          : undefined);
+    const next = typedPrompt ? { ...built, typedPrompt } : built;
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     const srcPocket = next.pocket ?? next.recastFrom?.pocket;
     const srcFitted = next.fitted ?? next.recastFrom?.fitted;

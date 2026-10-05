@@ -13,7 +13,7 @@
  * stock. Unnamed stock stays the wire-frame placeholder.
  */
 
-import { detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isWallMediaLedge } from "./family";
+import { detectHouseFamily, isAdirondackChair, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isPorchSwingFrame, isSeatingLoungeClass, isWallMediaLedge } from "./family";
 import type { StructureKind } from "./types";
 
 export type WeekendFamily = "lattice" | "arch" | "truss" | "figure" | "frame";
@@ -870,6 +870,10 @@ export function weekendUsesLatticeGraph(prompt: string, kind: StructureKind): bo
  */
 export function bindsDeterministically(prompt: string, project: { kind: StructureKind; shape?: unknown }): boolean {
   if (project.shape) return true;
+  // Seat and swing families build from their own recipes (seat, back, arms; A-frame + hanging seat).
+  // An LLM ring/box form must never replace them.
+  const lower = prompt.toLowerCase();
+  if (isAdirondackChair(lower) || isSeatingLoungeClass(lower) || isPorchSwingFrame(lower)) return true;
   const hit = detectWeekendFamily(prompt);
   if (!hit) return false;
   if (hit.family === "lattice") return project.kind === "lattice" || project.kind === "eiffel" || project.kind === "tower";
