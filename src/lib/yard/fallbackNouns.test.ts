@@ -34,3 +34,27 @@ describe("Any noun with no stock typed builds a simple real-size piece", () => {
     assert.match(generateFromPrompt("cardboard dollhouse").primaryMaterialId, /cardboard/);
   });
 });
+
+describe("Toy-scale beds are small platforms, never figures", () => {
+  for (const prompt of ["doll bed", "toy bed", "barbie crib", "miniature bassinet", "fairy cot"]) {
+    it(prompt, () => {
+      const project = generateFromPrompt(prompt);
+      const roles = [
+        ...project.panels.map((x) => x.name),
+        ...(project.instances ?? []).map((i) => i.role ?? i.name ?? ""),
+      ].join(" ");
+      assert.ok(!/^(Figure|Animal)$/i.test(project.name), project.name);
+      assert.notEqual(project.kind, "figure");
+      assert.notEqual(project.shape?.classId, "humanoid");
+      assert.ok(!/\b(?:Arm|Torso|Head|Shin|Thigh|Forearm)\b/i.test(roles), roles);
+      const o = project.overall;
+      assert.ok(o.height <= 12, `height ${o.height}`);
+      assert.ok(Math.max(o.width, o.depth) <= 24, `footprint ${o.width}x${o.depth}`);
+      assert.ok(o.height < Math.max(o.width, o.depth), `flat bed ${o.width}x${o.height}x${o.depth}`);
+    });
+  }
+  it("craft stock stays craft on a doll bed", () => {
+    assert.match(generateFromPrompt("doll bed").primaryMaterialId, /popsicle|craft/);
+    assert.match(generateFromPrompt("popsicle stick doll bed").primaryMaterialId, /popsicle/);
+  });
+});

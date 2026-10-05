@@ -17,6 +17,19 @@ function prim(phrase: string, label: string, w: number, h: number, d: number): P
   return { phrase, label, size: [w, h, d] };
 }
 
+/** Bed / crib / bassinet head words — furniture, never a figure armature. */
+const BED_HEAD = /^(?:bed|bedframe|crib|bassinet|cot|cradle)$/;
+
+/** Toy-scale bed-class noun: doll/toy/barbie bed, crib, bassinet, etc. */
+export function isToyScaleBed(noun: string): boolean {
+  const lower = noun.toLowerCase().trim();
+  const words = lower.split(/\s+/);
+  const head = (words[words.length - 1] ?? "").replace(/([^si])s$/, "$1");
+  const whole = lower.replace(/\s+/g, "");
+  if (!BED_HEAD.test(head) && !/bedframe|bassinet/.test(whole)) return false;
+  return TOY.test(lower);
+}
+
 export function pickPrimitive(noun: string): Prim | null {
   const lower = noun.toLowerCase().trim();
   const words = lower.split(/\s+/);
@@ -27,6 +40,10 @@ export function pickPrimitive(noun: string): Prim | null {
     return prim("table", "counter on legs", 48, 42, 24);
   }
   if (/birdhouse|bird house|nest ?box/.test(whole)) return null;
+  // Bed-class head words beat figure / toy early exits: a doll bed is a small platform bed.
+  if (BED_HEAD.test(head) || /bedframe|bassinet/.test(whole)) {
+    if (TOY.test(lower)) return prim("planter box", "open box", 14, 5, 10);
+  }
   if (TOY.test(lower)) return null;
   if (/(hutch|coop|kennel|house|cabinet|theater|theatre|shed|cupboard|locker)$/.test(head)) {
     if (/playhouse/.test(whole)) return prim("cabinet", "carcase box", 48, 60, 48);
@@ -35,11 +52,12 @@ export function pickPrimitive(noun: string): Prim | null {
     if (/theat/.test(head)) return prim("cabinet", "carcase box", 36, 48, 12);
     return prim("cabinet", "carcase box", 36, 36, 18);
   }
-  if (/(box|chest|crate|bin|feeder|trough|bed|tub)$/.test(head)) {
+  if (/(box|chest|crate|bin|feeder|trough|bed|tub|crib|bassinet|cot|cradle)$/.test(head)) {
     if (/sandbox|bed$/.test(whole)) return prim("planter box", "open box", 48, 10, 48);
     if (/feeder|mailbox/.test(whole)) return prim("planter box", "open box", 10, 10, 8);
     if (/toolbox/.test(whole)) return prim("planter box", "open box", 20, 8, 10);
     if (/crate/.test(head)) return prim("planter box", "open box", 14, 12, 14);
+    if (BED_HEAD.test(head)) return prim("planter box", "open box", 48, 10, 48);
     return prim("planter box", "open box", 24, 16, 16);
   }
   if (/(tray|mat)$/.test(head)) return prim("planter box", "shallow tray", 30, 2, 15);
@@ -58,6 +76,25 @@ export function pickPrimitive(noun: string): Prim | null {
 /** True when the built model is a fallback: popsicle with no stock typed, or a name sharing no word with the noun. */
 export function looksLikeFallback(project: YardProject, noun: string): boolean {
   const lower = noun.toLowerCase();
+  // Toy-scale beds remap when figure/humanoid stole them, or when the build is full-size mattress geography.
+  if (isToyScaleBed(noun)) {
+    const o = project.overall;
+    const figure =
+      project.kind === "figure" ||
+      project.shape?.classId === "humanoid" ||
+      /^(figure|animal)$/i.test(project.name ?? "");
+    if (figure) return true;
+    const roleBlob = [
+      ...project.panels.map((p) => p.name),
+      ...(project.instances ?? []).map((i) => i.role ?? ""),
+    ].join(" ");
+    if (/\b(?:arm|torso|head|shin|thigh|forearm)\b/i.test(roleBlob)) return true;
+    const smallBed =
+      o.height <= 12 &&
+      Math.max(o.width, o.depth) <= 24 &&
+      o.height <= Math.max(o.width, o.depth) * 0.75;
+    return !smallBed;
+  }
   // Toy-scale nouns keep craft stock; remapping them to plywood is the honesty bug.
   if (TOY.test(lower)) return false;
   if (/popsicle/.test(project.primaryMaterialId ?? "")) return true;

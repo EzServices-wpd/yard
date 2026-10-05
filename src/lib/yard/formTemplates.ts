@@ -1095,7 +1095,8 @@ export function buildPlatformTower(prompt: string, item: CatalogItem, typed: { w
 
 export function isHumanoid(prompt: string): boolean {
   const l = prompt.toLowerCase();
-  if (/figure\s*-?\s*(?:8|eight)|\b(?:shelf|shelves|stand|display|rack|case|cabinet|holder|box|house|cave|hole)\b|robot|android|snow\s*man|iron\s*man|liberty|statue/.test(l)) return false;
+  // Furniture / bed-class head words beat figure words ("doll bed" is a bed, not a doll).
+  if (/figure\s*-?\s*(?:8|eight)|\b(?:shelf|shelves|stand|display|rack|case|cabinet|holder|box|house|cave|hole|beds?|bedframes?|cribs?|bassinets?|cots?|cradles?)\b|robot|android|snow\s*man|iron\s*man|liberty|statue/.test(l)) return false;
   return /\b(?:stick\s*)?figures?\b|\bhumanoids?\b|\bperson\b|\bhuman\b|\bman\b|\bwoman\b|\bboy\b|\bgirl\b|\bdoll\b|\bpuppet\b|\bgingerbread\s+man\b|\bscarecrow\b|\bmannequin\b/.test(l);
 }
 

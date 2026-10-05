@@ -27,7 +27,7 @@ import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt } from "./fallbackPrimitive";
+import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
@@ -193,9 +193,19 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const prompt = args[0] ?? "";
   const noun = prompt.replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ").replace(/\s+/g, " ").trim();
   const stockTyped = Boolean(args[1]) || !isWireStock(detectMaterial(prompt)) || /\bwire\b|\b(from|out of|made of|made from|with)\b|sticks?\b|ply|cardboard|lumber|2x\d|1x\d|pallet|bamboo|pvc|acrylic|metal|pipe/i.test(prompt);
-  const p = stockTyped ? null : pickPrimitive(noun);
+  const toyBed = isToyScaleBed(noun);
+  // Toy-scale beds always consider the bed primitive — craft stock typed must not leave a figure or full mattress.
+  const p = stockTyped && !toyBed ? null : pickPrimitive(noun);
   if (!p || !looksLikeFallback(core, noun)) return core;
-  const built = generateCore(primitivePrompt(p, prompt), ...(args.slice(1) as [])) ;
+  let remapped = primitivePrompt(p, prompt);
+  // Keep craft stock for toy beds (popsicle when none typed); never silently lift them to plywood.
+  if (toyBed && !args[1] && !/\b(?:plywood|lumber|2x\d|1x\d|pallet)\b/i.test(prompt)) {
+    const craft =
+      prompt.match(/\b(?:jumbo\s+)?(?:popsicle|craft)\s*sticks?\b|\bbamboo\s+skewers?\b|\btoothpicks?\b|\bbalsa\b/i)?.[0] ??
+      "popsicle sticks";
+    remapped = `${craft} ${remapped}`;
+  }
+  const built = generateCore(remapped, ...(args.slice(1) as []));
   const title = noun.replace(/\b\w/g, (c) => c.toUpperCase());
   return { ...built, name: title, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
 }
