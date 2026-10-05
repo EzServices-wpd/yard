@@ -38,9 +38,13 @@ export function buildToyBedFrame(
 ): YardProject {
   const prim = toPrimitive(item);
   const tw = Math.max(0.2, prim.width || 0.375);
-  const W = Math.max(6, size.width);
-  const D = Math.max(6, size.depth);
-  const H = Math.max(2, Math.min(size.height, (item.dims.length ?? 4.5) + 0.01));
+  // Every marked cut must fit one stick — scale the bed to the stock, never ask for a
+  // 13″ rail from a 4½″ popsicle. Span members run between legs (outer − 2× stick).
+  const stockLen = Math.max(2, item.dims.length ?? 4.5);
+  const maxOuter = stockLen + tw * 2;
+  const W = Math.max(tw * 4, Math.min(size.width, maxOuter));
+  const D = Math.max(tw * 4, Math.min(size.depth, maxOuter));
+  const H = Math.max(tw * 2, Math.min(size.height, stockLen));
   const x0 = -W / 2;
   const x1 = W / 2;
   const z0 = 0;

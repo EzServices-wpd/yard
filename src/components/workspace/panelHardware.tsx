@@ -114,27 +114,67 @@ export function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number;
   );
 }
 
-/** Bought coat hook: steel plate on the rail face and a curved hook sticking out into the room (+Z). */
-export function CoatHook({ w, h, d }: { w: number; h: number; d: number }) {
-  const plateT = Math.min(0.2, Math.max(0.12, d * 0.08));
-  const hookR = Math.max(0.7, Math.min(d * 0.42, h * 0.55, 1.1));
-  const tube = Math.max(0.12, Math.min(w, h, d) * 0.14);
-  // Local −Z is the rail face; +Z is out into the room (past the peg rail).
+/** Layout for a bought coat hook in panel-local space.
+ *  Local −Z = rail face (plate); +Z = into the room. Tip extends past +d/2 so the
+ *  glyph fills the panel box and reads as a steel hook from the 3/4 bench camera.
+ */
+export type CoatHookLayout = {
+  plateT: number;
+  tube: number;
+  plateW: number;
+  plateH: number;
+  plateZ: number;
+  /** Furthest +Z of the steel (past +d/2). */
+  tipZ: number;
+  stemMidZ: number;
+  stemLen: number;
+  curlR: number;
+  curlY: number;
+};
+
+export function coatHookLayout(w: number, h: number, d: number): CoatHookLayout {
+  const plateT = Math.min(0.24, Math.max(0.14, d * 0.05));
+  // Thick tube so a 36" rack still reads "steel hook", not a pin-dot on the rail.
+  const tube = Math.max(0.28, Math.min(0.42, Math.min(Math.max(w, 1), h) * 0.22));
+  const plateW = Math.max(w * 1.15, 1.35);
+  const plateH = Math.max(h * 0.55, 1.8);
   const plateZ = -d / 2 + plateT / 2;
-  const stemZ = -d / 2 + plateT + hookR * 0.15;
+  // Tip past the panel's front face (+d/2) — unmistakable protrusion into the room.
+  const tipZ = d / 2 + Math.max(0.35, tube);
+  const stemZ0 = -d / 2 + plateT;
+  const stemLen = Math.max(1.2, tipZ - stemZ0 - tube * 1.4);
+  const stemMidZ = stemZ0 + stemLen / 2;
+  const curlR = Math.max(0.65, Math.min(h * 0.38, tube * 2.4));
+  const curlY = -curlR * 0.55;
+  return { plateT, tube, plateW, plateH, plateZ, tipZ, stemMidZ, stemLen, curlR, curlY };
+}
+
+/** Bought coat hook: steel plate on the rail face and a J-hook sticking into the room (+Z). */
+export function CoatHook({ w, h, d }: { w: number; h: number; d: number }) {
+  const L = coatHookLayout(w, h, d);
+  const stemY = h * 0.12;
   return (
     <group>
-      <mesh position={[0, 0, plateZ]} castShadow receiveShadow frustumCulled={false}>
-        <boxGeometry args={[Math.max(w, 0.85), Math.max(h * 0.55, 1.2), plateT]} />
+      <mesh position={[0, 0, L.plateZ]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[L.plateW, L.plateH, L.plateT]} />
         <meshStandardMaterial color={STEEL} metalness={0.72} roughness={0.32} />
       </mesh>
-      {/* Stem out from the plate, then a downward curl — readable from the 3/4 bench view. */}
-      <mesh position={[0, h * 0.08, stemZ + hookR * 0.35]} rotation={[Math.PI / 2, 0, 0]} castShadow frustumCulled={false}>
-        <cylinderGeometry args={[tube, tube, hookR * 0.7, 10]} />
+      <mesh
+        position={[0, stemY, L.stemMidZ]}
+        rotation={[Math.PI / 2, 0, 0]}
+        castShadow
+        frustumCulled={false}
+      >
+        <cylinderGeometry args={[L.tube, L.tube, L.stemLen, 12]} />
         <meshStandardMaterial color={STEEL} metalness={0.75} roughness={0.28} />
       </mesh>
-      <mesh position={[0, h * 0.08 - hookR * 0.35, stemZ + hookR * 0.7]} rotation={[0.2, 0, 0]} castShadow frustumCulled={false}>
-        <torusGeometry args={[hookR * 0.55, tube, 10, 20, Math.PI * 1.35]} />
+      <mesh
+        position={[0, stemY + L.curlY, L.tipZ - L.curlR * 0.15]}
+        rotation={[0.15, 0, 0]}
+        castShadow
+        frustumCulled={false}
+      >
+        <torusGeometry args={[L.curlR, L.tube, 12, 24, Math.PI * 1.45]} />
         <meshStandardMaterial color={STEEL} metalness={0.75} roughness={0.28} />
       </mesh>
     </group>

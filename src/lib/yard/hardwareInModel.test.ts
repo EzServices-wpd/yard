@@ -35,7 +35,11 @@ describe("Hardware on Buy shows in the model, with no phantom parts", () => {
         const railFront = rail.position.z + rail.size.depth;
         for (const h of hooks) {
           assert.ok(h.size.depth >= 1.5, `${h.name} depth ${h.size.depth}`);
-          assert.ok(h.position.z + h.size.depth > railFront + 0.5, `${h.name} must stick out past the rail`);
+          // Room-direction max extent must clear the peg-rail front by ≥1.25″.
+          assert.ok(
+            h.position.z + h.size.depth >= railFront + 1.25,
+            `${h.name} max z ${h.position.z + h.size.depth} must exceed rail front ${railFront} by ≥1.25`,
+          );
         }
       }
     });
@@ -45,6 +49,11 @@ describe("Hardware on Buy shows in the model, with no phantom parts", () => {
     const hooks = project.panels.filter((p) => /^Coat hook \d+$/.test(p.name));
     assert.equal(hooks.length, 5);
     assert.ok(hooks.every((h) => h.materialId === "coat-hooks"));
+    const rail = project.panels.find((p) => /peg rail/i.test(p.name))!;
+    const railFront = rail.position.z + rail.size.depth;
+    for (const h of hooks) {
+      assert.ok(h.position.z + h.size.depth >= railFront + 1.25);
+    }
   });
 });
 
@@ -73,5 +82,18 @@ describe("Client path draws bought coat hooks as steel glyphs", () => {
     assert.match(src, /<CoatHook\b/);
     assert.match(hw, /export function CoatHook/);
     assert.match(hw, /frustumCulled=\{false\}/);
+  });
+
+  it("CoatHook geometry extends past +d/2 into the room", async () => {
+    const { coatHookLayout } = await import("../../components/workspace/panelHardware.tsx");
+    for (const d of [2.5, 3.5, 4]) {
+      const L = coatHookLayout(1.25, 2.75, d);
+      assert.ok(L.tipZ > d / 2, `tipZ ${L.tipZ} must pass +d/2=${d / 2}`);
+      // Plate on the rail face; tip ≥1.5″ past that face into the room.
+      const railFace = -d / 2;
+      assert.ok(L.tipZ - railFace >= 1.5, `protrusion ${L.tipZ - railFace} from rail face`);
+      assert.ok(L.tube >= 0.28, `tube ${L.tube} must read at shelf scale`);
+      assert.ok(L.plateZ < 0, "plate sits on the −Z (rail) side");
+    }
   });
 });

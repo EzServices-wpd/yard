@@ -210,9 +210,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
       const prim = pickPrimitive(noun);
       const sized = parseSize(prompt.toLowerCase());
       const size = {
-        width: /wide/i.test(prompt) ? sized.width : (prim?.size[0] ?? 14),
-        height: /(?:tall|high)/i.test(prompt) ? sized.height : (prim?.size[1] ?? 5),
-        depth: /deep/i.test(prompt) ? sized.depth : (prim?.size[2] ?? 10),
+        width: /wide/i.test(prompt) ? sized.width : (prim?.size[0] ?? 4.5),
+        height: /(?:tall|high)/i.test(prompt) ? sized.height : (prim?.size[1] ?? 2.5),
+        depth: /deep/i.test(prompt) ? sized.depth : (prim?.size[2] ?? 3.5),
       };
       const built = buildToyBedFrame(prompt, item, size, noun);
       return hooksShowInModel(craftDisplay(built, prompt));

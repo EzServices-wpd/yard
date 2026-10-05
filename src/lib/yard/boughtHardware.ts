@@ -22,9 +22,10 @@ export function buysCoatHooks(project: Pick<YardProject, "name" | "prompt">): bo
   );
 }
 
-const HOOK_W = 1;
-const HOOK_H = 2.5;
-const HOOK_D = 2.5;
+const HOOK_W = 1.25;
+const HOOK_H = 2.75;
+/** Depth into the room: plate on the rail face, stem+curl past the front (≥1.5″ past rail). */
+const HOOK_D = 3.5;
 
 /** Wooden "Peg N" sticks (and their stops) become the bought hooks, one for one, at the same spots. */
 export function hooksShowInModel(project: YardProject): YardProject {

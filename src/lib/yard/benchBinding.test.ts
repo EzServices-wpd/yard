@@ -79,6 +79,19 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
     assert.ok(plan.cutList.reduce((s, c) => s + c.quantity, 0) <= 40);
   });
 
+  it("doll bed marked cuts fit one popsicle stick", () => {
+    const bed = generateFromPrompt("doll bed");
+    const stockLen = 4.5; // standard popsicle
+    for (const i of bed.instances) {
+      const cut = i.cutLength ?? 0;
+      assert.ok(cut <= stockLen + 0.02, `${i.role} cut ${cut} > stock ${stockLen}`);
+    }
+    const plan = buildPlan(bed);
+    for (const c of plan.cutList) {
+      assert.ok(c.lengthIn <= stockLen + 0.02, `${c.name} ${c.lengthIn} > stock ${stockLen}`);
+    }
+  });
+
 
   it("lemonade stand shows 'lemonade stand' in the box, not the primitive", () => {
     const stand = generateFromPrompt("lemonade stand");
