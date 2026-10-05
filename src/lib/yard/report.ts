@@ -1344,6 +1344,18 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
+  return fallbackStepOne(project, buildPlanInner(project));
+}
+
+/** A noun built as a simple primitive says so in step 1. */
+function fallbackStepOne(project: YardProject, plan: BuildPlan): BuildPlan {
+  const note = (project.notes ?? []).find((n) => n.startsWith("Yard built a"));
+  if (!note || !plan.instructions.length || (plan.instructions[0].description ?? "").includes(note)) return plan;
+  const instructions = plan.instructions.map((s, i) => (i === 0 ? { ...s, description: `${note} ${s.description ?? ""}`.trim() } : s));
+  return { ...plan, instructions };
+}
+
+function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
   const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
   const extra = spaceCutStep(project);

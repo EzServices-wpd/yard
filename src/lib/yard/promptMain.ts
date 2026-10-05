@@ -27,6 +27,7 @@ import { detectForm, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
+import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt } from "./fallbackPrimitive";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
@@ -188,6 +189,18 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  const core = generateCore(...args);
+  const prompt = args[0] ?? "";
+  const noun = prompt.replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ").replace(/\s+/g, " ").trim();
+  const stockTyped = Boolean(args[1]) || !isWireStock(detectMaterial(prompt)) || /\bwire\b|\b(from|out of|made of|made from|with)\b|sticks?\b|ply|cardboard|lumber|2x\d|1x\d|pallet|bamboo|pvc|acrylic|metal|pipe/i.test(prompt);
+  const p = stockTyped ? null : pickPrimitive(noun);
+  if (!p || !looksLikeFallback(core, noun)) return core;
+  const built = generateCore(primitivePrompt(p, prompt), ...(args.slice(1) as [])) ;
+  const title = noun.replace(/\b\w/g, (c) => c.toUpperCase());
+  return { ...built, name: title, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
+}
+
+function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const solved = solveModel(generateRaw(...args));
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
   const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
