@@ -2481,9 +2481,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
  * (<0.5") cut from 1/4" backer, not the primary 3/4" sheet title.
  */
 function cutStockGroups(
-  panels: Panel[],
+  allPanels: Panel[],
   fallbackItem?: CatalogItem | null,
 ): { label: string; panels: Panel[]; tool: { how: string; tip: string } }[] {
+  // Bought hardware (coat hooks) is never cut.
+  const panels = allPanels.filter((p) => !isBoughtHardwareName(p.name));
   const thin: Panel[] = [];
   const byKey = new Map<
     string,
@@ -2635,7 +2637,8 @@ function sheetCutDescription(
   return `${how} ${bodies} Label every piece on the waste face before you move the stack.${especially ? ` ${especially}` : ""}`;
 }
 
-function groupSheetCuts(panels: Panel[]): string[] {
+function groupSheetCuts(allPanels: Panel[]): string[] {
+  const panels = allPanels.filter((p) => !isBoughtHardwareName(p.name));
   const map = new Map<string, { qty: number; label: string; w: number; h: number; d: number }>();
   const push = (name: string, type: string | undefined, w: number, h: number, d: number) => {
     const family = cutListName(name, type).toLowerCase();

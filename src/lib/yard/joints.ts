@@ -2,6 +2,8 @@
  * Stock-specific binders. PVC gets slip fittings, sticks get glue,
  * straws get tape — never one blob for every material.
  */
+import { faceScrewInches } from "./shopJoin";
+import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { screwTalk, stickJoints } from "./modelJoints";
 import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
@@ -178,13 +180,15 @@ export function binderBom(
     const reachOf = (i: YardInstance) => (i.section ? Math.max(i.section.width, i.section.height) : across) * 0.6 + 0.1;
     const talk = screwTalk(stickJoints(instances, item.category === "lumber" || item.category === "sheet_goods" || item.formFactor === "board" ? 2 : 1, reachOf));
     const screws = Math.max(4, talk.screws);
+    // Screw length follows the stick's thickness: 3/4" boards take 1 1/4", a 2x (1 1/2") takes 2 1/2".
+    const len = inchFrac(faceScrewInches(item.dims.thickness ?? item.dims.height ?? 0.75)).replace(" ", "-");
     return [
       {
-        name: '#8 × 1-1/4" wood screws',
+        name: `#8 × ${len}" wood screws`,
         quantity: Math.ceil(screws / SCREWS_PER_BOX),
         unit: screwBoxUnit(Math.ceil(screws / SCREWS_PER_BOX)),
         catalogId: "screws-8",
-        searchQuery: "#8 1-1/4 wood screws",
+        searchQuery: `#8 ${len} wood screws`,
         estimatedCost: 8,
         notes: talk.screws >= 4 ? talk.note : `${screws} screws for the few joints in the model.`,
       },

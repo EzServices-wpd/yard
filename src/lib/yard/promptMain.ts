@@ -2,7 +2,7 @@ import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
 import { spokenJoin } from "./shopJoin";
-import { buildJobFurniture, wantsJobFurniture } from "./jobFurniture";
+import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
@@ -169,7 +169,10 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
     if (blockStock && getCatalogItem(blockStock)) return getCatalogItem(blockStock)!;
     const use = detectShapeClass(prompt)?.profile.use;
     const fn = use === "rocker" ? "lumber-2x4-8" : use || detectTemplate(prompt) === "platform-tower" ? "plywood-3-4-4x8" : null;
-    return (fn && getCatalogItem(fn)) || getCatalogItem("popsicle-standard") || named;
+    if (fn && getCatalogItem(fn)) return getCatalogItem(fn)!;
+    // Furniture and human-use pieces (seats, tables, beds, benches) are real lumber at real size.
+    if (wantsRealStockDefault(prompt) && getCatalogItem("lumber-2x4-8")) return getCatalogItem("lumber-2x4-8")!;
+    return getCatalogItem("popsicle-standard") || named;
   }
   return named;
 }
@@ -188,7 +191,12 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const solved = solveModel(generateRaw(...args));
   const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
   const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
-  const tabled = honorTableTriple(sized, args[0]);
+  const tabled0 = honorTableTriple(sized, args[0]);
+  // A furniture piece built in 2×4 because no stock was typed says so.
+  const defaulted =
+    !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsRealStockDefault(args[0]) &&
+    tabled0.primaryMaterialId === "lumber-2x4-8" && !(tabled0.notes ?? []).includes(REAL_STOCK_NOTE);
+  const tabled = defaulted ? { ...tabled0, notes: [...(tabled0.notes ?? []), REAL_STOCK_NOTE] } : tabled0;
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;

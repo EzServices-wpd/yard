@@ -1170,7 +1170,7 @@ function packPlan(
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
   const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name, restsOnLaterStep(project, plainInstructions));
-  const assumedInstructions = densifyConfirmAssumedNotes(kitInstructions, project.notes);
+  const assumedInstructions = firstStepSaysDefaultStock(densifyConfirmAssumedNotes(kitInstructions, project.notes), project.notes);
   // Money is finite or absent: a piece with no listing price never reads "$NaN" on Buy.
   const finite = (n: unknown) => typeof n === "number" && Number.isFinite(n);
   const plainBom = bom.map((b) => ({
@@ -1782,4 +1782,11 @@ function withAccessorySheetCuts(project: YardProject, plan: BuildPlan): BuildPla
     };
   });
   return { ...plan, cutList: [...plan.cutList, ...rows] };
+}
+
+/** A stock the engine picked because none was typed is said up front, in step 1. */
+function firstStepSaysDefaultStock(steps: AssemblyStep[], notes: readonly string[] | null | undefined): AssemblyStep[] {
+  const note = (notes ?? []).find((n) => n.startsWith("No material typed"));
+  if (!note || !steps.length || steps[0].description.includes(note)) return steps;
+  return [{ ...steps[0], description: `${steps[0].description.replace(/\s*$/, "")} ${note}` }, ...steps.slice(1)];
 }

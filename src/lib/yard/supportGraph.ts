@@ -128,6 +128,43 @@ export function roleSupports(instances: YardInstance[]): Map<string, SupportInfo
     }
     out.set(role, { key: role, name: role, how: on.size ? "rests" : "side", on: [...on] });
   }
+  return acyclicRoles(out, groups);
+}
+
+/** Build sequence when groups sit level: the frame first, then what ties it, then what it carries. */
+const ROLE_RANK: [RegExp, number][] = [
+  [/^(?:leg|post|pier|upright|wall|foot|feet|arch|frame|side|stand|spring|floor|base)s?$/, 0],
+  [/^(?:rail|tie|brace|batten|stretcher|apron|ring|belt|support|crossbar|stop|axle|lattice|cleat|rung|joist|beam|bearer|spine)s?$/, 1],
+  [/^(?:rafter|ridge|purlin)s?$/, 2],
+  [/^(?:roof|shingle|slat|cup|arm|top|seat|deck|back|backrest|tread|shelf|lid|panel|plank)s?$/, 3],
+];
+function roleRank(role: string): number {
+  const r = role.toLowerCase();
+  return ROLE_RANK.find(([re]) => re.test(r))?.[1] ?? 1.5;
+}
+
+/**
+ * Stick groups that touch each other can each "rest" on the other. A group rests only on a group that
+ * sits lower (median of its members' low ends), or, level with it, on one earlier in the build sequence.
+ * The support graph is then a tree to build up from, never a loop.
+ */
+function acyclicRoles(out: Map<string, SupportInfo>, groups: Map<string, YardInstance[]>): Map<string, SupportInfo> {
+  const median = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s.length ? s[Math.floor((s.length - 1) / 2)] : 0;
+  };
+  const low = new Map<string, number>();
+  for (const [role, members] of groups) low.set(role, median(members.map((m) => Math.min(m.from!.y, m.to!.y))));
+  const below = (b: string, a: string) => {
+    const d = (low.get(a) ?? 0) - (low.get(b) ?? 0);
+    if (Math.abs(d) > 0.5) return d > 0;
+    return roleRank(b) < roleRank(a);
+  };
+  for (const [role, info] of out) {
+    if (info.how !== "rests") continue;
+    const on = info.on.filter((b) => out.get(b)?.how === "floor" || below(b, role));
+    out.set(role, on.length ? { ...info, on } : { ...info, how: "side", on: [] });
+  }
   return out;
 }
 

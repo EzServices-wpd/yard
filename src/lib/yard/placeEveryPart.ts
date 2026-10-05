@@ -8,7 +8,7 @@ import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
 import { ANATOMY_NOTE } from "./classAnatomy";
 
-type Part = { key: string; name: string; kind: string };
+type Part = { key: string; name: string; kind: string; ids?: Set<string> };
 
 const PREP = /^(confirm|read|measure|check|lay out|mark|do not cut|before)/i;
 
@@ -31,14 +31,17 @@ function partsOf(project: YardProject): Part[] {
       .map((p) => ({ key: p.id, name: p.name, kind: p.type || "part" }));
   }
   const roles = new Map<string, number>();
+  const ids = new Map<string, Set<string>>();
   for (const inst of project.instances) {
     const role = inst.role || "member";
     roles.set(role, (roles.get(role) ?? 0) + 1);
+    ids.set(role, (ids.get(role) ?? new Set()).add(inst.id.toLowerCase()));
   }
   return [...roles.entries()].map(([role, n]) => ({
     key: role,
     name: n === 1 ? role : `${n} ${role}s`,
     kind: role,
+    ids: ids.get(role),
   }));
 }
 
@@ -54,6 +57,10 @@ function mentions(step: AssemblyStep, part: Part): boolean {
       used.includes(kind) ||
       used.includes(name) ||
       used.includes(part.key.toLowerCase()) ||
+      // A step that lists a member stick by id places that stick's role.
+      (!!part.ids && used.some((u) => part.ids!.has(u))) ||
+      // A title that names the part outright ("Fit the drawer front") places it.
+      (name.length > 3 && name.includes(" ") && new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`).test(title)) ||
       (fam.includes(" ") && (used.includes(fam) || used.includes(plural(fam, 2)))) ||
       // A join step named for the part's type ("Attach A Top to both uprights") places that part.
       (/^(?:attach|fasten|set|hang|glue|screw)\b/.test(title) && kind.length > 2 && new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${kind}s?\\b`).test(title))
@@ -99,9 +106,14 @@ function plural(word: string, n: number): string {
   return `${word}s`;
 }
 
+/** A piece that hangs on the wall: its base part mounts to studs or anchors, not the floor. */
+function wallMounted(project: YardProject): boolean {
+  return project.assumptions?.installMode === "wall";
+}
+
 /** The real support named in plain words: "the floor", "both uprights", "the 4 legs", "the Bottom". */
 function supportTalk(project: YardProject, info: SupportInfo | undefined): string {
-  if (!info || info.how === "floor") return "the floor";
+  if (!info || info.how === "floor") return wallMounted(project) ? "the wall" : "the floor";
   if (!info.on.length) return "the parts it meets";
   const names = project.panels.length
     ? info.on.map((id) => project.panels.find((p) => p.id === id)?.name ?? "").filter(Boolean)
@@ -121,6 +133,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const onto = supportTalk(project, info);
   switch (info?.how) {
     case "floor":
+      if (wallMounted(project)) {
+        return `Lay the ${part.name} flat on the bench, square to the marks: the base the next parts fasten to. The finished piece mounts to the wall, into studs or wall anchors where no stud lands, in the hang step.`;
+      }
       return `Set the ${part.name} on the floor, square to the marks. It is the base the next parts fasten to.`;
     case "hinges":
       return `Hang the ${part.name} on its hinges on ${onto}.`;
@@ -137,7 +152,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
 function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInfo | undefined): boolean {
   const text = `${step.title} ${step.description}`.toLowerCase();
   if (!info) return true;
-  if (info.how === "floor") return /floor|stand|footprint|on the marks|bench/.test(text);
+  if (info.how === "floor") return wallMounted(project) ? /\bwall\b|\bstuds?\b|anchor/.test(text) : /floor|stand|footprint|on the marks|bench/.test(text);
   if (info.how === "hinges") return /hinge/.test(text);
   if (info.how === "front") return /drawer box|drawer/.test(text) && /screw|glue/.test(text);
   if (!/glue|screw|dowel|biscuit|pocket|cement|pin|nail|tape|tab/.test(text)) return false;
@@ -344,7 +359,11 @@ function splitByLayer(
       const sentences = [...byTalk.entries()].map(([key, ps]) => {
         const [how, talk] = key.split("|");
         const list = listNames(ps.map((p) => p.name));
-        if (how === "floor") return `Stand the ${list} on the floor, square to the marks.`;
+        if (how === "floor") {
+          return wallMounted(project)
+            ? `Lay the ${list} flat on the bench, square to the marks: the base the rest fastens to. The finished piece mounts to the wall, into studs or wall anchors, in the hang step.`
+            : `Stand the ${list} on the floor, square to the marks.`;
+        }
         if (how === "rests") return `Set the ${list} on ${talk}.`;
         if (how === "hinges") return `Hang the ${list} on ${talk} with their hinges.`;
         return `Fasten the ${list} to ${talk}.`;

@@ -11,6 +11,21 @@ import type { AssemblyStep, Panel, YardProject } from "./types";
 const CRAFT = /popsicle|craft\s*stick|toothpick|skewer|cardboard|chipboard|lego|\bstraw\b|balsa/;
 const JOB = /\b(?:chair|stool|bench|table|desk|shelf|bookcase|cabinet)\b/;
 
+/** A piece people sit, sleep, eat, work at, or store things on — built at real size. */
+const HUMAN_USE =
+  /\b(?:chairs?|stools?|benche?s?|tables?|desks?|beds?|bunks?|cribs?|cots?|headboards?|sofas?|couch(?:es)?|settees?|loveseats?|ottomans?|swings?|picnic|adirondack|loungers?|recliners?|dressers?|nightstands?|wardrobes?|bookcases?|bookshel(?:f|ves)|shel(?:f|ves)|cabinets?|vanit(?:y|ies)|workbench(?:es)?|daybeds?|futons?|chaises?)\b/;
+/** Words that make it a model of the piece, not the piece. */
+const MODEL_SCALE = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
+
+/** Furniture or a human-use piece with no stock typed: real lumber at real size (craft stock only when typed). */
+export function wantsRealStockDefault(prompt: string): boolean {
+  const lower = prompt.toLowerCase().replace(/chair[\s-]+space/g, " ");
+  return HUMAN_USE.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
+}
+
+export const REAL_STOCK_NOTE =
+  "No material typed, so this builds from 2×4 lumber at full size, the way people use it. Type popsicle sticks to build a model.";
+
 export function namesCraftStock(prompt: string, materialOverride?: string): boolean {
   return CRAFT.test(`${prompt} ${materialOverride ?? ""}`.toLowerCase());
 }
