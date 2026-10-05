@@ -2100,7 +2100,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 8,
         title: "Level it",
-        description: "This nightstand sits on the floor. The back is already on it so it cannot rack (twist). Shim the feet if the floor is out — do not twist the main box.",
+        description: "This nightstand sits on the floor. The back is already on it so the box stays square. Shim the feet if the floor is out — do not twist the main box.",
         tips: "Guidance only — confirm the bedside height before you cut. Not stamped engineering.",
         partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...drawers]),
       },
@@ -2477,7 +2477,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
       : wallHang
         ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. Do not mark a footprint on the floor and do not shim feet — this is not a floor box."
-        : "Level the unit. The back is already on it so it cannot rack (twist). If it sits on a floor that is out, shim the feet — do not twist the main box.",
+        : "Level the unit. The back is already on it so the box stays square. If it sits on a floor that is out, shim the feet — do not twist the main box.",
     tips: `${guidanceConfirmTalk(`${project.prompt ?? ""} ${project.name}`, alcove ? "alcove" : wallHang ? "wall" : "floor")} Not stamped engineering.`,
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
   });
@@ -2867,7 +2867,7 @@ function uniqueRecastCarcaseSteps(project: YardProject): AssemblyStep[] {
     step: n++,
     title: "Lay out the footprint on the bench",
     description: `Tape a rectangle ${project.overall.width.toFixed(1)}" × ${project.overall.depth.toFixed(1)}" on the bench. Mark centerlines both ways. The faces go up from this outline.`,
-    tips: "A crooked base cannot be fixed later.",
+    tips: "A square base keeps every later part true.",
   });
   if (whole) {
     steps.push({
@@ -3052,7 +3052,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       ? "Soft-launch only — the projectile leaves free."
       : mediaTip
         ? `Keep the ${tipTalkFoot} true under the ${heldFoot}.`
-      : "A crooked base cannot be fixed later.",
+      : "A square base keeps every later part true.",
   });
 
   if (whole) {
@@ -3174,7 +3174,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (namesSitChair((project.prompt ?? "").toLowerCase()) && !steps.some((s) => /sit on it/i.test(s.title))) {
     steps.push({
       step: n++,
-      title: "Sit on it",
+      title: project.panels.some((p) => p.type === "seat" || /seat/i.test(p.name)) ? "Sit on it" : "Set it in place",
       description: "Sit on the seat. It should feel solid, not springy. If a rail rocks, re-join that joint before you finish.",
       tips: "A chair is done when someone can sit on it.",
       partsUsed: ["*"],

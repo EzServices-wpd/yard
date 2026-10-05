@@ -1221,8 +1221,16 @@ function finalize(
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };
-  if (members?.note && !next.notes.includes(members.note)) {
+  const sheetFigure = next.kind === "figure" && /sheet|cardboard/.test(item.id);
+  if (members?.note && !sheetFigure && !next.notes.includes(members.note)) {
     next = { ...next, notes: [members.note, ...next.notes] };
+  }
+  if (sheetFigure && next.instances.length > 16) {
+    next = {
+      ...next,
+      instances: next.instances.slice(0, 12),
+      notes: ["A sheet figure stays a few faces, not a stack of battens.", ...next.notes.filter((n) => !/Ripped into/.test(n))],
+    };
   }
   if (next.instances.length === 0 && next.panels.length === 0) {
     next = neverEmpty(next, item, box);

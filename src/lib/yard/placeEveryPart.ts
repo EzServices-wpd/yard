@@ -43,7 +43,7 @@ function partsOf(project: YardProject): Part[] {
 
 function supportFor(name: string, kind: string): string {
   const hay = `${name} ${kind}`.toLowerCase();
-  if (/\bleg\b/.test(hay)) return "";
+  if (/\bleg\b|base|bottom|post|upright/.test(hay)) return "";
   if (/back|backrest|door|brace/.test(hay)) return "seat";
   if (/seat|top|lid|shelf|tread|deck|desktop/.test(hay)) return "legs";
   if (/rail|apron|stretcher|slat/.test(hay)) return "legs";
@@ -57,6 +57,7 @@ function mentions(step: AssemblyStep, part: Part): boolean {
   if (used.length) return used.includes(kind) || used.includes(name) || used.includes(part.key.toLowerCase());
   const text = `${step.title} ${step.description}`.toLowerCase();
   if (name.length > 3 && text.includes(name)) return true;
+  if (new RegExp(`to the ${name}|onto the ${name}|on the ${name}`).test(text)) return true;
   return new RegExp(`\\b${kind}s?\\b`).test(text);
 }
 
@@ -65,7 +66,10 @@ function isBuild(step: AssemblyStep): boolean {
 }
 
 function ontoTalk(project: YardProject, part: Part): string {
-  if (part.support === "seat") return "the seat";
+  const hay = `${part.name} ${part.kind}`.toLowerCase();
+  if (/base|bottom|leg|post|upright/.test(hay)) return "the floor";
+  const hasSeat = project.panels.some((p) => p.type === "seat" || /seat/i.test(p.name));
+  if (part.support === "seat" && hasSeat) return "the seat";
   const hasLegs = project.panels.some((p) => /leg/i.test(p.name)) || project.instances.some((i) => i.role === "leg");
   if (hasLegs) return "the legs and aprons";
   if (project.panels.some((p) => /upright/i.test(p.name) || p.type === "upright")) return "the uprights";

@@ -68,7 +68,7 @@ export function shareFrom(input: {
 }
 
 export function shareUrl(payload: SharePayload, origin = "https://yard.wiki"): string {
-  return `${origin}/?y=${encodeShare(payload)}`;
+  return `${origin}/workspace?y=${encodeShare(payload)}`;
 }
 
 /** Rebuild the model the link names. Same path the bench uses after a shared open. */

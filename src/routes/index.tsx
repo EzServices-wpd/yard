@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
@@ -63,6 +63,10 @@ const CHIP =
 
 function LandingPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const y = new URLSearchParams(window.location.search).get("y");
+    if (y) void navigate({ to: "/workspace", search: { y } });
+  }, [navigate]);
   const [prompt, setPrompt] = useState("");
   const [stockId, setStockId] = useState<StockId | null>(null);
 

@@ -564,6 +564,7 @@ export function isWireStock(item: CatalogItem | undefined | null): boolean {
  */
 export function weekendCraftStockPhrases(): [RegExp, string][] {
   return [
+    [/\bpallet\b|reclaimed pallet/, "pallet-board"],
     [/\blegos?\b/, "lego-2x4"],
     [/jumbo (craft|popsicle)|jumbo stick|(?:lattice|tower).{0,24}jumbo|jumbo.{0,24}(?:lattice|tower)/, "popsicle-jumbo"],
     [/mini (craft|popsicle)|mini stick/, "popsicle-mini"],

@@ -32,7 +32,7 @@ export function applyInsideCount(project: YardProject, patch: InsidePatch): Yard
           ...fitted.unit,
           shelfCount: patch.shelves ?? fitted.unit.shelfCount,
           cubbies: patch.cubbies ?? fitted.unit.cubbies,
-          drawersPerBank: patch.drawers != null ? Math.max(1, Math.round(patch.drawers)) : fitted.unit.drawersPerBank,
+          drawersPerBank: patch.drawers != null ? Math.max(0, Math.round(patch.drawers)) : fitted.unit.drawersPerBank,
         },
       },
     });

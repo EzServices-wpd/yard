@@ -36,7 +36,7 @@ import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 
-export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
+export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: string; shareToken?: string }) {
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -89,7 +89,8 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
 
   useEffect(() => {
     const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const shared = params?.get("y") ? decodeShare(params.get("y")!) : null;
+    const token = shareToken || params?.get("y");
+    const shared = token ? decodeShare(token) : null;
     const fromUrl = params?.get("q");
     const prompt = (shared?.prompt || initialPrompt || fromUrl || "").trim();
     if (prompt) {
