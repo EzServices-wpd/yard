@@ -6,6 +6,9 @@ import { SiteFooter } from "@/components/site/chrome";
 import { DREAMS } from "@/lib/yard/prompt";
 import { promptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
+import type { Showcase } from "@/lib/yard/homeShowcase";
+
+const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -34,7 +37,6 @@ const STEPS = [
 const PIECES = [
   {
     id: "pocket",
-    src: "/heroes/pocket.jpg",
     label: "Pocket vanity",
     size: "38 × 102 × 17 · trapezoid fit",
     prompt: DREAMS.find((d) => d.id === "pocket")?.prompt ?? "pocket vanity",
@@ -42,7 +44,6 @@ const PIECES = [
   },
   {
     id: "linen",
-    src: "/heroes/linen.jpg",
     label: "Linen closet",
     size: "31 1/2 × 78 × 16",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
@@ -50,7 +51,6 @@ const PIECES = [
   },
   {
     id: "desk",
-    src: "/heroes/desk.jpg",
     label: "60″ desk",
     size: "60 × 30 × 29 · 24″ knee",
     prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
@@ -69,6 +69,21 @@ function LandingPage() {
   }, [navigate]);
   const [prompt, setPrompt] = useState("");
   const [stockId, setStockId] = useState<StockId | null>(null);
+  const [shows, setShows] = useState<Record<string, Showcase | undefined>>({});
+  useEffect(() => {
+    let live = true;
+    // The engine loads after first paint so the headline stays instant.
+    void import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => {
+      for (const piece of PIECES) {
+        if (!live) return;
+        const show = showcaseFor(piece.prompt);
+        setShows((prev) => ({ ...prev, [piece.id]: show }));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
@@ -238,7 +253,7 @@ function LandingPage() {
 
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
-          <p className="mt-2 text-center text-sm text-ink-muted">Tap a piece to open its full plan.</p>
+          <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {PIECES.map((h) => (
               <button
@@ -248,19 +263,28 @@ function LandingPage() {
                 className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
-                  <img
-                    src={h.src}
-                    alt={`${h.label} ${h.size}`}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
-                    width={1280}
-                    height={960}
-                  />
+                  {shows[h.id] ? (
+                    <div
+                      role="img"
+                      aria-label={`Yard drawing of the ${h.label} ${h.size}`}
+                      data-yard-showcase={h.id}
+                      className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                      dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-ink-muted">Drawing the model…</div>
+                  )}
                 </div>
                 <div className="flex flex-1 flex-col justify-center p-4">
                   <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
                   <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
                   <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
+                  {shows[h.id] ? (
+                    <span className="mt-1 font-mono text-xs tracking-tight text-ink" data-yard-showcase-totals={h.id}>
+                      {shows[h.id]!.pieces} cut pieces · Buy list ~${shows[h.id]!.buyUsd.toLocaleString("en-US")}
+                    </span>
+                  ) : null}
+                  <span className="mt-1 text-[11px] italic leading-snug text-ink-muted">{SHOWCASE_CAPTION}</span>
                 </div>
               </button>
             ))}
@@ -271,7 +295,7 @@ function LandingPage() {
           <Feature
             icon={<Hammer className="size-5" />}
             title="The size you typed"
-            body="Type 31 1/2 × 78 × 16 and you get a 31 1/2 × 78 × 16 build, with steps written in plain words."
+            body="Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words."
           />
           <Feature
             icon={<ClipboardList className="size-5" />}
