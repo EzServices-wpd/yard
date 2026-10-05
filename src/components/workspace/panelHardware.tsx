@@ -114,19 +114,27 @@ export function PinHoles({ w, h, d, isLeft }: { w: number; h: number; d: number;
   );
 }
 
-/** Bought coat hook: steel base plate on the rail face and a curved hook sticking out. */
+/** Bought coat hook: steel plate on the rail face and a curved hook sticking out into the room (+Z). */
 export function CoatHook({ w, h, d }: { w: number; h: number; d: number }) {
-  const plateT = Math.min(0.18, d * 0.08);
-  const hookR = Math.max(0.55, Math.min(d * 0.32, h * 0.45));
-  const tube = Math.max(0.1, Math.min(w, h, d) * 0.12);
+  const plateT = Math.min(0.2, Math.max(0.12, d * 0.08));
+  const hookR = Math.max(0.7, Math.min(d * 0.42, h * 0.55, 1.1));
+  const tube = Math.max(0.12, Math.min(w, h, d) * 0.14);
+  // Local −Z is the rail face; +Z is out into the room (past the peg rail).
+  const plateZ = -d / 2 + plateT / 2;
+  const stemZ = -d / 2 + plateT + hookR * 0.15;
   return (
     <group>
-      <mesh position={[0, 0, -d / 2 + plateT / 2]} castShadow receiveShadow>
-        <boxGeometry args={[Math.max(w, 0.7), Math.max(h * 0.55, 1.1), plateT]} />
+      <mesh position={[0, 0, plateZ]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[Math.max(w, 0.85), Math.max(h * 0.55, 1.2), plateT]} />
         <meshStandardMaterial color={STEEL} metalness={0.72} roughness={0.32} />
       </mesh>
-      <mesh position={[0, h * 0.05, -d / 2 + plateT + hookR * 0.15]} rotation={[0.55, 0, 0]} castShadow>
-        <torusGeometry args={[hookR, tube, 10, 20, Math.PI * 1.2]} />
+      {/* Stem out from the plate, then a downward curl — readable from the 3/4 bench view. */}
+      <mesh position={[0, h * 0.08, stemZ + hookR * 0.35]} rotation={[Math.PI / 2, 0, 0]} castShadow frustumCulled={false}>
+        <cylinderGeometry args={[tube, tube, hookR * 0.7, 10]} />
+        <meshStandardMaterial color={STEEL} metalness={0.75} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, h * 0.08 - hookR * 0.35, stemZ + hookR * 0.7]} rotation={[0.2, 0, 0]} castShadow frustumCulled={false}>
+        <torusGeometry args={[hookR * 0.55, tube, 10, 20, Math.PI * 1.35]} />
         <meshStandardMaterial color={STEEL} metalness={0.75} roughness={0.28} />
       </mesh>
     </group>

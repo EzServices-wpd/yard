@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
@@ -61,5 +62,16 @@ describe("Buy lists the adhesive the steps use", () => {
     const plan = buildPlan(generateFromPrompt("popsicle stick house"));
     assert.ok(plan.bom.some((b) => /wood glue/i.test(b.name)));
     assert.ok(/wood glue/i.test(plan.instructions.map((s) => s.description).join(" ")));
+  });
+});
+
+describe("Client path draws bought coat hooks as steel glyphs", () => {
+  it("stick-cloud routes Coat hook panels through CoatHook", () => {
+    const src = fs.readFileSync(new URL("../../components/workspace/stick-cloud.tsx", import.meta.url), "utf8");
+    const hw = fs.readFileSync(new URL("../../components/workspace/panelHardware.tsx", import.meta.url), "utf8");
+    assert.match(src, /isBoughtHardwareName/);
+    assert.match(src, /<CoatHook\b/);
+    assert.match(hw, /export function CoatHook/);
+    assert.match(hw, /frustumCulled=\{false\}/);
   });
 });

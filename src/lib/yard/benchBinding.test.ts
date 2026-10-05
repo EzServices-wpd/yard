@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
+import { buildPlan } from "./report.ts";
 import { benchBindsForm, bindsNamedForm, recipeFromOps } from "./form.ts";
 import { bindsDeterministically } from "./weekendFamily.ts";
 
@@ -61,12 +62,23 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
   it("doll bed is legs + rails + a deck, not a planter box", () => {
     const bed = generateFromPrompt("doll bed");
     const r = roles(bed);
-    assert.ok(r.upright > 0 && r.deck > 0, JSON.stringify(r));
+    assert.ok((r.leg ?? r.upright) > 0 && r.deck > 0 && r.rail > 0, JSON.stringify(r));
     assert.ok(!r.bottom, JSON.stringify(r));
     assert.doesNotMatch(bed.prompt, /planter/);
     assert.match(bed.notes[0], /bed frame on legs/);
     assert.equal(bed.typedPrompt, "doll bed");
   });
+
+  it("doll bed cut list names Leg, Rail, and Deck", () => {
+    const plan = buildPlan(generateFromPrompt("doll bed"));
+    const names = plan.cutList.map((c) => c.name).join(" ");
+    assert.match(names, /Leg/i);
+    assert.match(names, /Rail/i);
+    assert.match(names, /Deck/i);
+    assert.doesNotMatch(names, /^Standard Popsicle Stick$/);
+    assert.ok(plan.cutList.reduce((s, c) => s + c.quantity, 0) <= 40);
+  });
+
 
   it("lemonade stand shows 'lemonade stand' in the box, not the primitive", () => {
     const stand = generateFromPrompt("lemonade stand");

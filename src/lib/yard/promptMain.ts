@@ -28,6 +28,7 @@ import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
 import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
+import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
@@ -194,6 +195,29 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const noun = prompt.replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ").replace(/\s+/g, " ").trim();
   const stockTyped = Boolean(args[1]) || !isWireStock(detectMaterial(prompt)) || /\bwire\b|\b(from|out of|made of|made from|with)\b|sticks?\b|ply|cardboard|lumber|2x\d|1x\d|pallet|bamboo|pvc|acrylic|metal|pipe/i.test(prompt);
   const toyBed = isToyScaleBed(noun);
+  // Toy-scale beds: dedicated stick bed frame (legs + rails + deck) — never the house
+  // platform-bed panel recipe recast into a sprawling craft lattice.
+  if (toyBed) {
+    const woodLift = /\b(?:plywood|lumber|2x\d|1x\d|pallet)\b/i.test(prompt) || (args[1] && /plywood|lumber|2x|1x/.test(String(args[1])));
+    if (!woodLift) {
+      const craftId =
+        args[1] && getCatalogItem(args[1]) && !isWireStock(getCatalogItem(args[1])!)
+          ? args[1]
+          : !isWireStock(detectMaterial(prompt))
+            ? detectMaterial(prompt).id
+            : "popsicle-standard";
+      const item = getCatalogItem(craftId) ?? getCatalogItem("popsicle-standard")!;
+      const prim = pickPrimitive(noun);
+      const sized = parseSize(prompt.toLowerCase());
+      const size = {
+        width: /wide/i.test(prompt) ? sized.width : (prim?.size[0] ?? 14),
+        height: /(?:tall|high)/i.test(prompt) ? sized.height : (prim?.size[1] ?? 5),
+        depth: /deep/i.test(prompt) ? sized.depth : (prim?.size[2] ?? 10),
+      };
+      const built = buildToyBedFrame(prompt, item, size, noun);
+      return hooksShowInModel(craftDisplay(built, prompt));
+    }
+  }
   // Toy-scale beds always consider the bed primitive — craft stock typed must not leave a figure or full mattress.
   const p = stockTyped && !toyBed ? null : pickPrimitive(noun);
   if (!p || !looksLikeFallback(core, noun)) return core;
