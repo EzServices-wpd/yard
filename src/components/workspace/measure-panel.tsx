@@ -324,8 +324,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       {measureNote ? <p className="mt-2 text-sm leading-relaxed text-fg">{measureNote}</p> : null}
 
       {shown === "space" && (
-        <button type="button" data-yard-fit={fit.tone} className={`mb-2 inline-flex min-h-11 items-center rounded-full border px-3 text-left text-xs ${fit.tone === "green" ? "border-emerald-700/50 text-emerald-300" : "border-amber-600/50 text-amber-200"}`}>{fit.text}</button>
         <section className="mt-4" data-yard-measure-section="space">
+          <button type="button" data-yard-fit={fit.tone} className={`mb-2 inline-flex min-h-11 items-center rounded-full border px-3 text-left text-xs ${fit.tone === "green" ? "border-emerald-700/50 text-emerald-300" : "border-amber-600/50 text-amber-200"}`}>{fit.text}</button>
           <Sketch openingW={openingW} pieceW={pieceW} height={Number.isFinite(hNum) ? hNum : project.overall.height} depth={Number.isFinite(dNum) ? dNum : project.overall.depth} shape={isCorner ? "corner" : measure.spaceShape === "arch" ? "arch" : measure.spaceShape === "slope" || isSlope ? "sloped" : shape === "flared" ? "flared" : "rectangle"} notch={notchSide} outlet={Boolean(measure.outletOn)} baseboard={Boolean(measure.baseboardOn)} />
           <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-faint">Top and front</p>
           {spare.line ? <p className="mt-1 text-[11px] text-muted">{spare.line}</p> : null}
