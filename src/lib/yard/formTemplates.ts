@@ -538,12 +538,14 @@ export function frameHangs(prompt: string): boolean {
   return /\bhang(?:s|ing)?\b|\bwall\b|\bhanger\b|\bloop\b/.test(prompt.toLowerCase());
 }
 
-/** Glazing asked for: 1 = picture-frame glass, 2 = clear acrylic (plexiglass), 0 = none. */
+/** Glazing: 1 = picture-frame glass when typed, 2 = clear acrylic (the default), 0 = none when typed ("no glass"). */
 export function frameGlazing(prompt: string): 0 | 1 | 2 {
   const l = prompt.toLowerCase();
   if (/\bacrylic\b|\bplexi(?:glass)?\b|\bperspex\b/.test(l)) return 2;
+  if (/\b(?:no|without|open)\s+(?:glass|glazing|acrylic)\b|\bopen frame\b|\bno glazing\b/.test(l)) return 0;
   if (/\bglass\b|\bglazed\b/.test(l)) return 1;
-  return 0;
+  // A picture frame protects the photo: clear acrylic by default (light, scores and snaps, safe for a first build).
+  return 2;
 }
 
 /**

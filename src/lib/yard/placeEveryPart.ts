@@ -18,7 +18,7 @@ function fastenerTalk(project: YardProject): string {
   if (join === "dowel") return "2 dowels and glue per joint, the same dowels on the Buy list. No face screws.";
   if (join === "biscuit") return "#20 biscuits and glue, the same biscuits on the Buy list. No face screws.";
   if (join === "pocket") return "pocket screws, the same pocket screws on the Buy list. No face screws.";
-  if (join === "glue" || /popsicle|chipboard|cardboard|dowel|balsa/.test(id)) return "glue, the same glue on the Buy list.";
+  if (join === "glue" || /popsicle|chipboard|cardboard|dowel|balsa|skewer|bamboo|toothpick|craft-stick/.test(id)) return "glue, the same glue on the Buy list.";
   if (/pvc|pipe/.test(id)) return "solvent cement, the same cement on the Buy list.";
   const len = inchFrac(faceScrewInches(stockThickness(project)));
   return `#8 x ${len}" screws, the same screws on the Buy list.`;

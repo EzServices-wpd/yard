@@ -3,6 +3,7 @@ import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews } from "./stepJointScrews";
 import { getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
+import { positivePlan } from "./positiveWording";
 import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
@@ -1338,11 +1339,11 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 
 export function buildPlan(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = stepsAccountForScrews(stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }));
+  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })));
   const extra = spaceCutStep(project);
-  if (!extra) return plan;
+  if (!extra) return positivePlan(plan);
   const step = plan.instructions.length + 1;
-  return { ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] };
+  return positivePlan({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] });
 }
 
 /**
@@ -1723,14 +1724,56 @@ function templateAccessories(project: YardProject) {
     const acrylic = g.materialId === "acrylic-sheet";
     out.push(
       acrylic
-        ? { name: "Clear acrylic sheet 9×12", quantity: 1, unit: "sheet", catalogId: "acrylic-sheet", searchQuery: "clear acrylic sheet 9 x 12", estimatedCost: 9.99, notes: `Score and snap it to ${inchFrac(gw)}" × ${inchFrac(gh)}" (the photo size); it sits in front of the photo.` }
+        ? { name: `Clear acrylic sheet ${sheetFor(gw, gh, ACRYLIC_SHEETS).name}`, quantity: 1, unit: "sheet", catalogId: "acrylic-sheet", searchQuery: `clear acrylic sheet ${sheetFor(gw, gh, ACRYLIC_SHEETS).query}`, estimatedCost: sheetFor(gw, gh, ACRYLIC_SHEETS).cost, notes: `Score and snap it to ${inchFrac(gw)}" × ${inchFrac(gh)}" (the photo size); it sits in front of the photo.` }
         : { name: `Picture-frame glass ${inchFrac(gw)}×${inchFrac(gh)}`, quantity: 1, unit: "pc", catalogId: "frame-glass", searchQuery: `${inchFrac(gw)}x${inchFrac(gh)} picture frame glass`, estimatedCost: 6.99, notes: `Cut to ${inchFrac(gw)}" × ${inchFrac(gh)}" (the photo size); a hardware store cuts glass, or buy replacement frame glass this size. It sits in front of the photo.` },
     );
   }
   if (P?.hanger && !project.instances.length) out.push({ name: "Sawtooth picture hanger", quantity: 1, unit: "pack", catalogId: "sawtooth-hanger", searchQuery: "sawtooth picture hangers", estimatedCost: 5.99, notes: "One hanger screwed to the top back." });
   if (!project.instances.length) return out;
   const b = project.panels.find((p) => p.materialId === "chipboard-sheet");
-  if (P?.backer && b) out.push({ name: "Chipboard sheets 8.5×11", quantity: 1, unit: "pack", catalogId: "chipboard-sheet", searchQuery: "chipboard sheets 8.5 x 11", estimatedCost: 8.99, notes: `One sheet cut to ${Math.round(b.size.width * 16) / 16}" × ${Math.round(b.size.height * 16) / 16}" is the backer.` });
+  if (P?.backer && b) {
+    const bw = Math.round(b.size.width * 16) / 16, bh = Math.round(b.size.height * 16) / 16;
+    const sheet = sheetFor(bw, bh, CHIPBOARD_SHEETS);
+    out.push({ name: `Chipboard sheets ${sheet.name}`, quantity: 1, unit: "pack", catalogId: "chipboard-sheet", searchQuery: `chipboard sheets ${sheet.query}`, estimatedCost: sheet.cost, notes: `One sheet cut to ${inchFrac(bw)}" × ${inchFrac(bh)}" is the backer.` });
+  }
   if (P?.hanger) out.push({ name: "Sawtooth picture hanger", quantity: 1, unit: "pack", catalogId: "sawtooth-hanger", searchQuery: "sawtooth picture hangers", estimatedCost: 5.99, notes: "One hanger glued or tacked to the top back." });
   return out;
+}
+
+type SheetSize = { w: number; h: number; cost: number };
+const ACRYLIC_SHEETS: SheetSize[] = [{ w: 9, h: 12, cost: 9.99 }, { w: 11, h: 14, cost: 12.99 }, { w: 12, h: 24, cost: 18.99 }, { w: 18, h: 24, cost: 26.99 }, { w: 24, h: 36, cost: 44.99 }];
+const CHIPBOARD_SHEETS: SheetSize[] = [{ w: 8.5, h: 11, cost: 8.99 }, { w: 11, h: 14, cost: 11.99 }, { w: 12, h: 18, cost: 13.99 }, { w: 18, h: 24, cost: 17.99 }, { w: 24, h: 36, cost: 24.99 }];
+
+/** The smallest stock sheet the cut part fits on (either way round). */
+function sheetFor(w: number, h: number, sizes: SheetSize[]): { name: string; query: string; cost: number } {
+  const [a, b] = [w, h].sort((x, y) => x - y);
+  const s = sizes.find((z) => a <= z.w + 1e-6 && b <= z.h + 1e-6) ?? sizes[sizes.length - 1];
+  return { name: `${inchFrac(s.w)} × ${inchFrac(s.h)}`, query: `${inchFrac(s.w)} x ${inchFrac(s.h)}`, cost: s.cost };
+}
+
+/**
+ * A stick build's sheet parts (frame glazing, chipboard backer) are cut too: they join the cut list as
+ * their own lettered rows, cut from the sheet Buy lists, so the model, cut list and Buy all show them.
+ */
+function withAccessorySheetCuts(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!project.instances.length) return plan;
+  const sheets = project.panels.filter(isStickAccessorySheet);
+  if (!sheets.length || plan.cutList.some((c) => sheets.some((p) => c.name === p.name))) return plan;
+  const rows: CutLine[] = sheets.map((p, i) => {
+    const [a, b] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => y - x);
+    const t = Math.min(p.size.width, p.size.height, p.size.depth);
+    const stock = p.materialId === "acrylic-sheet" ? "Clear acrylic sheet" : p.materialId === "frame-glass" ? "Picture-frame glass" : "Chipboard sheet";
+    return {
+      id: `${p.materialId}|${p.name}`,
+      name: p.name,
+      quantity: 1,
+      lengthIn: Math.round(a * 16) / 16,
+      widthIn: Math.round(b * 16) / 16,
+      thicknessIn: Math.round(t * 16) / 16 || 1 / 16,
+      material: stock,
+      notes: `Cut from the ${stock.toLowerCase()} on the Buy list.`,
+      label: letterLabel(plan.cutList.length + i),
+    };
+  });
+  return { ...plan, cutList: [...plan.cutList, ...rows] };
 }

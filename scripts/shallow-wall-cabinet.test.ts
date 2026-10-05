@@ -35,11 +35,11 @@ test("16x24x4 medicine cabinet matches the shallow rule", () => {
   const steps = uniqueSteps(project);
   const hang = steps.find((s) => /hang it on studs/i.test(s.title));
   assert.ok(hang);
-  assert.match(hang.description, /cannot hit two studs/i);
+  assert.match(hang.description, /cannot hit two studs|reaches only one stud/i);
   assert.doesNotMatch(hang.description, /4 screws, one near each corner/);
   const plan = buildPlan(project);
   const anchors = plan.bom.find((l) => /anchor/i.test(l.name));
   assert.ok(anchors, "buy list includes anchors when the back misses a stud");
   const screws = plan.bom.find((l) => /structural screws/i.test(l.name));
-  assert.match(screws?.notes ?? "", /cannot take a screw in two studs/i);
+  assert.match(screws?.notes ?? "", /cannot take a screw in two studs|reaches only one stud/i);
 });
