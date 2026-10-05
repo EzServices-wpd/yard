@@ -18,8 +18,7 @@ export function wantsJobFurniture(prompt: string, materialOverride?: string): bo
   const lower = prompt.toLowerCase().replace(/chair[\s-]+space/g, " ");
   if (!JOB.test(lower) || namesCraftStock(prompt, materialOverride)) return false;
   const named = detectMaterial(prompt);
-  // Craft sticks stay a display model. A named board or sheet still builds the class.
-  if (named && /popsicle|chipboard|cardboard|straw|skewer|lego/i.test(named.id)) return false;
+  if (named && !/wire/i.test(named.id) && !/popsicle/i.test(named.id)) return false;
   if (/step-?stool|step-?up|climb\s+stool|adirondack|lounge\s*chair|rocking\s*chair|ottoman/.test(lower)) return false;
   if (/\bcloset\b|\balcove\b|\bpocket\b/.test(lower)) return false;
   return true;
@@ -41,8 +40,7 @@ export function buildJobFurniture(prompt: string): YardProject {
   const depth = num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, /\bchair\b|\bstool\b/.test(lower) ? 16 : 18);
   const leg = 1.5;
   const x0 = -width / 2;
-  const named = detectMaterial(prompt);
-  const ply = named && /lumber|plywood|pallet/.test(named.id) ? named.id : "plywood-3-4-4x8";
+  const ply = "plywood-3-4-4x8";
   const stud = "lumber-2x4-8";
   const panels: Panel[] = [];
   const chair = /\bchair\b/.test(lower);

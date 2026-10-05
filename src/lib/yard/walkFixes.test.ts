@@ -11,8 +11,8 @@ describe("live walk rules", () => {
     assert.equal(/popsicle/.test(bed.primaryMaterialId), false);
     const chair = generateFromPrompt("kitchen chair from 1x4");
     assert.match(chair.primaryMaterialId, /lumber-1x4/);
-    assert.equal(chair.panels.some((p) => /seat/i.test(p.name)), true);
-    assert.equal(chair.panels.some((p) => /back/i.test(p.name)), true);
+    assert.equal(chair.instances.some((i) => i.role === "seat") || chair.panels.some((p) => /seat/i.test(p.name)), true);
+    assert.equal(chair.instances.some((i) => i.role === "back") || chair.panels.some((p) => /back/i.test(p.name)), true);
   });
 
   it("a cardboard robot stays a figure and is not a batten cloud", () => {
