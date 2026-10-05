@@ -1,3 +1,5 @@
+import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
+import { stepsDriveJointScrews } from "./stepJointScrews";
 import { getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
@@ -767,7 +769,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     });
   }
   if (coatRack) {
-    const hooks = Math.max(3, Math.min(8, Math.round(project.overall.width / 6)));
+    const pegRailBuild = project.panels.some((p) => /peg rail/i.test(p.name));
+    const hooks = hookCount({ prompt: project.prompt, name: project.name, railWidth: project.overall.width, pegs: /\bpegs?\b/i.test(project.prompt ?? "") });
     bom.push({
       name: "Coat hooks",
       quantity: 1,
@@ -775,7 +778,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: "coat-hooks",
       searchQuery: "coat hooks wall mount 6 pack",
       estimatedCost: 12.98,
-      notes: `${hooks} hooks, 6" on center into the ${project.panels.some((p) => /peg rail/i.test(p.name)) ? "peg rail" : project.panels.some((p) => /body profile/i.test(p.name)) ? "body profile" : project.shape ? "body" : "rail"}.`,
+      notes: `${hooks} hooks, 6" on center into the ${pegRailBuild ? "peg rail" : project.panels.some((p) => /body profile/i.test(p.name)) ? "body profile" : project.shape ? "body" : "rail"}, with ${hooks * SCREWS_PER_HOOK} hook screws (${SCREWS_PER_HOOK} per hook; most hook packs include them).`,
     });
   }
   if ((project.notes ?? []).some((n) => /\banti-tip\b/i.test(n)) && !bom.some((b) => /anti-tip/i.test(b.name))) {
@@ -1302,7 +1305,7 @@ export function stepsAccountForScrews(plan: BuildPlan): BuildPlan {
 
 export function buildPlan(project: YardProject): BuildPlan {
   const built = stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))));
-  const plan = stepsAccountForScrews({ ...built, bom: hardwareFromNotes(project, built.bom) });
+  const plan = stepsAccountForScrews(stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }));
   const extra = spaceCutStep(project);
   if (!extra) return plan;
   const step = plan.instructions.length + 1;

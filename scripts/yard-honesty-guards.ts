@@ -7852,9 +7852,10 @@ console.log("STRANGER PLAN OK", {
   const sp = planStepParts(van, vanPlan.instructions, letters);
   const lt = (ids: string[]) => [...new Set(ids.map((id) => letters.get(id)))].sort().join("");
   const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
-  const bottom = vanPlan.instructions.findIndex((s) => /attach b bottom/i.test(s.title));
-  if (stand < 0 || lt(sp[stand].fresh) !== "AE") failHonesty("pdf vanity stand step must light only A, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
-  if (bottom < 0 || lt(sp[bottom].fresh) !== "B" || lt(sp[bottom].onto) !== "E") failHonesty("pdf vanity bottom step lights B onto E", bottom >= 0 ? sp[bottom] : "missing");
+  // The box stands on its bottom first; the thin back goes on last, along every edge, once the box is square.
+  const back = vanPlan.instructions.findIndex((s) => /back of the box/i.test(s.title));
+  if (stand < 0 || lt(sp[stand].fresh) !== "BE") failHonesty("pdf vanity stand step must light only B, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (back <= stand || lt(sp[back].fresh) !== "A") failHonesty("pdf vanity back step lights A after the box stands", back >= 0 ? sp[back] : "missing");
   const seen = new Set<string>();
   for (const st of sp) for (const id of st.fresh) {
     if (seen.has(id)) failHonesty("pdf part lit as new twice", id);

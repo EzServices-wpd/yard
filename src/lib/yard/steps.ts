@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stoolRiseRunTalk, stoolStepCount } from "./climb";
 import { inchFrac } from "./inchText";
 import { templatePanelSteps, templateSteps } from "./formTemplates";
@@ -708,30 +709,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const hookRailLabel = portalHookRail && !/coat/i.test(project.name) && !/coat/.test(coatPrompt)
       ? portalHookRailTitle(coatPrompt)
       : null;
-    // Honor typed hook/peg count — Peg rail must not fall back to Tool-rail W/6 (=6).
-    const nameLower = (project.name || "").toLowerCase();
-    const hookSaid =
-      coatPrompt.match(/(\d+)\s*hooks?/) ||
-      nameLower.match(/(\d+)\s*hooks?/) ||
-      (pegRail ? coatPrompt.match(/(\d+)\s*pegs?/) || nameLower.match(/(\d+)\s*pegs?/) : null);
-    const hookWord =
-      coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/) ||
-      nameLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hooks?\b/) ||
-      (pegRail
-        ? coatPrompt.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+pegs?\b/) ||
-          nameLower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+pegs?\b/)
-        : null);
-    const hookWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+    // Honor typed hook/peg count — the same count Buy reads (hookCount).
     const pairSaid = coatPrompt.match(/(\d+)\s*pairs?/);
     const hooks = shoe
       ? pairSaid
         ? Math.max(2, Math.min(12, parseInt(pairSaid[1], 10)))
         : Math.max(2, Math.min(8, Math.round(W / 9)))
-      : hookSaid
-        ? Math.max(2, Math.min(12, parseInt(hookSaid[1], 10)))
-        : hookWord && hookWords[hookWord[1]] != null
-          ? Math.max(2, Math.min(12, hookWords[hookWord[1]]))
-          : Math.max(3, Math.min(8, Math.round(W / 6)));
+      : hookCount({ prompt: coatPrompt, name: project.name, railWidth: W, pegs: !!pegRail });
     const hangNoun = pegRail ? "pegs" : "hooks";
     const rail = backs[0] ?? panels[0];
     const shelf = of("top")[0];
@@ -855,7 +839,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             : `Screw ${hooks} ${hangNoun}`,
         description: shoe
           ? `Mark ${hooks} stations along the rail, about 8–9" on center. Glue and #8 × 1¼" screws through each Shoe peg into the rail — one cut peg per pair from the cut list. Pegs project into the portal; keep clear swing past the footwear.`
-          : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw the ${hangNoun} into the rail — not into the shelf.`,
+          : `Mark ${hooks} holes on the rail, about 6" on center, 1½" up from the bottom edge. Screw ${hooks} ${hangNoun} into the rail with ${SCREWS_PER_HOOK} screws each (${hooks * SCREWS_PER_HOOK} screws), below the shelf.`,
         tips: shoe
           ? "Count the Shoe peg pieces on the cut list — one per pair."
           : pegRail
