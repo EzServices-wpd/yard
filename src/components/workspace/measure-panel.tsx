@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { fitBadge } from "@/lib/yard/fitBadge";
-import { saveBuild, shareUrl } from "@/lib/yard/shareBuild";
+import { saveBuild, shareFrom, shareUrl } from "@/lib/yard/shareBuild";
 import type { JoinMethod, SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
@@ -644,8 +644,8 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       ))}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { saveBuild({ prompt: project.prompt, measure, stockId: project.primaryMaterialId, join: project.shopJoin }); setSummary("Saved on this phone"); }}>Save</button>
-        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { const url = shareUrl({ prompt: project.prompt, measure, stockId: project.primaryMaterialId, join: project.shopJoin }); void navigator.clipboard?.writeText(url); setSummary("Link copied"); }}>Share</button>
+        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { saveBuild(sharePayload()); setSummary("Saved on this phone"); }}>Save</button>
+        <button type="button" className="h-12 min-h-11 rounded-md border border-border text-sm text-muted" onClick={() => { const url = shareUrl(sharePayload()); void navigator.clipboard?.writeText(url); setSummary("Link copied"); }}>Share</button>
       </div>
       <button type="button" onClick={resetTab} className="mt-4 h-12 w-full rounded-md border border-border text-sm text-muted">
         Reset this tab
@@ -669,6 +669,19 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       )}
     </div>
   );
+
+
+  function sharePayload() {
+    return shareFrom({
+      prompt: project.prompt,
+      measure,
+      stockId: project.primaryMaterialId,
+      join: project.shopJoin,
+      shelves: facts.shelves,
+      cubbies: facts.cubbies,
+      drawers: facts.drawers,
+    });
+  }
 
   function pickJoin(join: ShopJoin) {
     const before = useYard.getState().plan ?? makePlan() ?? useYard.getState().plan;

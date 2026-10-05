@@ -18,6 +18,7 @@ import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { BenchTools } from "@/components/workspace/bench-tools";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { decodeShare, loadSaved } from "@/lib/yard/shareBuild";
+import { applyInsideCount } from "@/lib/yard/insideCount";
 import { SignedIn, UserButton } from "@/lib/auth/gates";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -97,7 +98,13 @@ export function WorkspaceApp({ initialPrompt }: { initialPrompt?: string }) {
           await runYardPrompt(prompt, { fresh: true });
           if (shared) {
             useYard.getState().setMeasure(shared.measure);
-            if (shared.stockId) useYard.getState().commit({ ...useYard.getState().project, primaryMaterialId: shared.stockId, shopJoin: shared.join as never });
+            let next = useYard.getState().project;
+            if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };
+            if (shared.shelves != null || shared.cubbies != null || shared.drawers != null) {
+              next = applyInsideCount({ ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId }, { shelves: shared.shelves, cubbies: shared.cubbies, drawers: shared.drawers });
+              if (shared.join) next = { ...next, shopJoin: shared.join as never };
+            }
+            useYard.getState().commit(next);
             useYard.getState().applyMeasure(true);
           }
         } catch (err) {
