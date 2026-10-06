@@ -5,7 +5,7 @@ import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
-import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE } from "./jobFurniture";
+import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
@@ -192,6 +192,8 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
     const use = detectShapeClass(prompt)?.profile.use;
     const fn = use === "rocker" ? "lumber-2x4-8" : use || detectTemplate(prompt) === "platform-tower" ? "plywood-3-4-4x8" : null;
     if (fn && getCatalogItem(fn)) return getCatalogItem(fn)!;
+    // An outdoor birdhouse is real 1×6 board at real size.
+    if (wantsRealShelterDefault(prompt) && getCatalogItem("lumber-1x6-8")) return getCatalogItem("lumber-1x6-8")!;
     // Furniture and human-use pieces (seats, tables, beds, benches) are real lumber at real size.
     if (wantsRealStockDefault(prompt) && getCatalogItem("lumber-2x4-8")) return getCatalogItem("lumber-2x4-8")!;
     // Garden pole frames and trellises are full-size 2×2 builds unless a model is asked for.
@@ -360,7 +362,10 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const poleDefaulted =
     !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsFullSizePoleFrame(args[0]) &&
     tabled0.primaryMaterialId === "lumber-2x2-8" && !(tabled0.notes ?? []).includes(REAL_POLE_NOTE);
-  const stockNote = defaulted ? REAL_STOCK_NOTE : poleDefaulted ? REAL_POLE_NOTE : null;
+  const shelterDefaulted =
+    !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsRealShelterDefault(args[0]) &&
+    tabled0.primaryMaterialId === "lumber-1x6-8" && !(tabled0.notes ?? []).includes(REAL_SHELTER_NOTE);
+  const stockNote = defaulted ? REAL_STOCK_NOTE : poleDefaulted ? REAL_POLE_NOTE : shelterDefaulted ? REAL_SHELTER_NOTE : null;
   const tabled = withFrontCuesBuilt(stockNote ? { ...tabled0, notes: [...(tabled0.notes ?? []), stockNote] } : tabled0, args[0]);
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);

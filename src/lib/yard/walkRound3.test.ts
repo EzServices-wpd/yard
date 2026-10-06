@@ -104,3 +104,18 @@ describe("Outdoor seat family has seat and back, and Buy screw length matches th
     assert.ok(plan.instructions.some((s) => /back/i.test(s.title)), plan.instructions.map((s) => s.title).join(" | "));
   });
 });
+
+describe("A birdhouse with no stock typed is real board at real size", () => {
+  for (const prompt of ["birdhouse", "wood birdhouse", "bluebird house"]) {
+    it(prompt, () => {
+      const project = generateFromPrompt(prompt);
+      assert.equal(project.primaryMaterialId, "lumber-1x6-8");
+      assert.ok(project.overall.height >= 10, `real size, got ${project.overall.height}`);
+      assert.ok(buildPlan(project).bom.some((b) => /1×6 Board/.test(b.name)), "Buy list buys the 1×6");
+    });
+  }
+  it("typed craft stock or a toy stays a model", () => {
+    assert.equal(generateFromPrompt("popsicle stick birdhouse").primaryMaterialId, "popsicle-standard");
+    assert.ok(CRAFT.test(generateFromPrompt("toy birdhouse").primaryMaterialId));
+  });
+});

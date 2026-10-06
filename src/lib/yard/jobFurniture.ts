@@ -23,6 +23,18 @@ export function wantsRealStockDefault(prompt: string): boolean {
   return HUMAN_USE.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
 }
 
+/** A house an animal lives in outdoors (birdhouse, wren or bluebird house): built in real boards at real size. */
+const OUTDOOR_SHELTER = /\b(?:bird\s*-?\s*houses?|wren\s*houses?|bluebird\s*(?:houses?|box(?:es)?)|martin\s*houses?)\b/;
+
+/** An outdoor animal shelter with no stock typed: real 1×6 boards (craft stock only when typed). */
+export function wantsRealShelterDefault(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  return OUTDOOR_SHELTER.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
+}
+
+export const REAL_SHELTER_NOTE =
+  "No material typed, so this builds from 1×6 boards at full size, the way it hangs outside. Type popsicle sticks to build a model.";
+
 export const REAL_STOCK_NOTE =
   "No material typed, so this builds from 2×4 lumber at full size, the way people use it. Type popsicle sticks to build a model.";
 

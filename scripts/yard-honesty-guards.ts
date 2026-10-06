@@ -797,7 +797,9 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     ["birdhouse from jumbo craft sticks with a 1 1/2 inch hole", "sticks"],
     ["birdhouse from plywood with a 1 1/4 inch hole and a perch", "panels"],
     ["cedar birdhouse from 1x6", "panels"],
-    ["birdhouse", "sticks"],
+    // No stock typed: a birdhouse hangs outside, so it is built in real 1×6 boards (sticks only when typed).
+    ["birdhouse", "panels"],
+    ["toy birdhouse", "sticks"],
   ];
   const counts: number[] = [];
   for (const [p, mode] of cases) {
@@ -817,7 +819,10 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
   // the notes); a named bird sets it only when no size is typed; a big hole grows the house to the nest box
   // the bird needs; every opening keeps a solid border on the face.
   {
-    const bh = (q: string) => {
+    // These check the stick-slat entrance, so a query with no stock typed names craft sticks
+    // (an untyped birdhouse is built in real 1×6 boards). The flicker case checks the grown board house.
+    const bh = (q0: string) => {
+      const q = /popsicle|craft|stick|plywood|flicker/.test(q0) ? q0 : q0.replace(/^birdhouse/, "popsicle stick birdhouse");
       const b = generateFromPrompt(q);
       const P = (b.shape?.params ?? {}) as Record<string, number>;
       const notes = (b.notes ?? []).join(" ");
