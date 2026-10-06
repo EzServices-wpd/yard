@@ -4,44 +4,51 @@ import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
 import { buildPlan } from "../src/lib/yard/report.ts";
 import { uniqueSteps } from "../src/lib/yard/steps.ts";
 import { findInterference } from "../src/lib/yard/interference.ts";
+import { structureIssues } from "../src/lib/yard/structureCheck.ts";
+import type { Panel } from "../src/lib/yard/types.ts";
 
-test("twin bunk deck fits a 75 inch mattress and bearers stay under it", () => {
-  const prompt = "twin bunk bed";
-  const project = generateFromPrompt(prompt);
-  const decks = project.panels.filter((p) => p.type === "deck");
-  assert.equal(decks.length, 2);
-  for (const deck of decks) {
-    const length = Math.max(deck.size.width, deck.size.depth);
-    const width = Math.min(deck.size.width, deck.size.depth);
-    assert.ok(length >= 75, `deck length ${length} is short of a 75" twin`);
-    assert.ok(width >= 38, `deck width ${width} is short of a twin`);
-    const bearers = project.panels.filter(
-      (p) => /bearer/i.test(p.name) && Math.abs(p.position.y + p.size.height - deck.position.y) < 0.05,
-    );
-    assert.ok(bearers.length >= 2, "person load needs bearers under the deck");
-    for (const b of bearers) {
-      assert.ok(b.position.y + b.size.height <= deck.position.y + 0.05, "bearer stands in the bed");
-      assert.equal(b.materialId, "lumber-2x4-8");
+const top = (p: Panel) => p.position.y + p.size.height;
+const overlaps = (a: Panel, b: Panel) =>
+  a.position.x < b.position.x + b.size.width && b.position.x < a.position.x + a.size.width &&
+  a.position.z < b.position.z + b.size.depth && b.position.z < a.position.z + a.size.depth;
+const on = (upper: Panel, lower: Panel) => Math.abs(upper.position.y - top(lower)) < 0.05 && overlaps(upper, lower);
+
+for (const prompt of ["twin bunk bed", "loft bed"]) {
+  test(`${prompt}: deck on slats on ledgers on rails bolted to posts, guards, ladder`, () => {
+    const project = generateFromPrompt(prompt);
+    const ps = project.panels;
+    const decks = ps.filter((p) => p.type === "deck");
+    assert.equal(decks.length, prompt === "loft bed" ? 1 : 2);
+    for (const deck of decks) {
+      assert.ok(Math.max(deck.size.width, deck.size.depth) >= 75 && Math.min(deck.size.width, deck.size.depth) >= 38, `${deck.name} holds a 38 × 75 twin`);
+      const level = deck.name.split(" ")[0];
+      const slats = ps.filter((p) => p.name.startsWith(`${level} slat`));
+      assert.ok(slats.length >= 6, `${level}: slats under the deck`);
+      for (const s of slats) assert.ok(on(deck, s), `${deck.name} rests on ${s.name}`);
+      const ledgers = ps.filter((p) => p.name.startsWith(`${level}`) && /ledger/.test(p.name));
+      assert.equal(ledgers.length, 2);
+      for (const s of slats) assert.ok(ledgers.every((l) => on(s, l)), `${s.name} rests on both ledgers`);
+      const rails = ps.filter((p) => p.name.startsWith(level) && /side rail|head rail|foot rail/.test(p.name));
+      assert.equal(rails.length, 4, `${level}: two side rails and two end rails`);
+      for (const r of rails) assert.ok(r.size.height >= 5.5 && Math.min(r.size.width, r.size.depth) === 1.5, `${r.name} is a 2×6 on edge`);
+      const raised = deck.position.y > 30;
+      const guards = ps.filter((p) => p.name.startsWith(level) && /guard/.test(p.name));
+      if (raised) {
+        assert.ok(guards.length >= 3, `${level}: guard rails on a raised deck`);
+        for (const g of guards) assert.ok(top(g) >= top(deck) + 11 - 0.05, `${g.name} stands 5" over a 6" mattress`);
+      }
     }
-    const zs = bearers.map((b) => b.position.z).sort((a, c) => a - c);
-    let prev = deck.position.z;
-    const end = deck.position.z + deck.size.depth;
-    for (const z of zs) {
-      assert.ok(z - prev <= 21, `unsupported run ${z - prev}" under ${deck.name}`);
-      prev = z;
-    }
-    assert.ok(end - prev <= 21, `unsupported run ${end - prev}" at the foot of ${deck.name}`);
-  }
-  assert.equal(findInterference(project).length, 0);
-  const steps = uniqueSteps(project);
-  const set = steps.find((s) => /sleep platform/i.test(s.title));
-  assert.ok(set);
-  assert.match(set.description, /bearer/i);
-  assert.match(set.description, /not in the sleeping surface/i);
-  const guards = steps.find((s) => /guard/i.test(s.title));
-  assert.ok(guards);
-  assert.doesNotMatch(guards.description, /bearer/i);
-  const plan = buildPlan(project);
-  const buy = JSON.stringify(plan.bom);
-  assert.match(buy, /2x4|2×4/i);
-});
+    const stiles = ps.filter((p) => /ladder stile/i.test(p.name));
+    assert.equal(stiles.length, 2);
+    for (const s of stiles) assert.equal(s.position.y, 0, `${s.name} stands on the floor`);
+    assert.deepEqual(structureIssues(project), [], "every part on a load path");
+    assert.equal(findInterference(project).length, 0);
+    const steps = uniqueSteps(project).map((s) => `${s.title} ${s.description}`).join(" ");
+    assert.match(steps, /Stand the four posts/);
+    assert.match(steps, /side and end rails/i);
+    const buy = buildPlan(project).bom.map((b) => b.name).join(" | ");
+    assert.match(buy, /bed-rail bolts/i);
+    assert.match(buy, /2×6|2x6/);
+    assert.match(buy, /1×4|1x4/);
+  });
+}

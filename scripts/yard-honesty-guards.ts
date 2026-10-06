@@ -1677,9 +1677,9 @@ if (!loftHit || loftHit.family !== "bunk" || !loftHit.affordances.includes("slee
 }
 const loft = generateFromPrompt(loftPrompt);
 if (!/^Loft bed/i.test(loft.name)) failHonesty("loft title", loft.name);
-if (!nearInch(loft.overall.width, 42)) failHonesty("loft twin width ~42", loft.overall);
-// Twin mattress is 75" long; the 2×2 posts stand outside it (as with width 39 → 42), so the frame is ~78".
-if (!nearInch(loft.overall.depth, 78)) failHonesty("loft twin depth ~78 (75 mattress + posts)", loft.overall);
+// A 38 × 75 twin sits inside the rails; the doubled 2×4 posts (3") and 2×6 end rails stand outside it: 44 × 82.
+if (!nearInch(loft.overall.width, 44)) failHonesty("loft twin width ~44", loft.overall);
+if (!nearInch(loft.overall.depth, 82)) failHonesty("loft twin depth ~82 (75 mattress + rails + posts)", loft.overall);
 if (!loft.notes.some((n) => /\b75"/.test(n))) failHonesty("loft note names the 75\" twin mattress", loft.notes);
 if (!nearInch(loft.overall.height, 65)) failHonesty("loft height ~65", loft.overall);
 const loftDecks = loft.panels.filter((p) => p.type === "deck");
@@ -2464,9 +2464,9 @@ if (!bunkHit || bunkHit.family !== "bunk" || !bunkHit.affordances.includes("slee
 }
 const bunk = generateFromPrompt(bunkPrompt);
 if (!/^Bunk bed/i.test(bunk.name)) failHonesty("bunk title", bunk.name);
-if (!nearInch(bunk.overall.width, 42)) failHonesty("bunk twin width ~42", bunk.overall);
-// Twin mattress is 75" long; the 2×2 posts stand outside it (as with width 39 → 42), so the frame is ~78".
-if (!nearInch(bunk.overall.depth, 78)) failHonesty("bunk twin depth ~78 (75 mattress + posts)", bunk.overall);
+// A 38 × 75 twin sits inside the rails; the doubled 2×4 posts (3") and 2×6 end rails stand outside it: 44 × 82.
+if (!nearInch(bunk.overall.width, 44)) failHonesty("bunk twin width ~44", bunk.overall);
+if (!nearInch(bunk.overall.depth, 82)) failHonesty("bunk twin depth ~82 (75 mattress + rails + posts)", bunk.overall);
 if (!bunk.notes.some((n) => /\b75"/.test(n))) failHonesty("bunk note names the 75\" twin mattress", bunk.notes);
 if (!nearInch(bunk.overall.height, 65)) failHonesty("bunk height ~65", bunk.overall);
 const bunkDecks = bunk.panels.filter((p) => p.type === "deck");

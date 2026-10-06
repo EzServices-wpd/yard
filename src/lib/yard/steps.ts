@@ -987,120 +987,82 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const platformBed =
     isPlatformBed((project.prompt ?? "").toLowerCase()) ||
     /platform\s*bed/i.test(project.name);
-  if (platformBed) {
-    const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
-    const decks = panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
-    const platformRails = panels.filter((p) => /side rail|head rail|foot rail|apron/i.test(p.name));
-    return [
-      {
-        step: 1,
-        title: "Confirm the sleep size — do not cut yet",
-        description: `${project.name}. One low sleep deck on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Mattress on the platform; match the deck to your mattress. ${partsOnThisListPhrase(project)}.`,
-        tips: "A platform bed is a low sleep deck on a frame — not a loft, not a bunk stack, not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
-        partsUsed: ["*"],
-      },
-      {
-        step: 2,
-        title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item),
-        tips: tool.tip,
-        partsUsed: names(panels),
-      },
-      {
-        step: 3,
-        title: "Stand the four posts",
-        description: `${posts.map(cutLine).join("; ")}. Set the posts plumb on the footprint. Temporary braces keep them from racking until the sleep deck goes on.`,
-        tips: "Check both diagonals on the floor rectangle before you commit.",
-        partsUsed: names(posts),
-      },
-      {
-        step: 4,
-        title: "Set the sleep deck",
-        description: `${decks.map(cutLine).join("; ") || "Sleep deck."}. Screw the sleep deck into the posts at platform height. Mattress sits on this platform. Glue the joints too.`,
-        tips: "Predrill near the ends so the ply does not split. A person will sleep on this — square it.",
-        partsUsed: names(decks.length ? decks : panels),
-      },
-      {
-        step: 5,
-        title: "Add the side rails, head rail, foot rail, and apron",
-        description: `${platformRails.map(cutLine).join("; ") || "Side rails and apron."}. Screw the rails to the posts above the sleep deck so the mattress cannot slide off. Front apron stiffens the open long side.`,
-        tips: "Side rails keep a mattress on the sleep surface. Guidance only — confirm your mattress thickness.",
-        partsUsed: names(platformRails.length ? platformRails : panels),
-      },
-      {
-        step: 6,
-        title: "Level it",
-        description: "Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a mattress that fits the sleep deck. No loft ladder — this platform sits low.",
-        tips: "Guidance only — person load is heuristic, not stamped engineering.",
-        partsUsed: ["*"],
-      },
-    ];
-  }
-
   const bunk =
     !platformBed &&
     (/bunk|loft bed/i.test(project.name) ||
       /\b(?:bunk|loft\s*bed)\b/.test((project.prompt ?? "").toLowerCase()) ||
       project.fitted?.family === "bunk");
-  if (bunk) {
+  if (platformBed || bunk) {
+    // Bed frames build along their load path: posts, rails, ledgers, slats, deck; then guards and ladder.
     const decks = panels.filter((p) => p.type === "deck");
-    const loft = decks.length === 1 || /loft/i.test(project.name) || /\bloft\s*bed\b/.test((project.prompt ?? "").toLowerCase());
-    const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
-    const rails = of("rail");
-    const bearers = rails.filter((p) => /bearer/i.test(p.name));
-    const guards = rails.filter((p) => !/bearer/i.test(p.name));
-    return [
+    const loft = bunk && (decks.length === 1 || /loft/i.test(project.name) || /\bloft\s*bed\b/.test((project.prompt ?? "").toLowerCase()));
+    const posts = uprights.filter((p) => !/ladder|centre leg/i.test(p.name));
+    const rails = panels.filter((p) => /side rail|head rail|foot rail/i.test(p.name));
+    const ledgers = panels.filter((p) => /ledger/i.test(p.name));
+    const slats = panels.filter((p) => /\bslat\b/i.test(p.name));
+    const centre = panels.filter((p) => /centre (?:rail|leg)/i.test(p.name));
+    const guards = panels.filter((p) => /guard/i.test(p.name));
+    const ladder = panels.filter((p) => /ladder/i.test(p.name));
+    const what = platformBed
+      ? `One low sleep deck on a post frame — mattress on the platform`
+      : loft
+        ? `One elevated sleep platform on a post frame — open floor under`
+        : `Two sleep platforms on a post frame — lower and upper bunk`;
+    const steps: { title: string; description: string; tips: string; partsUsed: string[] }[] = [
       {
-        step: 1,
         title: "Confirm the sleep size — do not cut yet",
-        description: loft
-          ? `${project.name}. One elevated sleep platform on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the deck to your mattress (twin is usually ~38×75). ${partsOnThisListPhrase(project)}.`
-          : `${project.name}. Two sleep platforms on a post frame — ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. Match the decks to your mattresses (twin is usually ~38×75). ${partsOnThisListPhrase(project)}.`,
-        tips: loft
-          ? "A loft is one elevated deck on a frame — open floor under, not a hollow closet box. If a number disagrees with the cut list, trust the cut list."
-          : "A bunk is two decks on a frame — not a hollow closet box. If a number disagrees with the cut list, trust the cut list.",
+        description: `${project.name}. ${what}, ${round(W)}" wide × ${round(D)}" long × ${round(H)}" high. Match the deck${decks.length > 1 ? "s" : ""} to your mattress (twin is usually 38 × 75). ${partsOnThisListPhrase(project)}.`,
+        tips: "If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
+      { title: sheetCutTitle(panels, item), description: sheetCutDescription(panels, item), tips: tool.tip, partsUsed: names(panels) },
       {
-        step: 2,
-        title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item),
-        tips: tool.tip,
-        partsUsed: names(panels),
-      },
-      {
-        step: 3,
         title: "Stand the four posts",
-        description: `${posts.map(cutLine).join("; ")}. Set the posts plumb on the footprint. Temporary braces keep them from racking until the decks go on.`,
+        description: `${posts.map(cutLine).join("; ")}. ${posts.length > 4 ? "Glue and screw each pair of 2×4s face to face into one post. " : ""}Set the posts plumb on the footprint; temporary braces hold them until the rails go on.`,
         tips: "Check both diagonals on the floor rectangle before you commit.",
         partsUsed: names(posts),
       },
       {
-        step: 4,
-        title: loft ? "Set the loft sleep platform" : "Set the two sleep platforms",
-        description: loft
-          ? `${decks.map(cutLine).join("; ")}. ${bearers.length ? bearers.map(cutLine).join("; ") + ". " : ""}Screw the elevated deck into the posts. Set the bearers under the deck, not in the bed — they hold a person on ¾" ply. Leave the floor open under it. Glue the joints too.`
-          : `${decks.map(cutLine).join("; ")}. ${bearers.length ? bearers.map(cutLine).join("; ") + ". " : ""}Screw each deck into the posts — lower first, then upper. Set the bearers under the decks, not in the sleeping surface. The decks are the bunks. Glue the joints too.`,
-        tips: "Predrill near the ends so the ply does not split. A person will sleep on these — square them. Bearers stay under the deck.",
-        partsUsed: names([...(decks.length ? decks : panels), ...bearers]),
+        title: "Bolt the side and end rails between the posts",
+        description: `${rails.map(cutLine).join("; ")}. Each rail end takes two 3/8" bed-rail bolts through the post into a barrel nut${bunk && !loft ? " — lower rails first, then upper" : ""}. The side rails carry the bed; the posts carry the rails to the floor.`,
+        tips: "Drill the post and rail together so the bolt holes line up. Square the frame before the last bolt.",
+        partsUsed: names(rails),
       },
       {
-        step: 5,
-        title: "Add the upper guard rails",
-        description: `${guards.map(cutLine).join("; ") || "Guard rails."}. Screw the rails to the posts above the upper deck so the mattress cannot slide off the long sides or the ends.`,
-        tips: "Typical rail sits about 5\" above the upper deck. Guidance only — confirm your mattress thickness.",
-        partsUsed: names(guards.length ? guards : panels),
-      },
-      {
-        step: 6,
-        title: "Level it and add a ladder",
-        description: loft
-          ? `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the loft deck (buy one, or build from the leftover strip).`
-          : `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a ladder or steps to the upper bunk (buy one, or build from the leftover strip).`,
-        tips: "Guidance only — person load is heuristic, not stamped engineering. Anchor to studs if the frame can tip.",
-        partsUsed: names(posts),
+        title: platformBed ? "Set the sleep deck on ledgers and slats" : loft ? "Set the loft sleep platform on ledgers and slats" : "Set the two sleep platforms on ledgers and slats",
+        description: `${ledgers.map(cutLine).join("; ")}. Glue and screw a ledger inside each side rail. ${slats.length ? `${slats.length} slats (${cutLine(slats[0])}) span rail to rail on the ledgers. ` : ""}${decks.map(cutLine).join("; ")}: the deck lies on the slats and the mattress on the deck.`,
+        tips: "Screw each slat to both ledgers so the frame stays square.",
+        partsUsed: names([...ledgers, ...slats, ...decks]),
       },
     ];
+    if (centre.length)
+      steps.push({
+        title: "Add the centre support",
+        description: `${centre.map(cutLine).join("; ")}. The centre rail runs end rail to end rail under the slats; the leg stands it on the floor mid-span.`,
+        tips: "Shim the leg so it just touches the floor with the frame level.",
+        partsUsed: names(centre),
+      });
+    if (guards.length)
+      steps.push({
+        title: `Add the ${loft ? "loft" : "upper"} guard rails`,
+        description: `${guards.map(cutLine).join("; ")}. Screw the guards to the posts on both long sides and both ends, tops 5" above the mattress. The wall-side guard runs post to post; the ladder side leaves a 15" opening.`,
+        tips: "Guidance only — confirm your mattress thickness; the guard top stays 5\" above it.",
+        partsUsed: names(guards),
+      });
+    if (ladder.length)
+      steps.push({
+        title: "Fix the ladder",
+        description: `${ladder.map(cutLine).join("; ")}. Screw the rungs between the stiles, stand the ladder on the floor in the guard opening and screw the stiles to the side rails.`,
+        tips: "Check every rung is level and screwed at both ends.",
+        partsUsed: names(ladder),
+      });
+    steps.push({
+      title: "Level it",
+      description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts.${bunk ? " Anchor the frame to a wall stud." : " Add a mattress that fits the sleep deck."}`,
+      tips: "Guidance only — person load is heuristic, not stamped engineering.",
+      partsUsed: ["*"],
+    });
+    return steps.map((st, i) => ({ step: i + 1, ...st }));
   }
 
   const headboard =

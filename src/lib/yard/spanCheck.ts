@@ -165,7 +165,6 @@ export function bearingCenters(panel: Panel, panels: Panel[]): { at: number; pan
   for (const q of panels) {
     if (q === panel || q.type === "back" || isFlatPlate(q)) continue;
     const thin = longX ? q.size.width : q.size.depth;
-    if (thin > 2 || q.size.height < 2) continue;
     const top = q.position.y + q.size.height;
     if (Math.abs(top - panel.position.y) > 0.35) continue;
     const at = longX ? q.position.x + q.size.width / 2 : q.position.z + q.size.depth / 2;
@@ -174,6 +173,9 @@ export function bearingCenters(panel: Panel, panels: Panel[]): { at: number; pan
       ? overlap(panel.position.z, panel.position.z + panel.size.depth, q.position.z, q.position.z + q.size.depth)
       : overlap(panel.position.x, panel.position.x + panel.size.width, q.position.x, q.position.x + q.size.width);
     if (ox < across * 0.5) continue;
+    // A standing panel bears the plate; so does a slat or batten lying flat right across under it.
+    const slat = q.size.height < 2 && thin <= 4 && ox >= across * 0.9;
+    if (!slat && (thin > 2 || q.size.height < 2)) continue;
     out.push({ at, panel: q });
   }
   return out.sort((a, b) => a.at - b.at);

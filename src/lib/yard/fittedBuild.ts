@@ -2170,11 +2170,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const T = shelfThick != null ? shelfThick : P;
     // Ledger cleat against the wall; one thick shelf sits on it and screws down.
     panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
-    // The depth is the cleat plus the shelf in front of it; a typed depth is that whole depth.
-    const Do = depthTyped ? Df : Df + P;
+    // The shelf rests on the cleat and runs back to the wall, so its depth is the whole depth.
+    const Do = Df;
     // A typed thickness is the typed height (48x8x2); otherwise the height is the cleat and the shelf on it.
     const Ho = shelfThick != null ? T : cleatH + T;
-    panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, T, Do - P));
+    panels.push(panel("shelf", "Shelf", x0, cleatH, 0, W, T, Do));
     const name = `Wall shelf ${inchFrac(W)}" × ${inchFrac(Ho)}" × ${inchFrac(Do)}"`;
     return {
       id: createId("proj"),
@@ -2324,12 +2324,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         (n > 1 && envelopeH > P + 0.1);
       const outH = useEnvelope ? envelopeH : P;
       const cleatH = Math.min(cleatH0, Math.max(1.5, outH - P - (wantsLip ? lipH : 0)));
-      // Wall, then the backstop (when there is one), then the cleat, then the shelf in front: that whole
-      // depth is the size, and a typed depth is that whole depth.
-      const behind = useEnvelope ? 2 * P : P;
-      const Do = depthTyped ? Df : Df + P;
+      // Wall, then the backstop (when there is one), then the shelf resting on the cleat under its back
+      // edge: that whole depth is the size, and a typed depth is that whole depth.
+      const behind = useEnvelope ? P : 0;
+      const Do = depthTyped ? Df : Df + behind;
       const Ds = Do - behind;
-      panels.push(panel("rail", "Wall cleat", x0, 0, behind - P, W, cleatH, P));
+      panels.push(panel("rail", "Wall cleat", x0, 0, behind, W, cleatH, P));
       panels.push(panel("shelf", "Shelf", x0, cleatH, behind, W, P, Ds));
       if (wantsLip) {
         panels.push(panel("rail", "Front lip", x0, cleatH + P, Do - P, W, lipH, P));

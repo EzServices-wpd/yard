@@ -268,9 +268,21 @@ function overlayFaces(panels: Panel[]) {
     if (!hits.length) continue;
     // The overlay plane is the face of the box behind this door/front, not just the part it hit.
     const fb = worldBox(f);
-    const behind = body.filter((q) => BODY.has(q.type) && !q.yaw).map(worldBox).filter((w) => w.x1 > fb.x0 - 1 && w.x0 < fb.x1 + 1 && w.y1 > fb.y0 - 1 && w.y0 < fb.y1 + 1);
+    const behind = body.filter((q) => BODY.has(q.type) && !q.yaw).map(worldBox).filter((w) => w.x1 > fb.x0 - 1 && w.x0 < fb.x1 + 1 && w.y1 > fb.y0 - 1 && w.y0 < fb.y1 + 1 && w.z0 <= fb.z0 + 1);
     const front = Math.max(...hits.map((h) => worldBox(h.a === f ? h.b : h.a).z1), ...behind.map((w) => w.z1));
     f.position = { ...f.position, z: front };
+  }
+}
+
+/** Rule 1a: a false front screws onto its drawer box, so the box runs forward to meet it. */
+function seatDrawerBoxes(panels: Panel[]) {
+  for (const f of panels.filter((p) => /drawer\s*front/i.test(p.name) && !p.yaw)) {
+    const fb = worldBox(f);
+    for (const d of panels.filter((p) => p.type === "drawer" && !p.yaw)) {
+      const b = worldBox(d);
+      const gap = fb.z0 - b.z1;
+      if (gap > 1e-6 && gap <= 1 && b.x1 > fb.x0 + 0.5 && b.x0 < fb.x1 - 0.5 && b.y1 > fb.y0 + 0.5 && b.y0 < fb.y1 - 0.5) d.position = { ...d.position, z: d.position.z + gap };
+    }
   }
 }
 
@@ -413,6 +425,7 @@ function solveModelCore<T extends YardProject>(project: T): T {
   recessKicks(panels);
   addDrawerFronts(panels);
   overlayFaces(panels);
+  seatDrawerBoxes(panels);
   const room = project.fitted?.opening;
   if (room && (room.kind === "alcove" || room.kind === "pocket") && room.depth > 0) insetToOpening(panels, room.depth);
   for (let pass = 0; pass < 12; pass++) {

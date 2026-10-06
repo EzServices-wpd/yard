@@ -121,7 +121,9 @@ export function looksLikeFallback(project: YardProject, noun: string): boolean {
   // A body with no class (lies along its long axis) is the fallback a known head noun replaces.
   if (project.unmatched) return true;
   const name = (project.name ?? "").toLowerCase().replace(/\s+/g, "");
-  const words = lower.split(/\s+/).filter((w) => w.length >= 4).map((w) => w.replace(/s$/, ""));
+  // The head noun counts at any length ("queen bed" built as a Platform bed is the bed asked for).
+  const all = lower.split(/\s+/);
+  const words = all.filter((w, i) => w.length >= 4 || (i === all.length - 1 && w.length >= 3)).map((w) => w.replace(/s$/, ""));
   if (/^storageunit/.test(name) || /^(figure|bird|frame)$/.test(name)) return true;
   return !words.some((w) => name.includes(w));
 }

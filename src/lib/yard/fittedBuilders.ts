@@ -243,8 +243,16 @@ export function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
     panels.push(panel("upright", "Leg", x, 0, topZ + 1, leg, tableH - P, leg, TWO_BY_TWO));
     panels.push(panel("upright", "Leg", x, 0, topZ + topD - 1 - leg, leg, tableH - P, leg, TWO_BY_TWO));
   }
-  panels.push(panel("rail", "Table stretcher", x0 + inset, tableH - P - 3.5, -leg / 2, length - inset * 2, 3.5, leg));
   const benchYs = benchH - P;
+  // Each end is one frame: a 2×4 top cleat under the top and a 2×4 seat support under both seats,
+  // bolted to the legs. The stretcher runs between the top cleats.
+  const stud = "lumber-2x4-8";
+  const ends = [x0 + inset + leg, x0 + length - inset - leg - 1.5];
+  for (const x of ends) {
+    panels.push(panel("rail", "Top cleat", x, tableH - P - 3.5, topZ + 1, 1.5, 3.5, topD - 2, stud));
+    panels.push(panel("rail", "Seat support", x, benchYs - 3.5, topZ - gap - benchW + 1, 1.5, 3.5, topD + (gap + benchW - 1) * 2, stud));
+  }
+  panels.push(panel("rail", "Table stretcher", ends[0] + 1.5, tableH - P - 3.5, -leg / 2, ends[1] - ends[0] - 1.5, 3.5, leg));
   for (const side of [-1, 1] as const) {
     const z = side < 0 ? topZ - gap - benchW : topZ + topD + gap;
     const label = side < 0 ? "Near bench" : "Far bench";
@@ -267,6 +275,7 @@ export function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
     notes: [
       `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}". Not a dining table.`,
       `The benches sit outside the top, ${gap}" clear of the table legs so you can sit. 2×2 legs, ¾" top and seats.`,
+      "Each end is one frame: a 2×4 top cleat under the top and a 2×4 seat support under both seats, bolted to the legs; the stretcher runs between the top cleats.",
     ],
     historic: false,
     opening: { width: length, height: tableH, depth: overallD, kind: "room" },
@@ -442,44 +451,43 @@ export function buildPorchSwing(spec: FittedSpec, prompt: string): YardProject {
   const standD = Math.max(36, u.depth || 0, seatD + 16);
   const x0 = -W / 2;
   const z0 = -standD / 2;
-  const post = 1.5;
   const seatY = 18;
   const backH = 14;
   const panels: Panel[] = [];
+  // Post-and-beam stand: 4×4 posts, a 2×6 header across each end pair, the 2×6 beam on edge on the headers.
+  const post = 3.5;
+  const headY = standH - 11;
   for (const x of [x0, x0 + W - post]) {
     for (const z of [z0, z0 + standD - post]) {
-      panels.push(panel("upright", "Stand post", x, 0, z, post, standH, post, TWO_BY_TWO));
+      panels.push(panel("upright", "Stand post", x, 0, z, post, headY, post, FRAME.post4));
     }
+    panels.push(panel("rail", "End header", x + 1, headY, z0, 1.5, BED_RAIL_H, standD, FRAME.rail));
   }
-  // Beam over the middle of the stand. Hangers drop from it to the seat ends.
-  const beamZ = -post / 2;
-  panels.push(panel("rail", "Beam", x0, standH - 3.5, beamZ, W, 3.5, post, TWO_BY_TWO));
-  const railX = [x0 + 5, x0 + W - 5 - post];
-  for (const x of railX) {
-    panels.push(panel("rail", "Seat rail", x, seatY, -seatD / 2, post, P, seatD));
-    panels.push(
-      panel(
-        "rail",
-        "Hanger",
-        x,
-        seatY + P,
-        beamZ,
-        post,
-        standH - 3.5 - (seatY + P),
-        post,
-        TWO_BY_TWO,
-      ),
-    );
+  const beamZ = -0.75;
+  panels.push(panel("rail", "Beam", x0, standH - BED_RAIL_H, beamZ, W, BED_RAIL_H, 1.5, FRAME.rail));
+  // Seat frame: two 2×4 seat rails on edge with cross rails and a centre rail; slats sit on top.
+  const railX = [x0 + post + 4, x0 + W - post - 4 - 1.5];
+  const railY = seatY - 3.5;
+  for (const x of railX) panels.push(panel("rail", "Seat rail", x, railY, -seatD / 2, 1.5, 3.5, seatD, FRAME.stud));
+  const inX = railX[0] + 1.5;
+  const inW = railX[1] - inX;
+  for (const z of [-seatD / 2, seatD / 2 - 1.5]) panels.push(panel("rail", "Seat cross rail", inX, railY, z, inW, 3.5, 1.5, FRAME.stud));
+  panels.push(panel("rail", "Centre seat rail", inX + inW / 2 - 0.75, railY, -seatD / 2 + 1.5, 1.5, 3.5, seatD - 3, FRAME.stud));
+  // Chains (drawn as hangers) run from the beam to the outside of each seat rail.
+  for (const [i, x] of railX.entries()) {
+    panels.push(panel("rail", "Hanger", i === 0 ? x - 1.5 : x + 1.5, railY, beamZ, 1.5, standH - BED_RAIL_H - railY, 1.5, TWO_BY_TWO));
   }
-  const slatX = railX[0] + post + 0.15;
-  const slatW = railX[1] - slatX - 0.15;
+  const slatX = railX[0];
+  const slatW = railX[1] + 1.5 - slatX;
   for (let i = 0; i < 4; i++) {
-    const z = -seatD / 2 + 1 + i * ((seatD - 3) / 4);
-    panels.push(panel("deck", `Seat slat ${i + 1}`, slatX, seatY, z, slatW, P, 2.25));
+    const z = -seatD / 2 + i * ((seatD - 3.5) / 3);
+    panels.push(panel("deck", `Seat slat ${i + 1}`, slatX, seatY, z, slatW, P, 3.5));
   }
+  // Back: 2×2 back posts bolted to the rear ends of the seat rails, slats between them.
+  for (const x of railX) panels.push(panel("upright", "Back post", x, railY, -seatD / 2 - 1.5, 1.5, seatY + backH - railY, 1.5, TWO_BY_TWO));
   for (let i = 0; i < 3; i++) {
     const y = seatY + P + 1.5 + i * 4;
-    panels.push(panel("rail", `Back slat ${i + 1}`, slatX, y, -seatD / 2, slatW, 2.25, P));
+    panels.push(panel("rail", `Back slat ${i + 1}`, inX, y, -seatD / 2 - 1.125, inW, 2.25, P));
   }
   const name =
     /frame/i.test(spec.name) || /frame/.test(prompt.toLowerCase())
@@ -497,6 +505,7 @@ export function buildPorchSwing(spec: FittedSpec, prompt: string): YardProject {
     notes: [
       `${name}. Hanging seat under a beam — clear swing between the posts. Not a stick scribble and not a bench on the floor.`,
       `Seat at ${seatY}". The hangers drop from the beam so the seat can swing. Sit facing out.`,
+      "4×4 stand posts carry a 2×6 header at each end; the 2×6 beam stands on edge on the headers. The seat is a 2×4 frame (side, cross and centre rails) under 1×4 slats, with 2×2 back posts.",
     ],
     historic: false,
     opening: { width: W, height: standH, depth: standD, kind: "room" },
@@ -1706,31 +1715,22 @@ export function buildDaybed(spec: FittedSpec, prompt: string, affordances: House
 
 export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
-  const W = u.width;
+  let W = u.width;
   const H = u.height;
-  const D = u.depth;
+  let D = u.depth;
+  // Shared bed frame: 4×4 legs to the rail tops, the deck 1½" under them on slats, ledgers and rails.
+  // A named mattress fits between the legs.
+  const mattress = mattressDeck(prompt.toLowerCase());
+  if (mattress && W - 7 < mattress.width - 0.25) W = mattress.width + 7;
+  if (mattress && D - 7 < mattress.length - 0.25) D = mattress.length + 7;
   const x0 = -W / 2;
-  const post = Math.max(P, 1.5);
-  const railH = Math.min(4, Math.max(2.5, H * 0.35));
-  const deckY = Math.max(P, H - P - 0.01);
-  const innerW = Math.max(12, W - post * 2);
-  const innerD = Math.max(24, D - post * 2);
   const panels: Panel[] = [];
-  // Low corner posts — solid 2x2 (not laminated ply strips, not a House wire skeleton).
-  panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, H));
-  panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, H));
-  panels.push(sleepFrameLeg("Leg back left", x0, 0, 0, post, H));
-  panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
-  // Sleep deck — mattress sits on this platform.
-  panels.push(panel("deck", "Sleep deck", x0 + post, deckY - P, post, innerW, P, innerD));
-  // Side rails keep a mattress on the platform.
-  panels.push(panel("rail", "Left side rail", x0 + post, deckY, post, P, railH, innerD));
-  panels.push(panel("rail", "Right side rail", x0 + W - post - P, deckY, post, P, railH, innerD));
-  panels.push(panel("rail", "Head rail", x0 + post, deckY, post, innerW, railH, P));
-  panels.push(panel("rail", "Foot rail", x0 + post, deckY, D - post - P, innerW, railH, P));
-  panels.push(panel("rail", "Front apron", x0 + post, Math.max(0, deckY - P - 3.5), D - post - P, innerW, 3.5, P));
-
-  const name = spec.name.match(/platform\s*bed/i) ? spec.name : `Platform bed ${W}" × ${H}" × ${D}"`;
+  pushBedPosts(panels, x0, W, D, H, false);
+  pushBedLevel(panels, { label: "", x0, W, D, postX: 3.5, postZ: 3.5, deckTop: H - 1.5, floorUnder: true });
+  const sized = `${inchFrac(W)}" × ${inchFrac(H)}" × ${inchFrac(D)}"`;
+  const name = spec.name.match(/platform\s*bed/i)
+    ? spec.name.replace(/\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"/, sized)
+    : `Platform bed ${sized}`;
   return {
     id: createId("proj"),
     name,
@@ -1741,8 +1741,8 @@ export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: 
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Sleep deck at ~${Math.round(deckY - P)}" — mattress on the platform. Side rails keep a mattress on the sleep surface. Not a hollow box, not a Yard House wire skeleton.`,
-      `2×2 posts + ¾" plywood sleep deck. Platform sits ~${H}" tall × ${W}" wide × ${D}" long. Guidance only — confirm mattress size before you cut.`,
+      `${name}. Sleep deck at ${inchFrac(H - 1.5)}" — mattress on the platform, inside side rails that stand 1 1/2" above it.`,
+      `Four 4×4 legs; 2×6 side and end rails bolt between them with 16 3/8" × 5 1/2" bed-rail bolts; 2×2 ledgers screwed inside the side rails with structural screws carry 1×4 slats, and the ¾" plywood sleep deck lies on the slats. A 2×4 centre rail on legs holds the slats mid-span. Guidance only — confirm mattress size before you cut.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -1778,57 +1778,128 @@ export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: 
   };
 }
 
+/** Real bed-frame lumber: rails, ledgers, slats, guards and ladder are what real beds are built from. */
+/** Frame lumber shared by beds, swings and other people-carrying frames. */
+const FRAME = { rail: "lumber-2x6-8", ledger: "lumber-2x2-8", slat: "lumber-1x4-8", guard: "lumber-1x8-8", stud: "lumber-2x4-8", post4: "lumber-4x4-8" };
+const BED_RAIL_H = 5.5;
+const BED_RAIL_T = 1.5;
+/** Thickest mattress the guards are set for: guard tops stand 5" above it (16 CFR 1513). */
+export const BED_MATTRESS_T = 6;
+
+/**
+ * Shared bed-frame structure (bunk, loft, platform): the load runs deck → slats → ledger cleats →
+ * side rails → posts → floor. Side and end rails (2×6) butt between the posts on bed-rail bolts, a
+ * 2×2 ledger is screwed inside each side rail, 1×4 slats span rail to rail on the ledgers, and the
+ * ¾" deck lies on the slats. A level with floor under it and a wide or long span gets a centre rail
+ * on edge with legs to the floor. A raised level (underside over 30") gets guards on both long sides
+ * and both ends, tops 5" above the thickest mattress; the ladder-side guard leaves a 15" opening.
+ */
+export function pushBedLevel(
+  panels: Panel[],
+  o: { label: string; x0: number; W: number; D: number; postX: number; postZ: number; deckTop: number; floorUnder: boolean; ladder?: { top: number } },
+): { bolts: number; guardTop?: number } {
+  const { label, x0, W, D, postX, postZ, deckTop: Y } = o;
+  const pre = label ? `${label} ` : "";
+  const innerW = W - postX * 2;
+  const innerD = D - postZ * 2;
+  const railTop = Y + 1.5;
+  const railY = railTop - BED_RAIL_H;
+  // Side rails (along the length) and end rails, flush with the posts' inside faces.
+  panels.push(panel("rail", `${pre}left side rail`.replace(/^./, (c) => c.toUpperCase()), x0 + postX - BED_RAIL_T, railY, postZ, BED_RAIL_T, BED_RAIL_H, innerD, FRAME.rail));
+  panels.push(panel("rail", `${pre}right side rail`.replace(/^./, (c) => c.toUpperCase()), x0 + W - postX, railY, postZ, BED_RAIL_T, BED_RAIL_H, innerD, FRAME.rail));
+  panels.push(panel("rail", `${pre}head rail`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, railY, postZ - BED_RAIL_T, innerW, BED_RAIL_H, BED_RAIL_T, FRAME.rail));
+  panels.push(panel("rail", `${pre}foot rail`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, railY, D - postZ, innerW, BED_RAIL_H, BED_RAIL_T, FRAME.rail));
+  // Ledger cleats inside the side rails carry the slats.
+  const slatT = 0.75;
+  const ledgerTop = Y - P - slatT;
+  panels.push(panel("cleat", `${pre}left ledger`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, ledgerTop - 1.5, postZ, 1.5, 1.5, innerD, FRAME.ledger));
+  panels.push(panel("cleat", `${pre}right ledger`.replace(/^./, (c) => c.toUpperCase()), x0 + W - postX - 1.5, ledgerTop - 1.5, postZ, 1.5, 1.5, innerD, FRAME.ledger));
+  // Slats about every 12" (3½" wide), rail to rail, resting on the ledgers.
+  const slatW = 3.5;
+  const nSlat = Math.max(3, Math.ceil(innerD / 12) + 1);
+  const pitch = (innerD - slatW) / (nSlat - 1);
+  for (let i = 0; i < nSlat; i++) {
+    panels.push(panel("rail", `${pre}slat ${i + 1}`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, ledgerTop, postZ + i * pitch, innerW, slatT, slatW, FRAME.slat));
+  }
+  panels.push(panel("deck", label ? `${label} deck` : "Sleep deck", x0 + postX, Y - P, postZ, innerW, P, innerD));
+  // Centre support: a 2×4 on edge under the slats, end rail to end rail, on legs to the floor.
+  if (o.floorUnder && railY > 4) {
+    const cTop = ledgerTop;
+    const cY = cTop - 3.5;
+    panels.push(panel("rail", `${pre}centre rail`.replace(/^./, (c) => c.toUpperCase()), -0.75, cY, postZ, 1.5, 3.5, innerD, FRAME.stud));
+    const nLeg = innerD > 60 ? (innerW > 50 ? 2 : 1) : 0;
+    for (let i = 1; i <= nLeg; i++) {
+      const z = postZ + (innerD * i) / (nLeg + 1) - 1.75;
+      panels.push(panel("upright", `${pre}centre leg${nLeg > 1 ? ` ${i}` : ""}`.replace(/^./, (c) => c.toUpperCase()), -0.75, 0, z, 1.5, cY, 3.5, FRAME.stud));
+    }
+  }
+  let guardTop: number | undefined;
+  if (railY > 30) {
+    // Guards: tops 5" above the thickest mattress; a 1×8 leaves no gap a child's head fits above the rail.
+    guardTop = Y + BED_MATTRESS_T + 5;
+    const gH = 7.25;
+    const gY = guardTop - gH;
+    const gT = P;
+    const open = 15;
+    panels.push(panel("rail", `${pre}wall-side guard`.replace(/^./, (c) => c.toUpperCase()), x0 + postX - BED_RAIL_T, gY, postZ, gT, gH, innerD, FRAME.guard));
+    panels.push(panel("rail", `${pre}ladder-side guard`.replace(/^./, (c) => c.toUpperCase()), x0 + W - postX + BED_RAIL_T - gT, gY, postZ + open, gT, gH, innerD - open, FRAME.guard));
+    panels.push(panel("rail", `${pre}head guard`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, gY, postZ - gT, innerW, gH, gT, FRAME.guard));
+    panels.push(panel("rail", `${pre}foot guard`.replace(/^./, (c) => c.toUpperCase()), x0 + postX, gY, D - postZ, innerW, gH, gT, FRAME.guard));
+  }
+  return { bolts: 16, guardTop };
+}
+
+/** Four corner posts: doubled 2×4s (3" × 3½") for a tall frame, solid 4×4 legs for a low one. */
+function pushBedPosts(panels: Panel[], x0: number, W: number, D: number, H: number, doubled: boolean) {
+  const corners: [string, number, number][] = [
+    ["front left", x0, D - 3.5],
+    ["front right", x0 + W - (doubled ? 3 : 3.5), D - 3.5],
+    ["back left", x0, 0],
+    ["back right", x0 + W - (doubled ? 3 : 3.5), 0],
+  ];
+  for (const [where, x, z] of corners) {
+    if (doubled) {
+      panels.push(panel("upright", `Post ${where} A`, x, 0, z, 1.5, H, 3.5, FRAME.stud));
+      panels.push(panel("upright", `Post ${where} B`, x + 1.5, 0, z, 1.5, H, 3.5, FRAME.stud));
+    } else panels.push(panel("upright", `Leg ${where}`, x, 0, z, 3.5, H, 3.5, FRAME.post4));
+  }
+}
+
+/** Ladder on the open long side: two 2×4 stiles from the floor to the guard top, 2×2 rungs about every 10". */
+function pushBedLadder(panels: Panel[], x0: number, W: number, postZ: number, top: number, fromY: number) {
+  const x = x0 + W - 1.5;
+  panels.push(panel("upright", "Ladder stile head", x, 0, postZ, 1.5, top, 3.5, FRAME.stud));
+  panels.push(panel("upright", "Ladder stile foot", x, 0, postZ + 15, 1.5, top, 3.5, FRAME.stud));
+  const n = Math.max(2, Math.floor((fromY - 4) / 10));
+  const step = fromY / (n + 1);
+  for (let i = 1; i <= n; i++) panels.push(panel("rail", `Ladder rung ${i}`, x, step * i - 0.75, postZ + 3.5, 1.5, 1.5, 11.5, FRAME.ledger));
+}
+
 export function buildBunkBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
   const H = u.height;
-  const post = Math.max(P, 1.5);
-  const loft = isLoftBed(prompt.toLowerCase());
-  // Posts stand outside the mattress. A frame that only matches the mattress on the outside
-  // leaves a short deck (twin is 75 long; 1½" posts on each end ate that down to 72).
-  const mattress = mattressDeck(prompt.toLowerCase()) ?? { width: 38, length: 75 };
+  const lower = prompt.toLowerCase();
+  const loft = isLoftBed(lower);
+  // Doubled 2×4 posts stand outside the mattress: 3" across the width, 3½" along the length.
+  const postX = 3;
+  const postZ = 3.5;
+  const mattress = mattressDeck(lower) ?? { width: 38, length: 75 };
   let W = u.width;
   let D = u.depth;
-  if (W - post * 2 < mattress.width - 0.25) W = mattress.width + post * 2;
-  if (D - post * 2 < mattress.length - 0.25) D = mattress.length + post * 2;
+  if (W - postX * 2 < mattress.width - 0.25) W = mattress.width + postX * 2;
+  if (D - postZ * 2 < mattress.length - 0.25) D = mattress.length + postZ * 2;
   const x0 = -W / 2;
-  // Twin bunk: lower deck ~12", upper ~H-16" (guard room above mattress).
-  // Loft: one elevated deck only — open floor under for desk/storage (not a second bunk).
-  const lowerY = Math.min(14, Math.max(10, Math.round(H * 0.18)));
-  const upperY = Math.min(H - 14, Math.max(lowerY + 28, Math.round(H * 0.72)));
-  const guardH = 5;
-  const innerW = Math.max(12, W - post * 2);
-  const innerD = Math.max(24, D - post * 2);
+  // Upper guard tops sit ½" under the post tops; the lower deck sits about a foot up.
+  const upperY = H - 0.5 - BED_MATTRESS_T - 5;
+  const lowerY = Math.min(12, Math.max(8, upperY - 40));
   const panels: Panel[] = [];
-  const TWO_BY_FOUR = "lumber-2x4-8";
-  // Person load on ¾" wants a hold about every 21". Bearers sit under the deck, not in the bed.
-  const pushBearers = (label: string, deckY: number) => {
-    const allow = 20;
-    const bearerH = 3.5;
-    const bearerT = 1.5;
-    const n = Math.max(1, Math.ceil(innerD / allow) - 1);
-    const gap = innerD / (n + 1);
-    for (let i = 1; i <= n; i++) {
-      const z = post + gap * i - bearerT / 2;
-      panels.push(panel("rail", `${label} bearer ${i}`, x0 + post, deckY - bearerH, z, innerW, bearerH, bearerT, TWO_BY_FOUR));
-    }
-  };
-  // Four corner posts — solid 2x2 (same class as platform/daybed; not laminated ply strips).
-  panels.push(sleepFrameLeg("Leg front left", x0, 0, D - post, post, H));
-  panels.push(sleepFrameLeg("Leg front right", x0 + W - post, 0, D - post, post, H));
-  panels.push(sleepFrameLeg("Leg back left", x0, 0, 0, post, H));
-  panels.push(sleepFrameLeg("Leg back right", x0 + W - post, 0, 0, post, H));
-  if (!loft) {
-    panels.push(panel("deck", "Lower bunk", x0 + post, lowerY, post, innerW, P, innerD));
-    pushBearers("Lower", lowerY);
-  }
-  panels.push(panel("deck", loft ? "Loft deck" : "Upper bunk", x0 + post, upperY, post, innerW, P, innerD));
-  pushBearers(loft ? "Loft" : "Upper", upperY);
-  // Guard rails on the elevated deck long sides.
-  panels.push(panel("rail", "Upper left rail", x0 + post, upperY + P, post, innerW, guardH, P));
-  panels.push(panel("rail", "Upper right rail", x0 + post, upperY + P, D - post - P, innerW, guardH, P));
-  panels.push(panel("rail", "Upper head rail", x0 + post, upperY + P, post, P, guardH, innerD));
-  panels.push(panel("rail", "Upper foot rail", x0 + W - post - P, upperY + P, post, P, guardH, innerD));
-
+  pushBedPosts(panels, x0, W, D, H, true);
+  if (!loft) pushBedLevel(panels, { label: "Lower", x0, W, D, postX, postZ, deckTop: lowerY, floorUnder: true });
+  const up = pushBedLevel(panels, { label: loft ? "Loft" : "Upper", x0, W, D, postX, postZ, deckTop: upperY, floorUnder: false });
+  pushBedLadder(panels, x0, W, postZ, up.guardTop ?? upperY, upperY - P);
+  const bolts = (loft ? 1 : 2) * 16;
+  const headroom = upperY - 4 - (loft ? 0 : lowerY + BED_MATTRESS_T);
+  const guardH = BED_MATTRESS_T + 5;
   const sized = `${W}" × ${H}" × ${D}"`;
   const name = loft
     ? spec.name.match(/loft/i)
@@ -1848,9 +1919,10 @@ export function buildBunkBed(spec: FittedSpec, prompt: string, affordances: Hous
     primaryMaterialId: PLY,
     notes: [
       loft
-        ? `${name}. One elevated sleep platform on a post frame at ~${upperY}" — open floor under. Not a hollow box, not a twin bunk.`
-        : `${name}. Two sleep platforms on a post frame — lower at ~${lowerY}", upper at ~${upperY}". Not a hollow box.`,
-      `2×2 posts stand outside the mattress (${mattress.width}" × ${mattress.length}"). ¾" plywood decks with 2×4 bearers under them, not in the bed. Guard rails ~${guardH}" above the deck. Add a ladder or steps separately if you need them.`,
+        ? `${name}. One elevated sleep platform on a post frame at ${inchFrac(upperY)}" — open floor under, ${inchFrac(headroom)}" clear beneath its rails.`
+        : `${name}. Two sleep platforms on a post frame — lower deck at ${inchFrac(lowerY)}", upper at ${inchFrac(upperY)}"; ${inchFrac(headroom)}" sitting room above a ${BED_MATTRESS_T}" lower mattress.`,
+      `Four doubled 2×4 posts stand outside the ${mattress.width}" × ${mattress.length}" mattress. 2×6 side and end rails bolt between the posts with ${bolts} 3/8" × 5 1/2" bed-rail bolts; 2×2 ledgers screwed inside the side rails with structural screws carry 1×4 slats, and the ¾" plywood deck lies on the slats.${loft ? "" : " A 2×4 centre rail on a centre leg holds the lower slats mid-span."}`,
+      `1×8 guards run both long sides and both ends of the ${loft ? "loft" : "upper bunk"}, tops ${guardH}" above the deck (5" above a ${BED_MATTRESS_T}" mattress); the ladder-side guard leaves a 15" opening for the ladder. The 2×4 ladder screws to the side rails and stands on the floor.`,
       "Guidance only — person load is heuristic, not stamped engineering. Confirm mattress size before you cut.",
     ],
     historic: false,

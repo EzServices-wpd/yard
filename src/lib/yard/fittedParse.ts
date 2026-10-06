@@ -72,7 +72,7 @@ export function mattressDeck(lower: string): { width: number; length: number } |
   if (/\bking\b/.test(lower)) return { width: 76, length: 80 };
   if (/\bqueen\b/.test(lower)) return { width: 60, length: 80 };
   if (/\bfull\b|\bdouble\b/.test(lower)) return { width: 54, length: 75 };
-  if (/\btwin\b/.test(lower)) return { width: 39, length: 75 };
+  if (/\btwin\b/.test(lower)) return { width: 38, length: 75 };
   return null;
 }
 

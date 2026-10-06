@@ -68,6 +68,7 @@ function boardOf(id: string): { id: string; w: number; t: number; label: string 
  * they cover the whole seat; the back is two boards across the back legs.
  */
 function buildBoardChair(prompt: string, board: { id: string; w: number; t: number; label: string }): YardProject {
+  // Seat heights people sit at: a bar stool at a 42" bar, a counter stool at a 36" counter, else a chair.
   const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, 18);
   const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, 18);
   const { w: bw, t: bt, id } = board;
@@ -128,7 +129,8 @@ export function buildJobFurniture(prompt: string): YardProject {
   const named = detectMaterial(prompt);
   const board = named && /\bchair\b/.test(lower) ? boardOf(named.id) : null;
   if (board) return buildBoardChair(prompt, board);
-  const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, 18);
+  // Seat heights people sit at: a bar stool at a 42" bar, a counter stool at a 36" counter, else a chair.
+  const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, /\bbar\s*stool/.test(lower) ? 30 : /\bcounter\s*stool/.test(lower) ? 24 : 18);
   const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, /\bchair\b|\bstool\b/.test(lower) ? 18 : 36);
   const depth = num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, /\bchair\b|\bstool\b/.test(lower) ? 16 : 18);
   const leg = 1.5;
@@ -143,7 +145,7 @@ export function buildJobFurniture(prompt: string): YardProject {
   panels.push(panel("upright", "Front right leg", x0 + width - leg, 0, depth - leg, leg, seatH, leg, stud));
   panels.push(panel("upright", "Back left leg", x0, 0, 0, leg, legH, leg, stud));
   panels.push(panel("upright", "Back right leg", x0 + width - leg, 0, 0, leg, legH, leg, stud));
-  panels.push(panel("rail", "Front apron", x0 + leg, seatH - 3.5, depth - leg - 0.75, width - leg * 2, 3.5, 0.75, ply));
+  panels.push(panel("rail", "Front apron", x0 + leg, seatH - 3.5, depth - 0.75, width - leg * 2, 3.5, 0.75, ply));
   panels.push(panel("rail", "Back apron", x0 + leg, seatH - 3.5, 0, width - leg * 2, 3.5, 0.75, ply));
   panels.push(panel("rail", "Left apron", x0, seatH - 3.5, leg, 0.75, 3.5, depth - leg * 2, ply));
   panels.push(panel("rail", "Right apron", x0 + width - 0.75, seatH - 3.5, leg, 0.75, 3.5, depth - leg * 2, ply));

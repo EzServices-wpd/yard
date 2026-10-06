@@ -12,12 +12,12 @@ const size = (o: { width: number; height: number; depth: number }) => `${inchFra
 const panelDepth = (p: ReturnType<typeof generateFromPrompt>) =>
   Math.max(...p.panels.map((x) => x.position.z + x.size.depth)) - Math.min(...p.panels.map((x) => x.position.z));
 
-describe("floating / cleat shelves: long is the width, the overall includes the cleat, the title says it", () => {
+describe("floating / cleat shelves: long is the width, the shelf rests on its cleat, the title says it", () => {
   it("walnut 1x10 floating shelf 30 long", () => {
     const { p, notes } = build("walnut 1x10 floating shelf 30 long");
     assert.equal(p.overall.width, 30);
     assert.doesNotMatch(notes, /Assumed [^.]*wide/);
-    assert.equal(p.overall.depth, 10, "9 1/4 board + 3/4 cleat");
+    assert.equal(p.overall.depth, 9.25, "the 9 1/4 board rests on the cleat under its back edge");
     assert.equal(panelDepth(p), p.overall.depth);
     assert.ok(p.name.endsWith(size(p.overall)), p.name);
     assert.doesNotMatch(notes, /hush|No box|Shelf backstop is/);

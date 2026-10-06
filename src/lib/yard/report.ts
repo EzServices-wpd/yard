@@ -586,6 +586,30 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     project.primaryMaterialId === CATALOG_LUMBER_BIND &&
     !!namedLumber &&
     !structural.some((c) => /ply|sheet/i.test(`${c.material ?? ""}`));
+  // 1× boards beside sheet parts (slats and guards on a plywood-deck frame) are bought as boards too.
+  if (!buyNamedBoard && !boardPrimary && project.primaryMaterialId !== CATALOG_LUMBER_BIND) {
+    const byBoard = new Map<string, typeof structural>();
+    for (const c of structural) {
+      const id = c.id.split("|")[0];
+      if (/^lumber-1x\d+-8$/.test(id) && !boardsBought.has(id)) byBoard.set(id, [...(byBoard.get(id) ?? []), c]);
+    }
+    for (const [id, lines] of byBoard) {
+      const item = getCatalogItem(id);
+      if (!item) continue;
+      boardsBought.add(id);
+      const plan = planSolidBoards(lines.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })), item.dims.width ?? 3.5);
+      const partsQty = lines.reduce((n, c) => n + c.quantity, 0);
+      bom.push({
+        name: item.name,
+        quantity: plan.boards,
+        unit: plan.boards === 1 ? "board" : "boards",
+        catalogId: id,
+        searchQuery: item.searchQuery ?? item.name,
+        estimatedCost: item.unitCostUsd != null ? item.unitCostUsd * plan.boards : undefined,
+        notes: `${plan.boards} × 8 ft ${item.name} for the ${partsQty} part${partsQty === 1 ? "" : "s"} on the cut list. Packed with 1/8" kerf.`,
+      });
+    }
+  }
   if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0) {
     bom.push({
       name: sheet10?.name ?? '3/4" plywood 4x10',
@@ -1385,6 +1409,17 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       searchQuery: "2 inch butt hinge",
       estimatedCost: 6,
       notes: "Two along the back edge, as the notes say.",
+    });
+  }
+  const railBolts = notes.match(/(\d+) 3\/8" × 5 1\/2" bed-rail bolts/);
+  if (railBolts && !/bed-rail bolt/i.test(have)) {
+    extra.push({
+      name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts',
+      quantity: Number(railBolts[1]),
+      unit: "each",
+      searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut",
+      estimatedCost: 1.5 * Number(railBolts[1]),
+      notes: "Two at each rail end, through the post into a barrel nut in the rail.",
     });
   }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
