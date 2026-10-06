@@ -874,16 +874,19 @@ export function parseBrief(prompt: string): FittedSpec | null {
       member.formFactor === "block" ||
       member.formFactor === "roll");
   if (namedMember) {
+    // Only digits the stranger typed count — a class default (twin bunk 42 wide) is not a cap,
+    // so the envelope stays the same whatever stock builds it.
+    const said = typedClassDefaultAxes(prompt);
     const typed = [
-      typedAxes.width ? width : NaN,
-      typedAxes.height ? height : NaN,
-      typedAxes.depth ? depth : NaN,
+      said.width ? width : NaN,
+      said.height ? height : NaN,
+      said.depth ? depth : NaN,
     ].filter((n) => Number.isFinite(n));
     if (typed.length > 0 && typed.length < 3) {
       const cap = Math.max(...typed);
-      if (!typedAxes.width) width = Math.min(width, cap);
-      if (!typedAxes.height) height = Math.min(height, cap);
-      if (!typedAxes.depth) depth = Math.min(depth, cap);
+      if (!said.width) width = Math.min(width, cap);
+      if (!said.height) height = Math.min(height, cap);
+      if (!said.depth) depth = Math.min(depth, cap);
     }
   }
 

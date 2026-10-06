@@ -197,6 +197,9 @@ export function wantsUnmatchedSheetShell(
   // A figure is the figure, even on a sheet. Everything else is faces of the typed envelope.
   // A catalog member map must not rip the sheet into battens.
   if (kind === "figure" || kind === "eiffel") return false;
+  // An open frame (truss bridge, lattice tower, arch, ladder) is its members — strips ripped from
+  // the sheet keep the same form any other stock builds; a closed box is a different object.
+  if (kind === "bridge" || kind === "lattice" || kind === "tower" || kind === "arch" || kind === "ladder") return false;
   return true;
 }
 
