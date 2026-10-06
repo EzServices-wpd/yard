@@ -70,7 +70,7 @@ class Shape {
 const check = (checks: FidelityCheck[], name: string, ok: boolean, detail: string) => checks.push({ name, ok, detail });
 
 /** Suspension bridge: published span and tower ratios plus the features that name it. */
-function suspension(sh: Shape, spec: { lOverH: number; deck: number; main: number; piers: number; stays: boolean }): FidelityCheck[] {
+function suspension(sh: Shape, spec: { lOverH: number; deck: number; main: number; piers: number; stays: boolean; walkway?: number }): FidelityCheck[] {
   const c: FidelityCheck[] = [];
   const tall = sh.segs.filter((s) => sh.vertical(s) && sh.fy(Math.max(s.a.y, s.b.y)) >= 0.8);
   const xs = [...new Set(tall.map((s) => r2(s.a.x)))].sort((a, b) => a - b);
@@ -93,17 +93,30 @@ function suspension(sh: Shape, spec: { lOverH: number; deck: number; main: numbe
     check(c, "main span share", near(main, spec.main, 0.08), `${r2(main)} (real ${spec.main})`);
     const mid = (towers[0] + towers[1]) / 2, half = (towers[1] - towers[0]) / 2;
     const deckY = sh.min.y + deck * sh.H;
-    const hangers = sh.segs.filter((s) => sh.vertical(s) && Math.abs(s.a.x - mid) < half * 0.85 && Math.min(s.a.y, s.b.y) >= deckY - 0.3 && sh.fy(Math.max(s.a.y, s.b.y)) < 0.95);
-    check(c, "hangers from the cable", hangers.length >= 12, `${hangers.length}`);
-    const cable = sh.segs.filter((s) => !sh.vertical(s) && Math.abs((s.a.x + s.b.x) / 2 - mid) < half * 0.2 && Math.min(s.a.y, s.b.y) > deckY + 0.2);
-    const low = cable.length ? Math.min(...cable.map((s) => Math.min(s.a.y, s.b.y))) : Infinity;
-    check(c, "cable sags to the deck mid-span", (low - deckY) / (sh.max.y - deckY) <= 0.25, `${r2((low - deckY) / (sh.max.y - deckY))} of the tower above the deck`);
+    if (spec.walkway) {
+      // High-level walkways tower to tower; the central span stays open between the deck and the walkways.
+      const wy = spec.walkway;
+      const walk = sh.segs.filter((s) => sh.level(s) && Math.abs(s.dir.x) > 0.9 && near(sh.fy(s.a.y), wy, 0.08) && Math.abs((s.a.x + s.b.x) / 2 - mid) < half);
+      const run = walk.reduce((n, s) => n + s.len, 0);
+      check(c, "high-level walkways", run >= 2 * (towers[1] - towers[0]) * 0.8, `${r2(run)} of walkway run (real ${wy} of the tower)`);
+      const deckFrac = deck;
+      const between = sh.segs.filter((s) => Math.abs((s.a.x + s.b.x) / 2 - mid) < half * 0.7 && sh.fy(Math.min(s.a.y, s.b.y)) > deckFrac + 0.12 && sh.fy(Math.max(s.a.y, s.b.y)) < wy - 0.1);
+      check(c, "central span open below the walkways", between.length === 0, `${between.length} member(s) in the opening`);
+    } else {
+      const hangers = sh.segs.filter((s) => sh.vertical(s) && Math.abs(s.a.x - mid) < half * 0.85 && Math.min(s.a.y, s.b.y) >= deckY - 0.3 && sh.fy(Math.max(s.a.y, s.b.y)) < 0.95);
+      check(c, "hangers from the cable", hangers.length >= 12, `${hangers.length}`);
+      const cable = sh.segs.filter((s) => !sh.vertical(s) && Math.abs((s.a.x + s.b.x) / 2 - mid) < half * 0.2 && Math.min(s.a.y, s.b.y) > deckY + 0.2);
+      const low = cable.length ? Math.min(...cable.map((s) => Math.min(s.a.y, s.b.y))) : Infinity;
+      check(c, "cable sags to the deck mid-span", (low - deckY) / (sh.max.y - deckY) <= 0.25, `${r2((low - deckY) / (sh.max.y - deckY))} of the tower above the deck`);
+    }
     const side = sh.segs.filter((s) => !sh.vertical(s) && !sh.level(s) && ((s.a.x + s.b.x) / 2 < towers[0] || (s.a.x + s.b.x) / 2 > towers[1]));
     check(c, "side-span cables", side.length >= 4, `${side.length}`);
     const legs = tall.filter((s) => Math.abs(s.a.x - towers[0]) < sh.L * 0.05);
     const zs = new Set(legs.map((s) => r2(s.a.z)));
     check(c, spec.piers === 3 ? "masonry towers with twin arches (3 piers)" : "two-leg towers", zs.size >= spec.piers && (spec.piers === 3 || zs.size <= 3), `${zs.size} leg line(s) across`);
-    if (spec.stays) {
+    if (spec.walkway) {
+      // Masonry towers: the walkways tie them at the top, so no portal struts are asked for.
+    } else if (spec.stays) {
       // Stays: straight sloped members beside a tower (not in it) that come down near the deck, where the
       // main cable is still high.
       const stays = sh.segs.filter((s) => {
@@ -151,6 +164,7 @@ function truss(sh: Shape): FidelityCheck[] {
 const SPECS: Record<string, (sh: Shape) => FidelityCheck[]> = {
   "golden gate": (sh) => suspension(sh, { lOverH: 8.65, deck: 0.29, main: 0.65, piers: 2, stays: false }),
   brooklyn: (sh) => suspension(sh, { lOverH: 12.5, deck: 0.46, main: 0.46, piers: 3, stays: true }),
+  "tower bridge": (sh) => suspension(sh, { lOverH: 3.75, deck: 0.14, main: 0.25, piers: 3, stays: false, walkway: 0.68 }),
   truss: truss,
   eiffel: (sh) => {
     const c: FidelityCheck[] = [];

@@ -567,6 +567,35 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     return out;
   }
 
+  // A framed outdoor build on skids (sheds, log stores): one step per layer of the frame, from the ground up.
+  if (!project.fitted && !pocket && panels.some((p) => /\bskid\b/i.test(p.name)) && panels.some((p) => /^Rafter\b/.test(p.name))) {
+    const out: AssemblyStep[] = [];
+    let k = 1;
+    out.push({
+      step: k++,
+      title: "Confirm the footprint — do not cut yet",
+      description: `${project.name}. ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high overall, roof overhangs included. ${partsOnThisListPhrase(project)}.`,
+      tips: "Pick a level, well-drained spot first; the pavers set the whole frame.",
+      partsUsed: ["*"],
+    });
+    out.push({ step: k++, title: sheetCutTitle(panels, item), description: sheetCutDescription(panels, item, ""), tips: tool.tip, partsUsed: names(panels) });
+    const grouped = (list: Panel[]) => {
+      const m = new Map<string, number>();
+      for (const p of list) {
+        const key = `${p.name.replace(/\s+\d+(?=\s|$)/g, "").replace(/\s+(?:left|right|middle|inner|outer)(?:\s+\d+)?$/i, "").replace(/\s+(?:left|right|middle|inner|outer)$/i, "")} — ${dim(p)}"`;
+        m.set(key, (m.get(key) ?? 0) + 1);
+      }
+      return [...m.entries()].map(([key, n]) => (n > 1 ? `${n} × ${key}` : key)).join("; ");
+    };
+    for (const [re, title, how] of FRAME_LAYERS) {
+      const mine = panels.filter((p) => re.test(p.name));
+      if (!mine.length) continue;
+      out.push({ step: k++, title, description: `${grouped(mine)}. ${how}`, tips: "Each layer goes on after the parts it rests on.", partsUsed: names(mine) });
+    }
+    out.push({ step: k++, title: "Level it", description: "Check the floor reads level both ways and the posts plumb; shim a paver if a corner sits low.", tips: "Load it once it stands square.", partsUsed: [] });
+    return out;
+  }
+
   // Frame stands (held-object stands, risers, stepped plant stands): legs / posts, rails, plywood decks.
   // They have no carcase, back or doors — say what is really there.
   if (!project.fitted && !pocket && panels.some((p) => /^(Deck|Tier \d+ deck)$/.test(p.name))) {
@@ -2687,7 +2716,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
   let n = 1;
   steps.push({
     step: n++,
-    title: whole ? "Read this Eiffel before you glue" : "Read this Eiffel before you cut",
+    title: whole ? `Read this ${project.name} before you glue` : `Read this ${project.name} before you cut`,
     description: `${cutSummary(project.instances, item?.name ?? "stock")} About ${project.overall.height.toFixed(0)}" tall. Four arches, four piers, then one shaft — same tower as the bench. Each step lights only that part.`,
     tips: "If a plate looks like a scribble, you are on the face lattice. Go back to the arches — those are the holes you walk through.",
     partsUsed: ["*"],
@@ -2755,6 +2784,20 @@ const CARCASE_FACE = new Set([
   "mirror",
   "deck",
 ]);
+
+/** A framed build on skids, layer by layer from the ground up: each layer rests on the ones before it. */
+const FRAME_LAYERS: [RegExp, string, string][] = [
+  [/\bskid\b/i, "Set the skids on pavers", "Level a concrete paver on compacted gravel under each end of every skid and every 4' between. Lay the skids on them parallel, then measure both diagonals of the rectangle until they match. Screw doubled plies face to face."],
+  [/\bpost\b/i, "Stand the posts on the skids", "Screw each pair of plies face to face first. Stand every post plumb on its skid, flush with the outside, and toe-screw it down from both sides; hold it with a temporary diagonal brace."],
+  [/^Floor joist\b/, "Lay the floor joists across the skids", "Set each joist on edge across the skids, one beside every post and the rest evenly spaced, and toe-screw it to both skids."],
+  [/\bgirt\b/i, "Fasten the girts between the posts", "Screw each girt between its two posts, flush with the outside faces; the bottom girts sit level with the floor joists."],
+  [/^Floor board\b/, "Screw down the floor boards", "Lay the boards across the joists and bottom girts, the front and back rows fitted between the posts, the gap set with a spacer, and drive two exterior screws into every joist and girt each board crosses."],
+  [/\bheader\b/i, "Set the headers on the post tops", "Screw the two plies of each header face to face, set them on edge across the post tops flush with the outside, and screw down through the header into every post."],
+  [/^Rafter\b/, "Notch and set the rafters", "Mark one rafter from the model, cut its two seats and plumb ends, test it on the headers, then copy it for the rest. Set them on the headers at the marked spacing, toe-screw and add a hurricane tie at each header."],
+  [/^(?:Back|Left end|Right end|Front) board\b/, "Board the walls", "Screw each board to every girt, skid and header it crosses, starting at a corner and setting the gap with a spacer; cut the end boards' tops along the roof slope."],
+  [/^Roof board\b/, "Lay the roof boards and roofing", "Start at the low back edge and work up the slope, two screws into every rafter each board crosses. Cover them with roofing felt and corrugated metal or asphalt roofing, lapped from the bottom up."],
+  [/^Door\b/, "Build and hang the door", "Screw the door boards to the two battens on the bench, square, then hang the door on two T-hinges from the door post and fit a hasp on the other side."],
+];
 
 const CARCASE_ORDER: { role: string; verb: string }[] = [
   { role: "bottom", verb: "Lay the bottom" },

@@ -8,6 +8,7 @@
  * seat, …) instead of falling through to a generic plywood floor box.
  */
 
+import { landmarkTitle } from "./formLandmarks";
 import { isNoLidPrompt } from "./cueRules";
 import type { FittedProgram } from "./types";
 
@@ -65,6 +66,8 @@ function isNotHouse(lower: string) {
   // A container that mentions a window or a door stays the container, even in a named species.
   if (isPlanterBox(lower)) return false;
   if (/eiffel|taj|mahal|pyramid|giraffe|rocket|looks like|lattice tower/.test(lower)) return true;
+  // A named landmark ("Sydney Opera House") is its landmark, never a storage house.
+  if (landmarkTitle(lower)) return true;
   if (
     /popsicle|craft stick|toothpick|paper towel|lego|mailing tube|cedar/.test(lower) &&
     (!HOUSE_NOUN.test(lower) ||

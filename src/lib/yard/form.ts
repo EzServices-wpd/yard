@@ -6,7 +6,7 @@ import { figureStrokes } from "./figure";
 import { stripEntityIds } from "./wiki";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 import { aFrameOps, fitAFrame, fitPoleFrame, fitTrellis, poleFrameKind, poleFrameName, poleFrameOps, trellisOps } from "./poleFrames";
-import { archBridgeOps, BROOKLYN, clockTowerOps, cnTowerOps, fitSuspensionTo, GOLDEN_GATE, pisaTowerOps, suspensionOps } from "./formLandmarks";
+import { archBridgeOps, BROOKLYN, clockTowerOps, cnTowerOps, fitSuspensionTo, GOLDEN_GATE, pisaTowerOps, suspensionOps, TOWER_BRIDGE } from "./formLandmarks";
 export type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 import {
   tajOps,
@@ -121,7 +121,8 @@ const HITS: Hit[] = [
   { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: (s) => suspensionOps(s, BROOKLYN), fit: fitSuspensionTo(BROOKLYN) },
   { re: /sydney harbou?r bridge/, kind: "bridge", name: "Sydney Harbour Bridge", historic: true, build: archBridgeOps, fit: fitArchBridge },
   // Landmarks without their own spec take the nearest family, and say so.
-  { re: /tower bridge|bay bridge|verrazz?ano|mackinac|akashi|humber bridge|suspension bridge/, kind: "bridge", name: "Suspension bridge", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE), note: "Built from the suspension-bridge family at Golden Gate proportions — the nearest spec Yard has." },
+  { re: /tower bridge/, kind: "bridge", name: "Tower Bridge", historic: true, build: (s) => suspensionOps(s, TOWER_BRIDGE), fit: fitSuspensionTo(TOWER_BRIDGE) },
+  { re: /bay bridge|verrazz?ano|mackinac|akashi|humber bridge|suspension bridge/, kind: "bridge", name: "Suspension bridge", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE), note: "Built from the suspension-bridge family at Golden Gate proportions — the nearest spec Yard has." },
   { re: /arch bridge|hell gate bridge|bayonne bridge|new river gorge/, kind: "bridge", name: "Arch bridge", historic: true, build: archBridgeOps, fit: fitArchBridge, note: "Built from the through-arch family at Sydney Harbour proportions — the nearest spec Yard has." },
   { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps, aspect: { w: 0.9, d: 0.44 } },
   { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps, aspect: { w: 5.07, d: 2.26 } },

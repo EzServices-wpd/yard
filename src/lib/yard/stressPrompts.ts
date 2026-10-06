@@ -52,4 +52,10 @@ export const STRESS_PROMPTS = [
   "cedar garbage bin enclosure from 2x4 for two bins",
   "Arc de Triomphe from craft sticks 12 inches tall",
   "bee hotel from scrap 1x6",
+  "firewood shed from 2x4",
+  "Big Ben from popsicle sticks 18 inches tall",
+  "log store from 4x4 and 1x6",
+  "Tower Bridge from popsicle sticks",
+  "Leaning Tower of Pisa from craft sticks",
+  "tool shed from 2x4",
 ];

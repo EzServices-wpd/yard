@@ -651,7 +651,7 @@ const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mango
 
 /** Dedicated recipes in form.ts HITS — do not steal them onto a weekend family. */
 const HISTORIC_SPECIAL =
-  /taj|mahal|pyramid|giza|khufu|colosseum|coliseum|empire state|chrysler building|space needle|cn tower|leaning tower|\bpisa\b|parthenon|stonehenge|sydney opera|big ben|clock tower|westminster|washington monument|obelisk|lighthouse|windmill|pagoda|mosque|minaret|castle|fort|\bkeep\b|battlement|turret/;
+  /taj|mahal|pyramid|giza|khufu|colosseum|coliseum|amphitheat(?:re|er)|empire state|chrysler building|space needle|cn tower|leaning tower|\bpisa\b|parthenon|stonehenge|sydney opera|big ben|clock tower|westminster|elizabeth tower|washington monument|obelisk|lighthouse|windmill|pagoda|mosque|minaret|castle|fort|\bkeep\b|battlement|turret/;
 
 function isWindowPrompt(lower: string) {
   if (/window seat/.test(lower)) return false;

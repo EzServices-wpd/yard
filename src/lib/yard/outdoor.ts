@@ -56,7 +56,7 @@ function wallHung(project: YardProject): boolean {
 
 /** Set in the ground or hung from posts there: concrete, pier blocks, ground anchors. Nothing stands on feet. */
 function fixedInGround(project: YardProject): boolean {
-  return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
+  return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bpavers?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
 }
 
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */

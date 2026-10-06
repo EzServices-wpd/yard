@@ -4,6 +4,7 @@
  * carcase box, open box, wall shelf, slab panel) at a real size for its class.
  * Universal by word class, so any new noun with a known head word lands well.
  */
+import { landmarkTitle } from "./formLandmarks";
 import type { YardProject } from "./types";
 
 type Prim = { phrase: string; label: string; size: [number, number, number] };
@@ -67,6 +68,8 @@ export function pickPrimitive(noun: string): Prim | null {
   if (TOY.test(lower)) return null;
   // A head that names a tower (lighthouse) is that tower, not a house-shaped carcase.
   if (/lighthouse|tower|steeple|minaret|windmill/.test(head)) return null;
+  // A named landmark ("Sydney Opera House") builds its landmark, never a carcase named after it.
+  if (landmarkTitle(lower)) return null;
   if (/(hutch|coop|kennel|house|cabinet|theater|theatre|shed|cupboard|locker)$/.test(head)) {
     if (/playhouse/.test(whole)) return prim("cabinet", "carcase box", 48, 60, 48);
     if (TOY.test(lower) || /dollhouse/.test(whole)) return prim("cabinet", "carcase box", 30, 30, 14);

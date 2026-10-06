@@ -722,8 +722,8 @@
       "support"
     ],
     "notesHead": [
-      "Garden arch · stock mapped onto the form, not a hull.",
-      "Parametric form. Frame first, then brace. Support if it is slender."
+      "18 joints · 18 members",
+      "3/4\" Schedule 40 PVC Pipe is column stock — each long member is one piece."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -928,7 +928,7 @@
     ],
     "notesHead": [
       "Eiffel frame · 36\" high",
-      "449 nodes · 742 members before stock cuts"
+      "Piers and arches first. First deck next. Shaft lacing last. The frame will fail without it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1063,8 +1063,8 @@
       "rail"
     ],
     "notesHead": [
-      "Bridge · stock mapped onto the form, not a hull.",
-      "Parametric form. Frame first, then brace. Support if it is slender."
+      "374 joints · 519 members",
+      "Plastic Drinking Straw is thin — long members are laced into a truss."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1095,7 +1095,7 @@
     ],
     "notesHead": [
       "Lattice tower · 12\" high",
-      "249 nodes · 596 members before stock cuts"
+      "Corner chords first. Story hoops next. Face lace last — densified at the named stock."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1124,8 +1124,8 @@
       "support"
     ],
     "notesHead": [
-      "Airplane · stock mapped onto the form, not a hull.",
-      "Parametric form. Frame first, then brace. Support if it is slender."
+      "13 joints · 12 members",
+      "Standard Popsicle Stick is thin — long members are laced into a truss."
     ],
     "signals": {
       "mentionsYardBuilt": false,

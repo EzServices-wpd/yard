@@ -13,6 +13,9 @@ const LANDMARKS: [string, string, number][] = [
   ["CN Tower", "cn tower", 100],
   ["Leaning Tower of Pisa", "pisa", 100],
   ["Big Ben", "big ben", 100],
+  ["Big Ben from popsicle sticks 18 inches tall", "big ben", 100],
+  ["Tower Bridge from popsicle sticks", "tower bridge", 100],
+  ["Leaning Tower of Pisa from craft sticks", "pisa", 100],
   ["lighthouse", "lighthouse", 100],
 ];
 
@@ -41,10 +44,11 @@ describe("the typed size scales the landmark without changing its ratios", () =>
 });
 
 describe("a landmark without its own spec takes the nearest family and says so", () => {
-  it("Tower Bridge is built as a suspension bridge, with a note", () => {
+  it("Tower Bridge has its own spec: Gothic towers, high walkways, side-span chains", () => {
     const p = generateFromPrompt("Tower Bridge from popsicle sticks");
     assert.equal(p.kind, "bridge");
-    assert.ok(p.notes.some((n) => /nearest spec/.test(n)), JSON.stringify(p.notes));
+    assert.equal(p.name, "Tower Bridge");
+    assert.equal(landmarkFidelity(p, "golden gate").score < 100, true);
   });
   it("an arch bridge carries its deck under the arch crown", () => {
     const p = generateFromPrompt("arch bridge from popsicle sticks");

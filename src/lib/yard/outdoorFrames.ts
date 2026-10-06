@@ -10,8 +10,14 @@ import { inchFrac } from "./inchText";
 import type { Panel, YardProject } from "./types";
 import { allowSpanIn } from "./spanCheck";
 import { purposeOf, type Purpose } from "./purpose";
+import { panelWorldCorners } from "./geometry";
 
-export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse" | "picnic" | "enclosure";
+export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse" | "picnic" | "enclosure" | "shed";
+
+/** Outdoor shed words: firewood shed / log store / wood store / tool or garden shed / lean-to. */
+const SHED = /\b(?:wood|tool|log)sheds?\b|\bsheds?\b(?!\s*(?:shel\w*|doors?|ramps?|workbench\w*|bench\w*|windows?|organi[sz]\w*|racks?|cabinets?|storage|base|foundation|floor|roof|kit|plans?|hooks?|lights?))|\b(?:log|wood|firewood)\s+(?:stores?|shelters?)\b|\blean[-\s]?to\b(?!\s*(?:shel\w*|ladders?|desks?|bookcases?|mirrors?|racks?))/;
+/** Shed words that store firewood: an open front, slatted sides and floor for airflow. */
+const WOOD_SHED = /\b(?:fire)?wood\s*(?:sheds?|stores?|shelters?)\b|\blogs?\b|\bfirewood\b/;
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy|desk\s*top|tabletop)\b/;
@@ -30,6 +36,7 @@ export function outdoorFrameKind(prompt: string, materialOverride?: string): Out
   // An enclosure for an outdoor item one bay each (garbage bins, bikes): posts, slatted walls, a lid and doors.
   const forItem = purposeOf(lower);
   if (forItem?.item.outdoor && forItem.item.perBay && /\b(?:enclosures?|corrals?|surrounds?|hideaways?)\b/.test(lower)) return "enclosure";
+  if (SHED.test(lower)) return "shed";
   if (/\bswing\s*sets?\b|\bswingsets?\b|\ba-?frame\s+swing\b/.test(lower)) return "swing-set";
   if (/\b(?:garden|yard|fence|wood(?:en)?|picket|privacy|side|backyard)?\s*gates?\b/.test(lower) && !/\bgate\s*(?:leg|way|house)|tailgate|baby\s*gate|pet\s*gate|stair\s*gate|golden\s*gate|gateway/.test(lower))
     return "gate";
@@ -502,7 +509,288 @@ export function buildEnclosure(prompt: string, purpose: Purpose, size?: { width:
   return project(prompt, name, panels, W, H + st, D, notes, slat.id, "display");
 }
 
+/** A typed size on a shed: a bare number under 20 is feet ("6 wide"), otherwise inches unless marked ft. */
+function shedAxis(lower: string, word: RegExp): number | null {
+  const m = lower.match(new RegExp(String.raw`(\d+(?:\.\d+)?)\s*('|ft|foot|feet|"|in|inch|inches)?\s*(?:${word.source})`));
+  if (!m) return null;
+  const v = Number(m[1]);
+  return /'|ft|foot|feet/.test(m[2] ?? "") || (!m[2] && v < 20) ? v * 12 : v;
+}
+
+/** A board standing in a side plane (z along the ground, y up), x from xa to xa + t: an xy outline turned 90° about Y. */
+function yzPanel(type: Panel["type"], name: string, xa: number, t: number, pts: [number, number][], materialId: string, extra: Partial<Panel> = {}): Panel {
+  const zs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  const [zMin, zMax, yMin, yMax] = [Math.min(...zs), Math.max(...zs), Math.min(...ys), Math.max(...ys)];
+  const w = zMax - zMin;
+  const cx = xa + t / 2;
+  const cz = (zMin + zMax) / 2;
+  return panel(type, name, cx - w / 2, yMin, cz - t / 2, w, yMax - yMin, t, materialId, {
+    yaw: Math.PI / 2,
+    polygon: { plane: "xy", pts: pts.map(([z, y]) => [zMax - z, y - yMin] as [number, number]) },
+    ...extra,
+  });
+}
+
+const lumber = (n: string) => `lumber-${n}-8`;
+const faceOf = (n: string) => ({ 2: 1.5, 3: 2.5, 4: 3.5, 6: 5.5, 8: 7.25 })[Number(n.split("x")[1]) as 2] ?? 3.5;
+const label = (n: string) => n.replace("x", "×");
+
+/**
+ * Outdoor shed with a single-slope (lean-to) roof, built the way sheds are: skids on pavers, posts standing
+ * on the skids at every corner, floor joists across the skids with floor boards on top, girts between the
+ * posts carrying the wall boards, doubled headers on the post tops, rafters notched over both headers and
+ * roof boards on the rafters. A firewood shed (wood shed, log store) keeps its front open and spaces every
+ * board 1" apart so the wood dries; a tool or garden shed boards in tight with a hinged board door.
+ * Typed stock drives the members: a 2× board frames it (posts doubled), a 1× board makes the slats.
+ */
+export function buildShed(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const open = WOOD_SHED.test(lower) && !/\bwooden\s+sheds?\b/.test(lower.replace(/\b(?:fire|log)\w*/g, ""));
+  const typed = [...lower.matchAll(/\b([124])\s*[x×]\s*(2|3|4|6|8)\b(?!\s*(?:'|ft\b|foot|feet|sheds?\b))/g)].map((m) => `${m[1]}x${m[2]}`);
+  const two = typed.find((t) => /^2x[46]$/.test(t));
+  const one = typed.find((t) => /^1x[46]$/.test(t));
+  const post4 = typed.includes("4x4") || !two;
+  const frameN = two ?? "2x4";
+  const fd = faceOf(frameN);
+  const frameId = lumber(frameN);
+  const slatN = one ?? (two && !typed.includes("4x4") ? two : "1x6");
+  const slatId = lumber(slatN);
+  const st = slatN.startsWith("1") ? 0.75 : 1.5;
+  const sf = faceOf(slatN);
+  const floorN = one ?? frameN;
+  const floorId = lumber(floorN);
+  const ft_ = floorN.startsWith("1") ? 0.75 : 1.5;
+  const ff = faceOf(floorN);
+  const roofN = one ?? "1x6";
+  const roofId = lumber(roofN);
+  const bt = 0.75;
+  const rf = faceOf(roofN);
+  // Posts: one 4×4, or two 2× plies face to face.
+  const pw = post4 ? 3.5 : 3;
+  const pd = post4 ? 3.5 : fd;
+  const postId = post4 ? L.post4 : frameId;
+  const sk = post4 ? 3.5 : fd;
+  const skidId = post4 ? L.post4 : frameId;
+  // Size: typed width and depth are the floor footprint; typed height is the overall height at the front.
+  const clean = lower.replace(/\b[124]\s*[x×]\s*(?:2|3|4|6|8|10|12)s?\b(?!\s*(?:'|ft\b|foot|feet|sheds?\b))/g, " ");
+  const pair = feetPair(clean);
+  const ovF = open ? 8 : 6;
+  const ovS = 3;
+  const ovB = 2;
+  const W = Math.max(36, Math.min(144, size ? size.width - 2 * ovS : shedAxis(clean, /wide|width|long|length/) ?? pair?.[0] ?? 72));
+  const D = Math.max(24, Math.min(96, size ? size.depth - ovF - ovB : shedAxis(clean, /deep|depth/) ?? pair?.[1] ?? (open ? 40 : 48)));
+  const H = Math.max(48, Math.min(100, size?.height ?? shedAxis(clean, /tall|high|height/) ?? (open ? 72 : 90)));
+  const s = 0.25; // 3-in-12 slope, high at the front, shedding rain to the back
+  const cos = 1 / Math.hypot(1, s);
+  const sin = s * cos;
+  const rv = fd / cos;
+  const zB = st;
+  const zF = D - pd - (open ? 0 : st);
+  const zFace = zF + pd;
+  const zE = zFace + ovF;
+  const hfTop = H - s * ovF - (fd + bt) / cos;
+  const hbTop = hfTop - s * (zFace - zB - 3);
+  const Lr = (z: number) => hfTop + s * (z - zFace); // rafter underside line
+  const T = (z: number) => Lr(z) + rv; // rafter top = underside of the roof boards
+  const floorY = sk + fd;
+  const floorTop = floorY + ft_;
+  const panels: Panel[] = [];
+  // Posts: corners, plus middle posts so no header or skid runs more than 6' between posts; a tool shed adds door posts.
+  const nX = Math.max(2, Math.ceil((W - 2 * st - pw) / 72) + 1);
+  const cols = Array.from({ length: nX }, (_, k) => st + (k * (W - 2 * st - pw)) / (nX - 1));
+  const doorW = open ? 0 : Math.min(32, W - 2 * (st + pw) - 2 * pw - 12);
+  const doorCols = open || doorW < 20 ? [] : [W / 2 - doorW / 2 - pw, W / 2 + doorW / 2];
+  type Post = { name: string; x: number; z: number };
+  const posts: Post[] = [];
+  const colName = (k: number) => (k === 0 ? "left" : k === nX - 1 ? "right" : nX === 3 ? "middle" : `middle ${k}`);
+  cols.forEach((x, k) => {
+    posts.push({ name: `Back post ${colName(k)}`, x, z: zB });
+    if (!doorCols.some((d) => Math.abs(d - x) < pw + 2)) posts.push({ name: `Front post ${colName(k)}`, x, z: zF });
+  });
+  doorCols.forEach((x, k) => posts.push({ name: `Door post ${k ? "right" : "left"}`, x, z: zF }));
+  const postH = (p: Post) => (p.z === zB ? hbTop - fd : hfTop - fd) - sk;
+  for (const p of posts) {
+    if (post4) panels.push(panel("upright", p.name, p.x, sk, p.z, pw, postH(p), pd, postId));
+    else for (const [i, ply] of (["outer", "inner"] as const).entries()) panels.push(panel("upright", `${p.name} ${ply}`, p.x + 1.5 * i, sk, p.z, 1.5, postH(p), pd, postId));
+  }
+  // Skids on pavers under each row of posts (a middle skid when the joists would run past 4').
+  const centres = cols.map((x) => x + pw / 2);
+  const skidZs: [string, number][] = [["Back", zB], ...(zFace - zB > 60 ? [["Middle", (zB + zFace) / 2 - 1.75] as [string, number]] : []), ["Front", zFace - (post4 ? 3.5 : 3)]];
+  for (const [nm, z] of skidZs) {
+    const pieces = splitRun(st, W - st, centres);
+    pieces.forEach(([a, e], i) => {
+      const tag = sp(placeWord(pieces.length, i, "x"));
+      if (post4) panels.push(panel("rail", `${nm} skid${tag}`, a, 0, z, e - a, sk, 3.5, skidId));
+      else for (const [k, ply] of (["outer", "inner"] as const).entries()) panels.push(panel("rail", `${nm} skid${tag} ${ply}`, a, 0, z + 1.5 * k, e - a, sk, 1.5, skidId));
+    });
+  }
+  // Floor joists across the skids, front to back, at 16" on centre under 1× boards or 24" under 2×, one beside every post.
+  const oc = ft_ < 1 ? 16 : 24;
+  const blocks = posts.map((p) => [p.x, p.x + pw] as [number, number]).sort((a, b) => a[0] - b[0]);
+  const bays: [number, number][] = [];
+  let at = st;
+  for (const [a, b] of blocks) {
+    if (a - at >= 1.5) bays.push([at, a]);
+    at = Math.max(at, b);
+  }
+  if (W - st - at >= 1.5) bays.push([at, W - st]);
+  const joistXs: number[] = [];
+  for (const [a, b] of bays) {
+    const n = b - a < 3 ? 1 : Math.max(2, Math.ceil((b - a - 1.5) / oc) + 1);
+    for (let i = 0; i < n; i++) joistXs.push(n === 1 ? a : a + ((b - a - 1.5) * i) / (n - 1));
+  }
+  joistXs.forEach((x, i) => panels.push(panel("rail", `Floor joist ${i + 1}`, x, sk, zB, 1.5, fd, zFace - zB, frameId)));
+  // Side girts between the back and front posts carry the end boards: one at floor level, one halfway up.
+  const midY = (floorTop + hbTop - fd) / 2 - 1.75;
+  for (const [side, x] of [["Left", st], ["Right", W - st - 1.5]] as const) {
+    panels.push(panel("rail", `${side} bottom girt`, x, sk, zB + pd, 1.5, fd, zF - zB - pd, frameId));
+    panels.push(panel("rail", `${side} middle girt`, x, midY, zB + pd, 1.5, 3.5, zF - zB - pd, frameId));
+  }
+  const between = (z: number) => posts.filter((p) => p.z === z).map((p) => p.x).sort((a, b) => a - b);
+  const backXs = between(zB);
+  backXs.slice(0, -1).forEach((x, k) => panels.push(panel("rail", `Back middle girt${backXs.length > 2 ? ` ${k + 1}` : ""}`, x + pw, midY, zB, backXs[k + 1] - x - pw, 3.5, 1.5, frameId)));
+  if (!open) {
+    const frontXs = between(zF);
+    frontXs.slice(0, -1).forEach((x, k) => {
+      if (doorCols.length && Math.abs(x - doorCols[0]) < 0.01) return; // the door opening
+      panels.push(panel("rail", `Front middle girt${frontXs.length > 2 ? ` ${k + 1}` : ""}`, x + pw, midY, zFace - 1.5, frontXs[k + 1] - x - pw, 3.5, 1.5, frameId));
+    });
+  }
+  // Floor boards across the joists, 1" apart in a firewood shed for airflow, 1/4" in a tool shed; each row stops at the posts it meets.
+  const fg = open ? 1 : 0.25;
+  const rows = Math.max(1, Math.floor((zFace - zB + fg) / (ff + fg)));
+  const rowGap = rows > 1 ? (zFace - zB - rows * ff) / (rows - 1) : 0;
+  const joistCs = joistXs.map((x) => x + 0.75);
+  for (let r = 0; r < rows; r++) {
+    const z = zB + r * (ff + rowGap);
+    const hit = posts.filter((p) => p.z < z + ff - 0.01 && p.z + pd > z + 0.01).map((p) => [p.x, p.x + pw] as [number, number]).sort((a, b) => a[0] - b[0]);
+    // Rows clear of the posts stop 1/4" shy of the end boards so water drains past them.
+    const runs: [number, number][] = [];
+    let x0 = st + 0.25;
+    for (const [a, b] of hit) {
+      if (a - x0 >= 2) runs.push([x0, a]);
+      x0 = Math.max(x0, b);
+    }
+    if (W - st - 0.25 - x0 >= 2) runs.push([x0, W - st - (x0 > W - st - pw - 0.01 ? 0 : 0.25)]);
+    const pieces = runs.flatMap(([a, b]) => splitRun(a, b, joistCs));
+    pieces.forEach(([a, e], i) => panels.push(panel("deck", `Floor board ${r + 1}${sp(placeWord(pieces.length, i, "x"))}`, a, floorY, z, e - a, ft_, ff, floorId)));
+  }
+  // Doubled headers on the post tops, front and back, flush with the outside face; each ply breaks over a post.
+  for (const [nm, top, z] of [["Front", hfTop, zFace - 3], ["Back", hbTop, zB]] as const) {
+    for (const [k, ply] of (["inner", "outer"] as const).entries()) {
+      const pieces = splitRun(st, W - st, centres);
+      const zz = nm === "Front" ? z + 1.5 * k : z + 1.5 * (1 - k);
+      pieces.forEach(([a, e], i) => panels.push(panel("rail", `${nm} header${sp(placeWord(pieces.length, i, "x"))} ${ply}`, a, top - fd, zz, e - a, fd, 1.5, frameId)));
+    }
+  }
+  // Rafters front to back at 24" on centre, notched over both headers, overhanging the front.
+  const nR = Math.max(2, Math.ceil((W - 2 * st - 1.5) / 24) + 1);
+  const rafterXs = Array.from({ length: nR }, (_, i) => st + ((W - 2 * st - 1.5) * i) / (nR - 1));
+  const rafterPts: [number, number][] = [
+    [zB, T(zB)], [zB, hbTop], [zB + 3, hbTop], [zFace - 3, Lr(zFace - 3)], [zFace - 3, hfTop], [zFace, hfTop], [zE, Lr(zE)], [zE, T(zE)],
+  ];
+  const angle = Math.round((Math.atan(s) * 180) / Math.PI);
+  const rafterLen = Math.ceil(((zE - zB) / cos + fd * sin) * 8) / 8;
+  rafterXs.forEach((x, i) =>
+    panels.push(yzPanel("rail", `Rafter ${i + 1}`, x, 1.5, rafterPts, frameId, {
+      blank: { lengthIn: rafterLen, widthIn: fd, thicknessIn: 1.5 },
+      cutNote: `Cut ${inchFrac(rafterLen)}" long, both ends plumb at ${angle}°, with a 3" seat notched where it sits on each header.`,
+    })),
+  );
+  // Roof boards side by side down the slope, from a 2" back overhang to the front overhang, 3" past each end.
+  const z0 = -ovB;
+  const slopeLen = (zE - z0) / cos;
+  const nB = Math.ceil(slopeLen / rf - 0.05);
+  const rafterCs = rafterXs.map((x) => x + 0.75);
+  for (let i = 0; i < nB; i++) {
+    const w = Math.min(rf, slopeLen - i * rf);
+    if (w < 1) break;
+    const pz = z0 + i * rf * cos;
+    const py = T(z0) + i * rf * sin;
+    const pts: [number, number][] = [[pz, py], [pz + w * cos, py + w * sin], [pz + w * cos - bt * sin, py + w * sin + bt * cos], [pz - bt * sin, py + bt * cos]];
+    const pieces = splitRun(-ovS, W + ovS, rafterCs);
+    pieces.forEach(([a, e], k) =>
+      panels.push({
+        ...yzPanel("top", `Roof board ${i + 1}${sp(placeWord(pieces.length, k, "x"))}`, a, e - a, pts, roofId, {
+          blank: { lengthIn: Math.ceil((e - a) * 8) / 8, widthIn: Math.round(w * 8) / 8, thicknessIn: bt },
+          ...(w < rf - 0.1 ? { cutNote: `Rip to ${inchFrac(w)}" wide for the last course at the ridge.` } : {}),
+        }),
+      }),
+    );
+  }
+  // Wall boards: the back across the full width, the ends from the back boards to the front face (to the front boards on a tool shed).
+  const g = open ? 1 : 0.125;
+  const spread = (len: number) => {
+    const c = Math.max(1, Math.floor((len + g) / (sf + g)));
+    const gap = c > 1 ? (len - c * sf) / (c - 1) : 0;
+    return Array.from({ length: c }, (_, i) => i * (sf + gap));
+  };
+  const backTop = T(0);
+  spread(W).forEach((x, i) => panels.push(panel("side", `Back board ${i + 1}`, x, 1, 0, sf, backTop - 1, st, slatId)));
+  for (const [side, x] of [["Left", 0], ["Right", W - st]] as const)
+    spread(zFace - zB).forEach((z, i) => {
+      const a = zB + z;
+      const b = a + sf;
+      panels.push(yzPanel("side", `${side} end board ${i + 1}`, x, st, [[a, 1], [b, 1], [b, T(b)], [a, T(a)]], slatId, {
+        blank: { lengthIn: Math.ceil((T(b) - 1) * 8) / 8, widthIn: sf, thicknessIn: st },
+        cutNote: `Cut the top at ${angle}° to follow the roof.`,
+      }));
+    });
+  if (!open) {
+    const dl = doorCols.length ? doorCols[0] + pw / 2 + 1 / 16 : W;
+    const dr = doorCols.length ? doorCols[1] + pw / 2 - 1 / 16 : W;
+    for (const [nm, a, b] of [["Front board", 0, dl], ["Front board right", dr, W]] as const) {
+      if (b - a < sf) continue;
+      spread(b - a).forEach((x, i) => panels.push(panel("side", `${nm} ${i + 1}`, a + x, 1, zFace, sf, hfTop - 1, st, slatId)));
+    }
+    if (doorCols.length) {
+      const doorTop = hfTop - fd - 0.25;
+      const dw = dr - dl;
+      const c = Math.max(2, Math.round(dw / sf));
+      const bw = dw / c;
+      for (let i = 0; i < c; i++) panels.push(panel("side", `Door board ${i + 1}`, dl + i * bw, floorY, zFace, bw, doorTop - floorY, st, slatId));
+      for (const [nm, y] of [["bottom", floorTop + 4], ["top", doorTop - 4 - sf]] as const)
+        panels.push(panel("cleat", `Door ${nm} batten`, doorCols[0] + pw + 0.25, y, zFace - st, doorW - 0.5, sf, st, slatId));
+    }
+  }
+  // Overall: the real extents, roof overhangs included.
+  const bb = panels.flatMap((p) => panelWorldCorners(p));
+  const minX = Math.min(...bb.map((q) => q.x));
+  const minZ = Math.min(...bb.map((q) => q.z));
+  for (const p of panels) {
+    p.position.x -= minX;
+    p.position.z -= minZ;
+  }
+  const r16 = (n: number) => Math.round(n * 16) / 16;
+  const OW = r16(Math.max(...bb.map((q) => q.x)) - minX);
+  const OD = r16(Math.max(...bb.map((q) => q.z)) - minZ);
+  const OH = r16(Math.max(...bb.map((q) => q.y)));
+  const head = (lower.match(/\b(?:firewood|wood|log|tool|garden|storage|bike|potting)\s*(?:sheds?|stores?|shelters?)\b|\b(?:wood|tool|log)sheds?\b|\blean[-\s]?to(?:\s+sheds?)?\b/)?.[0] ?? "shed").replace(/s$/, "").replace(/\s+/g, " ");
+  const title = head.charAt(0).toUpperCase() + head.slice(1);
+  const name = `${title} ${ft(W)} × ${ft(D)}`;
+  const postTalk = post4 ? "4×4" : `doubled ${label(frameN)}`;
+  const nPosts = posts.length;
+  const stackW = W - 2 * (st + pw);
+  const logRows = Math.max(1, Math.floor((zFace - zB) / 16));
+  const stackH = hbTop - fd - floorTop;
+  const cuFt = (stackW * logRows * 16 * stackH) / 1728;
+  const faceCords = Math.round((cuFt / 42.67) * 4) / 4;
+  const cord = Math.round((cuFt / 128) * 100) / 100;
+  const notes = [
+    open
+      ? `${name}: a single-slope roof over a raised slatted floor, open at the front for loading. ${nPosts} ${postTalk} posts stand on ${post4 ? "4×4" : `doubled ${label(frameN)}`} skids laid on concrete pavers, ${label(frameN)} floor joists run front to back across the skids at ${oc}" on centre, and ${label(floorN)} floor boards sit 1" apart on top, ${inchFrac(floorTop)}" off the ground so air moves under the wood.`
+      : `${name}: a single-slope roof over a raised board floor. ${nPosts} ${postTalk} posts stand on ${post4 ? "4×4" : `doubled ${label(frameN)}`} skids laid on concrete pavers, ${label(frameN)} floor joists run front to back across the skids at ${oc}" on centre, and ${label(floorN)} floor boards sit on top, ${inchFrac(floorTop)}" off the ground.`,
+    `Walls: ${label(frameN)} girts between the posts carry ${label(slatN)} boards on the back and both ends${open ? `, spaced 1" apart so the stack dries` : " and across the front"}; the end boards are cut along the roof slope.${!open && doorCols.length ? ` A ${inchFrac(doorW)}" door of ${label(slatN)} boards on two battens hangs on two 8" T-hinges from the door post, with a hasp on the other side.` : ""}`,
+    `Roof: ${nR} ${label(frameN)} rafters at 24" on centre sit notched over doubled ${label(frameN)} headers, ${inchFrac(hfTop)}" up at the front and ${inchFrac(hbTop)}" at the back (a 3-in-12 slope that sheds rain to the back), with ${label(roofN)} roof boards under corrugated metal or asphalt roofing, overhanging ${ovF}" at the front, ${ovB}" at the back and ${ovS}" at each end.`,
+    ...(open ? [`Holds two rows of 16" logs stacked ${inchFrac(Math.max(0, stackH))}" high across ${inchFrac(stackW)}": about ${faceCords} face cords (4' × 8' rows of 16" logs), ${cord} of a full cord.`] : []),
+    `Set each paver level on compacted gravel. Pressure-treated lumber rated for ground contact on the skids and posts, exterior screws, and a hurricane tie where each rafter crosses a header. Guidance only.`,
+  ];
+  return project(prompt, name, panels, OW, OH, OD, notes, frameId);
+}
+
 export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { width: number; height: number; depth: number }): YardProject {
+  if (kind === "shed") return buildShed(prompt, size);
   if (kind === "picnic") return buildPicnicTable(prompt, size);
   if (kind === "enclosure") return buildEnclosure(prompt, purposeOf(prompt.toLowerCase())!, size);
   return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size) : buildSwingSet(prompt, size);

@@ -23,11 +23,20 @@ export type SuspensionSpec = {
   stays: boolean;
   /** Cable low point above the deck, as a share of the tower above the deck. */
   sag: number;
+  /** High-level walkways between the tower tops (share of tower height): the side-span chains end there and the central span opens below. */
+  walkway?: number;
 };
 /** Golden Gate: 746 ft towers, 220 ft deck, 4,200 ft main span between 1,125 ft side spans. */
 export const GOLDEN_GATE: SuspensionSpec = { lOverH: 6450 / 746, deck: 220 / 746, main: 4200 / 6450, tower: "deco", stays: false, sag: (276 - 220) / 526 };
 /** Brooklyn: 276 ft towers, 127 ft deck, 1,595 ft main span between 930 ft side spans. */
 export const BROOKLYN: SuspensionSpec = { lOverH: 3455 / 276.5, deck: 127 / 276.5, main: 1595.5 / 3455, tower: "gothic", stays: true, sag: 21.5 / 149.5 };
+
+/**
+ * Tower Bridge: 244 m long between the shore anchorages, 65 m Gothic towers 61 m apart over the bascules,
+ * the roadway about 9 m up, two high-level walkways 44 m up joining the towers, and the side spans hung
+ * from chains that run from the shore up to the walkways. The central span carries no cable.
+ */
+export const TOWER_BRIDGE: SuspensionSpec = { lOverH: 244 / 65, deck: 9 / 65, main: 61 / 244, tower: "gothic", stays: false, sag: 0, walkway: 44 / 65 };
 
 /** A typed number is the length unless a height word is typed; no number builds 72" long. */
 export function fitSuspensionTo(spec: SuspensionSpec) {
@@ -102,14 +111,30 @@ export function suspensionOps(s: Size3, spec: SuspensionSpec): FormOp[] {
   // Main cables over the tower tops, down to the deck mid-span and to the anchorages; hangers below.
   // The low point keeps a stick's width over the deck so the cable stays its own member.
   const sag = deckY + Math.max((h - deckY) * spec.sag, 0.6);
-  const sideMid = deckY + (h - deckY) * 0.4;
+  const top = spec.walkway ? h * spec.walkway : h;
+  const sideMid = deckY + (top - deckY) * 0.4;
   for (const z of [z0, z1]) {
-    const cable = [
-      ...parabola(x0, deckY, towers[0], h, sideMid, 8, z),
-      ...parabola(towers[0], h, towers[1], h, sag, 16, z).slice(1),
-      ...parabola(towers[1], h, x1, deckY, sideMid, 8, z).slice(1),
-    ];
-    ops.push(poly(cable, "support"));
+    // A walkway bridge hangs only its side spans, from chains that end at the walkway on each tower.
+    const cables = spec.walkway
+      ? [parabola(x0, deckY, towers[0] - tw, top, sideMid, 8, z), parabola(towers[1] + tw, top, x1, deckY, sideMid, 8, z)]
+      : [[
+          ...parabola(x0, deckY, towers[0], h, sideMid, 8, z),
+          ...parabola(towers[0], h, towers[1], h, sag, 16, z).slice(1),
+          ...parabola(towers[1], h, x1, deckY, sideMid, 8, z).slice(1),
+        ]];
+    for (const c of cables) ops.push(poly(c, "support"));
+    const cable = cables.flat();
+    if (spec.walkway) {
+      // Two lattice girders tower to tower: top and bottom chords, posts and diagonals between them.
+      const wa = towers[0] + tw, wb = towers[1] - tw, wy0 = top - h * 0.05;
+      for (const y of [wy0, top]) ops.push(poly([{ x: wa, y, z }, { x: wb, y, z }], "rail"));
+      const bays = Math.max(4, Math.round((wb - wa) / Math.max(h * 0.06, 0.75)));
+      for (let i = 0; i <= bays; i++) {
+        const x = wa + ((wb - wa) * i) / bays;
+        if (i > 0 && i < bays) ops.push(col(x, z, wy0, top, "leg"));
+        if (i < bays) ops.push(poly([{ x, y: i % 2 ? top : wy0, z }, { x: wa + ((wb - wa) * (i + 1)) / bays, y: i % 2 ? wy0 : top, z }], "brace"));
+      }
+    }
     for (const p of cable) {
       if (towers.some((t) => Math.abs(p.x - t) < tw * 2) || p.y - deckY < 0.4) continue;
       ops.push(col(p.x, z, deckY, p.y, "brace"));
@@ -122,7 +147,51 @@ export function suspensionOps(s: Size3, spec: SuspensionSpec): FormOp[] {
       }
     }
   }
+  if (spec.walkway) {
+    // Floor beams across both walkways.
+    const wa = towers[0] + tw, wb = towers[1] - tw, y = h * spec.walkway - h * 0.05;
+    for (let i = 1; i < 4; i++) ops.push(poly([{ x: wa + ((wb - wa) * i) / 4, y, z: z0 }, { x: wa + ((wb - wa) * i) / 4, y, z: z1 }], "rail"));
+  }
   return ops;
+}
+
+/** Named landmarks and the name a stranger knows each one by: a build of one keeps that name in its title. */
+const LANDMARK_TITLES: [RegExp, string][] = [
+  [/\bbig ben\b/, "Big Ben"],
+  [/\belizabeth tower\b|\bwestminster\b/, "Elizabeth Tower"],
+  [/\btower bridge\b/, "Tower Bridge"],
+  [/\bgolden gate\b/, "Golden Gate Bridge"],
+  [/\bbrooklyn bridge\b/, "Brooklyn Bridge"],
+  [/\bsydney harbou?r bridge\b/, "Sydney Harbour Bridge"],
+  [/\bbay bridge\b/, "Bay Bridge"],
+  [/\bverrazz?ano\b/, "Verrazzano-Narrows Bridge"],
+  [/\bmackinac\b/, "Mackinac Bridge"],
+  [/\bakashi\b/, "Akashi Kaikyō Bridge"],
+  [/\bhumber bridge\b/, "Humber Bridge"],
+  [/\bhell gate bridge\b/, "Hell Gate Bridge"],
+  [/\bbayonne bridge\b/, "Bayonne Bridge"],
+  [/\bnew river gorge\b/, "New River Gorge Bridge"],
+  [/\bleaning tower\b|\bpisa\b/, "Leaning Tower of Pisa"],
+  [/\bempire state\b/, "Empire State Building"],
+  [/\bchrysler building\b/, "Chrysler Building"],
+  [/\bspace needle\b/, "Space Needle"],
+  [/\bcn tower\b/, "CN Tower"],
+  [/\bstatue of liberty\b|\bliberty statue\b/, "Statue of Liberty"],
+  [/\btaj mahal\b/, "Taj Mahal"],
+  [/\bgiza\b|\bkhufu\b|\bgreat pyramid\b/, "Great Pyramid of Giza"],
+  [/\bcolosseum\b|\bcoliseum\b/, "Colosseum"],
+  [/\barc de triomphe\b/, "Arc de Triomphe"],
+  [/\bparthenon\b/, "Parthenon"],
+  [/\bstonehenge\b/, "Stonehenge"],
+  [/\bsydney opera\b/, "Sydney Opera House"],
+  [/\bwashington monument\b/, "Washington Monument"],
+  [/\beiffel\b/, "Eiffel Tower"],
+];
+
+/** The landmark the prompt names, in the name people know it by; null for a generic family ("clock tower"). */
+export function landmarkTitle(prompt: string): string | null {
+  const lower = prompt.toLowerCase();
+  return LANDMARK_TITLES.find(([re]) => re.test(lower))?.[1] ?? null;
 }
 
 // ── Towers ────────────────────────────────────────────────────────────────────────────────────────
@@ -174,7 +243,8 @@ const square = (y: number, h: number): P[] => [
 export function clockTowerOps(s: Size3): FormOp[] {
   const H = s.height;
   const a = H * 0.0625;
-  const stage = a * 1.3;
+  // The stage reads proud by at least half an inch a side at any scale, so a stick-built tower keeps it.
+  const stage = Math.max(a * 1.3, a + 0.5);
   const ops: FormOp[] = [];
   const shaftTop = H * 0.52, dialY = H * 0.575, stageTop = H * 0.64, belfryTop = H * 0.72, spireTop = H * 0.96;
   for (const [x, z] of [[a, a], [-a, a], [-a, -a], [a, -a]] as const) {
@@ -187,12 +257,14 @@ export function clockTowerOps(s: Size3): FormOp[] {
   for (const y of [shaftTop, stageTop]) ops.push(poly(square(y, stage), "rail"));
   ops.push(poly(square(belfryTop, a * 1.05), "rail"));
   ops.push(poly(square((belfryTop + spireTop) / 2, a * 0.56), "ring"));
-  // A dial on each face: a 12-sided ring standing in the face plane.
-  const dial = a * 0.8;
+  // A dial on each face: a ring standing in the face plane, 12 sides when each side is at least
+  // three-quarters of an inch long, fewer (down to 6) on a small model so every side is a real stick.
+  const dial = stage * 0.62;
+  const sides = Math.max(6, Math.min(12, Math.floor((2 * Math.PI * dial) / 0.75)));
   for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
     const pts: P[] = [];
-    for (let i = 0; i <= 12; i++) {
-      const t = (i / 12) * Math.PI * 2;
+    for (let i = 0; i <= sides; i++) {
+      const t = (i / sides) * Math.PI * 2;
       const u = dial * Math.cos(t), v = dial * Math.sin(t);
       pts.push(nx ? { x: nx * stage, y: dialY + v, z: u } : { x: u, y: dialY + v, z: nz * stage });
     }

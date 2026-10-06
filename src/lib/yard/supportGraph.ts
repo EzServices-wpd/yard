@@ -76,6 +76,8 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         others.filter((q) => {
           if (!vertical(q)) return false;
           const B = boxes.get(q.id)!;
+          // Wall boards at a rail's ends (or grazing a span's end at an edge) are skin fastened later, never what carries it.
+          if (q.type === "side" && (!flat || overlap(A, B, oa) <= 0.05)) return false;
           const meets = side === 0 ? Math.abs(B.max[la] - A.min[la]) <= 0.1 : Math.abs(B.min[la] - A.max[la]) <= 0.1;
           // A rail may sit just inside the post's face (an apron on the leg's inner face): edge contact counts.
           return meets && overlap(A, B, 1) >= ext[1] - 0.05 && overlap(A, B, oa) >= (flat ? 0.5 * ext[oa] : -0.1);

@@ -30,6 +30,7 @@ import { detectForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRec
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
+import { landmarkTitle } from "./formLandmarks";
 import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed, petSurfaceHeight, tidyNotes } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
@@ -252,6 +253,13 @@ function withAxisOrderNote(project: YardProject, args: Parameters<typeof generat
   return { ...project, notes: [...notes.slice(0, 1), note, ...notes.slice(1)] };
 }
 
+/**
+ * Notes about the engine's own workings (topology pruning, stock tiling "resolution", the queried wire,
+ * weld counts) stay inside; the person reads what to build and how.
+ */
+const ENGINE_NOTE =
+  /^Topology(?:-lite)? ·|^Resolution ·|^Form: .*(?:queried wire|stock is mapped)|^Proportions from the form query|· stock mapped onto the form, not a hull\.$|^Parametric form\.|^Crossings split into end-to-end joints|^Braces stay on the form|^Frame first\. Braces stay on the form|^\d+ nodes · \d+ members before stock cuts$|^Connected structure · \d+ joints/i;
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
@@ -265,10 +273,13 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   // The prompt box keeps the person's own words; every build's notes are tidied the same way.
   // Engine-internal notes (topology pruning) stay inside; a member count is the pieces on the bench.
   const pieces = done.instances?.length ?? 0;
+  // A named landmark keeps the name people know it by ("Big Ben", not its family "Clock tower").
+  const landmark = done.historic ? landmarkTitle(prompt) : null;
   const tidy = {
     ...done,
+    ...(landmark ? { name: landmark } : {}),
     notes: tidyNotes(done.notes ?? [])
-      .filter((n) => !/^Topology(?:-lite)? ·/.test(n))
+      .filter((n) => !ENGINE_NOTE.test(n))
       .map((n) => n.replace(/^(\d+ joints? · )\d+ members? after weld$/, (_m, j: string) => `${j}${pieces} member${pieces === 1 ? "" : "s"}`))
       .map(positiveSentence),
   };
