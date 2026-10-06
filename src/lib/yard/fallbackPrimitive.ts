@@ -65,6 +65,8 @@ export function pickPrimitive(noun: string): Prim | null {
     if (TOY.test(lower)) return prim("platform bed", "bed frame on legs", 4.5, 2.5, 3.5);
   }
   if (TOY.test(lower)) return null;
+  // A head that names a tower (lighthouse) is that tower, not a house-shaped carcase.
+  if (/lighthouse|tower|steeple|minaret|windmill/.test(head)) return null;
   if (/(hutch|coop|kennel|house|cabinet|theater|theatre|shed|cupboard|locker)$/.test(head)) {
     if (/playhouse/.test(whole)) return prim("cabinet", "carcase box", 48, 60, 48);
     if (TOY.test(lower) || /dollhouse/.test(whole)) return prim("cabinet", "carcase box", 30, 30, 14);

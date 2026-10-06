@@ -5,6 +5,7 @@ import { namedLumberDetectPhrases } from "./namedLumberSpecies";
 import { figureStrokes } from "./figure";
 import { stripEntityIds } from "./wiki";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
+import { archBridgeOps, BROOKLYN, clockTowerOps, cnTowerOps, fitSuspensionTo, GOLDEN_GATE, pisaTowerOps, suspensionOps } from "./formLandmarks";
 export type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 import {
   tajOps,
@@ -76,6 +77,8 @@ type Hit = {
   historic?: boolean;
   build: (s: Size3) => FormOp[];
   fit?: (s: Size3, prompt: string) => Size3;
+  /** Said when the landmark is built from its nearest family rather than its own spec. */
+  note?: string;
 };
 
 const HITS: Hit[] = [
@@ -87,15 +90,19 @@ const HITS: Hit[] = [
   { re: /empire state/, kind: "tower", name: "Empire State", historic: true, build: empireStateOps },
   { re: /chrysler building/, kind: "tower", name: "Chrysler", historic: true, build: empireStateOps },
   { re: /space needle/, kind: "tower", name: "Space Needle", historic: true, build: spaceNeedleOps },
-  { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: spaceNeedleOps },
-  { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaOps },
-  { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: goldenGateOps, fit: fitSuspension },
-  { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: goldenGateOps, fit: fitSuspension },
+  { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: cnTowerOps },
+  { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaTowerOps },
+  { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE) },
+  { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: (s) => suspensionOps(s, BROOKLYN), fit: fitSuspensionTo(BROOKLYN) },
+  { re: /sydney harbou?r bridge/, kind: "bridge", name: "Sydney Harbour Bridge", historic: true, build: archBridgeOps, fit: fitArchBridge },
+  // Landmarks without their own spec take the nearest family, and say so.
+  { re: /tower bridge|bay bridge|verrazz?ano|mackinac|akashi|humber bridge|suspension bridge/, kind: "bridge", name: "Suspension bridge", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE), note: "Built from the suspension-bridge family at Golden Gate proportions — the nearest spec Yard has." },
+  { re: /arch bridge|hell gate bridge|bayonne bridge|new river gorge/, kind: "bridge", name: "Arch bridge", historic: true, build: archBridgeOps, fit: fitArchBridge, note: "Built from the through-arch family at Sydney Harbour proportions — the nearest spec Yard has." },
   { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps },
   { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps },
   { re: /stonehenge/, kind: "custom", name: "Stonehenge", historic: true, build: stonehengeOps },
   { re: /sydney opera/, kind: "dome", name: "Sydney Opera", historic: true, build: sydneyOps },
-  { re: /big ben|clock tower|westminster/, kind: "tower", name: "Clock tower", historic: true, build: clockOps },
+  { re: /big ben|clock tower|westminster|elizabeth tower/, kind: "tower", name: "Clock tower", historic: true, build: clockTowerOps },
   { re: /washington monument|obelisk/, kind: "tower", name: "Obelisk", historic: true, build: obeliskOps },
   { re: /lighthouse/, kind: "tower", name: "Lighthouse", build: lighthouseOps },
   { re: /windmill/, kind: "tower", name: "Windmill", build: windmillOps },
@@ -150,6 +157,17 @@ export function isLockedForm(kind: StructureKind): boolean {
 }
 
 /** The first HITS recipe the prompt names, with the same steals detectForm refuses. Weekend mechs win first. */
+/** Through-arch bridge: span 3.75× the arch height; a typed number is the length unless a height word is typed. */
+function fitArchBridge(s: Size3, prompt: string): Size3 {
+  const lower = prompt.toLowerCase();
+  const ft = lower.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
+  const inch = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/);
+  const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
+  const ratio = 503 / 134;
+  const h = /tall|high|height/.test(lower) && n ? n : (n || 60) / ratio;
+  return { width: h * ratio, height: h, depth: Math.max(4, Math.min(h * 0.35, 12)) };
+}
+
 function matchHit(prompt: string): Hit | null {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
@@ -234,6 +252,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
         hit.historic
           ? "Published / historic proportions, scaled to the size you asked for."
           : "Parametric form. Frame first, then brace. Support if it is slender.",
+        ...(hit.note ? [hit.note] : []),
       ],
       ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
       strokes,
@@ -295,7 +314,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
           ? "Published / historic proportions, scaled to the size you asked for."
           : "Warren truss · continuous chords, densified at the named stock.",
       ],
-      ops: named ? goldenGateOps(fitSuspension(size, prompt)) : bridgeOps(size),
+      ops: named ? (/brooklyn/.test(prompt.toLowerCase()) ? suspensionOps(fitSuspensionTo(BROOKLYN)(size, prompt), BROOKLYN) : suspensionOps(fitSuspensionTo(GOLDEN_GATE)(size, prompt), GOLDEN_GATE)) : bridgeOps(size),
     };
   }
   const lower = prompt.toLowerCase();
