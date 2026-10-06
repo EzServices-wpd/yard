@@ -37,6 +37,7 @@ import {
   classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk,
 } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
+import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { detectMaterial, isWireStock } from "./promptHelpers";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
@@ -89,6 +90,20 @@ import {
   seatingLoungeSeatDeck,
   sleepFrameLeg,
 } from "./fittedBuilders";
+
+/** The face of a typed ¾" board (1×4 … 1×12), named the way it was typed ("Walnut 1×8"). */
+function typedBoardFace(prompt: string): { face: number; stock: string } | null {
+  const board = detectMaterial(prompt);
+  const face = board?.dims?.width;
+  if (board?.category !== "lumber" || board.formFactor !== "board" || board.dims?.height !== 0.75 || !face) return null;
+  const size = board.name.match(/\d\s*[×x]\s*\d+/)?.[0].replace(/\s/g, "").replace("x", "×") ?? board.name;
+  const species = namedLumberFromPrompt(prompt)?.display;
+  return { face, stock: species ? `${species} ${size}` : size };
+}
+
+const depthTypedIn = (prompt: string) =>
+  /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
+  /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
 
 export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (spec.walls && (spec.walls.leftAngleDeg > 0.2 || spec.walls.rightAngleDeg > 0.2)) {
@@ -2132,6 +2147,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !/cabinet|jar|spice|wine|bottle|rack for|media|picture|bedside|cubb/.test(lowerPrompt) &&
     // "bookshelf in the wall nook" is the fitted bookcase in that opening, not cleated wall shelves.
     !isStorageInOpening(lowerPrompt);
+  // A wall or floating shelf cut from a typed ¾" board is one board deep (1×8 → 7 ¼") unless a depth is typed.
+  const shelfFace = (/floating|wall-?mounted/.test(lowerPrompt) || wallShelfCleats) && /shel/.test(lowerPrompt) ? typedBoardFace(prompt) : null;
+  if (shelfFace) {
+    const one = /\bshelf\b/.test(lowerPrompt) && !/\bshelves\b/.test(lowerPrompt) && (spokenTierCount(lowerPrompt) ?? 1) <= 1;
+    const said = `${one ? "The shelf is" : "Each shelf is"} ${inchFrac(shelfFace.face)}" deep, worked out from the ${shelfFace.stock}'s real face. Type a depth to change it.`;
+    // The parse measured its board line against another default; this line is the one the shelves are built to.
+    spec = { ...spec, cueNotes: [...(spec.cueNotes ?? []).filter((c) => !/^The ¾" parts are one /.test(c)), ...(depthTypedIn(prompt) ? [] : [said])] };
+  }
   // Cleat-mounted singular wall shelf: honor typed W×D×thickness as ONE shelf (not multi stack).
   const shelfThick = spokenShelfThickness(prompt);
   const singularCleatShelf =
@@ -2141,10 +2164,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     (/cleat/.test(lowerPrompt) || shelfThick != null || /singular|single/.test(lowerPrompt));
   if (singularCleatShelf) {
     const cleatH = 2.5;
-    const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
-      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
-    const Df = depthTyped ? D : Math.min(D, 8);
+    const depthTyped = depthTypedIn(prompt);
+    const Df = depthTyped ? D : shelfFace?.face ?? Math.min(D, 8);
     const T = shelfThick != null ? shelfThick : P;
     // Ledger cleat against the wall; one thick shelf sits on it and screws down.
     panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
@@ -2192,10 +2213,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     (/floating|wall-?mounted|wall\s+shel/.test(lowerPrompt) || wallShelfCleats) &&
     !/cabinet|jar|spice|wine|bottle|media|picture|bedside|cubb|bookcase|bookshelf/.test(lowerPrompt)
   ) {
-    const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
-      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
-    const Df = depthTyped ? D : Math.min(D, 8);
+    const depthTyped = depthTypedIn(prompt);
+    const Df = depthTyped ? D : shelfFace?.face ?? Math.min(D, 8);
     const heightTyped = /(?:tall|high|height)\b/i.test(prompt);
     // Bracket rise: typed tall wins; else ~6–8″ under the shelf (not a silent 18″ backstop).
     const bracketH = heightTyped
@@ -2215,7 +2234,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
     const floatStem = /floating/.test(lowerPrompt) ? "Floating shelf" : "Wall shelf";
     const name = classDefaultDensifyTitle(floatStem, prompt, { width: W, height: outH, depth: Df });
-    const assumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df });
+    const assumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df }).filter((n) => !shelfFace || !/" deep \(/.test(n));
     return {
       id: createId("proj"),
       name,
@@ -2275,10 +2294,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       Math.min(8, spokenN ?? (singularShelf ? 1 : u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3)),
     );
     const cleatH0 = 2.5;
-    const depthTyped =
-      /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
-      /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
-    const Df = depthTyped ? D : Math.min(D, 8);
+    const depthTyped = depthTypedIn(prompt);
+    const Df = depthTyped ? D : shelfFace?.face ?? Math.min(D, 8);
     // Typed overall H wins — densify lip/backstop/spacers so envelope AABB == typed H
     // (do not invent gap=10 stacks that overshoot, then hide behind snapHud).
     // Only a typed height is an envelope: an untyped class height never invents a tall backstop.
@@ -2316,7 +2333,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       // The title size is the model's overall (W × H × D), never the shelf board's W × D × thickness.
       const name = classDefaultDensifyTitle(floatStem, prompt, { width: W, height: outH, depth: Df });
       // Wall shelf legacy stamped W×D×P — densify gate only covers floating shelf class.
-      const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df });
+      const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df }).filter((n) => !shelfFace || !/" deep \(/.test(n));
       return {
         id: createId("proj"),
         name,

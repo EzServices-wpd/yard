@@ -768,6 +768,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 18
                     : isStorageHutch(lower)
                       ? 72
+                  // A broom or "tall" cabinet stands full height, like a pantry.
+                  : program === "storage" && /\b(?:broom|tall)\b/.test(lower)
+                    ? 84
                   : program === "storage"
                     ? 30
                     : /linen/.test(lower)

@@ -925,11 +925,14 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
   const fold = affordances.includes("fold-down-board");
   const panels: Panel[] = [];
   const face = shallowWallCabinetFace(D, backT);
-  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
-  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  // The doors close on the carcase front, so the box is the typed depth less the door: shelves then stop
+  // the hinge clearance short of the door, not a door-thickness more.
+  const box = face.doorZ;
+  panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, box));
+  panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, box));
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
-  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+  panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, box - backT));
+  panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, box - backT));
   if (!fold) {
     const innerH = H - P * 2;
     for (let i = 1; i <= shelfN; i++) {

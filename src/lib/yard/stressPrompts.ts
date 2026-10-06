@@ -1,4 +1,4 @@
-/** Stress prompts from passes 1–6. Every one must keep its size line equal to the model and its cues honest. */
+/** Stress prompts from passes 1–7. Every one must keep its size line equal to the model and its cues honest. */
 export const STRESS_PROMPTS = [
   "linen closet 31.5 wide 78 tall 16 deep",
   "linen cupboard in the hallway alcove 28 wide 80 tall 15 deep with 2 doors",
@@ -29,4 +29,16 @@ export const STRESS_PROMPTS = [
   "pine dog bed frame 36 wide",
   "cedar bunny hutch 48 wide",
   "plywood cat feeding station 24 wide",
+  "guinea pig hutch",
+  "rabbit hutch 48x24x36",
+  "chicken coop",
+  "large dog feeding station",
+  "dog feeding table",
+  "walnut 1x8 wall shelf",
+  "maple 1x6 floating shelf 24 long",
+  "pine 1x12 wall shelf with 2 brackets",
+  "broom cabinet",
+  "pine cat bed 20 wide",
+  "hall closet 36 wide 84 tall 24 deep",
+  "cedar 2x4 potting bench 48 wide",
 ];

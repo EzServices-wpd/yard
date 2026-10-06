@@ -29,7 +29,7 @@ import { detectForm, subjectFromPrompt, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
+import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed, petSurfaceHeight, tidyNotes } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock } from "./promptHelpers";
@@ -47,7 +47,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
-import { buildAccessRamp, buildScratchingPost, isScratchingPost } from "./petGear";
+import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure, isScratchingPost } from "./petGear";
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
@@ -207,7 +207,8 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
       /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
     if (sized) return project;
   }
-  const extra = untypedAxisAssumedNotes(prompt, project.notes ?? [], project.overall, typed);
+  // Cue notes land on the notes next; an axis one of them already explains is not assumed.
+  const extra = untypedAxisAssumedNotes(prompt, [...(project.fitted?.cueNotes ?? []), ...(project.notes ?? [])], project.overall, typed);
   return extra.length ? { ...project, notes: [...(project.notes ?? []), ...extra] } : project;
 }
 
@@ -238,8 +239,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt),
     args,
   );
-  // The prompt box keeps the person's own words.
-  const built = done.typedPrompt ? { ...done, typedPrompt: said } : done;
+  // The prompt box keeps the person's own words; every build's notes are tidied the same way.
+  const tidy = { ...done, notes: tidyNotes(done.notes ?? []) };
+  const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
   // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
@@ -281,10 +283,13 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   // primitive, in the stock that was typed.
   // Only when the build found no recipe for the head ("dog bed from a pallet" keeps its pallet bed).
   const modifier = figureWordModifiesHead(noun) && (Boolean(core.unmatched) || core.kind === "figure");
-  const p = stockTyped && !toyBed && !modifier ? null : pickPrimitive(noun);
-  if (!p || !looksLikeFallback(core, noun)) return core;
+  // A pet's feeding surface built at people scale (a 42" counter, a 40" table) is rebuilt at the pet's scale.
+  const o = core.overall;
+  const petScale = petSurfaceHeight(noun) != null && (o.height > 20 || Math.max(o.width, o.depth) > 36);
+  const p = stockTyped && !toyBed && !modifier && !petScale ? null : pickPrimitive(noun);
+  if (!p || (!petScale && !looksLikeFallback(core, noun))) return core;
   let remapped = primitivePrompt(p, prompt);
-  if (stockTyped && modifier) {
+  if (stockTyped && (modifier || petScale)) {
     const subject = new Set(subjectFromPrompt(noun).toLowerCase().split(/\s+/));
     remapped = `${noun.split(/\s+/).filter((w) => !subject.has(w.toLowerCase())).join(" ")} ${remapped}`.trim();
   }
@@ -925,6 +930,8 @@ function generateRaw(
     }
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
+  // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.
+  if (!formOverride && !opts.fittedOverride && isPetEnclosure(lower)) return buildPetEnclosure(prompt, opts.sizeOverride);
   if (!formOverride && !opts.fittedOverride && !opts.sizeOverride) {
     if (isAccessRamp(lower)) return buildAccessRamp(prompt);
     if (isScratchingPost(lower)) return buildScratchingPost(prompt);

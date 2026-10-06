@@ -1360,6 +1360,33 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: `About ${rope[1]} ft wraps the post, tight turns, stapled at both ends.`,
     });
   }
+  const mesh = notes.match(/½" galvanized hardware cloth, ([\d ½¼¾/]+)" × ([\d ½¼¾/]+)"/);
+  if (mesh && !/hardware cloth/i.test(have)) {
+    const inches = (t: string) => t.trim().split(/\s+/).reduce((n, w) => n + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
+    const [a, b] = [inches(mesh[1]), inches(mesh[2])].sort((x, y) => x - y);
+    const roll = `${a <= 24 ? 24 : a <= 36 ? 36 : 48} in × ${b <= 120 ? 10 : 25} ft`;
+    extra.push({
+      name: `1/2" galvanized hardware cloth, ${roll}`,
+      quantity: 1,
+      unit: "roll",
+      catalogId: "hardware-cloth",
+      searchQuery: `1/2 inch galvanized hardware cloth ${roll.replace("×", "x")}`,
+      estimatedCost: 24,
+      notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
+    });
+  }
+  const butts = notes.match(/\btwo 2" butt hinges\b/);
+  if (butts && !/butt hinge/i.test(have)) {
+    extra.push({
+      name: '2" butt hinges',
+      quantity: 2,
+      unit: "each",
+      catalogId: "butt-hinge-2",
+      searchQuery: "2 inch butt hinge",
+      estimatedCost: 6,
+      notes: "Two along the back edge, as the notes say.",
+    });
+  }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
       name: "GRK RSS #9 x 3-1/8 structural screws",

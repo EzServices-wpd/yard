@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { STRESS_PROMPTS } from "./stressPrompts";
+import { inchFrac } from "./inchText";
 
 
 const build = (prompt: string) => {
@@ -94,7 +95,7 @@ describe("tier counts are honored and the title is the model", () => {
     const shelves = p.panels.filter((x) => /^Shelf \d/.test(x.name));
     assert.equal(shelves.length, 2);
     const o = p.overall;
-    assert.ok(p.name.includes(`30" × ${o.height}" × ${o.depth}"`), `${p.name} vs ${o.width}×${o.height}×${o.depth}`);
+    assert.ok(p.name.includes(`30" × ${inchFrac(o.height)}" × ${inchFrac(o.depth)}"`), `${p.name} vs ${o.width}×${o.height}×${o.depth}`);
   });
 });
 

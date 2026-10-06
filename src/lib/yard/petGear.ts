@@ -7,6 +7,8 @@
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
+import { typedExtents } from "./honesty";
+import { PET_ANIMAL, SMALL_PET } from "./fallbackPrimitive";
 import type { Panel, YardProject } from "./types";
 
 const r8 = (n: number) => Math.round(n * 8) / 8;
@@ -48,6 +50,18 @@ function project(prompt: string, name: string, panels: Panel[], primary: string,
     sizedByBuilder: true,
     assumptions: { load: "heavy", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
   } as YardProject;
+}
+
+/**
+ * A furniture word with an animal word in front of it is that animal's gear: "bunny hutch" and "guinea pig
+ * cage" are raised enclosures, never a china hutch or a cupboard. Any animal with an enclosure head; a small
+ * animal with a house / cabinet / crate head (a dog or cat house stays the kennel).
+ */
+const ENCLOSURE = new RegExp(
+  String.raw`(?:${PET_ANIMAL.source}\s+(?:[a-z-]+\s+)?(?:hutch(?:es)?|cages?|coops?|enclosures?))|(?:\b(?:${SMALL_PET})\s+(?:[a-z-]+\s+)?(?:houses?|homes?|cabinets?|cupboards?|crates?|condos?))\b`,
+);
+export function isPetEnclosure(lower: string): boolean {
+  return ENCLOSURE.test(lower.toLowerCase());
 }
 
 const whoFor = (lower: string) => (/\bcats?\b|kitten/.test(lower) ? "cat" : /\bdogs?\b|pupp/.test(lower) ? "dog" : "pet");
@@ -140,4 +154,56 @@ export function buildScratchingPost(prompt: string): YardProject {
   if (typedH == null) notes.push(`Assumed ${inchFrac(H)}" tall — type a height to lock it.`);
   if (typedW == null) notes.push(`Assumed ${an(B)} ${inchFrac(B)}" base (wide and deep) — type "20 wide" to change it.`);
   return project(prompt, "Scratching post", panels, baseMat, notes);
+}
+
+/**
+ * Raised enclosure: four 2×2 corner legs from the ground to the roof, a solid floor up off the ground, solid
+ * back and sides, a solid roof hinged along the back, and an open front closed with wire mesh between two rails.
+ */
+export function buildPetEnclosure(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const species = namedLumberFromPrompt(prompt);
+  const mat = species ? CATALOG_LUMBER_BIND : PLY;
+  const tiny = /hamster|gerbil|guinea|ferret|chinchilla|\brats?\b|mice|tortoise/.test(lower);
+  const fowl = /chicken|\bhens?\b|duck|quail|coop/.test(lower);
+  const [dw, dh, dd, dleg] = tiny ? [36, 30, 18, 12] : fowl ? [48, 48, 30, 18] : [48, 40, 24, 16];
+  const typed = typedExtents(prompt);
+  const tw = size?.width ?? typed?.width ?? typedAlong(lower, "wide|long|across");
+  const th = size?.height ?? typed?.height ?? typedAlong(lower, "tall|high");
+  const td = size?.depth ?? typed?.depth ?? typedAlong(lower, "deep");
+  const W = r8(Math.max(18, tw ?? dw));
+  const H = r8(Math.max(18, th ?? dh));
+  const D = r8(Math.max(12, td ?? dd));
+  const leg = r8(Math.max(4, Math.min(dleg * (H / dh), H - 2 * T - 10)));
+  const L = 1.5;
+  const inH = r8(H - 2 * T - leg);
+  const panels: Panel[] = [];
+  for (const [n, x, z] of [[1, 0, 0], [2, W - L, 0], [3, 0, D - L], [4, W - L, D - L]] as const) {
+    panels.push(panel({ type: "upright", name: `Leg ${n}`, position: { x: r8(x), y: 0, z: r8(z) }, size: { width: L, height: r8(H - T), depth: L }, materialId: "lumber-2x2-8", cutNote: `2×2 from the ground to the roof; the sides, back and floor screw to it.` }));
+  }
+  const notch = panels.map((l) => ({ with: l.id, kind: "notch" as const }));
+  panels.push(
+    panel({ type: "bottom", name: "Floor", joints: notch, position: { x: 0, y: leg, z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Notch each corner 1 ½\" × 1 ½\" around the legs; the sides, back and front rail stand on it." }),
+    panel({ type: "side", name: "Left side", position: { x: 0, y: r8(leg + T), z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
+    panel({ type: "side", name: "Right side", position: { x: r8(W - T), y: r8(leg + T), z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
+    panel({ type: "back", name: "Back", position: { x: L, y: r8(leg + T), z: r8(D - T) }, size: { width: r8(W - 2 * L), height: inH, depth: T }, materialId: mat }),
+    panel({ type: "rail", name: "Front bottom rail", position: { x: L, y: r8(leg + T), z: 0 }, size: { width: r8(W - 2 * L), height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the bedding in and carries the bottom of the mesh." }),
+    panel({ type: "rail", name: "Front top rail", position: { x: L, y: r8(H - T - 2.5), z: 0 }, size: { width: r8(W - 2 * L), height: 2.5, depth: T }, materialId: mat }),
+    panel({ type: "top", name: "Roof", position: { x: 0, y: r8(H - T), z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Hinged along the back edge so it lifts for feeding and cleaning." }),
+  );
+  const meshW = r8(W - 2 * L);
+  const meshH = r8(inH - 3.5 - 2.5);
+  const who = tiny ? (lower.match(/hamster|gerbil|guinea pig|ferret|chinchilla|rat|mice|tortoise/)?.[0] ?? "small animal") : fowl ? "chicken" : /rabbit|bunn/.test(lower) ? "rabbit" : whoFor(lower);
+  const head = lower.match(/hutch|cage|coop|enclosure|house|home|cabinet|cupboard|crate|condo/)?.[0] ?? "hutch";
+  const name = `${who[0].toUpperCase()}${who.slice(1)} ${head}`;
+  const notes = [
+    `${name}: a raised enclosure on four 2×2 legs with the floor ${inchFrac(leg)}" off the ground; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
+    `Front: staple ½" galvanized hardware cloth, ${inchFrac(meshW)}" × ${inchFrac(meshH)}", across the opening between the rails, into the legs and the side edges, with the cut edges folded under so they stay smooth.`,
+    `Hinge the roof along the back edge with two 2" butt hinges so it lifts for feeding and cleaning. Drill a few ½" vent holes high in each side.`,
+    species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails; each 1 ½" square leg is two ripped strips glued face to face.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
+  ];
+  if (tw == null) notes.push(`Assumed ${inchFrac(W)}" wide — type a width to lock it.`);
+  if (th == null) notes.push(`Assumed ${inchFrac(H)}" tall — type a height to lock it.`);
+  if (td == null) notes.push(`Assumed ${inchFrac(D)}" deep — type a depth to lock it.`);
+  return project(prompt, name, panels, mat, notes);
 }

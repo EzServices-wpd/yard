@@ -9,7 +9,23 @@ import type { YardProject } from "./types";
 type Prim = { phrase: string; label: string; size: [number, number, number] };
 
 const DESKTOP = /\b(laptop|monitor|phone|tablet|keyboard|book|speaker)\b/;
-const PET = /\b(dog|cat|rabbit|bunny|guinea|chicken|hen|duck|goat|pet|puppy)\b/;
+/** Animal words that make a pet context. Small animals live in hutches, cages and coops. */
+export const SMALL_PET = String.raw`rabbits?|bunn(?:y|ies)|guinea\s+pigs?|hamsters?|gerbils?|ferrets?|chinchillas?|rats?|mice|chickens?|hens?|ducks?|quails?|tortoises?`;
+export const PET_ANIMAL = new RegExp(String.raw`\b(?:dogs?|cats?|pets?|pupp(?:y|ies)|kittens?|kitty|goats?|${SMALL_PET})\b`);
+const PET = PET_ANIMAL;
+/** An animal's feeding surface ("cat feeding station", "dog bowl table") stands at the animal's scale. */
+const PET_SURFACE = new RegExp(
+  String.raw`${PET_ANIMAL.source}\s+(?:(?:feeding|food|water|bowls?|feeder|dish|dinner|eating|drinking)\s+)*(?:stands?|stations?|tables?|counters?|risers?|bars?)\b`,
+);
+/** Top height for a pet surface: about 6" for a cat or rabbit, 8" for a small dog, 12" for a dog, 18" for a large dog. */
+export function petSurfaceHeight(noun: string): number | null {
+  const lower = noun.toLowerCase();
+  if (!PET_SURFACE.test(lower)) return null;
+  if (/\b(?:large|big|giant|tall|great\s+dane|mastiff|shepherd|lab(?:rador)?)\b/.test(lower)) return 18;
+  if (/\b(?:small|little|toy|mini)\s+dogs?\b|pupp/.test(lower)) return 8;
+  if (/\b(?:dogs?|goats?)\b/.test(lower)) return 12;
+  return 6;
+}
 const TOY = /\b(doll|toy|barbie|mini|miniature|fairy)\b/;
 const FLOOR_RACK = /\b(firewood|wood|log|shoe|boot|wine|bike|lumber|kayak|surfboard|canoe|paddle|ski)\b/;
 
@@ -36,6 +52,8 @@ export function pickPrimitive(noun: string): Prim | null {
   const words = lower.split(/\s+(?:for|to|with|in|on|from|of|by|under|over|near|that|which)\s+/)[0].split(/\s+/);
   const head = (words[words.length - 1] ?? "").replace(/([^si])s$/, "$1");
   const whole = lower.replace(/\s+/g, "");
+  const pet = petSurfaceHeight(lower);
+  if (pet) return prim("table", "stand on legs at pet height", 24, pet, 12);
   if (/(stand|bar|counter|booth|kiosk|cart|riser|desk|station)$/.test(head)) {
     if (DESKTOP.test(lower)) return prim("table", "platform on legs", 16, 5, 10);
     return prim("table", "counter on legs", 48, 42, 24);
@@ -121,12 +139,28 @@ export function primitiveNotes(notes: string[], p: Prim, title: string, noun: st
         .replace(new RegExp(`^${name}\\b`), title)
         .split(/(?<=\.)\s+/)
         .filter((s) => keepSoil || !/\bsoil\b|planting|drainage|landscape-fabric|\bliner\b|planter box/i.test(s))
-        // The primitive's own "not a skeleton, not a cube" line argues with a recipe the person never asked for.
-        .filter((s) => !/^Not an? [\w-]+(?: [\w-]+)? skeleton\b/i.test(s.trim()))
         .join(" ")
         .trim(),
     )
     .filter((n) => n.trim());
+}
+
+/**
+ * Every build's notes say what it is: a "not a skeleton, not a cube" sentence or clause argues with a recipe
+ * the person never asked for, so it is dropped, and the spacing left behind is closed up.
+ */
+export function tidyNotes(notes: string[]): string[] {
+  return notes
+    .map((n) =>
+      n
+        .split(/(?<=\.)\s+/)
+        .filter((s) => !/^Not an? [\w-]+(?: [\w-]+)* skeleton\b/i.test(s.trim()))
+        .join(" ")
+        .replace(/,\s*not an? [^,.]*?\bskeleton\b(?:\s+and not [^.]*?)?(?=\.)/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
 }
 
 export function fallbackNote(noun: string, label: string): string {

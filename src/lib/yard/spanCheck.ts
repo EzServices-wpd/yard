@@ -93,7 +93,8 @@ function loadOf(project: YardProject, panel: Panel): SpanLoad {
 }
 
 function isFlatPlate(panel: Panel): boolean {
-  if (panel.name.startsWith("Support ")) return false;
+  // A support carries the plate; a roof carries only itself.
+  if (panel.name.startsWith("Support ") || /\broof\b/i.test(panel.name)) return false;
   if (!["shelf", "deck", "counter", "top", "bottom"].includes(panel.type)) return false;
   const { width: w, height: h, depth: d } = panel.size;
   const thick = Math.min(w, h, d);
