@@ -2520,7 +2520,8 @@ function cutStockGroups(
     if (!boardCut) continue;
     const parts = new Map<string, { name: string; lengthIn: number; widthIn: number; qty: number }>();
     for (const p of g.panels) {
-      const d = sheetCutDims(p.size.width, p.size.height, p.size.depth);
+      // A shaped part (a brace with angled ends) is cut from its blank board.
+      const d = p.blank ? { lengthIn: p.blank.lengthIn, widthIn: p.blank.widthIn } : sheetCutDims(p.size.width, p.size.height, p.size.depth);
       const name = cutListName(p.name, p.type);
       const k = `${name}|${d.lengthIn}|${d.widthIn}`;
       const e = parts.get(k);

@@ -249,9 +249,14 @@ function smallHouseThin(item: CatalogItem, whole: boolean, hole: number, perch: 
   const nr = Math.ceil(zSpan / f);
   for (const side of [-1, 1]) {
     const nrm = v3(side * Math.sin(th), Math.cos(th), 0);
-    const off = fr / 2 + t / 2 + (side > 0 ? t : 0);
-    const top = v3(0 + nrm.x * off, ridgeY + nrm.y * off, 0);
+    // Both slopes lie on their own rafters; the second slope stops one stick short of the ridge so it
+    // butts under the first instead of floating a stick's thickness above its rafters.
+    const off = fr / 2 + t / 2;
     const eave = v3(side * run + nrm.x * off, eaveY + nrm.y * off, 0);
+    const top0 = v3(0 + nrm.x * off, ridgeY + nrm.y * off, 0);
+    const slopeL = Math.hypot(eave.x - top0.x, eave.y - top0.y) || 1;
+    const back = side > 0 ? t : 0;
+    const top = v3(top0.x + ((eave.x - top0.x) / slopeL) * back, top0.y + ((eave.y - top0.y) / slopeL) * back, 0);
     for (let i = 0; i < nr; i++) {
       const z = -((nr - 1) * f) / 2 + i * f;
       segs.push({ a: v3(top.x, top.y, z), b: v3(eave.x, eave.y, z), role: "roof", face: nrm });

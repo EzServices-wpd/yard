@@ -4,6 +4,7 @@ import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
 import { spokenJoin } from "./shopJoin";
+import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
@@ -47,6 +48,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
+import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure, isScratchingPost } from "./petGear";
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
@@ -252,7 +254,12 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
 function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   const core = generateCore(...args);
   const prompt = args[0] ?? "";
-  const noun = prompt.replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ").replace(/\s+/g, " ").trim();
+  const noun = prompt
+    .replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|tall|high|deep)/gi, " ")
+    // A bare size ("coaster 4 inch") is not the head noun.
+    .replace(/\s\d+(?:\.\d+)?\s*(?:"|inch(?:es)?|in\b|ft\b|foot|feet|')\s*$/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const stockTyped = Boolean(args[1]) || !isWireStock(detectMaterial(prompt)) || /\bwire\b|\b(from|out of|made of|made from|with)\b|sticks?\b|ply|cardboard|lumber|2x\d|1x\d|pallet|bamboo|pvc|acrylic|metal|pipe/i.test(prompt);
   const toyBed = isToyScaleBed(noun);
   // Toy-scale beds: dedicated stick bed frame (legs + rails + deck) — never the house
@@ -286,10 +293,12 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   // A pet's feeding surface built at people scale (a 42" counter, a 40" table) is rebuilt at the pet's scale.
   const o = core.overall;
   const petScale = petSurfaceHeight(noun) != null && (o.height > 20 || Math.max(o.width, o.depth) > 36);
-  const p = stockTyped && !toyBed && !modifier && !petScale ? null : pickPrimitive(noun);
+  // A body with no class is the weakest build: a head noun with a primitive builds that primitive in the typed stock.
+  const unmatchedBody = Boolean(core.unmatched);
+  const p = stockTyped && !toyBed && !modifier && !petScale && !unmatchedBody ? null : pickPrimitive(noun);
   if (!p || (!petScale && !looksLikeFallback(core, noun))) return core;
   let remapped = primitivePrompt(p, prompt);
-  if (stockTyped && (modifier || petScale)) {
+  if (stockTyped && (modifier || petScale || unmatchedBody)) {
     const subject = new Set(subjectFromPrompt(noun).toLowerCase().split(/\s+/));
     remapped = `${noun.split(/\s+/).filter((w) => !subject.has(w.toLowerCase())).join(" ")} ${remapped}`.trim();
   }
@@ -306,7 +315,10 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   const size = built.overall;
   const title = `${subject} ${inchFrac(size.width)}" × ${inchFrac(size.height)}" × ${inchFrac(size.depth)}"`;
   // The bench builds from the primitive; the prompt box keeps the person's own words.
-  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(built.notes ?? [], p, subject, noun)] };
+  // The primitive's size was Yard's pick, so a "You typed" line only stays when a size was typed.
+  const saidSize = /\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|foot|feet|')?\s*(?:wide|tall|high|deep|long)|\d+(?:\.\d+)?\s*(?:"|inch|in\b|ft\b|foot|feet|')/i.test(prompt);
+  const ownNotes = (built.notes ?? []).filter((n) => saidSize || !/^You typed\b/.test(n));
+  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(ownNotes, p, subject, noun)] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
@@ -332,7 +344,26 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
-  return hooksShowInModel(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])));
+  return settleOnFloor(hooksShowInModel(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]))));
+}
+
+/**
+ * A freestanding build rests on its lowest part. A body or model drawn above the floor with nothing
+ * reaching down (a model plane on its wings, a coaster) is lowered until that part sits on the floor.
+ */
+function settleOnFloor(project: YardProject): YardProject {
+  if (project.assumptions?.installMode && project.assumptions.installMode !== "freestanding") return project;
+  if (project.windowPkg || project.pocket) return project;
+  const boxes = projectBoxes(project);
+  if (!boxes.length) return project;
+  const low = Math.min(...boxes.map((b) => b.c.y - (b.h[0] * Math.abs(b.ax[0].y) + b.h[1] * Math.abs(b.ax[1].y) + b.h[2] * Math.abs(b.ax[2].y))));
+  if (!(low > 0.1)) return project;
+  const down = <T extends { y: number }>(v: T): T => ({ ...v, y: v.y - low });
+  return {
+    ...project,
+    instances: project.instances.map((i) => ({ ...i, position: down(i.position), ...(i.from ? { from: down(i.from) } : {}), ...(i.to ? { to: down(i.to) } : {}) })),
+    panels: project.panels.map((p) => ({ ...p, position: down(p.position) })),
+  };
 }
 
 /** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
@@ -931,6 +962,11 @@ function generateRaw(
     if (climb === "stool" && (!ask || carcaseKind(ask) || /^(?:lumber|plywood)-/.test(ask.id))) {
       return buildClimb(prompt, climb, opts.sizeOverride);
     }
+  }
+  // A deck, garden gate or swing set builds at real scale in lumber; craft stock or a model word keeps the stick model.
+  if (!formOverride && !opts.fittedOverride) {
+    const frame = outdoorFrameKind(prompt, materialOverride);
+    if (frame) return buildOutdoorFrame(prompt, frame, opts.sizeOverride);
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.

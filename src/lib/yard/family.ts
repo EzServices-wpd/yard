@@ -1013,10 +1013,10 @@ export function isPlatformBed(lower: string) {
       lower,
     );
   const mattressBed =
-    /\b(?:bed\s*frames?|beds?)\b/.test(lower) &&
-    /mattress|\bking\b|\bqueen\b|\btwin\b|\bfull\b|cal(?:ifornia)?\s*king/.test(lower) &&
+    (/\bbed\s*frames?\b/.test(lower) ||
+      (/\bbeds?\b/.test(lower) && /mattress|\bking\b|\bqueen\b|\btwin\b|\bfull\b|cal(?:ifornia)?\s*king/.test(lower))) &&
     !namedStock &&
-    !/doll|crib|headboard|\bdog\b|\bpet\b|\bcat\b|planter|garden/.test(lower);
+    !/doll|crib|headboard|\bdog\b|\bpet\b|\bcat\b|planter|garden|\btoy\b|\bmini|\bmodel\b|miniature|barbie/.test(lower);
   return (
     /platform\s*beds?\b/.test(lower) ||
     (/\bplatform\b/.test(lower) && /\bbeds?\b/.test(lower)) ||

@@ -208,8 +208,15 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     nAlong: number;
     cover: number;
     stepAlong: number;
+    /** Sticks across the face (the rest of nAcross are the second lamination layer). */
+    perLayer: number;
+    layers: number;
   };
 
+  // Half the stick across the face and through it: the outer sticks sit flush with the member's faces.
+  const roundStock = prim.radius != null;
+  const hFace = (roundStock ? prim.width : prim.width) / 2;
+  const hThin = (roundStock ? prim.width : prim.height) / 2;
   const grids: Grid[] = [];
   for (const panel of project.panels) {
     const axes: { a: Ax; n: number }[] = [
@@ -229,20 +236,28 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     // A section under 1/2" cannot be that face — the note says it is a display model.
     const bearing = panel.type === "shelf" || panel.type === "deck" || panel.type === "top" || /shelf|seat|top/i.test(panel.name);
     const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
-    const practicalFace = section >= 0.5;
-    const nAcross = bearing && practicalFace
+    // A top, seat, or shelf gets slats across it even in thin stock, so it rests on the frame under it
+    // (a display model in thin stock says so in its notes).
+    const nAcross = bearing
       ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
       : midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
     const stepAlong = nAlong === 1 ? 0 : Math.max(0.15, (longN - cover) / (nAlong - 1));
-    grids.push({ panel, thinA, midA, longA, thinN, midN, longN, nAcross, nAlong, cover, stepAlong });
+    // A member thicker than two sticks is laminated: a layer on each face, so the faces that glue to
+    // the next part are stick faces there too and the load path stays a chain of touching sticks.
+    const layers = thinN >= 4 * hThin + 0.02 ? 2 : 1;
+    grids.push({ panel, thinA, midA, longA, thinN, midN, longN, nAcross: nAcross * layers, nAlong, cover, stepAlong, perLayer: nAcross, layers });
   }
 
   const place = (g: Grid, i: number, s: number) => {
-    const { panel, thinA, midA, longA, thinN, midN, longN, nAcross, nAlong, cover, stepAlong } = g;
-    const v = nAcross === 1 ? midN / 2 : (i + 0.5) * (midN / nAcross);
+    const { panel, thinA, midA, longA, thinN, midN, longN, nAlong, cover, stepAlong, perLayer, layers } = g;
+    const k = i % perLayer;
+    const layer = Math.floor(i / perLayer);
+    // Edge sticks flush with the member's edges, the rest evenly between.
+    const v = perLayer === 1 || midN <= 2 * hFace ? midN / 2 : hFace + (k * (midN - 2 * hFace)) / (perLayer - 1);
+    const t = layers === 1 ? thinN / 2 : layer === 0 ? hThin : thinN - hThin;
     const start = nAlong === 1 ? Math.max(0, (longN - cover) / 2) : Math.min(s * stepAlong, Math.max(0, longN - cover));
     const aL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
     const bL: Record<Ax, number> = { x: thinN / 2, y: thinN / 2, z: thinN / 2 };
@@ -250,12 +265,15 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     bL[longA] = start + cover;
     aL[midA] = Math.min(midN, Math.max(0, v));
     bL[midA] = aL[midA];
-    aL[thinA] = thinN / 2;
-    bL[thinA] = thinN / 2;
+    aL[thinA] = t;
+    bL[thinA] = t;
     const a = worldOf(panel, aL.x, aL.y, aL.z);
     const b = worldOf(panel, bL.x, bL.y, bL.z);
     const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     if (len < 0.15) return;
+    const fL: Record<Ax, number> = { x: aL.x, y: aL.y, z: aL.z };
+    fL[thinA] += 1;
+    const fw = worldOf(panel, fL.x, fL.y, fL.z);
     instances.push({
       id: createId("sk"),
       catalogId: item.id,
@@ -266,6 +284,8 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
       join,
       from: a,
       to: b,
+      // Flat on the member's face, so its thickness runs through the member.
+      face: { x: fw.x - a.x, y: fw.y - a.y, z: fw.z - a.z },
     });
   };
 
@@ -373,6 +393,57 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     }
   }
 
+  // End ties: at each end of a member a stick runs across between its edge sticks (and through it
+  // between the two laminations), so the member's sticks are one glued bundle, not loose outlines.
+  const tie = (g: Grid, from: Record<Ax, number>, to: Record<Ax, number>, faceA: Ax) => {
+    const L = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+    if (L < 0.15) return;
+    const span = whole ? stockL : Math.max(stockL * 0.9, 0.5);
+    const n = L <= span * 1.02 ? 1 : Math.ceil(L / (span * 0.95));
+    const seg = Math.min(L, span);
+    for (let q = 0; q < n; q++) {
+      const t0 = n === 1 ? 0 : (q * (L - seg)) / (n - 1);
+      const lerp = (u: number): Record<Ax, number> => ({ x: from.x + ((to.x - from.x) * u) / L, y: from.y + ((to.y - from.y) * u) / L, z: from.z + ((to.z - from.z) * u) / L });
+      const aL = lerp(t0);
+      const bL = lerp(Math.min(L, t0 + seg));
+      const a = worldOf(g.panel, aL.x, aL.y, aL.z);
+      const b = worldOf(g.panel, bL.x, bL.y, bL.z);
+      const fL = { ...aL };
+      fL[faceA] += 1;
+      const fw = worldOf(g.panel, fL.x, fL.y, fL.z);
+      const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+      instances.push({
+        id: createId("sk"),
+        catalogId: item.id,
+        position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
+        rotation: { x: 0, y: 0, z: 0 },
+        cutLength: whole ? undefined : Math.round(len * 100) / 100,
+        role: g.panel.type,
+        join,
+        from: a,
+        to: b,
+        face: { x: fw.x - a.x, y: fw.y - a.y, z: fw.z - a.z },
+      });
+    }
+  };
+  for (const g of grids) {
+    const { thinA, midA, longA, thinN, midN, longN, perLayer, layers } = g;
+    if (perLayer < 2 && layers < 2) continue;
+    const ts = layers === 1 ? [thinN / 2] : [hThin, thinN - hThin];
+    const vs = perLayer === 1 || midN <= 2 * hFace ? [midN / 2] : [hFace, midN - hFace];
+    for (const along of longN > 4 * hFace ? [hFace, longN - hFace] : [longN / 2]) {
+      const at = (mid: number, thin: number): Record<Ax, number> => {
+        const r = { x: 0, y: 0, z: 0 } as Record<Ax, number>;
+        r[longA] = along;
+        r[midA] = mid;
+        r[thinA] = thin;
+        return r;
+      };
+      if (vs.length > 1) for (const t of ts) tie(g, at(vs[0], t), at(vs[1], t), thinA);
+      if (ts.length > 1) for (const v of vs) tie(g, at(v, ts[0]), at(v, ts[1]), midA);
+    }
+  }
+
   const note = `Same ${project.name} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
   const notes = recastNotes(project.notes ?? [], item).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
   const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
@@ -408,11 +479,28 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
  */
 export function recastNotes(notes: string[], item: CatalogItem): string[] {
   const name = item.name;
+  // Craft stock (sticks, dowels) names its own members: a 2×4 post is a laminated stick post, glued, not bolted.
+  const craft = !isFaceStock(item) && item.category !== "lumber";
+  const short = item.formFactor === "dowel" ? "dowel" : item.formFactor === "stick" ? "stick" : name;
+  const craftMembers = (n: string) =>
+    !craft
+      ? n
+      : n
+          .replace(/\b(?:doubled\s+)?[1-4]\s*×\s*\d+(?=\s+[a-z])/gi, `laminated ${short}`)
+          .replace(/[¾]\s*(?:"|″)?\s+(top|tops|seats?|shelf|shelves|deck)\b/g, `${short} $1`)
+          .replace(/\s+with\s+(?:\d+\s+)?[^;,.]*?\b(?:bolts|screws)\b/gi, "")
+          .replace(/\b(screw|glue) the (\w+) down through\b/g, "glue the $2 down onto")
+          .replace(/\bGlue and screw\b/g, "Glue")
+          .replace(/\bglue and screw\b/g, "glue")
+          .replace(/\b(screw|bolt)(ed|s)?\b/gi, (_m, w: string, e?: string) => `${w[0] === w[0].toUpperCase() ? "G" : "g"}lue${e === "ed" ? "d" : e ?? ""}`)
+          .replace(/(^|[.!?]\s+)([a-z])/g, (_m, a: string, c: string) => a + c.toUpperCase());
   return notes
     .map((n) =>
-      n
-        .replace(/[¾]\s*(?:"|″)?\s*plywood|3\/4\s*(?:"|″|-inch|in\.?)\s*plywood/gi, name)
-        .replace(/\bplywood (uprights|shelves|top|box|carcase|sides)\b/gi, `${name} $1`),
+      craftMembers(
+        n
+          .replace(/[¾]\s*(?:"|″)?\s*plywood|3\/4\s*(?:"|″|-inch|in\.?)\s*plywood/gi, name)
+          .replace(/\bplywood (uprights|shelves|top|box|carcase|sides)\b/gi, `${name} $1`),
+      ),
     )
     .filter((n) => !/\bnest(?:s|ed)?\b.*\bsheet\b|\bsheet\b.*\bnest|buy 2x2 lumber|edge band|plywood|4\s*[×x]\s*8\b|4\s*[×x]\s*10\b/i.test(n));
 }

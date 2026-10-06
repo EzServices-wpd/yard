@@ -94,34 +94,36 @@ export function buildBoxFigure(prompt: string, item: CatalogItem, size: { width:
   const lower = prompt.toLowerCase();
   const H = typed(lower, /(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")?\s*(?:tall|high)/) ?? (size.height >= 12 && size.height <= 72 ? size.height : 24);
   const t = item.dims.thickness ?? 0.16;
-  const legH = r16(H * 0.3);
-  const bodyH = r16(H * 0.4);
-  const headH = r16(H - legH - bodyH);
-  const bodyW = r16(H * 0.42);
-  const D = r16(H * 0.28);
-  const legW = r16(bodyW * 0.32);
-  const headW = r16(bodyW * 0.7);
-  const armW = r16(legW * 0.8);
-  const armL = r16(bodyH * 0.85);
+  // Eighths, so the boxes stack face on face after the cut list rounds each part.
+  const r8 = (n: number) => Math.round(n * 8) / 8;
+  const legH = r8(H * 0.3);
+  const bodyH = r8(H * 0.4);
+  const headH = r8(H - legH - bodyH);
+  const bodyW = r8(H * 0.42);
+  const D = r8(H * 0.28);
+  const legW = r8(bodyW * 0.32);
+  const headW = r8(bodyW * 0.7);
+  const armW = r8(legW * 0.8);
+  const armL = r8(bodyH * 0.85);
   const id = item.id;
   const panels: Panel[] = [];
   // A closed box: front/back, two sides, top and bottom. A tube skips top and bottom.
   const box = (label: string, x: number, y: number, z: number, w: number, h: number, d: number, closed: boolean) => {
     panels.push(panel("side", `${label} front`, x, y, z + d - t, w, h, t, id));
     panels.push(panel("side", `${label} back`, x, y, z, w, h, t, id));
-    panels.push(panel("side", `${label} side`, x, y, z + t, t, h, r16(d - 2 * t), id));
-    panels.push(panel("side", `${label} side`, x + w - t, y, z + t, t, h, r16(d - 2 * t), id));
+    panels.push(panel("side", `${label} side`, x, y, z + t, t, h, r8(d - 2 * t), id));
+    panels.push(panel("side", `${label} side`, x + w - t, y, z + t, t, h, r8(d - 2 * t), id));
     if (closed) {
-      panels.push(panel("side", `${label} bottom`, x + t, y, z + t, r16(w - 2 * t), t, r16(d - 2 * t), id));
-      panels.push(panel("side", `${label} top`, x + t, y + h - t, z + t, r16(w - 2 * t), t, r16(d - 2 * t), id));
+      panels.push(panel("side", `${label} bottom`, x + t, y, z + t, r8(w - 2 * t), t, r8(d - 2 * t), id));
+      panels.push(panel("side", `${label} top`, x + t, y + h - t, z + t, r8(w - 2 * t), t, r8(d - 2 * t), id));
     }
   };
   const x0 = -bodyW / 2;
-  const legD = r16(D * 0.8);
+  const legD = r8(D * 0.8);
   box("Leg tube", x0, 0, (D - legD) / 2, legW, legH, legD, false);
   box("Leg tube", x0 + bodyW - legW, 0, (D - legD) / 2, legW, legH, legD, false);
   box("Body", x0, legH, 0, bodyW, bodyH, D, true);
-  box("Head", -headW / 2, legH + bodyH, (D - r16(D * 0.85)) / 2, headW, headH, r16(D * 0.85), true);
+  box("Head", -headW / 2, legH + bodyH, (D - r8(D * 0.85)) / 2, headW, headH, r8(D * 0.85), true);
   box("Arm", x0 - armW, legH + bodyH - armL, (D - armW) / 2, armW, armL, armW, false);
   box("Arm", x0 + bodyW, legH + bodyH - armL, (D - armW) / 2, armW, armL, armW, false);
   const title = name || "Robot";
@@ -130,7 +132,7 @@ export function buildBoxFigure(prompt: string, item: CatalogItem, size: { width:
     name: `Cardboard ${title.toLowerCase()} ${inchFrac(H)}" tall`,
     prompt,
     kind: "figure",
-    overall: { width: r16(bodyW + armW * 2), height: H, depth: D },
+    overall: { width: r8(bodyW + armW * 2), height: H, depth: D },
     instances: [],
     panels,
     primaryMaterialId: id,

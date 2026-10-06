@@ -56,11 +56,9 @@ function storyTs(H: number, bay: number, force: number[]): number[] {
   return uniqueTs(ts);
 }
 
-/** Craft-scale character: arches fill the lower third so the silhouette reads as Eiffel, not a mast. */
+/** The arches rise to their published crown (about 0.12 H), under the first platform they carry. */
 function characterRise(publishedRatio: number, H: number): number {
-  const base = publishedRatio * H;
-  const target = Math.max(base * 1.55, H * 0.22);
-  return Math.min(target, H * 0.3);
+  return publishedRatio * H;
 }
 
 export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGraph {
@@ -83,7 +81,7 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
   const tBelt = eiffel ? 0.55 : 0.5;
   const tBelt2 = eiffel ? 0.72 : 0.66;
   const force = eiffel
-    ? uniqueTs([...platforms, tBelt, tBelt2].filter((t) => t > 0.01 && t < 0.99))
+    ? uniqueTs([...platforms, tBelt, tBelt2])
     : platforms;
   const nLevels = opts.levels;
   const ts = nLevels
@@ -121,7 +119,8 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
       eiffel ? [t1, t2, tBelt, tBelt2, platforms[3] ?? 0.85] : [0.33, 0.66],
       simple ? 2 : eiffel ? 2 : 3,
     ),
-    laceFace: () => true,
+    // The faces under the first platform are the four open arches, not a laced wall.
+    laceFace: (t0) => !eiffel || t0 >= t1 - 0.005,
     join: joinPrimary,
     braceJoin: joinBrace,
     pierChords: eiffel ? Math.max(dens.chords ?? 0, simple ? 2 : 4) : dens.chords,

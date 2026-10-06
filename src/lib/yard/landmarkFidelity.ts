@@ -160,6 +160,10 @@ const SPECS: Record<string, (sh: Shape) => FidelityCheck[]> = {
     check(c, "needle top", sh.width(0.9, 0.95) / base <= 0.1, `${r2(sh.width(0.9, 0.95) / base)}`);
     const open = sh.band(0, 0.05).filter((p) => Math.abs(p.x - (sh.min.x + sh.max.x) / 2) < base * 0.2 && Math.abs(p.z - (sh.min.z + sh.max.z) / 2) < base * 0.2);
     check(c, "four legs open at the base", open.length === 0, `${open.length} member points in the middle`);
+    // Four arches between the legs, crowned under the first platform (real crown about 40 m of 324 m).
+    const arch = sh.segs.filter((s) => s.role === "support" && sh.fy(Math.max(s.a.y, s.b.y)) < 0.2);
+    const crown = arch.length ? Math.max(...arch.map((s) => sh.fy(Math.max(s.a.y, s.b.y)))) : 0;
+    check(c, "four arches at the base", arch.length >= 16 && near(crown, 0.13, 0.04), `${arch.length} arch members, crown at ${r2(crown)} of the height (real 0.12)`);
     const deckLevels = [0.175, 0.35, 0.84].filter((f) => sh.width(f - 0.02, f + 0.02) >= sh.width(f + 0.04, f + 0.06) * 1.02);
     check(c, "three platforms", deckLevels.length >= 2, `${deckLevels.length} of 3 read as platforms`);
     check(c, "lattice", sh.segs.length >= 200, `${sh.segs.length} members`);

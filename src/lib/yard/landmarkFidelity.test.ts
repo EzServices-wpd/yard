@@ -3,11 +3,12 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { landmarkFidelity } from "./landmarkFidelity";
 
-/** [prompt, key, floor]. The floor only rises: Eiffel's base width (0.22H vs the real 0.38H) lives in latticeTower.ts. */
+/** [prompt, key, floor]. The floor only rises. */
 const LANDMARKS: [string, string, number][] = [
   ["popsicle stick Golden Gate Bridge", "golden gate", 100],
   ["popsicle stick truss bridge", "truss", 100],
-  ["Eiffel Tower out of skewers", "eiffel", 50],
+  ["Eiffel Tower out of skewers", "eiffel", 100],
+  ["3 foot Eiffel Tower from popsicle sticks", "eiffel", 100],
   ["Brooklyn Bridge popsicle sticks", "brooklyn", 100],
   ["CN Tower", "cn tower", 100],
   ["Leaning Tower of Pisa", "pisa", 100],

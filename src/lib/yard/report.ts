@@ -1422,6 +1422,21 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: "Two at each rail end, through the post into a barrel nut in the rail.",
     });
   }
+  // Outdoor frames: footings, ties, hinges and swing hardware the notes name.
+  const outdoor: [RegExp, (m: RegExpMatchArray) => BuildPlan["bom"][number]][] = [
+    [/(\d+) precast concrete deck pier blocks/, (m) => ({ name: "Precast concrete deck pier blocks", quantity: Number(m[1]), unit: "each", searchQuery: "precast concrete deck pier block 4x4", notes: "One under each post, on compacted gravel." })],
+    [/(\d+) hurricane ties/, (m) => ({ name: "Hurricane ties (joist to beam)", quantity: Number(m[1]), unit: "each", searchQuery: "galvanized hurricane tie joist to beam", notes: "One where each joist crosses a beam." })],
+    [/two 8" strap hinges/, () => ({ name: '8" heavy strap hinges', quantity: 2, unit: "each", searchQuery: "8 inch heavy strap hinge gate", notes: "Hinge stile to hinge post." })],
+    [/for a gate latch/, () => ({ name: "Gate latch", quantity: 1, unit: "each", searchQuery: "gravity gate latch", notes: "On the latch stile and latch post." })],
+    [/steel A-frame bracket at each end/, () => ({ name: "A-frame swing set brackets", quantity: 2, unit: "each", searchQuery: "swing set a-frame bracket 2x6 legs", notes: "One at each end, legs to beam." })],
+    [/Hang (\d+) swings? from heavy-duty swing hangers/, (m) => ({ name: "Heavy-duty swing hangers", quantity: 2 * Number(m[1]), unit: "each", searchQuery: "heavy duty swing hanger bolt through", notes: "Two per swing, bolted through the beam." })],
+    [/Hang (\d+) swings? from/, (m) => ({ name: "Swing seats with chains", quantity: Number(m[1]), unit: "each", searchQuery: "swing seat with chains", notes: "One per pair of hangers." })],
+    [/anchor each foot with a ground anchor/, () => ({ name: "Swing set ground anchors", quantity: 4, unit: "each", searchQuery: "swing set ground anchor", notes: "One at each foot." })],
+  ];
+  for (const [re, row] of outdoor) {
+    const m = notes.match(re);
+    if (m && !have.includes(row(m).name.toLowerCase())) extra.push(row(m));
+  }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
       name: "GRK RSS #9 x 3-1/8 structural screws",

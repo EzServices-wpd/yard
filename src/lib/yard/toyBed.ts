@@ -62,15 +62,19 @@ export function buildToyBedFrame(
   for (const [a, b] of legs) instances.push(member(item, a, b, "leg"));
 
   // Perimeter rails at deck height (side = long, end = short).
+  // End rails butt the legs' inner faces; side rails run between the legs along the depth.
+  const th = Math.max(0.03, prim.height || 0.08);
+  const ex = tw / 2 + th / 2;
   const rails: [Vec3, Vec3][] = [
-    [{ x: x0 + tw, y: deckY, z: z0 + tw / 2 }, { x: x1 - tw, y: deckY, z: z0 + tw / 2 }],
-    [{ x: x0 + tw, y: deckY, z: z1 - tw / 2 }, { x: x1 - tw, y: deckY, z: z1 - tw / 2 }],
+    [{ x: x0 + ex, y: deckY, z: z0 + tw / 2 }, { x: x1 - ex, y: deckY, z: z0 + tw / 2 }],
+    [{ x: x0 + ex, y: deckY, z: z1 - tw / 2 }, { x: x1 - ex, y: deckY, z: z1 - tw / 2 }],
     [{ x: x0 + tw / 2, y: deckY, z: z0 + tw }, { x: x0 + tw / 2, y: deckY, z: z1 - tw }],
     [{ x: x1 - tw / 2, y: deckY, z: z0 + tw }, { x: x1 - tw / 2, y: deckY, z: z1 - tw }],
   ];
   for (const [a, b] of rails) instances.push(member(item, a, b, "rail"));
 
-  // Rectangular deck: slats spanning the width, spaced along the depth.
+  // Rectangular deck: slats spanning the width, resting on the side rails, spaced along the depth.
+  const slatL = Math.min(stockLen, W - tw);
   const innerD = Math.max(tw * 2, D - tw * 2);
   const nSlats = Math.max(4, Math.min(8, Math.round(innerD / Math.max(tw * 2.2, 0.9))));
   for (let i = 0; i < nSlats; i++) {
@@ -79,8 +83,8 @@ export function buildToyBedFrame(
     instances.push(
       member(
         item,
-        { x: x0 + tw, y: deckY + tw * 0.6, z },
-        { x: x1 - tw, y: deckY + tw * 0.6, z },
+        { x: -slatL / 2, y: deckY + th, z },
+        { x: slatL / 2, y: deckY + th, z },
         "deck",
       ),
     );

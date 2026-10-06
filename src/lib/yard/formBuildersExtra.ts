@@ -390,22 +390,24 @@ export function plantStandOps(s: Size3, potDia?: number | null): FormOp[] {
     { op: "poly", role: "rail", points: [{ x: x0 * 0.85, y: H * 0.22, z: z1 * 0.85 }, { x: x1 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
     { op: "poly", role: "rail", points: [{ x: x0 * 0.85, y: H * 0.22, z: z0 * 0.85 }, { x: x0 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
     { op: "poly", role: "rail", points: [{ x: x1 * 0.85, y: H * 0.22, z: z0 * 0.85 }, { x: x1 * 0.85, y: H * 0.22, z: z1 * 0.85 }] },
-    // Pot deck
+    // Pot deck: rails leg to leg at deck height, two cross slats on them where the pot sits.
     {
       op: "poly",
       role: "deck",
       points: [
-        { x: x0 * 0.55, y: deckY, z: z0 * 0.55 },
-        { x: x1 * 0.55, y: deckY, z: z0 * 0.55 },
-        { x: x1 * 0.55, y: deckY, z: z1 * 0.55 },
-        { x: x0 * 0.55, y: deckY, z: z1 * 0.55 },
+        { x: x0 * 0.85, y: deckY, z: z0 * 0.85 },
+        { x: x1 * 0.85, y: deckY, z: z0 * 0.85 },
+        { x: x1 * 0.85, y: deckY, z: z1 * 0.85 },
+        { x: x0 * 0.85, y: deckY, z: z1 * 0.85 },
+        { x: x0 * 0.85, y: deckY, z: z0 * 0.85 },
       ],
     },
+    { op: "poly", role: "deck", points: [{ x: x0 * 0.85, y: deckY, z: 0 }, { x: x1 * 0.85, y: deckY, z: 0 }] },
+    { op: "poly", role: "deck", points: [{ x: 0, y: deckY, z: z0 * 0.85 }, { x: 0, y: deckY, z: z1 * 0.85 }] },
     // Pot ring / collar — holds a real pot upright
     { op: "ring", y: ringY, rx: dia / 2, n: 10, role: "ring" },
     { op: "poly", role: "support", points: [{ x: x0 * 0.85, y: deckY, z: 0 }, { x: -dia / 2, y: ringY, z: 0 }] },
     { op: "poly", role: "support", points: [{ x: x1 * 0.85, y: deckY, z: 0 }, { x: dia / 2, y: ringY, z: 0 }] },
-    { op: "poly", role: "brace", points: [{ x: 0, y: 0, z: z0 * 0.85 }, { x: 0, y: deckY, z: 0 }] },
   ];
 }
 

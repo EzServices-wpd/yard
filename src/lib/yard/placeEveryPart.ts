@@ -193,7 +193,13 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   const fix = fastenerTalk(project);
   const supports = supportsOf(project);
   const placed = () => placementIndex(project, out);
-  const firstBuild = () => Math.max(0, out.findIndex(isBuild));
+  // With no build step yet, parts go after the prep and cut steps (before "Level it").
+  const firstBuild = () => {
+    const i = out.findIndex(isBuild);
+    if (i >= 0) return i;
+    const level = out.findIndex((s) => /^Level it\b/i.test(s.title));
+    return level >= 0 ? level : out.length;
+  };
   const dependents = (key: string) => parts.filter((p) => supports.get(p.key)?.on.includes(key));
 
   // Class-anatomy steps are written in support order (floor, base, body, top) and name each support.

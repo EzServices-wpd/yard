@@ -6,9 +6,9 @@
 import type { Panel, YardProject } from "./types";
 import { hookCount } from "./hookCount";
 
-/** Bought hardware drawn in the model (coat hooks, coat pegs): on Buy, never on the cut list. */
+/** Bought hardware drawn in the model (coat hooks, coat pegs, deck pier blocks): on Buy, never on the cut list. */
 export function isBoughtHardwareName(name: string): boolean {
-  return /^Coat (?:hook|peg) \d+$/.test(name);
+  return /^(?:Coat (?:hook|peg)|Footing) \d+$/.test(name);
 }
 
 /** The same test Buy uses to add the coat-hook line. */

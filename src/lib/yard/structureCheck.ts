@@ -56,7 +56,9 @@ export function structureIssues(project: YardProject): StructureIssue[] {
       if (o.every((v) => v > TOUCH)) return 3; // let into each other (a joint)
       const k = o.findIndex((v) => v <= TOUCH && v >= -TOUCH);
       if (k < 0 || o.some((v) => v < -TOUCH)) return -1;
-      return [0, 1, 2].filter((q) => q !== k).every((q) => o[q] >= 0.2) ? k : -1;
+      // A glued edge needs real overlap: 0.2", or the full edge of a thinner sheet (cardboard, 1/8" ply).
+      const edge = (q: number) => Math.min(0.2, 0.9 * Math.min(A.max[q] - A.min[q], B.max[q] - B.min[q]));
+      return [0, 1, 2].filter((q) => q !== k).every((q) => o[q] >= edge(q)) ? k : -1;
     }
     const reach = Math.hypot(...boxes[i].h) + Math.hypot(...boxes[j].h);
     if (Math.hypot(boxes[i].c.x - boxes[j].c.x, boxes[i].c.y - boxes[j].c.y, boxes[i].c.z - boxes[j].c.z) > reach + 1) return -1;

@@ -83,6 +83,8 @@ export function pickPrimitive(noun: string): Prim | null {
     return prim("planter box", "open box", 24, 16, 16);
   }
   if (/(tray|mat)$/.test(head)) return prim("planter box", "shallow tray", 30, 2, 15);
+  // A coaster or trivet is a small shallow tray: a floor of sticks side by side inside a low rim.
+  if (/^(?:coaster|trivet)$/.test(head)) return head === "coaster" ? prim("planter box", "shallow tray", 4, 0.5, 4) : prim("planter box", "shallow tray", 7, 0.75, 7);
   if (/(rack|ladder|rail|holder|hanger|organizer)$/.test(head)) {
     if (FLOOR_RACK.test(lower) || /ladder/.test(head)) return prim("storage unit", "open frame", 48, 48, 16);
     return prim("wall shelf", "wall-hung shelf", 24, 12, 6);
@@ -142,7 +144,7 @@ export function primitiveNotes(notes: string[], p: Prim, title: string, noun: st
       n
         .replace(new RegExp(`^${name}\\b`), title)
         .split(/(?<=\.)\s+/)
-        .filter((s) => keepSoil || !/\bsoil\b|planting|drainage|landscape-fabric|\bliner\b|planter box/i.test(s))
+        .filter((s) => keepSoil || !/\bsoil\b|planting|drainage|landscape-fabric|\bliner\b|planter box|\bcedar\b|exterior screws/i.test(s))
         .join(" ")
         .trim(),
     )
