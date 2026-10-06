@@ -1,3 +1,4 @@
+import { frontCueNotes } from "./fittedShared";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
@@ -23,7 +24,7 @@ import { enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
-import { detectForm, type FormRecipe } from "./form";
+import { detectForm, subjectFromPrompt, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
@@ -208,10 +209,17 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
   return extra.length ? { ...project, notes: [...(project.notes ?? []), ...extra] } : project;
 }
 
+/** A front feature typed both ways resolved by one rule (later cue wins): the note says which won. */
+function withFrontCueNotes(project: YardProject, prompt: string): YardProject {
+  if (!project.fitted) return project;
+  const extra = frontCueNotes(prompt).filter((n) => !(project.notes ?? []).includes(n));
+  return extra.length ? { ...project, notes: [...extra, ...(project.notes ?? [])] } : project;
+}
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   const prompt = args[0] ?? "";
-  const built = typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt);
+  const built = withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt);
   // A species on a typed lumber size ("cedar 1x6", any builder) says the species in the title and notes.
   // Species alone (bound 1×4) keeps its builder's own title rule.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
@@ -259,15 +267,25 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
     remapped = `${craft} ${remapped}`;
   }
   const built = generateCore(remapped, ...(args.slice(1) as []));
-  const title = noun.replace(/\b\w/g, (c) => c.toUpperCase());
+  const title = subjectFromPrompt(noun).replace(/\b\w/g, (c) => c.toUpperCase());
   // The bench builds from the primitive; the prompt box keeps the person's own words.
   return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
-  const solved = solveModel(generateRaw(...args));
-  const project = solved.panels.length ? applySpokenFace(solved, args[0]) : solved;
-  const sized = addFigureBookend(fitWeekendSize(project, args[0], args[3]?.sizeOverride), args[0]);
+  const built = (a: Parameters<typeof generateRaw>) => {
+    const solved = solveModel(generateRaw(...a));
+    return solved.panels.length ? applySpokenFace(solved, a[0]) : solved;
+  };
+  const project = built(args);
+  const override = args[3]?.sizeOverride;
+  // A size the builder missed: rebuild at the typed envelope (module counts follow), then fit.
+  const rebuild = (box: Box3) => fitWeekendSize(built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: box }]), args[0], box, undefined, undefined, true);
+  const natural = () => {
+    const bare = stripEnvelopeWords(args[0]);
+    return bare && bare !== args[0] ? built([bare, args[1], args[2], args[3]]) : null;
+  };
+  const sized = addFigureBookend(fitWeekendSize(project, args[0], override, override ? undefined : rebuild, natural), args[0]);
   const tabled0 = honorTableTriple(sized, args[0]);
   // A furniture piece built in 2×4 because no stock was typed says so.
   const defaulted =
@@ -428,10 +446,74 @@ function bareFigureHeight(prompt: string): number | null {
   return n > 0 ? n : null;
 }
 
+type Box3 = { width: number; height: number; depth: number };
+const AXES = ["width", "height", "depth"] as const;
+
+/**
+ * The typed envelope of a weekend / craft build: labeled axes from typedExtents (a triple, W / H / D words,
+ * "long" on the width), else one bare size ("18 inches") on the build's longest axis.
+ */
+function typedEnvelope(prompt: string, overall: Box3): Partial<Box3> | null {
+  const ext = typedExtents(prompt);
+  const out: Partial<Box3> = {};
+  for (const a of AXES) if (ext?.labeled?.[a] && Number.isFinite(ext[a]) && (ext[a] as number) > 0) out[a] = ext[a] as number;
+  if (Object.keys(out).length) return out;
+  const said = typedSizeIn(prompt);
+  if (said.height) return { height: said.height };
+  if (said.length) {
+    // A bare size goes on the axis the builder already gave it; else on the long axis.
+    const near = AXES.find((a) => Math.abs(overall[a] - said.length!) <= Math.max(0.5, 0.1 * said.length!));
+    if (near) return { [near]: said.length };
+    const long = AXES.reduce((m, a) => (overall[a] > overall[m] ? a : m), "width" as (typeof AXES)[number]);
+    return { [long]: said.length };
+  }
+  return null;
+}
+
+/** Sizes, not stock: the same prompt with its typed envelope words taken out (natural proportions). */
+function stripEnvelopeWords(prompt: string): string {
+  const N = String.raw`\d+(?:\.\d+)?(?:\s+\d+\/\d+)?`;
+  const U = String.raw`(?:\s*(?:"|″|in(?:ch(?:es)?)?\b|ft\b|feet\b|foot\b|'))?`;
+  return prompt
+    .replace(new RegExp(String.raw`(?<![\w/.])(?![124]\s*[x×]\s*(?:2|3|4|6|8|10|12)\b)${N}${U}\s*[x×]\s*${N}${U}(?:\s*[x×]\s*${N}${U})?`, "gi"), " ")
+    .replace(new RegExp(String.raw`(?<![\w/.])${N}${U}\s*-?\s*(?:wide|width|tall|high|height|deep|depth|long|length|across|around|in diameter|diameter|dia)\b`, "gi"), " ")
+    .replace(new RegExp(String.raw`\b(?:dia(?:meter)?|width|height|depth|length)\s*(?:of\s*)?${N}${U}`, "gi"), " ")
+    .replace(new RegExp(String.raw`(?<![\w/.])${N}\s*(?:"|″|in(?:ch(?:es)?)?\b|ft\b|feet\b|foot\b)(?!\s*(?:x|×|plywood|ply|skewers?|dowels?|sticks?|boards?|hole|diameter|dia|photo|picture|opening|entrance|pipe|pvc))`, "gi"), " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Whole craft sticks are glued as bought: their length is the module, never stretched to a size. */
+function wholeStickBuild(project: YardProject): boolean {
+  const item = getCatalogItem(project.primaryMaterialId);
+  if (!item || !isWholeStock(item)) return false;
+  const own = project.instances.filter((i) => i.catalogId === project.primaryMaterialId);
+  return own.length > 0 && own.every((i) => i.cutLength == null);
+}
+
+const misses = (o: Box3, want: Partial<Box3>, slack = 0.04) =>
+  AXES.some((a) => want[a] != null && Math.abs(o[a] - want[a]!) > Math.max(0.5, slack * want[a]!));
+const missBy = (o: Box3, want: Partial<Box3>) =>
+  AXES.reduce((s, a) => s + (want[a] != null ? Math.abs(Math.log(Math.max(o[a], 0.1) / want[a]!)) : 0), 0);
+
+function realSizeNote(project: YardProject, want: Partial<Box3>): YardProject {
+  const item = getCatalogItem(project.primaryMaterialId);
+  const stick = (item?.name ?? "stick").replace(/\s*\(.*?\)\s*/g, " ").trim();
+  const word = { width: "wide", height: "tall", depth: "deep" } as const;
+  const asked = AXES.filter((a) => want[a] != null).map((a) => `${inchFrac(want[a]!)}" ${word[a]}`).join(" × ");
+  const o = project.overall;
+  const note = `You typed ${asked}. Whole ${stick}s build it ${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows. Type "cut the sticks" to build it to the exact size.`;
+  return { ...project, notes: [note, ...(project.notes ?? []).filter((n) => !/^You typed .* the closest the stick allows/.test(n))] };
+}
+
 function fitWeekendSize(
   project: YardProject,
   prompt: string,
-  override?: { width: number; height: number; depth: number },
+  override?: Box3,
+  rebuild?: (box: Box3) => YardProject,
+  natural?: () => YardProject | null,
+  /** The caller weighs this rebuild against the first build and writes the size note itself. */
+  quiet = false,
 ): YardProject {
   if (project.fitted || project.pocket || project.windowPkg || project.climb || project.kind === "closet" || project.kind === "opening") {
     return project;
@@ -442,9 +524,36 @@ function fitWeekendSize(
     const k = bare / project.overall.height;
     return scaleToBox(project, { width: project.overall.width * k, height: bare, depth: project.overall.depth * k });
   }
-  const box = override ?? (axisLabeled(prompt) ? parseSize(prompt.toLowerCase()) : null);
-  if (!box || !(box.width > 0) || !(box.height > 0) || !(box.depth > 0)) return project;
-  return scaleToBox(project, box);
+  const whole = wholeStickBuild(project);
+  if (override) {
+    if (!(override.width > 0) || !(override.height > 0) || !(override.depth > 0)) return project;
+    // A whole-stick build was rebuilt at this size by its own module count; it is never stretched.
+    if (whole) return quiet || !misses(project.overall, override) ? project : realSizeNote(project, override);
+    return scaleToBox(project, override);
+  }
+  if (axisLabeled(prompt) && !whole) {
+    const box = parseSize(prompt.toLowerCase());
+    if (!(box.width > 0) || !(box.height > 0) || !(box.depth > 0)) return project;
+    return scaleToBox(project, box);
+  }
+  // Partly typed sizes are the builder's own business, except whole craft sticks (their module ignores
+  // them) and unmatched nouns (no builder read them).
+  if (!whole && !project.unmatched) return project;
+  const want = typedEnvelope(prompt, project.overall);
+  if (!want) return project;
+  // Untyped axes keep the build's own proportions (from the same prompt with no size), scaled with the typed ones.
+  const nat = whole ? natural?.() : null;
+  const base = nat && nat.kind === project.kind && nat.overall.width > 0.2 ? nat.overall : project.overall;
+  const typedAxes = AXES.filter((a) => want[a] != null);
+  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
+  const r2 = (n: number) => Math.round(n * 16) / 16;
+  const target: Box3 = { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
+  const proportionsOff = whole && typedAxes.length < 3 && misses(project.overall, target, 0.25);
+  if (!misses(project.overall, want) && !proportionsOff) return project;
+  if (!whole) return scaleToBox(project, target);
+  const r = rebuild?.(target);
+  const pick = r && missBy(r.overall, want) <= missBy(project.overall, want) + 1e-6 ? r : project;
+  return misses(pick.overall, want) ? realSizeNote(pick, want) : pick;
 }
 
 /** Parts already inside the typed box — envelope padding is not a reason to shrink them. */
@@ -957,7 +1066,7 @@ function generateRaw(
     return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
   }
   if (wantsUnmatchedSheetShell(item, kind, recipe.notes.some((n) => /stock mapped onto the form/.test(n)) || recipe.ops.length > 1, recipe.notes)) {
-    return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name)), item));
+    return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name, !!recipe.unmatched)), item));
   }
   if (wantsSheetBox(prompt, item, kind)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildSheetBox(prompt, item, kind, box, recipe.name)), item));
@@ -997,7 +1106,7 @@ function generateRaw(
   }
 
   const built = buildFormGraph({ ...recipe, name: formName }, members.density, item.id, { includeSpine: opts.includeSpine, kind, grain });
-  return finalize(
+  const done = finalize(
     attachFunction(
       projectFromGraph(prompt, members.cut, kind, built.graph, !!recipe.historic, built.offer, opts.joinMethod, formName, whole, members.section),
     ),
@@ -1006,6 +1115,8 @@ function generateRaw(
     scale,
     members,
   );
+  // An unmatched noun builds a body along its length; it does not claim a class it never matched.
+  return recipe.unmatched ? { ...done, kind: "custom", unmatched: true } : done;
 }
 
 function buildTemplateProject(

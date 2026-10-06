@@ -3,6 +3,7 @@ import { getCatalogItem } from "./catalog";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
 import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
+import { typedExtents } from "./honesty";
 import { withHome } from "./assembly";
 import { detectForm } from "./form";
 import { classifyAnatomy } from "./anatomy";
@@ -887,7 +888,9 @@ export function toProject(
   const widthWord = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:wide|width)\b/.test(prompt.toLowerCase());
   if (widthWord) {
     const typed = parseSize(prompt.toLowerCase());
-    const typedW = typed.width;
+    // One axis reader for every stick build: "30 long 4 wide" is 30 along the width (the long axis), 4 deep.
+    const ext = typedExtents(prompt);
+    const typedW = ext?.labeled?.width && Number.isFinite(ext.width) ? (ext.width as number) : typed.width;
     if (typedW > 0 && typedW < 24) {
       width = typedW;
       const heightWordNow = /\d+(?:\.\d+)?\s*(?:ft|foot|feet|in|inch|inches|["″])?\s*(?:tall|high|height)\b/.test(prompt.toLowerCase());

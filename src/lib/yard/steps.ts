@@ -3405,7 +3405,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];
   }
-  if (project.kind === "vehicle" || project.kind === "vessel") {
+  if (project.kind === "vehicle" || project.kind === "vessel" || (project.kind === "custom" && project.unmatched)) {
     return [
       { role: "rail", title: "Lay the body along the length", why: "The long member is the body. It lies on the bench — it does not stand on legs." },
       { role: "brace", title: "Glue the cross member across the body", why: "The cross member sets the width. It meets the body, it does not plant on the floor." },

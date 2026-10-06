@@ -274,6 +274,31 @@ function overlayFaces(panels: Panel[]) {
   }
 }
 
+/**
+ * Rule 1b: a unit that goes INTO a space (alcove, nook, recess, pocket) keeps its faces inside that
+ * space: the box gives up the face thickness at the front so the door face lands on the opening depth.
+ */
+function insetToOpening(panels: Panel[], depth: number) {
+  const faces = panels.filter(isFacePanel).filter((f) => !f.yaw);
+  if (!faces.length) return;
+  const body = panels.filter((p) => !isFacePanel(p) && !p.yaw);
+  if (!body.length) return;
+  const back = Math.min(...body.map((p) => p.position.z));
+  const front = Math.max(...faces.map((f) => f.position.z + f.size.depth));
+  const over = Math.round((front - back - depth) * 16) / 16;
+  if (!(over > 1 / 16)) return;
+  const limit = back + depth - over;
+  for (const p of body) {
+    const z1 = p.position.z + p.size.depth;
+    if (z1 <= limit + 1e-6) continue;
+    const cut = z1 - limit;
+    // A part deep enough loses the overrun at its front; a thin front strip (kick, rail) moves back.
+    if (p.size.depth - cut >= 0.5 && p.size.depth > 1) p.size = { ...p.size, depth: Math.round((p.size.depth - cut) / SNAP) * SNAP };
+    else p.position = { ...p.position, z: p.position.z - cut };
+  }
+  for (const f of faces) f.position = { ...f.position, z: f.position.z - over };
+}
+
 /** Rule 4: drawer box = clear opening − slide clearance, centered. */
 function fitDrawerBoxes(panels: Panel[]) {
   for (const d of panels.filter((p) => isBoundingDrawerPanel(p.name, p.type) && !p.yaw)) {
@@ -388,6 +413,8 @@ function solveModelCore<T extends YardProject>(project: T): T {
   recessKicks(panels);
   addDrawerFronts(panels);
   overlayFaces(panels);
+  const room = project.fitted?.opening;
+  if (room && (room.kind === "alcove" || room.kind === "pocket") && room.depth > 0) insetToOpening(panels, room.depth);
   for (let pass = 0; pass < 12; pass++) {
     const hits = findInterference({ panels });
     if (!hits.length) break;

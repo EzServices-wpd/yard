@@ -48,6 +48,11 @@ import {
 } from "./fittedShared";
 import { inch16 } from "./fittedWine";
 
+
+/** Words that name a space the unit goes into (its faces sit inside it, not proud of it). Not a doorway or a drawer. */
+export const OPENING_SPACE =
+  /\b(?:alcove|built-?in|niche|nook|recess(?:ed)?|cubby\s*hole|bump-?out)\b|(?<!\b(?:door|drawer|window)\s)\bopening\b|\bbetween\s+(?:the\s+)?(?:walls|studs)\b/;
+
 export function triple(text: string): { w?: number; h?: number; d?: number } {
   // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
   const stripped = text.replace(
@@ -422,7 +427,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /fitted\s+to/.test(lower) ||
     /\b(?:the\s+)?opening\s+is\b/.test(lower) ||
     /\b(?:the\s+)?hole\s+is\b/.test(lower) ||
-    (/\bopening\b/.test(lower) && /fitted|bookcase|bookshelf|closet|alcove|niche|built-?in/.test(lower));
+    (/\bopening\b/.test(lower) && (/fitted|bookcase|bookshelf|closet/.test(lower) || OPENING_SPACE.test(lower)));
   if (openingFit && trip.w && trip.h && trip.d) {
     const labeledAll =
       /(?:wide|width)/.test(lower) && /(?:deep|depth)/.test(lower) && /(?:tall|high|height)/.test(lower);
@@ -1359,7 +1364,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       width,
       height,
       depth,
-      kind: walls ? "pocket" : /alcove|built-?in|niche/.test(lower) ? "alcove" : "room",
+      kind: walls ? "pocket" : OPENING_SPACE.test(lower) ? "alcove" : "room",
     },
     unit,
     walls,

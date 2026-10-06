@@ -1,6 +1,7 @@
 import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
 import { stripTypedSizes } from "./inchText";
+import { namedLumberDetectPhrases } from "./namedLumberSpecies";
 import { figureStrokes } from "./figure";
 import { stripEntityIds } from "./wiki";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
@@ -444,6 +445,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: strin
     return {
       name: title,
       kind: "vehicle",
+      unmatched: true,
       notes: [
         `${title} lies along its long axis. No class matched, so this is a body, not a standing frame.`,
         "No arches, no pier props, no planted legs.",
@@ -580,14 +582,23 @@ export function isFormStroke(v: unknown): v is FormStroke {
   return Array.isArray(pts) && pts.length >= 2 && pts.every((p) => p && typeof p.x === "number" && typeof p.y === "number" && typeof p.z === "number");
 }
 
+const STOCK_WORDS = /\b(?:jumbo |mini |giant )?(?:popsicle|craft|lolly)\s*sticks?\b|\btoothpicks?\b|\b(?:bamboo )?skewers?\b|\b(?:drinking |plastic )?straws?\b|\bdowels?\b|\bplywood\b|\bply\b|\blumber\b|\bcardboard\b|\bpvc(?: pipe)?\b|\bpallet(?: wood)?\b|\bscrap(?: wood)?\b|\bwire\b/g;
+
 export function subjectFromPrompt(prompt: string): string {
   let s = prompt.toLowerCase();
   const looks = s.match(/looks like (?:an? |the )?([a-z0-9][a-z0-9\s'-]{1,60})/);
   if (looks) s = looks[1];
   // Word-bounded units, fractions and all: "12 inch" must not leave "ch", "1/4 inch" must not leave "1/".
   s = stripTypedSizes(s).replace(/(?<![\w/])\d+(?:\.\d+)?\s*(?:cm|mm|meters?|metres?|m)\b/g, " ");
-  s = s.replace(/\bfrom\b.+$/g, " ");
-  s = s.replace(/\b(build|make|a|an|the|of|that|with|using|out|model|replica|mini|miniature|scale)\b/g, " ");
+  // A title is the subject only: the stock clause, sizes, stock and species words are not its name.
+  s = s.replace(/\b(?:from|made of|made from|made out of|built from|built of|out of|using)\b.+$/g, " ");
+  s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?(?:\s*[x×]\s*\d+(?:\.\d+)?){1,2}\b/g, " ");
+  s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?\s*-?\s*(?:wide|width|tall|high|height|deep|depth|long|length|across|around|diameter|dia)\b/g, " ");
+  s = s.replace(/\b(?:wide|tall|high|deep|long|across)\b/g, " ");
+  s = s.replace(STOCK_WORDS, " ");
+  for (const [re] of namedLumberDetectPhrases()) s = s.replace(new RegExp(re.source, "g"), " ");
+  s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?(?![\w/])/g, " ");
+  s = s.replace(/\b(build|make|made|a|an|the|of|that|with|using|out|model|replica|mini|miniature|scale)\b/g, " ");
   return s.replace(/\s+/g, " ").trim() || prompt.trim();
 }
 

@@ -34,6 +34,8 @@ export type FormRecipe = {
   ops: FormOp[];
   strokes?: FormStroke[];
   source?: string;
+  /** No class matched the noun: the body geometry lies along its length, but no kind (vehicle…) is claimed. */
+  unmatched?: boolean;
 };
 
 export type Size3 = { height: number; width: number; depth: number; /** User typed all three axes — do not pull them back to a stock proportion. */ free?: boolean };

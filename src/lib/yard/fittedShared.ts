@@ -106,12 +106,41 @@ export function pick(text: string, re: RegExp, fallback: number) {
  * class defaults still invented banks + Operate + Buy slides — silent collapse.
  */
 export function isNoDrawersPrompt(lower: string): boolean {
-  return (
-    /\b(?:no|zero|without|sans)\s+(?:any\s+)?drawers?\b/.test(lower) ||
-    /\bdrawerless\b/.test(lower) ||
-    /\b0\s*-?\s*drawers?\b/.test(lower) ||
-    /\bdrawers?\s*[:=]\s*0\b/.test(lower)
-  );
+  return frontCue(lower, "drawers").none;
+}
+
+const NO_DRAWERS = /\b(?:no|zero|without|sans)\s+(?:any\s+)?drawers?\b|\bdrawerless\b|\b0\s*-?\s*drawers?\b|\bdrawers?\s*[:=]\s*0\b/g;
+const NO_DOORS = /\b(?:no|zero|without|sans)\s+(?:any\s+)?doors?\b|\bdoorless\b|\b0\s*-?\s*doors?\b|\bdoors?\s*[:=]\s*0\b|\bopen\s*-?\s*front(?:ed)?\b/g;
+const SAY = String.raw`\b(?:with|plus|add|adds|has|[1-9]\d*|one|two|three|four|five|six|a\s+pair\s+of|pair\s+of|double|glass|hinged|sliding|barn|shaker|cabinet)\s+(?:(?!no\b|zero\b|any\b|without\b)[a-z-]+\s+)?`;
+const WITH_DRAWERS = new RegExp(`${SAY}drawers?\\b`, "g");
+const WITH_DOORS = new RegExp(`${SAY}doors?\\b`, "g");
+const lastAt = (re: RegExp, s: string) => {
+  let at = -1, said = "";
+  for (const m of s.matchAll(re)) if (m.index! >= at) { at = m.index!; said = m[0].trim(); }
+  return { at, said };
+};
+
+/**
+ * One rule for a front feature typed both ways ("open front with doors", "no drawers … 3 drawers"):
+ * the cue typed LAST wins, and `note` says which cue won and how to flip it.
+ */
+export function frontCue(lower: string, feature: "doors" | "drawers"): { none: boolean; note?: string } {
+  const no = lastAt(feature === "doors" ? NO_DOORS : NO_DRAWERS, lower);
+  if (no.at < 0) return { none: false };
+  const yes = lastAt(feature === "doors" ? WITH_DOORS : WITH_DRAWERS, lower);
+  if (yes.at < 0) return { none: true };
+  const [won, lost] = yes.at > no.at ? [yes.said, no.said] : [no.said, yes.said];
+  const built = yes.at > no.at ? `it has ${feature}` : `it has no ${feature}`;
+  return {
+    none: no.at > yes.at,
+    note: `You typed "${no.said}" and "${yes.said}". The later cue ("${won}") won, so ${built}. To build it the other way, take out "${won}" and keep "${lost}".`,
+  };
+}
+
+/** Notes for every front feature typed both ways. */
+export function frontCueNotes(prompt: string): string[] {
+  const lower = prompt.toLowerCase();
+  return (["doors", "drawers"] as const).map((f) => frontCue(lower, f).note).filter((n): n is string => !!n);
 }
 
 /**
@@ -120,13 +149,7 @@ export function isNoDrawersPrompt(lower: string): boolean {
  * Explicit open-front asks also force open (never silent door invent).
  */
 export function isNoDoorsPrompt(lower: string): boolean {
-  return (
-    /\b(?:no|zero|without|sans)\s+(?:any\s+)?doors?\b/.test(lower) ||
-    /\bdoorless\b/.test(lower) ||
-    /\b0\s*-?\s*doors?\b/.test(lower) ||
-    /\bdoors?\s*[:=]\s*0\b/.test(lower) ||
-    /\bopen\s*-?\s*front\b/.test(lower)
-  );
+  return frontCue(lower, "doors").none;
 }
 
 /** Spoken/typed drawer count — digits or words; overrides family defaults (nightstand=1, bank=3). */

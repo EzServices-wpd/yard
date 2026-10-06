@@ -206,6 +206,7 @@ export function buildTypedSheetShell(
   item: CatalogItem,
   size: { width: number; height: number; depth: number },
   name: string,
+  unmatched = false,
 ): YardProject {
   const lower = prompt.toLowerCase();
   const W = Math.max(size.width, 1);
@@ -260,7 +261,9 @@ export function buildTypedSheetShell(
     id: createId("proj"),
     name: titled,
     prompt,
-    kind: "furniture",
+    // A class the form matched (chair, table) is furniture; an unmatched noun claims no class.
+    kind: unmatched || name === "Frame" || name === "Custom form" ? "custom" : "furniture",
+    ...(unmatched ? { unmatched: true } : {}),
     overall: { width: W, height: H, depth: D },
     instances: [],
     panels,
