@@ -20,7 +20,7 @@ import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, i
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, type FormRecipe } from "./form";
@@ -210,7 +210,12 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
-  return withAssumedAxes(generateTyped(...args), args);
+  const prompt = args[0] ?? "";
+  const built = typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt);
+  // A species on a typed lumber size ("cedar 1x6", any builder) says the species in the title and notes.
+  // Species alone (bound 1×4) keeps its builder's own title rule.
+  const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
+  return sized ? withSpeciesTitle(built, prompt, true) : built;
 }
 
 function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {

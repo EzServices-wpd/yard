@@ -2565,7 +2565,8 @@ function cutStockGroups(
       if (e) e.qty += 1;
       else parts.set(k, { name, lengthIn: d.lengthIn, widthIn: d.widthIn, qty: 1 });
     }
-    const talk = glueUpTalk(planSolidBoards([...parts.values()]), g.label);
+    const face = gItem.dims.width ?? 3.5;
+    const talk = glueUpTalk(planSolidBoards([...parts.values()], face), g.label, face);
     if (talk) g.tool = { how: `${talk} ${g.tool.how}`, tip: g.tool.tip };
   }
   if (thin.length) {

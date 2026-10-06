@@ -38,7 +38,8 @@ import {
 } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
 import { binderBom, binderKind, effectiveJoin, memberSpan } from "./joints";
-import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock } from "./promptHelpers";
+import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock, stripJoinWords, weekendSizedStockPhrases } from "./promptHelpers";
+import { stripHeldPurpose } from "./heldObjects";
 import {
   CATALOG_LUMBER_BIND,
   densifyLabelForPrompt,
@@ -46,7 +47,7 @@ import {
   namedLumberFromPrompt,
 } from "./namedLumberSpecies";
 import { honorSpeciesInTitle } from "./voiceHonesty";
-import type { BuildPlan, CatalogItem, CutLine, JoinMethod, YardInstance, YardProject } from "./types";
+import type { BuildPlan, CatalogItem, CutLine, JoinMethod, Panel, YardInstance, YardProject } from "./types";
 
 export type WeekendGuard = "stock" | "whole" | "join" | "size" | "anatomy";
 
@@ -91,7 +92,7 @@ export function namedStockFromPrompt(prompt: string): CatalogItem | null {
 export function namedStockDisplayName(prompt: string, item: CatalogItem | undefined | null): string {
   if (!item) return "stock";
   // Lumber size row: prefer pack densifyLabel ("Oak 1×4") over bare catalog name / first-token alias.
-  if (item.id === CATALOG_LUMBER_BIND || (/board|stud/i.test(item.name) && item.category === "lumber")) {
+  if (item.id === CATALOG_LUMBER_BIND || (/board|stud|^\d\s*[×x]\s*\d+\s*\(/i.test(item.name) && item.category === "lumber")) {
     const species = namedLumberFromPrompt(prompt);
     const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/gi, "×");
     // Species default is 1×4. A spoken 2×4 / 1×3 keeps that size in the Buy name.
@@ -139,6 +140,31 @@ export function isSheetPrimaryId(id: string | undefined | null): boolean {
   return !!id && /^(plywood-|sheet-)/i.test(id);
 }
 
+/** A build in the named species' lumber says the species in its title ("Cedar Adirondack chair"). */
+export function withSpeciesTitle(p: YardProject, prompt: string, inNotes = false): YardProject {
+  const species = namedLumberFromPrompt(prompt);
+  if (!species) return p;
+  if (inNotes) {
+    // Notes that name the bare catalog row ("1×6 Board (8 ft)") say the typed species stock ("Cedar 1×6").
+    const item = getCatalogItem(p.primaryMaterialId);
+    const label = namedStockDisplayName(prompt, item);
+    if (item && label !== item.name && p.notes?.some((n) => n.includes(item.name))) {
+      p = { ...p, notes: p.notes.map((n) => n.split(item.name).join(label)) };
+    }
+  }
+  const esc = species.display.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (new RegExp(`\\b${esc}\\b`, "i").test(p.name)) return p;
+  // Split trailing dimension suffix so honorSpeciesInTitle sees a clean stem.
+  const m = p.name.match(/^(.*?)(\s+\d.*)?$/);
+  const stem = (m?.[1] || p.name).trim();
+  const dims = m?.[2] || "";
+  const honored = honorSpeciesInTitle(stem, prompt);
+  const nextName = `${honored}${dims}`.replace(/\s+/g, " ").trim();
+  if (nextName === p.name) return p;
+  const fitted = p.fitted ? { ...p.fitted, name: nextName } : p.fitted;
+  return { ...p, name: nextName, fitted };
+}
+
 /**
  * Shared named-species primary honesty (universal densify/bind helper).
  *
@@ -160,19 +186,7 @@ export function applyNamedLumberPrimaryHonesty(
   const primary = project.primaryMaterialId;
   const notes = project.notes ?? [];
 
-  const honorTitle = (p: YardProject): YardProject => {
-    const esc = species.display.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (new RegExp(`\\b${esc}\\b`, "i").test(p.name)) return p;
-    // Split trailing dimension suffix so honorSpeciesInTitle sees a clean stem.
-    const m = p.name.match(/^(.*?)(\s+\d.*)?$/);
-    const stem = (m?.[1] || p.name).trim();
-    const dims = m?.[2] || "";
-    const honored = honorSpeciesInTitle(stem, prompt);
-    const nextName = `${honored}${dims}`.replace(/\s+/g, " ").trim();
-    if (nextName === p.name) return p;
-    const fitted = p.fitted ? { ...p.fitted, name: nextName } : p.fitted;
-    return { ...p, name: nextName, fitted };
-  };
+  const honorTitle = (p: YardProject) => withSpeciesTitle(p, prompt);
 
   if (primary === CATALOG_LUMBER_BIND) {
     return honorTitle(solidNamedPanels(project, species.display));
@@ -227,6 +241,8 @@ const BOARD_SECTIONS: { id: string; thick: number; face: number }[] = [
   { id: "lumber-1x4-8", thick: 0.75, face: 3.5 },
   { id: "lumber-1x6-8", thick: 0.75, face: 5.5 },
   { id: "lumber-1x8-8", thick: 0.75, face: 7.25 },
+  { id: "lumber-1x10-8", thick: 0.75, face: 9.25 },
+  { id: "lumber-1x12-8", thick: 0.75, face: 11.25 },
   { id: "lumber-2x2-8", thick: 1.5, face: 1.5 },
   { id: "lumber-2x4-8", thick: 1.5, face: 3.5 },
   { id: "lumber-2x6-8", thick: 1.5, face: 5.5 },
@@ -254,8 +270,111 @@ function sectionSize(
   return { ...size, [axes[0]]: thick, [axes[1]]: face };
 }
 
+/**
+ * A ¾" face recast to a thicker named board takes that board's real thickness.
+ * It grows into the piece, not out of it: a top or seat grows down from its surface
+ * (the typed height stays), an outer side grows inward, an inner board grows about its middle.
+ * The interference solve then trims whatever it now butts into.
+ */
+function atBoardThickness(p: Panel, thick: number, box: { min: Record<Axis, number>; max: Record<Axis, number> }): Panel {
+  if (p.yaw || p.polygon || p.outline) return p;
+  const axes: Axis[] = ["width", "height", "depth"];
+  const a = axes.reduce((m, k) => (p.size[k] < p.size[m] ? k : m));
+  const delta = thick - p.size[a];
+  if (!(delta > 0.05) || Math.abs(p.size[a] - 0.75) > 0.06) return p;
+  const pos = { x: "x", width: "x", height: "y", depth: "z" } as const;
+  const k = pos[a];
+  const lo = p.position[k];
+  const hi = lo + p.size[a];
+  let shift: number;
+  if (a === "height") shift = lo - delta >= box.min.height - 1e-6 ? -delta : 0;
+  else if (Math.abs(hi - box.max[a]) < 0.06) shift = -delta;
+  else if (Math.abs(lo - box.min[a]) < 0.06) shift = 0;
+  else shift = -delta / 2;
+  return { ...p, position: { ...p.position, [k]: lo + shift }, size: { ...p.size, [a]: thick } };
+}
+
+type Axis = "width" | "height" | "depth";
+
+/** One plain line naming the parts that stay on another stock, and why. Never a silent swap. */
+function keptStockNote(panels: Panel[], item: CatalogItem): string {
+  const kept = new Map<string, string[]>();
+  for (const p of panels) {
+    const id = p.materialId ?? "";
+    if (id === item.id || /^plywood-1-4/i.test(id) || Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26) continue;
+    const other = getCatalogItem(id);
+    if (!other || (other.category !== "lumber" && !/^plywood-/i.test(id))) continue;
+    const label = p.name.replace(/\s*\d+$/, "").toLowerCase();
+    const list = kept.get(id) ?? [];
+    if (!list.includes(label)) list.push(label);
+    kept.set(id, list);
+  }
+  const short = item.name.replace(/\s*\(.*\)$/, "");
+  return [...kept.entries()]
+    .map(([id, names]) => {
+      const other = getCatalogItem(id)!.name.replace(/\s*\(.*\)$/, "");
+      const why = /2×2|4×4/.test(other) ? `posts need a square section and ${short} is a flat board` : `the form draws them from ${other}`;
+      return `Not ${short}: ${names.join(", ")} stay ${other} — ${why}.`;
+    })
+    .join(" ");
+}
+
+/**
+ * Never a silent swap: every lumber size / dowel / sized plywood the prompt names either shows up in the
+ * build or gets one plain note saying which parts use what instead, and why.
+ */
+export function typedStockKeptNote(project: YardProject, prompt: string): YardProject {
+  let hay = stripJoinWords(stripHeldPurpose(prompt)).toLowerCase();
+  const typed: { id: string; said: string }[] = [];
+  for (const [re, id] of weekendSizedStockPhrases()) {
+    if (!/^(?:lumber-|dowel-|closet-rod|plywood-1-|plywood-3-4-4x10)/.test(id)) continue;
+    const m = hay.match(new RegExp(String.raw`(?<![\d./])(?:${re.source})`));
+    if (!m) continue;
+    hay = hay.replace(m[0], " ");
+    typed.push({ id, said: m[0].trim() });
+  }
+  if (!typed.length) return project;
+  const base = (id: string) => id.replace(/^(lumber-\dx\d+)-\d+$/, "$1");
+  const used = new Set([project.primaryMaterialId, ...project.panels.map((p) => p.materialId), ...project.instances.map((i) => i.catalogId)].map(base));
+  const species = namedLumberFromPrompt(prompt);
+  const notes = [...(project.notes ?? [])];
+  // A scrap / brick row that carries the size in its name ("2×4 scrap, 5″") is that stock too.
+  const usedNames = [...used].map((id) => (getCatalogItem(id)?.name ?? id).replace(/x/gi, "×")).join(" | ");
+  for (const t of typed) {
+    if (used.has(base(t.id))) continue;
+    const item = getCatalogItem(t.id);
+    if (!item) continue;
+    const nominal = item.name.match(/\d\s*[×x]\s*\d+/)?.[0].replace(/\s|x/g, (c) => (c === "x" ? "×" : ""));
+    if (nominal && usedNames.includes(nominal)) continue;
+    const said = `${species && item.category !== "sheet_goods" ? `${species.display} ` : ""}${t.said.replace(/\s*[x×]\s*/g, "×")}`;
+    if (notes.some((n) => n.startsWith(`Not ${said}`))) continue;
+    const parts = new Map<string, string[]>();
+    for (const p of project.panels) {
+      const other = getCatalogItem(p.materialId);
+      if (!other || (other.category !== "lumber" && other.category !== "sheet_goods") || Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26) continue;
+      const label = p.name.replace(/\s*\d+$/, "").toLowerCase();
+      const list = parts.get(p.materialId) ?? [];
+      if (!list.includes(label)) list.push(label);
+      parts.set(p.materialId, list);
+    }
+    const round = item.formFactor === "dowel" || /dowel|rod/.test(item.id);
+    const what = [...parts.entries()]
+      .map(([id, names]) => `${names.length > 4 ? `${names.slice(0, 4).join(", ")} and the rest` : names.join(", ").replace(/, ([^,]*)$/, " and $1")} ${names.length === 1 ? "is" : "are"} ${namedStockDisplayName(prompt, getCatalogItem(id))}`)
+      .join("; ");
+    const why = round ? `those are flat parts and a ${t.said} is round` : `this form draws those parts from that stock`;
+    notes.push(`Not ${said}: ${what || `this build uses ${namedStockDisplayName(prompt, getCatalogItem(project.primaryMaterialId))}`} — ${why}.${round ? ` Cut pegs or rods from the ${said} if you want it in the build.` : ""}`);
+  }
+  return notes.length === (project.notes ?? []).length ? project : { ...project, notes };
+}
+
 export function applyExplicitBoardCarcase(project: YardProject, item: CatalogItem): YardProject {
   if (item.category !== "lumber" || item.formFactor !== "board") return project;
+  const thick = item.dims.thickness ?? item.dims.height ?? 0.75;
+  const all = project.panels.map((p) => panelBox(p));
+  const box = {
+    min: { width: Math.min(...all.map((b) => b.x0)), height: Math.min(...all.map((b) => b.y0)), depth: Math.min(...all.map((b) => b.z0)) },
+    max: { width: Math.max(...all.map((b) => b.x1)), height: Math.max(...all.map((b) => b.y1)), depth: Math.max(...all.map((b) => b.z1)) },
+  };
   const panels = project.panels.map((p) => {
     const dims = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
     const t = dims[0];
@@ -269,17 +388,16 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     if (post && item.id !== "lumber-2x2-8" && item.id !== "lumber-4x4-8") return p;
     if (p.materialId === "closet-rod") return p;
     if (p.materialId === "lumber-2x2-8" && item.id !== p.materialId) return p;
-    return { ...p, materialId: item.id, size: sectionSize(p.size, item) };
+    const recast = { ...p, materialId: item.id, size: sectionSize(p.size, item) };
+    return thick > 0.9 ? atBoardThickness(recast, thick, box) : recast;
   });
   const label = namedStockDisplayName(project.prompt ?? "", item);
-  const thick = item.dims.thickness ?? item.dims.height ?? 0.75;
   const face = item.dims.width ?? 3.5;
   const note = [
-    `Stock: every ¾" part is ${label}.`,
-    thick > 0.9
-      ? `That board is ${inchFrac(thick)}" thick and the parts are drawn ¾" — plane or resaw each board to ¾" (a lumberyard will do it), or pick 1×4 boards, which come ¾" thick.`
-      : `Parts wider than one board are edge-glued, then cut to size.`,
+    thick > 0.9 ? `Stock: every board part is ${label}, at its real ${inchFrac(thick)}" thickness.` : `Stock: every ¾" part is ${label}.`,
+    `Parts wider than one board are edge-glued, then cut to size.`,
     face < 3.2 ? `This board is ${inchFrac(face)}" wide, so buy extra when a part is wider than the face.` : "",
+    keptStockNote(panels, item),
     `¼" backs stay plywood.`,
   ]
     .filter(Boolean)
@@ -289,12 +407,21 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     .filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n))
     .map((n) =>
       n
-        .replace(/(\d"?\s*H\.)\s*¾"\s*plywood\./, `$1 ${label}.`)
+        .replace(/(\d"?\s*H\.|\.)\s*¾"\s*plywood\./, `$1 ${label}.`)
         .replace(/2×4 legs|2x4 legs/g, `${short} legs`)
-        .replace(/four 2×4\b|four 2x4\b/g, `four ${short}`),
+        .replace(/four 2×4\b|four 2x4\b/g, `four ${short}`)
+        .replace(/¾" top and seats/g, thick > 0.9 ? `${inchFrac(thick)}" top and seats` : `¾" top and seats`),
     )
     .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
+}
+
+function panelBox(p: Panel) {
+  return {
+    x0: p.position.x, x1: p.position.x + p.size.width,
+    y0: p.position.y, y1: p.position.y + p.size.height,
+    z0: p.position.z, z1: p.position.z + p.size.depth,
+  };
 }
 
 /** The picked sheet replaces ¾" faces. A face longer than that sheet stays on a sheet that fits. ¼" backs stay ¼" unless the pick is the thin sheet. */

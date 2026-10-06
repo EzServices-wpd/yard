@@ -626,15 +626,11 @@
       "height": 29,
       "depth": 64
     },
-    "panels": 22,
+    "panels": 18,
     "instances": 0,
     "uniqueParts": [
       "Center support 1",
       "Center support 2",
-      "Center support 3",
-      "Center support 4",
-      "Center support 5",
-      "Center support 6",
       "Far bench leg",
       "Far bench seat",
       "Leg",
@@ -645,7 +641,7 @@
     ],
     "notesHead": [
       "Picnic table 72\" × 29\" × 64\". Picnic table — 72\" top, two attached benches at 17\". Not a dining table.",
-      "The benches sit outside the top, 8\" clear of the table legs so you can sit. 2×2 legs, ¾\" top and seats."
+      "The benches sit outside the top, 8\" clear of the table legs so you can sit. 2×2 legs, 1 1/2\" top and seats."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -723,7 +719,7 @@
     "id": "raised-bed-cedar",
     "prompt": "raised bed from cedar 1x6",
     "bucket": "weekend-named-stock",
-    "name": "Planter box 36\" × 30\" × 16\"",
+    "name": "Cedar Planter box 36\" × 30\" × 16\"",
     "kind": "closet",
     "material": "lumber-1x6-8",
     "overall": {
@@ -741,7 +737,7 @@
       "Right side"
     ],
     "notesHead": [
-      "Planter box 36\" × 30\" × 16\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾\" plywood.",
+      "Planter box 36\" × 30\" × 16\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. Cedar 1×6.",
       "Open top: fill with soil; typed 36\" wide × 16\" deep × 30\" tall. Not a Wire-frame skeleton and not a sealed storage cube."
     ],
     "signals": {
@@ -757,7 +753,7 @@
     "bucket": "weekend-named-stock",
     "name": "Bookcase",
     "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "material": "lumber-1x10-8",
     "overall": {
       "width": 36,
       "height": 84,
@@ -779,7 +775,7 @@
     ],
     "notesHead": [
       "Bookcase. Freestanding carcase — still square, still a cut list.",
-      "Unit 36\" W × 12\" D × 84\" H. ¾\" plywood. Front reads straight."
+      "Unit 36\" W × 12\" D × 84\" H. 1×10 Board (8 ft). Front reads straight."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -882,7 +878,7 @@
       "Peg rail"
     ],
     "notesHead": [
-      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 8\" hat shelf. ¾\" plywood.",
+      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 8\" hat shelf. 1×4 Board (8 ft).",
       "6 pegs stand about 3\" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6\" on center. Hit studs."
     ],
     "signals": {

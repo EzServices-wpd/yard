@@ -1163,6 +1163,8 @@ function guessCatalogId(line: BomLine): string | null {
   if (/2\s*[x×]\s*2|two by two/.test(hay)) return "lumber-2x2-8";
   if (/2\s*[x×]\s*8/.test(hay)) return "lumber-2x8-8";
   if (/2\s*[x×]\s*6/.test(hay)) return "lumber-2x6-8";
+  if (/1\s*[x×]\s*12(?!\d)|one by twelve/.test(hay)) return "lumber-1x12-8";
+  if (/1\s*[x×]\s*10(?!\d)|one by ten/.test(hay)) return "lumber-1x10-8";
   if (/1\s*[x×]\s*8(?!\d)|one by eight/.test(hay)) return "lumber-1x8-8";
   if (/1\s*[x×]\s*6(?!\d)|one by six/.test(hay)) return "lumber-1x6-8";
   if (/1\s*[x×]\s*3(?!\d)|one by three/.test(hay)) return "lumber-1x3-8";

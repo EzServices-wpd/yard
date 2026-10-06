@@ -51,7 +51,7 @@ export const SPECIES_BOARD_USD: Record<string, number> = {
 
 /** Species named at the head of a Buy or cut-list label ("Walnut 1×4" → walnut row), else null. */
 export function speciesOfBoardLabel(label?: string | null): NamedLumberSpecies | null {
-  const m = (label ?? "").trim().match(/^([A-Za-z]+)\s+1\s*[×x]\s*\d+\b/);
+  const m = (label ?? "").trim().match(/^([A-Za-z]+)\s+[12]\s*[×x]\s*\d+\b/);
   if (!m) return null;
   const head = m[1].toLowerCase();
   return NAMED_LUMBER_SPECIES.find((s) => s.display.toLowerCase() === head || s.id === head) ?? null;

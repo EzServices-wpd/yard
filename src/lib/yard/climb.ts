@@ -9,6 +9,7 @@ import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { panelWorldCorners } from "./geometry";
+import { detectMaterial } from "./promptHelpers";
 import type { Panel, YardProject } from "./types";
 import { climbRiseRun, climbStepCount } from "./weekendFamily";
 
@@ -45,6 +46,12 @@ export function climbKind(prompt: string): ClimbKind | null {
   }
   return null;
 }
+
+/** A typed ¾" board ("pine 1x10") is the tread stock. Posts and rails keep their own sections. */
+const NAMED_TREAD = (prompt: string): string | null => {
+  const item = detectMaterial(prompt);
+  return item.category === "lumber" && item.formFactor === "board" && item.dims.height === 0.75 && item.id !== CATALOG_LUMBER_BIND ? item.id : null;
+};
 
 const SPECIES_FOR_CLIMB = (prompt: string) => {
   const s = namedLumberFromPrompt(prompt);
@@ -110,7 +117,7 @@ function stoolPanels(prompt: string, sizeOverride?: { width: number; height: num
   const T = 0.75;
   const postId = species ? CATALOG_LUMBER_BIND : "lumber-2x2-8";
   const railId = species ? CATALOG_LUMBER_BIND : "lumber-2x4-8";
-  const treadId = species ? CATALOG_LUMBER_BIND : "plywood-3-4-4x8";
+  const treadId = NAMED_TREAD(prompt) ?? (species ? CATALOG_LUMBER_BIND : "plywood-3-4-4x8");
   const top = (t: number) => r16((t + 1) * rise);
   // Tread t (0 = lowest, front). The top tread spans z 0..topD; each lower tread steps forward by `run`.
   const zf = (t: number) => r16(topD + (n - 1 - t) * run);
@@ -171,7 +178,7 @@ function stoolPanels(prompt: string, sizeOverride?: { width: number; height: num
     }
     mk({ type: "rail", name: "Handrail grip", position: { x: -post, y: r16(gy - post), z: 0 }, size: { width: r16(W + 2 * post), height: post, depth: post }, materialId: postId, cutNote: "Grip across the tops of the handrail posts; round over every edge you hold." });
   }
-  return { panels, H, n, rise: r16(rise), run, topD, W, D, handrail, railRise, species, primary: species ? CATALOG_LUMBER_BIND : treadId };
+  return { panels, H, n, rise: r16(rise), run, topD, W, D, handrail, railRise, species, primary: NAMED_TREAD(prompt) ?? (species ? CATALOG_LUMBER_BIND : treadId) };
 }
 
 function ladderPanels(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
@@ -207,7 +214,7 @@ function ladderPanels(prompt: string, sizeOverride?: { width: number; height: nu
   // Local xy polygon is the profile; yaw π/2 turns local +x to world −z, so mirror x.
   const localPts = prof.map(([z, y]) => [r16(span - z), y] as [number, number]);
   const stringerId = "lumber-2x10-8";
-  const treadId = species ? CATALOG_LUMBER_BIND : "plywood-3-4-4x8";
+  const treadId = NAMED_TREAD(prompt) ?? (species ? CATALOG_LUMBER_BIND : "plywood-3-4-4x8");
   const panels: Panel[] = [];
   const mk: Mk = (p) => {
     const q = { id: createId("panel"), ...p } as Panel;
@@ -262,9 +269,11 @@ export function buildClimb(prompt: string, kind: ClimbKind, sizeOverride?: { wid
     notes.push(
       `${name}: ${s.n === 1 ? "one weight-bearing climb tread" : `${s.n} weight-bearing climb treads`} — top tread at ${inchFrac(s.H)}", ${inchFrac(s.W)}" wide × ${inchFrac(s.topD)}" deep.${s.n > 1 ? ` Tread tops at ${heights}.` : ""}`,
       `Each step: ${inchFrac(s.rise)}" rise × ${inchFrac(s.run)}" run. The base is ${inchFrac(s.D)}" deep, so it stays planted when you lean.`,
-      s.species
-        ? `${s.species.display} boards throughout: posts laminated from two strips, rails on edge, treads edge-glued from the boards.`
-        : "2×2 posts at every tread edge, 2×4 rails on edge under every tread, ¾\" plywood treads. Glue and screw every joint.",
+      NAMED_TREAD(prompt)
+        ? `Treads are ${s.species ? `${s.species.display} ` : ""}${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}, as typed, edge-glued where a tread is wider than one board. Not ${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}: posts and rails stay ${s.species ? `${s.species.display} 1×4 (posts laminated from two strips, rails on edge)` : "2×2 posts and 2×4 rails"} — a wide board is not a post or a rail section.`
+        : s.species
+          ? `${s.species.display} boards throughout: posts laminated from two strips, rails on edge, treads edge-glued from the boards.`
+          : "2×2 posts at every tread edge, 2×4 rails on edge under every tread, ¾\" plywood treads. Glue and screw every joint.",
       adult
         ? "Built for an adult: an adult stands on the top tread, carried by four posts straight to the floor."
         : "Built to carry a grown-up, so a kid standing on it is well inside its strength.",

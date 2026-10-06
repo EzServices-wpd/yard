@@ -28,6 +28,8 @@ const NOMINALS: Nominal[] = [
   { key: "1x4", id: "lumber-1x4-8", width: 3.5, thick: 0.75, sold: 96, label: "1×4" },
   { key: "1x6", id: "lumber-1x6-8", width: 5.5, thick: 0.75, sold: 96, label: "1×6" },
   { key: "1x8", id: "lumber-1x8-8", width: 7.25, thick: 0.75, sold: 96, label: "1×8" },
+  { key: "1x10", id: "lumber-1x10-8", width: 9.25, thick: 0.75, sold: 96, label: "1×10" },
+  { key: "1x12", id: "lumber-1x12-8", width: 11.25, thick: 0.75, sold: 96, label: "1×12" },
   { key: "2x2", id: "lumber-2x2-8", width: 1.5, thick: 1.5, sold: 96, label: "2×2" },
   { key: "2x4", id: "lumber-2x4-8", width: 3.5, thick: 1.5, sold: 96, label: "2×4" },
   { key: "2x6", id: "lumber-2x6-8", width: 5.5, thick: 1.5, sold: 96, label: "2×6" },

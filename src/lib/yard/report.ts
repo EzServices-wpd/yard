@@ -374,7 +374,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       Math.abs((c.thicknessIn ?? thick) - thick) < 0.05 && c.widthIn <= face + 0.05;
     if (plyCuts.length && frameCuts.length && frameCuts.every(asSection)) {
       frameBought = true;
-      const framePlan = planSolidBoards(frameCuts.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })));
+      const framePlan = planSolidBoards(frameCuts.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })), face);
       const frameQty = frameCuts.reduce((s, c) => s + c.quantity, 0);
       bom.push({
         name: label,
@@ -405,6 +405,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     frameBought = true;
     const boardPlan = planSolidBoards(
       structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
+      face,
     );
     const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
     const qty = boardPlan.boards;
@@ -419,10 +420,49 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       notes:
         `${qty} × ${feet} ft ${label} for the ${partsQty} carcase part${partsQty === 1 ? "" : "s"}` +
         (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued` : "") +
-        (thick > 0.9 ? `. Rip to ¾" (this board is ${thick}" thick; the drawing is still ¾")` : "") +
+        (thick > 0.9 && structural.some((c) => Math.abs((c.thicknessIn ?? thick) - 0.75) < 0.05) ? `. Rip to ¾" (this board is ${thick}" thick; the drawing is still ¾")` : "") +
         (face < 3.2 ? `. The face is only ${face}" — buy extra when a part is wider` : "") +
         (thinBacks.length ? `. ¼" backs stay plywood.` : "."),
     });
+    }
+  } else if (
+    project.primaryMaterialId !== CATALOG_LUMBER_BIND &&
+    !structural.some((c) => isSheetStockCut(c)) &&
+    structural.some((c) => /^lumber-1x\d+-8\|/.test(c.id))
+  ) {
+    // Mixed ¾" boards (treads from the typed 1×10, rails from 1×4): each board stock is bought on its own line,
+    // packed at that board's real face. 2× and post stock go through the linear packer below.
+    const byBoard = new Map<string, typeof structural>();
+    for (const c of structural.filter((x) => /^lumber-1x\d+-8\|/.test(x.id))) {
+      const id = c.id.split("|")[0];
+      byBoard.set(id, [...(byBoard.get(id) ?? []), c]);
+    }
+    for (const [id, lines] of byBoard) {
+      const item = getCatalogItem(id);
+      if (!item) continue;
+      const label = namedStockDisplayName(project.prompt ?? "", item);
+      // Laminated legs ripped from this same board ride on its line (one Buy line per stock).
+      const withLegs = id === CATALOG_LUMBER_BIND && namedLegQty > 0;
+      if (withLegs) legsMerged = true;
+      const plan = planSolidBoards(
+        [...lines.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })), ...(withLegs ? legStripParts : [])],
+        item.dims.width ?? 3.5,
+      );
+      const partsQty = lines.reduce((n, c) => n + c.quantity, 0) + (withLegs ? namedLegQty : 0);
+      const glued = plan.glueUps.reduce((n, g) => n + g.qty, 0);
+      bom.push({
+        name: label,
+        quantity: plan.boards,
+        unit: plan.boards === 1 ? "board" : "boards",
+        catalogId: id,
+        searchQuery: item.searchQuery ?? label,
+        estimatedCost: item.unitCostUsd != null ? item.unitCostUsd * plan.boards : undefined,
+        notes:
+          `${plan.boards} × 8 ft ${label} for the ${partsQty} ${label} part${partsQty === 1 ? "" : "s"} on the cut list` +
+          (withLegs ? `, ${namedLegQty} leg${namedLegQty === 1 ? "" : "s"} laminated from two ripped 1 1/2" strips each` : "") +
+          (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued from boards` : "") +
+          `. Packed from the cut list with 1/8" kerf.`,
+      });
     }
   } else if (sheets8 > 0 || (project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber && structural.length > 0)) {
     const isNamedLumberPrimary =
@@ -446,7 +486,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       const boardPlan = planSolidBoards([
         ...structural.map((c) => ({ name: c.name, lengthIn: c.lengthIn, widthIn: c.widthIn, qty: c.quantity })),
         ...(legsMerged ? legStripParts : []),
-      ]);
+      ], namedLumber!.dims.width ?? 3.5);
       const partsQty = structuralQty + (legsMerged ? namedLegQty : 0);
       const glued = boardPlan.glueUps.reduce((s2, g) => s2 + g.qty, 0);
       bom.push({
@@ -457,7 +497,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         searchQuery: namedLumber!.searchQuery ?? label,
         estimatedCost: (namedLumber!.unitCostUsd ?? 4) * boardPlan.boards,
         notes:
-          `${boardPlan.boards} × 8 ft ${label} (¾" × 3½") for ${legQtyForNote || (namedLegQty && !legsMerged) ? "the" : "all"} ${partsQty} ${label} part${partsQty === 1 ? "" : "s"} on the cut list` +
+          `${boardPlan.boards} × 8 ft ${label} (¾" × ${(namedLumber!.dims.width ?? 3.5) === 3.5 ? "3½" : inchFrac(namedLumber!.dims.width!)}") for ${legQtyForNote || (namedLegQty && !legsMerged) ? "the" : "all"} ${partsQty} ${label} part${partsQty === 1 ? "" : "s"} on the cut list` +
           (legQtyForNote ? ` (excluding the ${legQtyForNote} leg${legQtyForNote === 1 ? "" : "s"} listed below)` : "") +
           (namedLegQty && !legsMerged ? ` (the ${namedLegQty} ${namedLegLabel} leg${namedLegQty === 1 ? "" : "s"} are listed below)` : "") +
           (glued ? ` — ${glued} wide part${glued === 1 ? "" : "s"} edge-glued from boards` : "") +
@@ -596,8 +636,10 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const feet = Math.round(stockLen / 12);
     const names = [...new Set(lines.map((c) => c.name.toLowerCase()))];
     const lens = [...new Set(lengths.map((n) => Math.round(n * 16) / 16))].sort((a, b) => b - a).map((n) => `${inchFrac(n)}"`).join(", ");
+    // Typed species stock keeps its species on Buy (the cut list already says "Cedar 2×6").
+    const speciesLabel = lines.every((c) => c.material && c.material === lines[0].material && speciesOfBoardLabel(c.material)) ? lines[0].material! : "";
     bom.push({
-      name: item?.name ?? "2×4 Stud (8 ft)",
+      name: speciesLabel || (item?.name ?? "2×4 Stud (8 ft)"),
       quantity: qty,
       unit: qty === 1 ? "pc" : "pcs",
       catalogId: id,
@@ -1392,12 +1434,20 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
     const species = speciesOfBoardLabel(line.name);
     const catalog = line.catalogId ? getCatalogItem(line.catalogId) : undefined;
     const sold = catalog?.unitCostUsd != null && catalog.unitCostUsd > 0;
-    const each = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
+    // Species price is per 1×4; a wider named board (Cedar 1×6) scales by its real face and keeps its size in the search.
+    const face = catalog?.dims.width ?? 3.5;
+    const thick = catalog?.dims.height ?? 0.75;
+    const size = line.name.match(/([12])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
+    const per1x4 = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
+    const each = per1x4 != null ? Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
     if (each != null && line.quantity > 0) {
       const total = Math.round(each * line.quantity * 100) / 100;
-      const query = `${species!.display} 1x4 board 8 ft`;
+      const query = `${species!.display} ${size} board 8 ft`;
       line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
       changed = true;
+    } else if (species && species.id !== "pine" && catalog?.category === "lumber") {
+      // Unpriced row (no fake price): the search still names the species and size that was typed.
+      line = { ...line, searchQuery: `${species.display} ${size} board 8 ft` };
     }
     return line;
   });

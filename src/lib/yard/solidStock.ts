@@ -14,10 +14,10 @@ const GLUE_TRIM_IN = 1;
 export type SolidPart = { name: string; lengthIn: number; widthIn: number; qty: number };
 
 /** Boards laid edge to edge to make a part this wide (1 = rip from a single board). */
-export function stripsForWidth(widthIn: number): number {
-  if (widthIn <= BOARD_FACE_IN + 0.01) return 1;
+export function stripsForWidth(widthIn: number, face = BOARD_FACE_IN): number {
+  if (widthIn <= face + 0.01) return 1;
   // 1/8" to joint the edges and rip clean after glue-up.
-  return Math.ceil((widthIn + 0.125) / BOARD_FACE_IN - 1e-6);
+  return Math.ceil((widthIn + 0.125) / face - 1e-6);
 }
 
 export type SolidBoardPlan = {
@@ -27,18 +27,18 @@ export type SolidBoardPlan = {
   glueUps: { name: string; qty: number; strips: number; blankLengthIn: number; widthIn: number }[];
 };
 
-/** First-fit-decreasing pack of board lengths (1/8" kerf) into 8-ft boards. */
-export function planSolidBoards(parts: SolidPart[]): SolidBoardPlan {
+/** First-fit-decreasing pack of board lengths (1/8" kerf) into 8-ft boards. `face` is the named board's real face (1×4 3½", 1×10 9¼"). */
+export function planSolidBoards(parts: SolidPart[], face = BOARD_FACE_IN): SolidBoardPlan {
   const lengths: number[] = [];
   const glueUps: SolidBoardPlan["glueUps"] = [];
   for (const p of parts) {
     if (p.qty <= 0) continue;
     const L = Math.max(p.lengthIn, p.widthIn);
     const w = Math.min(p.lengthIn, p.widthIn);
-    const strips = stripsForWidth(w);
+    const strips = stripsForWidth(w, face);
     if (strips === 1) {
       // Narrow parts: rip as many as fit side by side from one board face.
-      const perStrip = Math.max(1, Math.floor((BOARD_FACE_IN + KERF_IN) / (w + KERF_IN) + 1e-6));
+      const perStrip = Math.max(1, Math.floor((face + KERF_IN) / (w + KERF_IN) + 1e-6));
       const n = Math.ceil(p.qty / perStrip);
       for (let i = 0; i < n; i++) lengths.push(L);
     } else {
@@ -81,10 +81,10 @@ const fmt8 = (n: number) => {
 };
 
 /** Plain glue-up instruction for the cut step ("" when nothing is wider than a board). */
-export function glueUpTalk(plan: SolidBoardPlan, label: string): string {
+export function glueUpTalk(plan: SolidBoardPlan, label: string, face = BOARD_FACE_IN): string {
   if (!plan.glueUps.length) return "";
   const list = plan.glueUps
     .map((g) => `${g.qty > 1 ? `${g.qty} × ` : ""}${g.name} (${g.strips} boards, ${fmt8(g.blankLengthIn)}" long)`)
     .join("; ");
-  return `Glue-up first: parts wider than one ${label} (3 1/2" face) are edge-glued from boards laid side by side — ${list}. Joint the edges straight, glue and clamp every 12", let it cure overnight, then rip to width and cut to length.`;
+  return `Glue-up first: parts wider than one ${label} (${fmt8(face)}" face) are edge-glued from boards laid side by side — ${list}. Joint the edges straight, glue and clamp every 12", let it cure overnight, then rip to width and cut to length.`;
 }
