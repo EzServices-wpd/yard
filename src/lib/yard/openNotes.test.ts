@@ -75,18 +75,20 @@ describe("open notes — rack tiers, closed shaft, cabinet", () => {
     assert.match(p.primaryMaterialId, /cardboard/);
   });
 
-  it("a named board section is the member stock, not a class usual", () => {
+  it("a named board section is every ¾\" part; 2× legs stay 2× and the note says why", () => {
     const p = generateFromPrompt("pine 1x6 bench 36 long");
     assert.equal(p.primaryMaterialId, "lumber-1x6-8");
+    assert.equal(p.panels.find((panel) => /^seat$/i.test(panel.name))?.materialId, "lumber-1x6-8");
     const legs = p.panels.filter((panel) => /leg/i.test(panel.name));
     assert.ok(legs.length > 0);
     for (const leg of legs) {
-      assert.equal(leg.materialId, "lumber-1x6-8");
+      assert.equal(leg.materialId, "lumber-2x4-8");
       const cross = [leg.size.width, leg.size.depth].sort((a, b) => a - b);
-      assert.ok(Math.abs(cross[0] - 0.75) < 0.05);
-      assert.ok(Math.abs(cross[1] - 5.5) < 0.05);
+      assert.ok(Math.abs(cross[0] - 1.5) < 0.05);
+      assert.ok(Math.abs(cross[1] - 3.5) < 0.05);
     }
-    assert.equal(/2×4|2x4/.test(p.notes.join(" ")), false);
+    assert.match(p.notes.join(" "), /stay Pine 2×4 — they carry the load on a 1 1\/2" section and Pine 1×6 is a ¾" board/);
     assert.ok(Math.abs(p.overall.width - 36) < 0.5);
+    assert.equal(p.overall.depth, 16);
   });
 });

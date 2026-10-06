@@ -1243,7 +1243,10 @@ export function untypedAxisAssumedNotes(
   overall: { width: number; height: number; depth: number },
   typed: { width: boolean; height: boolean; depth: boolean },
 ): string[] {
-  const assumed = notes.filter((n) => /\bassumed\b/i.test(n)).join(" ");
+  // A derived axis ("… deep, worked out from 2 steps …") already says where it came from.
+  const assumed = notes
+    .flatMap((n) => (/\bassumed\b/i.test(n) ? [n] : n.match(/[^.]*\bworked out from\b[^.]*/gi) ?? []))
+    .join(" ");
   const typedNums = (prompt.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).flatMap((n) => [n, n * 12]);
   const axes = [
     ["width", "wide", "a width", /\b(?:wide|width|across|along each wall)\b/i],

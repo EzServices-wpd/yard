@@ -20,7 +20,7 @@ import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHou
 import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
-import { enforceHonesty, typedExtents } from "./honesty";
+import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
@@ -216,10 +216,23 @@ function withFrontCueNotes(project: YardProject, prompt: string): YardProject {
   return extra.length ? { ...project, notes: [...extra, ...(project.notes ?? [])] } : project;
 }
 
+/** A bare "8x6x7" says which order it was read in, right under the size line. */
+function withAxisOrderNote(project: YardProject, args: Parameters<typeof generateRaw>): YardProject {
+  const [prompt = "", , formOverride, opts] = args;
+  if (formOverride || opts?.sizeOverride || opts?.fittedOverride || opts?.pocketOverride) return project;
+  const note = axisOrderNote(prompt, project.overall);
+  if (!note) return project;
+  const notes = project.notes ?? [];
+  return { ...project, notes: [...notes.slice(0, 1), note, ...notes.slice(1)] };
+}
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   const prompt = args[0] ?? "";
-  const built = withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt);
+  const built = withAxisOrderNote(
+    withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt),
+    args,
+  );
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
   // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.

@@ -22,7 +22,7 @@ import {
   isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem,
   isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPrepTable, isRadiatorCover,
   isMudroomCubbyWall, isOpenCubbyWall, openCubbyWallTitle, isShoePortalCubbies, isShoePortalRail,
-  isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt,
+  isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidChest, isLiftOffLidPrompt, isOpenTopChest,
   isMultiLidPrompt, spokenLidCount, isStorageHutch, isTowelPortalRail, isUtilityShelf, isWallMediaLedge,
   isPictureLedge, pictureLedgeTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isStorageBox,
   storageBoxTitleStem, towelPortalWantsHooks, isDoorPortal, isPortalHookRail, isPortalSpanShelf,
@@ -47,7 +47,7 @@ import {
   isShoeStorage, isOverToilet, isNoDrawersPrompt, isNoDoorsPrompt, spokenDrawerCount, typedDoorCount,
   spokenTierCount, spokenShelfCount, spokenArmCount, spokenBracketCount, spokenBinCount, spokenRungCount,
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
-  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening,
+  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes,
 } from "./fittedShared";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -1846,10 +1846,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   {
     const lidLower = prompt.toLowerCase();
     const lidStem = identityTitleStem(lidLower);
-    const liftOff = isLiftOffLidPrompt(lidLower) || isLiftOffLidChest(lidLower);
+    const liftOff = !isOpenTopChest(lidLower) && (isLiftOffLidPrompt(lidLower) || isLiftOffLidChest(lidLower));
+    const openTop = isOpenTopChest(lidLower);
     if (
       isHingedLidChest(lidLower) ||
       isLiftOffLidChest(lidLower) ||
+      openTop ||
       lidStem === "Toy chest" ||
       (lidStem === "Chest" && /hinged\s*lid|\blid\b/.test(lidLower))
     ) {
@@ -1858,10 +1860,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("upright", "Left side", x0, 0, 0, P, H, D));
       panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
       panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
-      panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H - P, P));
+      panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, openTop ? H : H - P, P));
       panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
-      // Hinged Operate matches /^Lid\b/; lift-off uses "Lift-off lid" so no Open/Shut swing.
-      panels.push(panel("top", liftOff ? "Lift-off lid" : "Lid", x0, H - P, 0, W, P, D));
+      // Hinged Operate matches /^Lid\b/; lift-off uses "Lift-off lid" so no Open/Shut swing. Open top: no lid.
+      if (!openTop) panels.push(panel("top", liftOff ? "Lift-off lid" : "Lid", x0, H - P, 0, W, P, D));
       const stem = honorSpeciesInTitle(toy ? "Toy chest" : isStorageBox(lidLower) ? storageBoxTitleStem(lidLower) : "Chest", prompt);
       // Class-default densify honesty — bare "cedar chest with hinged lid" must not stamp stock W×H×D as typed.
       const chestAxes = typedClassDefaultAxes(prompt);
@@ -1880,7 +1882,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         chestAssumed.push(`Assumed ${D}" deep (chest class default) — type a depth to lock it.`);
       }
       // Multi-lid / dual / split — densify stays one Lid panel; never silent-collapse.
-      if (isMultiLidPrompt(lidLower)) {
+      if (isMultiLidPrompt(lidLower) && !openTop) {
         const n = spokenLidCount(lidLower);
         const asked =
           n != null && n >= 2
@@ -1899,7 +1901,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `Honor typed ${W}" wide × ${D}" deep × ${H}" tall.`
           : "Class defaults fill untyped axes — type Measure to lock size.";
       const priorAff: HouseAffordance[] = spec.affordances ?? [];
-      const lidAff: HouseAffordance[] = liftOff
+      const lidAff: HouseAffordance[] = liftOff || openTop
         ? priorAff.filter((a) => a !== "hinged-lid")
         : priorAff.includes("hinged-lid")
           ? priorAff
@@ -1917,6 +1919,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           const sub =
             speciesStockHonestyTalk(prompt, '¾" plywood') ??
             speciesSubstituteNote(prompt, '¾" plywood');
+          if (openTop) {
+            return [
+              `${name}. Open-top ${toy ? "toy chest" : stem.toLowerCase()} — floor main box with no lid, so there is no piano hinge or lid stay. ¾" plywood.`,
+              ...chestAssumed,
+              ...(sub ? [sub] : []),
+              "Guidance only — round over the top edges; nothing closes over the opening.",
+            ];
+          }
           if (liftOff) {
             return [
               toy
@@ -1946,6 +1956,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           program: "storage",
           family: "floor-carcase",
           affordances: lidAff,
+          cueNotes: [...(spec.cueNotes ?? []), ...(openTop ? formChangeNotes(lidLower, stem, { lid: true }) : [])],
           unit: { ...u, width: W, height: H, depth: D, doors: false, shelfCount: 0, drawersPerBank: undefined },
         },
         assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },

@@ -79,6 +79,34 @@ function unlabeledTriple(text: string): { a: number; b: number; c?: number } | n
   return { a, b, c: c != null && Number.isFinite(c) ? c : undefined };
 }
 
+/**
+ * A bare size triple ("8x6x7", no wide/deep/tall) is read in a per-class order. One short note names the
+ * order this build used, read off the model: each typed number is matched to the axis it landed on.
+ */
+export function axisOrderNote(prompt: string, overall: { width: number; height: number; depth: number }): string | null {
+  const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/″/g, '"');
+  if (/\b(?:wide|width|deep|depth|tall|high|height|long|length|diameter|across)\b/i.test(t)) return null;
+  const trip = unlabeledTriple(t);
+  if (!trip || trip.c == null) return null;
+  const axes = ["width", "depth", "height"] as const;
+  // The model first; a build that could not land the numbers (whole sticks) falls back to the typed read.
+  const te = typedExtents(prompt);
+  const read = te ? { width: te.width ?? NaN, height: te.height ?? NaN, depth: te.depth ?? NaN } : null;
+  for (const [unit, box] of [[1, overall], [12, overall], [1, read]] as const) {
+    if (!box) continue;
+    const left = [...axes];
+    const order = [trip.a, trip.b, trip.c].map((n) => {
+      const i = left.findIndex((ax) => Math.abs(box[ax] - n * unit) < 0.07);
+      return i < 0 ? null : left.splice(i, 1)[0];
+    });
+    if (order.every(Boolean)) {
+      const fmt = (n: number) => String(+n.toFixed(3));
+      return `Read ${fmt(trip.a)}x${fmt(trip.b)}x${fmt(trip.c)} as ${order.join(" × ")}${unit === 12 ? " in feet" : ""}. Type wide / deep / tall to change it.`;
+    }
+  }
+  return null;
+}
+
 /** Axes the prompt actually named. Defaults from parseBrief do not count. */
 export function typedExtents(prompt: string): TypedExtents | null {
   prompt = normalizeUserPrompt(prompt);

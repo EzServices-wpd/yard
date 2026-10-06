@@ -15,7 +15,7 @@ import {
   isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail,
   isLumberRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame,
   isRadiatorCover, isOpenCubbyWall, isShoePortalCubbies, isShoePortalRail,
-  isStereoCabinet, isToolRail, isToyChest, isHingedLidChest,
+  isStereoCabinet, isToolRail, isToyChest, isHingedLidChest, isOpenTopChest, ITEM_NOUN,
   isTowelPortalRail, isUtilityShelf, isWallMediaLedge, isPictureLedge,
   isWorkbench, isPottingBench, isSeatingLoungeClass, isLoftBed,
   isPortalHookRail, isPortalSpanShelf, isAdirondackChair, isMudroomCubbyWall, isDaybed, isSofaConsoleTable, isOutdoorSideTable,
@@ -58,6 +58,7 @@ export function looksLikeFitted(prompt: string) {
     isSeatingLoungeClass(lower) ||
     isToyChest(lower) ||
     isHingedLidChest(lower) ||
+    isOpenTopChest(lower) ||
     isBookBinBench(lower) ||
     isPorchSwingFrame(lower) ||
     /ironing/.test(lower)
@@ -159,7 +160,7 @@ export function detectProgram(lower: string): FittedProgram {
   if (/\bmudroom\b|window seat|day\s*bed/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower)) return "bench";
-  if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
+  if (/bathroom/.test(lower) && !ITEM_NOUN.test(lower) && !/alcove|medicine|toilet|shel(?:f|ves)|\brack\b|bench|hook/.test(lower)) return "vanity";
   if (isBarePlanPair(lower)) return "table";
   return "storage";
 }

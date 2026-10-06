@@ -8,6 +8,7 @@
  * seat, …) instead of falling through to a generic plywood floor box.
  */
 
+import { isNoLidPrompt } from "./cueRules";
 import type { FittedProgram } from "./types";
 
 export type HouseMount = "wall" | "floor" | "straddle";
@@ -623,13 +624,18 @@ export function isLidChestAnatomy(lower: string) {
  * Toy path OR chest/trunk/box + lid — not lift-off/removable (those are isLiftOffLidChest).
  */
 export function isHingedLidChest(lower: string) {
-  if (isLiftOffLidPrompt(lower)) return false;
+  if (isLiftOffLidPrompt(lower) || isNoLidPrompt(lower)) return false;
   return isLidChestAnatomy(lower);
+}
+
+/** A chest / box / toy chest typed "no lid" / "open top": same carcase, open-topped, no hinge. */
+export function isOpenTopChest(lower: string) {
+  return isNoLidPrompt(lower) && isLidChestAnatomy(lower);
 }
 
 /** Lift-off lid chest — same carcase + lid panel, no piano hinge / Operate swing. */
 export function isLiftOffLidChest(lower: string) {
-  if (!isLiftOffLidPrompt(lower)) return false;
+  if (!isLiftOffLidPrompt(lower) || isNoLidPrompt(lower)) return false;
   if (/medicine|file\s*cabinet|filing\s*cabinet|tool\s*chest|tool\s*cabinet/.test(lower)) return false;
   if (/of\s+drawers/.test(lower)) return false;
   return /(?:\bchest\b|\btrunk\b|\bbox\b|toy\s*box)/.test(lower) || isToyChest(lower);
@@ -875,6 +881,13 @@ export function isKitchenUpper(lower: string) {
   return /(?:kitchen\s+)?upper\s+cabinet|upper\s+(?:kitchen\s+)?cabinet/.test(lower);
 }
 
+/**
+ * Nouns that say what the item IS. A room word (kitchen, bathroom, garage, hall) only picks the class
+ * when none of these is typed: "pantry cabinet in the kitchen" is a pantry, "kitchen cabinet" a base.
+ */
+export const ITEM_NOUN =
+  /\b(?:pantry|linen|broom|bookcases?|bookshel(?:f|ves)|wardrobe|armoire|hutch|cupboard|locker|tower|vanity|dresser|desk|nightstand|closet)\b/;
+
 /** Kitchen base / lower → floor carcase with door(s) + toekick (~34.5). */
 export function isKitchenBase(lower: string) {
   if (isKitchenUpper(lower)) return false;
@@ -885,6 +898,7 @@ export function isKitchenBase(lower: string) {
   return (
     /kitchen/.test(lower) &&
     /cabinet/.test(lower) &&
+    !ITEM_NOUN.test(lower) &&
     !/island|hood|medicine|ironing|wall\s+cabinet|spice|wine|over[- ]?(the[- ]?)?toilet/.test(lower)
   );
 }
@@ -1121,7 +1135,7 @@ export function identityTitleStem(lower: string): string | null {
   if (isToyChest(lower)) return "Toy chest";
   if (/\bhutch\b/.test(lower)) return /kitchen/.test(lower) ? "Kitchen hutch" : "Hutch";
   if (isStorageBox(lower)) return storageBoxTitleStem(lower);
-  if (isHingedLidChest(lower)) return "Chest";
+  if (isHingedLidChest(lower) || isOpenTopChest(lower)) return "Chest";
   if (isCoatCubbyWall(lower)) return "Coat and cubby wall";
   if (isKeyMailShelf(lower)) return "Key and mail shelf";
   if (isCoatHookBoard(lower)) return "Coat hook board";
@@ -1297,7 +1311,7 @@ function programFromNoun(lower: string): FittedProgram {
   if (/\bmudroom\b|window seat|day\s*bed|banquette/.test(lower)) return "bench";
   if (/\bcloset\b|linen|alcove|built-?in|closet system|storage system/.test(lower)) return "closet";
   if (/\bbench\b/.test(lower) && !/workbench/.test(lower) && !isPottingBench(lower)) return "bench";
-  if (/bathroom/.test(lower) && !/closet|linen|alcove|medicine|toilet/.test(lower)) return "vanity";
+  if (/bathroom/.test(lower) && !ITEM_NOUN.test(lower) && !/alcove|medicine|toilet|shel(?:f|ves)|\brack\b|bench|hook/.test(lower)) return "vanity";
   return "storage";
 }
 
@@ -1357,6 +1371,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
     !isOutdoorSideTable(lower) &&
     !isToyChest(lower) &&
     !isHingedLidChest(lower) &&
+    !isOpenTopChest(lower) &&
     !isBookBinBench(lower) &&
     !isPictureLedge(lower) &&
     !/ironing/.test(lower)

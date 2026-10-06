@@ -1,3 +1,4 @@
+import { isNoLidPrompt } from "./cueRules";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
@@ -317,6 +318,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const namedLegQty = namedLegCuts.reduce((s, c) => s + c.quantity, 0);
   const legStripParts = namedLegCuts.map((c) => ({ name: "Leg strip", lengthIn: c.lengthIn + 1, widthIn: 1.5, qty: 2 * c.quantity }));
   let legsMerged = false;
+  // ¾" board stocks already bought on their own lines (mixed-board branch); the linear packer skips them.
+  const boardsBought = new Set<string>();
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );
@@ -433,6 +436,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     // Mixed ¾" boards (treads from the typed 1×10, rails from 1×4): each board stock is bought on its own line,
     // packed at that board's real face. 2× and post stock go through the linear packer below.
     const byBoard = new Map<string, typeof structural>();
+    for (const c of structural) if (/^lumber-1x\d+-8\|/.test(c.id)) boardsBought.add(c.id.split("|")[0]);
     for (const c of structural.filter((x) => /^lumber-1x\d+-8\|/.test(x.id))) {
       const id = c.id.split("|")[0];
       byBoard.set(id, [...(byBoard.get(id) ?? []), c]);
@@ -615,7 +619,12 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     boardPrimary || solidNamedBuy
       ? []
       : structural.filter(
-          (c) => /^lumber-/.test(c.id) && !c.id.startsWith(`${CATALOG_LUMBER_BIND}|`) && !stickBoards.includes(c) && (c.thicknessIn ?? 0) > 1,
+          (c) =>
+            /^lumber-/.test(c.id) &&
+            !c.id.startsWith(`${CATALOG_LUMBER_BIND}|`) &&
+            !boardsBought.has(c.id.split("|")[0]) &&
+            !stickBoards.includes(c) &&
+            (c.thicknessIn ?? 0) > 1,
         );
   const lumberCuts = [...legCuts, ...(frameBought ? [] : stickBoards), ...otherLumber];
   const byStock = new Map<string, CutLine[]>();
@@ -958,8 +967,10 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const hasLiftOffLidPanel = project.panels.some((p) => /^Lift-off lid$/i.test(p.name));
     const hasLidPanel = project.panels.some((p) => /^Lid$/i.test(p.name));
     const liftOff = isLiftOffLidPrompt(lidPrompt) || hasLiftOffLidPanel;
+    // "no lid" / "open top" builds no lid, so nothing hinges it.
     const hingedLid =
       !liftOff &&
+      !isNoLidPrompt(lidPrompt) &&
       (hasLidPanel ||
         isHingedLidChest(lidPrompt) ||
         isToyChest(lidPrompt) ||

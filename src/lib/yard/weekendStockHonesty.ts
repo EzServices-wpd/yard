@@ -334,7 +334,11 @@ function keptStockNote(panels: Panel[], item: CatalogItem): string {
   return [...kept.entries()]
     .map(([id, names]) => {
       const other = getCatalogItem(id)!.name.replace(/\s*\(.*\)$/, "");
-      const why = /2×2|4×4/.test(other) ? `posts need a square section and ${short} is a flat board` : `the form draws them from ${other}`;
+      const why = /2×2|4×4/.test(other)
+        ? `posts need a square section and ${short} is a flat board`
+        : /^2×/.test(other) && (item.dims.thickness ?? item.dims.height ?? 0.75) < 0.9
+          ? `they carry the load on a 1 1/2" section and ${short} is a ¾" board`
+          : `the form draws them from ${other}`;
       return `Not ${short}: ${names.join(", ")} stay ${other} — ${why}.`;
     })
     .join(" ");
@@ -407,6 +411,9 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     }
     const post = t > 0.8 && t <= 2.05 && Math.abs(w - t) < 0.06 && len >= w + 2;
     if (post && item.id !== "lumber-2x2-8" && item.id !== "lumber-4x4-8") return p;
+    // 2× framing (legs, stretchers on a 1 1/2" section) stays 2× under a ¾" board, the same way 2×2 posts
+    // stay square: a ¾" board is not that section, and a wide one recast in its place stands out past the build.
+    if (thick < 0.9 && t >= 1.4 && /^lumber-2x/.test(p.materialId ?? "")) return p;
     if (p.materialId === "closet-rod") return p;
     if (p.materialId === "lumber-2x2-8" && item.id !== p.materialId) return p;
     const recast = { ...p, materialId: item.id, size: sectionSize(p.size, item) };
@@ -424,13 +431,15 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     .filter(Boolean)
     .join(" ");
   const short = item.name.replace(/\s*\(.*\)$/, "");
+  // Leg talk follows the legs: kept 2× legs keep "2×4 legs" in the notes.
+  const legsRecast = panels.some((p) => /\bleg\b/i.test(p.name) && p.materialId === item.id);
   const notes = (project.notes ?? [])
     .filter((n) => !/^Named stock:/.test(n) && !/^Stock:/.test(n))
     .map((n) =>
       n
         .replace(/(\d"?\s*H\.|\.)\s*¾"\s*plywood\./, `$1 ${label}.`)
-        .replace(/2×4 legs|2x4 legs/g, `${short} legs`)
-        .replace(/four 2×4\b|four 2x4\b/g, `four ${short}`)
+        .replace(/2×4 legs|2x4 legs/g, (m) => (legsRecast ? `${short} legs` : m))
+        .replace(/four 2×4\b|four 2x4\b/g, (m) => (legsRecast ? `four ${short}` : m))
         .replace(/¾" top and seats/g, thick > 0.9 ? `${inchFrac(thick)}" top and seats` : `¾" top and seats`),
     )
     .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));

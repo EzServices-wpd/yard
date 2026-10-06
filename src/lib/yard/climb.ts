@@ -271,7 +271,7 @@ export function buildClimb(prompt: string, kind: ClimbKind, sizeOverride?: { wid
     const heights = Array.from({ length: s.n }, (_, t) => `${inchFrac(r16((t + 1) * s.rise))}"`).join(", ");
     notes.push(
       `${name}: ${s.n === 1 ? "one weight-bearing climb tread" : `${s.n} weight-bearing climb treads`} — top tread at ${inchFrac(s.H)}", ${inchFrac(s.W)}" wide × ${inchFrac(s.topD)}" deep.${s.n > 1 ? ` Tread tops at ${heights}.` : ""}`,
-      `Each step: ${inchFrac(s.rise)}" rise × ${inchFrac(s.run)}" run. The base is ${inchFrac(s.D)}" deep, so it stays planted when you lean.`,
+      `Each step: ${inchFrac(s.rise)}" rise × ${inchFrac(s.run)}" run. The base is ${inchFrac(s.D)}" deep, worked out from ${s.n === 1 ? `the one ${inchFrac(s.topD)}" tread` : `${s.n} steps: the ${inchFrac(s.topD)}" top tread plus ${s.n - 1} at ${inchFrac(s.run)}" each`}, so it stays planted when you lean. Type a depth to change it.`,
       NAMED_TREAD(prompt)
         ? `Treads are ${s.species ? `${s.species.display} ` : ""}${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}, as typed, ${s.treadSnap ? boardFaceNote("board", s.treadSnap, 11, "treads").replace(/^The treads are /, "each tread ") : "edge-glued where a tread is wider than one board."} Not ${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}: posts and rails stay ${s.species ? `${s.species.display} 1×4 (posts laminated from two strips, rails on edge)` : "2×2 posts and 2×4 rails"} — a wide board is not a post or a rail section.`
         : s.species
