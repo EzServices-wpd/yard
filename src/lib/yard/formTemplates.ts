@@ -49,6 +49,8 @@ export type TemplateBuild = {
   notes: string[];
   /** The stock this build is made from when it differs from the stock passed in. */
   stockId?: string;
+  /** The builder already sized it to the typed size: no rescale after (the notes and title stay its own). */
+  sized?: boolean;
 };
 
 export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string; /** Replaces the stock join text (a pivot is not glued). */ hold?: string };
@@ -577,7 +579,7 @@ function frameLabel(photo: { w: number; h: number }, win: { w: number; h: number
  * and a solid chipboard backer closes it. Two stand feet stand it on a shelf; "to hang" swaps them
  * for a sawtooth hanger.
  */
-function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number }, hang: boolean, glaze: 0 | 1 | 2): TemplateBuild {
+function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h: number; typed?: boolean }, hang: boolean, glaze: 0 | 1 | 2): TemplateBuild {
   const prim = toPrimitive(item);
   const round = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   const wire = item.id === "wire-frame" || !!item.tags?.includes("wire");
@@ -641,10 +643,13 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
     cutNote: `Backer ${inchFrac(SW)}" × ${inchFrac(SH)}" chipboard over the spacer, behind the photo.`,
   });
   const zBack = zSp - bT;
+  // The model's own size (border face, plus the feet under and through it): the one number the notes say.
+  let modelD = -zBack;
   if (!hang) {
     // Stand feet: one flat stick under each bottom corner, running front to back past both faces.
     const fl = Math.min(S, Math.max(3 * (-zBack), Ho * 0.5));
     const zc = zBack / 2 - fl * 0.1; // a little more behind than in front
+    modelD = Math.max(0, zc + fl / 2) - Math.min(zBack, zc - fl / 2);
     for (const xs of [1, -1]) {
       const x = xs * (Wo / 2 - f / 2);
       segs.push({ a: v3(x, footT / 2, zc - fl / 2), b: v3(x, footT / 2, zc + fl / 2), role: "stand", face: v3(0, 1, 0) });
@@ -663,7 +668,8 @@ function flatFrameThin(item: CatalogItem, whole: boolean, photo: { w: number; h:
       glazing: glaze, outerW: Wo, outerH: Ho, frontZ: 0, backZ: zBack, band, backer: 1, feet: hang ? 0 : 2, hanger: hang ? 1 : 0, glueOnly: 1,
     },
     notes: [
-      `Picture frame · ${inchFrac(w)}" × ${inchFrac(h)}" photo behind a ${inchFrac(ww)}" × ${inchFrac(wh)}" window · outer ${inchFrac(Wo)}" × ${inchFrac(Ho)}".`,
+      `Picture frame · ${inchFrac(w)}" × ${inchFrac(h)}" photo behind a ${inchFrac(ww)}" × ${inchFrac(wh)}" window · outer ${inchFrac(Wo)}" × ${inchFrac(Ho)}" face; ${inchFrac(r16(Wo))}" × ${inchFrac(r16(footT + Ho))}" × ${inchFrac(r16(modelD))}" ${hang ? "front to back" : "on its stand feet"}.`,
+      ...(photo.typed ? [`Wide, tall and deep are worked out from the ${inchFrac(w)}" × ${inchFrac(h)}" photo you typed — type another photo size to change them.`] : []),
       `The border is a closed band${band > 1 ? ` of ${band} ${item.name}s side by side` : ""}: every side ends flush at the outer corner, overlapping its neighbour.`,
       frameStackNote(glaze, photo, `inside the spacer sticks (${inchFrac(sw)}" × ${inchFrac(sh)}" opening, sized to the photo)`, held, hang),
       hang ? `A sawtooth hanger on the top back hangs it on a nail.` : `Two stand feet under the bottom corners stand it on a shelf. Add "to hang" for a sawtooth hanger instead.`,
@@ -734,7 +740,7 @@ function flatFramePanels(item: CatalogItem, photo: { w: number; h: number }, gla
   };
 }
 
-export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean): TemplateBuild | null {
+export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean, typed: { width?: number; height?: number } = {}): TemplateBuild | null {
   const kind = templateStock(item);
   let photo = framePhotoIn(prompt);
   // Untyped photo: long whole sticks frame an 8×10 (short crossing ends) instead of a 5×7 with long ones.
@@ -743,9 +749,32 @@ export function buildFlatFrame(prompt: string, item: CatalogItem, whole: boolean
     if (pr.length >= 10 + 2 * pr.width + 1) photo = { w: 8, h: 10, typed: false };
   }
   const glaze = frameGlazing(prompt);
-  if (kind === "thin" || kind === "other") return flatFrameThin(item, whole && isWholeStock(item), photo, frameHangs(prompt), glaze);
-  if (kind === "panel") return flatFramePanels(item, photo, glaze);
-  return null;
+  const make = (ph: typeof photo) =>
+    kind === "thin" || kind === "other" ? flatFrameThin(item, whole && isWholeStock(item), ph, frameHangs(prompt), glaze) : kind === "panel" ? flatFramePanels(item, ph, glaze) : null;
+  let built = make(photo);
+  const { width: tw, height: th } = typed;
+  // A typed photo sizes the whole frame: the builder owns that size, nothing rescales it after.
+  if (photo.typed) return built && { ...built, sized: true };
+  if (!built || !(tw || th)) return built;
+  // No photo typed, but a frame size was: the photo is what that outer size leaves inside the border
+  // (a 5:7 print when one axis is typed). One photo, so the title, the notes and the model agree.
+  const r8 = (n: number) => Math.max(1, Math.round(n * 8) / 8);
+  for (let k = 0; k < 3 && built; k++) {
+    const dW = built.params.outerW - photo.w, dH = built.params.outerH - photo.h;
+    const w = tw ? r8(tw - dW) : r8(((th! - dH) * 5) / 7);
+    const h = th ? r8(th - dH) : r8(((tw! - dW) * 7) / 5);
+    if (w === photo.w && h === photo.h) break;
+    photo = { w, h, typed: false };
+    built = make(photo);
+  }
+  if (!built) return null;
+  const said = [tw ? `${inchFrac(tw)}" wide` : "", th ? `${inchFrac(th)}" tall` : ""].filter(Boolean).join(" × ");
+  return {
+    ...built,
+    sized: true,
+    params: { ...built.params, photoFromSize: 1 },
+    notes: [built.notes[0], `The ${inchFrac(photo.w)}" × ${inchFrac(photo.h)}" photo is worked out from the ${said} you typed — type a photo size (like 5x7 photo) to pick the print instead.`, ...built.notes.slice(1)],
+  };
 }
 
 
@@ -1343,7 +1372,7 @@ export function buildTemplate(
   whole: boolean,
 ): TemplateBuild | null {
   if (id === "small-house") return buildSmallHouse(prompt, item, typed, whole);
-  if (id === "flat-frame") return buildFlatFrame(prompt, item, whole);
+  if (id === "flat-frame") return buildFlatFrame(prompt, item, whole, typed);
   if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
   if (id === "platform-tower") return buildPlatformTower(prompt, item, typed, whole);
   if (id === "humanoid") return buildHumanoid(prompt, item, typed, whole);
@@ -1596,7 +1625,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     const glz = project.panels.filter((p) => p.type === "glass_panel");
     if (frameGlazing(prompt) && (glz.length !== 1 || Math.abs(glz[0].size.width - photo.w) > 0.07 || Math.abs(glz[0].size.height - photo.h) > 0.07)) issues.push({ code: "glazing", detail: `glazing asked, got ${glz.length}` });
     if (!frameGlazing(prompt) && glz.length) issues.push({ code: "glazing", detail: "glazing not asked" });
-    if (!typed.typed && !["5x7", "8x10"].includes(`${photo.w}x${photo.h}`)) issues.push({ code: "opening", detail: `untyped photo ${photo.w}×${photo.h} is not a standard print` });
+    if (!typed.typed && !P.photoFromSize && !["5x7", "8x10"].includes(`${photo.w}x${photo.h}`)) issues.push({ code: "opening", detail: `untyped photo ${photo.w}×${photo.h} is not a standard print` });
     const near = (a: number, b: number, tol = 0.07) => Math.abs(a - b) <= tol;
     if (project.instances.length) {
       const rails = roles.get("rail") ?? [];

@@ -317,13 +317,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   if (isMedicineCabinet(prompt)) {
     const innerW = W - P * 2;
     const backT = P;
-    const face = shallowWallCabinetFace(D, backT);
+    const face = shallowWallCabinetFace(D, backT, true);
+    const box = face.box;
     const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 2;
-    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
-    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, box));
+    panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, box));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
-    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
+    panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, box - backT));
+    panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, box - backT));
     const innerH = H - P * 2;
     for (let i = 1; i <= shelfN; i++) {
       const y = P + (innerH * i) / (shelfN + 1);
@@ -2169,29 +2170,33 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const T = shelfThick != null ? shelfThick : P;
     // Ledger cleat against the wall; one thick shelf sits on it and screws down.
     panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
-    panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, T, Df));
-    const name = `Wall shelf ${W}" × ${Df}" × ${T}"`;
+    // The depth is the cleat plus the shelf in front of it; a typed depth is that whole depth.
+    const Do = depthTyped ? Df : Df + P;
+    // A typed thickness is the typed height (48x8x2); otherwise the height is the cleat and the shelf on it.
+    const Ho = shelfThick != null ? T : cleatH + T;
+    panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, T, Do - P));
+    const name = `Wall shelf ${inchFrac(W)}" × ${inchFrac(Ho)}" × ${inchFrac(Do)}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: T, depth: Df },
+      overall: { width: W, height: Ho, depth: Do },
       instances: [],
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. One cleat-mounted wall shelf (${T}" thick) on a Wall cleat — not a multi Wall shelves stack, not floating boards. ¾" plywood (laminate plies when thicker than stock).`,
-        "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
+        `${name}. One cleat-mounted wall shelf (${T}" thick) on a Wall cleat. ¾" plywood (laminate plies when thicker than stock).`,
+        "Mount the cleat to studs; the shelf screws down onto the cleat and holds tight to the wall. Guidance only — confirm the wall type.",
         "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
       ],
       historic: false,
-      opening: { width: W, height: T, depth: Df, kind: "room" },
+      opening: { width: W, height: Ho, depth: Do, kind: "room" },
       fitted: {
         ...spec,
         name,
-        unit: { ...u, width: W, height: T, depth: Df, doors: false, drawersPerBank: undefined, shelfCount: 1 },
-        opening: { width: W, height: T, depth: Df, kind: "room" },
+        unit: { ...u, width: W, height: Ho, depth: Do, doors: false, drawersPerBank: undefined, shelfCount: 1 },
+        opening: { width: W, height: Ho, depth: Do, kind: "room" },
         affordances: (spec.affordances ?? []).includes("cleats")
           ? spec.affordances
           : [...(spec.affordances ?? []), "cleats"],
@@ -2319,55 +2324,62 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         (n > 1 && envelopeH > P + 0.1);
       const outH = useEnvelope ? envelopeH : P;
       const cleatH = Math.min(cleatH0, Math.max(1.5, outH - P - (wantsLip ? lipH : 0)));
-      panels.push(panel("rail", "Wall cleat", x0, 0, 0, W, cleatH, P));
-      panels.push(panel("shelf", "Shelf", x0, cleatH, P, W, P, Df));
+      // Wall, then the backstop (when there is one), then the cleat, then the shelf in front: that whole
+      // depth is the size, and a typed depth is that whole depth.
+      const behind = useEnvelope ? 2 * P : P;
+      const Do = depthTyped ? Df : Df + P;
+      const Ds = Do - behind;
+      panels.push(panel("rail", "Wall cleat", x0, 0, behind - P, W, cleatH, P));
+      panels.push(panel("shelf", "Shelf", x0, cleatH, behind, W, P, Ds));
       if (wantsLip) {
-        panels.push(panel("rail", "Front lip", x0, cleatH + P, Df - P, W, lipH, P));
+        panels.push(panel("rail", "Front lip", x0, cleatH + P, Do - P, W, lipH, P));
       }
       // Soft leftover: envelopePanels drops rails — without a type=back face, AABB collapses
       // to shelf ply (or ignores typed H). Shelf backstop spans typed overall H (media/bedside).
       if (useEnvelope) {
-        panels.push(panel("back", "Shelf backstop", x0, 0, P, W, outH, P));
+        panels.push(panel("back", "Shelf backstop", x0, 0, 0, W, outH, P));
       }
       const floatStem = /floating/.test(lowerPrompt) || wantsLip ? "Floating shelf" : "Wall shelf";
-      // The title size is the model's overall (W × H × D), never the shelf board's W × D × thickness.
-      const name = classDefaultDensifyTitle(floatStem, prompt, { width: W, height: outH, depth: Df });
+      // The title is the model's whole size.
+      const outHm = Math.max(outH, cleatH + P);
+      // A bare "floating shelf" keeps the stem (every axis is a class default, said in the notes).
+      const ax = typedClassDefaultAxes(prompt);
+      const bare = isClassDefaultDensifyPrompt(prompt) && !ax.width && !ax.height && !ax.depth && !shelfFace;
+      const name = bare ? floatStem : `${floatStem} ${inchFrac(W)}" × ${inchFrac(outHm)}" × ${inchFrac(Do)}"`;
       // Wall shelf legacy stamped W×D×P — densify gate only covers floating shelf class.
-      const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df }).filter((n) => !shelfFace || !/" deep \(/.test(n));
+      const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outHm, depth: Do }).filter((n) => !shelfFace || !/" deep \(/.test(n));
       return {
         id: createId("proj"),
         name,
         prompt,
         kind: "closet",
-        overall: { width: W, height: outH, depth: Df },
+        overall: { width: W, height: outHm, depth: Do },
         instances: [],
         panels,
         primaryMaterialId: PLY,
         notes: [
           wantsLip
-            ? `One cleat-mounted ${W}" × ${Df}" floating shelf with a front lip and Shelf backstop spanning ${outH}" — typed overall H, not a multi Floating shelves stack. ¾" plywood.`
-            : /floating/.test(lowerPrompt)
-              ? `One cleat-mounted ${W}" × ${Df}" floating shelf on a Wall cleat — Shelf backstop is ${outH}"${/(?:tall|high|height)\b/.test(lowerPrompt) ? " (typed)" : ""}. ¾" plywood. No box — no uprights.`
-              : `One cleat-mounted ${W}" × ${Df}" wall shelf on a Wall cleat. ¾" plywood. No box — no uprights.`,
-          "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type.",
+            ? `One cleat-mounted ${inchFrac(W)}" × ${inchFrac(Ds)}" floating shelf with a front lip and a Shelf backstop spanning ${inchFrac(outH)}", the typed overall height. ¾" plywood.`
+            : `One cleat-mounted ${inchFrac(W)}" × ${inchFrac(Ds)}" ${/floating/.test(lowerPrompt) ? "floating" : "wall"} shelf on a Wall cleat${useEnvelope ? `, with a Shelf backstop ${inchFrac(outH)}" tall${heightTypedFloat ? " (typed)" : ""}` : ""}. ¾" plywood.${useEnvelope ? "" : " Just the shelf and its cleat."}`,
+          "Mount the cleat to studs; the shelf screws down onto the cleat and holds tight to the wall. Guidance only — confirm the wall type.",
           "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
           ...floatAssumed,
         ],
         historic: false,
-        opening: { width: W, height: outH, depth: Df, kind: "room" },
+        opening: { width: W, height: outHm, depth: Do, kind: "room" },
         fitted: {
           ...spec,
           name,
           unit: {
             ...u,
             width: W,
-            height: outH,
-            depth: Df,
+            height: outHm,
+            depth: Do,
             doors: false,
             drawersPerBank: undefined,
             shelfCount: 1,
           },
-          opening: { width: W, height: outH, depth: Df, kind: "room" },
+          opening: { width: W, height: outHm, depth: Do, kind: "room" },
           affordances: (spec.affordances ?? []).includes("cleats")
             ? spec.affordances
             : [...(spec.affordances ?? []), "cleats"],

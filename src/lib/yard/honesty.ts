@@ -113,7 +113,7 @@ export function typedExtents(prompt: string): TypedExtents | null {
   const bareTable = tableSpanFromPrompt(prompt);
   if (
     !hasExplicitSize(prompt) &&
-    !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|width|height|depth)/i.test(prompt) &&
+    !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|long|width|height|depth|length)/i.test(prompt) &&
     !Number.isFinite(bareTable) &&
     !Number.isFinite(spokenDiameterInches(prompt))
   ) {

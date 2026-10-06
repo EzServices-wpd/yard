@@ -301,9 +301,12 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
     remapped = `${craft} ${remapped}`;
   }
   const built = generateCore(remapped, ...(args.slice(1) as []));
-  const title = subjectFromPrompt(noun).replace(/\b\w/g, (c) => c.toUpperCase());
+  const subject = subjectFromPrompt(noun).replace(/\b\w/g, (c) => c.toUpperCase());
+  // The title names the model's size, like every other build's.
+  const size = built.overall;
+  const title = `${subject} ${inchFrac(size.width)}" × ${inchFrac(size.height)}" × ${inchFrac(size.depth)}"`;
   // The bench builds from the primitive; the prompt box keeps the person's own words.
-  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(built.notes ?? [], p, title, noun)] };
+  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(built.notes ?? [], p, subject, noun)] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
@@ -1215,21 +1218,43 @@ function buildTemplateProject(
       assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
     };
   }
+  // The overall is the model's own extent: each stick's ends plus its real section (face width across,
+  // thickness along the face normal), so the size, the notes and the model are one number.
   const xs: number[] = [];
   const ys: number[] = [];
   const zs: number[] = [];
-  for (const i of project.instances) for (const q of [i.from, i.to]) if (q) { xs.push(q.x); ys.push(q.y); zs.push(q.z); }
+  const prim = toPrimitive(item);
+  const roundStock = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
+  for (const i of project.instances) {
+    if (!i.from || !i.to) continue;
+    const fw = Math.max(i.section?.width ?? prim.width, 0.1);
+    const ft = Math.max(i.section?.height ?? (roundStock ? prim.width : prim.height), 0.05);
+    const d = [i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z];
+    const dl = Math.hypot(d[0], d[1], d[2]) || 1;
+    const u = d.map((c) => c / dl);
+    const n = i.face ? [i.face.x, i.face.y, i.face.z] : null;
+    const across = n ? [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]] : null;
+    const half = [0, 1, 2].map((k) =>
+      n && across && Math.hypot(...across) > 0.5
+        ? (Math.abs(across[k]) * fw + Math.abs(n[k]) * ft) / 2
+        : (Math.sqrt(Math.max(0, 1 - u[k] * u[k])) * Math.max(fw, ft)) / 2,
+    );
+    for (const q of [i.from, i.to]) {
+      xs.push(q.x - half[0], q.x + half[0]);
+      ys.push(q.y - half[1], q.y + half[1]);
+      zs.push(q.z - half[2], q.z + half[2]);
+    }
+  }
   for (const p of project.panels) {
     xs.push(p.position.x, p.position.x + p.size.width);
     ys.push(p.position.y, p.position.y + p.size.height);
     zs.push(p.position.z, p.position.z + p.size.depth);
   }
-  const pad = project.instances.length ? Math.max(toPrimitive(item).width, 0.1) : 0;
-  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const r16 = (n: number) => Math.round(n * 16) / 16;
   const overall = {
-    width: r1(Math.max(...xs) - Math.min(...xs) + pad),
-    height: r1(Math.max(...ys) + pad / 2),
-    depth: r1(Math.max(...zs) - Math.min(...zs) + pad),
+    width: r16(Math.max(...xs) - Math.min(...xs)),
+    height: r16(Math.max(...ys) - Math.min(0, ...ys)),
+    depth: r16(Math.max(...zs) - Math.min(...zs)),
   };
   const counts = new Map<string, number>();
   for (const i of project.instances) if (i.role) counts.set(i.role, (counts.get(i.role) ?? 0) + 1);
@@ -1241,6 +1266,7 @@ function buildTemplateProject(
     ...project,
     name: built.label,
     overall,
+    ...(built.sized ? { sizedByBuilder: true } : {}),
     shape: {
       classId: built.classId,
       subject: built.subject,

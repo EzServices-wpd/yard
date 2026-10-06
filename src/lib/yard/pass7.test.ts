@@ -75,14 +75,15 @@ describe("every build's notes are tidy", () => {
 describe("a shelf cut from a typed board is one board deep unless a depth is typed", () => {
   it("walnut 1x8 wall shelf is 7 1/4 deep and says why", () => {
     const { p, notes } = build("walnut 1x8 wall shelf");
-    assert.equal(p.overall.depth, 7.25);
+    assert.equal(p.panels.find((x) => x.name === "Shelf")?.size.depth, 7.25);
+    assert.equal(p.overall.depth, 8, "the overall is the shelf plus its cleat");
     assert.match(notes, /7 1\/4" deep, worked out from the Walnut 1×8's real face/);
     assert.doesNotMatch(notes, /Assumed [^.]*deep/);
   });
   it("oak 1x10 tiers are 9 1/4 deep; a typed depth and plain plywood keep theirs", () => {
     assert.equal(build("oak 1x10 wall shelf with 3 tiers 36 long").p.overall.depth, 9.25);
     assert.equal(build("walnut 1x8 wall shelf 10 deep").p.overall.depth, 10);
-    assert.equal(build("wall shelf 30 long").p.overall.depth, 8);
+    assert.equal(build("wall shelf 30 long").p.overall.depth, 8.75);
   });
 });
 

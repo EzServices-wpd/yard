@@ -62,7 +62,7 @@ describe("cue agreement: notes, model and Buy say the same thing about doors, dr
 describe("the head noun is last: a figure word that modifies it is not a figure", () => {
   it("craft stick bird feeder is a feeder, not a bird", () => {
     const { p, plan } = build("craft stick bird feeder");
-    assert.equal(p.name, "Bird Feeder");
+    assert.match(p.name, /^Bird Feeder \d/);
     assert.ok(!p.panels.some((x) => /wing|beak|head|tail/i.test(x.name)));
     assert.ok(!plan.bom.some((b) => /liner|landscape/i.test(b.name)));
   });

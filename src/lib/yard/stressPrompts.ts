@@ -41,4 +41,10 @@ export const STRESS_PROMPTS = [
   "pine cat bed 20 wide",
   "hall closet 36 wide 84 tall 24 deep",
   "cedar 2x4 potting bench 48 wide",
+  "walnut 1x10 floating shelf 30 long",
+  "floating shelf with lip 24 wide 6 tall",
+  "popsicle stick photo frame 4x6",
+  "popsicle stick picture frame 6 inch",
+  "medicine cabinet 20 wide 26 tall 5 deep",
+  "cat feeding station",
 ];

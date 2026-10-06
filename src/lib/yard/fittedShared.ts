@@ -16,7 +16,7 @@ export const P = 0.75;
 export const STUD_CENTER_IN = 16;
 /** Concealed hinge arm sticks in from the door's inner face. Shelves must stop short of it. */
 export const HINGE_ARM_CLEAR_IN = 0.75;
-export const DOOR_MIRROR_T = 0.12;
+export const DOOR_MIRROR_T = 0.125;
 
 /** Keep the typed noun. "spice cabinet" stays Spice cabinet, not a bare Cabinet. */
 export function cabinetStem(lower: string): string {
@@ -29,22 +29,25 @@ export function cabinetStem(lower: string): string {
 
 
 /**
- * Shallow hung cabinet: the typed depth is the finished depth, door included.
- * The overlay door's outer face is that number — it does not add a slab past the label.
- * A mirror sits on that outer face, not buried in the door. Shelves stop short of the hinge arm.
+ * Door-front carcase: the typed depth is the finished depth, door (and mirror) included.
+ * The carcase stops where the overlay door begins (`box`), the door sits on its front edge,
+ * and a mirror sits on the door's outer face — nothing adds a slab past the label.
+ * Shelves stop short of the hinge arm.
  */
-export function shallowWallCabinetFace(typedDepth: number, backT = P) {
+export function shallowWallCabinetFace(typedDepth: number, backT = P, mirror = false) {
   const doorT = P;
   const outer = typedDepth;
-  const doorZ = Math.max(0, outer - doorT);
+  const mirrorT = mirror ? DOOR_MIRROR_T : 0;
+  const doorZ = Math.max(0, outer - doorT - mirrorT);
   const shelfStop = Math.max(backT + 0.5, doorZ - HINGE_ARM_CLEAR_IN);
   return {
     doorT,
     doorZ,
+    box: doorZ,
     outer,
     shelfDepth: Math.max(0.5, shelfStop - backT),
-    mirrorT: DOOR_MIRROR_T,
-    mirrorZ: outer - DOOR_MIRROR_T,
+    mirrorT,
+    mirrorZ: doorZ + doorT,
   };
 }
 

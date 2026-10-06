@@ -882,6 +882,11 @@ export function spokenAxisInches(prompt: string, axis: "w" | "h" | "d"): number 
     const ceilingAfter = take(new RegExp(String.raw`${num}\s*(?:inches|inch(?![a-z])|in(?![a-z])|")\s+ceilings?\b`, "i"));
     if (Number.isFinite(ceilingAfter)) return ceilingAfter;
   }
+  // A typed length is the width of anything but a bed ("wall shelf 36 long" is 36 wide; a bed's length is its depth).
+  if (axis === "w" && !/\b(?:(?:day)?beds?|bunks?|lofts?|cribs?|mattress(?:es)?)\b/i.test(t)) {
+    const long = take(new RegExp(String.raw`${num}\s*${unit}\s*(?:long|length)(?![a-z])|\b(?:long|length)\s*(?:of|is|:|=)?\s*${num}\s*${unit}`, "i"));
+    if (Number.isFinite(long)) return long;
+  }
   return NaN;
 }
 

@@ -927,7 +927,7 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
   const face = shallowWallCabinetFace(D, backT);
   // The doors close on the carcase front, so the box is the typed depth less the door: shelves then stop
   // the hinge clearance short of the door, not a door-thickness more.
-  const box = face.doorZ;
+  const box = face.box;
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, box));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, box));
   panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));

@@ -96,7 +96,7 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
   it("lemonade stand shows 'lemonade stand' in the box, not the primitive", () => {
     const stand = generateFromPrompt("lemonade stand");
     assert.equal(stand.typedPrompt, "lemonade stand");
-    assert.equal(stand.name, "Lemonade Stand");
+    assert.match(stand.name, /^Lemonade Stand \d/);
   });
 
   it("store keeps the typed words through a repeat and a refinement", async () => {

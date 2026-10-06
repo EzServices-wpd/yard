@@ -513,12 +513,12 @@
     "id": "floating-shelf",
     "prompt": "floating shelf 36 wide 8 deep",
     "bucket": "fitted-house",
-    "name": "Floating shelf 36\" × 8\"",
+    "name": "Floating shelf 36\" × 2 1/4\" × 8\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
       "width": 36,
-      "height": 0.75,
+      "height": 2.25,
       "depth": 8
     },
     "panels": 2,
@@ -528,8 +528,8 @@
       "Wall cleat"
     ],
     "notesHead": [
-      "One cleat-mounted 36\" × 8\" floating shelf on a Wall cleat — Shelf backstop is 3/4\". ¾\" plywood. No box — no uprights.",
-      "Mount the cleat to studs; the shelf screws down onto the cleat. Cleat-mounted — hush floating. Guidance only — confirm the wall type."
+      "One cleat-mounted 36\" × 7 1/4\" floating shelf on a Wall cleat. ¾\" plywood. Just the shelf and its cleat.",
+      "Mount the cleat to studs; the shelf screws down onto the cleat and holds tight to the wall. Guidance only — confirm the wall type."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -971,9 +971,9 @@
     "kind": "house",
     "material": "popsicle-standard",
     "overall": {
-      "width": 7.8,
-      "height": 7,
-      "depth": 5.6
+      "width": 7.5,
+      "height": 6.8125,
+      "depth": 5.625
     },
     "panels": 0,
     "instances": 103,
@@ -1153,7 +1153,7 @@
     "id": "lemonade-stand",
     "prompt": "lemonade stand",
     "bucket": "unknown-fallback",
-    "name": "Lemonade Stand",
+    "name": "Lemonade Stand 48\" × 42\" × 24\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
@@ -1189,7 +1189,7 @@
     "id": "mailbox",
     "prompt": "mailbox",
     "bucket": "unknown-fallback",
-    "name": "Mailbox",
+    "name": "Mailbox 10\" × 10\" × 8\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
@@ -1267,7 +1267,7 @@
     "id": "boot-tray",
     "prompt": "boot tray",
     "bucket": "unknown-fallback",
-    "name": "Boot Tray",
+    "name": "Boot Tray 30\" × 2\" × 15\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
@@ -1299,7 +1299,7 @@
     "id": "firewood-rack",
     "prompt": "firewood rack",
     "bucket": "unknown-fallback",
-    "name": "Firewood Rack",
+    "name": "Firewood Rack 48\" × 48\" × 16\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
@@ -1365,7 +1365,7 @@
     "id": "bird-feeder",
     "prompt": "bird feeder",
     "bucket": "unknown-fallback",
-    "name": "Bird Feeder",
+    "name": "Bird Feeder 10\" × 10\" × 8\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
@@ -1397,7 +1397,7 @@
     "id": "toolbox",
     "prompt": "toolbox",
     "bucket": "unknown-fallback",
-    "name": "Toolbox",
+    "name": "Toolbox 20\" × 8\" × 10\"",
     "kind": "closet",
     "material": "plywood-3-4-4x8",
     "overall": {
