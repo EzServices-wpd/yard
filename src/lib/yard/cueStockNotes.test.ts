@@ -61,6 +61,10 @@ describe("a typed board snaps a close default depth to its face; notes say plain
     assert.doesNotMatch(notes, /Board \(8 ft\)/);
     assert.match(notes, /one 1×10 wide \(9 1\/4"\)/);
   });
+  it("catalog words never reach notes: '1×12 Board legs' and '2×4 Stud legs' read plain", () => {
+    assert.match(build("oak 1x12 bench 40 wide").notes, /four Oak 1×12 legs/);
+    assert.doesNotMatch(build("2x4 workbench 60 wide").notes, /\d×\d+ (?:Board|Stud|Post)\b/);
+  });
   it("a typed depth keeps its glue-up", () => {
     assert.equal(build("bookshelf from 1x10 12 deep").p.overall.depth, 12);
   });

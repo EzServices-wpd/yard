@@ -148,7 +148,7 @@ export function isSheetPrimaryId(id: string | undefined | null): boolean {
 export function withPlainStockNotes(p: YardProject, prompt: string): YardProject {
   if (!p.notes?.length) return p;
   const species = namedLumberFromPrompt(prompt)?.display;
-  const re = /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post))?\s+\(\d+\s*ft\)/g;
+  const re = /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post)\b(?:\s+\(\d+\s*ft\))?|\s+\(\d+\s*ft\))/g;
   let changed = false;
   const notes = p.notes.map((n) => {
     const next = n.replace(re, (_m, a: string, b: string, at: number, all: string) => {
