@@ -432,7 +432,7 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     `Parts wider than one board are edge-glued, then cut to size.`,
     face < 3.2 ? `This board is ${inchFrac(face)}" wide, so buy extra when a part is wider than the face.` : "",
     keptStockNote(panels, item),
-    `¼" backs stay plywood.`,
+    panels.some((p) => Math.min(p.size.width, p.size.height, p.size.depth) <= 0.26) ? `¼" backs stay plywood.` : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -446,7 +446,9 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
         .replace(/(\d"?\s*H\.|\.)\s*¾"\s*plywood\./, `$1 ${label}.`)
         .replace(/2×4 legs|2x4 legs/g, (m) => (legsRecast ? `${short} legs` : m))
         .replace(/four 2×4\b|four 2x4\b/g, (m) => (legsRecast ? `four ${short}` : m))
-        .replace(/¾" top and seats/g, thick > 0.9 ? `${inchFrac(thick)}" top and seats` : `¾" top and seats`),
+        .replace(/¾" top and seats/g, thick > 0.9 ? `${inchFrac(thick)}" top and seats` : `¾" top and seats`)
+        // Sheet parts recast in the typed board say so ("¾" plywood treads" → "edge-glued 2×4 treads").
+        .replace(/¾" plywood (treads?|tops?|seats?|shel(?:f|ves)|decks?|lids?)\b/g, (m, part) => (panels.some((p) => p.materialId === item.id) ? `edge-glued ${short} ${part}` : m)),
     )
     .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };

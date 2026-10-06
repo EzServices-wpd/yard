@@ -32,9 +32,6 @@ export const KNOWN_FAILURES: KnownFailure[] = [
   { guard: "honesty-smoke", message: "pyramid piece count drifted", why: "popsicle pyramid grew to ~7,200 pieces (pre-existing; prompt re-added to the smoke on 2026-10-02) — owner: craft structures" },
   { guard: "honesty-smoke", message: "pyramid structure should stay stepped courses", why: "pyramid courses read as a lattice (pre-existing) — owner: craft structures" },
   { guard: "honesty-smoke", message: "pyramid faces got laced shut", why: "pyramid faces skinned shut (pre-existing) — owner: craft structures" },
-  { guard: "honesty-smoke", message: "golden gate needs a road you can walk", why: "popsicle Golden Gate has no deck (pre-existing) — owner: craft structures (bridges)" },
-  { guard: "honesty-smoke", message: "straw bridge needs a road", why: "straw bridge has no deck (pre-existing) — owner: craft structures (bridges)" },
-  { guard: "honesty-smoke", message: "golden gate plan lost the forge steps / road", why: "Golden Gate steps lost the road/forge steps (pre-existing) — owner: craft structures (bridges)" },
 
   // ---- yard-honesty-guards.ts ------------------------------------------------------------
   // None: c7306d3 ("Honesty guards to zero") cleared the last ones on 2026-10-02.

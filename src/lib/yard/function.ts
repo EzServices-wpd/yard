@@ -309,12 +309,13 @@ function withBridgeDeck(project: YardProject): YardProject {
     for (let i = 0; i <= ties; i++) {
       const x = box.minX + (span * i) / ties;
       extras.push(
-        ...runMembers({ x, y: deckTop, z: z0 }, { x, y: deckTop, z: z1 }, item, "rail", join),
+        ...runMembers({ x, y: deckTop, z: z0 }, { x, y: deckTop, z: z1 }, item, "deck", join),
       );
     }
+    // Road members: cross-ties across the span, runners along it — the deck the notes name.
     for (const z of [z0 + depth * 0.12, (z0 + z1) / 2, z1 - depth * 0.12]) {
       extras.push(
-        ...runMembers({ x: box.minX, y: deckTop, z }, { x: box.maxX, y: deckTop, z }, item, "rail", join),
+        ...runMembers({ x: box.minX, y: deckTop, z }, { x: box.maxX, y: deckTop, z }, item, "deck", join),
       );
     }
     const railH = Math.max(0.7, Math.min(1.8, portalH * 0.45, depth * 0.25));

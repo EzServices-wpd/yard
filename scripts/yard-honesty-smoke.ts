@@ -43,7 +43,8 @@ function report(label: string, prompt: string) {
     detect: mat.id,
     pieces,
     panels: p.panels.length,
-    deck: p.panels.filter((x) => x.type === "deck").length,
+    // Road members: a deck sheet, or same-stock cross-ties and runners.
+    deck: p.panels.filter((x) => x.type === "deck").length + p.instances.filter((i) => i.role === "deck").length,
     traverse: p.traverse?.kind ?? null,
     use: p.assumptions.use ?? null,
     size,

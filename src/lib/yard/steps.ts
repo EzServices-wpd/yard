@@ -3147,7 +3147,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   return steps;
 }
 
-function roleScript(project: YardProject): { role: string; title: string; why: string; extra?: string }[] {
+function roleScript(project: YardProject): { role: string; title: string; why: string; extra?: string; word?: string }[] {
   const prompt = project.prompt ?? "";
   // Template classes own their step script (before any noun/mech scripts).
   if (project.shape && project.shape.classId !== "quadruped") {
@@ -3334,6 +3334,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "leg", title: "Raise the verticals", why: "Verticals define the bays." },
       { role: "brace", title: "Lace the Warren diagonals", why: "Zigzag diagonals are the truss." },
       { role: "rail", title: "Close the top chords and deck rails", why: "Top chords finish the truss." },
+      { role: "deck", word: "road member", title: "Lay the road deck — cross-ties, then runners", why: "The road you walk: same stock as the truss, on the deck rails." },
       { role: "splice", title: "Lap the long splices", why: "Overlap and glue both faces." },
       { role: "member", title: "Place remaining members", why: "No floating pieces." },
     ];

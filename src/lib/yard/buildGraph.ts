@@ -248,7 +248,7 @@ export function buildFormGraph(
         // Fat lumber / arch portal / ladder-like frames keep intentional members.
         // Thin craft weekend frames + figures densify the stroke at stock bay.
         const keepMembers =
-          policy.fat || portal || anatomyKeep || (memberBuilt && kind !== "frame" && kind !== "figure");
+          policy.fat || portal || anatomyKeep || recipe.wholeMembers || (memberBuilt && kind !== "frame" && kind !== "figure");
         const pts = keepMembers ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
@@ -283,8 +283,8 @@ export function buildFormGraph(
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
   // Thin craft weekend frames also get face X-braces between uprights — densify at stock
   // pitch without a per-noun .ts (catapult / box / scaffold share this path).
-  const thinFrameLace = kind === "frame" && !policy.fat;
-  if (!openKind && (!memberBuilt || thinFrameLace) && verticals.length >= 2) {
+  const thinFrameLace = kind === "frame" && !policy.fat && !recipe.wholeMembers;
+  if (!openKind && !recipe.wholeMembers && (!memberBuilt || thinFrameLace) && verticals.length >= 2) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const xs = nodes.map((n) => n.position.x);
     const ys = nodes.map((n) => n.position.y);
@@ -342,8 +342,8 @@ export function buildFormGraph(
     assumptions: [
       `Form: ${recipe.name}. Stock is mapped onto the queried wire — as close as ${item.name} can sit on that frame.`,
       recipe.source ? `Source: ${recipe.source}` : "Proportions from the form query (published measures when they exist).",
-      policy.fat
-        ? `${item.name} is column stock — each long member is one piece.`
+      policy.fat || recipe.wholeMembers
+        ? `${item.name} ${policy.fat ? "is column stock — " : "follows the real members — "}each long member is one piece${policy.fat ? "" : ", lapped where it runs past one stick"}.`
         : `${item.name} is thin — long members are laced into a truss.`,
       `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
       "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
@@ -373,6 +373,7 @@ export function buildFormGraph(
     kind === "furniture" ||
     kind === "ladder" ||
     (kind === "frame" && policy.fat) ||
+    !!recipe.wholeMembers ||
     kind === "figure" ||
     kind === "vehicle" ||
     kind === "vessel";
@@ -385,7 +386,7 @@ export function buildFormGraph(
       fig ? 12 : kind === "frame" ? 96 : 28,
     );
   }
-  if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && !(kind === "frame" && policy.fat)) {
+  if (kind !== "arch" && kind !== "furniture" && kind !== "ladder" && !(kind === "frame" && policy.fat) && !recipe.wholeMembers) {
     const topo = pruneTopology(g, kind, {
       // Keep frame braces — sparse A-frames were pruning densify away.
       aggressiveness: fig ? 0.1 : kind === "frame" ? 0.05 : keepWire ? 0.15 : 0.32,

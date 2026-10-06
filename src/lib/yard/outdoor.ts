@@ -32,6 +32,9 @@ export function holdsSoilOrWater(prompt: string | undefined | null, name = ""): 
 
 export const OUTDOOR_NOTE =
   "Outdoor build — exterior package: Titebond III waterproof glue, exterior-coated or stainless screws, an exterior finish on every face with extra coats soaked into the end grain, and glides under the feet so the end grain sits off wet ground.";
+/** Same package for a build fixed in place (posts in concrete, pier blocks, ground anchors): no feet to lift. */
+export const OUTDOOR_FIXED_NOTE =
+  "Outdoor build — exterior package: Titebond III waterproof glue, exterior-coated or stainless screws, and an exterior finish on every face with extra coats soaked into the end grain.";
 export const DRAINAGE_NOTE =
   'Holds soil or water: drill 1/2" drainage holes about every 6" across the bottom and staple a landscape-fabric liner inside so soil stays in and water runs out.';
 
@@ -51,6 +54,11 @@ function wallHung(project: YardProject): boolean {
   return project.assumptions?.installMode === "wall";
 }
 
+/** Set in the ground or hung from posts there: concrete, pier blocks, ground anchors. Nothing stands on feet. */
+function fixedInGround(project: YardProject): boolean {
+  return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
+}
+
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
 export function withOutdoorNotes(project: YardProject, prompt = project.prompt): YardProject {
   const outdoor = outdoorWood(project, prompt);
@@ -60,7 +68,7 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
     soil ? n.replace(/\s*Drainage holes optional\.?/i, "").replace(/\s*Guidance only — set level outdoors\.?$/i, " Guidance only — set it level.") : n,
   );
   notes = notes.filter((n) => n.trim());
-  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(OUTDOOR_NOTE);
+  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
   if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
@@ -132,7 +140,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
   }
   if (outdoor) {
     const feet = footTalk(project);
-    const wall = wallHung(project);
+    const wall = wallHung(project) || fixedInGround(project);
     // Exactly one glue: the exterior one replaces the indoor bottle.
     const glueRows = bom.filter(isGlueRow);
     const glueQty = Math.max(1, ...glueRows.map((b) => b.quantity));

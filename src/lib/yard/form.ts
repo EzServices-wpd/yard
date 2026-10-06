@@ -5,6 +5,7 @@ import { namedLumberDetectPhrases } from "./namedLumberSpecies";
 import { figureStrokes } from "./figure";
 import { stripEntityIds } from "./wiki";
 import type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
+import { aFrameOps, fitAFrame, fitPoleFrame, fitTrellis, poleFrameKind, poleFrameName, poleFrameOps, trellisOps } from "./poleFrames";
 import { archBridgeOps, BROOKLYN, clockTowerOps, cnTowerOps, fitSuspensionTo, GOLDEN_GATE, pisaTowerOps, suspensionOps } from "./formLandmarks";
 export type { FormOp, FormStroke, FormRecipe, Size3 } from "./formTypes";
 import {
@@ -77,12 +78,19 @@ type Hit = {
   historic?: boolean;
   build: (s: Size3) => FormOp[];
   fit?: (s: Size3, prompt: string) => Size3;
+  /** A family recipe that reads the prompt (pole count, kind) as well as the size. */
+  buildFor?: (prompt: string) => (s: Size3) => FormOp[];
+  /** Ops are real members (poles, slats), kept whole on any stock. */
+  wholeMembers?: boolean;
   /** Said when the landmark is built from its nearest family rather than its own spec. */
   note?: string;
 };
 
 const HITS: Hit[] = [
   { re: /eiffel/, kind: "eiffel", name: "Eiffel", historic: true, build: () => [] },
+  // Pole frames (tepee, bean pole tower, cone / obelisk trellis, tripod) and trellises: one family each, any stock.
+  { re: /\b(?:tee?\s*-?pees?|tipis?|wigwams?)\b|\bbean\s*poles?\b|\bpole\s*(?:towers?|tents?|frames?)\b|\b(?:cone|obelisk|pyramid|tower)\s+trellis|\btrellis\s+(?:cone|obelisk|tower)|\bgarden\s+obelisks?\b|\btomato\s+(?:cone|tower|cage)s?\b|\btripods?\b|\bcones?\b/, kind: "frame", name: "Pole frame", build: () => [], buildFor: poleFrameOps, fit: fitPoleFrame, wholeMembers: true },
+  { re: /^(?!.*\b(?:arch|arbou?r|pergola)).*\btrellis(?:es)?\b/, kind: "frame", name: "Trellis", build: trellisOps, fit: fitTrellis, wholeMembers: true },
   { re: /taj|mahal/, kind: "taj", name: "Taj Mahal", historic: true, build: tajOps },
   { re: /pyramid|giza|khufu/, kind: "pyramid", name: "Pyramid", historic: true, build: pyramidOps, fit: fitPyramid },
   { re: /colosseum|coliseum|amphitheatre|amphitheater/, kind: "custom", name: "Colosseum", historic: true, build: colosseumOps },
@@ -127,7 +135,8 @@ const HITS: Hit[] = [
   { re: /chair|stool|throne/, kind: "furniture", name: "Chair", build: chairOps },
   { re: /table|desk|workbench/, kind: "furniture", name: "Table", build: tableOps },
   { re: /\bbed\b|bunk/, kind: "furniture", name: "Bed", build: bedOps },
-  { re: /bench|sawhorse/, kind: "furniture", name: "Bench", build: benchOps },
+  { re: /\bsaw\s*horses?\b/, kind: "frame", name: "Sawhorse", build: aFrameOps, fit: fitAFrame, wholeMembers: true, note: "Sawhorse: a top beam on an A of two splayed legs at each end, with a brace across each A." },
+  { re: /bench/, kind: "furniture", name: "Bench", build: benchOps },
   { re: /rocket|spaceship|missile/, kind: "vehicle", name: "Rocket", build: rocketOps },
   { re: /plane|airplane|aircraft|jet/, kind: "vehicle", name: "Airplane", build: planeOps },
   { re: /robot|android/, kind: "figure", name: "Robot", build: robotOps },
@@ -221,7 +230,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   const hit = matchHit(prompt);
   if (hit) {
     const sized = hit.fit ? hit.fit(size, prompt) : size;
-    const ops = hit.build(sized);
+    const ops = hit.buildFor ? hit.buildFor(prompt)(sized) : hit.build(sized);
     const stance =
       hit.kind === "figure"
         ? classifyAnatomy(hay).stance
@@ -242,7 +251,8 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
         : isOttoman(lower)
           ? "Ottoman"
           : null;
-    const name = figLabel ?? seatLabel ?? hit.name;
+    const pole = hit.name === "Pole frame" ? poleFrameKind(prompt) : null;
+    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : hit.name);
     return {
       name,
       kind: hit.kind,
@@ -253,7 +263,15 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
           ? "Published / historic proportions, scaled to the size you asked for."
           : "Parametric form. Frame first, then brace. Support if it is slender.",
         ...(hit.note ? [hit.note] : []),
+        ...(pole
+          ? [
+              `${name}: poles splay from a ring on the ground and meet at one top tie — lash or bolt them there.${pole === "cone" ? " Built from the pole-frame family, the nearest Yard has for a cone." : ""}`,
+            ]
+          : hit.name === "Trellis"
+            ? [`${name}: two stiles full height with a grid of slats about ${hit.name === "Trellis" ? "6\"" : ""} apart at full size; set the stiles in the ground or screw them to a planter.`]
+            : []),
       ],
+      ...(hit.wholeMembers ? { wholeMembers: true } : {}),
       ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
       strokes,
     };

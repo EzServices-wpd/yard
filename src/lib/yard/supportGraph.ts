@@ -66,7 +66,8 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
     // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
     const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
-    if (ext[1] <= Math.min(ext[0], ext[2])) {
+    // So is a rail on edge fastened between two uprights (a gate's top rail, a table apron).
+    if (ext[1] <= Math.min(ext[0], ext[2]) || (p.type === "rail" && ext[0] >= Math.max(ext[1], ext[2]))) {
       const endOn = (side: 0 | 1) =>
         others.filter((q) => {
           if (!vertical(q)) return false;
@@ -96,7 +97,18 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       return [0, 1, 2].filter((k) => k !== axis).every((k) => -gaps[k] >= 0.25);
     });
     const lower = touching.filter((q) => boxes.get(q.id)!.min[1] < A.min[1] - 0.01);
-    const on = lower.length ? lower : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
+    // A board laid face-on across a frame (gate boards over their rails) reaches both ends of its long
+    // axis; it fastens to every frame part it crosses, so it goes on after all of them.
+    const thin = ext.indexOf(Math.min(...ext));
+    const long = ext.indexOf(Math.max(...ext));
+    const faceOn = touching.filter((q) => gapOn(A, boxes.get(q.id)!, thin) >= -0.1);
+    const reach = (end: 0 | 1) =>
+      faceOn.some((q) => {
+        const B = boxes.get(q.id)!;
+        return end === 0 ? B.min[long] <= A.min[long] + 0.25 * ext[long] : B.max[long] >= A.max[long] - 0.25 * ext[long];
+      });
+    const skin = p.type !== "rail" && p.type !== "upright" && faceOn.length >= 2 && ext[thin] * 3 <= ext[long] && reach(0) && reach(1);
+    const on = skin ? faceOn : lower.length ? lower : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
     out.set(p.id, { key: p.id, name: p.name, how: "side", on: on.map((q) => (typeof q === "string" ? q : q.id)) });
   }
   return out;

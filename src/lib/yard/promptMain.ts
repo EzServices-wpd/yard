@@ -49,6 +49,10 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
+import { isTrellis, poleFrameKind, wantsFullSizeFrame } from "./poleFrames";
+
+const REAL_POLE_NOTE = "No material typed, so this builds from 2×2 lumber at full size, the way it stands in a garden. Type dowels or popsicle sticks to build a model.";
+const wantsFullSizePoleFrame = (prompt: string) => Boolean(poleFrameKind(prompt) || isTrellis(prompt)) && wantsFullSizeFrame(prompt);
 import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure, isScratchingPost } from "./petGear";
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
@@ -116,6 +120,17 @@ function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
 }
 
 /**
+ * Typed framing stock drives the members of a panel build that has its own recipe stock (a step stool's
+ * plywood treads and 2×2 posts, a gate's 1×6 boards): board parts take the typed board at its real
+ * thickness, and the parts that keep their stock get one note saying which and why.
+ */
+function withTypedBoardStock(project: YardProject, prompt: string, materialOverride?: string): YardProject {
+  const stock = requestedStock(prompt, materialOverride);
+  if (!stock || carcaseKind(stock) !== "board" || !project.panels.length || project.primaryMaterialId === stock.id) return project;
+  return applyExplicitBoardCarcase(project, stock);
+}
+
+/**
  * House carcase, then the stock the user actually switched to.
  * A species clause still binds solid 1×4. A later plywood / 2×4 / 1×4 / 4×10 clause replaces it.
  * A stick, pipe, or brick keeps the same carcase and tiles every face in that stock.
@@ -179,6 +194,8 @@ function buildStock(prompt: string, materialOverride?: string): CatalogItem {
     if (fn && getCatalogItem(fn)) return getCatalogItem(fn)!;
     // Furniture and human-use pieces (seats, tables, beds, benches) are real lumber at real size.
     if (wantsRealStockDefault(prompt) && getCatalogItem("lumber-2x4-8")) return getCatalogItem("lumber-2x4-8")!;
+    // Garden pole frames and trellises are full-size 2×2 builds unless a model is asked for.
+    if (wantsFullSizePoleFrame(prompt) && getCatalogItem("lumber-2x2-8")) return getCatalogItem("lumber-2x2-8")!;
     return getCatalogItem("popsicle-standard") || named;
   }
   return named;
@@ -340,7 +357,11 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const defaulted =
     !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsRealStockDefault(args[0]) &&
     tabled0.primaryMaterialId === "lumber-2x4-8" && !(tabled0.notes ?? []).includes(REAL_STOCK_NOTE);
-  const tabled = withFrontCuesBuilt(defaulted ? { ...tabled0, notes: [...(tabled0.notes ?? []), REAL_STOCK_NOTE] } : tabled0, args[0]);
+  const poleDefaulted =
+    !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsFullSizePoleFrame(args[0]) &&
+    tabled0.primaryMaterialId === "lumber-2x2-8" && !(tabled0.notes ?? []).includes(REAL_POLE_NOTE);
+  const stockNote = defaulted ? REAL_STOCK_NOTE : poleDefaulted ? REAL_POLE_NOTE : null;
+  const tabled = withFrontCuesBuilt(stockNote ? { ...tabled0, notes: [...(tabled0.notes ?? []), stockNote] } : tabled0, args[0]);
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
@@ -960,7 +981,7 @@ function generateRaw(
     const ask = climb ? requestedStock(prompt, materialOverride) : null;
     // Leaning ladders stay parked on their old path until the step writer reads sloped stringer blanks.
     if (climb === "stool" && (!ask || carcaseKind(ask) || /^(?:lumber|plywood)-/.test(ask.id))) {
-      return buildClimb(prompt, climb, opts.sizeOverride);
+      return withTypedBoardStock(buildClimb(prompt, climb, opts.sizeOverride), prompt, materialOverride);
     }
   }
   // A deck, garden gate or swing set builds at real scale in lumber; craft stock or a model word keeps the stick model.
@@ -970,10 +991,10 @@ function generateRaw(
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.
-  if (!formOverride && !opts.fittedOverride && isPetEnclosure(lower)) return buildPetEnclosure(prompt, opts.sizeOverride);
+  if (!formOverride && !opts.fittedOverride && isPetEnclosure(lower)) return withTypedBoardStock(buildPetEnclosure(prompt, opts.sizeOverride), prompt, materialOverride);
   if (!formOverride && !opts.fittedOverride && !opts.sizeOverride) {
-    if (isAccessRamp(lower)) return buildAccessRamp(prompt);
-    if (isScratchingPost(lower)) return buildScratchingPost(prompt);
+    if (isAccessRamp(lower)) return withTypedBoardStock(buildAccessRamp(prompt), prompt, materialOverride);
+    if (isScratchingPost(lower)) return withTypedBoardStock(buildScratchingPost(prompt), prompt, materialOverride);
   }
   // A known build class (cat tree, any animal, robot, figure, frame, catapult…) beats owned-board and
   // named-product routing. A material plus a size is never a product.

@@ -19,7 +19,9 @@ const L = { two4: "lumber-2x4-8", two6: "lumber-2x6-8", two8: "lumber-2x8-8", tw
 /** The class, when the prompt names one of these frames and no craft stock or model scale. */
 export function outdoorFrameKind(prompt: string, materialOverride?: string): OutdoorFrame | null {
   const lower = prompt.toLowerCase();
-  if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(lower)) return null;
+  // "Mini / small sawhorse" is a real low shop sawhorse, not a model.
+  const scale = lower.replace(/\b(?:mini|small|low|short)\s+(?=saw\s*horses?\b)/, "");
+  if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(scale)) return null;
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
   if (/\bsaw\s*horses?\b/.test(lower)) return "sawhorse";
   if (/\bswing\s*sets?\b|\bswingsets?\b|\ba-?frame\s+swing\b/.test(lower)) return "swing-set";
@@ -282,8 +284,9 @@ export function buildSwingSet(prompt: string, size?: { width: number; height: nu
 /** Sawhorse: the same A-frame at shop scale — a doubled 2×4 top on edge, splayed 2×4 legs, a 2×4 brace across each A. */
 export function buildSawhorse(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
-  const beamL = Math.min(96, size?.depth ?? axis(lower, /long|length|wide|width/) ?? 36);
-  const Hb = Math.min(40, size?.height ?? axis(lower, /tall|high|height/) ?? 30);
+  const small = /\b(?:mini|small|low|short)\s+saw\s*horses?\b/.test(lower);
+  const beamL = Math.min(96, size?.depth ?? axis(lower, /long|length|wide|width/) ?? (small ? 24 : 36));
+  const Hb = Math.min(40, size?.height ?? axis(lower, /tall|high|height/) ?? (small ? 18 : 30));
   const spread = size?.width ?? Math.round(Hb * 0.7);
   const panels = aFramePanels({ beamL, Hb, spread, beamId: L.two4, bd: 3.5, legId: L.two4, legW: 3.5, inset: 3 });
   const name = `Sawhorse ${inchFrac(beamL)}" × ${inchFrac(Hb)}"`;
