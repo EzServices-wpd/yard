@@ -340,7 +340,7 @@ export function wantsFixedGlueShelves(project: YardProject): boolean {
     if (doors) return true;
   }
   if (project.panels.some((p) => /shoe shelf|cubby divider|jar lip|bottle rail|^deck$|^tier \d+ deck$/i.test(p.name))) return true;
-  if (project.notes.some((n) => /not bookcase pin shelves|do not pin them|glue the shelves|fixed shelves, glued/i.test(n))) return true;
+  if (project.notes.some((n) => /not bookcase pin shelves|do not pin them|glue the shelves|glue and screw in place|fixed shelves, glued/i.test(n))) return true;
   if (wantsShoes(lower)) return true;
   return false;
 }

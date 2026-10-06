@@ -148,6 +148,8 @@ export function cutListName(name: string, type?: string): string {
   if (odd) return odd;
   const tmpl = templateCutName(name);
   if (tmpl) return tmpl;
+  // Numbered slats, boards, battens and rails of a numbered bay read as one cut row: "Door 2 slat 3" → "Door slat".
+  if (/\b(?:slat|board|batten|rail)\b/i.test(name) && /\s\d+\b/.test(name) && !/^(?:seat|back|tabletop) board\b/i.test(name)) return name.replace(/\s+\d+\b/g, "");
   if (/^triangle shelf/i.test(name)) return "Triangle shelf";
   if (/^quarter-round shelf/i.test(name)) return "Quarter-round shelf";
   if (/^wall panel\s+[ab]\b/i.test(name)) return name.replace(/^wall panel\s+([ab])\b.*$/i, (_m, l: string) => `Wall panel ${l.toUpperCase()}`);

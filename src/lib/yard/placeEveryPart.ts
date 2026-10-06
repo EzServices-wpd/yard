@@ -139,6 +139,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
       }
       return `Set the ${part.name} on the floor, square to the marks. It is the base the next parts fasten to.`;
     case "hinges":
+      // A batten of a built-up door or lid carries the hinge strap; the leaf's boards fasten to it next.
+      if (/\b(?:batten|cleat)\b/i.test(part.name))
+        return `Hang the ${part.name} on ${onto} with its hinge strap screwed along the batten. The boards of the same leaf fasten to it next, clear of the frame so it swings free.`;
       return `Hang the ${part.name} on its hinges on ${onto}.`;
     case "front":
       return `Set the ${part.name} on the face of ${onto} and fasten it from inside the drawer with ${fix}`;
@@ -186,6 +189,7 @@ export function placementIndex(project: YardProject, steps: AssemblyStep[]): Map
 }
 
 const INSERTED = "This part was on the model and not yet in a step.";
+const LIFTED = "It goes on once every part under it is in place.";
 
 export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
   const parts = partsOf(project);
@@ -275,7 +279,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   }
   out = supportOrder(project, out, parts, supports);
   if (project.panels.length) out = supportOrder(project, mergeSameTitles(liftAfterSupports(project, out, parts, supports, fix)), parts, supports);
-  return renumber(mergeSameTitles(out));
+  // An inserted step whose parts all moved to a later step places nothing: it goes.
+  const ghost = (s: AssemblyStep) => (s.tips === INSERTED || s.tips === LIFTED) && Array.isArray(s.partsUsed) && !s.partsUsed.length;
+  return renumber(mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s)))));
 }
 
 const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -466,6 +472,52 @@ function splitByLayer(
     });
   });
   return out;
+}
+
+/**
+ * Back-to-back inserted steps that place one numbered family with the same verb are one step
+ * ("Fasten the 7 door 2 slats"): nothing sits between them, so the order holds.
+ */
+function mergeFamilies(steps: AssemblyStep[]): AssemblyStep[] {
+  const out: AssemblyStep[] = [];
+  const verbOf = (s: AssemblyStep) => s.title.split(" ")[0];
+  const famOf = (s: AssemblyStep) => {
+    const f = new Set((s.partsUsed ?? []).map(familyOf));
+    return (s.tips === INSERTED || s.tips === LIFTED) && f.size === 1 ? [...f][0] : null;
+  };
+  // A family title ("the 7 lid boards") places every board of that family, so it is only used when the
+  // merged step holds the whole family.
+  const famSize = new Map<string, number>();
+  for (const s of steps) for (const n of new Set(s.partsUsed ?? [])) famSize.set(familyOf(n), (famSize.get(familyOf(n)) ?? 0) + 1);
+  for (const s of steps) {
+    const prev = out[out.length - 1];
+    const fam = famOf(s);
+    const numbered = (t: AssemblyStep) => (t.partsUsed ?? []).every((n) => familyOf(n) !== n);
+    if (prev && fam && famOf(prev) === fam && verbOf(prev) === verbOf(s) && numbered(prev) && numbered(s)) {
+      const names = [...(prev.partsUsed ?? []), ...(s.partsUsed ?? [])];
+      const whole = new Set(names).size >= (famSize.get(fam) ?? 0);
+      out[out.length - 1] = { ...prev, title: `${verbOf(s)} the ${whole ? familyTitle(names) : listNames(names)}`, description: `${prev.description} ${s.description}`, partsUsed: names };
+      continue;
+    }
+    out.push({ ...s });
+  }
+  return out;
+}
+
+/** "Left end slat 3" → "Left end slat": the family a numbered part belongs to. */
+function familyOf(name: string): string {
+  return name.replace(/\s+\d+$/, "");
+}
+
+/** "9 left end slats" for one family, else the names listed. */
+function familyTitle(names: string[]): string {
+  const u = [...new Set(names)];
+  const fams = new Set(u.map(familyOf));
+  if (u.length > 1 && fams.size === 1) {
+    const f = familyOf(u[0]);
+    return `${u.length} ${f.charAt(0).toLowerCase()}${f.slice(1)}${/(?:s|sh|ch|x)$/.test(f) ? "es" : "s"}`;
+  }
+  return listNames(u);
 }
 
 function listNames(names: string[]): string {

@@ -26,7 +26,7 @@ import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
-import { detectForm, subjectFromPrompt, type FormRecipe } from "./form";
+import { detectForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
@@ -49,6 +49,8 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
+import { positiveSentence } from "./positiveWording";
+import { purposeOf, titleWithPurpose } from "./purpose";
 import { isTrellis, poleFrameKind, wantsFullSizeFrame } from "./poleFrames";
 
 const REAL_POLE_NOTE = "No material typed, so this builds from 2×2 lumber at full size, the way it stands in a garden. Type dowels or popsicle sticks to build a model.";
@@ -261,13 +263,36 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     args,
   );
   // The prompt box keeps the person's own words; every build's notes are tidied the same way.
-  const tidy = { ...done, notes: tidyNotes(done.notes ?? []) };
+  // Engine-internal notes (topology pruning) stay inside; a member count is the pieces on the bench.
+  const pieces = done.instances?.length ?? 0;
+  const tidy = {
+    ...done,
+    notes: tidyNotes(done.notes ?? [])
+      .filter((n) => !/^Topology(?:-lite)? ·/.test(n))
+      .map((n) => n.replace(/^(\d+ joints? · )\d+ members? after weld$/, (_m, j: string) => `${j}${pieces} member${pieces === 1 ? "" : "s"}`))
+      .map(positiveSentence),
+  };
   const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
   // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
-  return sized || built.unmatched ? withSpeciesTitle(built, prompt) : built;
+  return withPurposeTitle(sized || built.unmatched ? withSpeciesTitle(built, prompt) : built, prompt);
+}
+
+/** The stored item names the build ("Broom closet", "Record console"): title and headline note keep its word. */
+function withPurposeTitle(project: YardProject, prompt: string): YardProject {
+  const purpose = purposeOf(prompt);
+  if (!purpose || project.unmatched) return project;
+  const name = titleWithPurpose(project.name, purpose);
+  if (name === project.name) return project;
+  const stem = (s: string) => s.replace(/\s*\d[\s\S]*$/, "").trim();
+  const [first, ...rest] = project.notes ?? [];
+  const bare = (s: string) => s.replace(/^[A-Z][a-z]+\s+(?=[A-Z])/, "");
+  const from = [stem(project.name), bare(stem(project.name))].find((f) => f && first?.startsWith(f));
+  const to = from === stem(project.name) ? stem(name) : bare(stem(name));
+  const notes = first && from ? [`${to}${first.slice(from.length)}`, ...rest] : project.notes;
+  return { ...project, name, notes };
 }
 
 function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
@@ -1121,7 +1146,10 @@ function generateRaw(
       depth: opts.sizeOverride.depth || box.depth,
     };
   }
-  const freeSize = !!opts.sizeOverride || axisLabeled(prompt);
+  // A named landmark keeps its published plan proportions on every untyped axis.
+  const aspect = !opts.sizeOverride && !formOverride ? landmarkAspect(prompt) : null;
+  if (aspect) box = withAspect(box, prompt, aspect, Math.max(0.5, (toPrimitive(item).width || 1) * 0.55));
+  const freeSize = !!opts.sizeOverride || axisLabeled(prompt) || !!aspect;
   const lowerP = prompt.toLowerCase();
   if (!freeSize && /arch|gateway|portal|arbor|arbour|pergola/.test(lowerP) && !formOverride) {
     const H = box.height;
@@ -1149,7 +1177,7 @@ function generateRaw(
       box = { height: box.height * k, width: box.width * k, depth: Math.max(4, box.depth * k) };
     }
   }
-  const recipe = formOverride ?? detectForm(prompt, { ...box, free: freeSize });
+  const recipe = formOverride ?? detectForm(prompt, { ...box, free: freeSize, aspectSet: !!aspect });
   const kind = recipe.kind;
   const forceCut = /cut the sticks|cut each stick|cut the stock/.test(lower) || opts.cutStock === true;
   const forceWhole = /don'?t cut|whole sticks|uncut|glue them whole/.test(lower) || opts.cutStock === false;
@@ -1542,8 +1570,8 @@ function finalize(
     const seat = seatM ? seatM[1] || seatM[2] : null;
     notes.unshift(
       seat
-        ? `Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`
-        : `Adirondack chair — outdoor seat family, never Custom closet.`,
+        ? `Adirondack chair with ${seat}" seat height — outdoor seat family.`
+        : `Adirondack chair — outdoor seat family.`,
     );
   }
   if (isLoungeChair(pl)) {

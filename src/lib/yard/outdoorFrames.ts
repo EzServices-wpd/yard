@@ -9,13 +9,14 @@ import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import type { Panel, YardProject } from "./types";
 import { allowSpanIn } from "./spanCheck";
+import { purposeOf, type Purpose } from "./purpose";
 
-export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse" | "picnic";
+export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse" | "picnic" | "enclosure";
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy|desk\s*top|tabletop)\b/;
 
-const L = { two4: "lumber-2x4-8", two6: "lumber-2x6-8", two8: "lumber-2x8-8", two10: "lumber-2x10-8", two12: "lumber-2x12-8", post4: "lumber-4x4-8", one6: "lumber-1x6-8" };
+const L = { one4: "lumber-1x4-8", two4: "lumber-2x4-8", two6: "lumber-2x6-8", two8: "lumber-2x8-8", two10: "lumber-2x10-8", two12: "lumber-2x12-8", post4: "lumber-4x4-8", one6: "lumber-1x6-8" };
 
 /** The class, when the prompt names one of these frames and no craft stock or model scale. */
 export function outdoorFrameKind(prompt: string, materialOverride?: string): OutdoorFrame | null {
@@ -26,6 +27,9 @@ export function outdoorFrameKind(prompt: string, materialOverride?: string): Out
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
   if (/\bsaw\s*horses?\b/.test(lower)) return "sawhorse";
   if (/\bpicnic\s+tables?\b/.test(lower) && !/\bbench(?:es)?\b.*\bseparate\b/.test(lower)) return "picnic";
+  // An enclosure for an outdoor item one bay each (garbage bins, bikes): posts, slatted walls, a lid and doors.
+  const forItem = purposeOf(lower);
+  if (forItem?.item.outdoor && forItem.item.perBay && /\b(?:enclosures?|corrals?|surrounds?|hideaways?)\b/.test(lower)) return "enclosure";
   if (/\bswing\s*sets?\b|\bswingsets?\b|\ba-?frame\s+swing\b/.test(lower)) return "swing-set";
   if (/\b(?:garden|yard|fence|wood(?:en)?|picket|privacy|side|backyard)?\s*gates?\b/.test(lower) && !/\bgate\s*(?:leg|way|house)|tailgate|baby\s*gate|pet\s*gate|stair\s*gate|golden\s*gate|gateway/.test(lower))
     return "gate";
@@ -400,7 +404,106 @@ export function buildPicnicTable(prompt: string, size?: { width: number; height:
   return project(prompt, name, panels, W, H, len, notes, board.id);
 }
 
+/** Typed board for the enclosure ("from 2x4", "1x6 slats"); null when none was typed. */
+function typedBoard(lower: string): { id: string; t: number; face: number; label: string } | null {
+  const m = lower.match(/\b([12])\s*x\s*(4|6)\b/);
+  if (!m) return null;
+  const t = m[1] === "1" ? 0.75 : 1.5;
+  const face = m[2] === "4" ? 3.5 : 5.5;
+  const id = `lumber-${m[1]}x${m[2]}-8`;
+  return { id, t, face, label: `${m[1]}×${m[2]}` };
+}
+
+/**
+ * An enclosure with one bay per stored item: a post at every bay line front and back, top and
+ * bottom rails between them, slats on the back and both ends, an overlay slat door on the front
+ * of each bay and a slat lid on top of each bay, hinged at the back. The bay is the item plus
+ * working room (2" a side, 4" over the top), so a 24×28×46 bin rolls in and its lid opens.
+ */
+export function buildEnclosure(prompt: string, purpose: Purpose, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const n = purpose.count;
+  const item = purpose.item;
+  const typed = typedBoard(lower);
+  const frameId = typed?.t === 1.5 ? typed.id : L.two4;
+  const postId = typed?.t === 1.5 ? typed.id : L.post4;
+  const slat = typed ?? { id: L.one6, t: 0.75, face: 5.5, label: "1×6" };
+  const pw = postId === L.post4 ? 3.5 : 1.5;
+  const pd = 3.5;
+  const st = slat.t;
+  const g = 0.5;
+  const bayW = (item.clear.w ?? 24) + 4;
+  const bayD = item.clear.d + 4;
+  const H = Math.max(item.clear.h + 4, size?.height ?? 0);
+  const innerW = n * bayW + (n + 1) * pw;
+  const x0 = st;
+  const zB = st;
+  const zF = zB + pd + bayD;
+  const W = innerW + 2 * st;
+  const D = zF + pd + st;
+  const rail = 3.5;
+  const panels: Panel[] = [];
+  const postX = Array.from({ length: n + 1 }, (_, k) => x0 + k * (bayW + pw));
+  const sideName = (k: number) => (k === 0 ? "left" : k === n ? "right" : `${k}`);
+  for (let k = 0; k <= n; k++) {
+    panels.push(panel("upright", `Back post ${sideName(k)}`, postX[k], 0, zB, pw, H, pd, postId));
+    panels.push(panel("upright", `Front post ${sideName(k)}`, postX[k], 0, zF, pw, H, pd, postId));
+  }
+  for (let b = 0; b < n; b++) {
+    const xa = postX[b] + pw;
+    const tag = n === 1 ? "" : ` ${b + 1}`;
+    panels.push(panel("rail", `Back bottom rail${tag}`, xa, 4, zB, bayW, rail, 1.5, frameId));
+    panels.push(panel("rail", `Back top rail${tag}`, xa, H - rail, zB, bayW, rail, 1.5, frameId));
+    panels.push(panel("rail", `Front top rail${tag}`, xa, H - rail, zF + pd - 1.5, bayW, rail, 1.5, frameId));
+  }
+  for (let k = 0; k <= n; k++) {
+    const x = k === 0 ? postX[0] : k === n ? postX[n] + pw - 1.5 : postX[k] + pw / 2 - 0.75;
+    const what = k === 0 ? "Left" : k === n ? "Right" : "Divider";
+    const tag = k > 0 && k < n && n > 2 ? ` ${k}` : "";
+    panels.push(panel("rail", `${what} bottom rail${tag}`, x, 4, zB + pd, 1.5, rail, bayD, frameId));
+    panels.push(panel("rail", `${what} top rail${tag}`, x, H - rail, zB + pd, 1.5, rail, bayD, frameId));
+  }
+  // Slats spread evenly over a run, about a 1/2" apart.
+  const spread = (len: number) => {
+    const c = Math.max(2, Math.floor((len + g) / (slat.face + g)));
+    const gap = (len - c * slat.face) / (c - 1);
+    return Array.from({ length: c }, (_, i) => i * (slat.face + gap));
+  };
+  // Slats stop 1/4" under the top, so the lid closes on the posts and rails.
+  const slatH = H - 2.25;
+  spread(innerW).forEach((at, i) => panels.push(panel("side", `Back slat ${i + 1}`, x0 + at, 2, 0, slat.face, slatH, st, slat.id)));
+  const sideRun = zF + pd - zB;
+  for (const [side, x] of [["Left", 0], ["Right", x0 + innerW]] as const)
+    spread(sideRun).forEach((at, i) => panels.push(panel("side", `${side} end slat ${i + 1}`, x, 2, zB + at, st, slatH, slat.face, slat.id)));
+  // Doors overlay the front posts, half a post each side less 1/16"; lids sit on the posts and top rails.
+  const doorH = H - rail - 0.25 - 2;
+  for (let b = 0; b < n; b++) {
+    const xa = postX[b] + pw / 2 + 1 / 16;
+    const dw = postX[b + 1] + pw / 2 - 1 / 16 - xa;
+    const tag = n === 1 ? "" : ` ${b + 1}`;
+    spread(dw).forEach((at, i) => panels.push(panel("side", `Door${tag} slat ${i + 1}`, xa + at, 2, zF + pd, slat.face, doorH, st, slat.id)));
+    for (const [nm, y] of [["bottom", 6], ["top", 2 + doorH - 4 - slat.face]] as const)
+      panels.push(panel("cleat", `Door${tag} ${nm} batten`, postX[b] + pw + 0.25, y, zF + pd - st, bayW - 0.5, slat.face, st, slat.id));
+    const lw = dw;
+    spread(lw).forEach((at, i) => panels.push(panel("side", `Lid${tag} board ${i + 1}`, xa + at, H, -1, slat.face, st, D + 2, slat.id)));
+    // Lid battens sit just inside the back and front top rails, so the closed lid bears on the rails.
+    for (const [nm, z] of [["back", zB + 1.5], ["front", zF + pd - 1.5 - slat.face]] as const)
+      panels.push(panel("cleat", `Lid${tag} ${nm} batten`, postX[b] + pw + 0.25, H - st, z, bayW - 0.5, st, slat.face, slat.id));
+  }
+  const hinges = 2 * n + 2 * n;
+  const one = purpose.word.split(" ").pop()!;
+  const name = `${purpose.word.charAt(0).toUpperCase()}${purpose.word.slice(1)} enclosure for ${n} ${n === 1 ? one : `${one}s`} ${inchFrac(W)}" × ${inchFrac(H)}"`;
+  const notes = [
+    `${name}: one bay per ${purpose.word}, ${inchFrac(bayW)}" wide × ${inchFrac(bayD)}" deep × ${inchFrac(H)}" tall inside — a ${item.clear.w ?? 24}×${item.clear.d}×${item.clear.h}" ${purpose.word} plus 2" each side and 4" over the top so it rolls in and its own lid opens.`,
+    `Frame: ${pw === 3.5 ? "4×4" : (typed?.label ?? "2×4")} posts at every bay line front and back, ${typed?.t === 1.5 ? typed.label : "2×4"} top and bottom rails between them; ${slat.label} slats ${inchFrac(g)}" apart on the back and both ends, screwed to the rails.`,
+    `Each bay gets an overlay door of ${slat.label} slats on two battens and a slat lid on two battens: ${hinges} 6" T-hinges in all, two on each door at the post and two on each lid at the back top rail, and ${n} gravity latches, one per door.`,
+    "Set the posts on pavers or a slab, level. Exterior screws, pressure-treated or cedar lumber. Guidance only.",
+  ];
+  return project(prompt, name, panels, W, H + st, D, notes, slat.id, "display");
+}
+
 export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { width: number; height: number; depth: number }): YardProject {
   if (kind === "picnic") return buildPicnicTable(prompt, size);
+  if (kind === "enclosure") return buildEnclosure(prompt, purposeOf(prompt.toLowerCase())!, size);
   return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size) : buildSwingSet(prompt, size);
 }

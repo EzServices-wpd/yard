@@ -86,7 +86,7 @@ describe("outdoor frames: frame before boards, no glides on fixed builds, a real
     assert.ok(on.includes("Bottom rail") && on.includes("Top rail"), on.join(","));
     const titles = buildPlan(p).instructions.map((s) => s.title);
     const lastFrame = Math.max(...titles.map((t, i) => (/^(?:Set|Fasten) the .*(?:stile|rail|brace)/i.test(t) ? i : -1)));
-    const firstBoard = titles.findIndex((t) => /^Fasten the Board/.test(t));
+    const firstBoard = titles.findIndex((t) => /^Fasten the (?:\d+ )?boards?\b/i.test(t));
     assert.ok(lastFrame < firstBoard, titles.join(" | "));
   });
   for (const prompt of ["garden gate", "backyard deck 10x12"]) {

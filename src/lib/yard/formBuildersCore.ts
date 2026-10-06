@@ -343,7 +343,8 @@ export function arcOps(s: Size3): FormOp[] {
   const H = s.height;
   const w = s.width;
   return [
-    { op: "box", x: 0, y: H * 0.55, z: 0, w, h: H * 0.9, d: Math.max(s.depth, w * 0.35), role: "leg" },
+    // The piers stand on the ground and carry the attic course.
+    { op: "box", x: 0, y: H * 0.5, z: 0, w, h: H, d: Math.max(s.depth, w * 0.35), role: "leg" },
     { op: "arch", x0: -w * 0.28, z0: 0, x1: w * 0.28, z1: 0, y0: 0, crown: H * 0.42, role: "support" },
     { op: "ring", y: H, rx: w * 0.48, rz: s.depth * 0.4, n: 8, role: "rail" },
   ];

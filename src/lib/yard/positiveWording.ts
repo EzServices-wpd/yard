@@ -20,11 +20,18 @@ const RULES: Rule[] = [
   [/(^|[.;]\s*)Do not cut\b/g, "$1Use it whole"],
   // Square while shimming / gluing.
   [/\s*[—–-]+\s*do not twist the ([\w ]+?)\./gi, (_m, what) => `, keeping the ${what} square.`],
+  [/\bDo not rack (the [\w ]+?) to match ([^.]+)\./gi, (_m, what, wall) => `Keep ${what} square, even against ${wall}.`],
+  [/;\s*do not rack (the [\w ]+?)\./g, (_m, what) => `; keep ${what} square.`],
+  [/\s*[—–-]+\s*do not rack (the [\w ]+?)\./g, (_m, what) => `, keeping ${what} square.`],
+  [/\bso (the [\w ]+?|it|they) cannot rack\b/gi, (_m, s) => `so ${s} ${verb(s, "stays", "stay")} square`],
   [/\bDo not rack (the [\w ]+?)( while [^.]*)?(?= to follow|\.)/gi, (_m, what, when) => `Keep ${what} square${when ?? ""}`],
   [/ to follow the flare\./g, "; the flare comes from the cut parts."],
   // Loose shelves on pins.
   [/\bDo not glue the shelves; the pins hold them/gi, "Leave the shelves loose on the pins"],
   [/\bDo not use shelf pins\b/gi, "Use fixed shelves here, screwed in place"],
+  [/;\s*do not pin them\b/gi, " in place"],
+  // Spans a divider shortens.
+  [/\bso (the [\w ]+?) don't span the full ([^.]+?)\./gi, (_m, what, run) => `so ${what} span less than the full ${run}.`],
   // Lids that hinge next.
   [/\bDo not glue or screw (the \w+) on as a fixed top\b/gi, (_m, what) => `Leave ${what} loose for now`],
   // Wall-hung layouts.
@@ -37,6 +44,8 @@ const RULES: Rule[] = [
   [/\bso (the [\w ]+?|it|they|jars|bottles) cannot tip(?: forward)?\b/gi, (_m, s) => `so ${s} ${verb(s, "stays", "stay")} upright`],
   [/\bso (the [\w ]+?|it|they|jars|bottles) cannot (?:slide|roll|fall) off\b/gi, (_m, s) => `so ${s} ${verb(s, "stays", "stay")} on`],
   [/\bso (the [\w ]+?|it|they) cannot slam shut on fingers\b/gi, (_m, s) => `so ${s} ${verb(s, "closes", "close")} gently, clear of fingers`],
+  [/\bso (the [\w ]+?|it|they) cannot slam(?: shut)?\b(?! on fingers)/gi, (_m, s) => `so ${s} ${verb(s, "closes", "close")} gently`],
+  [/\bnever through openings or outside the silhouette\b/g, "inside the silhouette and clear of openings"],
   [/\bso (the [\w ]+?|it|they) cannot tip\b/gi, (_m, s) => `so ${s} ${verb(s, "stays", "stay")} upright`],
   [/(?:,? or sit it on a counter and still lag it) so it cannot tip/gi, ", or sit it on a counter and still lag it so it stays upright"],
   // Studs.
@@ -54,6 +63,13 @@ const RULES: Rule[] = [
   [/\s*[—–-]+\s*don't force\./gi, " — ease it into place."],
   [/,\s*never [^.]*\./g, "."],
 ];
+
+/** The wording rules alone (no fraction pass): build notes read positively, same grammar as the plan. */
+export function positiveSentence(text: string): string {
+  let out = text;
+  if (/\b(?:cannot|can't|do not|don't|never|not four)\b/i.test(out)) for (const [re, to] of RULES) out = out.replace(re, to as never);
+  return out;
+}
 
 export function positiveText(text: string): string;
 export function positiveText(text: string | undefined): string | undefined;

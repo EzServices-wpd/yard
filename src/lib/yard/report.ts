@@ -1006,7 +1006,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         isToyChest(lidPrompt) ||
         /hinged\s*lid/i.test(`${project.name} ${project.prompt ?? ""}`) ||
         ((/Toy chest|\bChest\b/i.test(project.name) || /Toy chest/i.test(project.name)) && hasLidPanel));
-    if (hingedLid) {
+    // A lid whose hinges the notes already count (T-hinges, strap hinges) takes those, not a piano hinge.
+    if (hingedLid && !(project.notes ?? []).some((n) => /\b(?:T-hinges|strap hinges)\b/i.test(n))) {
       const alreadyPiano = bom.some((b) => /piano hinge/i.test(b.name));
       if (!alreadyPiano) {
         bom.push({
@@ -1428,6 +1429,10 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     [/(\d+) precast concrete deck pier blocks/, (m) => ({ name: "Precast concrete deck pier blocks", quantity: Number(m[1]), unit: "each", searchQuery: "precast concrete deck pier block 4x4", notes: "One under each post, on compacted gravel." })],
     [/(\d+) hurricane ties/, (m) => ({ name: "Hurricane ties (joist to beam)", quantity: Number(m[1]), unit: "each", searchQuery: "galvanized hurricane tie joist to beam", notes: "One where each joist crosses a beam." })],
     [/two 8" strap hinges/, () => ({ name: '8" heavy strap hinges', quantity: 2, unit: "each", searchQuery: "8 inch heavy strap hinge gate", notes: "Hinge stile to hinge post." })],
+    [/(\d+) 6" T-hinges/, (m) => ({ name: '6" heavy T-hinges', quantity: Number(m[1]), unit: "each", searchQuery: "6 inch heavy t hinge exterior", notes: "Where the notes place them: doors to posts, lids to the back rail." })],
+    [/(\d+) gravity latch(?:es)?/, (m) => ({ name: "Gravity latches", quantity: Number(m[1]), unit: "each", searchQuery: "gravity gate latch", notes: "One per door." })],
+    [/(\d+) broom and mop grip clips/, (m) => ({ name: "Broom and mop grip clips", quantity: Number(m[1]), unit: "each", searchQuery: "broom mop holder grip clip wall mount", notes: "Across the back of the tall bay, 48\" up." })],
+    [/(\d+) nesting tubes/, (m) => ({ name: '5/16" nesting tubes, 6" (paper or bamboo)', quantity: Number(m[1]), unit: "each", searchQuery: "mason bee nesting tubes 5/16 inch", notes: "Packed tight into each tier, open end out." })],
     [/for a gate latch/, () => ({ name: "Gate latch", quantity: 1, unit: "each", searchQuery: "gravity gate latch", notes: "On the latch stile and latch post." })],
     [/steel A-frame bracket at each end/, () => ({ name: "A-frame swing set brackets", quantity: 2, unit: "each", searchQuery: "swing set a-frame bracket 2x6 legs", notes: "One at each end, legs to beam." })],
     [/Hang (\d+) swings? from heavy-duty swing hangers/, (m) => ({ name: "Heavy-duty swing hangers", quantity: 2 * Number(m[1]), unit: "each", searchQuery: "heavy duty swing hanger bolt through", notes: "Two per swing, bolted through the beam." })],

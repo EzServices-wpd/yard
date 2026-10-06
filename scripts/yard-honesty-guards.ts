@@ -1024,7 +1024,7 @@ for (const p of ["4 foot tall lighthouse from popsicle sticks", "3 foot lighthou
     const fast = plan.bom.find((l) => l.catalogId === "paper-fasteners");
     if (!fast || !/\b8\b/.test(fast.notes ?? "")) failWeekend(`humanoid: ${p} no paper fasteners on Buy`);
     for (const st of plan.instructions.filter((s0) => /^Pivot/.test(s0.title))) if (/Wood glue|craft glue/i.test(st.description)) failWeekend(`humanoid: ${p} pivot step says glue`, st.title);
-    if (b.notes.some((n) => /Do not cut/.test(n)) && b.instances.some((i) => i.cutLength != null)) failWeekend(`humanoid: ${p} says do not cut but cuts`);
+    if (b.notes.some((n) => /Do not cut|use it whole|used whole/i.test(n)) && b.instances.some((i) => i.cutLength != null)) failWeekend(`humanoid: ${p} says do not cut but cuts`);
   }
   const tall = generateFromPrompt("man from popsicle sticks, 30 inches tall");
   if (Math.abs(tall.overall.height - 30) > 3.5) failWeekend("humanoid: 30in typed", tall.overall);

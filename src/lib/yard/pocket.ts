@@ -430,7 +430,7 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
     `Left shelves ${inch(bays.left)}" wide. Right shelves ${inch(bays.right)}" wide.`,
     `At the unit front (${inch(seat.z + unit.depth)}" from the back wall): left clearance ${inch(clr.leftClear)}" · right clearance ${inch(clr.rightClear)}" · opening ${inch(clr.opening)}".`,
     `Vanity counter at ${inch(unit.vanityH)}". Knee ${inch(unit.kneeW)}" clear, centered on the unit. Drawers in the wings. Uppers ${inch(unit.upperStart)}" to ${inch(unit.height)}".`,
-    `Anchor the back and both uprights into studs. Do not rely on drywall alone — this is a ${inch(walls.height)}" mixed-use unit.`,
+    `Anchor the back and both uprights into studs. Studs carry it, beyond what drywall alone holds — this is a ${inch(walls.height)}" mixed-use unit.`,
     straight
       ? "Scribe the uprights if the back wall is out of plumb. The unit stays square in a square hole."
       : "Scribe the uprights if the back wall is out of plumb. The unit stays rectangular; the pocket is the thing that is wonky.",

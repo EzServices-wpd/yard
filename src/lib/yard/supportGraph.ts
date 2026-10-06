@@ -132,6 +132,49 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     const on = skin ? faceOn : lower.length ? lower : below.length ? below : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
     out.set(p.id, { key: p.id, name: p.name, how: "side", on: on.map((q) => (typeof q === "string" ? q : q.id)) });
   }
+  // A batten or cleat that only ties boards together fastens across them: the boards go first, so a board
+  // and its batten never wait on each other.
+  const isTie = (p: Panel) => p.type === "cleat" || /\b(?:batten|cleat)s?\b/i.test(p.name);
+  for (const p of panels) {
+    const info = out.get(p.id);
+    if (!info || isTie(p)) continue;
+    const mutual = info.on.filter((k) => {
+      const q = panels.find((x) => x.id === k);
+      return q && isTie(q) && out.get(k)?.on.includes(p.id);
+    });
+    if (mutual.length) out.set(p.id, { ...info, on: info.on.filter((k) => !mutual.includes(k)) });
+  }
+  // A built-up door or lid (slats or boards on battens, named "Door 2 slat 3", "Lid batten") is its own
+  // leaf: its battens hang on hinges from the one frame part the leaf swings on, and its slats fasten to
+  // those battens, never to the posts or rails the closed leaf sits against.
+  const leafOf = (p: Panel) => p.name.match(/^((?:door|lid)(?:\s+\d+)?)\s+(?:\w+\s+)?(?:slat|board|batten|cleat)s?\b/i)?.[1].toLowerCase() ?? null;
+  const leaves = new Map<string, Panel[]>();
+  for (const p of panels) {
+    const k = leafOf(p);
+    if (k) leaves.set(k, [...(leaves.get(k) ?? []), p]);
+  }
+  const frame = panels.filter((q) => !leafOf(q) && q.type !== "door" && q.type !== "drawer" && !isDrawerFront(q));
+  for (const members of leaves.values()) {
+    const ties = members.filter(isTie);
+    if (!ties.length || !frame.length) continue;
+    const A = boxes.get(ties[0].id)!;
+    const hinge = [...frame].sort((x, y) => dist(A, boxes.get(x.id)!) - dist(A, boxes.get(y.id)!))[0];
+    // Battens at the hinge line carry the straps; a batten across the far edge fastens over the boards.
+    const H = boxes.get(hinge.id)!;
+    const hung = ties.filter((t) => dist(boxes.get(t.id)!, H) <= 1);
+    const boards = members.filter((m) => !isTie(m));
+    for (const t of hung) out.set(t.id, { key: t.id, name: t.name, how: "hinges", on: [hinge.id] });
+    for (const m of boards) {
+      const M = boxes.get(m.id)!;
+      const crossed = hung.filter((t) => dist(M, boxes.get(t.id)!) <= 0.1);
+      out.set(m.id, { key: m.id, name: m.name, how: "side", on: (crossed.length ? crossed : hung).map((t) => t.id) });
+    }
+    for (const t of ties.filter((x) => !hung.includes(x))) {
+      const T = boxes.get(t.id)!;
+      const crossed = boards.filter((m) => dist(T, boxes.get(m.id)!) <= 0.1);
+      out.set(t.id, { key: t.id, name: t.name, how: "side", on: (crossed.length ? crossed : boards).map((m) => m.id) });
+    }
+  }
   return out;
 }
 

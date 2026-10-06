@@ -9,7 +9,8 @@ import type { Panel, YardProject } from "./types";
 export const MEETING_GAP = 1 / 8;
 const MAX_SEEN_GAP = 3; // leaves further apart than this are separate faces (a knee space between banks)
 
-const isLeaf = (p: Panel) => p.type === "door" || /\bdoor\b|drawer front/i.test(p.name);
+// A slat, board or batten of a built-up door is part of the leaf, not a leaf.
+const isLeaf = (p: Panel) => (p.type === "door" || /\bdoor\b|drawer front/i.test(p.name)) && !/\b(?:slat|board|batten)s?\b/i.test(p.name);
 const near = (a: number, b: number, tol = 0.07) => Math.abs(a - b) < tol;
 // Sheet cuts read on the 1/8" grid (sheetCutDims); a leaf rounds down so it stays inside its outer edge.
 const f8 = (n: number) => Math.floor(n * 8 + 1e-6) / 8;

@@ -676,12 +676,17 @@ export function bodyStockClauses(prompt: string): StockClause[] {
 
 /**
  * Match spoken alias → pack row (longest alias wins).
- * The last stock clause wins: "pine desk from oak" is oak, "oak desk from plywood" is not a species.
+ * The last stock clause wins: "pine desk from oak" is oak, "oak desk from plywood" is not a species,
+ * and "cedar bench from 2x4" stays cedar (the clause names only the board size).
  * A species typed only for the legs ("oak table with walnut legs", "legs from walnut") does not take the body.
  */
 export function namedLumberFromPrompt(prompt: string): NamedLumberSpecies | null {
   const clauses = bodyStockClauses(prompt);
-  if (clauses.length) return speciesInText(clauses[clauses.length - 1].tail, prompt);
+  if (clauses.length) {
+    const tail = clauses[clauses.length - 1].tail;
+    // "cedar bench from 2x4": the clause names only the board size, so the species typed with the noun still holds.
+    return speciesInText(tail, prompt) ?? (LUMBER_NOMINAL.test(tail) && !OTHER_STOCK.test(tail) ? speciesInText(prompt) : null);
+  }
   return speciesInText(prompt) ?? spokenLegSpecies(prompt)?.species ?? null;
 }
 

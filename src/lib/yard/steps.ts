@@ -2969,8 +2969,8 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
       const seatM = seatHay.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|["″'])?\s*seat\s*height|seat\s*height[^\d]{0,16}(\d+(?:\.\d+)?)/);
       const seat = seatM ? seatM[1] || seatM[2] : null;
       return seat
-        ? ` Adirondack chair with ${seat}" seat height — outdoor seat family, never Custom closet.`
-        : ` Adirondack chair — outdoor seat family, never Custom closet.`;
+        ? ` Adirondack chair with ${seat}" seat height — outdoor seat family.`
+        : ` Adirondack chair — outdoor seat family.`;
     }
     return "";
   })();
@@ -3074,9 +3074,11 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     });
   }
   const covered = new Set(order.map((spec) => spec.role));
+  const pipeStock = stockJoinVerb(project) === "Set";
   for (const [role, listI] of byRole) {
     if (!listI?.length || covered.has(role)) continue;
-    const named = shopPlural(role, listI.length);
+    // Sticks and boards lay courses; only pipe and wire make rings.
+    const named = shopPlural(role === "ring" && !pipeStock ? "course" : role, listI.length);
     steps.push({
       step: n++,
       title: `Join the ${named} — ${listI.length} ${named}`,
@@ -3319,12 +3321,17 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
     ];
   }
   if (project.kind === "arch") {
+    // Pipe sets in slip fittings and bends one crown; sticks and boards glue or screw courses. Titles name
+    // no order: the plan orders every part after the parts it rests on.
+    const pipe = stockJoinVerb(project) === "Set";
+    const verb = stockJoinVerb(project);
     return [
-      { role: "leg", title: "Stand the posts in the slip fittings", why: "Posts go in dry." },
-      { role: "support", title: "Set the two crowns", why: "Each crown is one shop-length bend." },
-      { role: "rail", title: "Side rails — not across the opening", why: "Rails on the sides only." },
-      { role: "brace", title: "Last braces, still clear of the portal", why: "Keep the walk-through open: each brace stays clear of the portal." },
-      { role: "member", title: "Place remaining members", why: "No floating pipe." },
+      { role: "leg", title: pipe ? "Stand the posts in the slip fittings" : `${verb} the posts upright`, why: pipe ? "Posts go in dry." : "The posts carry everything above them." },
+      { role: "support", title: pipe ? "Set the two crowns" : "Build the arch over the opening", why: pipe ? "Each crown is one shop-length bend." : "The arch spans the opening from post to post." },
+      { role: "ring", word: pipe ? "ring" : "course", title: pipe ? "Join the rings" : "Lay the top course", why: "The top course ties the piers together across the top." },
+      { role: "rail", title: "Run the side rails along the piers", why: "Rails stay on the sides, so the opening stays clear." },
+      { role: "brace", title: "Brace the piers, clear of the portal", why: "Keep the walk-through open: each brace stays clear of the portal." },
+      { role: "member", title: "Place remaining members", why: pipe ? "Every pipe meets a fitting." : "Every piece meets a joint." },
     ];
   }
   if (project.kind === "bridge") {

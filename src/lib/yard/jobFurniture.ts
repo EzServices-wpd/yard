@@ -24,12 +24,12 @@ export function wantsRealStockDefault(prompt: string): boolean {
 }
 
 /** A house an animal lives in outdoors (birdhouse, wren or bluebird house): built in real boards at real size. */
-const OUTDOOR_SHELTER = /\b(?:bird\s*-?\s*houses?|wren\s*houses?|bluebird\s*(?:houses?|box(?:es)?)|martin\s*houses?)\b/;
+const OUTDOOR_SHELTER = /\b(?:bird\s*-?\s*houses?|wren\s*houses?|bluebird\s*(?:houses?|box(?:es)?)|martin\s*houses?|(?:bird\s+)?nest(?:ing)?\s*box(?:es)?|(?:mason\s+)?(?:bee|bees|insect|bug|pollinator)\s*(?:hotels?|houses?|box(?:es)?)|bat\s*-?\s*(?:houses?|box(?:es)?))\b/;
 
 /** An outdoor animal shelter with no stock typed: real 1×6 boards (craft stock only when typed). */
 export function wantsRealShelterDefault(prompt: string): boolean {
   const lower = prompt.toLowerCase();
-  return OUTDOOR_SHELTER.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
+  return OUTDOOR_SHELTER.test(lower) && !/\b(?:chickens?|hens?|coop|poultry|duck)\b/.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
 }
 
 export const REAL_SHELTER_NOTE =

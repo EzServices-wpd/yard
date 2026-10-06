@@ -56,6 +56,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
+import { purposeOf } from "./purpose";
 import {
   LITTER_BOX,
   LITTER_HOLE,
@@ -2722,12 +2723,44 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
   const rodY = hang ? Math.min(H - 8, Math.max(60, H * 0.72)) : null;
-  const shelves = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
-  if (shelves > 0) {
-    const y0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
+  const shelvesAsked = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
+  let shelves = shelvesAsked;
+  // The stored item sizes the openings: a tall item keeps one clear bay at the bottom, a short one
+  // sets the shelf pitch. A typed shelf count still wins.
+  const forItem = purposeOf(prompt);
+  const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
+  const zoneY0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
+  const shelfYs: number[] = (() => {
+    const y0 = zoneY0;
     const y1 = shelfZone1;
-    for (let i = 1; i <= shelves; i++) {
-      const y = y0 + ((y1 - y0) * i) / (shelves + 1);
+    if (!need || y1 - y0 < need.h) return Array.from({ length: shelves }, (_, k) => y0 + ((y1 - y0) * (k + 1)) / (shelves + 1));
+    if (need.h > (y1 - y0) / 2) {
+      // One tall clear bay, shelves above it at a 10" pitch or more.
+      const first = y0 + need.h;
+      if (y1 - first - P < 10) return [];
+      const more = Math.max(0, Math.min(shelves - 1, Math.floor((y1 - first) / (10 + P)) - 1));
+      return [first, ...Array.from({ length: more }, (_, k) => first + ((y1 - first) * (k + 1)) / (more + 1))];
+    }
+    const n = Math.max(0, Math.floor((y1 - y0) / (need.h + P)) - 1);
+    return Array.from({ length: n }, (_, k) => y0 + ((y1 - y0) * (k + 1)) / (n + 1));
+  })().map((y) => (need ? Math.round(y * 16) / 16 : y));
+  const purposeNote = need && forItem
+    ? (() => {
+        const tops = [zoneY0, ...shelfYs.map((y) => y + P)];
+        const clear = tops.map((t, k) => (shelfYs[k] ?? shelfZone1) - t);
+        const tallest = Math.max(...clear);
+        const fits = tallest >= need.h - 1e-6 && D - backT >= need.d - 1e-6;
+        const fitting = fits && forItem.item.fitting ? ` ${forItem.item.fitting(bayClearExact)}` : "";
+        return fits
+          ? `Sized for ${forItem.item.label}: ${need.h > (shelfZone1 - zoneY0) / 2 && shelfYs.length ? `a ${inchFrac(clear[0])}" clear bay at the bottom` : `${clear.length === 1 ? "an opening" : `${clear.length} openings`} ${inchFrac(Math.min(...clear))}" clear`} (${inchFrac(need.h)}" needed) and ${inchFrac(D - backT)}" deep inside.${fitting}`
+          : `Made for ${forItem.item.label}, which want ${inchFrac(need.h)}" of clear height and ${inchFrac(need.d)}" of depth; this size gives ${inchFrac(tallest)}" and ${inchFrac(D - backT)}". Type a bigger size to fit them.`;
+      })()
+    : null;
+  const shelvesPlaced = need ? shelfYs.length : shelves;
+  shelves = shelvesPlaced;
+  if (shelvesPlaced > 0) {
+    for (let i = 1; i <= shelvesPlaced; i++) {
+      const y = shelfYs[i - 1];
       if (bayN >= 2) {
         for (let b = 0; b < bayN; b++) {
           const x = x0 + P + b * (bayClearExact + P);
@@ -2880,7 +2913,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               ? `${Math.max(3, shelves + 1)} usable open bays (stacked). Glue and screw the shelves; do not pin them.`
               : shelves
                 ? `${shelves} fixed ${mediaWantsDoors ? "" : "open "}shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
-                : "Glue the shelves; do not pin them.",
+                : "Open bays, full height between the bottom and the top.",
           ].join(" ")
         : kitchenBase
           ? [
@@ -2915,6 +2948,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       : []),
     guidanceConfirmTalk(`${prompt} ${spec.name ?? ""}`, alcove ? "alcove" : "floor"),
   ];
+  if (purposeNote) {
+    for (let k = 0; k < notes.length; k++) notes[k] = notes[k].replace(/\s*TV sits on top\./, "");
+    notes.splice(Math.min(3, notes.length), 0, purposeNote);
+  }
 
   if (spec.typedAxes && isClassDefaultDensifyPrompt(prompt)) {
     const promptLowerAssumed = prompt.toLowerCase();

@@ -5,7 +5,7 @@ import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
 import { typedExtents } from "./honesty";
 import { withHome } from "./assembly";
-import { detectForm } from "./form";
+import { detectForm, landmarkAspect } from "./form";
 import { classifyAnatomy } from "./anatomy";
 import { figureIdentityLabel, isHamperHold, isMonitorHold, isFloorLampHold, isUmbrellaHold, isLauncherRamp, launcherRampLengthIn, detectWeekendMech, mediaHoldTipDeg, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeIn, lampHeightIn, marbleDiameterIn, climbRiseRun, climbStepCount, isClimbStepStool, isClimbTriangle } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
@@ -762,9 +762,12 @@ export function toProject(
   const spanX = Math.max(...xs, 0) - Math.min(...xs, 0) || 0;
   const spanY = Math.max(...ys, 0) - Math.min(...ys, 0) || 0;
   const spanZ = Math.max(...zs, 0) - Math.min(...zs, 0) || 0;
-  let width = Math.max(8, spanX + pad * 2);
-  let height = Math.max(8, spanY + pad);
-  let depth = Math.max(8, spanZ + pad * 2);
+  // The 8" floor keeps a small wire from collapsing; a landmark with published proportions keeps its own
+  // (a 12" Arc de Triomphe is 5 1/4" deep, not 8").
+  const solid = spanX >= 1 && spanY >= 1 && spanZ >= 1 && !!landmarkAspect(prompt);
+  let width = solid ? spanX + pad * 2 : Math.max(8, spanX + pad * 2);
+  let height = solid ? spanY + pad : Math.max(8, spanY + pad);
+  let depth = solid ? spanZ + pad * 2 : Math.max(8, spanZ + pad * 2);
   // Weekend frame / ladder with typed N-foot: honor typed height when the wire
   // already lands on it (skip stock-face pad that pushed ladders to ~74" / catapults short).
   // Leave Eiffel / lattice / arch / bridge pad math alone — freeze chips.

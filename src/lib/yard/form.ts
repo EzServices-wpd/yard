@@ -84,7 +84,24 @@ type Hit = {
   wholeMembers?: boolean;
   /** Said when the landmark is built from its nearest family rather than its own spec. */
   note?: string;
+  /** Published plan proportions, width and depth as fractions of the height (untyped axes follow them). */
+  aspect?: { w: number; d: number };
 };
+
+/** Untyped width and depth from the landmark's published proportions; a lone typed width sets the height. */
+export function withAspect(size: Size3, prompt: string, a: { w: number; d: number }, face = 0): Size3 {
+  const lower = prompt.toLowerCase();
+  const typed = (re: RegExp) => new RegExp(String.raw`\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|foot|feet|')?\s*(?:${re.source})\b`).test(lower);
+  const tw = typed(/wide|width|long|length|across/);
+  const td = typed(/deep|depth/);
+  const th = typed(/tall|high|height/) || (!tw && !td);
+  // Nothing typed: the default box's longest side stays the longest side (a Parthenon lies low and long).
+  const free = !typed(/tall|high|height/) && !tw && !td;
+  const h = free ? Math.min(size.height, Math.max(size.width, size.height, size.depth) / Math.max(1, a.w, a.d)) : th ? size.height : tw ? size.width / a.w : size.depth / a.d;
+  const r = (n: number) => Math.round(n * 16) / 16;
+  // Members sit on centrelines and stock stands proud by `face` on each side: the outer faces carry the proportion.
+  return { width: tw ? size.width : r(Math.max(h * a.w * 0.5, h * a.w - 2 * face)), height: r(h), depth: td ? size.depth : r(Math.max(h * a.d * 0.5, h * a.d - 2 * face)) };
+}
 
 const HITS: Hit[] = [
   { re: /eiffel/, kind: "eiffel", name: "Eiffel", historic: true, build: () => [] },
@@ -93,25 +110,25 @@ const HITS: Hit[] = [
   { re: /^(?!.*\b(?:arch|arbou?r|pergola)).*\btrellis(?:es)?\b/, kind: "frame", name: "Trellis", build: trellisOps, fit: fitTrellis, wholeMembers: true },
   { re: /taj|mahal/, kind: "taj", name: "Taj Mahal", historic: true, build: tajOps },
   { re: /pyramid|giza|khufu/, kind: "pyramid", name: "Pyramid", historic: true, build: pyramidOps, fit: fitPyramid },
-  { re: /colosseum|coliseum|amphitheatre|amphitheater/, kind: "custom", name: "Colosseum", historic: true, build: colosseumOps },
+  { re: /colosseum|coliseum|amphitheatre|amphitheater/, kind: "custom", name: "Colosseum", historic: true, build: colosseumOps, aspect: { w: 3.94, d: 3.25 } },
   { re: /statue of liberty|liberty statue|\bliberty\b/, kind: "figure", name: "Liberty", historic: true, build: libertyOps },
-  { re: /empire state/, kind: "tower", name: "Empire State", historic: true, build: empireStateOps },
-  { re: /chrysler building/, kind: "tower", name: "Chrysler", historic: true, build: empireStateOps },
-  { re: /space needle/, kind: "tower", name: "Space Needle", historic: true, build: spaceNeedleOps },
-  { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: cnTowerOps },
-  { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaTowerOps },
+  { re: /empire state/, kind: "tower", name: "Empire State", historic: true, build: empireStateOps, aspect: { w: 0.29, d: 0.13 } },
+  { re: /chrysler building/, kind: "tower", name: "Chrysler", historic: true, build: empireStateOps, aspect: { w: 0.2, d: 0.2 } },
+  { re: /space needle/, kind: "tower", name: "Space Needle", historic: true, build: spaceNeedleOps, aspect: { w: 0.23, d: 0.23 } },
+  { re: /cn tower/, kind: "tower", name: "CN Tower", historic: true, build: cnTowerOps, aspect: { w: 0.12, d: 0.12 } },
+  { re: /leaning tower|pisa/, kind: "tower", name: "Pisa", historic: true, build: pisaTowerOps, aspect: { w: 0.27, d: 0.27 } },
   { re: /golden gate/, kind: "bridge", name: "Golden Gate", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE) },
   { re: /brooklyn bridge/, kind: "bridge", name: "Brooklyn Bridge", historic: true, build: (s) => suspensionOps(s, BROOKLYN), fit: fitSuspensionTo(BROOKLYN) },
   { re: /sydney harbou?r bridge/, kind: "bridge", name: "Sydney Harbour Bridge", historic: true, build: archBridgeOps, fit: fitArchBridge },
   // Landmarks without their own spec take the nearest family, and say so.
   { re: /tower bridge|bay bridge|verrazz?ano|mackinac|akashi|humber bridge|suspension bridge/, kind: "bridge", name: "Suspension bridge", historic: true, build: (s) => suspensionOps(s, GOLDEN_GATE), fit: fitSuspensionTo(GOLDEN_GATE), note: "Built from the suspension-bridge family at Golden Gate proportions — the nearest spec Yard has." },
   { re: /arch bridge|hell gate bridge|bayonne bridge|new river gorge/, kind: "bridge", name: "Arch bridge", historic: true, build: archBridgeOps, fit: fitArchBridge, note: "Built from the through-arch family at Sydney Harbour proportions — the nearest spec Yard has." },
-  { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps },
-  { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps },
-  { re: /stonehenge/, kind: "custom", name: "Stonehenge", historic: true, build: stonehengeOps },
-  { re: /sydney opera/, kind: "dome", name: "Sydney Opera", historic: true, build: sydneyOps },
-  { re: /big ben|clock tower|westminster|elizabeth tower/, kind: "tower", name: "Clock tower", historic: true, build: clockTowerOps },
-  { re: /washington monument|obelisk/, kind: "tower", name: "Obelisk", historic: true, build: obeliskOps },
+  { re: /arc de triomphe|triumphal arch/, kind: "arch", name: "Arc de Triomphe", historic: true, build: arcOps, aspect: { w: 0.9, d: 0.44 } },
+  { re: /parthenon|pantheon of athens/, kind: "custom", name: "Parthenon", historic: true, build: parthenonOps, aspect: { w: 5.07, d: 2.26 } },
+  { re: /stonehenge/, kind: "custom", name: "Stonehenge", historic: true, build: stonehengeOps, aspect: { w: 4.5, d: 4.5 } },
+  { re: /sydney opera/, kind: "dome", name: "Sydney Opera", historic: true, build: sydneyOps, aspect: { w: 2.8, d: 1.85 } },
+  { re: /big ben|clock tower|westminster|elizabeth tower/, kind: "tower", name: "Clock tower", historic: true, build: clockTowerOps, aspect: { w: 0.125, d: 0.125 } },
+  { re: /washington monument|obelisk/, kind: "tower", name: "Obelisk", historic: true, build: obeliskOps, aspect: { w: 0.1, d: 0.1 } },
   { re: /lighthouse/, kind: "tower", name: "Lighthouse", build: lighthouseOps },
   { re: /windmill/, kind: "tower", name: "Windmill", build: windmillOps },
   { re: /pagoda/, kind: "tower", name: "Pagoda", build: pagodaOps },
@@ -160,6 +177,12 @@ const HITS: Hit[] = [
   { re: /(?:lattice|space\s*frame).{0,24}(?:tower|spire)|(?:tower|spire).{0,24}(?:lattice|space\s*frame)/, kind: "lattice", name: "Lattice tower", build: () => [] },
   { re: /\b(?:frame|box|cube|platform)\b/, kind: "frame", name: "Frame", build: frameOps },
 ];
+
+/** A named landmark's published plan proportions, when it has no fit of its own. */
+export function landmarkAspect(prompt: string): { w: number; d: number } | null {
+  const hit = matchHit(prompt);
+  return hit?.aspect && !hit.fit ? hit.aspect : null;
+}
 
 export function isLockedForm(kind: StructureKind): boolean {
   return kind === "eiffel" || kind === "pyramid" || kind === "arch" || kind === "bridge";
@@ -229,7 +252,8 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
   }
   const hit = matchHit(prompt);
   if (hit) {
-    const sized = hit.fit ? hit.fit(size, prompt) : size;
+    const based = hit.aspect && !hit.fit && !size.aspectSet ? withAspect(size, prompt, hit.aspect) : size;
+    const sized = hit.fit ? hit.fit(based, prompt) : based;
     const ops = hit.buildFor ? hit.buildFor(prompt)(sized) : hit.build(sized);
     const stance =
       hit.kind === "figure"

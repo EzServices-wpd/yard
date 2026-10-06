@@ -90,7 +90,8 @@ export type PlaceRole = "horizontal" | "divider" | "rail" | "bracket" | "door" |
 export function placeRole(p: Panel): PlaceRole {
   const nm = `${p.type} ${p.name}`.toLowerCase();
   if (/drawer front/.test(nm)) return "front";
-  if (p.type === "door" || /\bdoor\b/.test(p.name.toLowerCase())) return "door";
+  // A slat, board or batten of a built-up door is part of the leaf, not a leaf (same rule as pairedLeaves).
+  if (p.type === "door" || (/\bdoor\b/.test(p.name.toLowerCase()) && !/\b(?:slat|board|batten)s?\b/i.test(p.name))) return "door";
   if (p.type === "drawer") return "drawer";
   if (p.type === "back" || p.type === "mirror" || p.type === "glass_panel") return "skip";
   if (/\bback\b|backer|\bleg\b|\bpost\b|\blid\b|\bside\b|\bend\b|\bupright\b|\bstile\b|\bjamb\b|\bcasing\b|\bslat\b/.test(p.name.toLowerCase()) && !/shelf|rail|apron|stretcher|cleat|divider|bracket|kick/.test(p.name.toLowerCase())) return "skip";

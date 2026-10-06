@@ -47,4 +47,9 @@ export const STRESS_PROMPTS = [
   "popsicle stick picture frame 6 inch",
   "medicine cabinet 20 wide 26 tall 5 deep",
   "cat feeding station",
+  "broom closet 20 wide 80 tall 14 deep",
+  "maple 1x10 record console 54 wide",
+  "cedar garbage bin enclosure from 2x4 for two bins",
+  "Arc de Triomphe from craft sticks 12 inches tall",
+  "bee hotel from scrap 1x6",
 ];

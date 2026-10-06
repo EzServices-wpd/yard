@@ -106,7 +106,92 @@ export function typedSizeIn(prompt: string): { length?: number; height?: number 
 
 export function isSmallHouse(prompt: string): boolean {
   const l = prompt.toLowerCase();
-  return /\bbird\s*-?\s*house\b|\bbirdhouse\b|\bnest(?:ing)?\s*box\b|\bwren\s*house\b|\bbluebird\s*(?:house|box)\b|\bmartin\s*house\b/.test(l) && !/feeder\b/.test(l);
+  if (habitatOf(l)) return true;
+  return /\bbird\s*-?\s*house\b|\bbirdhouse\b|\bnest(?:ing)?\s*box\b|\bwren\s*house\b|\bbluebird\s*(?:house|box)\b|\bmartin\s*house\b/.test(l) && !/feeder\b|\b(?:chickens?|hens?|coop|poultry|duck)\b/.test(l);
+}
+
+/** Small habitats that share the birdhouse box: an open-front insect hotel, a bat house with a 3/4" chamber. */
+export function habitatOf(prompt: string): "insect" | "bat" | null {
+  const l = prompt.toLowerCase();
+  if (/\b(?:bee|bees|insect|bug|pollinator)\s*(?:hotel|house|box|nest(?:ing)?\s*box)\b|\bmason\s+bee\b/.test(l)) return "insect";
+  if (/\bbat\s*-?\s*(?:house|box|roost)\b/.test(l)) return "bat";
+  return null;
+}
+
+/**
+ * Insect hotel: the birdhouse box with the front left open — back gable, side walls, floor, the same
+ * 45° roof — and two tier shelves, each tier packed with 5/16" nesting tubes trimmed to the inside depth.
+ */
+function insectHotelPanels(item: CatalogItem, typed: { width?: number; height?: number; depth?: number }, label: string): TemplateBuild {
+  const base = smallHousePanels(item, 1, false, typed);
+  const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.5, 0.12);
+  const r = (n: number) => Math.round(n * 16) / 16;
+  const W = Number(base.params.width);
+  const D = Number(base.params.depth);
+  const He = Number(base.params.eave);
+  const panels = (base.panels ?? [])
+    .filter((p) => p.name !== "Front gable")
+    .map((p) => (p.name === "Side wall" || p.name === "Floor" ? { ...p, size: { ...p.size, depth: r(p.size.depth + T) } } : p.name === "Back gable" ? { ...p, name: "Back wall" } : p));
+  const floor = panels.find((p) => p.name === "Floor")!;
+  const clear = (He - 3 * T) / 3;
+  for (const k of [1, 2]) {
+    panels.push({ ...floor, id: createId("bh"), type: "bottom", name: "Tier shelf", position: { ...floor.position, y: r(T + k * clear + (k - 1) * T) }, cutNote: undefined });
+  }
+  const iw = W - 2 * T;
+  const deep = D - T;
+  const per = Math.max(1, Math.floor(iw / 0.4)) * Math.max(1, Math.floor(clear / 0.4));
+  const tubes = per * 3;
+  return {
+    ...base,
+    subject: label.toLowerCase(),
+    label,
+    panels,
+    params: { ...base.params, habitat: 1, tubes, tierClear: clear, inside: deep },
+    notes: [
+      `${label} · ${item.name}: the birdhouse box with an open front — a gable-shaped back wall, two side walls, a floor and a 45° gable roof — and 2 tier shelves, so 3 tiers ${fmt(iw)}" wide × ${fmt(clear)}" tall × ${fmt(deep)}" deep.`,
+      `Pack each tier with nesting tubes, ${tubes} nesting tubes in all (5/16" paper or bamboo), trimmed to ${fmt(deep)}" so the open ends sit flush at the front.`,
+      "Hang it 3 to 6 feet up on a wall or post, facing east or south-east, under the roof overhang out of the rain.",
+    ],
+  };
+}
+
+/**
+ * Bat house: a single 3/4" roosting chamber between a kerfed back and a two-piece front with a 1/2" vent
+ * slot, open at the bottom; the back runs 4" below the front as the landing plate; a roof board on top.
+ */
+function batHousePanels(item: CatalogItem, label: string): TemplateBuild {
+  const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.5, 0.12);
+  const bw = item.dims.width ?? 5.5;
+  const n = 3;
+  const W = n * bw;
+  const backH = 26.5;
+  const land = 4;
+  const vent = 0.5;
+  const lowH = 6;
+  const x0 = -W / 2;
+  const panels: Panel[] = [];
+  const mk = (p: Omit<Panel, "id" | "materialId">): Panel => ({ id: createId("bh"), materialId: item.id, ...p });
+  for (let i = 0; i < n; i++) panels.push(mk({ type: "back", name: "Back board", position: { x: x0 + i * bw, y: 0, z: 0 }, size: { width: bw, height: backH, depth: T }, cutNote: "Saw shallow kerfs every 1/2\" across the inside face, top to bottom, so bats can grip." }));
+  for (const [nm, x] of [["Side spacer left", x0], ["Side spacer right", x0 + W - T]] as const)
+    panels.push(mk({ type: "upright", name: nm, position: { x, y: land, z: T }, size: { width: T, height: backH - land, depth: T }, cutNote: "Rip from the 1×6: this sets the 3/4\" roosting chamber." }));
+  for (let i = 0; i < n; i++) {
+    panels.push(mk({ type: "side", name: "Lower front board", position: { x: x0 + i * bw, y: land, z: 2 * T }, size: { width: bw, height: lowH, depth: T } }));
+    panels.push(mk({ type: "side", name: "Upper front board", position: { x: x0 + i * bw, y: land + lowH + vent, z: 2 * T }, size: { width: bw, height: backH - land - lowH - vent, depth: T } }));
+  }
+  panels.push(mk({ type: "top", name: "Roof board", position: { x: x0 - 1, y: backH, z: 0 }, size: { width: W + 2, height: T, depth: bw } }));
+  return {
+    classId: "small-house",
+    subject: label.toLowerCase(),
+    label,
+    kind: "house",
+    panels,
+    params: { habitat: 2, chamber: T, width: W + 2, depth: bw, eave: backH, vent, landing: land },
+    notes: [
+      `${label} · ${item.name}: a single ${fmt(T)}" roosting chamber, ${fmt(W - 2 * T)}" wide × ${fmt(backH - land)}" tall, between a back of ${n} boards and a front of ${n} boards in two rows with a ${fmt(vent)}" vent slot; open at the bottom.`,
+      `The back runs ${fmt(land)}" below the front as the landing plate. Kerf the landing plate and the inside of the back every 1/2" so bats can climb in.`,
+      "Caulk the seams, paint the outside a dark color, and mount it 12 feet or more up on a pole or building wall, facing south or south-east in full sun.",
+    ],
+  };
 }
 
 export function smallHouseHoleIn(prompt: string): number | null {
@@ -467,7 +552,10 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
   const hole = entry.dia;
   const perch = wantsPerch(prompt);
   const said = entry.typed ? "" : entry.bird ? ` Sized for ${entry.bird}s: a ${fmt(hole)}" entrance.` : "";
-  const withSaid = (b: TemplateBuild): TemplateBuild => (said ? { ...b, notes: [...b.notes, said.trim()] } : b);
+  // The house keeps the typed noun ("Nesting box", "Wren house") as its title.
+  const typedNoun = prompt.toLowerCase().match(/\b(?:bird\s+)?nest(?:ing)?\s*box\b|\bwren\s*house\b|\bbluebird\s*(?:house|box)\b|\bmartin\s*house\b/)?.[0];
+  const titled = (b: TemplateBuild): TemplateBuild => (typedNoun && b.label === "Birdhouse" ? { ...b, label: `${typedNoun.charAt(0).toUpperCase()}${typedNoun.slice(1).replace(/\s+/g, " ")}` } : b);
+  const withSaid = (b: TemplateBuild): TemplateBuild => titled(said ? { ...b, notes: [...b.notes, said.trim()] } : b);
   if (kind === "thin") {
     const thin = smallHouseThin(item, whole && isWholeStock(item), hole, perch, typed.width, entry.typed);
     // The entrance outgrows a craft-stick face: with no stock typed, the house is built in ½" plywood
@@ -479,6 +567,12 @@ export function buildSmallHouse(prompt: string, item: CatalogItem, typed: { widt
       return withSaid({ ...big, stockId: ply.id, notes: [...big.notes, `Built in ${ply.name}: the ${fmt(hole)}" entrance needs a bigger face than a ${fmt(thin.params.faceW)}" craft-stick wall.`] });
     }
     return withSaid(thin);
+  }
+  const habitat = habitatOf(prompt);
+  if (habitat && kind === "panel") {
+    const word = prompt.toLowerCase().match(/\b(?:mason\s+bee|bee|insect|bug|pollinator|bat)\s*-?\s*(?:hotel|house|box|roost)\b/)?.[0] ?? (habitat === "bat" ? "bat house" : "insect hotel");
+    const label = `${word.charAt(0).toUpperCase()}${word.slice(1).replace(/\s+/g, " ")}`;
+    return habitat === "bat" ? batHousePanels(item, label) : insectHotelPanels(item, typed, label);
   }
   if (kind === "panel") return withSaid(smallHousePanels(item, hole, perch, typed));
   if (item.formFactor === "pipe" || item.formFactor === "tube") return withSaid(smallHousePipe(item, hole, perch, typed));
@@ -1478,7 +1572,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
     const st = project.buildStats;
     if (!st || st.components !== 1 || st.loose !== 0) issues.push({ code: "connected", detail: JSON.stringify(st) });
   }
-  if (shape.classId === "small-house") {
+  if (shape.classId === "small-house" && !P.habitat) {
     const typedHole = birdhouseHole(prompt).dia;
     const notesBlob = (project.notes ?? []).join(" ");
     if (project.instances.length) {
@@ -1696,7 +1790,8 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
-  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
+  if (/^Side spacer (?:left|right)$/.test(name)) return "Side spacer";
+  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
 }
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
@@ -1719,6 +1814,12 @@ const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = 
     { match: /^(Front gable|Back gable)$/, title: "Screw the front and back gables over the ends", why: "The gables cover the side-wall and floor edges; the peaks line up." },
     { match: /^Roof panel$/, title: "Fit the two roof panels on the gable slopes", why: "They meet at the ridge and overhang the front, back and eaves. Leave one side on screws only so it lifts off for cleaning." },
     { match: /^Perch$/, title: "Glue the perch below the entrance", why: "Drill a snug hole below the entrance and glue the perch in." },
+    { match: /^Back wall$/, title: "Screw the back wall over the back ends", why: "The gable-shaped back covers the side-wall and floor edges; the front stays open for the tubes." },
+    { match: /^Tier shelf$/, title: "Screw the tier shelves between the side walls", why: "Even tiers, flush at the front; each tier holds a tight bundle of nesting tubes." },
+    { match: /^Back board$/, title: "Kerf the back boards and lay them edge to edge", why: "Shallow saw kerfs every 1/2\" across the inside face and the landing plate give the bats a grip." },
+    { match: /^Side spacer (?:left|right)$/, title: "Screw the side spacers along both back edges", why: "The spacers set the 3/4\" roosting chamber, flush with the back's sides." },
+    { match: /^(?:Lower|Upper) front board$/, title: "Screw on the front boards, leaving the vent slot", why: "Lower row first, then the upper row 1/2\" above it: the slot vents the chamber." },
+    { match: /^Roof board$/, title: "Screw the roof board across the top", why: "It overhangs both sides and the front, shedding rain off the chamber." },
   ],
 };
 

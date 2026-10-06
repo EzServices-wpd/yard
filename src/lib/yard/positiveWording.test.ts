@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
+import { readFileSync } from "node:fs";
+import { STRESS_PROMPTS } from "./stressPrompts.ts";
 
 const PROMPTS = [
   "linen closet 31.5 wide 78 tall 16 deep", "bookcase 30 wide 48 tall", "coat rack 36 wide five hooks", "kitchen chair from 1x4",
@@ -17,6 +19,18 @@ const strings = (plan: ReturnType<typeof buildPlan>) => [
   ...plan.cutList.flatMap((c) => [c.name, c.notes ?? "", c.material]),
   plan.feasibility?.summary ?? "",
 ];
+
+describe("Build notes read positively too", () => {
+  const golden = (JSON.parse(readFileSync(new URL("./promptSnapshots.goldens.json", import.meta.url), "utf8")) as { prompt: string }[]).map((g) => g.prompt);
+  for (const prompt of [...new Set([...PROMPTS, ...golden, ...STRESS_PROMPTS])]) {
+    it(`notes: ${prompt}`, () => {
+      for (const n of generateFromPrompt(prompt).notes ?? []) {
+        assert.doesNotMatch(n, /\b(?:cannot|can't|can not|do not|don't|never|must not)\b/i, `negative wording in a note of "${prompt}": ${n}`);
+        assert.doesNotMatch(n, /^Topology(?:-lite)? ·/, `an engine-internal note in "${prompt}": ${n}`);
+      }
+    });
+  }
+});
 
 describe("Plan text is positive and in fractions", () => {
   for (const prompt of PROMPTS) {

@@ -40,4 +40,4 @@ export type FormRecipe = {
   wholeMembers?: boolean;
 };
 
-export type Size3 = { height: number; width: number; depth: number; /** User typed all three axes — do not pull them back to a stock proportion. */ free?: boolean };
+export type Size3 = { height: number; width: number; depth: number; /** User typed all three axes — do not pull them back to a stock proportion. */ free?: boolean; /** The landmark's published proportions are already on the box (outer faces). */ aspectSet?: boolean };
