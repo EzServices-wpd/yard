@@ -321,6 +321,8 @@ export type FittedSpec = {
    * Title/HUD must not present unlabeled axes as typed (width-only linen ≠ ×84).
    */
   typedAxes?: { width: boolean; height: boolean; depth: boolean };
+  /** One line per typed cue that changed what the named thing normally is ("a dresser normally has drawers"). */
+  cueNotes?: string[];
 };
 
 export type LoadUse = "display" | "toy" | "person";

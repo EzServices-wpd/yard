@@ -3,6 +3,7 @@
  */
 import { createId } from "@/lib/utils";
 import type { Panel } from "./types";
+import { inchFrac } from "./inchText";
 import { isSideEndTable, wantsShoes } from "./family";
 
 export const PLY = "plywood-3-4-4x8";
@@ -93,6 +94,31 @@ export function isOverToilet(text: string) {
   return /over[- ]?(the[- ]?)?toilet|toilet[- ]?(cabinet|storage|shelf|etagere|étagère)|space[- ]?saver/.test(lower);
 }
 
+/** Words that name a space the unit goes into (its faces sit inside it, not proud of it). Not a doorway or a drawer. */
+export const OPENING_SPACE =
+  /\b(?:alcove|built-?in|niche|nook|recess(?:ed)?|cubby\s*hole|bump-?out)\b|(?<!\b(?:door|drawer|window)\s)\bopening\b|\bbetween\s+(?:the\s+)?(?:walls|studs)\b/;
+
+/**
+ * A flat part cut from a typed board (1×6 … 1×12) whose untyped default depth is close to that board's
+ * face (within 25%) is one board deep — no glue-up. Typed or required sizes keep their glue-up.
+ */
+export function snapToBoardFace(defaultIn: number, board: { category?: string; formFactor?: string; dims?: { width?: number; height?: number } } | null | undefined): number | null {
+  const face = board?.dims?.width;
+  if (board?.category !== "lumber" || board.formFactor !== "board" || board.dims?.height !== 0.75 || !face || face < 5) return null;
+  return Math.abs(defaultIn - face) <= 0.25 * defaultIn && Math.abs(defaultIn - face) > 1 / 16 ? face : null;
+}
+
+/** The one line that says a part was snapped to its board's face. */
+export function boardFaceNote(stock: string, face: number, was: number, part = '¾" parts'): string {
+  const not = face < was ? `not ${inchFrac(was)}" glued up from boards` : `not ripped down to ${inchFrac(was)}"`;
+  return `The ${part} are one ${stock} wide (${inchFrac(face)}"), ${not}. Type a depth to build them ${face < was ? "deeper" : "to another size"}.`;
+}
+
+/** A storage unit (bookcase, cabinet, pantry …) typed into a named opening is the fitted unit in that opening. */
+export function isStorageInOpening(lower: string): boolean {
+  return OPENING_SPACE.test(lower) && /\bbook\s*(?:shel(?:f|ves)|cases?)\b|\bshelving\s+unit\b|\bcabinet\b|\bpantry\b|\bcupboard\b|\blinen\b|\bstorage\b/.test(lower);
+}
+
 export function pick(text: string, re: RegExp, fallback: number) {
   const m = text.match(re);
   if (!m?.[1]) return fallback;
@@ -135,6 +161,25 @@ export function frontCue(lower: string, feature: "doors" | "drawers"): { none: b
     none: no.at > yes.at,
     note: `You typed "${no.said}" and "${yes.said}". The later cue ("${won}") won, so ${built}. To build it the other way, take out "${won}" and keep "${lost}".`,
   };
+}
+
+/**
+ * A typed cue that takes away what the named thing normally has (a dresser's drawers, a cabinet's
+ * doors) changes what it is: one line says what it became and how to get the usual one back.
+ */
+export function formChangeNotes(lower: string, name: string, lost: { drawers: boolean; doors: boolean; doorsLeft: boolean }): string[] {
+  const noun = name.replace(/\s+\d.*$/, "").trim().toLowerCase() || "unit";
+  const out: string[] = [];
+  const said = (re: RegExp) => lastAt(re, lower).said;
+  if (lost.drawers) {
+    const cue = said(NO_DRAWERS);
+    out.push(`A ${noun} normally has drawers. You typed "${cue}", so this one is a plain carcase with ${lost.doorsLeft ? "doors" : "an open front"}. Take out "${cue}" for drawers.`);
+  }
+  if (lost.doors) {
+    const cue = said(NO_DOORS);
+    out.push(`A ${noun} normally has doors. You typed "${cue}", so this one has an open front. Take out "${cue}" for doors.`);
+  }
+  return out;
 }
 
 /** Notes for every front feature typed both ways. */

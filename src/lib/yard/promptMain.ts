@@ -21,7 +21,7 @@ import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, i
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, subjectFromPrompt, type FormRecipe } from "./form";
@@ -212,18 +212,19 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
 /** A front feature typed both ways resolved by one rule (later cue wins): the note says which won. */
 function withFrontCueNotes(project: YardProject, prompt: string): YardProject {
   if (!project.fitted) return project;
-  const extra = frontCueNotes(prompt).filter((n) => !(project.notes ?? []).includes(n));
+  const extra = [...frontCueNotes(prompt), ...(project.fitted.cueNotes ?? [])].filter((n) => !(project.notes ?? []).includes(n));
   return extra.length ? { ...project, notes: [...extra, ...(project.notes ?? [])] } : project;
 }
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   const prompt = args[0] ?? "";
-  const built = withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt);
-  // A species on a typed lumber size ("cedar 1x6", any builder) says the species in the title and notes.
-  // Species alone (bound 1×4) keeps its builder's own title rule.
+  const built = withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt);
+  // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
+  // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
+  // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
-  return sized ? withSpeciesTitle(built, prompt, true) : built;
+  return sized || built.unmatched ? withSpeciesTitle(built, prompt) : built;
 }
 
 function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {

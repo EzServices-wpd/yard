@@ -47,7 +47,7 @@ import {
   isShoeStorage, isOverToilet, isNoDrawersPrompt, isNoDoorsPrompt, spokenDrawerCount, typedDoorCount,
   spokenTierCount, spokenShelfCount, spokenArmCount, spokenBracketCount, spokenBinCount, spokenRungCount,
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
-  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H,
+  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening,
 } from "./fittedShared";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -2118,7 +2118,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const wallShelfCleats =
     /wall/.test(lowerPrompt) &&
     /shel(?:f|ves)\b/.test(lowerPrompt) &&
-    !/cabinet|jar|spice|wine|bottle|rack for|media|picture|bedside|cubb/.test(lowerPrompt);
+    !/cabinet|jar|spice|wine|bottle|rack for|media|picture|bedside|cubb/.test(lowerPrompt) &&
+    // "bookshelf in the wall nook" is the fitted bookcase in that opening, not cleated wall shelves.
+    !isStorageInOpening(lowerPrompt);
   // Cleat-mounted singular wall shelf: honor typed W×D×thickness as ONE shelf (not multi stack).
   const shelfThick = spokenShelfThickness(prompt);
   const singularCleatShelf =

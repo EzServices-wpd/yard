@@ -92,7 +92,7 @@ export function namedStockFromPrompt(prompt: string): CatalogItem | null {
 export function namedStockDisplayName(prompt: string, item: CatalogItem | undefined | null): string {
   if (!item) return "stock";
   // Lumber size row: prefer pack densifyLabel ("Oak 1×4") over bare catalog name / first-token alias.
-  if (item.id === CATALOG_LUMBER_BIND || (/board|stud|^\d\s*[×x]\s*\d+\s*\(/i.test(item.name) && item.category === "lumber")) {
+  if (item.id === CATALOG_LUMBER_BIND || (/board|stud|post|^\d\s*[×x]\s*\d+\s*\(/i.test(item.name) && item.category === "lumber")) {
     const species = namedLumberFromPrompt(prompt);
     const size = item.name.match(/(\d+\s*[×x]\s*\d+)/)?.[1]?.replace(/x/gi, "×");
     // Species default is 1×4. A spoken 2×4 / 1×3 keeps that size in the Buy name.
@@ -141,6 +141,27 @@ export function isSheetPrimaryId(id: string | undefined | null): boolean {
 }
 
 /** A build in the named species' lumber says the species in its title ("Cedar Adirondack chair"). */
+/**
+ * Notes say the plain stock a person asks for at the yard ("1×10", "Walnut 1×4"), never the catalog row
+ * ("1×10 Board (8 ft)"). A typed species rides on every lumber size the notes name.
+ */
+export function withPlainStockNotes(p: YardProject, prompt: string): YardProject {
+  if (!p.notes?.length) return p;
+  const species = namedLumberFromPrompt(prompt)?.display;
+  const re = /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post))?\s+\(\d+\s*ft\)/g;
+  let changed = false;
+  const notes = p.notes.map((n) => {
+    const next = n.replace(re, (_m, a: string, b: string, at: number, all: string) => {
+      const plain = `${a}×${b}`;
+      const said = species && new RegExp(`${species}\\s*$`, "i").test(all.slice(0, at));
+      return species && !said ? `${species} ${plain}` : plain;
+    });
+    if (next !== n) changed = true;
+    return next;
+  });
+  return changed ? { ...p, notes } : p;
+}
+
 export function withSpeciesTitle(p: YardProject, prompt: string, inNotes = false): YardProject {
   const species = namedLumberFromPrompt(prompt);
   if (!species) return p;

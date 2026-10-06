@@ -573,7 +573,7 @@
       "Seat board 4"
     ],
     "notesHead": [
-      "Kitchen chair 18\" × 18\" seat, every part from 1×4 Board (8 ft). Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named.",
+      "Kitchen chair 18\" × 18\" seat, every part from 1×4. Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named.",
       "Assumed 18\" wide (default size) — type a width to lock it."
     ],
     "signals": {
@@ -757,7 +757,7 @@
     "overall": {
       "width": 36,
       "height": 84,
-      "depth": 12
+      "depth": 9.25
     },
     "panels": 10,
     "instances": 0,
@@ -774,8 +774,8 @@
       "Top"
     ],
     "notesHead": [
-      "Bookcase. Freestanding carcase — still square, still a cut list.",
-      "Unit 36\" W × 12\" D × 84\" H. 1×10 Board (8 ft). Front reads straight."
+      "The ¾\" parts are one 1×10 wide (9 1/4\"), not 12\" glued up from boards. Type a depth to build them deeper.",
+      "Bookcase. Freestanding carcase — still square, still a cut list."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -878,7 +878,7 @@
       "Peg rail"
     ],
     "notesHead": [
-      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 8\" hat shelf. 1×4 Board (8 ft).",
+      "Wall-mounted coat rack: 36\" peg rail (5 1/4\") with an 8\" hat shelf. 1×4.",
       "6 pegs stand about 3\" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6\" on center. Hit studs."
     ],
     "signals": {

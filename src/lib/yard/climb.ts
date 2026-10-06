@@ -12,6 +12,7 @@ import { panelWorldCorners } from "./geometry";
 import { detectMaterial } from "./promptHelpers";
 import type { Panel, YardProject } from "./types";
 import { climbRiseRun, climbStepCount } from "./weekendFamily";
+import { boardFaceNote, snapToBoardFace } from "./fittedShared";
 
 const r16 = (n: number) => Math.round(n * 16) / 16;
 const UNIT = String.raw`(?:in|inch|inches|"|″|ft|feet|foot)`;
@@ -87,12 +88,14 @@ export function stoolLayout(prompt: string, sizeOverride?: { width: number; heig
   H = r16(Math.max(4, H));
   n = Math.max(1, Math.min(6, n));
   const rise = H / n;
-  const run = r16(Math.max(7, rr?.run ?? (sizeOverride && n > 1 ? (sizeOverride.depth - 11) / (n - 1) : 11)));
-  const topD = r16(Math.max(10, n === 1 && sizeOverride ? sizeOverride.depth : run));
+  // A typed board tread close to the 11" default run is one board deep (no glue-up).
+  const treadSnap = rr?.run || sizeOverride ? null : NAMED_TREAD(prompt) ? snapToBoardFace(11, detectMaterial(prompt)) : null;
+  const run = r16(Math.max(7, rr?.run ?? (sizeOverride && n > 1 ? (sizeOverride.depth - 11) / (n - 1) : (treadSnap ?? 11))));
+  const topD = r16(treadSnap ?? Math.max(10, n === 1 && sizeOverride ? sizeOverride.depth : run));
   let W = r16(sizeOverride?.width ?? typedAlong(lower, "wide|long|across") ?? 16);
   W = r16(Math.max(14, W, H * 0.5));
   const tallRail = n >= 4;
-  return { H, n, rise, run, topD, W, handrail: handrail || tallRail, railRise, railRecommended: tallRail && !handrail };
+  return { H, n, rise, run, topD, W, handrail: handrail || tallRail, railRise, railRecommended: tallRail && !handrail, treadSnap };
 }
 
 /** "9" rise × 11" run" for a stool prompt — the numbers the model is built to. */
@@ -109,7 +112,7 @@ export function stoolStepCount(prompt: string): number {
 
 function stoolPanels(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
   const species = SPECIES_FOR_CLIMB(prompt);
-  const { H, n, rise, run, topD, W, handrail, railRise } = stoolLayout(prompt, sizeOverride);
+  const { H, n, rise, run, topD, W, handrail, railRise, treadSnap } = stoolLayout(prompt, sizeOverride);
   // Sections
   const post = 1.5;
   const railT = species ? 0.75 : 1.5;
@@ -178,7 +181,7 @@ function stoolPanels(prompt: string, sizeOverride?: { width: number; height: num
     }
     mk({ type: "rail", name: "Handrail grip", position: { x: -post, y: r16(gy - post), z: 0 }, size: { width: r16(W + 2 * post), height: post, depth: post }, materialId: postId, cutNote: "Grip across the tops of the handrail posts; round over every edge you hold." });
   }
-  return { panels, H, n, rise: r16(rise), run, topD, W, D, handrail, railRise, species, primary: NAMED_TREAD(prompt) ?? (species ? CATALOG_LUMBER_BIND : treadId) };
+  return { panels, H, n, rise: r16(rise), run, topD, W, D, handrail, railRise, species, treadSnap, primary: NAMED_TREAD(prompt) ?? (species ? CATALOG_LUMBER_BIND : treadId) };
 }
 
 function ladderPanels(prompt: string, sizeOverride?: { width: number; height: number; depth: number }) {
@@ -270,7 +273,7 @@ export function buildClimb(prompt: string, kind: ClimbKind, sizeOverride?: { wid
       `${name}: ${s.n === 1 ? "one weight-bearing climb tread" : `${s.n} weight-bearing climb treads`} — top tread at ${inchFrac(s.H)}", ${inchFrac(s.W)}" wide × ${inchFrac(s.topD)}" deep.${s.n > 1 ? ` Tread tops at ${heights}.` : ""}`,
       `Each step: ${inchFrac(s.rise)}" rise × ${inchFrac(s.run)}" run. The base is ${inchFrac(s.D)}" deep, so it stays planted when you lean.`,
       NAMED_TREAD(prompt)
-        ? `Treads are ${s.species ? `${s.species.display} ` : ""}${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}, as typed, edge-glued where a tread is wider than one board. Not ${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}: posts and rails stay ${s.species ? `${s.species.display} 1×4 (posts laminated from two strips, rails on edge)` : "2×2 posts and 2×4 rails"} — a wide board is not a post or a rail section.`
+        ? `Treads are ${s.species ? `${s.species.display} ` : ""}${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}, as typed, ${s.treadSnap ? boardFaceNote("board", s.treadSnap, 11, "treads").replace(/^The treads are /, "each tread ") : "edge-glued where a tread is wider than one board."} Not ${NAMED_TREAD(prompt)!.replace(/^lumber-(\d)x(\d+)-8$/, "$1×$2")}: posts and rails stay ${s.species ? `${s.species.display} 1×4 (posts laminated from two strips, rails on edge)` : "2×2 posts and 2×4 rails"} — a wide board is not a post or a rail section.`
         : s.species
           ? `${s.species.display} boards throughout: posts laminated from two strips, rails on edge, treads edge-glued from the boards.`
           : "2×2 posts at every tread edge, 2×4 rails on edge under every tread, ¾\" plywood treads. Glue and screw every joint.",

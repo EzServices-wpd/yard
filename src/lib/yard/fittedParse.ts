@@ -35,6 +35,7 @@ import {
 } from "./voiceHonesty";
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { detectMaterial, isWireStock } from "./promptHelpers";
+import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
@@ -44,14 +45,12 @@ import {
   spokenDrawerCount, typedDoorCount, spokenTierCount, spokenShelfCount, spokenArmCount,
   spokenBracketCount, spokenBinCount, spokenRungCount, spokenBottleCount, typedHeightInches,
   spokenSlotCount, spokenShelfThickness, spokenCubbyCount, shallowWallCabinetFace,
-  isKidsBookcase, KIDS_BOOKCASE_H,
+  isKidsBookcase, KIDS_BOOKCASE_H, OPENING_SPACE, formChangeNotes, snapToBoardFace, boardFaceNote,
 } from "./fittedShared";
 import { inch16 } from "./fittedWine";
 
 
-/** Words that name a space the unit goes into (its faces sit inside it, not proud of it). Not a doorway or a drawer. */
-export const OPENING_SPACE =
-  /\b(?:alcove|built-?in|niche|nook|recess(?:ed)?|cubby\s*hole|bump-?out)\b|(?<!\b(?:door|drawer|window)\s)\bopening\b|\bbetween\s+(?:the\s+)?(?:walls|studs)\b/;
+export { OPENING_SPACE } from "./fittedShared";
 
 export function triple(text: string): { w?: number; h?: number; d?: number } {
   // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
@@ -776,6 +775,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       : 84);
     }
   }
+  let boardSnapNote: string | null = null;
   if (!Number.isFinite(depth)) {
     depth =
       trip.d ??
@@ -842,6 +842,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
                         : /shelf|rack/.test(lower)
                           ? 12
                           : 16);
+    if (trip.d == null) {
+      const board = detectMaterial(prompt);
+      const face = snapToBoardFace(depth, board);
+      if (face) {
+        const size = board.name.match(/\d\s*[×x]\s*\d+/)?.[0].replace(/\s|x/g, (c) => (c === "x" ? "×" : "")) ?? board.name;
+        const species = namedLumberFromPrompt(prompt)?.display;
+        boardSnapNote = boardFaceNote(species ? `${species} ${size}` : size, face, depth);
+        depth = face;
+      }
+    }
   }
 
   // Member stock: an untyped axis does not outgrow a typed axis.
@@ -1054,16 +1064,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Door-carcase vanity: typed doors without drawers → no invent drawer banks.
   // Honor typed drawers (with or without doors). Bare vanity (no doors typed) still densifies drawers.
   // Spoken no/zero/without/drawerless drawers — never silent-collapse to banks (desk/nightstand/dresser/vanity).
-  const drawers = isNoDrawersPrompt(lower)
-    ? false
-    : /drawer/.test(lower) ||
+  // What the named thing normally has (a dresser has drawers), before any typed "no drawers".
+  const drawersByNoun =
       (program === "vanity" && !vanityDoorsSaid) ||
       (program === "desk" && !isStandingShopTop(lower)) ||
       (isStandingShopTop(lower) && /drawer/.test(lower)) ||
       (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
-  const doors =
+  const drawers = isNoDrawersPrompt(lower) ? false : /drawer/.test(lower) || drawersByNoun;
+  // The noun's own doors (a cabinet, a pantry); the house "door" affordance also fires on "no doors".
+  const doorsByName =
     (/cabinet/.test(lower) && !/rack|open/.test(lower)) ||
-    (/door/.test(lower) && !isDoorPortal(lower)) ||
     /crate/.test(lower) ||
     isIroningCabinet(lower) ||
     isLaundryFoldDown(lower) ||
@@ -1073,8 +1083,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54) ||
-    isStorageHutch(lower) ||
-    !!house?.affordances.includes("door");
+    isStorageHutch(lower);
+  const doors = doorsByName || !!house?.affordances.includes("door") || (/door/.test(lower) && !isDoorPortal(lower));
   const doorsFinal =
     isNoDoorsPrompt(lower) ||
     isBunkBed(lower) ||
@@ -1373,6 +1383,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
     family: house?.family,
     affordances: house?.affordances,
     typedAxes,
+    cueNotes: [
+      ...formChangeNotes(lower, displayName, {
+        drawers: drawersByNoun && !drawers,
+        doors: doorsByName && !doorsFinal && isNoDoorsPrompt(lower),
+        doorsLeft: doorsFinal,
+      }),
+      ...(boardSnapNote ? [boardSnapNote] : []),
+    ],
   };
 }
 

@@ -88,14 +88,19 @@ export function speciesOfStockLabel(label?: string | null): string | null {
 export function panelStock(prompt: string, panel: Pick<Panel, "name" | "materialId">): PartStock {
   const item = getCatalogItem(panel.materialId);
   const named = namedLumberFromPrompt(prompt);
-  if (named && /^leg\b/i.test(panel.name) && panel.materialId === "lumber-2x2-8") {
-    const leg = namedLegLumberFromPrompt(prompt) ?? named;
+  // Every 2×2 part on a named-wood build (table legs, bench legs, posts) is laminated from the species
+  // boards, unless 2×2 itself was typed — then it is that species' 2×2.
+  const typed2x2 = /\b2\s*[x×]\s*2\b|\btwo[\s-]+by[\s-]+two\b/i.test(prompt);
+  if (named && panel.materialId === "lumber-2x2-8" && (/^leg\b/i.test(panel.name) || !typed2x2)) {
+    const leg = (/\bleg\b/i.test(panel.name) ? namedLegLumberFromPrompt(prompt) : null) ?? named;
     return { catalogId: CATALOG_LUMBER_BIND, label: leg.densifyLabel, speciesId: leg.id };
   }
   const boardRow = !!item && item.category === "lumber" && item.formFactor === "board";
   const label =
     (panel.materialId === CATALOG_LUMBER_BIND && named) ||
-    (boardRow && panel.materialId !== "lumber-2x2-8" && panel.materialId !== "lumber-4x4-8")
+    (boardRow && panel.materialId !== "lumber-2x2-8" && panel.materialId !== "lumber-4x4-8") ||
+    // A typed species rides on every lumber part, posts and 2×2 included ("Cedar 4×4").
+    (named && item?.category === "lumber")
       ? namedStockDisplayName(prompt, item)
       : (item?.name ?? panel.materialId);
   return { catalogId: panel.materialId, label, speciesId: speciesOfStockLabel(label) };
