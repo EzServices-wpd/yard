@@ -1353,12 +1353,13 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const extra = [...bom];
   if (/carriage bolt/i.test(notes) && !/carriage bolt/i.test(have)) {
     const posts = Math.max(1, project.panels.filter((panel) => /handrail post/i.test(panel.name)).length);
+    const counted = notes.match(/(\d+) 3\/8" carriage bolts/i);
     extra.push({
       name: '3/8" carriage bolts',
-      quantity: posts * 2,
+      quantity: counted ? Number(counted[1]) : posts * 2,
       unit: "each",
       searchQuery: "3/8 inch carriage bolts",
-      notes: "Two per handrail post, through the back post.",
+      notes: counted ? "Where the notes place them, through each joint." : "Two per handrail post, through the back post.",
     });
   }
   if (/non-slip pad/i.test(notes) && !/non-slip/i.test(have)) {

@@ -66,18 +66,37 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
     // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
     const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
-    // So is a rail on edge fastened between two uprights (a gate's top rail, a table apron).
-    if (ext[1] <= Math.min(ext[0], ext[2]) || (p.type === "rail" && ext[0] >= Math.max(ext[1], ext[2]))) {
+    // So is a rail on edge fastened between two uprights along its own length (a gate's top rail, a table
+    // apron, a bed's side rail): the posts at its ends carry it, whatever it later meets along its face.
+    const flat = ext[1] <= Math.min(ext[0], ext[2]);
+    const la = flat || ext[0] >= ext[2] ? 0 : 2;
+    const oa = la === 0 ? 2 : 0;
+    if (flat || (p.type === "rail" && ext[la] >= Math.max(ext[1], ext[oa]))) {
       const endOn = (side: 0 | 1) =>
         others.filter((q) => {
           if (!vertical(q)) return false;
           const B = boxes.get(q.id)!;
-          const meets = side === 0 ? Math.abs(B.max[0] - A.min[0]) <= 0.1 : Math.abs(B.min[0] - A.max[0]) <= 0.1;
-          return meets && overlap(A, B, 1) >= ext[1] - 0.05 && overlap(A, B, 2) >= 0.5 * ext[2];
+          const meets = side === 0 ? Math.abs(B.max[la] - A.min[la]) <= 0.1 : Math.abs(B.min[la] - A.max[la]) <= 0.1;
+          // A rail may sit just inside the post's face (an apron on the leg's inner face): edge contact counts.
+          return meets && overlap(A, B, 1) >= ext[1] - 0.05 && overlap(A, B, oa) >= (flat ? 0.5 * ext[oa] : -0.1);
         });
       const [l, r] = [endOn(0), endOn(1)];
       if (l.length && r.length) {
         out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r].map((q) => q.id) });
+        continue;
+      }
+    }
+    // A flat panel notched around posts that run up through it (a raised coop floor on its legs) hangs on
+    // those posts, not on the walls that later stand on it.
+    if (flat) {
+      const through = others.filter((q) => {
+        // A sloped part's box is not its shape (a splayed leg): only true posts count.
+        if (!vertical(q) || q.polygon) return false;
+        const B = boxes.get(q.id)!;
+        return B.min[1] < A.min[1] - 0.1 && B.max[1] > A.max[1] + 0.1 && overlap(A, B, 0) > 0.1 && overlap(A, B, 2) > 0.1;
+      });
+      if (through.length >= 2) {
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: through.map((q) => q.id) });
         continue;
       }
     }
@@ -97,6 +116,8 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       return [0, 1, 2].filter((k) => k !== axis).every((k) => -gaps[k] >= 0.25);
     });
     const lower = touching.filter((q) => boxes.get(q.id)!.min[1] < A.min[1] - 0.01);
+    // A part that sits on top of this one is never what holds it up.
+    const below = touching.filter((q) => boxes.get(q.id)!.min[1] < A.max[1] - 0.1);
     // A board laid face-on across a frame (gate boards over their rails) reaches both ends of its long
     // axis; it fastens to every frame part it crosses, so it goes on after all of them.
     const thin = ext.indexOf(Math.min(...ext));
@@ -108,7 +129,7 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         return end === 0 ? B.min[long] <= A.min[long] + 0.25 * ext[long] : B.max[long] >= A.max[long] - 0.25 * ext[long];
       });
     const skin = p.type !== "rail" && p.type !== "upright" && faceOn.length >= 2 && ext[thin] * 3 <= ext[long] && reach(0) && reach(1);
-    const on = skin ? faceOn : lower.length ? lower : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
+    const on = skin ? faceOn : lower.length ? lower : below.length ? below : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
     out.set(p.id, { key: p.id, name: p.name, how: "side", on: on.map((q) => (typeof q === "string" ? q : q.id)) });
   }
   return out;

@@ -35,17 +35,18 @@ const supports = (p: ReturnType<typeof generateFromPrompt>) => p.panels.filter((
   else ok("porch-bench-open", seatSpans(p)[0].message);
 }
 {
+  // The seat boards span frame to frame: the table carries a middle A-frame when the span asks for one.
   const p = generateFromPrompt("picnic table");
-  const s = supports(p);
+  const mids = p.panels.filter((x) => /^Seat support middle/.test(x.name)).length;
   const plan = buildPlan(p);
-  const cut = plan.cutList.filter((c) => /Center support/.test(c.name)).reduce((n, c) => n + c.quantity, 0);
-  const steps = uniqueSteps(p).some((st) => /divider|support/i.test(`${st.title} ${st.description}`));
-  if (!s.length) fail("picnic-seats", "68\" bench seats got no center support");
-  else if (seatSpans(p).length) fail("picnic-seats", `still over: ${seatSpans(p)[0].message}`);
-  else if (cut !== s.length) fail("picnic-seats", `cut list has ${cut} center supports, model has ${s.length}`);
-  else if (!steps) fail("picnic-seats", "steps never set the supports");
-  else if (!p.notes.some((n) => /^Center support under/.test(n))) fail("picnic-seats", "no note explaining the support");
-  else ok("picnic-seats", `${s.length} center supports in model, cut list and steps`);
+  const cut = plan.cutList.filter((c) => /Seat support middle/.test(c.name)).reduce((n, c) => n + c.quantity, 0);
+  const steps = uniqueSteps(p).some((st) => /Seat support middle/i.test(`${st.title} ${st.description}`));
+  if (seatSpans(p).length) fail("picnic-seats", `still over: ${seatSpans(p)[0].message}`);
+  else if (!mids) fail("picnic-seats", "72\" seat boards got no middle frame");
+  else if (cut !== mids) fail("picnic-seats", `cut list has ${cut} middle seat supports, model has ${mids}`);
+  else if (!steps) fail("picnic-seats", "steps never set the middle frame");
+  else if (!p.notes.some((n) => /middle frame keeps every seat span/.test(n))) fail("picnic-seats", "no note explaining the middle frame");
+  else ok("picnic-seats", `${mids} middle frame in model, cut list and steps; every seat span within the stock`);
 }
 for (const [prompt, id] of [
   ["entry bench 42 wide with shoe shelf", "entry-bench-42"],

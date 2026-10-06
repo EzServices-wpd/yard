@@ -54,8 +54,9 @@ import { oddSteps } from "./oddShapes";
 import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 
+/** A part's cut size: its rectangular blank when the box is not the blank (a splayed leg), else the box. */
 function dim(p: Panel) {
-  return fmtSheetCut(p.size.width, p.size.height, p.size.depth);
+  return p.blank ? fmtSheetCut(p.blank.thicknessIn, p.blank.lengthIn, p.blank.widthIn) : fmtSheetCut(p.size.width, p.size.height, p.size.depth);
 }
 
 function round(n: number) {
@@ -490,8 +491,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   // Bought hardware drawn in the model (coat hooks) is placed by its own step, never cut or listed with the boards.
   const of = (t: Panel["type"]) => panels.filter((p) => p.type === t && !isBoughtHardwareName(p.name));
   const names = (list: Panel[]) => list.map((p) => p.name);
-  const cutLine = (p: Panel) =>
-    `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`;
+  const cutLine = (p: Panel) => `${p.name} — ${dim(p)}"`;
 
   const uprights = of("upright");
   const backs = of("back");

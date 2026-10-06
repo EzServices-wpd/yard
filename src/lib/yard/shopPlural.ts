@@ -162,6 +162,7 @@ export function cutListName(name: string, type?: string): string {
   if (/shoe cubb/i.test(name)) return "Shoe cubbies";
   if (/shoe rail/i.test(name)) return "Shoe rail";
   if (/^center support/i.test(name)) return "Center support";
+  if (/^center brace/i.test(name)) return "Center brace";
   if (/cubby divider/i.test(name)) return "Cubby divider";
   if (/shoe shelf/i.test(name)) return "Shoe shelf";
   if (/boot tray/i.test(name)) return "Boot tray";
@@ -186,7 +187,12 @@ export function cutListName(name: string, type?: string): string {
   if (/^leg\b/i.test(name)) return "Leg";
   // Board-built parts keep the board word: "Front left leg (outer board)" → "Leg board", "Seat board 3" → "Seat board".
   if (/\bleg\b.*\bboard\b/i.test(name)) return "Leg board";
-  if (/^(seat|back) board\b/i.test(name)) return name.replace(/^(seat|back) board\b.*$/i, (_m, w: string) => `${w[0].toUpperCase()}${w.slice(1).toLowerCase()} board`);
+  if (/^(seat|back|tabletop) board\b/i.test(name)) return name.replace(/^(seat|back|tabletop) board\b.*$/i, (_m, w: string) => `${w[0].toUpperCase()}${w.slice(1).toLowerCase()} board`);
+  // Every leg reads as a leg on the cut list ("Near bench leg" → "Bench leg", not "Upright"), so leg counts agree.
+  if (/\blegs?\b/i.test(name) && !/\bboard\b|\(|\blevell?er\b/i.test(name) && (type === "upright" || /^leg\b/i.test(name))) {
+    const core = name.replace(/\b(?:left|right|front|back|rear|near|far|end|middle|upper|lower|inner|outer|[ab]|\d+)\b/gi, " ").replace(/\s+/g, " ").trim();
+    return core ? `${core[0].toUpperCase()}${core.slice(1).toLowerCase()}` : "Leg";
+  }
   if (/cut round/i.test(name)) return name;
   // Drawer box parts — name wins BEFORE carcase type aliases. Cut-step explode
   // remaps drawer-side→upright, drawer-back→back, drawer-bottom→bottom; without

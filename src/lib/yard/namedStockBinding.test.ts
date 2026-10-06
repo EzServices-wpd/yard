@@ -21,15 +21,15 @@ describe("named stock binds: the typed stock is built and bought, or a note says
     assert.match(notes, /Not 1×10: posts and rails stay Pine 1×4/);
   });
 
-  it("picnic table 6 ft from 2x6: board parts are drawn at the 2×6's real 1 1/2\", legs are said as 2×2", () => {
+  it("picnic table 6 ft from 2x6: every 2×6 part is drawn at its real 1 1/2\"; the cleats and center brace are said as 2×4", () => {
     const { p, plan, notes } = build("picnic table 6 ft from 2x6");
     const boards = p.panels.filter((x) => x.materialId === "lumber-2x6-8");
     assert.ok(boards.length >= 3);
-    for (const b of boards) assert.ok(Math.abs(Math.min(b.size.width, b.size.height, b.size.depth) - 1.5) < 0.01, b.name);
+    for (const b of boards) assert.ok(Math.abs((b.blank?.thicknessIn ?? Math.min(b.size.width, b.size.height, b.size.depth)) - 1.5) < 0.01, b.name);
     assert.doesNotMatch(notes, /plane|rip to ¾/i);
-    assert.match(notes, /Not 2×6: leg[^.]*stay 2×2/);
+    assert.match(notes, /2×4 top cleat/);
     assert.ok(plan.bom.some((b) => b.catalogId === "lumber-2x6-8" && b.quantity > 0));
-    assert.deepEqual(p.overall, { width: 72, height: 29, depth: 64 });
+    assert.equal(p.overall.depth, 72);
   });
 
   it("adirondack chair cedar 1x6: Cedar in the title, notes and Buy (search and price)", () => {

@@ -19,6 +19,15 @@ function cutLine(p: Panel) {
   return `${p.name} — ${round(p.size.width)} × ${round(p.size.height)} × ${round(p.size.depth)}"`;
 }
 
+/** Legs of one length cut to a stop-block; legs of two lengths (table and bench legs) say each count. */
+function legLengthTalk(legs: Panel[], legN: number, legLen: string): string {
+  const byLen = new Map<string, number>();
+  for (const p of legs) byLen.set(round(p.size.height), (byLen.get(round(p.size.height)) ?? 0) + 1);
+  if (byLen.size <= 1) return `All ${legN} the same length (${legLen}") so the top sits level.`;
+  const bits = [...byLen.entries()].map(([len, n]) => `${n} at ${len}"`);
+  return `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]} — each set the same length so its top sits level.`;
+}
+
 export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   const panels = project.panels;
   const u = project.fitted?.unit;
@@ -114,7 +123,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
         : {
             step: n++,
             title: `Cut ${legN} legs from 2x2`,
-            description: `${legs.map(cutLine).join("; ")}. Buy 2x2 (1-1/2" actual). Square both ends. All ${legN} the same length (${legLen}") so the top sits level.`,
+            description: `${legs.map(cutLine).join("; ")}. Buy 2x2 (1-1/2" actual). Square both ends. ${legLengthTalk(legs, legN, legLen)}`,
             tips: "A stop-block on the saw keeps every leg identical. Do not nest 2x2 on the plywood sheet.",
             partsUsed: legs.map((p) => p.name),
           },

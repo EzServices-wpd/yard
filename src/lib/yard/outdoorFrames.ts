@@ -8,8 +8,9 @@
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import type { Panel, YardProject } from "./types";
+import { allowSpanIn } from "./spanCheck";
 
-export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse";
+export type OutdoorFrame = "deck" | "gate" | "swing-set" | "sawhorse" | "picnic";
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy|desk\s*top|tabletop)\b/;
@@ -24,6 +25,7 @@ export function outdoorFrameKind(prompt: string, materialOverride?: string): Out
   if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(scale)) return null;
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
   if (/\bsaw\s*horses?\b/.test(lower)) return "sawhorse";
+  if (/\bpicnic\s+tables?\b/.test(lower) && !/\bbench(?:es)?\b.*\bseparate\b/.test(lower)) return "picnic";
   if (/\bswing\s*sets?\b|\bswingsets?\b|\ba-?frame\s+swing\b/.test(lower)) return "swing-set";
   if (/\b(?:garden|yard|fence|wood(?:en)?|picket|privacy|side|backyard)?\s*gates?\b/.test(lower) && !/\bgate\s*(?:leg|way|house)|tailgate|baby\s*gate|pet\s*gate|stair\s*gate|golden\s*gate|gateway/.test(lower))
     return "gate";
@@ -297,6 +299,108 @@ export function buildSawhorse(prompt: string, size?: { width: number; height: nu
   return project(prompt, name, panels, spread, Hb, beamL, notes, L.two4);
 }
 
+/** Typed 2× board for a picnic table's top and seats; 2×6 when none is typed. */
+function picnicBoard(lower: string): { id: string; face: number; label: string } {
+  if (/\b2\s*[x×]\s*4\b/.test(lower)) return { id: L.two4, face: 3.5, label: "2×4" };
+  if (/\b2\s*[x×]\s*8\b/.test(lower)) return { id: L.two8, face: 7.25, label: "2×8" };
+  return { id: L.two6, face: 5.5, label: "2×6" };
+}
+
+/**
+ * Picnic table with attached benches (the common A-frame pattern): top and seat boards of 2× stock with ¼"
+ * gaps, carried by A-frames of two splayed 2×6 legs, each with a 2×4 top cleat under the top and a 2×6 seat
+ * support under both seats bolted through the legs; a 2×4 center brace on edge under the middle of the top
+ * from cleat to cleat. Frames are added along the length until no seat board spans past what 1 1/2" stock
+ * holds for a person.
+ */
+export function buildPicnicTable(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const board = picnicBoard(lower);
+  const Lraw = size?.depth ?? axis(lower, /long|length|wide|width/) ?? axis(lower, /picnic|table/) ?? (() => {
+    // A bare typed length ("6 ft", "96 inch") is the table's length unless it names the height.
+    const m = lower.match(/(\d+(?:\.\d+)?)\s*('|ft\b|foot\b|feet\b|"|in\b|inch(?:es)?\b)(?!\s*(?:tall|high|height))/);
+    return m ? Number(m[1]) * (/'|ft|foot|feet/.test(m[2]) ? 12 : 1) : null;
+  })() ?? 72;
+  const len = Math.max(48, Math.min(96, Lraw));
+  const H = Math.min(32, Math.max(26, size?.height ?? axis(lower, /tall|high|height/) ?? 29));
+  const bt = 1.5;
+  const gap = 0.25;
+  const seatTop = 17;
+  const nTop = Math.max(3, Math.round(28 / (board.face + gap)));
+  const topW = nTop * board.face + (nTop - 1) * gap;
+  const nSeat = Math.max(2, Math.round(10.5 / (board.face + gap)));
+  const seatW = nSeat * board.face + (nSeat - 1) * gap;
+  const stepIn = 6;
+  const W = topW + 2 * (stepIn + seatW);
+  const inset = Math.round(Math.min(12, len * 0.15));
+  const reach = allowSpanIn(bt, "person");
+  let frames = 2;
+  while ((len - 2 * inset - 3 * frames) / (frames - 1) > reach && frames < 5) frames++;
+  const frameZ = Array.from({ length: frames }, (_, i) => inset + ((len - 2 * inset - 3) * i) / (frames - 1));
+  const legW = 5.5;
+  const h = H - bt;
+  const topOuter = topW / 2 - 1;
+  const footOuter = topW / 2 + stepIn + seatW * 0.65;
+  const run = footOuter - topOuter;
+  const legLen = Math.hypot(run, h);
+  const across = legW * (legLen / h);
+  const angle = Math.round((Math.atan2(h, run) * 180) / Math.PI);
+  const panels: Panel[] = [];
+  frameZ.forEach((z0, k) => {
+    const end = frames === 2 ? (k ? "far end" : "near end") : k === 0 ? "near end" : k === frames - 1 ? "far end" : frames === 3 ? "middle" : `middle ${k}`;
+    // Legs on the frame's outer face, cleat and seat support on the face toward the middle of the table.
+    const legZ = k === frames - 1 ? z0 + 1.5 : z0;
+    const railZ = k === frames - 1 ? z0 : z0 + 1.5;
+    for (const side of [-1, 1] as const) {
+      const outerTop = side * topOuter;
+      const outerFoot = side * footOuter;
+      const innerTop = outerTop - side * across;
+      const innerFoot = outerFoot - side * across;
+      const minX = Math.min(innerTop, outerFoot, innerFoot, outerTop);
+      const maxX = Math.max(innerTop, outerFoot, innerFoot, outerTop);
+      const pts: [number, number][] = side > 0
+        ? [[innerFoot - minX, 0], [outerFoot - minX, 0], [outerTop - minX, h], [innerTop - minX, h]]
+        : [[outerFoot - minX, 0], [innerFoot - minX, 0], [innerTop - minX, h], [outerTop - minX, h]];
+      panels.push(
+        panel("upright", `Leg ${end} ${side < 0 ? "left" : "right"}`, minX, 0, legZ, maxX - minX, h, 1.5, L.two6, {
+          polygon: { plane: "xy", pts },
+          blank: { lengthIn: Math.ceil((legLen + legW * (run / h)) * 8) / 8, widthIn: legW, thicknessIn: 1.5 },
+          cutNote: `Cut ${inchFrac(legLen)}" long with both ends at ${angle}° — flat on the ground, flat under the top.`,
+        }),
+      );
+    }
+    panels.push(panel("rail", `Top cleat ${end}`, -(topW / 2 - 0.5), h - 3.5, railZ, topW - 1, 3.5, 1.5, L.two4));
+    panels.push(panel("rail", `Seat support ${end}`, -W / 2, seatTop - bt - 5.5, railZ, W, 5.5, 1.5, L.two6));
+  });
+  // Center brace: on edge under the middle of the top, cleat to cleat.
+  for (let k = 0; k < frames - 1; k++) {
+    // From this frame's cleat to the next one's (the far frame's cleat faces in, on its near face).
+    const a = frameZ[k] + 3;
+    const b = frameZ[k + 1] + (k + 1 === frames - 1 ? 0 : 1.5);
+    panels.push(panel("rail", "Center brace", -0.75, h - 3.5, a, 1.5, 3.5, b - a, L.two4));
+  }
+  for (let i = 0; i < nTop; i++) {
+    panels.push(panel("deck", `Tabletop board ${i + 1}`, -topW / 2 + i * (board.face + gap), h, 0, board.face, bt, len, board.id));
+  }
+  for (const side of [-1, 1] as const) {
+    const label = side < 0 ? "Left seat board" : "Right seat board";
+    for (let i = 0; i < nSeat; i++) {
+      const x = side < 0 ? -W / 2 + i * (board.face + gap) : topW / 2 + stepIn + i * (board.face + gap);
+      panels.push(panel("deck", `${label} ${i + 1}`, x, seatTop - bt, 0, board.face, bt, len, board.id));
+    }
+  }
+  const name = `Picnic table ${ft(len)} × ${inchFrac(H)}" tall`;
+  const notTyped = board.id !== L.two6 ? ` Not ${board.label}: the A-frame legs and seat supports stay 2×6 and the cleats and center brace 2×4 — the legs and supports carry the whole load.` : "";
+  const notes = [
+    `${name}: ${nTop} ${board.label} top boards (${inchFrac(topW)}" wide) and ${nSeat} ${board.label} seat boards per side, ¼" gaps, top ${inchFrac(H)}" and seats ${seatTop}" high, the seats ${stepIn}" out from the top's edge so you can step in and sit.`,
+    `Each of the ${frames} A-frames: two 2×6 legs splayed ${inchFrac(footOuter * 2)}" apart at the floor and meeting under the top, a 2×4 top cleat under the top boards and a 2×6 seat support under both seats, held to both legs with ${frames * 6} 3/8" carriage bolts in all — two through each leg at the seat support and one at the top cleat.${frames > 2 ? ` The ${frames - 2 === 1 ? "middle frame keeps" : "middle frames keep"} every seat span within ${inchFrac(reach)}", what 1 1/2" stock holds for a person.` : ""}`,
+    `A 2×4 center brace on edge runs under the middle of the top from cleat to cleat and keeps the frames from racking.${notTyped}`,
+    "Screw each board down to every cleat and seat support it crosses, 2 exterior screws per crossing. Pressure-treated or cedar lumber. Guidance only.",
+  ];
+  return project(prompt, name, panels, W, H, len, notes, board.id);
+}
+
 export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { width: number; height: number; depth: number }): YardProject {
+  if (kind === "picnic") return buildPicnicTable(prompt, size);
   return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size) : buildSwingSet(prompt, size);
 }

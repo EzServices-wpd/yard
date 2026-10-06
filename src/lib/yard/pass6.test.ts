@@ -106,7 +106,7 @@ describe("cheap leftovers", () => {
     assert.equal(p.overall.width, 48);
   });
   it("picnic table legs name the typed species", () => {
-    assert.match(build("picnic table 6 ft cedar").notes, /Cedar 2×2 legs/);
+    assert.match(build("picnic table 6 ft cedar").notes, /Cedar 2×6 legs/);
   });
   it("bathroom shelf is a shelf unit, not a storage unit", () => {
     assert.match(build("bathroom shelf").p.name, /^Shelf unit/);

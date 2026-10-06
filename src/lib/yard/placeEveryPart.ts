@@ -10,7 +10,7 @@ import { ANATOMY_NOTE } from "./classAnatomy";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
 
-const PREP = /^(confirm|read|measure|check|lay out|mark|do not cut|before)/i;
+const PREP = /^(confirm|read|measure|check|lay out|mark|snap|do not cut|before)/i;
 
 function fastenerTalk(project: YardProject): string {
   const join = project.shopJoin;
@@ -75,7 +75,8 @@ function mentions(step: AssemblyStep, part: Part): boolean {
 
 function isBuild(step: AssemblyStep): boolean {
   // "Level it" checks the finished box; it places no part.
-  return !PREP.test(step.title) && !/^Cut\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
+  // A glue-up makes blanks; it places no part either.
+  return !PREP.test(step.title) && !/^(?:Cut|Glue up|Join sheet splices)\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
 }
 
 const POSITION = /^(left|right|front|back|top|bottom|lower|upper|middle|inner|outer|center|centre)$/;
@@ -272,7 +273,85 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
     }
     if (!moved) break;
   }
-  return renumber(supportOrder(project, out, parts, supports));
+  out = supportOrder(project, out, parts, supports);
+  if (project.panels.length) out = supportOrder(project, mergeSameTitles(liftAfterSupports(project, out, parts, supports, fix)), parts, supports);
+  return renumber(mergeSameTitles(out));
+}
+
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * A part a step lists before the parts it rests on (a seat in the legs step, a top before its cleats) comes
+ * out of that step and goes on in its own step right after its last support. Same-name parts move together.
+ */
+function liftAfterSupports(project: YardProject, steps: AssemblyStep[], parts: Part[], supports: Map<string, SupportInfo>, fix: string): AssemblyStep[] {
+  let out = steps.map((s) => ({ ...s }));
+  for (let pass = 0; pass < 4; pass++) {
+    const where = placementIndex(project, out);
+    const moves = new Map<number, Part[]>();
+    const lifted = new Set<string>();
+    for (const p of parts) {
+      const name = p.name.toLowerCase();
+      if (lifted.has(name)) continue;
+      const same = parts.filter((q) => q.name.toLowerCase() === name && where.get(q.key) != null);
+      const at = where.get(p.key);
+      if (at == null || !isBuild(out[at]) || same.some((q) => where.get(q.key) !== at)) continue;
+      const late = same.flatMap((q) => (supports.get(q.key)?.on ?? []).map((k) => where.get(k)).filter((j): j is number => j != null && j > at && isBuild(out[j])));
+      if (!late.length) continue;
+      const used = out[at].partsUsed ?? [];
+      const rest = used.filter((u) => u.toLowerCase() !== name);
+      if (rest.length === used.length || !rest.length) continue;
+      const trial = { ...out[at], partsUsed: rest };
+      if (same.some((q) => mentions(trial, q))) continue;
+      lifted.add(name);
+      out[at] = {
+        ...trial,
+        description: trial.description
+          .replace(new RegExp(`;?\\s*(?:[A-Z]{1,2} )?${escapeRe(p.name)} — [^;]*?"(?=;|\\.|$)`, "g"), "")
+          .replace(/^;\s*/, ""),
+      };
+      const target = Math.max(...late);
+      moves.set(target, [...(moves.get(target) ?? []), ...same.slice(0, 1)]);
+    }
+    if (!moves.size) break;
+    for (const target of [...moves.keys()].sort((a, b) => b - a)) {
+      const group = moves.get(target)!;
+      const names = [...new Set(group.map((q) => q.name))];
+      const verb = group.every((q) => ["rests", "floor"].includes(supports.get(q.key)?.how ?? "")) ? "Set" : "Fasten";
+      out.splice(target + 1, 0, {
+        step: target + 2,
+        title: `${verb} the ${listNames(names)}`,
+        description: group.map((q) => placeSentence(project, q, supports.get(q.key), fix)).join(" "),
+        tips: "It goes on once every part under it is in place.",
+        partsUsed: names,
+      });
+    }
+  }
+  return out;
+}
+
+/** Steps that share a title are one step: the later one, which already sits after every support, takes both. */
+function mergeSameTitles(steps: AssemblyStep[]): AssemblyStep[] {
+  const key = (s: AssemblyStep) => s.title.trim().toLowerCase();
+  const lastAt = new Map<string, number>();
+  steps.forEach((s, i) => lastAt.set(key(s), i));
+  if (lastAt.size === steps.length) return steps;
+  const out = steps.map((s) => ({ ...s }));
+  const drop = new Set<number>();
+  steps.forEach((s, i) => {
+    const j = lastAt.get(key(s))!;
+    if (j === i) return;
+    const into = out[j];
+    const sentences = s.description.split(/(?<=\.)\s+/).filter((t) => t && !into.description.includes(t));
+    out[j] = {
+      ...into,
+      description: [...sentences, into.description].join(" ").trim(),
+      tips: into.tips ?? s.tips,
+      partsUsed: s.partsUsed || into.partsUsed ? [...new Set([...(s.partsUsed ?? []), ...(into.partsUsed ?? [])])] : undefined,
+    };
+    drop.add(i);
+  });
+  return out.filter((_, i) => !drop.has(i));
 }
 
 /**

@@ -31,7 +31,7 @@ describe("every part is placed after its support", () => {
       }
       const seat = plan.instructions.find((s) => /seat|tread|rail/i.test(s.title));
       if (/chair|stool|bench/.test(prompt) && seat) {
-        assert.match(`${seat.title} ${seat.description}`, /on the legs|on the aprons|on the frame|set the tread|rests on|attach .+ to/i);
+        assert.match(`${seat.title} ${seat.description}`, /on the legs|on the aprons|on the frame|set the tread|rests on|attach .+ to|fasten .+ to (?:both|the \d+) legs/i);
       }
     });
   }
