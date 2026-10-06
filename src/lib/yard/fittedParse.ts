@@ -1324,7 +1324,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                                               ? "Wall cabinet"
                                               : /cabinet/.test(lower) && !/\bracks?\b/.test(lower)
                                                 ? cabinetStem(lower)
-                                              : names[program];
+                                              : program === "storage" && /\bshel(?:f|ves)\b/.test(lower)
+                                                ? "Shelf unit"
+                                                : names[program];
 
   if (typeof openingFit !== "undefined" && openingFit && trip.w && trip.h && trip.d) {
     const axisLabeledAll =

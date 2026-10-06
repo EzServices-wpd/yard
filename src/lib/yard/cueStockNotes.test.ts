@@ -62,7 +62,7 @@ describe("a typed board snaps a close default depth to its face; notes say plain
     assert.match(notes, /one 1×10 wide \(9 1\/4"\)/);
   });
   it("catalog words never reach notes: '1×12 Board legs' and '2×4 Stud legs' read plain", () => {
-    assert.match(build("oak 1x12 bench 40 wide").notes, /four 2×4 legs[^]*stay Oak 2×4 —/);
+    assert.match(build("oak 1x12 bench 40 wide").notes, /four Oak 2×4 legs[^]*stay Oak 2×4 —/);
     assert.doesNotMatch(build("oak 1x12 bench 40 wide").notes, /1×12 Board|2×4 Stud/);
     assert.doesNotMatch(build("2x4 workbench 60 wide").notes, /\d×\d+ (?:Board|Stud|Post)\b/);
   });

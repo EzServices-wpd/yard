@@ -32,7 +32,8 @@ export function isToyScaleBed(noun: string): boolean {
 
 export function pickPrimitive(noun: string): Prim | null {
   const lower = noun.toLowerCase().trim();
-  const words = lower.split(/\s+/);
+  // The head noun is the last word before any prepositional tail ("ramp for the couch" → ramp).
+  const words = lower.split(/\s+(?:for|to|with|in|on|from|of|by|under|over|near|that|which)\s+/)[0].split(/\s+/);
   const head = (words[words.length - 1] ?? "").replace(/([^si])s$/, "$1");
   const whole = lower.replace(/\s+/g, "");
   if (/(stand|bar|counter|booth|kiosk|cart|riser|desk|station)$/.test(head)) {
@@ -99,10 +100,33 @@ export function looksLikeFallback(project: YardProject, noun: string): boolean {
   // Toy-scale nouns keep craft stock; remapping them to plywood is the honesty bug.
   if (TOY.test(lower)) return false;
   if (/popsicle/.test(project.primaryMaterialId ?? "")) return true;
+  // A body with no class (lies along its long axis) is the fallback a known head noun replaces.
+  if (project.unmatched) return true;
   const name = (project.name ?? "").toLowerCase().replace(/\s+/g, "");
   const words = lower.split(/\s+/).filter((w) => w.length >= 4).map((w) => w.replace(/s$/, ""));
   if (/^storageunit/.test(name) || /^(figure|bird|frame)$/.test(name)) return true;
   return !words.some((w) => name.includes(w));
+}
+
+/**
+ * Notes of a build remapped to a primitive speak for the typed noun: the primitive's own name becomes the
+ * title, and what only that primitive does (soil, drainage, a liner) is dropped unless the noun is a planter.
+ */
+export function primitiveNotes(notes: string[], p: Prim, title: string, noun: string): string[] {
+  const keepSoil = /plant|garden|soil|flower/i.test(noun);
+  const name = p.phrase.charAt(0).toUpperCase() + p.phrase.slice(1);
+  return notes
+    .map((n) =>
+      n
+        .replace(new RegExp(`^${name}\\b`), title)
+        .split(/(?<=\.)\s+/)
+        .filter((s) => keepSoil || !/\bsoil\b|planting|drainage|landscape-fabric|\bliner\b|planter box/i.test(s))
+        // The primitive's own "not a skeleton, not a cube" line argues with a recipe the person never asked for.
+        .filter((s) => !/^Not an? [\w-]+(?: [\w-]+)? skeleton\b/i.test(s.trim()))
+        .join(" ")
+        .trim(),
+    )
+    .filter((n) => n.trim());
 }
 
 export function fallbackNote(noun: string, label: string): string {

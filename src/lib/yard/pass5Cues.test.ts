@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
+import { STRESS_PROMPTS } from "./stressPrompts";
 
 const build = (prompt: string) => {
   const p = generateFromPrompt(prompt);
@@ -44,12 +45,12 @@ describe("the size line matches the model", () => {
     const { p, notes } = build("oak 1x12 bench 40 wide");
     assert.equal(p.overall.depth, 16);
     assert.match(p.notes?.[0] ?? "", /^Bench 40" × 18" × 16"/);
-    assert.match(notes, /four 2×4 legs/);
+    assert.match(notes, /four Oak 2×4 legs/);
     assert.ok(p.panels.filter((x) => /\bleg\b/i.test(x.name)).every((x) => x.materialId === "lumber-2x4-8"));
   });
   it("every golden: the first W × H × D in the name and first note equals the overall", () => {
     const goldens = JSON.parse(readFileSync(new URL("./promptSnapshots.goldens.json", import.meta.url), "utf8")) as { prompt: string }[];
-    const extra = ["oak 1x12 bench 40 wide", "toy chest no lid 30 wide", "cedar 1x8 planter box 24 long", "3 step stool", "workbench from 1x6"];
+    const extra = [...STRESS_PROMPTS, "oak 1x12 bench 40 wide", "toy chest no lid 30 wide", "cedar 1x8 planter box 24 long", "3 step stool", "workbench from 1x6"];
     const num = (s: string) => {
       const m = s.trim().match(/^(\d+)(?:\s+(\d+)\/(\d+))?$/);
       return m ? +m[1] + (m[2] ? +m[2] / +m[3] : 0) : NaN;

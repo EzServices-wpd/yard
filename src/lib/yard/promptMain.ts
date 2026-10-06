@@ -1,4 +1,5 @@
 import { frontCueNotes } from "./fittedShared";
+import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
@@ -17,7 +18,7 @@ import { parsePocket, buildPocket, looksLikePocket } from "./pocket";
 import { looksLikeFitted, parseBrief, buildFitted } from "./fitted";
 import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
-import { climbRiseRun, climbStepCount, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
+import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
@@ -28,7 +29,7 @@ import { detectForm, subjectFromPrompt, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
-import { pickPrimitive, looksLikeFallback, fallbackNote, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
+import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock } from "./promptHelpers";
@@ -46,6 +47,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
+import { buildAccessRamp, buildScratchingPost, isScratchingPost } from "./petGear";
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
@@ -228,11 +230,16 @@ function withAxisOrderNote(project: YardProject, args: Parameters<typeof generat
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
-  const prompt = args[0] ?? "";
-  const built = withAxisOrderNote(
+  // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
+  const said = args[0] ?? "";
+  args[0] = normalizeUserPrompt(said);
+  const prompt = args[0];
+  const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt),
     args,
   );
+  // The prompt box keeps the person's own words.
+  const built = done.typedPrompt ? { ...done, typedPrompt: said } : done;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
   // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
@@ -270,9 +277,17 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
     }
   }
   // Toy-scale beds always consider the bed primitive — craft stock typed must not leave a figure or full mattress.
-  const p = stockTyped && !toyBed ? null : pickPrimitive(noun);
+  // A figure word that only modifies the head noun ("craft stick bird feeder") still gets the head's
+  // primitive, in the stock that was typed.
+  // Only when the build found no recipe for the head ("dog bed from a pallet" keeps its pallet bed).
+  const modifier = figureWordModifiesHead(noun) && (Boolean(core.unmatched) || core.kind === "figure");
+  const p = stockTyped && !toyBed && !modifier ? null : pickPrimitive(noun);
   if (!p || !looksLikeFallback(core, noun)) return core;
   let remapped = primitivePrompt(p, prompt);
+  if (stockTyped && modifier) {
+    const subject = new Set(subjectFromPrompt(noun).toLowerCase().split(/\s+/));
+    remapped = `${noun.split(/\s+/).filter((w) => !subject.has(w.toLowerCase())).join(" ")} ${remapped}`.trim();
+  }
   // Keep craft stock for toy beds (popsicle when none typed); never silently lift them to plywood.
   if (toyBed && !args[1] && !/\b(?:plywood|lumber|2x\d|1x\d|pallet)\b/i.test(prompt)) {
     const craft =
@@ -283,7 +298,7 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   const built = generateCore(remapped, ...(args.slice(1) as []));
   const title = subjectFromPrompt(noun).replace(/\b\w/g, (c) => c.toUpperCase());
   // The bench builds from the primitive; the prompt box keeps the person's own words.
-  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...(built.notes ?? [])] };
+  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(built.notes ?? [], p, title, noun)] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
@@ -305,7 +320,7 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const defaulted =
     !args[1] && isWireStock(detectMaterial(args[0])) && !/\bwire\b/i.test(args[0]) && wantsRealStockDefault(args[0]) &&
     tabled0.primaryMaterialId === "lumber-2x4-8" && !(tabled0.notes ?? []).includes(REAL_STOCK_NOTE);
-  const tabled = defaulted ? { ...tabled0, notes: [...(tabled0.notes ?? []), REAL_STOCK_NOTE] } : tabled0;
+  const tabled = withFrontCuesBuilt(defaulted ? { ...tabled0, notes: [...(tabled0.notes ?? []), REAL_STOCK_NOTE] } : tabled0, args[0]);
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
@@ -529,7 +544,7 @@ function fitWeekendSize(
   /** The caller weighs this rebuild against the first build and writes the size note itself. */
   quiet = false,
 ): YardProject {
-  if (project.fitted || project.pocket || project.windowPkg || project.climb || project.kind === "closet" || project.kind === "opening") {
+  if (project.fitted || project.pocket || project.windowPkg || project.climb || project.sizedByBuilder || project.kind === "closet" || project.kind === "opening") {
     return project;
   }
   if (!project.instances.length && !project.panels.length) return project;
@@ -908,6 +923,11 @@ function generateRaw(
     if (climb === "stool" && (!ask || carcaseKind(ask) || /^(?:lumber|plywood)-/.test(ask.id))) {
       return buildClimb(prompt, climb, opts.sizeOverride);
     }
+  }
+  // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
+  if (!formOverride && !opts.fittedOverride && !opts.sizeOverride) {
+    if (isAccessRamp(lower)) return buildAccessRamp(prompt);
+    if (isScratchingPost(lower)) return buildScratchingPost(prompt);
   }
   // A known build class (cat tree, any animal, robot, figure, frame, catapult…) beats owned-board and
   // named-product routing. A material plus a size is never a product.

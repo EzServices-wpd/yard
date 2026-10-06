@@ -97,7 +97,8 @@ function exteriorTalk(t: string | undefined): string | undefined {
 
 /** Plan pass: Buy swaps indoor glue and screws for exterior ones, adds finish + glides; steps seal end grain. */
 export function withOutdoorPackage(project: YardProject, plan: BuildPlan): BuildPlan {
-  const prompt = project.prompt ?? "";
+  // A primitive stand-in (a feeder built as an open box) answers to the words the person typed.
+  const prompt = project.typedPrompt ?? project.prompt ?? "";
   const outdoor = outdoorWood(project, prompt);
   const soil = holdsSoilOrWater(prompt, project.name);
   if (!outdoor && !soil) return plan;

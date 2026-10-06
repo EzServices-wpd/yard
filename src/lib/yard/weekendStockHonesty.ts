@@ -148,7 +148,11 @@ export function isSheetPrimaryId(id: string | undefined | null): boolean {
 export function withPlainStockNotes(p: YardProject, prompt: string): YardProject {
   if (!p.notes?.length) return p;
   const species = namedLumberFromPrompt(prompt)?.display;
-  const re = /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post)\b(?:\s+\(\d+\s*ft\))?|\s+\(\d+\s*ft\))/g;
+  // A catalog row ("2×4 Stud (8 ft)") reads plain; with a species, a bare size naming parts ("2×2 legs")
+  // carries the species the cut list and Buy already show.
+  const re = species
+    ? /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post)\b(?:\s+\(\d+\s*ft\))?|\s+\(\d+\s*ft\)|(?=\s+(?:legs?|posts?|rails?|stretchers?|aprons?|stringers?|slats?|frame)\b))/g
+    : /(?<![\w×])([1-4])\s*[×x]\s*(\d+)(?:\s+(?:Board|Stud|Post)\b(?:\s+\(\d+\s*ft\))?|\s+\(\d+\s*ft\))/g;
   let changed = false;
   const notes = p.notes.map((n) => {
     const next = n.replace(re, (_m, a: string, b: string, at: number, all: string) => {
@@ -288,7 +292,9 @@ function sectionSize(
     (s) => s.id !== item.id && nearSection(t, s.thick) && nearSection(w, s.face),
   );
   if (!other) return size;
-  return { ...size, [axes[0]]: thick, [axes[1]]: face };
+  // A narrower part is ripped from the wider board (a 2 1/2" cleat stays 2 1/2"): the face never grows
+  // past the part, so a recast part stays where the build put it.
+  return { ...size, [axes[0]]: thick, [axes[1]]: Math.min(face, w) };
 }
 
 /**

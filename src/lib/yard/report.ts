@@ -615,8 +615,12 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   }
   // Every solid-lumber part (legs, 2× rails and bearers, posts) is bought by stock length through the one
   // linear packer, grouped per stock. Named-species boards and plywood are bought above.
-  const otherLumber =
-    boardPrimary || solidNamedBuy
+  // Posts and other 2"+ sections (4×4) are never board glue-ups: they are bought here on any build.
+  const thickLumber = cuts.filter(
+    (c) => /^lumber-/.test(c.id) && !c.id.startsWith(`${CATALOG_LUMBER_BIND}|`) && (c.thicknessIn ?? 0) >= 2 && !isLumberLegCut(c),
+  );
+  const otherLumber = [
+    ...(boardPrimary || solidNamedBuy
       ? []
       : structural.filter(
           (c) =>
@@ -625,7 +629,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
             !boardsBought.has(c.id.split("|")[0]) &&
             !stickBoards.includes(c) &&
             (c.thicknessIn ?? 0) > 1,
-        );
+        )),
+    ...thickLumber,
+  ];
   const lumberCuts = [...legCuts, ...(frameBought ? [] : stickBoards), ...otherLumber];
   const byStock = new Map<string, CutLine[]>();
   for (const c of lumberCuts) {
@@ -1341,6 +1347,30 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: "One pad under each foot.",
     });
   }
+  const rope = notes.match(/(\d+) ft of 3\/8" sisal rope/i);
+  if (rope && !/sisal/i.test(have)) {
+    const packs = Math.max(1, Math.ceil(Number(rope[1]) / 100));
+    extra.push({
+      name: '3/8" sisal rope, 100 ft',
+      quantity: packs,
+      unit: packs === 1 ? "roll" : "rolls",
+      catalogId: "sisal-rope",
+      searchQuery: "3/8 inch sisal rope 100 ft",
+      estimatedCost: 19.99 * packs,
+      notes: `About ${rope[1]} ft wraps the post, tight turns, stapled at both ends.`,
+    });
+  }
+  if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
+    extra.push({
+      name: "GRK RSS #9 x 3-1/8 structural screws",
+      quantity: 1,
+      unit: "box",
+      catalogId: "structural-screws",
+      searchQuery: "GRK RSS #9 x 3-1/8",
+      estimatedCost: 14,
+      notes: "The long screws the notes call for.",
+    });
+  }
   if (/water-resistant finish/i.test(notes) && !/finish/i.test(have)) {
     extra.push({
       name: "Water-resistant finish",
@@ -1448,17 +1478,18 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
     // Species price is per 1×4; a wider named board (Cedar 1×6) scales by its real face and keeps its size in the search.
     const face = catalog?.dims.width ?? 3.5;
     const thick = catalog?.dims.height ?? 0.75;
-    const size = line.name.match(/([12])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
+    const size = line.name.match(/([1-4])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
+    const piece = thick >= 3 ? "post" : "board";
     const per1x4 = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
     const each = per1x4 != null ? Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
     if (each != null && line.quantity > 0) {
       const total = Math.round(each * line.quantity * 100) / 100;
-      const query = `${species!.display} ${size} board 8 ft`;
+      const query = `${species!.display} ${size} ${piece} 8 ft`;
       line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
       changed = true;
     } else if (species && species.id !== "pine" && catalog?.category === "lumber") {
       // Unpriced row (no fake price): the search still names the species and size that was typed.
-      line = { ...line, searchQuery: `${species.display} ${size} board 8 ft` };
+      line = { ...line, searchQuery: `${species.display} ${size} ${piece} 8 ft` };
     }
     return line;
   });

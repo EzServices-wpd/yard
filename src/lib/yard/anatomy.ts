@@ -6,7 +6,7 @@
 
 import type { StructureKind } from "./types";
 import { detectHouseFamily, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, isDoorPortal, isPlanterBox, isPorchSwingFrame, isPortalHookRail, isPortalSpanShelf, isTowelPortalRail, isShoePortalRail, isShoePortalCubbies, isToyChest } from "./family";
-import { detectWeekendFamily, detectWeekendMech, wantsPotHold } from "./weekendFamily";
+import { detectWeekendFamily, detectWeekendMech, figureWordModifiesHead, wantsPotHold } from "./weekendFamily";
 import { looksLikeDoorFrame } from "./windows";
 
 export type Anatomy = "loft" | "shell" | "figure" | "span" | "carcase" | "opening" | "fitted";
@@ -115,13 +115,15 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     return { anatomy: "span", kind: "bridge" };
   }
   if (SHELL.test(hay)) return { anatomy: "shell", kind: /taj|mosque/.test(hay) ? "taj" : "dome" };
-  if (LONGNECK.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck" };
-  if (WYVERN.test(hay)) return { anatomy: "figure", kind: "figure", stance: "wyvern" };
-  if (WINGED.test(hay) && !/plane|airplane/.test(hay))
+  // "bird feeder", "cat scratching post": the animal modifies the head noun — not a figure.
+  const figure = !figureWordModifiesHead(hay);
+  if (figure && LONGNECK.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck" };
+  if (figure && WYVERN.test(hay)) return { anatomy: "figure", kind: "figure", stance: "wyvern" };
+  if (figure && WINGED.test(hay) && !/plane|airplane/.test(hay))
     return { anatomy: "figure", kind: "figure", stance: "winged" };
-  if (BIPED.test(hay) || /statue/.test(hay))
+  if (figure && (BIPED.test(hay) || /statue/.test(hay)))
     return { anatomy: "figure", kind: "figure", stance: "biped" };
-  if (FIGURE.test(hay)) return { anatomy: "figure", kind: "figure", stance: "quadruped" };
+  if (figure && FIGURE.test(hay)) return { anatomy: "figure", kind: "figure", stance: "quadruped" };
   const weekend = detectWeekendFamily(hay);
   if (weekend) {
     if (weekend.family === "figure") {

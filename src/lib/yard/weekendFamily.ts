@@ -67,7 +67,7 @@ export function detectWeekendMech(prompt: string): WeekendMech | null {
   const hay = looksHay(prompt);
   // Climb = weight-bearing human step (rise/run). Do not overload with vehicle incline.
   if (isHumanClimb(hay)) return "climb";
-  if (LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) return "launcher";
+  if ((LAUNCHER_NOUN.test(hay) || isVehicleIncline(hay)) && !isAccessRamp(hay)) return "launcher";
   if (POT_HOLD_NOUN.test(hay)) return "pot-hold";
   // House media ledge / tip-rail picture ledge / shelf / stereo / AV / bedside / platform stay fitted.
   // ("footprint" must not count as print; wall media + tip-rail are hung-open plywood.)
@@ -593,6 +593,28 @@ const FIGURE_NOUN =
   // Whole words only (plural allowed): "CamelBak" is a bottle, "birdhouse" a house, "bearing" a part.
   /\b(?:giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|camel|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern|yoda|batman|spiderman|iron man|hulk|wolves)(?:e?s)?\b/;
 
+/**
+ * English compounds put the head noun last: in "bird feeder", "cat scratching post", "dog ramp" the animal
+ * only says who the thing is for. A figure word directly before one of these heads is a modifier, never the
+ * figure. (Uses a figure itself can have — bookend, shelf, planter, rocker — are not heads here.)
+ */
+const GEAR_HEAD =
+  /(?:feeders?|scratch(?:ing)?\s*(?:posts?|boards?|pads?)|scratchers?|posts?|ramps?|steps|stairs|bowls?|dish(?:es)?|waterers?|beds?|crates?|kennels?|carriers?|gates?|doors?|flaps?|perch(?:es)?|cages?|coops?|hutch(?:es)?|pens?|runs?|baths?|towers?|condos?|houses?|trees?|mats?|tables?|ladders?|boxes|box|(?:feeding|food|water)\s+stations?)\b/;
+const FIGURE_MODIFIER = new RegExp(`${FIGURE_NOUN.source}\\s+(?:[a-z-]+\\s+)?${GEAR_HEAD.source}`);
+export function figureWordModifiesHead(lower: string): boolean {
+  return FIGURE_MODIFIER.test(lower.toLowerCase());
+}
+
+/** A ramp for a pet or up to a couch / bed is an access ramp, not a craft launcher. */
+export function isAccessRamp(lower: string): boolean {
+  const hay = lower.toLowerCase();
+  return (
+    /\bramps?\b/.test(hay) &&
+    /\b(?:dogs?|cats?|pets?|pupp(?:y|ies)|kittens?|couch|sofa|beds?)\b/.test(hay) &&
+    !/marble|plane|projectile|launch|catapult|trough|leaves|hot\s*wheels|toy\s+car/.test(hay)
+  );
+}
+
 /** Keep dog / dinosaur / animal titles — never naked Figure drift (like TV console identity). */
 export function figureIdentityLabel(lower: string): string | null {
   const hay = lower.toLowerCase();
@@ -836,7 +858,7 @@ export function detectWeekendFamily(prompt: string): WeekendHit | null {
     }
   }
 
-  if (FIGURE_NOUN.test(hay)) {
+  if (FIGURE_NOUN.test(hay) && !figureWordModifiesHead(hay)) {
     const name = figureIdentityLabel(hay) ?? "Animal";
     return { family: "figure", kind: "figure", name };
   }

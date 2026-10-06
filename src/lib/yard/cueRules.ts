@@ -71,3 +71,51 @@ export function frontCueNotes(prompt: string): string[] {
 export function isNoLidPrompt(lower: string): boolean {
   return frontCue(lower, "lid").none;
 }
+
+type CuePanel = { type: string; name: string; leaf?: unknown };
+type CueProject = {
+  panels: CuePanel[];
+  notes?: string[];
+  fitted?: { unit?: { doors?: boolean; drawers?: number | boolean }; affordances?: string[] } | null;
+};
+
+/**
+ * Geometry follows the cue, for every builder: a typed "no doors / no drawers / no lid" (with no later
+ * cue the other way) leaves none of them in the model, so Buy (counted from the model) buys no hinges,
+ * slides or lid stays. Notes about the parts taken out go too; the cue notes themselves stay.
+ */
+export function withFrontCuesBuilt<P extends CueProject>(project: P, prompt: string): P {
+  const lower = prompt.toLowerCase();
+  const gone = { doors: frontCue(lower, "doors").none, drawers: frontCue(lower, "drawers").none, lid: frontCue(lower, "lid").none };
+  if (!gone.doors && !gone.drawers && !gone.lid) return project;
+  const isDoor = (p: CuePanel) => p.type === "door" || !!p.leaf;
+  const isDrawer = (p: CuePanel) => p.type === "drawer" || /\bdrawer\b/i.test(p.name);
+  const isLid = (p: CuePanel) => /^(?:lift-off\s+)?lids?\b/i.test(p.name);
+  const removed = {
+    doors: gone.doors && project.panels.some(isDoor),
+    drawers: gone.drawers && project.panels.some(isDrawer),
+    lid: gone.lid && project.panels.some(isLid),
+  };
+  if (!removed.doors && !removed.drawers && !removed.lid) return project;
+  const panels = project.panels.filter((p) => !((removed.doors && isDoor(p)) || (removed.drawers && isDrawer(p)) || (removed.lid && isLid(p))));
+  const talk = [
+    removed.doors ? String.raw`\bdoors?\b|\bhinges?\b|\bpulls?\b` : "",
+    removed.drawers ? String.raw`\bdrawers?\b|\bslides?\b` : "",
+    removed.lid ? String.raw`\blids?\b|piano hinge|lid stay` : "",
+  ].filter(Boolean).join("|");
+  const about = new RegExp(talk, "i");
+  const cueNote = (n: string) => /You typed "/.test(n);
+  const notes = (project.notes ?? [])
+    .map((n) => (cueNote(n) ? n : n.split(/(?<=\.)\s+/).filter((s) => !about.test(s)).join(" ")))
+    .filter((n) => n.trim());
+  const fitted = project.fitted
+    ? {
+        ...project.fitted,
+        unit: project.fitted.unit
+          ? { ...project.fitted.unit, ...(removed.doors ? { doors: false } : {}), ...(removed.drawers && typeof project.fitted.unit.drawers === "number" ? { drawers: 0 } : {}) }
+          : project.fitted.unit,
+        affordances: project.fitted.affordances?.filter((a) => !(removed.doors && a === "door")),
+      }
+    : project.fitted;
+  return { ...project, panels, notes, fitted };
+}

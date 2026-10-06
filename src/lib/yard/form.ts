@@ -29,7 +29,7 @@ import {
   castleOps,
   bridgeOps,
 } from "./formBuildersCore";
-import { bindsDeterministically, detectWeekendFamily, detectWeekendMech, figureIdentityLabel, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, wantsClimbHandrail, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
+import { bindsDeterministically, detectWeekendFamily, detectWeekendMech, figureIdentityLabel, figureWordModifiesHead, isClimbStepStool, isClimbTriangle, isSlingshot, climbStepCount, spokenRungCount, wantsClimbHandrail, isHamperHold, isHoseReelHold, isUmbrellaHold, isMonitorHold, isFloorLampHold, isLauncherRamp, wantsMediaTipHold, wantsPotHold, potHoldDiameterIn, potHoldHeightIn, basketEnvelopeWhd, basketEnvelopeTalk, reelEnvelopeTalk, umbrellaEnvelopeTalk, monitorEnvelopeTalk, monitorEnvelopeIn, monitorRiseIn, lampEnvelopeTalk, lampEnvelopeIn, marbleDiameterIn, climbRiseRun, launcherRampLengthIn, mediaHoldTipDeg, mediaHoldHeldLabel, mediaTipTalk, type WeekendHit } from "./weekendFamily";
 import { isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman } from "./family";
 import {
   houseOps,
@@ -162,6 +162,8 @@ function matchHit(prompt: string): Hit | null {
     // Platform bed / bedside shelf stay fitted — never House wire or craft Frame from "house:" / "platform".
     if (hit.name === "House" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
     if (hit.name === "Frame" && (isPlatformBed(lower) || isBedsideShelf(lower) || isSeatingLoungeClass(lower))) continue;
+    // "bird feeder", "cat scratching post": the animal modifies the head noun — never the figure template.
+    if (hit.kind === "figure" && figureWordModifiesHead(hay)) continue;
     if (hit.re.test(hay)) return hit;
   }
   return null;

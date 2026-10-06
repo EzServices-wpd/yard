@@ -2267,10 +2267,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       !/jar\s+rack|spice|bottle/.test(lowerPrompt);
     const singularShelf =
       /\bshelf\b/.test(lowerPrompt) && !/\bshelves\b/.test(lowerPrompt);
-    // Honor spoken / singular count — never invent a multi stack for one floating shelf.
+    // Honor a spoken shelf / tier count first ("wall shelf with 2 tiers"), then the singular noun —
+    // never invent a multi stack for one floating shelf.
+    const spokenN = spokenTierCount(lowerPrompt);
     const n = Math.max(
       1,
-      Math.min(8, singularShelf ? 1 : u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3),
+      Math.min(8, spokenN ?? (singularShelf ? 1 : u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3)),
     );
     const cleatH0 = 2.5;
     const depthTyped =
@@ -2279,8 +2281,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const Df = depthTyped ? D : Math.min(D, 8);
     // Typed overall H wins — densify lip/backstop/spacers so envelope AABB == typed H
     // (do not invent gap=10 stacks that overshoot, then hide behind snapHud).
+    // Only a typed height is an envelope: an untyped class height never invents a tall backstop.
+    const heightTyped = /(?:tall|high|height)\b/i.test(lowerPrompt);
     const envelopeH = Math.max(
-      H > 0 ? H : n === 1 ? (wantsLip ? 6 : P) : n * (cleatH0 + P) + Math.max(0, n - 1) * 10,
+      H > 0 && (heightTyped || n > 1) ? H : n === 1 ? (wantsLip ? 6 : P) : n * (cleatH0 + P) + Math.max(0, n - 1) * 10,
       n === 1 ? (wantsLip ? P + 2 : P) : n * (P + 1.5),
     );
     const lipH = wantsLip
@@ -2309,13 +2313,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         panels.push(panel("back", "Shelf backstop", x0, 0, P, W, outH, P));
       }
       const floatStem = /floating/.test(lowerPrompt) || wantsLip ? "Floating shelf" : "Wall shelf";
-      const name = classDefaultDensifyTitle(
-        floatStem,
-        prompt,
-        /floating/.test(lowerPrompt) || wantsLip
-          ? { width: W, height: outH, depth: Df }
-          : { width: W, height: Df, depth: P },
-      );
+      // The title size is the model's overall (W × H × D), never the shelf board's W × D × thickness.
+      const name = classDefaultDensifyTitle(floatStem, prompt, { width: W, height: outH, depth: Df });
       // Wall shelf legacy stamped W×D×P — densify gate only covers floating shelf class.
       const floatAssumed = classDefaultAssumedNotes(prompt, floatStem, { width: W, height: outH, depth: Df });
       return {

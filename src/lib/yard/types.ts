@@ -396,6 +396,8 @@ export type YardProject = {
   };
   /** A noun no recipe matched: built as a generic body, so its typed sizes set the envelope. */
   unmatched?: boolean;
+  /** The builder read every typed size itself (along-the-build length, height, across): never rescaled. */
+  sizedByBuilder?: boolean;
   /** Human climb build (step stool, library/loft ladder): built to its typed size, never rescaled. */
   climb?: { kind: "stool" | "ladder"; topTreadIn: number; steps: number; handrailIn: number };
   flat?: {
