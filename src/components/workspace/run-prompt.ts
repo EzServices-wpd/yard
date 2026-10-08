@@ -2,7 +2,7 @@
 
 import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
-import { recipeFromAnatomy, isLockedForm, benchBindsForm } from "@/lib/yard/form";
+import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
@@ -319,10 +319,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     weekendMech || tipHold
       ? null
       : parseBrief(prompt);
-  generate(prompt, undefined, undefined, {
-    fresh: opts.fresh,
-    fittedOverride: parsed ?? undefined,
-  });
+  // The bar builds exactly what the engine builds from the typed words: generateFromPrompt reads the
+  // fitted brief itself when the prompt is a carcase, so a pre-parsed brief would only steal real classes.
+  generate(prompt, undefined, undefined, { fresh: opts.fresh });
 
   const next = useYard.getState().project;
   // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
@@ -349,7 +348,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     return;
   }
 
-  const houseLike = isHousePrompt(prompt, next.kind, next.fitted);
+  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
+  const houseLike =
+    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
   useYard.getState().beginBuild();
   useYard.setState({ grokBusy: true });
   const timeout = window.setTimeout(() => {
@@ -377,7 +378,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     const hint = await hintSubject({ data: { prompt } });
-    const bound = benchBindsForm(prompt, useYard.getState().project);
+    const bound = engineOwnsForm(prompt, useYard.getState().project);
     if (
       !bound &&
       hint.summary &&
@@ -400,15 +401,11 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     });
     const after = useYard.getState().project;
     const locked =
-      isLockedForm(after.kind) ||
-      after.kind === "closet" ||
-      after.kind === "opening" ||
-      !!after.flat ||
       // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.
       wantsMediaTipHold(prompt) ||
       !!detectWeekendMech(prompt) ||
       bound ||
-      benchBindsForm(prompt, after);
+      engineOwnsForm(prompt, after);
     // Named stock from the prompt binds like CatalogPanel. Unnamed stays wire-frame —
     // LLM must not silently pick popsicle.
     if (interp.ok && interp.form && !locked) {

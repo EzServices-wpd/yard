@@ -242,6 +242,25 @@ export function benchBindsForm(prompt: string, project: { kind: StructureKind; s
   return bindsDeterministically(prompt, project) || bindsNamedForm(prompt, project);
 }
 
+/**
+ * The engine owns the form on the bench: a locked landmark, a carcase or opening, a flat layout, a
+ * dedicated builder's build (any `custom` build that is not an unmatched body), or a bound recipe.
+ * The AI hint / interpretation may add notes to these, never swap their form.
+ */
+export function engineOwnsForm(
+  prompt: string,
+  project: { kind: StructureKind; shape?: unknown; flat?: unknown; unmatched?: boolean },
+): boolean {
+  return (
+    isLockedForm(project.kind) ||
+    project.kind === "closet" ||
+    project.kind === "opening" ||
+    !!project.flat ||
+    (project.kind === "custom" && !project.unmatched) ||
+    benchBindsForm(prompt, project)
+  );
+}
+
 export function detectForm(prompt: string, size: Size3): FormRecipe {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
