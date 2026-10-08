@@ -42,8 +42,10 @@ export function buildToyBedFrame(
   // 13″ rail from a 4½″ popsicle. Span members run between legs (outer − 2× stick).
   const stockLen = Math.max(2, item.dims.length ?? 4.5);
   const maxOuter = stockLen + tw * 2;
-  const W = Math.max(tw * 4, Math.min(size.width, maxOuter));
-  const D = Math.max(tw * 4, Math.min(size.depth, maxOuter));
+  // A bed bigger than one stick (a doll bed for an 18" doll) laps whole sticks face to face along each run.
+  const lapping = size.width > maxOuter + 1e-6 || size.depth > maxOuter + 1e-6;
+  const W = Math.max(tw * 4, lapping ? size.width : Math.min(size.width, maxOuter));
+  const D = Math.max(tw * 4, lapping ? size.depth : Math.min(size.depth, maxOuter));
   const H = Math.max(tw * 2, Math.min(size.height, stockLen));
   const x0 = -W / 2;
   const x1 = W / 2;
@@ -71,12 +73,33 @@ export function buildToyBedFrame(
     [{ x: x0 + tw / 2, y: deckY, z: z0 + tw }, { x: x0 + tw / 2, y: deckY, z: z1 - tw }],
     [{ x: x1 - tw / 2, y: deckY, z: z0 + tw }, { x: x1 - tw / 2, y: deckY, z: z1 - tw }],
   ];
-  for (const [a, b] of rails) instances.push(member(item, a, b, "rail"));
+  // A run longer than a stick: whole sticks overlapping 1", alternate sticks lifted one thickness so they glue face to face.
+  const lapRun = (a: Vec3, b: Vec3, role: string) => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (len <= stockLen + 1e-6) {
+      instances.push(member(item, a, b, role));
+      return;
+    }
+    const lap = Math.min(1, stockLen / 4);
+    const n = Math.ceil((len - lap) / (stockLen - lap));
+    const step = (len - lap) / n;
+    const at = (t: number, up: number): Vec3 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t + up, z: a.z + (b.z - a.z) * t });
+    for (let i = 0; i < n; i++) instances.push(member(item, at((i * step) / len, i % 2 ? th : 0), at((i * step + step + lap) / len, i % 2 ? th : 0), role));
+  };
+  for (const [a, b] of rails) lapRun(a, b, "rail");
+  if (lapping) {
+    // Deck slats run across the short way, resting on the two long rails, spaced a stick apart along the bed.
+    const n = Math.max(4, Math.floor((W - tw * 2) / (tw * 2.2)));
+    for (let i = 0; i < n; i++) {
+      const x = x0 + tw + ((W - tw * 2) * (i + 0.5)) / n;
+      lapRun({ x, y: deckY + th * 2, z: z0 + tw / 2 }, { x, y: deckY + th * 2, z: z1 - tw / 2 }, "deck");
+    }
+  }
 
   // Rectangular deck: slats spanning the width, resting on the side rails, spaced along the depth.
   const slatL = Math.min(stockLen, W - tw);
   const innerD = Math.max(tw * 2, D - tw * 2);
-  const nSlats = Math.max(4, Math.min(8, Math.round(innerD / Math.max(tw * 2.2, 0.9))));
+  const nSlats = lapping ? 0 : Math.max(4, Math.min(8, Math.round(innerD / Math.max(tw * 2.2, 0.9))));
   for (let i = 0; i < nSlats; i++) {
     const t = nSlats === 1 ? 0.5 : i / (nSlats - 1);
     const z = z0 + tw + t * (D - tw * 2);

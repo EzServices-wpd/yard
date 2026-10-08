@@ -675,7 +675,7 @@ export function subjectFromPrompt(prompt: string): string {
   s = stripTypedSizes(s).replace(/(?<![\w/])\d+(?:\.\d+)?\s*(?:cm|mm|meters?|metres?|m)\b/g, " ");
   // A title is the subject only: the stock clause, sizes, stock and species words are not its name.
   s = s.replace(/\b(?:from|made of|made from|made out of|built from|built of|out of|using)\b.+$/g, " ");
-  s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?(?:\s*[x×]\s*\d+(?:\.\d+)?){1,2}\b/g, " ");
+  s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?\s*(?:'|ft|foot|feet|"|in(?:ch(?:es)?)?)?(?:\s*(?:[x×]|by)\s*\d+(?:\.\d+)?\s*(?:'|ft|foot|feet|"|in(?:ch(?:es)?)?)?){1,2}(?![\w/])/g, " ");
   s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?\s*-?\s*(?:wide|width|tall|high|height|deep|depth|long|length|across|around|diameter|dia)\b/g, " ");
   s = s.replace(/\b(?:wide|tall|high|deep|long|across)\b/g, " ");
   s = s.replace(STOCK_WORDS, " ");

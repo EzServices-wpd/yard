@@ -40,7 +40,8 @@ const BED_HEAD = /^(?:bed|bedframe|crib|bassinet|cot|cradle)$/;
 /** Toy-scale bed-class noun: doll/toy/barbie bed, crib, bassinet, etc. */
 export function isToyScaleBed(noun: string): boolean {
   const lower = noun.toLowerCase().trim();
-  const words = lower.split(/\s+/);
+  // The head noun is the last word before a stock / purpose tail ("doll bed from popsicle sticks" → bed).
+  const words = lower.split(/\s+(?:for|to|with|in|on|from|of|by|made|out|using)\s+/)[0].split(/\s+/);
   const head = (words[words.length - 1] ?? "").replace(/([^si])s$/, "$1");
   const whole = lower.replace(/\s+/g, "");
   if (!BED_HEAD.test(head) && !/bedframe|bassinet/.test(whole)) return false;
@@ -55,6 +56,8 @@ export function pickPrimitive(noun: string): Prim | null {
   const whole = lower.replace(/\s+/g, "");
   const pet = petSurfaceHeight(lower);
   if (pet) return prim("table", "stand on legs at pet height", 24, pet, 12);
+  // A TV / media stand is the media console the engine builds, not a counter on legs.
+  if (/stand$/.test(head) && /\b(?:tv|television|media)\b/.test(lower)) return null;
   if (/(stand|bar|counter|booth|kiosk|cart|riser|desk|station)$/.test(head)) {
     if (DESKTOP.test(lower)) return prim("table", "platform on legs", 16, 5, 10);
     return prim("table", "counter on legs", 48, 42, 24);

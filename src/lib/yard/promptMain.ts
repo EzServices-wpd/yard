@@ -49,6 +49,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
+import { buildRealObject, realObjectKind } from "./realObjects";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { positiveSentence } from "./positiveWording";
 import { purposeOf, titleWithPurpose } from "./purpose";
@@ -331,12 +332,25 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
       const item = getCatalogItem(craftId) ?? getCatalogItem("popsicle-standard")!;
       const prim = pickPrimitive(noun);
       const sized = parseSize(prompt.toLowerCase());
+      // The scale word sets the target size: a doll bed fits an 18" doll, a Barbie bed an 11 1/2" one
+      // (1.1× the figure long, 0.6× wide). Dollhouse / mini / fairy beds stay one-stick models.
+      const lowerP = prompt.toLowerCase();
+      const figure = /\bbarbie\b/.test(lowerP) ? 11.5 : /\b(?:doll|toy)\b/.test(lowerP) && !/dollhouse|\bmini|fairy/.test(lowerP) ? 18 : 0;
       const size = {
-        width: /wide/i.test(prompt) ? sized.width : (prim?.size[0] ?? 4.5),
-        height: /(?:tall|high)/i.test(prompt) ? sized.height : (prim?.size[1] ?? 2.5),
-        depth: /deep/i.test(prompt) ? sized.depth : (prim?.size[2] ?? 3.5),
+        width: /wide/i.test(prompt) ? sized.width : figure ? Math.round(figure * 1.1) : (prim?.size[0] ?? 4.5),
+        height: /(?:tall|high)/i.test(prompt) ? sized.height : figure ? Math.round(figure * 0.5) / 2 : (prim?.size[1] ?? 2.5),
+        depth: /deep/i.test(prompt) ? sized.depth : figure ? Math.round(figure * 0.6) : (prim?.size[2] ?? 3.5),
       };
-      const built = buildToyBedFrame(prompt, item, size, noun);
+      const subject = subjectFromPrompt(noun).replace(/^\w/, (c) => c.toUpperCase());
+      const framed = buildToyBedFrame(prompt, item, size, subjectFromPrompt(noun));
+      const o = framed.overall;
+      const built = figure
+        ? {
+            ...framed,
+            name: `${subject} ${inchFrac(o.width)}" × ${inchFrac(o.height)}" × ${inchFrac(o.depth)}"`,
+            notes: [`${subject} for ${figure === 18 ? "an 18\" doll" : "an 11 1/2\" fashion doll"}: ${inchFrac(o.width)}" long and ${inchFrac(o.depth)}" wide so the doll lies flat, rails lapped from whole sticks.`, ...framed.notes],
+          }
+        : framed;
       return hooksShowInModel(craftDisplay(built, prompt));
     }
   }
@@ -899,6 +913,8 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
   // "shelf for my X collection" is a display shelf: X is what it shows.
   if (heldCollection(lower)) return null;
+  // A shelf or rack for a stored item the purpose table knows (tumblers, LPs, shoes) is shelving sized for it.
+  if (purposeOf(prompt) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   const phrase = heldPhrase(stripPetUse(lower));
   if (!phrase) return null;
   const held = heldObjectFor(phrase);
@@ -1029,6 +1045,9 @@ function generateRaw(
   if (!formOverride && !opts.fittedOverride) {
     const frame = outdoorFrameKind(prompt, materialOverride);
     if (frame) return buildOutdoorFrame(prompt, frame, opts.sizeOverride);
+    // A real object named by its head noun (framed mirror, baby gate, firewood rack, sandbox cover) builds at real size.
+    const real = realObjectKind(prompt, materialOverride);
+    if (real) return buildRealObject(prompt, real, opts.sizeOverride);
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.

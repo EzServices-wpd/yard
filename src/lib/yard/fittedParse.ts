@@ -26,6 +26,7 @@ import {
   portalHookRailTitle, portalSpanShelfTitle, isSofaConsoleTable, tableTopShape, tableShapeTitlePrefix,
   wantsBookHold, wantsPrintHold, wantsShoes, wantsSoundbarHold, type HouseAffordance, type HouseFamily,
   type TableTopShape,
+  namesCoatHang,
 } from "./family";
 import {
   honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt,
@@ -39,6 +40,7 @@ import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
+import { purposeOf } from "./purpose";
 import {
   P, PLY, pick, cabinetStem, tableClassHeight, isIroningCabinet, isMedicineCabinet, isSpiceRack,
   isSpiceCabinet, isWineRack, isShoeStorage, isOverToilet, isNoDrawersPrompt, isNoDoorsPrompt,
@@ -298,8 +300,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);
   }
   if (!Number.isFinite(width) && (program === "media" || /\btv\b|television/.test(lower))) {
-    const diag = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tv|television)\b/i, NaN);
-    if (Number.isFinite(diag) && diag >= 32 && diag <= 120 && !/(?:wide|width)/.test(lower)) width = diag;
+    // The TV's diagonal sizes the stand ("55 inch TV", "TV stand 55 inch"): at least the diagonal, and the
+    // 16:9 body (0.87 × diagonal) plus 3" each side, so the TV never overhangs.
+    const diagBefore = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tv|television)\b/i, NaN);
+    const diag = Number.isFinite(diagBefore) ? diagBefore : pick(t, /\b(?:tv|television)\b[^\d]{0,24}(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")(?!\s*(?:wide|tall|high|deep|long))/i, NaN);
+    if (Number.isFinite(diag) && diag >= 32 && diag <= 120 && !/(?:wide|width)/.test(lower)) width = Math.max(diag, Math.ceil(diag * 0.872 + 6));
   }
   if (!Number.isFinite(width) && /\bcloset\b/.test(lower) && /\brod\b|\bpole\b/.test(lower)) {
     const rodW = pick(t, /\brod\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?/i, NaN);
@@ -743,7 +748,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? (trip.h ?? 36)
                 : isLumberRack(lower)
                   ? (trip.h ?? 72)
-                : isPortalHookRail(lower) || (/coat/.test(lower) && /rack|rail|hook|peg/.test(lower))
+                : isPortalHookRail(lower) || (namesCoatHang(lower, /rack|rail|hook|peg/))
                   ? 6
                   : isPortalSpanShelf(lower)
                     ? (trip.h && trip.h >= 60 ? trip.h : 80)
@@ -811,7 +816,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 9
                   : (/coat/.test(lower) || program === "bench") && /\bbench\b/.test(lower)
                     ? 16
-                  : /coat/.test(lower) && /rack/.test(lower)
+                  : namesCoatHang(lower, /rack/)
                     ? 8
                     : /range\s*hood|\bhood\b/.test(lower)
                       ? 18
@@ -1159,6 +1164,18 @@ export function parseBrief(prompt: string): FittedSpec | null {
     height = trip.d;
   }
 
+  // A small stored item (cups, tumblers) sizes a shelf unit's untyped axes: two rows of openings its
+  // height, and its depth plus an inch.
+  {
+    const small = purposeOf(lower);
+    const sized = lower.replace(/\b\d+\s*-?\s*(?:oz|ounces?)\b/g, " ");
+    if (small && !small.item.outdoor && small.item.clear.h <= 16 && /\bshel(?:f|ves)\b/.test(lower) && program === "storage") {
+      const said = (w: string) => new RegExp(String.raw`\d\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:${w})\b`).test(sized);
+      const bare = !/\d/.test(sized);
+      if (bare || !said("tall|high|height")) height = 2 * (small.item.clear.h + 0.75) + 1.5;
+      if (bare || !said("deep|depth")) depth = small.item.clear.d + 1;
+    }
+  }
   const unit: FittedUnit = {
 
     width,
@@ -1303,7 +1320,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? "Wine rack"
                       : isCoatCubbyWall(lower)
                         ? "Coat and cubby wall"
-                      : /coat/.test(lower) && /rack|rail|rod|hook|peg|tree/.test(lower) && !isCoatCubbyWall(lower)
+                      : namesCoatHang(lower, /rack|rail|rod|hook|peg|tree/) && !isCoatCubbyWall(lower)
                         ? /rod/.test(lower)
                           ? "Coat rod"
                           : /rail/.test(lower)

@@ -1016,24 +1016,24 @@
     "id": "doll-bed",
     "prompt": "doll bed",
     "bucket": "craft-kit",
-    "name": "Doll Bed",
+    "name": "Doll bed 20\" × 4 1/2\" × 11\"",
     "kind": "closet",
     "material": "popsicle-standard",
     "overall": {
-      "width": 4.5,
-      "height": 2.5,
-      "depth": 3.5
+      "width": 20,
+      "height": 4.5,
+      "depth": 11
     },
     "panels": 0,
-    "instances": 12,
+    "instances": 91,
     "uniqueParts": [
       "deck",
       "leg",
       "rail"
     ],
     "notesHead": [
-      "Yard built a doll bed as a simple bed frame on legs sized for it. Change any size in Measure.",
-      "Assumed 4 1/2\" wide (default size) — type a width to lock it."
+      "Doll bed for an 18\" doll: 20\" long and 11\" wide so the doll lies flat, rails lapped from whole sticks.",
+      "Yard built a doll bed as a simple bed frame on legs sized for it. Change any size in Measure."
     ],
     "signals": {
       "mentionsYardBuilt": true,
@@ -1239,40 +1239,26 @@
     "id": "record-crate",
     "prompt": "record crate",
     "bucket": "unknown-fallback",
-    "name": "Crate 36\" × 30\" × 24\"",
-    "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "name": "Record crate 15 1/2\" × 11 1/4\" × 15 1/2\"",
+    "kind": "custom",
+    "material": "lumber-1x12-8",
     "overall": {
-      "width": 36,
-      "height": 30,
-      "depth": 24
+      "width": 15.5,
+      "height": 11.25,
+      "depth": 15.5
     },
-    "panels": 19,
+    "panels": 5,
     "instances": 0,
     "uniqueParts": [
-      "Back slat 1",
-      "Back slat 2",
-      "Back slat 3",
-      "Back slat 4",
-      "Door",
-      "Floor",
-      "Left back post",
-      "Left front post",
-      "Left slat 1",
-      "Left slat 2",
-      "Left slat 3",
-      "Left slat 4",
-      "Right back post",
-      "Right front post",
-      "Right slat 1",
-      "Right slat 2",
-      "Right slat 3",
-      "Right slat 4",
-      "Top"
+      "Back side",
+      "Bottom",
+      "Front side",
+      "Left end",
+      "Right end"
     ],
     "notesHead": [
-      "Crate 36\" × 30\" × 24\". Wooden kennel the dog goes inside — slatted sides and back, a floor, a top, and a hinged door you can see through. ¾\" plywood. No shelves.",
-      "The door is 27\" tall, leaving a 1 1/2\" air gap at the top. Drill three 1½\" holes near the top of each side and the back so it can breathe."
+      "Record crate 15 1/2\" × 11 1/4\" × 15 1/2\": open top, 14\" inside across for LP records (13\" deep) and 14\" inside along the row; 11 1/4\" walls hold them upright with the tops standing clear to flip through.",
+      "Glue and screw the sides between the ends, then screw the 1/2\" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1317,30 +1303,35 @@
     "id": "firewood-rack",
     "prompt": "firewood rack",
     "bucket": "unknown-fallback",
-    "name": "Firewood Rack 48\" × 48\" × 16\"",
-    "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "name": "Firewood rack 8' × 4'",
+    "kind": "custom",
+    "material": "lumber-2x4-8",
     "overall": {
-      "width": 48,
+      "width": 96,
       "height": 48,
-      "depth": 16
+      "depth": 18.5
     },
-    "panels": 6,
+    "panels": 11,
     "instances": 0,
     "uniqueParts": [
-      "Back",
-      "Bottom",
-      "Center support 1",
-      "Left upright",
-      "Right upright",
-      "Top"
+      "Base rail back",
+      "Base rail front",
+      "Sleeper 1",
+      "Sleeper 2",
+      "Sleeper 3",
+      "Top tie left",
+      "Top tie right",
+      "Upright left back",
+      "Upright left front",
+      "Upright right back",
+      "Upright right front"
     ],
     "notesHead": [
-      "Yard built a firewood rack as a simple open frame sized for it. Change any size in Measure.",
-      "Firewood Rack 48\" × 48\" × 16\". Freestanding carcase — still square, still a cut list."
+      "Firewood rack 8' × 4': two 2×4 base rails on edge sit on 3 2×4 sleepers, 5\" off the ground, with doubled 2×4 uprights at each end screwed to the rail ends and tied across the top. Open front, back and top so the wood dries.",
+      "Stack 16\" logs across the rails between the uprights: 89\" long by 43\" high, about 0.75 face cord."
     ],
     "signals": {
-      "mentionsYardBuilt": true,
+      "mentionsYardBuilt": false,
       "craftStock": false,
       "hasKnee24": false,
       "partBudgetOk": true

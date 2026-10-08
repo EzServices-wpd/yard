@@ -120,13 +120,14 @@ describe("a product the family list missed stays that product", () => {
     assert.match(item?.notes ?? "", /12 5\/16/);
     assert.ok(!cup.notes.some((note) => /popsicle|craft stick/i.test(note)));
 
+    // A shelf for the cup is shelving sized for it (the purpose table): openings taller than the
+    // 12.3" cup and deeper than its 5.82" handle-to-rim, the cup named in the notes. A stand / holder keeps the one cup.
     const shelf = generateFromPrompt("shelf for a Stanley Quencher 40 oz");
-    assert.notEqual(shelf.kind, "closet");
-    const held = getCatalogItem(shelf.instances[0].catalogId);
-    assert.equal(held?.shape, "cup");
-    assert.equal(held?.dims.length, 12.3);
-    assert.ok(shelf.panels.some((panel) => /^Leg \d|post/i.test(panel.name)), "the stand stands on legs");
-    assert.ok(shelf.panels.some((panel) => panel.name === "Deck"), "the held product sits on a solid deck sized to it");
+    assert.ok(shelf.panels.some((panel) => /shelf/i.test(panel.name)), shelf.panels.map((p) => p.name).join(", "));
+    assert.ok(shelf.overall.depth >= 5.82 + 0.75, `depth ${shelf.overall.depth}`);
+    assert.ok(shelf.notes.some((n) => /Sized for 40 oz Stanley Quencher cups: .*\(13 1\/2" needed\)/.test(n)), shelf.notes.join(" | "));
+    const stand = generateFromPrompt("stand for a Stanley Quencher 40 oz");
+    assert.equal(getCatalogItem(stand.instances[0].catalogId)?.dims.length, 12.3);
   });
 
   it("places a tape measure, a knob, and a cube instead of craft sticks", () => {

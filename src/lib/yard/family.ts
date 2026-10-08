@@ -426,7 +426,7 @@ export function isCoatHookBoard(lower: string) {
   if (isCoatCubbyWall(lower)) return false;
   if (/tool\s*rail|leash\s*rail|peg\s*rail|key\s*(?:and|&)\s*mail|ironing/.test(lower)) return false;
   if (/coat\s*hook\s*board|hook\s*board|coat\s*board/.test(lower)) return true;
-  if (/coat/.test(lower) && /hook/.test(lower) && /\bboard\b/.test(lower)) return true;
+  if (namesCoatHang(lower, /hook/) && /\bboard\b/.test(lower)) return true;
   return false;
 }
 
@@ -507,6 +507,21 @@ export function isKeyMailShelf(lower: string) {
  * Coat + cubby dual wall — four cubbies + full-width coat rod (not Coat rod–only).
  * Sit bench / coat+bench stay seat path.
  */
+/** The words before a feature tail ("… with a rod", "… with 2 drawers"): the class lives here, features after. */
+export function headClause(lower: string): string {
+  return lower.split(/\s+(?:with|having|including|plus)\s+/)[0];
+}
+
+/**
+ * A coat rod / rack / hook build. A hanging word after "with" is a feature of the carcase the head names
+ * ("coat closet with a rod" is a closet), never the class.
+ */
+export function namesCoatHang(lower: string, words: RegExp): boolean {
+  if (!/coat/.test(lower) || !words.test(lower)) return false;
+  const head = headClause(lower);
+  return words.test(head) || !/\b(?:closets?|wardrobes?|armoires?|cabinets?|cupboards?|lockers?|pantr(?:y|ies))\b/.test(head);
+}
+
 export function isCoatCubbyWall(lower: string) {
   if (!/coat/.test(lower)) return false;
   if (!/cubb/.test(lower)) return false;
@@ -829,7 +844,7 @@ export function isPortalHookRail(lower: string) {
   // Ironing board wall mount is hung-open shop/laundry class — never portal steal.
   if (isIroningWallMount(lower) || /ironing/.test(lower)) return false;
   if (isShoePortalRail(lower) || isShoePortalCubbies(lower) || isTowelPortalRail(lower)) return false;
-  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) return true;
+  if (namesCoatHang(lower, /rod|rail|rack|tree|peg|hook/)) return true;
   if (/hook|peg/.test(lower) && /rail|rack|board/.test(lower)) return true;
   // Hooks/pegs densify in a door portal even without the word "rail".
   if (/hooks?|pegs?/.test(lower) && /clear\s*swing|mount|over[- ]?door/.test(lower)) return true;
@@ -1225,10 +1240,10 @@ export function identityTitleStem(lower: string): string | null {
   if (isPortalHookRail(lower)) return portalHookRailTitle(lower);
   if (isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)) return openCubbyWallTitle(lower);
   // Coat rod/rail spanning a door portal — not a shelving niche / storage unit.
-  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower) && isDoorPortal(lower)) {
+  if (namesCoatHang(lower, /rod|rail|rack|tree|peg|hook/) && isDoorPortal(lower)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
   }
-  if (/coat/.test(lower) && /rod|rail|rack|tree|peg|hook/.test(lower)) {
+  if (namesCoatHang(lower, /rod|rail|rack|tree|peg|hook/)) {
     return /rod/.test(lower) ? "Coat rod" : /rail/.test(lower) ? "Coat rail" : "Coat rack";
   }
   if (wantsShoes(lower)) return "Shoe rack";
@@ -1237,6 +1252,9 @@ export function identityTitleStem(lower: string): string | null {
   if (media) return media;
   // Linen closet keeps Linen stem — never bare Closet (Entry bench pattern).
   if (/\blinen\b/.test(lower)) return "Linen";
+  // The word the person put before "closet" names it ("coat closet", "hall closet") — never bare Closet.
+  const closetWord = headClause(lower).match(/\b(coat|hall|utility|entry|cleaning|supply|game|gear)\s+closet\b/);
+  if (closetWord) return `${closetWord[1].charAt(0).toUpperCase()}${closetWord[1].slice(1)} closet`;
   // Bookcase / floating shelf stems — densify Assumed klass (never naked Storage unit).
   if (/bookcase|bookshelf/.test(lower)) return "Bookcase";
   if (/floating/.test(lower) && /shelves/.test(lower)) return "Floating shelves";
@@ -1272,6 +1290,8 @@ export function mediaIdentityLabel(lower: string): string | null {
   if (/\btv\b/.test(lower) && /stand\s+footprint|footprint\s+clear|clear below/.test(lower) && !/console/.test(lower)) {
     return null;
   }
+  // The head noun typed names it: a TV stand stays a stand.
+  if (/\b(?:tv|television|media)\s+stand\b/.test(lower)) return "TV stand";
   if (/\btv\b/.test(lower)) return "TV console";
   if (/console/.test(lower)) return "Media console";
   if (/\bmedia\b/.test(lower)) return "Media console";
@@ -1383,7 +1403,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   }
 
   // Coat + bench is a floor seat with a peg rail — not a wall-only coat rack.
-  const coatBench = /coat/.test(lower) && /bench/.test(lower);
+  const coatBench = namesCoatHang(lower, /bench/);
 
   const fold = isIroning(lower) || isFoldDown(lower);
 
@@ -1400,7 +1420,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       isMedicine(lower) ||
       isIroning(lower) ||
       fold ||
-      (/coat/.test(lower) && /rack|rail|rod|tree|peg|hook/.test(lower)) ||
+      (namesCoatHang(lower, /rack|rail|rod|tree|peg|hook/)) ||
       /hall\s*tree|coat\s*tree|entry\s*tree/.test(lower) ||
       /range\s*hood|kitchen\s*hood|extractor\s*hood/.test(lower) ||
       (/\bhood\b/.test(lower) && !/child|robin|likelihood/.test(lower)) ||
@@ -1438,7 +1458,7 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
       (/\bdesk\b|workbench|work table|\bvanity\b|\bsink\b|island|ironing|\btable\b/.test(lower) &&
         !/console table|sofa table|entry console|bedside table|night table/.test(lower)));
   const hangUse =
-    (/coat/.test(lower) && /rack|rail|rod|hook|peg/.test(lower)) ||
+    (namesCoatHang(lower, /rack|rail|rod|hook|peg/)) ||
     (/closet|wardrobe/.test(lower) && /rod|hang/.test(lower)) ||
     isPortalHookRail(lower) ||
     isTowelPortalRail(lower) ||
@@ -1519,10 +1539,10 @@ export function detectHouseFamily(prompt: string): HouseHit | null {
   // Storage-hutch class densifies lower cabinet doors (not dresser drawer bank).
   if (isStorageHutch(lower)) add("door");
   if (
-    (/coat/.test(lower) && /rack|rail|rod|hook|peg|bench|tree/.test(lower)) ||
+    (namesCoatHang(lower, /rack|rail|rod|hook|peg|bench|tree/)) ||
     /hook|peg rail|coat\s*rail|coat\s*rod/.test(lower) ||
     /hall\s*tree|entry\s*tree/.test(lower) ||
-    (/coat/.test(lower) && /bench/.test(lower)) ||
+    (namesCoatHang(lower, /bench/)) ||
     isPortalHookRail(lower) ||
     isToolRail(lower)
   ) {

@@ -1902,9 +1902,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
 
+  // A kennel has a door; an open-top carry crate (record crate) is not one.
   const crate =
-    /crate|dog\s*house|kennel/i.test(project.name) ||
-    /crate|dog\s*-?\s*house|doghouse|kennel/.test((project.prompt ?? "").toLowerCase());
+    doors.length > 0 &&
+    (/crate|dog\s*house|kennel/i.test(project.name) ||
+      /crate|dog\s*-?\s*house|doghouse|kennel/.test((project.prompt ?? "").toLowerCase()));
   if (crate) {
     const door = doors[0];
     const floor = bottoms[0];

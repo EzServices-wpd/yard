@@ -16,7 +16,7 @@ import {
   mediaIdentityLabel, sitBenchTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman,
   isSeatingLoungeClass, isAvTower, isBedsideShelf, isBootTrayBench, isBookBinBench, isBunkBed,
   isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle,
-  isCoatCubbyWall, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase,
+  isCoatCubbyWall, namesCoatHang, isDaybed, isDryingRack, isFoldDown, isFoldingTable, isHouseMediaCarcase,
   isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isKitchenBase, isKitchenIsland, isKitchenUpper,
   isLaundryFoldDown, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLoftBed,
   isLumberRack, isMediaShelf, isOpenKitchenShelving, isOutdoorSideTable, isSideEndTable, sideEndTableStem,
@@ -57,6 +57,8 @@ import {
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
 import { purposeOf } from "./purpose";
+import { buildItemCrate } from "./realObjects";
+import { PET_ANIMAL } from "./fallbackPrimitive";
 import {
   LITTER_BOX,
   LITTER_HOLE,
@@ -1647,7 +1649,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !isKeyMailShelf(coatLower) &&
     (portalHook ||
       toolRail ||
-      (/coat/.test(coatLower) && /rack|rail|rod|tree|peg|hook/.test(coatLower)) ||
+      namesCoatHang(coatLower, /rack|rail|rod|tree|peg|hook/) ||
       /hall\s*tree|entry\s*tree/.test(coatLower));
   // Coat + bench stays the seat/cubby path when both are named — hooks affordance flags the pegs.
   if (coatRack && !(/coat/.test(coatLower) && /bench/.test(coatLower)) && !isCoatCubbyWall(coatLower)) {
@@ -2017,33 +2019,42 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  const crate = /crate|dog\s*-?\s*house|doghouse|kennel/.test(prompt.toLowerCase());
+  const crateLower = prompt.toLowerCase();
+  const crate = /crate|dog\s*-?\s*house|doghouse|kennel/.test(crateLower);
   if (crate) {
+    // A crate for a stored item (LP records) is an open-top carry crate sized to the item, not a kennel.
+    const held = /\bcrates?\b/.test(crateLower) && !PET_ANIMAL.test(crateLower) ? purposeOf(prompt) : null;
+    if (held) return buildItemCrate(prompt, held);
+    // A pet crate is about 0.7× its length tall and 0.65× deep unless those are typed.
+    const petCrate = /\bcrates?\b/.test(crateLower) && PET_ANIMAL.test(crateLower);
+    const said = (w: string) => new RegExp(String.raw`\d\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:${w})\b`).test(crateLower);
+    const cH = petCrate && !said("tall|high") ? Math.round(W * 0.7) : H;
+    const cD = petCrate && !said("deep") ? Math.round(W * 0.65) : D;
     const innerW = W - P * 2;
     const doorGap = 1.5;
-    // Door sits on the floor (y = P); clear opening to top underside is H − 2P.
-    // Size the door for a real spoken top air gap (not H − P − gap, which only leaves T).
-    const doorH = Math.max(12, H - 2 * P - doorGap);
+    // Door sits on the floor (y = P); clear opening to top underside is cH − 2P.
+    // Size the door for a real spoken top air gap (not cH − P − gap, which only leaves T).
+    const doorH = Math.max(12, cH - 2 * P - doorGap);
     const slatSide = (x: number, name: string) => {
-      panels.push(panel("upright", `${name} front post`, x, 0, D - P, P, H, P));
-      panels.push(panel("upright", `${name} back post`, x, 0, 0, P, H, P));
-      const n = Math.max(3, Math.min(5, Math.round(H / 7)));
+      panels.push(panel("upright", `${name} front post`, x, 0, cD - P, P, cH, P));
+      panels.push(panel("upright", `${name} back post`, x, 0, 0, P, cH, P));
+      const n = Math.max(3, Math.min(5, Math.round(cH / 7)));
       for (let i = 0; i < n; i++) {
-        const y = 2 + ((H - 6) * i) / Math.max(1, n - 1);
-        panels.push(panel("rail", `${name} slat ${i + 1}`, x, y, P, P, 2, D - P * 2));
+        const y = 2 + ((cH - 6) * i) / Math.max(1, n - 1);
+        panels.push(panel("rail", `${name} slat ${i + 1}`, x, y, P, P, 2, cD - P * 2));
       }
     };
     slatSide(x0, "Left");
     slatSide(x0 + W - P, "Right");
-    const backN = Math.max(3, Math.min(5, Math.round(H / 7)));
+    const backN = Math.max(3, Math.min(5, Math.round(cH / 7)));
     for (let i = 0; i < backN; i++) {
-      const y = 2 + ((H - 6) * i) / Math.max(1, backN - 1);
+      const y = 2 + ((cH - 6) * i) / Math.max(1, backN - 1);
       panels.push(panel("rail", `Back slat ${i + 1}`, x0 + P, y, 0, innerW, 2, P));
     }
-    panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, D - P));
-    panels.push(panel("top", "Top", x0 + P, H - P, P, innerW, P, D - P));
+    panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, cD - P));
+    panels.push(panel("top", "Top", x0 + P, cH - P, P, innerW, P, cD - P));
     const doorW = innerW - 0.12;
-    const door = panel("door", "Door", x0 + P + 0.06, P, D - P, doorW, doorH, P);
+    const door = panel("door", "Door", x0 + P + 0.06, P, cD - P, doorW, doorH, P);
     const holes: { x: number; y: number; r: number }[] = [];
     const cols = Math.max(2, Math.round(doorW / 6));
     const rows = Math.max(3, Math.round(doorH / 6));
@@ -2064,14 +2075,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       holes,
     };
     panels.push(door);
-    const dog = /dog/.test(prompt.toLowerCase());
-    const name = dog ? `Dog house ${W}" × ${H}" × ${D}"` : /kennel/.test(prompt.toLowerCase()) ? `Kennel ${W}" × ${H}" × ${D}"` : `Crate ${W}" × ${H}" × ${D}"`;
+    const dog = /dog/.test(crateLower);
+    // The head word typed names it: a dog crate stays a crate, a dog house a house.
+    const headWord = /kennel/.test(crateLower) ? "Kennel" : /\bcrates?\b/.test(crateLower) ? "crate" : "house";
+    const name = `${headWord === "Kennel" ? "Kennel" : dog ? `Dog ${headWord}` : headWord === "crate" ? "Crate" : "Dog house"} ${W}" × ${cH}" × ${cD}"`;
     return {
       id: createId("proj"),
       name,
       prompt,
       kind: "closet",
-      overall: { width: W, height: H, depth: D },
+      overall: { width: W, height: cH, depth: cD },
       instances: [],
       panels,
       primaryMaterialId: PLY,
@@ -2081,11 +2094,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         "Latch the door with a barrel bolt. Sits on the floor. Not a bookcase.",
       ],
       historic: false,
-      opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
+      opening: { ...spec.opening, width: W, height: cH, depth: cD, kind: "room" },
       fitted: {
         ...spec,
         name,
-        unit: { ...u, height: H, depth: D, doors: true, shelfCount: 0, drawersPerBank: undefined },
+        unit: { ...u, height: cH, depth: cD, doors: true, shelfCount: 0, drawersPerBank: undefined },
       },
       assumptions: {
         load: "medium",

@@ -142,7 +142,10 @@ export function buildJobFurniture(prompt: string): YardProject {
   const board = named && /\bchair\b/.test(lower) ? boardOf(named.id) : null;
   if (board) return buildBoardChair(prompt, board);
   // Seat heights people sit at: a bar stool at a 42" bar, a counter stool at a 36" counter, else a chair.
-  const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, /\bbar\s*stool/.test(lower) ? 30 : /\bcounter\s*stool/.test(lower) ? 24 : 18);
+  // A stool's typed height is its seat height ("bar stool 30 tall").
+  const stool = /\bstools?\b/.test(lower);
+  const tall = stool ? num(prompt, /(\d+(?:\.\d+)?)\s*(?:"|inch(?:es)?|in)?\s*(?:tall|high)\b/i, NaN) : NaN;
+  const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, Number.isFinite(tall) ? tall : /\bbar\s*stool/.test(lower) ? 30 : /\bcounter\s*stool/.test(lower) ? 24 : 18);
   const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, /\bchair\b|\bstool\b/.test(lower) ? 18 : 36);
   const depth = num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, /\bchair\b|\bstool\b/.test(lower) ? 16 : 18);
   const leg = 1.5;
@@ -162,12 +165,23 @@ export function buildJobFurniture(prompt: string): YardProject {
   panels.push(panel("rail", "Left apron", x0, seatH - 3.5, leg, 0.75, 3.5, depth - leg * 2, ply));
   panels.push(panel("rail", "Right apron", x0 + width - 0.75, seatH - 3.5, leg, 0.75, 3.5, depth - leg * 2, ply));
   panels.push(panel("deck", "Seat", x0, seatH - 0.75, 0, width, 0.75, depth, ply));
+  // A seat at counter or bar height gets a footrest rail all round, about 19" below the seat.
+  if (seatH >= 24 && !chair) {
+    const fy = Math.max(7, seatH - 19);
+    panels.push(panel("rail", "Front footrest", x0 + leg, fy, depth - 0.75, width - leg * 2, 2.5, 0.75, ply));
+    panels.push(panel("rail", "Back footrest", x0 + leg, fy, 0, width - leg * 2, 2.5, 0.75, ply));
+    panels.push(panel("rail", "Left footrest", x0, fy, leg, 0.75, 2.5, depth - leg * 2, ply));
+    panels.push(panel("rail", "Right footrest", x0 + width - 0.75, fy, leg, 0.75, 2.5, depth - leg * 2, ply));
+  }
   if (chair) {
     panels.push(panel("upright", "Back left upright", x0, seatH, 0, leg, backH, leg, stud));
     panels.push(panel("upright", "Back right upright", x0 + width - leg, seatH, 0, leg, backH, leg, stud));
     panels.push(panel("back", "Back", x0 + leg, seatH + 1, 0, width - leg * 2, backH - 2, 0.75, ply));
   }
-  const name = chair ? `Dining chair ${width}" × ${seatH}" seat` : `Seat ${width}" × ${seatH}"`;
+  // The head noun typed names it ("Bar stool", "Bench"); "Seat" only when none is.
+  const stem = lower.match(/\b(?:(bar|counter|kitchen|shop|work|garden|camp|piano|vanity)\s+)?(stool|bench)\b/);
+  const said = stem ? `${stem[1] ? `${stem[1]} ` : ""}${stem[2]}` : "seat";
+  const name = chair ? `Dining chair ${width}" × ${seatH}" seat` : `${said.charAt(0).toUpperCase()}${said.slice(1)} ${width}" × ${seatH}"${stem ? " seat" : ""}`;
   return {
     id: createId("proj"),
     name,
@@ -236,6 +250,8 @@ export function jobFurnitureSteps(project: YardProject): AssemblyStep[] {
     { step: 3, title: "Stand the 4 legs", description: "Stand the 4 legs on the marks. Fasten the pairs with the screws on the Buy list.", partsUsed: ["Front left leg", "Front right leg", "Back left leg", "Back right leg"] },
     { step: 4, title: "Set the 4 aprons on the legs", description: "Set the front, back, left, and right aprons on the legs. Fasten with #8 x 1 1/4\" screws, the same screws on the Buy list.", partsUsed: ["Front apron", "Back apron", "Left apron", "Right apron"] },
   ];
+  const foot = project.panels.filter((p) => / footrest$/.test(p.name)).map((p) => p.name);
+  if (foot.length) steps.push({ step: 5, title: "Fit the footrest rails between the legs", description: "Glue and screw the four footrest rails between the legs, level all round. Fasten with #8 x 1 1/4\" screws, the same screws on the Buy list.", partsUsed: foot });
   if (seat) steps.push({ step: 5, title: "Set the seat on the aprons", description: "Set the seat on the aprons. Fasten with #8 x 1 1/4\" screws, the same screws on the Buy list.", partsUsed: ["Seat"] });
   if (back) steps.push({ step: 6, title: "Set the back on the seat", description: "Set the back uprights and the back on the seat. Fasten with #8 x 1 1/4\" screws, the same screws on the Buy list.", partsUsed: ["Back left upright", "Back right upright", "Back"] });
   steps.push({ step: steps.length + 1, title: "Sit on it", description: "Sit on the seat. It should feel solid. If an apron rocks, re-join that joint.", partsUsed: ["Seat"] });

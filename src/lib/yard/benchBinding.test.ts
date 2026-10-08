@@ -65,7 +65,7 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
     assert.ok((r.leg ?? r.upright) > 0 && r.deck > 0 && r.rail > 0, JSON.stringify(r));
     assert.ok(!r.bottom, JSON.stringify(r));
     assert.doesNotMatch(bed.prompt, /planter/);
-    assert.match(bed.notes[0], /bed frame on legs/);
+    assert.ok(bed.notes.some((n) => /bed frame on legs/.test(n)), bed.notes.join(" | "));
     assert.equal(bed.typedPrompt, "doll bed");
   });
 
@@ -76,7 +76,8 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
     assert.match(names, /Rail/i);
     assert.match(names, /Deck/i);
     assert.doesNotMatch(names, /^Standard Popsicle Stick$/);
-    assert.ok(plan.cutList.reduce((s, c) => s + c.quantity, 0) <= 40);
+    // Sized for an 18" doll (about 20" × 11"): whole sticks lapped along each run, still a kit-sized count.
+    assert.ok(plan.cutList.reduce((s, c) => s + c.quantity, 0) <= 120);
   });
 
   it("doll bed marked cuts fit one popsicle stick", () => {

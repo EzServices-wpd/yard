@@ -28,11 +28,15 @@ export const STORED_ITEMS: StoredItem[] = [
   { id: "books", title: "Book", label: "books", re: /\b(?:books?|paperbacks?)\b/, clear: { h: 11, d: 10 } },
   { id: "towels", title: "Towel", label: "folded towels", re: /\btowels?\b/, clear: { h: 12, d: 14 } },
   { id: "firewood", title: "Firewood", label: "16\" firewood", re: /\b(?:firewood|logs?)\b/, clear: { h: 12, d: 16 }, outdoor: true },
+  // Drinkware by its real size: a 40 oz Quencher stands 12 1/2" with its straw and 6 1/2" deep with the handle in;
+  // a 20–30 oz tumbler or mug about 7" tall and 4" across.
+  { id: "quencher", title: "Quencher", label: "40 oz Stanley Quencher cups", re: /\b(?:stanley\s+)?quenchers?(?:\s+(?:h2\.0\s+)?\d+\s*-?\s*(?:oz|ounces?))?\b|\bstanley\s+(?:\d+\s*-?\s*(?:oz|ounces?)\s+)?(?:cups?|tumblers?)\b/, clear: { h: 13.5, d: 7 } },
+  { id: "tumblers", title: "Tumbler", label: "tumblers and mugs", re: /\b(?:(?:yeti|rambler|hydro\s*flask|owala)\s+)*(?:\d+\s*-?\s*(?:oz|ounces?)\s+)?(?:tumblers?|mugs?|travel\s+mugs?|water\s+bottles?)\b/, clear: { h: 8, d: 5 } },
   { id: "bikes", title: "Bike", label: "bikes", re: /\b(?:bikes?|bicycles?)\b/, clear: { h: 44, d: 70, w: 24 }, perBay: true, outdoor: true },
 ];
 
 /** Class words a purpose noun can lead ("broom closet", "record console", "bin enclosure"). */
-const CLASS = String.raw`(?:closets?|cupboards?|cabinets?|consoles?|credenzas?|sideboards?|stands?|enclosures?|corrals?|surrounds?|hideaways?|sheds?|storage|lockers?|cubbies|cubby|towers?)`;
+const CLASS = String.raw`(?:closets?|cupboards?|cabinets?|consoles?|credenzas?|sideboards?|stands?|enclosures?|corrals?|surrounds?|hideaways?|sheds?|storage|lockers?|cubbies|cubby|towers?|crates?|shel(?:f|ves)|racks?|organi[sz]ers?|holders?|displays?)`;
 
 const COUNT: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, a: 1, an: 1, single: 1, double: 2, pair: 2 };
 
@@ -43,14 +47,18 @@ export function purposeOf(prompt: string): Purpose | null {
   const lower = prompt.toLowerCase();
   for (const item of STORED_ITEMS) {
     const src = item.re.source;
-    const lead = lower.match(new RegExp(String.raw`(?:${src})(?:\s+(?:and|&|\/)\s+\w+)?\s+${CLASS}\b`));
+    // A stored item leading a class word names the build only before a feature tail ("bench with shoe shelf" is a bench).
+    const lead = lower.split(/\s+(?:with|having|including|plus)\s+/)[0].match(new RegExp(String.raw`(?:${src})(?:\s+(?:and|&|\/)\s+\w+)?\s+${CLASS}\b`));
     const forM = lower.match(new RegExp(String.raw`\bfor\s+(?:(?:my|the|our|your)\s+)?(?:(\d+|one|two|three|four|five|six|a|an|single|double|pair of)\s+)?(?:\w+\s+){0,2}?(?:${src})`));
     if (!lead && !(forM && new RegExp(String.raw`\b${CLASS}\b`).test(lower))) continue;
-    const n = lower.match(new RegExp(String.raw`\b(\d+|one|two|three|four|five|six|single|double)\s+(?:\w+\s+)?(?:${src})`)) ?? lower.match(/\bfor\s+(\d+|one|two|three|four|five|six)\b/);
+    const n = lower.match(new RegExp(String.raw`\b(\d+|one|two|three|four|five|six|single|double)\s+(?!(?:oz|ounces?)\b)(?:\w+\s+)?(?:${src})`)) ?? lower.match(/\bfor\s+(\d+|one|two|three|four|five|six)\b/);
     const said = (n?.[1] ?? forM?.[1] ?? "").replace(/\s+of$/, "");
     const count = said ? Number(said) || COUNT[said] || 1 : item.perBay ? 2 : 1;
     const phrase = (lead ?? forM)![0];
-    const word = (phrase.match(item.re)?.[0] ?? item.title.toLowerCase()).replace(/(?<!s)s$|(?<=sh|ch)es$/, "");
+    const word = (phrase.match(item.re)?.[0] ?? item.title.toLowerCase())
+      .replace(/\s*\b(?:h2\.0\s+)?\d+\s*-?\s*(?:oz|ounces?)\b\s*/g, " ")
+      .trim()
+      .replace(/(?<!s)s$|(?<=sh|ch)es$/, "");
     return { item, count: Math.max(1, Math.min(6, count)), phrase, word };
   }
   return null;
