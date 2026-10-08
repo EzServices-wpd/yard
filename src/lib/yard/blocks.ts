@@ -566,7 +566,7 @@ function neckS(b: Bench, base: Vec3, length: number, angles: number[], width: nu
   return { top: p, segs: angles.length };
 }
 
-function buildNeck(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildNeck(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   if (s.cutout || blockKit(item).kind === "sheet") return buildNeckCutout(prompt, s, item, typed);
   const b = new Bench(blockKit(item));
   const k = b.kit;
@@ -663,7 +663,7 @@ function ellipsePoly(cx: number, cy: number, rx: number, ry: number, n = 20): P2
 }
 
 /** Flat cutout: body, S neck, head, beak and stilt legs in one side profile, standing on a base with foot cleats. */
-function buildNeckCutout(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildNeckCutout(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const isSheet = item.formFactor === "sheet" || item.category === "sheet_goods" || item.category === "cardboard";
   const sheet = isSheet ? item : getCatalogItem("plywood-1-2-4x8")!;
   const b = new Bench(blockKit(sheet));
@@ -764,7 +764,7 @@ function wheelSet(b: Bench, xs: number[], halfZ: number, d: number, axleStock: s
   return { yTop: yA + blockH / 2, blockH, wheelT, axD };
 }
 
-function buildWheels(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildWheels(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const b = new Bench(blockKit(item));
   const k = b.kit;
   const veh = s.vehicle ?? "car";
@@ -850,7 +850,7 @@ function buildWheels(prompt: string, s: BlockSubject, item: CatalogItem, typed: 
 
 // ---------------------------------------------------------------- TUBE block
 
-function buildTube(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildTube(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const b = new Bench(blockKit(item));
   const k = b.kit;
   const lower = prompt.toLowerCase();
@@ -886,15 +886,19 @@ function buildTube(prompt: string, s: BlockSubject, item: CatalogItem, typed: { 
     return finish(b, s, s.label, "custom", { tubeD: r16(d), length: r16(L), inside: r16(d - 2 * T), fins: 4, crossTail: 1, tower: 1, horizontal: 1, door: kid ? 1 : 0 }, notes);
   }
   const H = typed.height ?? (k.kind === "sheet" ? 36 : 14);
-  const d = kid ? Math.max(20, H * 0.5) : H * 0.22;
+  const nFins = /\b(?:three|3)\s+fins/.test(lower) ? 3 : 4;
+  const finOut = (dd: number) => Math.max(0.3 * dd, 2);
+  // A typed width is the rocket's width across the fins: solve the body diameter for it.
+  const across = (dd: number) => 2 * Math.max(dd / 2, ...Array.from({ length: nFins }, (_, i) => Math.abs(Math.cos((2 * Math.PI * (i + 0.5)) / nFins)) * (dd / 2 + finOut(dd))));
+  let d = kid ? Math.max(20, H * 0.5) : H * 0.22;
+  if (typed.width && !kid) for (let i = 0; i < 6; i++) d *= typed.width / across(d);
   const noseL = Math.min(H * 0.32, d * 0.9);
-  const finSpan = Math.max(0.3 * d, 2);
+  const finSpan = finOut(d);
   const finChord = Math.min(H * 0.3, d * 0.6);
   const tubeL = H - noseL;
   const door = kid ? { from: 2, to: Math.min(tubeL - 2.5, 2 + Math.max(18, tubeL * 0.6)), dir: X, arc: rad(80) } : undefined;
   b.tube(v3(0, 0, 0), Y, d, tubeL, "body", door ? { door } : {});
   b.nose(v3(0, tubeL, 0), Y, d, noseL, "nose cone", "point");
-  const nFins = /\b(?:three|3)\s+fins/.test(lower) ? 3 : 4;
   const [u, v] = basis(Y);
   for (let i = 0; i < nFins; i++) {
     const th = (2 * Math.PI * (i + 0.5)) / nFins;
@@ -909,7 +913,7 @@ function buildTube(prompt: string, s: BlockSubject, item: CatalogItem, typed: { 
 
 // ---------------------------------------------------------------- PERCHED body block
 
-function buildPerched(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildPerched(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const b = new Bench(blockKit(item));
   const k = b.kit;
   const lower = prompt.toLowerCase();
@@ -963,7 +967,7 @@ function buildPerched(prompt: string, s: BlockSubject, item: CatalogItem, typed:
 
 // ---------------------------------------------------------------- FIGURE block
 
-function buildFigure(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildFigure(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const kit0 = blockKit(item);
   const limbStock = s.figure === "ball" && kit0.kind !== "dowel" ? getCatalogItem("dowel-1-4-36")! : item;
   const b = new Bench(blockKit(limbStock));
@@ -1048,7 +1052,7 @@ function buildFigure(prompt: string, s: BlockSubject, item: CatalogItem, typed: 
 
 // ---------------------------------------------------------------- TOWERS block (castle)
 
-function buildCastle(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild {
+function buildCastle(prompt: string, s: BlockSubject, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild {
   const b = new Bench(blockKit(item));
   const k = b.kit;
   const lower = prompt.toLowerCase();
@@ -1114,7 +1118,7 @@ function buildCastle(prompt: string, s: BlockSubject, item: CatalogItem, typed: 
 
 // ---------------------------------------------------------------- entry
 
-export function buildBlocks(prompt: string, item: CatalogItem, typed: { length?: number; height?: number }): BlockBuild | null {
+export function buildBlocks(prompt: string, item: CatalogItem, typed: { length?: number; height?: number; width?: number }): BlockBuild | null {
   const s = detectBlockSubject(prompt);
   if (!s) return null;
   if (s.blocks.includes("towers")) return buildCastle(prompt, s, item, typed);

@@ -1,4 +1,5 @@
 import { frontCueNotes } from "./fittedShared";
+import { typedAxisNumber, typedSpan, typedDepth } from "./typedAxis";
 import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
@@ -540,6 +541,16 @@ function addFigureBookend(project: YardProject, prompt: string): YardProject {
       height: Math.round(Math.max(figH + t, t + faceH) * 16) / 16,
       depth: Math.round(Math.max(maxZ - minZ, n * w) * 16) / 16,
     },
+  };
+}
+
+/** Each typed axis keeps its typed value; only untyped axes take the form's default. */
+function keepTypedAxes(box: { width: number; height: number; depth: number }, prompt: string) {
+  const t = stripStockSizes(prompt);
+  return {
+    width: typedSpan(t) ?? box.width,
+    height: typedAxisNumber(t, "height") ?? box.height,
+    depth: typedDepth(t) ?? box.depth,
   };
 }
 
@@ -1199,6 +1210,8 @@ function generateRaw(
       depth: Math.max(6, Math.min(span * 0.14, 14)),
     };
   }
+  // An axis word binds to its axis: a typed axis is never overridden by a form default.
+  if (!opts.sizeOverride) box = keepTypedAxes(box, prompt);
   if (scale === "tabletop") {
     const cap = 12;
     const m = Math.max(box.height, box.width, box.depth, 1);
@@ -1416,7 +1429,8 @@ function buildBlocksProject(
   const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
   const namesMembers = /\b(castles?|towers?|drawbridge|battlements?|keep|turrets?)\b/.test(prompt.toLowerCase());
   if (sheetish && subject.blocks.includes("towers") && !namesMembers) return null;
-  const built = buildBlocks(prompt, item, shapeTyped(stripStockSizes(prompt), opts.sizeOverride));
+  const span = opts.sizeOverride ? null : typedSpan(stripStockSizes(prompt));
+  const built = buildBlocks(prompt, item, { ...shapeTyped(stripStockSizes(prompt), opts.sizeOverride), ...(span ? { width: span } : {}) });
   if (!built) return null;
   const stockItem = getCatalogItem(built.stockId) ?? item;
   const instances: YardInstance[] = built.pieces.map((p) => {

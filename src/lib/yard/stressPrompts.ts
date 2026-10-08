@@ -71,4 +71,11 @@ export const STRESS_PROMPTS = [
   "doll bed from popsicle sticks",
   "mirror frame 24 by 36",
   "sandbox cover 4 by 4",
+  "folding table 48 by 24 36 inches high",
+  "cedar planter 30 long 14 wide 12 tall",
+  "PVC garden arch 4 feet wide",
+  "cardboard rocket 10 wide 28 tall",
+  "sawhorse 32 long",
+  "shoe rack with cubbies",
+  "entry bench with shoe storage",
 ];

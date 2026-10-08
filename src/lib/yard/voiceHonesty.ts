@@ -1356,8 +1356,8 @@ export function fmtUnitEnvelopeInches(
   if (prompt && isClassDefaultDensifyPrompt(prompt)) {
     const axes = typedClassDefaultAxes(prompt);
     const any = axes.width || axes.height || axes.depth;
-    // Bare class-default densify (no digits) — densify may still build; never stamp W×H×D as typed.
-    if (!any) return "—";
+    // Bare class-default densify (no digits): every build shows a size, marked assumed — never as typed.
+    if (!any) return `${fmt(width)}" × ${fmt(height)}" × ${fmt(depth)}" assumed`;
     if (axes.width && !axes.height && !axes.depth) {
       return `${fmt(width)}" wide`;
     }

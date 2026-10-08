@@ -6670,7 +6670,7 @@ console.log("STRANGER PLAN OK", {
       prompt: bare,
       name: proj.name,
     });
-    if (/\d+(?:\.\d+)?"\s*×/.test(hud)) {
+    if (/\d+(?:\.\d+)?"\s*×/.test(hud) && !/\bassumed\b/.test(hud)) {
       failHonesty("bare linen HUD must not present densified triple as typed", { prompt: bare, hud });
     }
   }
@@ -6730,7 +6730,7 @@ console.log("STRANGER PLAN OK", {
     bareVanity.overall.depth,
     { prompt: "bathroom vanity with two doors", name: bareVanity.name },
   );
-  if (/\d+(?:\.\d+)?"\s*×/.test(vanityHud)) {
+  if (/\d+(?:\.\d+)?"\s*×/.test(vanityHud) && !/\bassumed\b/.test(vanityHud)) {
     failHonesty("bare vanity HUD must not present densified triple as typed", vanityHud);
   }
   const vanityTalk = openingStorageMeasureEmptyTalk("bathroom vanity with two doors");
@@ -6757,7 +6757,7 @@ console.log("STRANGER PLAN OK", {
     bareCedar.overall.depth,
     { prompt: "cedar chest with hinged lid", name: bareCedar.name },
   );
-  if (/\d+(?:\.\d+)?"\s*×/.test(cedarHud)) {
+  if (/\d+(?:\.\d+)?"\s*×/.test(cedarHud) && !/\bassumed\b/.test(cedarHud)) {
     failHonesty("bare cedar chest HUD must not present densified triple as typed", cedarHud);
   }
   const cedarTalk = openingStorageMeasureEmptyTalk("cedar chest with hinged lid");
@@ -6881,7 +6881,7 @@ console.log("STRANGER PLAN OK", {
       prompt: c.prompt,
       name: proj.name,
     });
-    if (/\d+(?:\.\d+)?"\s*×/.test(hud)) {
+    if (/\d+(?:\.\d+)?"\s*×/.test(hud) && !/\bassumed\b/.test(hud)) {
       failHonesty(`bare ${c.prompt} HUD must not present densified triple as typed`, hud);
     }
     const talk = openingStorageMeasureEmptyTalk(c.prompt);
