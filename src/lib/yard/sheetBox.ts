@@ -6,6 +6,7 @@ import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { subjectFromPrompt } from "./form";
 import type { CatalogItem, JoinMethod, Panel, StructureKind, YardProject } from "./types";
+import { typedExtents } from "./honesty";
 
 export function wantsSheetBox(prompt: string, item: CatalogItem, kind: StructureKind): boolean {
   const lower = prompt.toLowerCase();
@@ -30,9 +31,17 @@ export function buildSheetBox(
   const lower = prompt.toLowerCase();
   const bird = /birdhouse/.test(lower);
   const castle = kind === "castle" || /castle|fort/.test(lower);
-  const W = bird ? Math.max(size.width, 7) : Math.max(size.width, 16);
-  const D = bird ? Math.max(size.depth, 7) : Math.max(size.depth, 12);
-  const H = bird ? Math.max(size.height, 10) : Math.max(size.height, 14);
+  // A typed axis is the finished outside. A readability minimum applies only to an untyped axis.
+  const labeled = typedExtents(prompt)?.labeled;
+  const W = bird
+    ? (labeled?.width ? size.width : Math.max(size.width, 7))
+    : (labeled?.width ? size.width : Math.max(size.width, 16));
+  const D = bird
+    ? (labeled?.depth ? size.depth : Math.max(size.depth, 7))
+    : (labeled?.depth ? size.depth : Math.max(size.depth, 12));
+  const H = bird
+    ? (labeled?.height ? size.height : Math.max(size.height, 10))
+    : (labeled?.height ? size.height : Math.max(size.height, 14));
   const T = Math.max(item.dims.thickness ?? item.dims.height ?? 0.15, 0.12);
   const x0 = -W / 2;
   const z0 = -D / 2;
@@ -116,7 +125,12 @@ export function buildSheetBox(
     name,
     prompt,
     kind: kind === "castle" ? "castle" : "house",
-    overall: { width: W + 4, height: H + (castle ? 8 : 4), depth: D + 4 },
+    // Typed axes are the finished outside. Padding stays only on untyped axes.
+    overall: {
+      width: labeled?.width ? W : W + 4,
+      height: labeled?.height ? H : H + (castle ? 8 : 4),
+      depth: labeled?.depth ? D : D + 4,
+    },
     instances: [],
     panels,
     primaryMaterialId: item.id,
