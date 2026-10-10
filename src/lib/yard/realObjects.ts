@@ -9,7 +9,7 @@ import { inchFrac } from "./inchText";
 import type { Purpose } from "./purpose";
 import type { Panel, YardProject } from "./types";
 
-export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover";
+export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder";
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
@@ -33,6 +33,7 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head)) return "mirror";
   if (/\b(?:baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gates?$/.test(head)) return "baby-gate";
   if (/\b(?:fire\s*wood|log|wood)\s+(?:racks?|holders?|stands?)$/.test(head)) return "firewood-rack";
+  if (/\b(?:blanket|quilt|towel)\s+ladders?\b/.test(head)) return "rung-ladder";
   if (/\b(?:sand\s*box|sand\s*pit|well|(?:raised\s+)?(?:garden\s+)?bed|fire\s*pit|hot\s*tub)\s+(?:covers?|lids?)$/.test(head)) return "cover";
   return null;
 }
@@ -191,6 +192,33 @@ function buildFirewoodRack(prompt: string, size?: { width: number; height: numbe
   return project(prompt, name, panels, W, H, D, notes, id);
 }
 
+/**
+ * Blanket / quilt / towel ladder: two 1×4 rails on edge with 2×2 rungs screwed between them, leaned against
+ * the wall. The floor carries the rail feet and the wall the rail tops; each rung hangs between the rails.
+ */
+function buildRungLadder(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const W = size?.width ?? axis(lower, "wide|width|across") ?? 20;
+  const H = size?.height ?? axis(lower, "tall|high|height") ?? 72;
+  const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7 };
+  const said = lower.match(/\b(\d+|three|four|five|six|seven)\s+rungs?\b/)?.[1];
+  const n = said ? (words[said] ?? Math.max(2, Math.min(10, parseInt(said, 10)))) : Math.max(3, Math.round((H - 12) / 12));
+  const rail = 0.75, D = 3.5, rung = 1.5;
+  const step = (H - 12) / n;
+  const panels: Panel[] = [
+    panel("upright", "Left rail", 0, 0, 0, rail, H, D, "lumber-1x4-8"),
+    panel("upright", "Right rail", W - rail, 0, 0, rail, H, D, "lumber-1x4-8"),
+  ];
+  for (let i = 0; i < n; i++) panels.push(panel("rail", `Rung ${i + 1}`, rail, r16(12 + i * step), (D - rung) / 2, W - 2 * rail, rung, rung, "lumber-2x2-8"));
+  const title = `${(lower.match(/\b(blanket|quilt|towel)\b/)?.[1] ?? "blanket").replace(/^\w/, (c) => c.toUpperCase())} ladder`;
+  const name = `${title} ${inchFrac(W)}" × ${ft(H)}`;
+  const notes = [
+    `${name}: two 1×4 rails on edge with ${n} 2×2 rungs, ${inchFrac(r16(step))}" apart, the first 12" up. Two screws through each rail into every rung end.`,
+    `Lean it against the wall with the feet about 8" out; a felt pad on each foot keeps it from sliding.`,
+  ];
+  return project(prompt, name, panels, W, H, D, notes, "lumber-1x4-8");
+}
+
 /** Board cover for a sandbox / raised bed / well: 1×6 boards with 1/4" gaps screwed to 2×4 cleats underneath. */
 function buildCover(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
@@ -218,6 +246,7 @@ export function buildRealObject(prompt: string, kind: RealObject, size?: { width
   if (kind === "mirror") return buildMirror(prompt, size);
   if (kind === "baby-gate") return buildBabyGate(prompt, size);
   if (kind === "firewood-rack") return buildFirewoodRack(prompt, size);
+  if (kind === "rung-ladder") return buildRungLadder(prompt, size);
   return buildCover(prompt, size);
 }
 

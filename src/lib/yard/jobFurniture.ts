@@ -49,7 +49,8 @@ export function wantsJobFurniture(prompt: string, materialOverride?: string): bo
   const named = detectMaterial(prompt);
   // A named board builds a real chair from that board (seat boards side by side, doubled legs).
   const boardChair = !!named && boardOf(named.id) != null && /\bchair\b/.test(lower) && !materialOverride;
-  if (named && !boardChair && !/wire/i.test(named.id) && !/popsicle/i.test(named.id)) return false;
+  // Typed plywood or lumber keeps the same seat form; only the stock changes.
+  if (named && !boardChair && !/wire/i.test(named.id) && !/popsicle/i.test(named.id) && !/^(?:plywood|lumber)-/.test(named.id)) return false;
   if (/step-?stool|step-?up|climb\s+stool|adirondack|lounge\s*chair|rocking\s*chair|ottoman/.test(lower)) return false;
   if (/\bcloset\b|\balcove\b|\bpocket\b/.test(lower)) return false;
   return true;

@@ -972,7 +972,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (daybed) {
     const posts = uprights.length ? uprights : panels.filter((p) => /post/i.test(p.name));
     const decks = panels.filter((p) => p.type === "deck" || /sleep deck/i.test(p.name));
-    const dayRails = panels.filter((p) => /backrest|side rail|apron/i.test(p.name));
+    const frame = panels.filter((p) => /backrest|apron/i.test(p.name));
+    const sides = panels.filter((p) => /side rail/i.test(p.name));
     const sheetCuts = panels.map((p) => `${p.name} ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}".`);
     return [
       {
@@ -991,17 +992,24 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the four posts and set the sleep deck",
-        description: `${posts.map(cutLine).join("; ")}. ${decks.map(cutLine).join("; ") || "Sleep deck."}. Screw the deck into the posts at sit/sleep height. Glue the joints too.`,
-        tips: "Square the frame before the backrest goes on.",
-        partsUsed: names([...posts, ...decks]),
+        title: "Stand the four posts and frame them",
+        description: `${[...posts, ...frame].map(cutLine).join("; ")}. Screw the front apron across the front posts and the backrest to the back posts. Glue the joints too.`,
+        tips: "Square the frame before the deck goes on.",
+        partsUsed: names([...posts, ...frame]),
       },
       {
         step: 4,
-        title: "Add the backrest, side rails, and front apron",
-        description: `${dayRails.map(cutLine).join("; ") || "Backrest and rails."}. Screw the backrest to the back posts above the deck. Side rails keep a mattress on the platform. Front apron stiffens the open long side.`,
-        tips: "Sit-test the deck before you finish.",
-        partsUsed: names(dayRails.length ? dayRails : panels),
+        title: "Set the sleep deck on the frame",
+        description: `${decks.map(cutLine).join("; ") || "Sleep deck."}. The deck rests on the front apron and the centre supports; screw it down into them at sit/sleep height.`,
+        tips: "Sit-test the deck before the side rails go on.",
+        partsUsed: names(decks),
+      },
+      {
+        step: 5,
+        title: "Add the side rails",
+        description: `${sides.map(cutLine).join("; ") || "Side rails."}. Side rails sit on the deck against the backrest and keep a mattress on the platform.`,
+        tips: "Round the top edges where you sit.",
+        partsUsed: names(sides),
       },
       {
         step: 5,

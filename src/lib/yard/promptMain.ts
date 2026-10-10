@@ -35,7 +35,7 @@ import { landmarkTitle } from "./formLandmarks";
 import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed, petSurfaceHeight, tidyNotes } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
-import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock } from "./promptHelpers";
+import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock, hasExplicitStock } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell } from "./sheetBox";
@@ -262,14 +262,41 @@ function withAxisOrderNote(project: YardProject, args: Parameters<typeof generat
 const ENGINE_NOTE =
   /^Topology(?:-lite)? ·|^Resolution ·|^Form: .*(?:queried wire|stock is mapped)|^Proportions from the form query|· stock mapped onto the form, not a hull\.$|^Parametric form\.|^Crossings split into end-to-end joints|^Braces stay on the form|^Frame first\. Braces stay on the form|^\d+ nodes · \d+ members before stock cuts$|^Connected structure · \d+ joints/i;
 
+/** Board faces a 3/4" strip is cut from, narrowest first. */
+const BOARDS: [number, string][] = [[1.5, "lumber-1x2-8"], [2.5, "lumber-1x3-8"], [3.5, "lumber-1x4-8"], [5.5, "lumber-1x6-8"]];
+
+/**
+ * With no stock typed, a member is cut from the board its face fits: a 3/4" strip (rail, apron, slat, rung,
+ * box-post side) is a 1× board, and only wide parts (seat, top, deck, wall) stay sheet. A carcase standing
+ * on its own sides keeps its sheet parts; a build on lumber legs or an open frame takes boards.
+ */
+function withLumberMembers(project: YardProject): YardProject {
+  const panels = project.panels ?? [];
+  const onLegs = panels.some((p) => /^lumber-/.test(p.materialId ?? "") && /\b(?:leg|post)s?\b/i.test(p.name));
+  if (!panels.length || ((project.kind === "closet" || project.kind === "opening") && !onLegs)) return project;
+  let changed = false;
+  const next = panels.map((p) => {
+    if (!/^plywood-3-4/.test(p.materialId ?? "") || p.type === "door" || p.type === "drawer") return p;
+    const [t, face, len] = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
+    if (Math.abs(t - 0.75) > 0.01 || len < 3 * face) return p;
+    const board = BOARDS.find(([w]) => face <= w + 0.01);
+    if (!board) return p;
+    changed = true;
+    return { ...p, materialId: board[1] };
+  });
+  return changed ? { ...project, panels: next } : project;
+}
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
   args[0] = normalizeUserPrompt(said);
   const prompt = args[0];
+  const typedBuild = generateTyped(...args);
+  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withLumberMembers(typedBuild);
   const done = withAxisOrderNote(
-    withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(generateTyped(...args), args), prompt), prompt), prompt),
+    withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,
   );
   // The prompt box keeps the person's own words; every build's notes are tidied the same way.
@@ -1058,7 +1085,8 @@ function generateRaw(
     if (frame) return buildOutdoorFrame(prompt, frame, opts.sizeOverride);
     // A real object named by its head noun (framed mirror, baby gate, firewood rack, sandbox cover) builds at real size.
     const real = realObjectKind(prompt, materialOverride);
-    if (real) return buildRealObject(prompt, real, opts.sizeOverride);
+    // A typed-stock towel / blanket ladder keeps its weekend ladder build.
+    if (real && !(real === "rung-ladder" && hasExplicitStock(prompt))) return buildRealObject(prompt, real, opts.sizeOverride);
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.
@@ -1166,7 +1194,14 @@ function generateRaw(
     return enforceWeekendHonesty(withWireNote(buildFlatProject(prompt, item, flatIntent), item));
   }
 
-  if (wantsJobFurniture(prompt, materialOverride)) return buildJobFurniture(prompt);
+  if (wantsJobFurniture(prompt, materialOverride)) {
+    const job = buildJobFurniture(prompt);
+    // Typed or switched plywood / lumber: the same form, every part from that stock.
+    const typed = materialOverride ?? (hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined);
+    // A board chair is already built from its typed board.
+    if (!typed || !/^(?:plywood|lumber)-/.test(typed) || (/^lumber-1x/.test(job.primaryMaterialId ?? "") && !materialOverride)) return job;
+    return { ...job, primaryMaterialId: typed, panels: job.panels.map((p) => ({ ...p, materialId: typed })) };
+  }
   const item = buildStock(prompt, materialOverride);
   // Subject-class shape templates (quadruped…) are deterministic: they beat any LLM form override.
   if (detectShapeClass(prompt) && !weekendMech) {
