@@ -119,7 +119,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   const figure = !figureWordModifiesHead(hay);
   if (figure && LONGNECK.test(hay)) return { anatomy: "figure", kind: "figure", stance: "longneck" };
   if (figure && WYVERN.test(hay)) return { anatomy: "figure", kind: "figure", stance: "wyvern" };
-  if (figure && WINGED.test(hay) && !/plane|airplane/.test(hay))
+  if (figure && WINGED.test(hay) && !/plane|airplane|glider|sailplane/.test(hay))
     return { anatomy: "figure", kind: "figure", stance: "winged" };
   if (figure && (BIPED.test(hay) || /statue/.test(hay)))
     return { anatomy: "figure", kind: "figure", stance: "biped" };
@@ -140,7 +140,7 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
   if (CARCASE.test(hay)) return { anatomy: "carcase", kind: "furniture" };
   if (LOFT.test(hay)) return { anatomy: "loft", kind: "lattice" };
 
-  if (/plane|airplane|jet|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
+  if (/plane|airplane|jet|glider|sailplane|\bcar\b|\btruck\b|\bwagon\b|\bbike\b|\bboat\b|\bship\b/.test(hay))
     return { anatomy: "figure", kind: "vehicle", stance: "quadruped" };
   if (isToyChest(hay)) return { anatomy: "fitted", kind: "closet", named: "Toy chest" };
   if (/house|cabin|shed|hut|cottage|barn|castle|fort/.test(hay) && !/hutch/.test(hay) && !/toy\s*(?:chest|box)|hinged\s*lid/.test(hay))

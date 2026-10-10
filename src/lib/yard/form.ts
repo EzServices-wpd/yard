@@ -156,7 +156,7 @@ const HITS: Hit[] = [
   { re: /\bsaw\s*horses?\b/, kind: "frame", name: "Sawhorse", build: aFrameOps, fit: fitAFrame, wholeMembers: true, note: "Sawhorse: a top beam on an A of two splayed legs at each end, with a brace across each A." },
   { re: /bench/, kind: "furniture", name: "Bench", build: benchOps },
   { re: /rocket|spaceship|missile/, kind: "vehicle", name: "Rocket", build: rocketOps },
-  { re: /plane|airplane|aircraft|jet/, kind: "vehicle", name: "Airplane", build: planeOps },
+  { re: /plane|airplane|aircraft|jet|glider|sailplane/, kind: "vehicle", name: "Airplane", build: planeOps },
   { re: /robot|android/, kind: "figure", name: "Robot", build: robotOps },
   { re: /marble run|marble maze/, kind: "custom", name: "Marble run", build: (s) => guessOps("marble", s) },
   { re: /\bcar\b|\btruck\b|\bwagon\b|\bcart\b|\bvehicle\b/, kind: "vehicle", name: "Wagon", build: wagonOps },
