@@ -10,5 +10,6 @@ test("assembly fastener follows the picked stock join", () => {
   assert.match(p.primaryMaterialId ?? "", /cardboard/);
   assert.equal(Math.round(p.overall.width), 54);
   assert.doesNotMatch(text, /Screw through/);
-  assert.match(text, /Tape or glue/);
+  assert.match(text, /Hot glue/);
+  assert.doesNotMatch(text, /tape or glue/i, "steps name the adhesive Buy lists");
 });

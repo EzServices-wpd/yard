@@ -1412,9 +1412,9 @@ function buildBlocksProject(
   const subject = detectBlockSubject(prompt);
   if (!subject) return null;
   if (subject.figure === "box" && blockKit(item).kind !== "lumber") return null;
-  // Sheet stock builds a closed form as faces of the typed envelope unless the prompt names member features that need the parts-block recipe.
+  // Sheet stock builds a closed form as faces of the typed envelope unless the prompt names member features that need the parts-block recipe. A castle is its towers.
   const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
-  const namesMembers = /\b(towers?|drawbridge|battlements?|keep|turrets?)\b/.test(prompt.toLowerCase());
+  const namesMembers = /\b(castles?|towers?|drawbridge|battlements?|keep|turrets?)\b/.test(prompt.toLowerCase());
   if (sheetish && subject.blocks.includes("towers") && !namesMembers) return null;
   const built = buildBlocks(prompt, item, shapeTyped(stripStockSizes(prompt), opts.sizeOverride));
   if (!built) return null;

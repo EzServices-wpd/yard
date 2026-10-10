@@ -1247,10 +1247,13 @@ function packPlan(
   // Stranger Voice/PDF path — prefer plain words (main box / kick strip) over carcase/toekick/Orbit.
   // Then kit craft: parts-plate letters on every cut + one-join densify with hardware counts.
   const platedCutList = stampPartsPlate(cutList);
+  // Steps name the adhesive Buy lists: hot-glue stock never reads "tape or glue".
+  const hot = bom.some((b) => /hot glue sticks/i.test(b.name));
+  const glueTalk = (t: string) => (hot ? t.replace(/\bTape or glue\b/g, "Hot glue").replace(/\btape or glue\b/g, "hot glue") : t);
   const plainInstructions = instructions.map((s) => ({
     ...s,
     title: strangerPlainShopTalk(s.title),
-    description: strangerPlainShopTalk(s.description),
+    description: glueTalk(strangerPlainShopTalk(s.description)),
     tips: s.tips ? strangerPlainShopTalk(s.tips) : s.tips,
   }));
   const kitInstructions = densifyKitCraftInstructions(plainInstructions, platedCutList, project.name, restsOnLaterStep(project, plainInstructions));
