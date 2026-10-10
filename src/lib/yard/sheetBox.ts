@@ -303,3 +303,12 @@ export function buildTypedSheetShell(
     },
   };
 }
+
+/** A container noun (box, chest, crate, bin, case, hamper, suitcase, and compounds) builds as faces, not a frame. */
+export function wantsContainerBox(prompt: string, item: CatalogItem): boolean {
+  const lower = prompt.toLowerCase();
+  if (!/\b\w*(?:box|chest|crate|bin|case|hamper|suitcase)\b/.test(lower)) return false;
+  if (/planter|garden|window\s*box|flower|shadow\s*box|music\s*box|sandbox|mail\s*box|mailbox/.test(lower)) return false;
+  const sheetish = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods" || (item.category === "lumber" && item.formFactor === "board");
+  return sheetish;
+}
