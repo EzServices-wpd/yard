@@ -27,7 +27,9 @@ export function petSurfaceHeight(noun: string): number | null {
   if (/\b(?:dogs?|goats?)\b/.test(lower)) return 12;
   return 6;
 }
-const TOY = /\b(doll|toy|barbie|mini|miniature|fairy)\b/;
+const TOY = /\b(doll|toy|barbie|mini|miniature|fairy)\b/
+/** A bed for a dollhouse or a diorama is that scale too. */
+const TOY_BED = /\b(doll|dollhouse|toy|barbie|mini|miniature|fairy|tiny|diorama)\b/;
 const FLOOR_RACK = /\b(firewood|wood|log|shoe|boot|wine|bike|lumber|kayak|surfboard|canoe|paddle|ski)\b/;
 
 function prim(phrase: string, label: string, w: number, h: number, d: number): Prim {
@@ -45,7 +47,7 @@ export function isToyScaleBed(noun: string): boolean {
   const head = (words[words.length - 1] ?? "").replace(/([^si])s$/, "$1");
   const whole = lower.replace(/\s+/g, "");
   if (!BED_HEAD.test(head) && !/bedframe|bassinet/.test(whole)) return false;
-  return TOY.test(lower);
+  return TOY_BED.test(lower);
 }
 
 export function pickPrimitive(noun: string): Prim | null {
@@ -66,7 +68,7 @@ export function pickPrimitive(noun: string): Prim | null {
   // Bed-class head words beat figure / toy early exits: a doll bed is a small platform bed.
   if (BED_HEAD.test(head) || /bedframe|bassinet/.test(whole)) {
     // A small bed frame — legs, side rails and a slatted deck — not an open planter box of loose sticks.
-    if (TOY.test(lower)) return prim("platform bed", "bed frame on legs", 4.5, 2.5, 3.5);
+    if (TOY_BED.test(lower)) return prim("platform bed", "bed frame on legs", 4.5, 2.5, 3.5);
   }
   if (TOY.test(lower)) return null;
   // A head that names a tower (lighthouse) is that tower, not a house-shaped carcase.

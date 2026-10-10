@@ -59,6 +59,23 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       continue;
     }
     if (A.min[1] <= 0.1) {
+      // A board laid face-on across two or more rails (gate or fence pickets) fastens to them, even where its foot meets the floor.
+      const e = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
+      const thin = e.indexOf(Math.min(...e));
+      const long = e.indexOf(Math.max(...e));
+      const rails = p.type === "rail" || p.type === "upright" || e[thin] * 3 > e[long] ? [] : structural.filter((q) => {
+        if (q.id === p.id || q.type !== "rail") return false;
+        const B = boxes.get(q.id)!;
+        return Math.abs(gapOn(A, B, thin)) <= 0.1 && [0, 1, 2].filter((k) => k !== thin).every((k) => overlap(A, B, k) >= 0.25);
+      });
+      const spans = rails.length >= 2 && [0, 1].every((end) => rails.some((q) => {
+        const B = boxes.get(q.id)!;
+        return end === 0 ? B.min[long] <= A.min[long] + 0.25 * e[long] : B.max[long] >= A.max[long] - 0.25 * e[long];
+      }));
+      if (spans) {
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: rails.map((q) => q.id) });
+        continue;
+      }
       out.set(p.id, { key: p.id, name: p.name, how: "floor", on: [] });
       continue;
     }
@@ -107,7 +124,14 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       return Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
     });
     if (rests.length) {
-      out.set(p.id, { key: p.id, name: p.name, how: "rests", on: rests.map((q) => q.id) });
+      // A post standing beside a rail on the same support is screwed to that rail's face: the rail goes first.
+      const railed = vertical(p)
+        ? others.filter((q) => {
+            const B = boxes.get(q.id)!;
+            return q.type === "rail" && !vertical(q) && Math.abs(B.min[1] - A.min[1]) <= 0.1 && dist(A, B) <= 0.1 && overlap(A, B, 1) > 0;
+          })
+        : [];
+      out.set(p.id, { key: p.id, name: p.name, how: "rests", on: [...rests, ...railed].map((q) => q.id) });
       continue;
     }
     const touching = others.filter((q) => {

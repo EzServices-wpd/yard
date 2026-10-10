@@ -286,6 +286,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
     }
   }
 
+  if (!Number.isFinite(width) && (program === "media" || /\btv\b|television/.test(lower))) {
+    // Before any bare measure: an inch count on a TV is its diagonal either way ("32 inch tv stand").
+    // The TV's diagonal sizes the stand ("55 inch TV", "TV stand 55 inch"): at least the diagonal, and the
+    // 16:9 body (0.87 × diagonal) plus 3" each side, so the TV never overhangs.
+    const diagBefore = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tv|television)\b/i, NaN);
+    const diag = Number.isFinite(diagBefore) ? diagBefore : pick(t, /\b(?:tv|television)\b[^\d]{0,24}(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")(?!\s*(?:wide|tall|high|deep|long))/i, NaN);
+    if (Number.isFinite(diag) && diag >= 32 && diag <= 120 && !/(?:wide|width)/.test(lower)) width = Math.max(diag, Math.ceil(diag * 0.872 + 6));
+  }
   if (!Number.isFinite(width)) {
     // Universal typed opening width — "31.5 inch linen closet" (adjectives between measure + noun).
     // Superset of the old bare alcove/closet matcher; halves and stock twins both honor typed W.
@@ -298,13 +306,6 @@ export function parseBrief(prompt: string): FittedSpec | null {
   }
   if (!Number.isFinite(width) && /range\s*hood|kitchen\s*hood|extractor\s*hood|\bhood\b/.test(lower)) {
     width = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/, 30);
-  }
-  if (!Number.isFinite(width) && (program === "media" || /\btv\b|television/.test(lower))) {
-    // The TV's diagonal sizes the stand ("55 inch TV", "TV stand 55 inch"): at least the diagonal, and the
-    // 16:9 body (0.87 × diagonal) plus 3" each side, so the TV never overhangs.
-    const diagBefore = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tv|television)\b/i, NaN);
-    const diag = Number.isFinite(diagBefore) ? diagBefore : pick(t, /\b(?:tv|television)\b[^\d]{0,24}(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")(?!\s*(?:wide|tall|high|deep|long))/i, NaN);
-    if (Number.isFinite(diag) && diag >= 32 && diag <= 120 && !/(?:wide|width)/.test(lower)) width = Math.max(diag, Math.ceil(diag * 0.872 + 6));
   }
   if (!Number.isFinite(width) && /\bcloset\b/.test(lower) && /\brod\b|\bpole\b/.test(lower)) {
     const rodW = pick(t, /\brod\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?/i, NaN);
