@@ -1242,7 +1242,7 @@ function generateRaw(
     const note = "No material typed, so this builds from cardboard boxes, the easy default. Type a material (plywood, popsicle sticks) to change it.";
     return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
   }
-  if (wantsUnmatchedSheetShell(item, kind, recipe.notes.some((n) => /stock mapped onto the form/.test(n)) || recipe.ops.length > 1, recipe.notes)) {
+  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name, !!recipe.unmatched)), item));
   }
   if (wantsSheetBox(prompt, item, kind)) {
