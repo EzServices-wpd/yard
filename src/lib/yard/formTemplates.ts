@@ -391,9 +391,23 @@ function smallHousePanels(item: CatalogItem, hole: number, perch: boolean, typed
   const bw = item.dims.width ?? 5.5;
   // Boards: one board wide when it is wide enough, else two edge-glued.
   const boardW = bw >= 5 ? bw : Math.min(2 * bw, 7.25);
-  const W0 = board ? boardW : Math.max(6, Math.min(16, typed.width ?? 7));
-  const D0 = board ? boardW : Math.max(6, Math.min(16, typed.depth ?? W0));
-  const He0 = Math.max(6, Math.min(24, typed.height ? typed.height * 0.68 : board ? 8 : 8));
+  // A typed axis is the finished outside of every small house.
+  // The board face is the default only for an untyped axis.
+  // Roof overhang is subtracted so the published overall matches the typed size.
+  const ovGuess = board ? 1 : 1.25;
+  const exGuess = ovGuess * Math.cos(Math.PI / 4);
+  const W0 = typed.width != null
+    ? Math.max(4, typed.width - 2 * exGuess)
+    : (board ? boardW : Math.max(6, Math.min(16, 7)));
+  const D0 = typed.depth != null
+    ? Math.max(4, typed.depth - 2 * ovGuess)
+    : (board ? boardW : Math.max(6, Math.min(16, W0)));
+  const riseGuess = W0 / 2;
+  // Roof thickness stands proud of the gable peak; subtract it so the typed height is the finished top.
+  const liftGuess = (item.dims.thickness ?? 0.75) / Math.cos(Math.PI / 4);
+  const He0 = typed.height != null
+    ? Math.max(4, typed.height - riseGuess - liftGuess)
+    : Math.max(6, Math.min(24, board ? 8 : 8));
   // The entrance sets the house: a big hole gets a nest box sized to the bird, and every hole
   // keeps a solid border on the face.
   const nb = nestBoxFor(hole);
