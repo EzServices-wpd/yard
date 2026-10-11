@@ -92,6 +92,8 @@ export function buildFormGraph(
       }
       case "taper": {
         const H = Math.max(op.y1 - op.y0, 1);
+        // A closed tower is a simple faced body, not a dense laced lattice. Open frameworks use other paths.
+        const closedTower = kind === "tower";
         const stories = Math.max(2, Math.round(H / policy.bay));
         const ts = Array.from({ length: stories + 1 }, (_, i) => i / stories);
         const loft = buildSquareLoft({
@@ -99,12 +101,12 @@ export function buildFormGraph(
           halfAt: (t) => op.r0 + (op.r1 - op.r0) * t,
           ts,
           item,
-          hoopAt: hoopSchedule(ts, [], 3),
-          laceFace: () => true,
+          hoopAt: hoopSchedule(ts, [], closedTower ? 1 : 3),
+          laceFace: () => !closedTower,
           join,
           braceJoin,
-          pierChords: 1,
-          maxFaceDivs: policy.fat ? 2 : 4,
+          pierChords: closedTower ? 0 : 1,
+          maxFaceDivs: closedTower ? 2 : (policy.fat ? 2 : 4),
         });
         const remap = new Map<string, string>();
         for (const n of loft.nodes) {
