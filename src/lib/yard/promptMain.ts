@@ -300,6 +300,30 @@ function withLumberMembers(project: YardProject): YardProject {
   return changed ? { ...project, panels: next } : project;
 }
 
+const TWO_BY: Record<string, string> = { "lumber-1x4-8": "lumber-2x4-8", "lumber-1x6-8": "lumber-2x6-8" };
+
+/**
+ * A frame that carries a heavy load (a bed, a workbench, a coop) is 2× lumber: its 1×4 / 1×6 rails and aprons
+ * become 2×4 / 2×6 of the same face, thickened toward the middle so the outside faces stay where they were.
+ */
+function withHeavyFrame(project: YardProject): YardProject {
+  if (project.assumptions?.load !== "heavy" || !project.panels?.length) return project;
+  const o = project.overall;
+  let changed = false;
+  const panels = project.panels.map((p) => {
+    const to = TWO_BY[p.materialId ?? ""];
+    if (!to || !/\b(?:rails?|aprons?|stretchers?)\b/i.test(p.name)) return p;
+    const axes = (["width", "height", "depth"] as const).filter((a) => Math.abs(p.size[a] - 0.75) < 0.01);
+    if (axes.length !== 1) return p;
+    const a = axes[0];
+    const k = a === "width" ? "x" : a === "height" ? "y" : "z";
+    const inward = p.position[k] + 0.375 < o[a] / 2 ? 0 : -0.75;
+    changed = true;
+    return { ...p, materialId: to, size: { ...p.size, [a]: 1.5 }, position: { ...p.position, [k]: p.position[k] + inward } };
+  });
+  return changed ? { ...project, panels } : project;
+}
+
 const OUTDOOR_SEAT_CLASS = /\b(?:adirondack|picnic\s+table|park\s+bench|lawn\s+chair|deck\s+chair|chaise)\b/;
 const SEAT_OR_TABLE = /\b(?:chairs?|benche?s?|tables?|swings?|loungers?|sofas?|settees?|adirondack|chaise)\b/;
 const OUTDOOR_STOCK: [RegExp, string][] = [
@@ -343,7 +367,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   args[0] = normalizeUserPrompt(said);
   const prompt = args[0];
   const typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
-  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withOutdoorFurnitureStock(withLumberMembers(typedBuild), prompt);
+  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,
