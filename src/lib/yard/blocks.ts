@@ -384,13 +384,9 @@ class Bench {
     const [u, v] = basis(ax);
     const T = k.T;
     const n = opt.n ?? (k.kind === "sheet" ? 4 : Math.max(8, Math.min(48, Math.round((Math.PI * d) / Math.max(k.W, 0.1)))));
-    // Sheet tube: place staves so their outer corners sit on the named diameter, not outside it.
-    let Rc = d / 2 - T / 2;
-    if (k.kind === "sheet") {
-      const tan = Math.tan(Math.PI / n);
-      // Outer radius of a stave corner is sqrt(Rc^2 + (Rc*tan)^2); solve so it equals d/2.
-      Rc = (d / 2) / Math.sqrt(1 + tan * tan);
-    }
+    // Every stave's outer face sits on the named diameter: that is where a tower, fins or a cradle meet the
+    // body. Four staves meet at their corners; the diameter is across the flats.
+    const Rc = d / 2 - T / 2;
     const w = 2 * Rc * Math.tan(Math.PI / n);
     const door = opt.door;
     const doorTheta = door ? Math.atan2(dot(door.dir, v), dot(door.dir, u)) : 0;
@@ -451,15 +447,14 @@ class Bench {
     const ax = unit(axis);
     const [u, v] = basis(ax);
     const n = k.kind === "sheet" ? 4 : Math.max(6, Math.min(24, Math.round((Math.PI * d) / Math.max(2 * k.W, 0.2))));
-    let Rc = d / 2 - k.T / 2;
-    if (k.kind === "sheet") {
-      const tan = Math.tan(Math.PI / n);
-      Rc = (d / 2) / Math.sqrt(1 + tan * tan);
-    }
+    // Outer faces on the named diameter, as the tube: the parts fixed to it meet it there.
+    const Rc = d / 2 - k.T / 2;
     const w0 = 2 * Rc * Math.tan(Math.PI / n);
     const tip = add(c0, mul(ax, L));
+    // A sheet nose has the tube's four staves, so each gore continues a stave face; a many-stave nose staggers its gores.
+    const phase = k.kind === "sheet" ? 0 : 0.5;
     for (let i = 0; i < n; i++) {
-      const th = (2 * Math.PI * (i + 0.5)) / n;
+      const th = (2 * Math.PI * (i + phase)) / n;
       const rh = add(mul(u, Math.cos(th)), mul(v, Math.sin(th)));
       const rim = add(c0, mul(rh, Rc));
       const strip = (w: number) => (k.kind === "sheet" ? { w, face: rh } : { face: rh });

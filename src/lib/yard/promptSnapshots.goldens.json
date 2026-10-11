@@ -1142,9 +1142,9 @@
     "kind": "castle",
     "material": "cardboard-corrugated-sheet",
     "overall": {
-      "width": 26.9,
+      "width": 27,
       "height": 23.8,
-      "depth": 23.8
+      "depth": 24
     },
     "panels": 0,
     "instances": 48,
