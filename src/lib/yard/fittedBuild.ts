@@ -3,6 +3,7 @@
  */
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
+import { boardFace } from "./fittedParse";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
@@ -2008,6 +2009,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `${name}. Four sides set straight on the ground, open top and open bottom so roots reach the soil below.`
           : `${name}. Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾" plywood.`,
         `Open top: fill with soil; typed ${W}" wide × ${D}" deep × ${H}" tall. Not a Wire-frame skeleton and not a sealed storage cube.`,
+        ...(onSoil && !/(?:tall|high|height)\b/i.test(prompt) ? [`The ${inchFrac(H)}" walls are ${Math.round(H / boardFace(prompt.toLowerCase()))} whole courses of ${inchFrac(boardFace(prompt.toLowerCase()))}" boards, so no board is ripped. Type a height to change it.`] : []),
         "Guidance only — set level outdoors. Drainage holes optional.",
       ],
       historic: false,

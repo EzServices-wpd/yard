@@ -55,6 +55,21 @@ import { inch16 } from "./fittedWine";
 
 export { OPENING_SPACE } from "./fittedShared";
 
+const STOCK_NOMINAL = /\b(?:(?:cedar|pine|redwood|oak|fir|treated|pt|lumber)\s+[12]\s*x\s*(?:2|3|4|6|8|10|12)\b|\b[12]\s*x\s*(?:2|3|4|6|8|10|12)\s*(?:boards?|lumber|studs?|planks?)\b)/gi;
+const BOARD_FACE: Record<string, number> = { "2": 1.5, "3": 2.5, "4": 3.5, "6": 5.5, "8": 7.25, "10": 9.25, "12": 11.25 };
+
+/** The face width of the board stock the prompt names (a 2x6 is 5 1/2"), or the 1x4 a cedar wall defaults to. */
+export function boardFace(lower: string): number {
+  const m = lower.match(/\b[12]\s*x\s*(2|3|4|6|8|10|12)\b/);
+  return BOARD_FACE[m?.[1] ?? "4"];
+}
+
+/** A wall stacked from boards with no typed height stands a whole number of courses near the default. */
+export function wholeCourses(lower: string, near: number): number {
+  const face = boardFace(lower);
+  return Math.max(1, Math.round(near / face)) * face;
+}
+
 export function triple(text: string): { w?: number; h?: number; d?: number } {
   // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
   const stripped = text.replace(
@@ -130,7 +145,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const lower = t.toLowerCase();
   const program = detectProgram(lower);
   const house = detectHouseFamily(lower);
-  const trip = triple(t);
+  // A board size named with its wood ("cedar 2x6", "2x6 boards") is the stock, not the build's size.
+  const trip = triple(t.replace(STOCK_NOMINAL, " "));
   const isSystem = /system|walk-?in|along the wall|wall of closets/.test(lower);
   const topShape: TableTopShape | null = program === "table" ? tableTopShape(lower) : null;
   const isRound = topShape === "round" || (program === "table" && /\b(?:round|circular)\b|\bdiameter\b|\bdia\b/.test(lower) && topShape !== "oval");
@@ -651,10 +667,10 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (isPlanterBox(lower) && trip.w && trip.h && !trip.d && !/(?:tall|high|height)\b/.test(lower)) {
     width = trip.w;
     depth = trip.h;
-    height = 16;
+    height = wholeCourses(lower, 16);
   } else if (footprintFeet(lower) && !/(?:tall|high|height)\b/.test(lower)) {
     ({ a: width, b: depth } = footprintFeet(lower)!);
-    height = 16;
+    height = wholeCourses(lower, 16);
   }
 
   if (!Number.isFinite(height) || height === 0) {

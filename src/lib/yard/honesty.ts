@@ -83,10 +83,12 @@ function unlabeledTriple(text: string): { a: number; b: number; c?: number } | n
 export function footprintFeet(text: string): { a: number; b: number } | null {
   const lower = text.toLowerCase();
   if (!isPlanterBox(lower)) return null;
-  const m = lower.match(/(?<!\b(?:from|of|with|using|in)\s+)\b(\d{1,2})\s*(?:'|ft|feet|foot)?\s*(?:x|by|×)\s*(\d{1,2})\b(?!\s*(?:"|in\b|inch|board|lumber|stud|post|sheet|ply|cedar|pine|redwood|s\b))/);
-  if (!m) return null;
-  const a = +m[1], b = +m[2];
-  return a > 2 && a <= 12 && b <= 12 ? { a: a * 12, b: b * 12 } : null;
+  // The first pair that reads as a footprint in feet wins; a board size before it ("cedar 2x6") is the stock.
+  for (const m of lower.matchAll(/(?<!\b(?:from|of|with|using|in)\s+)\b(\d{1,2})\s*(?:'|ft|feet|foot)?\s*(?:x|by|×)\s*(\d{1,2})\b(?!\s*(?:"|in\b|inch|board|lumber|stud|post|sheet|ply|cedar|pine|redwood|s\b))/g)) {
+    const a = +m[1], b = +m[2];
+    if (a > 2 && a <= 12 && b <= 12) return { a: a * 12, b: b * 12 };
+  }
+  return null;
 }
 
 /**
