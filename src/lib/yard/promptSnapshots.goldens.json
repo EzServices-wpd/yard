@@ -743,17 +743,16 @@
       "height": 30,
       "depth": 16
     },
-    "panels": 5,
+    "panels": 4,
     "instances": 0,
     "uniqueParts": [
       "Back",
-      "Bottom",
       "Front",
       "Left side",
       "Right side"
     ],
     "notesHead": [
-      "Planter box 36\" × 30\" × 16\". Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. Cedar 1×6.",
+      "Planter box 36\" × 30\" × 16\". Four sides set straight on the ground, open top and open bottom so roots reach the soil below.",
       "Open top: fill with soil; typed 36\" wide × 16\" deep × 30\" tall."
     ],
     "signals": {

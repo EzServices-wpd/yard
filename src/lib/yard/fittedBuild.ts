@@ -1990,7 +1990,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("upright", "Right side", x0 + W - P, 0, 0, P, H, D));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, P));
     panels.push(panel("rail", "Front", x0 + P, 0, D - P, innerW, H, P));
-    panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
+    // A bed sits on the soil it holds: four sides, open below. A box carried on a deck or sill keeps its bottom.
+    const onSoil = /\b(?:raised|garden|flower)\s*(?:garden\s*)?bed\b/.test(prompt.toLowerCase());
+    if (!onSoil) panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
     const name = `Planter box ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -2002,7 +2004,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾" plywood.`,
+        onSoil
+          ? `${name}. Four sides set straight on the ground, open top and open bottom so roots reach the soil below.`
+          : `${name}. Open top planter box — bottom + four sides, no lid and no doors. Soil / planting volume. ¾" plywood.`,
         `Open top: fill with soil; typed ${W}" wide × ${D}" deep × ${H}" tall. Not a Wire-frame skeleton and not a sealed storage cube.`,
         "Guidance only — set level outdoors. Drainage holes optional.",
       ],

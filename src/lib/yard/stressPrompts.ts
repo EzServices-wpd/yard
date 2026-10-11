@@ -4,6 +4,7 @@ export const STRESS_PROMPTS = [
   "linen cupboard in the hallway alcove 28 wide 80 tall 15 deep with 2 doors",
   "garage wall cabinet no doors 48 wide 30 tall 12 deep",
   "cedar 2x6 raised garden bed 48x24x11",
+  "cedar raised garden bed 4x8",
   "walnut 1x8 wall shelf with 2 tiers 30 long",
   "oak 1x10 wall shelf with 3 tiers 36 long",
   "popsicle stick coaster 4 inch",

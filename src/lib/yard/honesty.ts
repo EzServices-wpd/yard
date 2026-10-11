@@ -79,6 +79,16 @@ function unlabeledTriple(text: string): { a: number; b: number; c?: number } | n
   return { a, b, c: c != null && Number.isFinite(c) ? c : undefined };
 }
 
+/** A ground-plan bed sold by the foot ("4x8 raised bed") reads a bare small pair as feet; 1x/2x names and "from 4x4" stay stock. */
+export function footprintFeet(text: string): { a: number; b: number } | null {
+  const lower = text.toLowerCase();
+  if (!isPlanterBox(lower)) return null;
+  const m = lower.match(/(?<!\b(?:from|of|with|using|in)\s+)\b(\d{1,2})\s*(?:'|ft|feet|foot)?\s*(?:x|by|×)\s*(\d{1,2})\b(?!\s*(?:"|in\b|inch|board|lumber|stud|post|sheet|ply|cedar|pine|redwood|s\b))/);
+  if (!m) return null;
+  const a = +m[1], b = +m[2];
+  return a > 2 && a <= 12 && b <= 12 ? { a: a * 12, b: b * 12 } : null;
+}
+
 /**
  * A bare size triple ("8x6x7", no wide/deep/tall) is read in a per-class order. One short note names the
  * order this build used, read off the model: each typed number is matched to the axis it landed on.
@@ -118,6 +128,8 @@ export function typedExtents(prompt: string): TypedExtents | null {
     !Number.isFinite(spokenDiameterInches(prompt))
   ) {
     const trip = unlabeledTriple(prompt);
+    const feet = footprintFeet(prompt);
+    if (feet) return { width: feet.a, depth: feet.b, labeled: { width: true, height: false, depth: true } };
     if (!trip) return null;
   }
   const t = prompt.replace(/×/g, "x").replace(/″/g, '"');

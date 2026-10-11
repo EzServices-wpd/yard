@@ -1,6 +1,7 @@
 /**
  * parseBrief — measured prompt → FittedSpec.
  */
+import { footprintFeet } from "./honesty";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
 import { heldCollection } from "./heldObjects";
@@ -650,6 +651,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (isPlanterBox(lower) && trip.w && trip.h && !trip.d && !/(?:tall|high|height)\b/.test(lower)) {
     width = trip.w;
     depth = trip.h;
+    height = 16;
+  } else if (footprintFeet(lower) && !/(?:tall|high|height)\b/.test(lower)) {
+    ({ a: width, b: depth } = footprintFeet(lower)!);
     height = 16;
   }
 
