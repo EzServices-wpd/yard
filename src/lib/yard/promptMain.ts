@@ -1290,7 +1290,7 @@ function generateRaw(
     const note = "No material typed, so this builds from cardboard boxes, the easy default. Type a material (plywood, popsicle sticks) to change it.";
     return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
   }
-  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes) && isDominantLength(box)) {
+  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes) && (isDominantLength(box) || typedAxisNumber(prompt, "length") != null)) {
     const tubed = buildGeneralTubeProject(prompt, item, box, recipe.name);
     if (tubed) return enforceWeekendHonesty(withWireNote(attachFunction(tubed), item));
   }
@@ -2008,28 +2008,33 @@ function buildGeneralTubeProject(
   size: { width: number; height: number; depth: number },
   name: string,
 ): YardProject | null {
+  const typedL = typedAxisNumber(prompt, "length");
   const dims = [size.width, size.height, size.depth].sort((a, b) => b - a);
-  const L = dims[0];
+  const L = typedL != null ? typedL : dims[0];
   const d = Math.max(dims[1], 2);
-  // Route through the rocket tube block, which already rolls sheet into a body of the typed length, then relabel.
-  const rocketPrompt = `rocket ${L} inches long`;
-  const built = buildBlocks(rocketPrompt, item, { length: L });
+  // Route through the rocket tube block built to the typed length, then lay it along the long axis.
+  const rocketPrompt = `rocket ${L} inches tall`;
+  const built = buildBlocks(rocketPrompt, item, { height: L });
   if (!built) return null;
   const stockItem = getCatalogItem(built.stockId) ?? item;
+  // Lay the upright tube along the typed length (width). Rocket builds along Y from 0 to L.
+  const lay = (pt: { x: number; y: number; z: number }) => ({ x: pt.y - L / 2, y: pt.x, z: pt.z });
   const instances: YardInstance[] = built.pieces.map((p) => {
     const it = getCatalogItem(p.stock);
     const cyl = !p.section && !!it && (it.formFactor === "dowel" || it.formFactor === "tube" || it.formFactor === "pipe");
-    const rot = rotationForDirection(p.a, p.b, cyl);
+    const a = lay(p.a);
+    const b = lay(p.b);
+    const rot = rotationForDirection(a, b, cyl);
     return {
       id: createId("i"),
       catalogId: p.stock,
-      position: { x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2, z: (p.a.z + p.b.z) / 2 },
+      position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
       rotation: { x: rot[0], y: rot[1], z: rot[2] },
       ...(p.cut != null ? { cutLength: p.cut } : {}),
       role: p.role,
       join: stockItem.preferredJoins?.[0] ?? "glue",
-      from: p.a,
-      to: p.b,
+      from: a,
+      to: b,
       ...(p.face ? { face: p.face } : {}),
       ...(p.section ? { section: p.section } : {}),
       ...(p.round ? { round: p.round } : {}),
@@ -2051,12 +2056,13 @@ function buildGeneralTubeProject(
         assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
       };
   if (built.panels.length) project = { ...project, panels: [...project.panels, ...built.panels] };
-  const bb = pieceBounds(built);
+  const laidPieces = built.pieces.map((p) => ({ ...p, a: lay(p.a), b: lay(p.b) }));
+  const bb = pieceBounds({ ...built, pieces: laidPieces });
   const r1 = (n: number) => Math.round(n * 10) / 10;
   project = {
     ...project,
     name,
-    overall: { width: r1(bb.max.x - bb.min.x), height: r1(bb.max.y), depth: r1(bb.max.z - bb.min.z) },
+    overall: { width: r1(bb.max.x - bb.min.x), height: r1(Math.max(0, bb.max.y - bb.min.y)), depth: r1(bb.max.z - bb.min.z) },
     notes: [
       `${name} is a tube ${inchFrac(L)}" long, about ${inchFrac(d)}" across. It lies along its length.`,
       "Sheet stock: score long strips, roll them into the body, and tape the seam inside and out.",
