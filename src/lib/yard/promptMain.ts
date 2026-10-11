@@ -1327,6 +1327,14 @@ function generateRaw(
   }
   const recipe0 = formOverride ?? detectForm(prompt, size);
   let box = defaultSizeFor(recipe0.kind, size, prompt);
+  // Size vs stock: a typed size, or a build being stock-switched (stock arrives as an override, the words
+  // are unchanged), keeps its size. Only a fresh prompt that names its stock and no size takes a
+  // stock-scaled default, so a 2x4 tower stands taller than a popsicle one.
+  if (!opts.sizeOverride && !formOverride && !hasExplicitSize(prompt) && hasExplicitStock(prompt) && recipe0.kind === "eiffel") {
+    const sid = detectMaterial(prompt).id;
+    const k = /^lumber-(?:2x|4x)/.test(sid) ? 3 : /^lumber-1x/.test(sid) ? 2 : 1;
+    if (k > 1) box = { width: box.width * k, height: box.height * k, depth: box.depth * k };
+  }
   if (opts.sizeOverride) {
     box = {
       width: opts.sizeOverride.width || box.width,
