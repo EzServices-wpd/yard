@@ -47,7 +47,9 @@ function woodBuild(project: YardProject): boolean {
 }
 
 function outdoorWood(project: YardProject, prompt: string | undefined | null): boolean {
-  return isOutdoorPrompt(prompt) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
+  // Outdoor when the prompt says so or the build's own notes put it outside.
+  const notesOutside = (project.notes ?? []).some((n) => /\b(?:exterior screws|pressure-treated)\b/i.test(n));
+  return (isOutdoorPrompt(prompt) || notesOutside) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
 }
 
 function wallHung(project: YardProject): boolean {

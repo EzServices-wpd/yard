@@ -61,7 +61,8 @@ export function planSolidBoards(parts: SolidPart[], face = BOARD_FACE_IN): Solid
   const free: number[] = [];
   for (const L of pieces) {
     const need = L + KERF_IN;
-    const i = free.findIndex((f) => f + 1e-6 >= L);
+    // The last cut on a board may take its kerf from the hair of extra length 8-ft boards are sold with.
+    const i = free.findIndex((f) => f + KERF_IN + 1e-6 >= L);
     if (i >= 0) free[i] -= need;
     else free.push(BOARD_LEN_IN - need);
   }

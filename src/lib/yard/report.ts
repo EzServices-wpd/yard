@@ -1433,18 +1433,18 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   }
   // Outdoor frames: footings, ties, hinges and swing hardware the notes name.
   const outdoor: [RegExp, (m: RegExpMatchArray) => BuildPlan["bom"][number]][] = [
-    [/(\d+) precast concrete deck pier blocks/, (m) => ({ name: "Precast concrete deck pier blocks", quantity: Number(m[1]), unit: "each", searchQuery: "precast concrete deck pier block 4x4", notes: "One under each post, on compacted gravel." })],
-    [/(\d+) hurricane ties/, (m) => ({ name: "Hurricane ties (joist to beam)", quantity: Number(m[1]), unit: "each", searchQuery: "galvanized hurricane tie joist to beam", notes: "One where each joist crosses a beam." })],
-    [/two 8" strap hinges/, () => ({ name: '8" heavy strap hinges', quantity: 2, unit: "each", searchQuery: "8 inch heavy strap hinge gate", notes: "Hinge stile to hinge post." })],
-    [/(\d+) 6" T-hinges/, (m) => ({ name: '6" heavy T-hinges', quantity: Number(m[1]), unit: "each", searchQuery: "6 inch heavy t hinge exterior", notes: "Where the notes place them: doors to posts, lids to the back rail." })],
-    [/(\d+) gravity latch(?:es)?/, (m) => ({ name: "Gravity latches", quantity: Number(m[1]), unit: "each", searchQuery: "gravity gate latch", notes: "One per door." })],
-    [/(\d+) broom and mop grip clips/, (m) => ({ name: "Broom and mop grip clips", quantity: Number(m[1]), unit: "each", searchQuery: "broom mop holder grip clip wall mount", notes: "Across the back of the tall bay, 48\" up." })],
-    [/(\d+) nesting tubes/, (m) => ({ name: '5/16" nesting tubes, 6" (paper or bamboo)', quantity: Number(m[1]), unit: "each", searchQuery: "mason bee nesting tubes 5/16 inch", notes: "Packed tight into each tier, open end out." })],
-    [/for a gate latch/, () => ({ name: "Gate latch", quantity: 1, unit: "each", searchQuery: "gravity gate latch", notes: "On the latch stile and latch post." })],
-    [/steel A-frame bracket at each end/, () => ({ name: "A-frame swing set brackets", quantity: 2, unit: "each", searchQuery: "swing set a-frame bracket 2x6 legs", notes: "One at each end, legs to beam." })],
-    [/Hang (\d+) swings? from heavy-duty swing hangers/, (m) => ({ name: "Heavy-duty swing hangers", quantity: 2 * Number(m[1]), unit: "each", searchQuery: "heavy duty swing hanger bolt through", notes: "Two per swing, bolted through the beam." })],
-    [/Hang (\d+) swings? from/, (m) => ({ name: "Swing seats with chains", quantity: Number(m[1]), unit: "each", searchQuery: "swing seat with chains", notes: "One per pair of hangers." })],
-    [/anchor each foot with a ground anchor/, () => ({ name: "Swing set ground anchors", quantity: 4, unit: "each", searchQuery: "swing set ground anchor", notes: "One at each foot." })],
+    [/(\d+) precast concrete deck pier blocks/, (m) => ({ name: "Precast concrete deck pier blocks", quantity: Number(m[1]), estimatedCost: 9.98 * (Number(m[1])), unit: "each", searchQuery: "precast concrete deck pier block 4x4", notes: "One under each post, on compacted gravel." })],
+    [/(\d+) hurricane ties/, (m) => ({ name: "Hurricane ties (joist to beam)", quantity: Number(m[1]), estimatedCost: 1.28 * (Number(m[1])), unit: "each", searchQuery: "galvanized hurricane tie joist to beam", notes: "One where each joist crosses a beam." })],
+    [/two 8" strap hinges/, () => ({ name: '8" heavy strap hinges', quantity: 2, estimatedCost: 12.98 * (2), unit: "each", searchQuery: "8 inch heavy strap hinge gate", notes: "Hinge stile to hinge post." })],
+    [/(\d+) 6" T-hinges/, (m) => ({ name: '6" heavy T-hinges', quantity: Number(m[1]), estimatedCost: 8.98 * (Number(m[1])), unit: "each", searchQuery: "6 inch heavy t hinge exterior", notes: "Where the notes place them: doors to posts, lids to the back rail." })],
+    [/(\d+) gravity latch(?:es)?/, (m) => ({ name: "Gravity latches", quantity: Number(m[1]), estimatedCost: 9.98 * (Number(m[1])), unit: "each", searchQuery: "gravity gate latch", notes: "One per door." })],
+    [/(\d+) broom and mop grip clips/, (m) => ({ name: "Broom and mop grip clips", quantity: Number(m[1]), estimatedCost: 2.5 * (Number(m[1])), unit: "each", searchQuery: "broom mop holder grip clip wall mount", notes: "Across the back of the tall bay, 48\" up." })],
+    [/(\d+) nesting tubes/, (m) => ({ name: '5/16" nesting tubes, 6" (paper or bamboo)', quantity: Number(m[1]), estimatedCost: 0.3 * (Number(m[1])), unit: "each", searchQuery: "mason bee nesting tubes 5/16 inch", notes: "Packed tight into each tier, open end out." })],
+    [/for a gate latch/, () => ({ name: "Gate latch", quantity: 1, estimatedCost: 9.98 * (1), unit: "each", searchQuery: "gravity gate latch", notes: "On the latch stile and latch post." })],
+    [/steel A-frame bracket at each end/, () => ({ name: "A-frame swing set brackets", quantity: 2, estimatedCost: 24.98 * (2), unit: "each", searchQuery: "swing set a-frame bracket 2x6 legs", notes: "One at each end, legs to beam." })],
+    [/Hang (\d+) swings? from heavy-duty swing hangers/, (m) => ({ name: "Heavy-duty swing hangers", quantity: 2 * Number(m[1]), estimatedCost: 8.98 * (2 * Number(m[1])), unit: "each", searchQuery: "heavy duty swing hanger bolt through", notes: "Two per swing, bolted through the beam." })],
+    [/Hang (\d+) swings? from/, (m) => ({ name: "Swing seats with chains", quantity: Number(m[1]), estimatedCost: 29.98 * (Number(m[1])), unit: "each", searchQuery: "swing seat with chains", notes: "One per pair of hangers." })],
+    [/anchor each foot with a ground anchor/, () => ({ name: "Swing set ground anchors", quantity: 4, estimatedCost: 7.98 * (4), unit: "each", searchQuery: "swing set ground anchor", notes: "One at each foot." })],
   ];
   for (const [re, row] of outdoor) {
     const m = notes.match(re);
@@ -1453,9 +1453,9 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   // Hardware drawn in the model is bought: every hinge and latch on the model has a Buy line.
   const drawn = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).length;
   const hinges = drawn(/^Hinge \d+$/);
-  if (hinges && !/hinge/.test(have)) extra.push({ name: "Gate hinges", quantity: hinges, unit: "each", searchQuery: "self closing gate hinge", notes: "On the hinge stile, into the wall stud." });
+  if (hinges && !/hinge/.test(have)) extra.push({ name: "Gate hinges", quantity: hinges, estimatedCost: 6.98 * (hinges), unit: "each", searchQuery: "self closing gate hinge", notes: "On the hinge stile, into the wall stud." });
   const latches = drawn(/^Latch \d+$/);
-  if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
+  if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, estimatedCost: 9.98 * (latches), unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
       name: "GRK RSS #9 x 3-1/8 structural screws",
@@ -1522,11 +1522,24 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
   };
 }
 
+const PIECE_UNIT = /^(?:boards?|pcs?|pieces?)$/;
+
 export function buildPlan(project: YardProject): BuildPlan {
   const plan = fallbackStepOne(project, buildPlanInner(project));
-  // Buy lists glue only when a step glues.
-  const glues = plan.instructions.some((s) => /\bglue/i.test(`${s.title} ${s.description}`));
-  return glues ? plan : { ...plan, bom: plan.bom.filter((b) => b.catalogId !== "glue" && !/^wood glue$/i.test(b.name)) };
+  // Buy lists glue only when a step or the notes glue.
+  const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
+  const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));
+  // One Buy line per stock: lines with the same name and stock merge into one count.
+  const bom: BuildPlan["bom"] = [];
+  for (const b of bom0) {
+    const same = bom.find((x) => x.name === b.name && x.catalogId === b.catalogId && PIECE_UNIT.test(x.unit) === PIECE_UNIT.test(b.unit));
+    if (!same) { bom.push(b); continue; }
+    same.quantity += b.quantity;
+    if (PIECE_UNIT.test(same.unit)) same.unit = "boards";
+    if (same.estimatedCost != null || b.estimatedCost != null) same.estimatedCost = (same.estimatedCost ?? 0) + (b.estimatedCost ?? 0);
+    same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
+  }
+  return { ...plan, bom };
 }
 
 /** A noun built as a simple primitive says so in step 1. */

@@ -232,14 +232,16 @@ function buildCover(prompt: string, size?: { width: number; height: number; dept
   const panels: Panel[] = [];
   const nC = Math.max(2, Math.ceil((W - 6) / 24) + 1);
   for (let i = 0; i < nC; i++) panels.push(panel("rail", `Cleat ${i + 1}`, 3 + ((W - 9.5) * i) / (nC - 1), 0, 2, 3.5, 1.5, D - 4, "lumber-2x4-8"));
-  const n = Math.max(2, Math.round((D + 0.25) / 5.75));
-  const bw = (D - 0.25 * (n - 1)) / n;
-  for (let i = 0; i < n; i++) panels.push(panel("top", `Board ${i + 1}`, 0, 1.5, i * (bw + 0.25), W, 0.75, r16(bw), id));
+  // Whole 5 1/2" boards, the gaps share what is left (about 1/4" or more): a board is never wider than the board.
+  const bw = 5.5;
+  const n = Math.max(2, Math.floor((D + 0.25) / (bw + 0.25)));
+  const gapIn = (D - n * bw) / (n - 1);
+  for (let i = 0; i < n; i++) panels.push(panel("top", `Board ${i + 1}`, 0, 1.5, i * (bw + gapIn), W, 0.75, bw, id));
   const what = lower.match(/\b(sand\s*box|sand\s*pit|well|raised\s+(?:garden\s+)?bed|garden\s+bed|bed|fire\s*pit|hot\s*tub)\s+(cover|lid)/);
   const title = what ? `${what[1].charAt(0).toUpperCase()}${what[1].slice(1)} ${what[2]}` : "Cover";
   const name = `${title} ${ft(W)} × ${ft(D)}`;
   const notes = [
-    `${name}: ${n} 1×6 boards with 1/4" gaps, screwed to ${nC} 2×4 cleats underneath. The cleats sit 2" in from the edges so the cover drops inside the frame and cannot slide off.`,
+    `${name}: ${n} 1×6 boards with ${inchFrac(r16(gapIn))}" gaps, screwed to ${nC} 2×4 cleats underneath. The cleats sit 2" in from the edges so the cover drops inside the frame and cannot slide off.`,
     `Two exterior handles on top, one near each end, make it a one-person lift. Cedar or pressure-treated boards and exterior screws.`,
   ];
   return project(prompt, name, panels, W, 2.25, D, notes, id);
