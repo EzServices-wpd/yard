@@ -1290,7 +1290,7 @@ function generateRaw(
     const note = "No material typed, so this builds from cardboard boxes, the easy default. Type a material (plywood, popsicle sticks) to change it.";
     return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
   }
-  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes) && (isDominantLength(box) || typedAxisNumber(prompt, "length") != null)) {
+  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes) && isDominantLength(box)) {
     const tubed = buildGeneralTubeProject(prompt, item, box, recipe.name);
     if (tubed) return enforceWeekendHonesty(withWireNote(attachFunction(tubed), item));
   }
