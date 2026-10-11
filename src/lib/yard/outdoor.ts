@@ -14,6 +14,9 @@ const DECK_PLACE =
   /\b(?:on|for|by|off|onto|around|beside|to|at|under)\s+(?:the\s+|my\s+|our\s+|a\s+)?(?:back\s+|front\s+|rear\s+|pool\s+)?deck\b|\bdeck\s+(?:box|chair|bench|planter|table|storage|railing|rail planter|side table|bar)\b/;
 const OUTDOOR_WORDS = /\b(?:outdoors?|outside|patio|garden|porch|exterior|backyard|back\s*yard|terrace|balcony|poolside)\b/;
 
+/** Things that only ever live outdoors: their name alone asks for the exterior package. */
+const OUTDOOR_NOUN = /\b(?:bat|bird|wren|bluebird|martin)\s*-?\s*(?:houses?|box(?:es)?)\b|\bcompost\b|\bsand\s*box(?:es)?\b|\bpergolas?\b|\barbou?rs?\b|\bchicken\s+coops?\b|\bdog\s*houses?\b|\bpicnic\s+tables?\b|\badirondack\b/;
+
 /** True when the typed prompt asks for an outdoor build. */
 export function isOutdoorPrompt(prompt: string | undefined | null): boolean {
   const lower = (prompt ?? "").toLowerCase();
@@ -21,7 +24,7 @@ export function isOutdoorPrompt(prompt: string | undefined | null): boolean {
   // Door / window framing carries its own exterior flashing rules.
   if (/\b(?:exterior|entry|front)\s+doors?\b|\bwindow\b|rough opening/.test(lower)) return false;
   if (/\bskate\s*board\s+deck|\bdeck\s+of\s+cards|\bcard\s+deck|\btape\s+deck/.test(lower) && !OUTDOOR_WORDS.test(lower)) return false;
-  return OUTDOOR_WORDS.test(lower) || DECK_PLACE.test(lower);
+  return OUTDOOR_WORDS.test(lower) || DECK_PLACE.test(lower) || OUTDOOR_NOUN.test(lower);
 }
 
 /** Anything that holds soil or water drains through the bottom. */
@@ -70,7 +73,7 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
     soil ? n.replace(/\s*Drainage holes optional\.?/i, "").replace(/\s*Guidance only — set level outdoors\.?$/i, " Guidance only — set it level.") : n,
   );
   notes = notes.filter((n) => n.trim());
-  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
+  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) || (!wallHung(project) && !footTalk(project).feet) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
   if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
@@ -81,19 +84,21 @@ const isPlainScrewRow = (b: BomLine) =>
   (b.catalogId === "screws-8" || /\bwood screws?\b|#\s?\d+\s*[x×]\s*[\d-\/]+"?\s*(?:wood\s+)?screws?/i.test(b.name)) &&
   !/structural|grk|lag|tapcon|masonry|exterior|stainless|deck screw/i.test(b.name);
 
-function footTalk(project: YardProject): { where: string; count: number } {
-  if (wallHung(project)) return { where: "the bottom edges and both ends of every board", count: 0 };
+function footTalk(project: YardProject): { where: string; count: number; feet: boolean } {
+  if (wallHung(project)) return { where: "the bottom edges and both ends of every board", count: 0, feet: false };
   const legs = project.panels.filter((panel) => /\bleg\b/i.test(panel.name));
   if (legs.length >= 1) {
     const names = legs.map((panel) => panel.name);
-    return { where: `the bottom ends of ${names.join(", ")}`, count: legs.length };
+    return { where: `the bottom ends of ${names.join(", ")}`, count: legs.length, feet: true };
   }
   const ground = project.panels.filter((panel) => panel.position.y < 1 && /\b(?:side|upright|end|stile|post)\b/i.test(panel.name));
   if (ground.length >= 2) {
     const names = ground.map((panel) => panel.name);
-    return { where: `the bottom ends of ${names.join(", ")}`, count: ground.length };
+    return { where: `the bottom ends of ${names.join(", ")}`, count: ground.length, feet: true };
   }
-  return { where: "the bottom edges where it meets the ground", count: 4 };
+  // A frame of sticks stands on the members that reach the floor; a flat board build (a cover, a lid) has no feet.
+  const sticks = (project.instances ?? []).filter((i) => Math.min(i.from?.y ?? i.position.y, i.to?.y ?? i.position.y) < 1 && Math.abs((i.to?.y ?? 0) - (i.from?.y ?? 0)) > 6);
+  return { where: "the bottom edges where it meets the ground", count: Math.max(4, sticks.length), feet: sticks.length >= 2 };
 }
 
 /** Plain-screw wording in a step becomes the exterior screw the Buy list carries. */
@@ -184,7 +189,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
       estimatedCost: 18.98,
       notes: `Three coats on every face. Flood ${feet.where} and every other cut end until they stop soaking it in.`,
     });
-    if (!wall) {
+    if (!wall && feet.feet) {
       const packs = Math.max(1, Math.ceil(feet.count / 8));
       bom.push({
         name: "Outdoor furniture glides (nylon, nail-in)",

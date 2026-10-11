@@ -393,7 +393,27 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
-  return withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt);
+  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
+}
+
+/**
+ * Outdoors, an upright post or leg over about 48" carries wind and weight on a 4x4, never a single 1x or
+ * 2x board. Members are drawn on their centrelines, so the thicker post still meets every joint.
+ */
+function withOutdoorPosts(project: YardProject, prompt: string): YardProject {
+  if (!isOutdoorPrompt(prompt) || !project.instances?.length) return project;
+  let changed = 0;
+  const instances = project.instances.map((i) => {
+    if (!/^(?:leg|post|upright)/i.test(i.role ?? "") || !i.from || !i.to) return i;
+    const item = getCatalogItem(i.catalogId);
+    if (item?.category !== "lumber" || Math.max(item.dims.width ?? 0, item.dims.height ?? 0, item.dims.thickness ?? 0) >= 3.5 && Math.min(item.dims.width ?? 9, item.dims.height ?? item.dims.thickness ?? 9) >= 3.5) return i;
+    const rise = Math.abs(i.to.y - i.from.y), len = Math.hypot(i.to.x - i.from.x, rise, i.to.z - i.from.z);
+    if (len < 48 || rise < 0.8 * len) return i;
+    changed++;
+    return { ...i, catalogId: "lumber-4x4-8", section: undefined };
+  });
+  if (!changed) return project;
+  return { ...project, instances, notes: [...(project.notes ?? []), `Posts over 48" are 4x4: ${changed} upright${changed === 1 ? "" : "s"} carry the frame outdoors.`] };
 }
 
 /** The stored item names the build ("Broom closet", "Record console"): title and headline note keep its word. */

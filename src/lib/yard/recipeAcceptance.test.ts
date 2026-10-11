@@ -89,3 +89,18 @@ describe("Buy carries every drawn and noted hardware item (Critic item 6)", () =
     for (const re of want) assert.match(names, re);
   });
 });
+
+describe("outdoor package (Critic item 7)", () => {
+  const buy = (q: string) => buildPlan(generateFromPrompt(q)).bom.map((b) => b.name).join(" | ");
+  it("anything outdoors gets exterior screws", () => {
+    for (const q of ["bat house", "cedar compost bin 3 bays"]) assert.match(buy(q), /exterior-coated/);
+  });
+  it("posts over 48in outdoors are 4x4", () => {
+    const p = generateFromPrompt("cedar garden arbor");
+    assert.ok(p.instances.filter((i) => i.role === "leg").every((i) => i.catalogId === "lumber-4x4-8"));
+  });
+  it("glides only on things with feet", () => {
+    assert.doesNotMatch(buy("sandbox cover"), /glides/);
+    assert.match(buy("picnic table"), /glides/);
+  });
+});
