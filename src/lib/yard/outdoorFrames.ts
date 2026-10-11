@@ -285,6 +285,8 @@ export function buildSwingSet(prompt: string, size?: { width: number; height: nu
   const spread = size?.width ?? Math.round(Hb * 0.75);
   const swings = Math.max(1, Math.min(4, num(lower, /(\d)\s*swings?/) ?? (beamL >= 96 ? 2 : 1)));
   const panels = aFramePanels({ beamL, Hb, spread, beamId: "lumber-2x10-10", bd: 9.25, legId: L.two6, legW: 5.5, inset: 0.5 });
+  // The steel A-frame bracket at each end wraps the beam and the leg tops.
+  for (const [i, z] of [[1, 0], [2, beamL - 2]] as const) panels.push(panel("rail", `A-frame bracket ${i}`, -2, Hb - 9.25 - 4, z, 5, 4, 2, "swing-a-frame-bracket"));
   const name = `Swing set ${ft(beamL)} beam × ${ft(Hb)} tall`;
   const notes = [
     `${name}: a doubled 2×10 top beam on edge rides on an A-frame at each end — two 2×6 legs splayed ${ft(spread)} apart at the ground, joined by a 2×6 cross brace at 40% of the height.`,

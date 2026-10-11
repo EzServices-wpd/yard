@@ -145,6 +145,9 @@ function buildBabyGate(prompt: string, size?: { width: number; height: number; d
   panels.push(panel("rail", "Bottom rail", face, 0, 0, inner, face, 0.75, "lumber-1x3-8"));
   panels.push(panel("rail", "Top rail", face, H - face, 0, inner, face, 0.75, "lumber-1x3-8"));
   for (let i = 0; i < n; i++) panels.push(panel("side", `Picket ${i + 1}`, face + gap + i * (picket + gap), 0, 0.75, picket, H, 0.75, "lumber-1x2-8"));
+  // The hardware the notes hang it on: two hinges on the hinge stile's outer edge, a latch on the latch stile's.
+  for (const [i, y] of [[1, 3], [2, H - 6]] as const) panels.push(panel("side", `Hinge ${i}`, -0.25, y, 0, 0.25, 3, 0.75, "gate-hinges"));
+  panels.push(panel("side", "Latch 1", W, H - 8, 0, 0.5, 2, 0.75, "gate-latch"));
   const who = lower.match(/\b(baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gate/)?.[1] ?? "baby";
   const title = `${who.charAt(0).toUpperCase()}${who.slice(1)} gate`;
   const name = `${title} ${inchFrac(W)}" × ${inchFrac(H)}"`;

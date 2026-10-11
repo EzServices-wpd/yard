@@ -860,7 +860,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       notes: `Cover raw plywood edges on drawer fronts people see (${drawers.length} front${drawers.length === 1 ? "" : "s"}).`,
     });
   }
-  if (coatRack) {
+  // Hooks are bought only when the model carries them.
+  if (coatRack && project.panels.some((p) => /^Coat (?:hook|peg) \d+$/.test(p.name))) {
     const pegRailBuild = project.panels.some((p) => /peg rail/i.test(p.name));
     const hooks = hookCount({ prompt: project.prompt, name: project.name, railWidth: project.overall.width, pegs: /\bpegs?\b/i.test(project.prompt ?? "") });
     bom.push({
@@ -1449,6 +1450,12 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     const m = notes.match(re);
     if (m && !have.includes(row(m).name.toLowerCase())) extra.push(row(m));
   }
+  // Hardware drawn in the model is bought: every hinge and latch on the model has a Buy line.
+  const drawn = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).length;
+  const hinges = drawn(/^Hinge \d+$/);
+  if (hinges && !/hinge/.test(have)) extra.push({ name: "Gate hinges", quantity: hinges, unit: "each", searchQuery: "self closing gate hinge", notes: "On the hinge stile, into the wall stud." });
+  const latches = drawn(/^Latch \d+$/);
+  if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
       name: "GRK RSS #9 x 3-1/8 structural screws",
@@ -1516,7 +1523,10 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return fallbackStepOne(project, buildPlanInner(project));
+  const plan = fallbackStepOne(project, buildPlanInner(project));
+  // Buy lists glue only when a step glues.
+  const glues = plan.instructions.some((s) => /\bglue/i.test(`${s.title} ${s.description}`));
+  return glues ? plan : { ...plan, bom: plan.bom.filter((b) => b.catalogId !== "glue" && !/^wood glue$/i.test(b.name)) };
 }
 
 /** A noun built as a simple primitive says so in step 1. */

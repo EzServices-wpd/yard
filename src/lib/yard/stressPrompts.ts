@@ -81,6 +81,8 @@ export const STRESS_PROMPTS = [
   "entry bench with shoe storage",
   "firewood rack",
   "baby gate",
+  "swing set",
+  "coat closet",
   "bar stool",
   "dollhouse bed",
   "32 inch tv stand",

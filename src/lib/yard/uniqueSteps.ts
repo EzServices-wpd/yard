@@ -25,7 +25,10 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
  * the rack's own hook step when it has one, else a step of its own. Board steps keep to boards.
  */
 function withHardwareStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
-  const hw = project.panels.filter((p) => isBoughtHardwareName(p.name));
+  const all = project.panels.filter((p) => isBoughtHardwareName(p.name));
+  const mounted = all.filter((p) => /^(?:Hinge|Latch|A-frame bracket) \d+$/.test(p.name));
+  const hw = all.filter((p) => !mounted.includes(p));
+  if (mounted.length) steps = withMountedHardware(steps, mounted);
   if (!hw.length) return steps;
   const hwNames = new Set(hw.map((p) => p.name));
   const out = steps.map((s) => ({
@@ -46,6 +49,27 @@ function withHardwareStep(project: YardProject, steps: AssemblyStep[]): Assembly
     title: `Screw ${n} coat hooks to the peg rail`,
     description: `Mark ${n} holes on the peg rail, evenly spaced, 1 1/2" up from its bottom edge. Screw ${n} hooks into the rail with ${SCREWS_PER_HOOK} screws each (${n * SCREWS_PER_HOOK} screws).`,
     tips: "The hook pack on the Buy list is the whole kit besides screws.",
+    partsUsed: hw.map((p) => p.name),
+  });
+  return out.map((s, i) => ({ ...s, step: i + 1 }));
+}
+
+/** Hinges, latches and brackets go on last, onto the finished frame they hold, before it is set in place. */
+function withMountedHardware(steps: AssemblyStep[], hw: YardProject["panels"]): AssemblyStep[] {
+  const count = new Map<string, number>();
+  for (const p of hw) {
+    const fam = p.name.replace(/ \d+$/, "").replace(/^(\w)(?=[a-z])/, (c) => c.toLowerCase());
+    count.set(fam, (count.get(fam) ?? 0) + 1);
+  }
+  const list = [...count].map(([f, n]) => `${n} ${f}${n > 1 ? (f.endsWith("ch") ? "es" : "s") : ""}`);
+  const said = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0];
+  const lastAt = steps.length && /^level/i.test(steps[steps.length - 1].title) ? steps.length - 1 : steps.length;
+  const out = [...steps];
+  out.splice(lastAt, 0, {
+    step: 0,
+    title: `Mount the ${said}`,
+    description: `Screw on the ${said} where the model shows them, with the screws in each pack. Open and close or rock it once to check.`,
+    tips: "The packs on the Buy list carry their own screws.",
     partsUsed: hw.map((p) => p.name),
   });
   return out.map((s, i) => ({ ...s, step: i + 1 }));

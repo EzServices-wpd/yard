@@ -2287,9 +2287,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const box = [...backs, ...bottoms, ...carcaseTops].map(cutLine).join("; ");
     steps.push({
       step: n++,
-      title: "Stand the main box",
-      description: `${standLead(uprights)} ${uDesc}. ${[joinRun(stockJoinVerb(project), [backs.length ? "back" : "", bottoms.length ? "bottom" : "", carcaseTops.length ? "top" : ""]), box || (legFrame ? "The aprons and top follow, each on the parts under it." : "Back, top, and bottom as labeled.")].filter(Boolean).join(" ")}${stockJoinVerb(project) === "Screw" ? " Predrill near the ends so the ply does not split." : ""}`,
-      tips: doors.length
+      title: legFrame && !box ? "Stand the legs" : "Stand the main box",
+      description: `${standLead(uprights)} ${uDesc}. ${[joinRun(stockJoinVerb(project), [backs.length ? "back" : "", bottoms.length ? "bottom" : "", carcaseTops.length ? "top" : ""]), box || (legFrame ? "The parts they carry follow, each on the parts under it." : "Back, top, and bottom as labeled.")].filter(Boolean).join(" ")}${stockJoinVerb(project) === "Screw" ? " Predrill near the ends so the ply does not split." : ""}`,
+      tips: legFrame && !box
+        ? "Check each leg stands plumb before the next part goes on."
+        : doors.length
         ? "Check both diagonals before the glue skins. A 1/8\" difference will show in the doors. Dry-fit first (assemble without glue) if this is your first box."
         : "Check both diagonals before the glue skins. Dry-fit first (assemble without glue) if this is your first box.",
       partsUsed: names([...uprights, ...backs, ...bottoms, ...carcaseTops]),
