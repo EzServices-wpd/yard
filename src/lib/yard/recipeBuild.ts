@@ -38,16 +38,30 @@ export function typedCount(prompt: string, recipe: Recipe): number {
   return Math.max(1, Math.min(12, Math.round(n)));
 }
 
-/** The stock the build is cut from: typed stock wins (members and sheet parts alike), else the recipe's own. */
+/** Words that name a stock (a size or a material), not only a species ("cedar", "pine"). */
+const STOCK_WORD = /\b\d+\s*x\s*\d+\b|plywood|\bply\b|cardboard|popsicle|craft\s+sticks?|dowels?|pvc|\bmdf\b|\bosb\b|bamboo|skewers?|pipe/i;
+
+/**
+ * The stock the build is cut from (stockForm rule). A typed stock or a stock switch replaces the skin and
+ * board parts; structural parts that name their own section (4x4 posts, 2x12 stringers) keep it. A species
+ * alone ("cedar") keeps every recipe stock. Craft stock on a full-size recipe with no craft size is refused:
+ * the recipe's own stock builds it and a note says why.
+ */
 function stockFor(prompt: string, recipe: Recipe, override?: string) {
-  const typed = override ? getCatalogItem(override) : detectMaterial(prompt);
-  const ok = typed && !isWireStock(typed) ? typed : null;
+  const typed = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  let ok = typed && !isWireStock(typed) ? typed : null;
   const craft = !!ok && CRAFT.has(ok.category);
+  const big = Math.max(recipe.size.width, recipe.size.height, recipe.size.depth) > 48;
+  const refused = craft && !recipe.craftSize && big ? ok : null;
+  if (refused) ok = null;
   return {
     member: ok?.id ?? recipe.stock ?? "lumber-2x4-8",
-    sheet: ok ? (ok.category === "lumber" ? recipe.sheet ?? ok.id : ok.id) : recipe.sheet ?? recipe.stock ?? "plywood-3-4-4x8",
-    craft,
+    sheet: ok?.id ?? recipe.sheet ?? recipe.stock ?? "plywood-3-4-4x8",
+    craft: !!ok && craft,
     typed: !!ok,
+    // Craft stock builds every part; real stock leaves structural sections alone.
+    all: !!ok && craft,
+    refused: refused ? `${refused.name} can't carry a ${recipe.title.toLowerCase()} this size; it is built in its real stock.` : null,
   };
 }
 
@@ -92,7 +106,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
         name: reps > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" ? part.catalogId ?? "hardware" : stock.typed ? (part.kind === "member" ? stock.member : stock.sheet) : part.stock ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }
@@ -106,7 +120,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...(stock.craft ? ["Glue the joints."] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };

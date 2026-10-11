@@ -56,3 +56,20 @@ describe("recipe acceptance (grade 2da150e)", () => {
   }
   it("all 25 prompts are covered", () => assert.equal(RECIPE.length + ENGINE.length, 25));
 });
+
+describe("recipe stock switch (Critic item 3)", () => {
+  const ids = (q: string, o?: string) => { const p = generateFromPrompt(q, o); return { p, m: (n: string) => p.panels.find((x) => x.name.replace(/ \d+$/, "") === n)?.materialId }; };
+  it("keeps exact W×D×H and the form; skins switch, posts keep their section", () => {
+    const a = ids("cedar compost bin 3 bays"), b = ids("cedar compost bin 3 bays", "plywood-3-4-4x8");
+    assert.deepEqual(b.p.overall, a.p.overall);
+    assert.equal(b.p.panels.length, a.p.panels.length);
+    assert.equal(a.m("Back post"), "lumber-4x4-8");
+    assert.equal(b.m("Back post"), "lumber-4x4-8");
+    assert.equal(b.m("Back slats"), "plywood-3-4-4x8");
+  });
+  it("refuses craft stock on a full-size recipe, plainly", () => {
+    const { p, m } = ids("pergola 10x10", "popsicle-standard");
+    assert.equal(m("Post"), "lumber-4x4-8");
+    assert.ok(p.notes.some((n) => /can't carry a pergola/.test(n)));
+  });
+});
