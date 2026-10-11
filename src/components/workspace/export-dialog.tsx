@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { planToMarkdown } from "@/lib/yard/report";
-import { buildPlanPdf, slugPlan } from "@/lib/yard/pdf";
+import { buildPlanPdf, headerTitle, slugPlan } from "@/lib/yard/pdf";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
@@ -140,7 +140,7 @@ export function ExportDialog({
     <div className="pointer-events-auto fixed inset-0 z-[60] flex flex-col bg-paper text-ink">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-rule px-4 py-3 print:hidden">
         <div className="min-w-0">
-          <p className="truncate font-display text-lg text-ink">{project.name}</p>
+          <p className="truncate font-display text-lg text-ink">{headerTitle(project)}</p>
           <p className="text-xs text-ink-muted">
             {sizeLine} · the plan on paper
           </p>
@@ -181,7 +181,7 @@ export function ExportDialog({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <article className="mx-auto max-w-2xl px-5 py-8 sm:px-8">
           <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Yard plan</p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-ink">{project.name}</h1>
+          <h1 className="mt-2 font-display text-3xl tracking-tight text-ink">{headerTitle(project)}</h1>
           <p className="mt-2 font-mono text-sm tracking-tight text-ink">
             {sizeLine}
           </p>

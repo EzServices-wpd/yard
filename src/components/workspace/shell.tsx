@@ -1,4 +1,5 @@
 "use client";
+import { headerTitle } from "@/lib/yard/pdf";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -30,7 +31,7 @@ import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "@/lib/yard/modelSize";
+import { modelFinishedDepth, modelProudNote } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
@@ -219,7 +220,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
             <Logo />
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline">
-            {stampFinishedDepth(project.name, project.overall.depth, modelFinishedDepth(project.panels, project.overall.depth))}
+            {headerTitle(project)}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">

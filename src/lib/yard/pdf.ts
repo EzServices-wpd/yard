@@ -1201,3 +1201,18 @@ export function planPdfBlob(project: YardProject, plan: BuildPlan): Blob {
 }
 
 export { planStepParts, stepKindOf };
+
+/**
+ * The header everywhere a size shows: the name without its bare size, then the finished size with every
+ * axis labelled in one order, W × D × H, and the axes nobody typed marked assumed.
+ */
+export function headerTitle(project: YardProject): string {
+  const { assumed } = typedAxesTalk(project);
+  const o = project.pocket?.unit ?? project.overall;
+  const d = modelFinishedDepth(project.panels, o.depth);
+  const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
+  const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
+  const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
+  const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
+  return `${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`;
+}
