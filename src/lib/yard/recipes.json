@@ -1,4 +1,4175 @@
 {
-  "schema": 1,
-  "recipes": []
+ "schema": 1,
+ "recipes": [
+  {
+   "key": "ferris-wheel",
+   "synonyms": [
+    "ferris"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Ferris wheel",
+   "size": {
+    "width": 18,
+    "height": 19,
+    "depth": 8
+   },
+   "defining": [
+    "wheel",
+    "axle",
+    "a-frame",
+    "gondola"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.03,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "a-frame",
+     "name": "Left front leg",
+     "box": [
+      0.4,
+      0.03,
+      0,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Left back leg",
+     "box": [
+      0.4,
+      0.03,
+      0.9,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Right front leg",
+     "box": [
+      0.56,
+      0.03,
+      0,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Right back leg",
+     "box": [
+      0.56,
+      0.03,
+      0.9,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.44,
+      0.5,
+      0,
+      0.12,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Left back leg",
+      "Right front leg",
+      "Right back leg"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "Front rim",
+     "box": [
+      0.03,
+      0.06,
+      0.25,
+      0.94,
+      0.92,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "Back rim",
+     "box": [
+      0.03,
+      0.06,
+      0.71,
+      0.94,
+      0.92,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "spoke",
+     "name": "Front spoke",
+     "box": [
+      0.48,
+      0.06,
+      0.21,
+      0.04,
+      0.92,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Front rim"
+     ]
+    },
+    {
+     "role": "spoke",
+     "name": "Back spoke",
+     "box": [
+      0.48,
+      0.06,
+      0.75,
+      0.04,
+      0.92,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 1",
+     "box": [
+      0.45,
+      0.88,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 2",
+     "box": [
+      0.03,
+      0.45,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 3",
+     "box": [
+      0.88,
+      0.45,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 4",
+     "box": [
+      0.45,
+      0.02,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    }
+   ],
+   "notes": [
+    "The wheel stands upright on its axle between two A-frames and turns."
+   ],
+   "stock": "popsicle-standard",
+   "sheet": "popsicle-standard",
+   "moving": [
+    {
+     "part": "Front rim",
+     "motion": "spin"
+    }
+   ]
+  },
+  {
+   "key": "glider",
+   "synonyms": [
+    "balsa glider",
+    "glider plane"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Balsa glider",
+   "size": {
+    "width": 16,
+    "height": 2.5,
+    "depth": 12
+   },
+   "defining": [
+    "fuselage",
+    "wing",
+    "tail",
+    "fin"
+   ],
+   "parts": [
+    {
+     "role": "fuselage",
+     "name": "Fuselage",
+     "box": [
+      0.47,
+      0,
+      0,
+      0.06,
+      0.3,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "wing",
+     "name": "Wing",
+     "box": [
+      0,
+      0.3,
+      0.25,
+      1,
+      0.1,
+      0.25
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tailplane",
+     "box": [
+      0.32,
+      0.3,
+      0.86,
+      0.36,
+      0.08,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "fin",
+     "name": "Fin",
+     "box": [
+      0.485,
+      0.38,
+      0.86,
+      0.03,
+      0.6,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Tailplane"
+     ]
+    },
+    {
+     "role": "nose",
+     "name": "Nose weight",
+     "box": [
+      0.46,
+      0.05,
+      0,
+      0.08,
+      0.2,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    }
+   ],
+   "notes": [
+    "Glue only; thin balsa splits on screws.",
+    "Sand the wing's leading edge round for lift."
+   ],
+   "stock": "popsicle-jumbo",
+   "sheet": "plywood-1-4-4x8"
+  },
+  {
+   "key": "toy-airplane",
+   "synonyms": [
+    "airplane",
+    "plane"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Toy airplane",
+   "size": {
+    "width": 14,
+    "height": 7,
+    "depth": 14
+   },
+   "defining": [
+    "fuselage",
+    "wing",
+    "tail",
+    "wheel",
+    "axle",
+    "propeller"
+   ],
+   "parts": [
+    {
+     "role": "wheel",
+     "name": "Left wheel",
+     "box": [
+      0.2,
+      0,
+      0.22,
+      0.05,
+      0.16,
+      0.12
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wheel",
+     "name": "Right wheel",
+     "box": [
+      0.75,
+      0,
+      0.22,
+      0.05,
+      0.16,
+      0.12
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.25,
+      0.06,
+      0.25,
+      0.5,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left wheel",
+      "Right wheel"
+     ]
+    },
+    {
+     "role": "fuselage",
+     "name": "Fuselage",
+     "box": [
+      0.42,
+      0.1,
+      0.06,
+      0.16,
+      0.3,
+      0.94
+     ],
+     "kind": "member",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "wing",
+     "name": "Wing",
+     "box": [
+      0,
+      0.25,
+      0.25,
+      1,
+      0.07,
+      0.22
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tailplane",
+     "box": [
+      0.3,
+      0.4,
+      0.86,
+      0.4,
+      0.05,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "fin",
+     "name": "Fin",
+     "box": [
+      0.485,
+      0.45,
+      0.86,
+      0.03,
+      0.4,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Tailplane"
+     ]
+    },
+    {
+     "role": "propeller",
+     "name": "Prop shaft",
+     "box": [
+      0.49,
+      0.23,
+      0,
+      0.02,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "propeller",
+     "name": "Propeller",
+     "box": [
+      0.3,
+      0.235,
+      0,
+      0.4,
+      0.03,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Prop shaft"
+     ]
+    }
+   ],
+   "notes": [
+    "The propeller spins on a dowel shaft; the wheels turn on a through axle."
+   ],
+   "modifiers": [
+    "propeller"
+   ],
+   "stock": "lumber-1x4-8",
+   "sheet": "lumber-1x4-8",
+   "moving": [
+    {
+     "part": "Propeller",
+     "motion": "spin"
+    },
+    {
+     "part": "Left wheel",
+     "motion": "spin"
+    }
+   ]
+  },
+  {
+   "key": "reindeer",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Reindeer",
+   "size": {
+    "width": 36,
+    "height": 40,
+    "depth": 10
+   },
+   "defining": [
+    "leg",
+    "body",
+    "head",
+    "antler"
+   ],
+   "parts": [
+    {
+     "role": "leg",
+     "name": "Front left leg",
+     "box": [
+      0.7,
+      0,
+      0.1,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Front right leg",
+     "box": [
+      0.7,
+      0,
+      0.7,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Back left leg",
+     "box": [
+      0.15,
+      0,
+      0.1,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Back right leg",
+     "box": [
+      0.15,
+      0,
+      0.7,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "body",
+     "name": "Body",
+     "box": [
+      0.12,
+      0.45,
+      0.1,
+      0.7,
+      0.2,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "neck",
+     "name": "Neck",
+     "box": [
+      0.72,
+      0.65,
+      0.3,
+      0.1,
+      0.15,
+      0.4
+     ],
+     "kind": "member",
+     "on": [
+      "Body"
+     ]
+    },
+    {
+     "role": "head",
+     "name": "Head",
+     "box": [
+      0.72,
+      0.8,
+      0.3,
+      0.26,
+      0.1,
+      0.4
+     ],
+     "kind": "member",
+     "on": [
+      "Neck"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Left antler",
+     "box": [
+      0.74,
+      0.9,
+      0.3,
+      0.03,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Head"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Right antler",
+     "box": [
+      0.74,
+      0.9,
+      0.65,
+      0.03,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Head"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Left tine",
+     "box": [
+      0.62,
+      0.95,
+      0.3,
+      0.12,
+      0.03,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Left antler"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Right tine",
+     "box": [
+      0.62,
+      0.95,
+      0.65,
+      0.12,
+      0.03,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Right antler"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tail",
+     "box": [
+      0.06,
+      0.58,
+      0.45,
+      0.06,
+      0.05,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Body"
+     ]
+    }
+   ],
+   "notes": [
+    "Antlers branch from the head; screw each joint with two 2\u00bd\u2033 screws."
+   ],
+   "stock": "lumber-2x4-8",
+   "sheet": "lumber-2x4-8"
+  },
+  {
+   "key": "marble-run",
+   "synonyms": [
+    "marble maze"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Marble run",
+   "size": {
+    "width": 24,
+    "height": 30,
+    "depth": 8
+   },
+   "defining": [
+    "ramp",
+    "drop",
+    "catch",
+    "backboard"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.04,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "backboard",
+     "name": "Back board",
+     "box": [
+      0,
+      0.04,
+      0,
+      1,
+      0.96,
+      0.15
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 1",
+     "box": [
+      0.05,
+      0.8,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 1 rail",
+     "box": [
+      0.05,
+      0.83,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 1"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 2",
+     "box": [
+      0.2,
+      0.6,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 2 rail",
+     "box": [
+      0.2,
+      0.63,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 2"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 3",
+     "box": [
+      0.05,
+      0.4,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 3 rail",
+     "box": [
+      0.05,
+      0.43,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 3"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 4",
+     "box": [
+      0.2,
+      0.2,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 4 rail",
+     "box": [
+      0.2,
+      0.23,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 4"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 1",
+     "box": [
+      0.8,
+      0.63,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 2",
+     "box": [
+      0.05,
+      0.43,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 3",
+     "box": [
+      0.8,
+      0.23,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "start",
+     "name": "Start cup",
+     "box": [
+      0.05,
+      0.83,
+      0.15,
+      0.15,
+      0.06,
+      0.3
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 1"
+     ]
+    },
+    {
+     "role": "catch",
+     "name": "Catch tray",
+     "box": [
+      0.7,
+      0.04,
+      0.15,
+      0.3,
+      0.06,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    }
+   ],
+   "notes": [
+    "Tilt each ramp about 5\u00b0 down toward its drop; the marble zig-zags to the catch tray."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet",
+   "moving": []
+  },
+  {
+   "key": "tipi",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Kids tipi",
+   "size": {
+    "width": 48,
+    "height": 66,
+    "depth": 48
+   },
+   "defining": [
+    "pole",
+    "cover"
+   ],
+   "parts": [
+    {
+     "role": "pole",
+     "name": "Pole 1",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 2",
+     "box": [
+      0.9,
+      0,
+      0.05,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 3",
+     "box": [
+      0.05,
+      0,
+      0.9,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 4",
+     "box": [
+      0.9,
+      0,
+      0.9,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "tie",
+     "name": "Back tie",
+     "box": [
+      0,
+      0.92,
+      0.05,
+      1,
+      0.04,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Pole 1",
+      "Pole 2"
+     ]
+    },
+    {
+     "role": "tie",
+     "name": "Front tie",
+     "box": [
+      0,
+      0.92,
+      0.9,
+      1,
+      0.04,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Pole 3",
+      "Pole 4"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Back cover",
+     "box": [
+      0.05,
+      0.02,
+      0.1,
+      0.9,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 1",
+      "Pole 2"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Left cover",
+     "box": [
+      0.1,
+      0.02,
+      0.1,
+      0.01,
+      0.9,
+      0.8
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 1",
+      "Pole 3"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Right cover",
+     "box": [
+      0.89,
+      0.02,
+      0.1,
+      0.01,
+      0.9,
+      0.8
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 2",
+      "Pole 4"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Front cover left",
+     "box": [
+      0.05,
+      0.02,
+      0.89,
+      0.3,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 3"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Front cover right",
+     "box": [
+      0.65,
+      0.02,
+      0.89,
+      0.3,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 4"
+     ]
+    }
+   ],
+   "notes": [
+    "A kid-size play tipi: lash the poles at the top and drape the fabric cover, with a door gap at the front."
+   ],
+   "stock": "dowel-1-1-4-36",
+   "sheet": "other"
+  },
+  {
+   "key": "treasure-chest",
+   "synonyms": [
+    "pirate chest"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Treasure chest",
+   "size": {
+    "width": 10,
+    "height": 7,
+    "depth": 6
+   },
+   "defining": [
+    "wall",
+    "lid",
+    "hinge"
+   ],
+   "parts": [
+    {
+     "role": "bottom",
+     "name": "Bottom",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.08,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Front wall",
+     "box": [
+      0,
+      0.08,
+      0.92,
+      1,
+      0.62,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Back wall",
+     "box": [
+      0,
+      0.08,
+      0,
+      1,
+      0.62,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Left wall",
+     "box": [
+      0,
+      0.08,
+      0.08,
+      0.08,
+      0.62,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Right wall",
+     "box": [
+      0.92,
+      0.08,
+      0.08,
+      0.08,
+      0.62,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "lid",
+     "name": "Lid",
+     "box": [
+      0,
+      0.7,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall",
+      "Back wall",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Hinge",
+     "box": [
+      0.2,
+      0.64,
+      0,
+      0.12,
+      0.12,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "latch",
+     "name": "Latch",
+     "box": [
+      0.45,
+      0.6,
+      0.98,
+      0.1,
+      0.15,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front wall"
+     ]
+    }
+   ],
+   "notes": [
+    "A craft-size chest; the lid swings up on a hinge at the back."
+   ],
+   "stock": "popsicle-standard",
+   "sheet": "popsicle-standard",
+   "moving": [
+    {
+     "part": "Lid",
+     "motion": "hinge"
+    }
+   ]
+  },
+  {
+   "key": "compost-bin",
+   "synonyms": [
+    "compost bay",
+    "compost bins"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Compost bin",
+   "size": {
+    "width": 36,
+    "height": 36,
+    "depth": 36
+   },
+   "defining": [
+    "post",
+    "slat",
+    "divider"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Back post",
+     "box": [
+      0,
+      0,
+      0,
+      0.035,
+      1,
+      0.1
+     ],
+     "kind": "member",
+     "repeat": "between",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Front post",
+     "box": [
+      0,
+      0,
+      0.9,
+      0.035,
+      1,
+      0.1
+     ],
+     "kind": "member",
+     "repeat": "between",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "slat",
+     "name": "Back slats",
+     "box": [
+      0,
+      0.04,
+      0,
+      1,
+      0.96,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Back post"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "divider",
+     "name": "Bay wall",
+     "box": [
+      0,
+      0.04,
+      0.1,
+      0.02,
+      0.96,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Back post",
+      "Front post"
+     ],
+     "repeat": "between"
+    },
+    {
+     "role": "slat",
+     "name": "Front slats",
+     "box": [
+      0,
+      0.04,
+      0.97,
+      1,
+      0.5,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Front post"
+     ],
+     "repeat": "each"
+    }
+   ],
+   "notes": [
+    "Open slatted bays share their posts; no floor or roof so the pile drains and breathes.",
+    "Front slats lift out to turn the pile."
+   ],
+   "outdoor": true,
+   "count": {
+    "word": "bays",
+    "default": 1,
+    "unit": {
+     "width": 36
+    }
+   },
+   "stock": "lumber-2x6-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "deck-stairs",
+   "synonyms": [
+    "deck steps",
+    "porch steps",
+    "porch stairs",
+    "outdoor stairs"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Deck stairs",
+   "size": {
+    "width": 36,
+    "height": 22.5,
+    "depth": 31.5
+   },
+   "defining": [
+    "stringer",
+    "tread",
+    "riser"
+   ],
+   "parts": [
+    {
+     "role": "stringer",
+     "name": "Left stringer",
+     "box": [
+      0,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member",
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "stringer",
+     "name": "Center stringer",
+     "box": [
+      0.48,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "stringer",
+     "name": "Right stringer",
+     "box": [
+      0.96,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "tread",
+     "name": "Tread",
+     "box": [
+      0,
+      0.85,
+      0,
+      1,
+      0.15,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left stringer",
+      "Center stringer",
+      "Right stringer"
+     ],
+     "repeat": "stair"
+    },
+    {
+     "role": "riser",
+     "name": "Riser",
+     "box": [
+      0,
+      0,
+      0.95,
+      1,
+      0.85,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Left stringer",
+      "Center stringer",
+      "Right stringer"
+     ],
+     "repeat": "stair"
+    }
+   ],
+   "notes": [
+    "Cut the stringers to a sawtooth: 7\u00bd\u2033 rise and 10\u00bd\u2033 run per step; set them on a concrete pad and bolt the top to the deck rim."
+   ],
+   "outdoor": true,
+   "count": {
+    "word": "steps",
+    "default": 3,
+    "unit": {
+     "height": 7.5,
+     "depth": 10.5
+    }
+   },
+   "stock": "lumber-2x12-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "pergola",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Pergola",
+   "size": {
+    "width": 120,
+    "height": 96,
+    "depth": 120
+   },
+   "defining": [
+    "post",
+    "beam",
+    "rafter"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Post 1",
+     "box": [
+      0.08,
+      0,
+      0.08,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 2",
+     "box": [
+      0.89,
+      0,
+      0.08,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 3",
+     "box": [
+      0.08,
+      0,
+      0.89,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 4",
+     "box": [
+      0.89,
+      0,
+      0.89,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "beam",
+     "name": "Front beam",
+     "box": [
+      0,
+      0.9,
+      0.08,
+      1,
+      0.06,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Post 1",
+      "Post 2"
+     ],
+     "stock": "lumber-2x8-8"
+    },
+    {
+     "role": "beam",
+     "name": "Back beam",
+     "box": [
+      0,
+      0.9,
+      0.89,
+      1,
+      0.06,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Post 3",
+      "Post 4"
+     ],
+     "stock": "lumber-2x8-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 1",
+     "box": [
+      0.04,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 2",
+     "box": [
+      0.17,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 3",
+     "box": [
+      0.3,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 4",
+     "box": [
+      0.43,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 5",
+     "box": [
+      0.56,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 6",
+     "box": [
+      0.69,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 7",
+     "box": [
+      0.82,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 8",
+     "box": [
+      0.95,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    }
+   ],
+   "notes": [
+    "4\u00d74 posts set in concrete footings, doubled beams, rafters on top."
+   ],
+   "feet": true,
+   "outdoor": true,
+   "stock": "lumber-4x4-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "taj-mahal",
+   "synonyms": [
+    "taj"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Taj Mahal",
+   "size": {
+    "width": 24,
+    "height": 20,
+    "depth": 24
+   },
+   "defining": [
+    "plinth",
+    "minaret",
+    "dome",
+    "drum",
+    "iwan"
+   ],
+   "parts": [
+    {
+     "role": "plinth",
+     "name": "Plinth",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.08,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 1",
+     "box": [
+      0.02,
+      0.08,
+      0.02,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 1 cap",
+     "box": [
+      0.01,
+      0.8,
+      0.01,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 1"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 2",
+     "box": [
+      0.92,
+      0.08,
+      0.02,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 2 cap",
+     "box": [
+      0.91,
+      0.8,
+      0.01,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 2"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 3",
+     "box": [
+      0.02,
+      0.08,
+      0.92,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 3 cap",
+     "box": [
+      0.01,
+      0.8,
+      0.91,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 3"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 4",
+     "box": [
+      0.92,
+      0.08,
+      0.92,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 4 cap",
+     "box": [
+      0.91,
+      0.8,
+      0.91,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 4"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Front wall",
+     "box": [
+      0.2,
+      0.08,
+      0.78,
+      0.6,
+      0.42,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Back wall",
+     "box": [
+      0.2,
+      0.08,
+      0.2,
+      0.6,
+      0.42,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Left wall",
+     "box": [
+      0.2,
+      0.08,
+      0.22,
+      0.02,
+      0.42,
+      0.56
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Right wall",
+     "box": [
+      0.78,
+      0.08,
+      0.22,
+      0.02,
+      0.42,
+      0.56
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Front iwan",
+     "box": [
+      0.4,
+      0.1,
+      0.8,
+      0.2,
+      0.36,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Back iwan",
+     "box": [
+      0.4,
+      0.1,
+      0.18,
+      0.2,
+      0.36,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Left iwan",
+     "box": [
+      0.18,
+      0.1,
+      0.4,
+      0.02,
+      0.36,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Left wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Right iwan",
+     "box": [
+      0.8,
+      0.1,
+      0.4,
+      0.02,
+      0.36,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Right wall"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Roof",
+     "box": [
+      0.2,
+      0.5,
+      0.2,
+      0.6,
+      0.02,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall",
+      "Back wall",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "drum",
+     "name": "Drum",
+     "box": [
+      0.38,
+      0.52,
+      0.38,
+      0.24,
+      0.1,
+      0.24
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "dome",
+     "name": "Dome",
+     "box": [
+      0.32,
+      0.62,
+      0.32,
+      0.36,
+      0.26,
+      0.36
+     ],
+     "kind": "panel",
+     "on": [
+      "Drum"
+     ]
+    },
+    {
+     "role": "finial",
+     "name": "Finial",
+     "box": [
+      0.49,
+      0.88,
+      0.49,
+      0.02,
+      0.12,
+      0.02
+     ],
+     "kind": "member",
+     "on": [
+      "Dome"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 1",
+     "box": [
+      0.22,
+      0.52,
+      0.22,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 2",
+     "box": [
+      0.7,
+      0.52,
+      0.22,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 3",
+     "box": [
+      0.22,
+      0.52,
+      0.7,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 4",
+     "box": [
+      0.7,
+      0.52,
+      0.7,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    }
+   ],
+   "notes": [
+    "Onion dome on a drum over the square hall, four arched iwans and four corner minarets on the plinth."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet"
+  },
+  {
+   "key": "colosseum",
+   "synonyms": [
+    "coliseum",
+    "roman amphitheater"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Colosseum",
+   "size": {
+    "width": 30,
+    "height": 12,
+    "depth": 24
+   },
+   "defining": [
+    "pier",
+    "arcade",
+    "arena"
+   ],
+   "parts": [
+    {
+     "role": "arena",
+     "name": "Arena floor",
+     "box": [
+      0.1,
+      0,
+      0.1,
+      0.8,
+      0.03,
+      0.8
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 1",
+     "box": [
+      0.93,
+      0,
+      0.47,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 2",
+     "box": [
+      0.895,
+      0,
+      0.646,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 3",
+     "box": [
+      0.7953,
+      0,
+      0.7953,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 4",
+     "box": [
+      0.646,
+      0,
+      0.895,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 5",
+     "box": [
+      0.47,
+      0,
+      0.93,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 6",
+     "box": [
+      0.294,
+      0,
+      0.895,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 7",
+     "box": [
+      0.1447,
+      0,
+      0.7953,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 8",
+     "box": [
+      0.045,
+      0,
+      0.646,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 9",
+     "box": [
+      0.01,
+      0,
+      0.47,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 10",
+     "box": [
+      0.045,
+      0,
+      0.294,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 11",
+     "box": [
+      0.1447,
+      0,
+      0.1447,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 12",
+     "box": [
+      0.294,
+      0,
+      0.045,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 13",
+     "box": [
+      0.47,
+      0,
+      0.01,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 14",
+     "box": [
+      0.646,
+      0,
+      0.045,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 15",
+     "box": [
+      0.7953,
+      0,
+      0.1447,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 16",
+     "box": [
+      0.895,
+      0,
+      0.294,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-1",
+     "box": [
+      0.895,
+      0.31,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-2",
+     "box": [
+      0.7953,
+      0.31,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-3",
+     "box": [
+      0.646,
+      0.31,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-4",
+     "box": [
+      0.47,
+      0.31,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-5",
+     "box": [
+      0.294,
+      0.31,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-6",
+     "box": [
+      0.1447,
+      0.31,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-7",
+     "box": [
+      0.045,
+      0.31,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-8",
+     "box": [
+      0.01,
+      0.31,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-9",
+     "box": [
+      0.01,
+      0.31,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-10",
+     "box": [
+      0.045,
+      0.31,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-11",
+     "box": [
+      0.1447,
+      0.31,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-12",
+     "box": [
+      0.294,
+      0.31,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-13",
+     "box": [
+      0.47,
+      0.31,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-14",
+     "box": [
+      0.646,
+      0.31,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-15",
+     "box": [
+      0.7953,
+      0.31,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-16",
+     "box": [
+      0.895,
+      0.31,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-1",
+     "box": [
+      0.895,
+      0.63,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-2",
+     "box": [
+      0.7953,
+      0.63,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-3",
+     "box": [
+      0.646,
+      0.63,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-4",
+     "box": [
+      0.47,
+      0.63,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-5",
+     "box": [
+      0.294,
+      0.63,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-6",
+     "box": [
+      0.1447,
+      0.63,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-7",
+     "box": [
+      0.045,
+      0.63,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-8",
+     "box": [
+      0.01,
+      0.63,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-9",
+     "box": [
+      0.01,
+      0.63,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-10",
+     "box": [
+      0.045,
+      0.63,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-11",
+     "box": [
+      0.1447,
+      0.63,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-12",
+     "box": [
+      0.294,
+      0.63,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-13",
+     "box": [
+      0.47,
+      0.63,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-14",
+     "box": [
+      0.646,
+      0.63,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-15",
+     "box": [
+      0.7953,
+      0.63,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-16",
+     "box": [
+      0.895,
+      0.63,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-1",
+     "box": [
+      0.895,
+      0.95,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-2",
+     "box": [
+      0.7953,
+      0.95,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-3",
+     "box": [
+      0.646,
+      0.95,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-4",
+     "box": [
+      0.47,
+      0.95,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-5",
+     "box": [
+      0.294,
+      0.95,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-6",
+     "box": [
+      0.1447,
+      0.95,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-7",
+     "box": [
+      0.045,
+      0.95,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-8",
+     "box": [
+      0.01,
+      0.95,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-9",
+     "box": [
+      0.01,
+      0.95,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-10",
+     "box": [
+      0.045,
+      0.95,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-11",
+     "box": [
+      0.1447,
+      0.95,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-12",
+     "box": [
+      0.294,
+      0.95,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-13",
+     "box": [
+      0.47,
+      0.95,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-14",
+     "box": [
+      0.646,
+      0.95,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-15",
+     "box": [
+      0.7953,
+      0.95,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-16",
+     "box": [
+      0.895,
+      0.95,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    }
+   ],
+   "notes": [
+    "An elliptical ring of piers with three tiers of arcades around an open arena."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet"
+  },
+  {
+   "key": "murphy-bed",
+   "synonyms": [
+    "wall bed",
+    "fold down bed"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Murphy bed",
+   "size": {
+    "width": 66,
+    "height": 86,
+    "depth": 18
+   },
+   "defining": [
+    "cabinet",
+    "bed",
+    "pivot",
+    "leg"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Plinth",
+     "box": [
+      0.03,
+      0,
+      0.05,
+      0.94,
+      0.04,
+      0.9
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.03,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Right side",
+     "box": [
+      0.97,
+      0,
+      0,
+      0.03,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Top",
+     "box": [
+      0,
+      0.97,
+      0,
+      1,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "cabinet",
+     "name": "Back",
+     "box": [
+      0.03,
+      0.04,
+      0,
+      0.94,
+      0.93,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "pivot",
+     "name": "Fold bracket",
+     "box": [
+      0.03,
+      0.04,
+      0.4,
+      0.03,
+      0.06,
+      0.2
+     ],
+     "kind": "hardware",
+     "on": [
+      "Left side"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed frame left rail",
+     "box": [
+      0.03,
+      0.04,
+      0.3,
+      0.03,
+      0.9,
+      0.6
+     ],
+     "kind": "member",
+     "on": [
+      "Fold bracket"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed frame right rail",
+     "box": [
+      0.94,
+      0.04,
+      0.3,
+      0.03,
+      0.9,
+      0.6
+     ],
+     "kind": "member",
+     "on": [
+      "Right side"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed face",
+     "box": [
+      0.03,
+      0.04,
+      0.9,
+      0.94,
+      0.9,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Bed frame left rail",
+      "Bed frame right rail"
+     ]
+    },
+    {
+     "role": "leg",
+     "name": "Fold-out leg",
+     "box": [
+      0.06,
+      0.9,
+      0.6,
+      0.88,
+      0.04,
+      0.3
+     ],
+     "kind": "member",
+     "on": [
+      "Bed frame left rail",
+      "Bed frame right rail"
+     ]
+    }
+   ],
+   "notes": [
+    "The queen bed frame pivots down out of the wall cabinet on its fold brackets; the leg folds out to carry the foot.",
+    "Lag the cabinet to two wall studs before the bed is mounted."
+   ],
+   "stock": "lumber-2x6-8",
+   "sheet": "plywood-3-4-4x8",
+   "moving": [
+    {
+     "part": "Bed face",
+     "motion": "pivot"
+    }
+   ]
+  },
+  {
+   "key": "mudroom-locker",
+   "synonyms": [
+    "entry locker",
+    "locker"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Mudroom locker",
+   "size": {
+    "width": 54,
+    "height": 72,
+    "depth": 16
+   },
+   "defining": [
+    "side",
+    "bench",
+    "shelf",
+    "hook"
+   ],
+   "parts": [
+    {
+     "role": "side",
+     "name": "Side",
+     "box": [
+      0,
+      0,
+      0,
+      0.02,
+      1,
+      1
+     ],
+     "kind": "panel",
+     "repeat": "between"
+    },
+    {
+     "role": "back",
+     "name": "Back",
+     "box": [
+      0,
+      0.08,
+      0,
+      1,
+      0.9,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ]
+    },
+    {
+     "role": "top",
+     "name": "Top",
+     "box": [
+      0,
+      0.98,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ]
+    },
+    {
+     "role": "bench",
+     "name": "Bench seat",
+     "box": [
+      0,
+      0.25,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "shelf",
+     "name": "Top shelf",
+     "box": [
+      0,
+      0.8,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "kick",
+     "name": "Kick",
+     "box": [
+      0,
+      0,
+      0.92,
+      1,
+      0.08,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "hook",
+     "name": "Coat hook",
+     "box": [
+      0.4,
+      0.62,
+      0.03,
+      0.2,
+      0.06,
+      0.15
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back"
+     ],
+     "repeat": "each"
+    }
+   ],
+   "notes": [
+    "Tall open locker bays with a bench seat, a top shelf and a coat hook in each; anchor the top to a wall stud."
+   ],
+   "count": {
+    "word": "bays",
+    "default": 3,
+    "unit": {
+     "width": 18
+    }
+   },
+   "stock": "plywood-3-4-4x8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "floating-desk",
+   "synonyms": [
+    "wall desk",
+    "wall mounted desk"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Floating desk",
+   "size": {
+    "width": 48,
+    "height": 30,
+    "depth": 20
+   },
+   "defining": [
+    "cleat",
+    "top",
+    "arm"
+   ],
+   "parts": [
+    {
+     "role": "cleat",
+     "name": "Wall cleat",
+     "box": [
+      0,
+      0.9,
+      0,
+      1,
+      0.05,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "arm",
+     "name": "Left support arm",
+     "box": [
+      0.1,
+      0.9,
+      0.05,
+      0.04,
+      0.05,
+      0.85
+     ],
+     "kind": "member",
+     "on": [
+      "Wall cleat"
+     ]
+    },
+    {
+     "role": "arm",
+     "name": "Right support arm",
+     "box": [
+      0.86,
+      0.9,
+      0.05,
+      0.04,
+      0.05,
+      0.85
+     ],
+     "kind": "member",
+     "on": [
+      "Wall cleat"
+     ]
+    },
+    {
+     "role": "top",
+     "name": "Desktop",
+     "box": [
+      0,
+      0.95,
+      0,
+      1,
+      0.05,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Wall cleat",
+      "Left support arm",
+      "Right support arm"
+     ]
+    }
+   ],
+   "notes": [
+    "The top cantilevers off a wall cleat lagged into studs at desk height; no legs."
+   ],
+   "wall": true,
+   "stock": "lumber-2x4-8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "under-stairs-shelf",
+   "synonyms": [
+    "under stairs shelf",
+    "under-stair shelf",
+    "under stair shelf"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Under-stairs shelves",
+   "size": {
+    "width": 48,
+    "height": 72,
+    "depth": 12
+   },
+   "defining": [
+    "upright",
+    "slope",
+    "shelf"
+   ],
+   "parts": [
+    {
+     "role": "upright",
+     "name": "Upright 1",
+     "box": [
+      0,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 2",
+     "box": [
+      0.32,
+      0,
+      0,
+      0.04,
+      0.75,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 3",
+     "box": [
+      0.64,
+      0,
+      0,
+      0.04,
+      0.5,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 4",
+     "box": [
+      0.96,
+      0,
+      0,
+      0.04,
+      0.25,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 1",
+     "box": [
+      0.04,
+      0.72,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 1-1",
+     "box": [
+      0.04,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 1-2",
+     "box": [
+      0.04,
+      0.375,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 2",
+     "box": [
+      0.36,
+      0.47,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 2-1",
+     "box": [
+      0.36,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 2-2",
+     "box": [
+      0.36,
+      0.25,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 3",
+     "box": [
+      0.68,
+      0.22,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 3-1",
+     "box": [
+      0.68,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 3-2",
+     "box": [
+      0.68,
+      0.125,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    }
+   ],
+   "notes": [
+    "Uprights step down with the stair slope; scribe each top to the stringer."
+   ],
+   "stock": "plywood-3-4-4x8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "sandbox",
+   "synonyms": [
+    "sand box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Sandbox",
+   "size": {
+    "width": 48,
+    "height": 10,
+    "depth": 48
+   },
+   "defining": [
+    "wall",
+    "seat"
+   ],
+   "parts": [
+    {
+     "role": "wall",
+     "name": "Back wall",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0.03
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Front wall",
+     "box": [
+      0,
+      0,
+      0.97,
+      1,
+      1,
+      0.03
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Left wall",
+     "box": [
+      0,
+      0,
+      0.03,
+      0.03,
+      1,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Right wall",
+     "box": [
+      0.97,
+      0,
+      0.03,
+      0.03,
+      1,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 1",
+     "box": [
+      0,
+      0.85,
+      0,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 2",
+     "box": [
+      0.8,
+      0.85,
+      0,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 3",
+     "box": [
+      0,
+      0.85,
+      0.8,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 4",
+     "box": [
+      0.8,
+      0.85,
+      0.8,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    }
+   ],
+   "notes": [
+    "No floor: lay landscape fabric under the sand so it drains."
+   ],
+   "modifiers": [
+    "seat"
+   ],
+   "outdoor": true,
+   "stock": "lumber-2x6-8",
+   "sheet": "lumber-2x6-8"
+  }
+ ]
 }

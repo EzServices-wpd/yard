@@ -47,6 +47,7 @@ function stockFor(prompt: string, recipe: Recipe, override?: string) {
     member: ok?.id ?? recipe.stock ?? "lumber-2x4-8",
     sheet: ok ? (ok.category === "lumber" ? recipe.sheet ?? ok.id : ok.id) : recipe.sheet ?? recipe.stock ?? "plywood-3-4-4x8",
     craft,
+    typed: !!ok,
   };
 }
 
@@ -64,12 +65,15 @@ export type RecipeBuild = { project: YardProject; count: number; size: Size };
 export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
-  const size: Size = { ...base, ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) };
   const count = typedCount(prompt, recipe);
+  // A counted unit has its own real size: 3 bays are three bays wide, 3 steps three rises tall.
+  const unit = recipe.count?.unit ?? {};
+  const perUnit = Object.fromEntries((["width", "height", "depth"] as const).filter((a) => unit[a]).map((a) => [a, unit[a]! * count]));
+  const size: Size = { ...base, ...perUnit, ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) };
   const panels: Panel[] = [];
   const seen = new Map<string, number>();
   for (const part of recipe.parts) {
-    const reps = part.repeat === "each" ? count : part.repeat === "between" ? count + 1 : 1;
+    const reps = part.repeat === "each" || part.repeat === "stair" ? count : part.repeat === "between" ? count + 1 : 1;
     for (let i = 0; i < reps; i++) {
       const [x, y, z, w, h, d] = part.box;
       const cell = part.repeat === "each" ? 1 / count : 1;
@@ -77,14 +81,18 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
       const pw = part.repeat === "each" ? w * cell : w;
       const n = (seen.get(part.name) ?? 0) + 1;
       seen.set(part.name, n);
-      const sz = { width: pw * size.width, height: h * size.height, depth: d * size.depth };
+      // A stair step i sits one rise up and one run back from the step below it (z = 1 is the front).
+      const st = part.repeat === "stair";
+      const py = st ? (i + y) / count : y, ph = st ? h / count : h;
+      const pz = st ? (count - 1 - i + z) / count : z, pd = st ? d / count : d;
+      const sz = { width: pw * size.width, height: ph * size.height, depth: pd * size.depth };
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part, sz),
         name: reps > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
-        position: { x: px * size.width, y: y * size.height, z: z * size.depth },
+        position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" ? part.catalogId ?? "hardware" : part.kind === "member" ? stock.member : stock.sheet,
+        materialId: part.kind === "hardware" ? part.catalogId ?? "hardware" : stock.typed ? (part.kind === "member" ? stock.member : stock.sheet) : part.stock ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }
@@ -109,7 +117,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
 export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: string): string[] {
   const fail: string[] = [];
   const { project, count } = built;
-  const want = { ...recipe.size, ...typedSize(prompt, recipe) };
+  const want = typedSize(prompt, recipe);
   const typed = typedSize(prompt, recipe);
   for (const a of ["width", "height", "depth"] as const) {
     if (typed[a] != null && Math.abs(project.overall[a] - (want[a] ?? 0)) > 0.01) fail.push(`typed ${a} ${want[a]} not honored`);
@@ -128,9 +136,9 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   if (project.panels.some((p) => p.size.width * p.size.height * p.size.depth > 0.6 * vol)) fail.push("closed shell: one part fills the envelope");
   for (const role of recipe.defining ?? []) {
     const names = recipe.parts.filter((p) => p.role === role).map((p) => p.name);
-    if (!project.panels.some((p) => names.includes(p.name.replace(/ \d+$/, "")))) fail.push(`missing ${role}`);
+    if (!project.panels.some((p) => names.includes(p.name) || names.includes(p.name.replace(/ \d+$/, "")))) fail.push(`missing ${role}`);
   }
-  const reps = recipe.parts.filter((p) => p.repeat === "each");
+  const reps = recipe.parts.filter((p) => p.repeat === "each" || p.repeat === "stair");
   if (recipe.count && reps.length && project.panels.filter((p) => p.name.replace(/ \d+$/, "") === reps[0].name).length !== count) fail.push(`count ${count} not built`);
   // Load path: each part touches what carries it; a part on nothing stands on the floor (or the wall).
   const byName = (name: string) => boxes.filter((b) => b.role === name || b.role.replace(/ \d+$/, "") === name);

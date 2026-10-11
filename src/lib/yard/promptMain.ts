@@ -495,6 +495,10 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
+  // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
+  // recipe build is already sized, so only the outdoor package is added to it.
+  const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  if (recipe) return withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
   const built = (a: Parameters<typeof generateRaw>) => {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0]) : solved;
@@ -1155,11 +1159,6 @@ function generateRaw(
       generateRaw(clause, materialOverride, undefined, { ...opts, noCompose: true }),
     );
     if (composed) return composed;
-  }
-  // A named object with a saved recipe builds from its defining parts (spec 001), never a template.
-  if (!formOverride && !opts.fittedOverride) {
-    const recipe = findRecipe(prompt);
-    if (recipe) return buildRecipe(recipe, prompt, materialOverride, opts.sizeOverride).project;
   }
   const lower = prompt.toLowerCase().trim();
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads

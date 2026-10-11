@@ -18,7 +18,9 @@ export type RecipePart = {
   /** Names of the parts that carry this one; empty means it stands on the floor or hangs on the wall. */
   on?: string[];
   /** "each" repeats the part once per counted unit, "between" once per boundary (count + 1). */
-  repeat?: "each" | "between";
+  repeat?: "each" | "between" | "stair";
+  /** Catalog stock for this part when no stock is typed (4x4 posts under 2x6 beams). */
+  stock?: string;
   /** A catalog id for a hardware part. */
   catalogId?: string;
 };
@@ -45,7 +47,7 @@ export type Recipe = {
   /** Roles that make the thing what it is; each must be built. */
   defining?: string[];
   /** A typed count that repeats parts along the width ("3 bays"). */
-  count?: { word: string; default: number };
+  count?: { word: string; default: number; unit?: { width?: number; height?: number; depth?: number } };
   parts: RecipePart[];
   moving?: { part: string; motion: "fold" | "hinge" | "pivot" | "spin" | "slide" }[];
   notes: string[];
@@ -79,13 +81,13 @@ const words = (s: string) => new RegExp(String.raw`(?:^|\s)${s.replace(/[.*+?^${
 
 /** The recipe a prompt names: the longest key or synonym found in it, with every modifier present. */
 export function findRecipe(prompt: string, lib: RecipeStore = withLearned()): Recipe | null {
-  const noun = normalizeNoun(prompt);
+  const noun = normalizeNoun(prompt).replace(/-/g, " ");
   const lower = prompt.toLowerCase();
   let best: { r: Recipe; len: number } | null = null;
   for (const r of lib.recipes) {
     if (r.modifiers?.some((m) => !lower.includes(m))) continue;
     for (const name of [r.key.replace(/-/g, " "), ...r.synonyms]) {
-      if (words(name).test(noun) && (!best || name.length > best.len)) best = { r, len: name.length };
+      if (words(name.replace(/-/g, " ")).test(noun) && (!best || name.length > best.len)) best = { r, len: name.length };
     }
   }
   return best?.r ?? null;

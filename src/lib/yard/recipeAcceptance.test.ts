@@ -1,0 +1,58 @@
+/** Spec 001 acceptance: the 25 novel prompts of grade 2da150e. */
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { generateFromPrompt } from "./promptMain.ts";
+import { buildRecipe, validateRecipe } from "./recipeBuild.ts";
+import { findRecipe } from "./recipes.ts";
+import { structureIssues } from "./structureCheck.ts";
+
+// prompt → recipe key, the roles that must be built, and typed checks.
+const RECIPE: [string, string, Record<string, number>?][] = [
+  ["popsicle stick ferris wheel", "ferris-wheel"],
+  ["balsa glider", "glider"],
+  ["2x4 scrap reindeer", "reindeer"],
+  ["cardboard marble run", "marble-run"],
+  ["dowel tipi for kids", "tipi"],
+  ["popsicle stick treasure chest with lid", "treasure-chest"],
+  ["pine toy airplane with spinning propeller", "toy-airplane"],
+  ["pressure-treated deck stairs 3 steps", "deck-stairs", { Tread: 3 }],
+  ["cedar compost bin 3 bays", "compost-bin", { "Back slats": 3 }],
+  ["pergola 10x10", "pergola", { width: 120, depth: 120 }],
+  ["kids sandbox with corner seats", "sandbox"],
+  ["Taj Mahal cardboard", "taj-mahal"],
+  ["Colosseum from cardboard", "colosseum"],
+  ["floating desk 48 wide", "floating-desk", { width: 48 }],
+  ["mudroom locker 3 bays", "mudroom-locker", { "Coat hook": 3 }],
+  ["under-stairs shelf", "under-stairs-shelf"],
+  ["murphy bed queen", "murphy-bed"],
+];
+// Prompts an engine family already builds (graded on their own fixes, Critic items 3, 6, 7).
+const ENGINE = ["cedar garden arbor", "bat house", "Eiffel Tower from 2x4", "Brooklyn Bridge popsicle sticks", "Statue of Liberty from dowels", "Tower Bridge London popsicle", "broom closet 18 wide 84 tall 14 deep", "wall cabinet over toilet 24 wide"];
+
+describe("recipe acceptance (grade 2da150e)", () => {
+  for (const [q, key, want] of RECIPE) {
+    it(q, () => {
+      const r = findRecipe(q);
+      assert.equal(r?.key, key);
+      assert.deepEqual(validateRecipe(r!, buildRecipe(r!, q), q), []);
+      const p = generateFromPrompt(q);
+      assert.deepEqual(structureIssues(p).map((i) => `${i.code}:${i.part}`), []);
+      for (const role of r!.defining ?? []) {
+        const names = r!.parts.filter((x) => x.role === role).map((x) => x.name);
+        assert.ok(p.panels.some((x) => names.includes(x.name.replace(/ \d+$/, "")) || names.includes(x.name)), `${role} built`);
+      }
+      for (const [k, v] of Object.entries(want ?? {})) {
+        if (k === "width" || k === "depth" || k === "height") assert.equal(p.overall[k], v, k);
+        else assert.equal(p.panels.filter((x) => x.name.replace(/ \d+$/, "") === k).length, v, k);
+      }
+    });
+  }
+  for (const q of ENGINE) {
+    it(`${q} keeps its engine build, not a closed shell`, () => {
+      assert.equal(findRecipe(q), null);
+      const p = generateFromPrompt(q);
+      assert.ok(p.panels.length + p.instances.length >= 3);
+    });
+  }
+  it("all 25 prompts are covered", () => assert.equal(RECIPE.length + ENGINE.length, 25));
+});
