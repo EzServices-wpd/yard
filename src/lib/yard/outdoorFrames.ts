@@ -313,7 +313,10 @@ export function buildSawhorse(prompt: string, size?: { width: number; height: nu
 }
 
 /** Typed 2× board for a picnic table's top and seats; 2×6 when none is typed. */
-function picnicBoard(lower: string): { id: string; face: number; label: string } {
+function picnicBoard(lower: string, switched?: string): { id: string; face: number; label: string } {
+  if (switched === L.two4) return { id: L.two4, face: 3.5, label: "2×4" };
+  if (switched === L.two8) return { id: L.two8, face: 7.25, label: "2×8" };
+  if (switched === L.two6) return { id: L.two6, face: 5.5, label: "2×6" };
   if (/\b2\s*[x×]\s*4\b/.test(lower)) return { id: L.two4, face: 3.5, label: "2×4" };
   if (/\b2\s*[x×]\s*8\b/.test(lower)) return { id: L.two8, face: 7.25, label: "2×8" };
   return { id: L.two6, face: 5.5, label: "2×6" };
@@ -326,9 +329,22 @@ function picnicBoard(lower: string): { id: string; face: number; label: string }
  * from cleat to cleat. Frames are added along the length until no seat board spans past what 1 1/2" stock
  * holds for a person.
  */
-export function buildPicnicTable(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+/** Boards across a fixed width at a ¼" gap: the last board is ripped to fill, or the gaps open if it would be a sliver. */
+function boardsAcross(target: number, face: number, gap: number): { x: number; w: number }[] {
+  let n = Math.ceil((target + gap) / (face + gap) - 1e-6);
+  let last = target - (n - 1) * (face + gap);
+  let g = gap;
+  if (last < 1.5 && n > 2) {
+    n -= 1;
+    g = (target - n * face) / (n - 1);
+    last = face;
+  }
+  return Array.from({ length: n }, (_, i) => ({ x: i * (face + g), w: i === n - 1 ? Math.min(face, last) : face }));
+}
+
+export function buildPicnicTable(prompt: string, size?: { width: number; height: number; depth: number }, switched?: string): YardProject {
   const lower = prompt.toLowerCase();
-  const board = picnicBoard(lower);
+  const board = picnicBoard(lower, switched);
   const Lraw = size?.depth ?? axis(lower, /long|length|wide|width/) ?? axis(lower, /picnic|table/) ?? (() => {
     // A bare typed length ("6 ft", "96 inch") is the table's length unless it names the height.
     const m = lower.match(/(\d+(?:\.\d+)?)\s*('|ft\b|foot\b|feet\b|"|in\b|inch(?:es)?\b)(?!\s*(?:tall|high|height))/);
@@ -339,10 +355,14 @@ export function buildPicnicTable(prompt: string, size?: { width: number; height:
   const bt = 1.5;
   const gap = 0.25;
   const seatTop = 17;
-  const nTop = Math.max(3, Math.round(28 / (board.face + gap)));
-  const topW = nTop * board.face + (nTop - 1) * gap;
-  const nSeat = Math.max(2, Math.round(10.5 / (board.face + gap)));
-  const seatW = nSeat * board.face + (nSeat - 1) * gap;
+  // The envelope is the table's, not the board's: every board size fills the same top and seats
+  // (2×6 widths), so a stock switch keeps W×D×H exact.
+  const topW = 5 * 5.5 + 4 * gap;
+  const seatW = 2 * 5.5 + gap;
+  const topBoards = boardsAcross(topW, board.face, gap);
+  const seatBoards = boardsAcross(seatW, board.face, gap);
+  const nTop = topBoards.length;
+  const nSeat = seatBoards.length;
   const stepIn = 6;
   const W = topW + 2 * (stepIn + seatW);
   const inset = Math.round(Math.min(12, len * 0.15));
@@ -392,15 +412,15 @@ export function buildPicnicTable(prompt: string, size?: { width: number; height:
     const b = frameZ[k + 1] + (k + 1 === frames - 1 ? 0 : 1.5);
     panels.push(panel("rail", "Center brace", -0.75, h - 3.5, a, 1.5, 3.5, b - a, L.two4));
   }
-  for (let i = 0; i < nTop; i++) {
-    panels.push(panel("deck", `Tabletop board ${i + 1}`, -topW / 2 + i * (board.face + gap), h, 0, board.face, bt, len, board.id));
-  }
+  topBoards.forEach((b, i) => {
+    panels.push(panel("deck", `Tabletop board ${i + 1}`, -topW / 2 + b.x, h, 0, b.w, bt, len, board.id));
+  });
   for (const side of [-1, 1] as const) {
     const label = side < 0 ? "Left seat board" : "Right seat board";
-    for (let i = 0; i < nSeat; i++) {
-      const x = side < 0 ? -W / 2 + i * (board.face + gap) : topW / 2 + stepIn + i * (board.face + gap);
-      panels.push(panel("deck", `${label} ${i + 1}`, x, seatTop - bt, 0, board.face, bt, len, board.id));
-    }
+    seatBoards.forEach((b, i) => {
+      const x = side < 0 ? -W / 2 + b.x : topW / 2 + stepIn + b.x;
+      panels.push(panel("deck", `${label} ${i + 1}`, x, seatTop - bt, 0, b.w, bt, len, board.id));
+    });
   }
   const name = `Picnic table ${ft(len)} × ${inchFrac(H)}" tall`;
   const notTyped = board.id !== L.two6 ? ` Not ${board.label}: the A-frame legs and seat supports stay 2×6 and the cleats and center brace 2×4 — the legs and supports carry the whole load.` : "";
@@ -791,9 +811,9 @@ export function buildShed(prompt: string, size?: { width: number; height: number
   return project(prompt, name, panels, OW, OH, OD, notes, frameId);
 }
 
-export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { width: number; height: number; depth: number }): YardProject {
+export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { width: number; height: number; depth: number }, switched?: string): YardProject {
   if (kind === "shed") return buildShed(prompt, size);
-  if (kind === "picnic") return buildPicnicTable(prompt, size);
+  if (kind === "picnic") return buildPicnicTable(prompt, size, switched);
   if (kind === "enclosure") return buildEnclosure(prompt, purposeOf(prompt.toLowerCase())!, size);
   return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size) : buildSwingSet(prompt, size);
 }

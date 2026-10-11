@@ -468,6 +468,47 @@ function refitBetween(p: Panel, was: Panel[], now: Panel[]): Panel {
   return { ...p, position: { ...p.position, x: nx0 }, size: { ...p.size, width: nx1 - nx0 } };
 }
 
+type PosAxis = "x" | "y" | "z";
+const AXES: [PosAxis, "width" | "height" | "depth"][] = [["x", "width"], ["y", "height"], ["z", "depth"]];
+
+function envelopeOf(panels: Panel[]) {
+  const b = panels.map(panelBox);
+  return { x: [Math.min(...b.map((q) => q.x0)), Math.max(...b.map((q) => q.x1))], y: [Math.min(...b.map((q) => q.y0)), Math.max(...b.map((q) => q.y1))], z: [Math.min(...b.map((q) => q.z0)), Math.max(...b.map((q) => q.z1))] } as Record<PosAxis, number[]>;
+}
+
+/** A face that thins keeps its outer face where it was: one on the far side of the envelope moves out. */
+function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
+  if (p.yaw || p.polygon) return p;
+  const pos = { ...p.position };
+  for (const [a, k] of AXES) {
+    const d = was.size[k] - p.size[k];
+    if (d > 0.01 && Math.abs(was.position[a] + was.size[k] - env[a][1]) < 0.02) pos[a] = was.position[a] + d;
+  }
+  return { ...p, position: pos };
+}
+
+/** Inside parts that met a face that moved still meet it: they grow to the face's new inner side. */
+function refitInside(was: Panel[], now: Panel[]): Panel[] {
+  return now.map((p, i) => {
+    if (p.yaw || p.polygon) return p;
+    const pos = { ...p.position };
+    const size = { ...p.size };
+    for (const [a, k] of AXES) {
+      const lo = was[i].position[a];
+      const hi = lo + was[i].size[k];
+      const L = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] + q.size[k] - lo) < 0.02 && Math.abs(now[j].position[a] + now[j].size[k] - lo) > 0.01);
+      const R = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] - hi) < 0.02 && Math.abs(now[j].position[a] - hi) > 0.01);
+      const nlo = L >= 0 ? now[L].position[a] + now[L].size[k] : pos[a];
+      const nhi = R >= 0 ? now[R].position[a] : pos[a] + size[k];
+      if ((L >= 0 || R >= 0) && nhi - nlo > 1) {
+        pos[a] = nlo;
+        size[k] = nhi - nlo;
+      }
+    }
+    return { ...p, position: pos, size };
+  });
+}
+
 function panelBox(p: Panel) {
   return {
     x0: p.position.x, x1: p.position.x + p.size.width,
@@ -491,14 +532,14 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
   const thinPick = thick < 0.4;
   // A craft sheet is not plywood wearing a new name. Faces take that sheet's thickness.
   const craftSheet = item.category !== "sheet_goods";
-  const panels = project.panels.map((p) => {
+  const outer = envelopeOf(project.panels);
+  const panels = refitInside(project.panels, project.panels.map((p) => {
     const id = p.materialId ?? "";
     // A picked sheet outside the sheet-good class is the stock of every panel.
     // A recipe post left on lumber is not a second stock the sentence named.
     if (craftSheet) {
       if (id === item.id) return p;
-      const size = faceAtSheetThickness(p.size, thick);
-      return { ...p, materialId: item.id, size };
+      return keepOuterFace({ ...p, materialId: item.id, size: faceAtSheetThickness(p.size, thick) }, p, outer);
     }
     if (!/^plywood-/i.test(id)) return p;
     const long = Math.max(p.size.width, p.size.height, p.size.depth);
@@ -509,7 +550,7 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
     if (!thinPick && /^plywood-1-4/i.test(id)) return p;
     const size = craftSheet ? faceAtSheetThickness(p.size, thick) : p.size;
     return { ...p, materialId: item.id, size };
-  });
+  }));
   const joins = item.preferredJoins ?? [];
   const fastener = joins.includes("screw") || joins.includes("nail");
   const note = craftSheet

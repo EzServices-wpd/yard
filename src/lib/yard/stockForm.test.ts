@@ -68,3 +68,28 @@ describe("stock switch keeps the form", () => {
     }
   });
 });
+
+describe("stock switch on real-scale builds keeps form and exact size", () => {
+  it("picnic table: every switch keeps 63x29x72; a board stock rebuilds, a stock it can't use is refused in words", () => {
+    for (const id of ["lumber-2x4-8", "lumber-2x8-8", "plywood-3-4-4x8", "pvc-3-4-sch40"]) {
+      const p = generateFromPrompt("picnic table", id);
+      assert.equal(p.kind, generateFromPrompt("picnic table").kind, id);
+      assert.deepEqual([p.overall.width, p.overall.height, p.overall.depth], [63, 29, 72], id);
+      if (/^lumber-/.test(id)) assert.equal(p.primaryMaterialId, id);
+      else assert.ok(p.notes.some((n) => /can't build this picnic table/.test(n)), id);
+    }
+  });
+  it("plywood giraffe switched to 2x4 stays the cutout and says so", () => {
+    const base = generateFromPrompt("plywood giraffe 36 inches tall");
+    const got = generateFromPrompt("plywood giraffe 36 inches tall", "lumber-2x4-8");
+    assert.ok(got.panels.length > 0);
+    assert.deepEqual([got.overall.width, got.overall.height, got.overall.depth], [base.overall.width, base.overall.height, base.overall.depth]);
+    assert.ok(got.notes.some((n) => /can't build this giraffe/.test(n)));
+  });
+  it("cardboard bookshelf: inside parts refit to the thin sides", () => {
+    const p = generateFromPrompt("bookshelf 36 wide 72 tall", "cardboard-corrugated-sheet");
+    const shelf = p.panels.find((x) => /^Shelf 1/.test(x.name))!;
+    assert.ok(shelf.size.width > 35.5, `${shelf.size.width}`);
+    assert.equal(p.overall.width, 36);
+  });
+});

@@ -269,6 +269,19 @@ const ENGINE_NOTE =
  * A stock switch on a framed lumber build swaps the skin, never the form: every 3/4" board (slat, picket,
  * siding board) comes from the switched stock (strips ripped from a sheet, or the switched board); the frame stays.
  */
+function typedStockId(prompt: string): string | undefined {
+  return hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
+}
+
+/** Stock switch: a stock the build can't use is refused in plain words, never ignored silently. */
+function refuseUnusedStock(project: YardProject, ask?: string, force = false): YardProject {
+  const item = ask && getCatalogItem(ask);
+  if (!item || (!force && (/^lumber-/.test(item.id) || (project.panels ?? []).some((p) => p.materialId === ask)))) return project;
+  const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
+  const note = `${item.name} can't build this ${project.name.toLowerCase().replace(/\s+\d.*$/, "")}, so it stays ${kept} at the same size. Pick ${force ? "a sheet stock" : "a lumber stock"} to switch it.`;
+  return { ...project, notes: [...(project.notes ?? []), note] };
+}
+
 function withSwitchedSkin(project: YardProject, materialOverride?: string): YardProject {
   const to = materialOverride && getCatalogItem(materialOverride);
   if (!to || !/^(?:plywood|lumber-1x)/.test(to.id)) return project;
@@ -368,7 +381,13 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const said = args[0] ?? "";
   args[0] = normalizeUserPrompt(said);
   const prompt = args[0];
-  const typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
+  let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
+  // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it
+  // as a stick figure keeps the cutout from its typed sheet, and says so.
+  if (args[1] && typedBuild.kind === "figure" && !(typedBuild.panels ?? []).length && hasExplicitStock(prompt)) {
+    const asTyped = generateTyped(prompt);
+    if (asTyped.kind === "figure" && (asTyped.panels ?? []).length) typedBuild = hooksShowInModel(withFoldingLegs(refuseUnusedStock(asTyped, args[1], true), prompt));
+  }
   const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
@@ -1194,7 +1213,13 @@ function generateRaw(
   // A deck, garden gate or swing set builds at real scale in lumber; craft stock or a model word keeps the stick model.
   if (!formOverride && !opts.fittedOverride) {
     const frame = outdoorFrameKind(prompt, materialOverride);
-    if (frame) return withSwitchedSkin(buildOutdoorFrame(prompt, frame, opts.sizeOverride), materialOverride);
+    if (frame) return refuseUnusedStock(withSwitchedSkin(buildOutdoorFrame(prompt, frame, opts.sizeOverride, materialOverride), materialOverride), materialOverride ?? typedStockId(prompt));
+    // A real-scale lumber frame switched (or typed) to a stock it can't be built from keeps its form and says so.
+    const frame0 = outdoorFrameKind(prompt);
+    const ask = materialOverride ?? typedStockId(prompt);
+    if (frame0 && ask && !/popsicle|craft|cardboard|dowel|balsa|skewer|toothpick|straw|paper|foam|clay/.test(ask)) {
+      return refuseUnusedStock(buildOutdoorFrame(prompt, frame0, opts.sizeOverride), ask);
+    }
     // A real object named by its head noun (framed mirror, baby gate, firewood rack, sandbox cover) builds at real size.
     const real = realObjectKind(prompt, materialOverride);
     // A typed-stock towel / blanket ladder keeps its weekend ladder build.

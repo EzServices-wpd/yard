@@ -621,11 +621,11 @@
     "kind": "custom",
     "material": "lumber-2x4-8",
     "overall": {
-      "width": 60,
+      "width": 63,
       "height": 29,
       "depth": 72
     },
-    "panels": 27,
+    "panels": 28,
     "instances": 0,
     "uniqueParts": [
       "Center brace",
@@ -651,13 +651,14 @@
       "Tabletop board 5",
       "Tabletop board 6",
       "Tabletop board 7",
+      "Tabletop board 8",
       "Top cleat far end",
       "Top cleat middle",
       "Top cleat near end"
     ],
     "notesHead": [
-      "Picnic table 6' × 29\" tall: 7 2×4 top boards (26\" wide) and 3 2×4 seat boards per side, ¼\" gaps, top 29\" and seats 17\" high, the seats 6\" out from the top's edge so you can step in and sit.",
-      "Each of the 3 A-frames: two 2×6 legs splayed 52 5/16\" apart at the floor and meeting under the top, a 2×4 top cleat under the top boards and a 2×6 seat support under both seats, held to both legs with 18 3/8\" carriage bolts in all — two through each leg at the seat support and one at the top cleat. The middle frame keeps every seat span within 36\", what 1 1/2\" stock holds for a person."
+      "Picnic table 6' × 29\" tall: 8 2×4 top boards (28 1/2\" wide) and 3 2×4 seat boards per side, ¼\" gaps, top 29\" and seats 17\" high, the seats 6\" out from the top's edge so you can step in and sit.",
+      "Each of the 3 A-frames: two 2×6 legs splayed 55 1/8\" apart at the floor and meeting under the top, a 2×4 top cleat under the top boards and a 2×6 seat support under both seats, held to both legs with 18 3/8\" carriage bolts in all — two through each leg at the seat support and one at the top cleat. The middle frame keeps every seat span within 36\", what 1 1/2\" stock holds for a person."
     ],
     "signals": {
       "mentionsYardBuilt": false,
