@@ -63,7 +63,7 @@ import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
-import { withOutdoorNotes } from "./outdoor";
+import { isOutdoorPrompt, withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
 
 export function emptyProject(): YardProject {
@@ -300,6 +300,42 @@ function withLumberMembers(project: YardProject): YardProject {
   return changed ? { ...project, panels: next } : project;
 }
 
+const OUTDOOR_SEAT_CLASS = /\b(?:adirondack|picnic\s+table|park\s+bench|lawn\s+chair|deck\s+chair|chaise)\b/;
+const SEAT_OR_TABLE = /\b(?:chairs?|benche?s?|tables?|swings?|loungers?|sofas?|settees?|adirondack|chaise)\b/;
+const OUTDOOR_STOCK: [RegExp, string][] = [
+  [/\b(?:arms?|armrests?)\b/i, "lumber-1x6-8"],
+  [/\b(?:seat|back|slats?|deck|top)\b/i, "lumber-1x4-8"],
+  [/\b(?:legs?|rails?|posts?|aprons?|stretchers?|supports?|stringers?)\b/i, "lumber-2x6-8"],
+];
+
+/**
+ * Outdoor furniture with no stock typed is built the way it is outdoors: 1× slats for the seat, back and top,
+ * 1×6 arms, 2×6 legs and rails, joined with exterior screws. The form stays the same; only the stock changes.
+ */
+function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardProject {
+  const lower = prompt.toLowerCase();
+  if (!SEAT_OR_TABLE.test(lower) || !(OUTDOOR_SEAT_CLASS.test(lower) || isOutdoorPrompt(lower))) return project;
+  const pick = (label: string) => OUTDOOR_STOCK.find(([re]) => re.test(label))?.[1];
+  let changed = false;
+  const instances = (project.instances ?? []).map((i) => {
+    if (i.catalogId !== "lumber-2x4-8") return i;
+    const to = pick(i.role ?? "");
+    if (!to) return i;
+    changed = true;
+    return { ...i, catalogId: to };
+  });
+  const panels = (project.panels ?? []).map((p) => {
+    if (p.materialId !== "lumber-2x4-8") return p;
+    const to = pick(p.name);
+    if (!to) return p;
+    changed = true;
+    return { ...p, materialId: to };
+  });
+  if (!changed) return project;
+  const note = "Built for outdoors: 1× slats on the seat, back and top, 1×6 arms, 2×6 legs and rails, all joined with exterior screws.";
+  return { ...project, instances, panels, primaryMaterialId: "lumber-2x6-8", notes: [...(project.notes ?? []), note] };
+}
+
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
@@ -307,7 +343,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   args[0] = normalizeUserPrompt(said);
   const prompt = args[0];
   const typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
-  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withLumberMembers(typedBuild);
+  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withOutdoorFurnitureStock(withLumberMembers(typedBuild), prompt);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,
