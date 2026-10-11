@@ -262,6 +262,18 @@ function withAxisOrderNote(project: YardProject, args: Parameters<typeof generat
 const ENGINE_NOTE =
   /^Topology(?:-lite)? ·|^Resolution ·|^Form: .*(?:queried wire|stock is mapped)|^Proportions from the form query|· stock mapped onto the form, not a hull\.$|^Parametric form\.|^Crossings split into end-to-end joints|^Braces stay on the form|^Frame first\. Braces stay on the form|^\d+ nodes · \d+ members before stock cuts$|^Connected structure · \d+ joints/i;
 
+/**
+ * A stock switch on a framed lumber build swaps the skin, never the form: every 3/4" board (slat, picket,
+ * siding board) comes from the switched stock (strips ripped from a sheet, or the switched board); the frame stays.
+ */
+function withSwitchedSkin(project: YardProject, materialOverride?: string): YardProject {
+  const to = materialOverride && getCatalogItem(materialOverride);
+  if (!to || !/^(?:plywood|lumber-1x)/.test(to.id)) return project;
+  const skin = (p: Panel) => /^lumber-1x/.test(p.materialId ?? "") && Math.abs(Math.min(p.size.width, p.size.height, p.size.depth) - 0.75) < 0.01;
+  if (!project.panels.some(skin)) return project;
+  return { ...project, panels: project.panels.map((p) => (skin(p) ? { ...p, materialId: to.id } : p)) };
+}
+
 /** Board faces a 3/4" strip is cut from, narrowest first. */
 const BOARDS: [number, string][] = [[1.5, "lumber-1x2-8"], [2.5, "lumber-1x3-8"], [3.5, "lumber-1x4-8"], [5.5, "lumber-1x6-8"]];
 
@@ -317,7 +329,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   // the noun matched no recipe (the title is only the typed words). A named recipe on species alone
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
-  return withPurposeTitle(sized || built.unmatched ? withSpeciesTitle(built, prompt) : built, prompt);
+  // A switched stock replaces the typed species: the species leaves the title.
+  return withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt);
 }
 
 /** The stored item names the build ("Broom closet", "Record console"): title and headline note keep its word. */
@@ -1082,11 +1095,11 @@ function generateRaw(
   // A deck, garden gate or swing set builds at real scale in lumber; craft stock or a model word keeps the stick model.
   if (!formOverride && !opts.fittedOverride) {
     const frame = outdoorFrameKind(prompt, materialOverride);
-    if (frame) return buildOutdoorFrame(prompt, frame, opts.sizeOverride);
+    if (frame) return withSwitchedSkin(buildOutdoorFrame(prompt, frame, opts.sizeOverride), materialOverride);
     // A real object named by its head noun (framed mirror, baby gate, firewood rack, sandbox cover) builds at real size.
     const real = realObjectKind(prompt, materialOverride);
     // A typed-stock towel / blanket ladder keeps its weekend ladder build.
-    if (real && !(real === "rung-ladder" && hasExplicitStock(prompt))) return buildRealObject(prompt, real, opts.sizeOverride);
+    if (real && !(real === "rung-ladder" && hasExplicitStock(prompt))) return withSwitchedSkin(buildRealObject(prompt, real, opts.sizeOverride), materialOverride);
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.
