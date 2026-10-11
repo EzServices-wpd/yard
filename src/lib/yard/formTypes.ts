@@ -38,6 +38,8 @@ export type FormRecipe = {
   unmatched?: boolean;
   /** Every op is one real member (a pole, a slat): keep it as drawn — no lacing or face braces on thin stock. */
   wholeMembers?: boolean;
+  /** An open frame sized to a typed opening: its members stay whole on member stock; on sheet it is faces of the opening. */
+  openingFrame?: boolean;
 };
 
 export type Size3 = { height: number; width: number; depth: number; /** User typed all three axes — do not pull them back to a stock proportion. */ free?: boolean; /** The landmark's published proportions are already on the box (outer faces). */ aspectSet?: boolean };

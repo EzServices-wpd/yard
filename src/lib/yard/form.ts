@@ -604,7 +604,7 @@ export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: strin
     return {
       name: hit.named || typedTitle(),
       kind: hit.kind,
-      ...(opening ? { wholeMembers: true } : {}),
+      ...(opening ? { openingFrame: true } : {}),
       notes: opening
         ? [
             `${typedTitle()} · open frame at the typed width and height.`,

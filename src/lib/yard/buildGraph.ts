@@ -250,7 +250,7 @@ export function buildFormGraph(
         // Fat lumber / arch portal / ladder-like frames keep intentional members.
         // Thin craft weekend frames + figures densify the stroke at stock bay.
         const keepMembers =
-          policy.fat || portal || anatomyKeep || recipe.wholeMembers || (memberBuilt && kind !== "frame" && kind !== "figure");
+          policy.fat || portal || anatomyKeep || recipe.wholeMembers || recipe.openingFrame || (memberBuilt && kind !== "frame" && kind !== "figure");
         const pts = keepMembers ? op.points : resampleStroke(op.points, policy.bay);
         const ids = pts.map((p, i) => addNode(p, i === 0 ? "base" : "leg"));
         chain(ids, (op.role as StructureEdge["role"]) || "leg", true);
@@ -285,8 +285,8 @@ export function buildFormGraph(
   const openKind = kind === "arch" || kind === "bridge" || kind === "opening";
   // Thin craft weekend frames also get face X-braces between uprights — densify at stock
   // pitch without a per-noun .ts (catapult / box / scaffold share this path).
-  const thinFrameLace = kind === "frame" && !policy.fat && !recipe.wholeMembers;
-  if (!openKind && !recipe.wholeMembers && (!memberBuilt || thinFrameLace) && verticals.length >= 2) {
+  const thinFrameLace = kind === "frame" && !policy.fat && !recipe.wholeMembers && !recipe.openingFrame;
+  if (!openKind && !recipe.wholeMembers && !recipe.openingFrame && (!memberBuilt || thinFrameLace) && verticals.length >= 2) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const xs = nodes.map((n) => n.position.x);
     const ys = nodes.map((n) => n.position.y);
