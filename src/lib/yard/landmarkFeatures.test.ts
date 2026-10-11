@@ -29,3 +29,8 @@ it("Big Ben shows a clock face on all four sides of the stage", () => {
   const faces = new Set(dial.map((i) => { const x = i.from.x - cx, z = i.from.z - cz; return Math.abs(x) > Math.abs(z) ? (x > 0 ? "E" : "W") : z > 0 ? "N" : "S"; }));
   assert.equal(faces.size, 4);
 });
+it("Golden Gate keeps its true length-to-height ratio and a narrow deck about 5 inches deep", () => {
+  const p = generateFromPrompt("Golden Gate Bridge from popsicle sticks");
+  assert.ok(Math.abs(p.overall.width / p.overall.height - 6450 / 746) < 1.2, `${p.overall.width}/${p.overall.height}`);
+  assert.ok(p.overall.depth >= 4 && p.overall.depth <= 6, `${p.overall.depth}`);
+});

@@ -185,6 +185,12 @@ export function landmarkAspect(prompt: string): { w: number; d: number } | null 
   return hit?.aspect && !hit.fit ? hit.aspect : null;
 }
 
+/** True when the prompt names a landmark with published proportions (a plan aspect or its own fit). */
+export function hasPublishedProportions(prompt: string): boolean {
+  const hit = matchHit(prompt);
+  return !!(hit?.historic && (hit.aspect || hit.fit));
+}
+
 export function isLockedForm(kind: StructureKind): boolean {
   return kind === "eiffel" || kind === "pyramid" || kind === "arch" || kind === "bridge";
 }

@@ -47,7 +47,7 @@ export function fitSuspensionTo(spec: SuspensionSpec) {
     const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
     const tall = /tall|high|height/.test(lower);
     const h = tall && n ? n : (n || 72) / spec.lOverH;
-    return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.55, 14)) };
+    return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.5, 14)) };
   };
 }
 
