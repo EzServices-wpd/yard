@@ -612,9 +612,11 @@ export function isFlatFrame(prompt: string): boolean {
 /** Typed photo size (portrait: w ≤ h). Default 5×7. */
 export function framePhotoIn(prompt: string): { w: number; h: number; typed: boolean } {
   const l = prompt.toLowerCase();
-  const ctx = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic|poster|frame)/);
+  const isNominal = (a: number, b: number) => a <= 2 && [2, 3, 4, 6, 8, 10, 12].includes(b);
+  const ctxMatch = l.match(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic|poster|frame)/);
+  const ctx = ctxMatch && !isNominal(parseFloat(ctxMatch[1]), parseFloat(ctxMatch[2])) ? ctxMatch : null;
   // Any other A×B that is not a lumber nominal (1x2, 2x4…). "8 by 10" is a photo; "1 by 2" is not.
-  const any = [...l.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/g)].find((q) => !(parseFloat(q[1]) <= 2 && [2, 3, 4, 6, 8, 10, 12].includes(parseFloat(q[2]))));
+  const any = [...l.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|in)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/g)].find((q) => !isNominal(parseFloat(q[1]), parseFloat(q[2])));
   const m = ctx ?? any;
   if (m) {
     const a = parseFloat(m[1]);
