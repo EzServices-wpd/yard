@@ -45,8 +45,21 @@ function partsOf(project: YardProject): Part[] {
   }));
 }
 
-function mentions(step: AssemblyStep, part: Part): boolean {
+const SIDE = /^(?:left|right|front|back|top|bottom|upper|lower|inner|outer|middle|center|centre)$/;
+
+function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean {
   const used = (step.partsUsed ?? []).map((s) => s.toLowerCase()).filter((s) => s !== "*" && s !== "all");
+  // A step that lists the model's own part names places exactly those parts ("Fasten the 6 right end slats"
+  // does not place a left end slat; "Fasten the Shelf backstop" does not place a shelf).
+  // A title that names the part outright ("Fit the drawer front") still places it.
+  if (used.length && names && used.every((u) => names.has(u))) {
+    const n = part.name.toLowerCase();
+    if (used.includes(n) || (n.includes(" ") && new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`).test(step.title.toLowerCase()))) return true;
+    // "Fit the drawer fronts" places every drawer front; "the 6 right end slats" places no left one.
+    const f = familyWord(part.name);
+    const m = f.includes(" ") ? step.title.toLowerCase().match(new RegExp(`(\\w+) ${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s\\b`)) : null;
+    return !!m && !(SIDE.test(m[1]) && !n.split(/\s+/).includes(m[1]));
+  }
   const kind = part.kind.toLowerCase();
   const name = part.name.toLowerCase();
   const fam = familyWord(part.name);
@@ -179,10 +192,11 @@ function renumber(steps: AssemblyStep[]): AssemblyStep[] {
 export function placementIndex(project: YardProject, steps: AssemblyStep[]): Map<string, number> {
   const placed = new Map<string, number>();
   const parts = partsOf(project);
+  const names = new Set(project.panels.map((p) => p.name.toLowerCase()));
   steps.forEach((step, i) => {
     if (!isBuild(step)) return;
     for (const part of parts) {
-      if (!placed.has(part.key) && mentions(step, part)) placed.set(part.key, i);
+      if (!placed.has(part.key) && mentions(step, part, names)) placed.set(part.key, i);
     }
   });
   return placed;
@@ -281,7 +295,44 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   if (project.panels.length) out = supportOrder(project, mergeSameTitles(liftAfterSupports(project, out, parts, supports, fix)), parts, supports);
   // An inserted step whose parts all moved to a later step places nothing: it goes.
   const ghost = (s: AssemblyStep) => (s.tips === INSERTED || s.tips === LIFTED) && Array.isArray(s.partsUsed) && !s.partsUsed.length;
-  return renumber(mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s)))));
+  // Merged steps sit at their family's first slot: order them by support once more.
+  out = supportOrder(project, mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s)))), parts, supports);
+  if (project.panels.length) out = supportOrder(project, lowerSupports(project, out, parts, supports, fix), parts, supports);
+  return renumber(out);
+}
+
+/**
+ * A part an earlier step rests on, listed in a later step with other parts (a floor support among the
+ * "remaining dividers"), comes out of that step and goes on in its own step just before the first part
+ * that rests on it, once its own supports are in.
+ */
+function lowerSupports(project: YardProject, steps: AssemblyStep[], parts: Part[], supports: Map<string, SupportInfo>, fix: string): AssemblyStep[] {
+  let out = steps.map((s) => ({ ...s }));
+  for (let pass = 0; pass < parts.length; pass++) {
+    const where = placementIndex(project, out);
+    const move = parts.find((p) => {
+      const j = where.get(p.key);
+      if (j == null || (out[j].partsUsed ?? []).length < 2) return false;
+      const need = parts.map((q) => (supports.get(q.key)?.on.includes(p.key) ? where.get(q.key) : undefined)).filter((i): i is number => i != null && i < j);
+      if (!need.length) return false;
+      const first = Math.min(...need);
+      return (supports.get(p.key)?.on ?? []).every((k) => (where.get(k) ?? -1) < first);
+    });
+    if (!move) break;
+    const j = where.get(move.key)!;
+    const first = Math.min(...parts.map((q) => (supports.get(q.key)?.on.includes(move.key) ? where.get(q.key) : undefined)).filter((i): i is number => i != null && i < j));
+    const name = move.name.toLowerCase();
+    out[j] = { ...out[j], partsUsed: (out[j].partsUsed ?? []).filter((u) => u.toLowerCase() !== name) };
+    const info = supports.get(move.key);
+    out.splice(first, 0, {
+      step: first + 1,
+      title: `${info?.how === "rests" || info?.how === "floor" ? "Set" : "Fasten"} the ${move.name}`,
+      description: placeSentence(project, move, info, fix),
+      tips: LIFTED,
+      partsUsed: [move.name],
+    });
+  }
+  return out;
 }
 
 const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

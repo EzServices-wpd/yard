@@ -101,4 +101,11 @@ export const STRESS_PROMPTS = [
   "spice cabinet",
   "display cabinet",
   "utility cabinet",
+  // Step order: every part after its supports.
+  "porch swing",
+  "porch swing frame",
+  "hall tree",
+  "key holder with 4 hooks",
+  "cedar garbage bin enclosure",
+  "cedar garbage bin enclosure for two bins",
 ];

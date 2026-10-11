@@ -201,7 +201,47 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       out.set(t.id, { key: t.id, name: t.name, how: "side", on: (crossed.length ? crossed : boards).map((m) => m.id) });
     }
   }
-  return out;
+  return acyclic(out, panels, boxes);
+}
+
+/**
+ * Supports run one way: two parts screwed side to side cannot each wait for the other. Parts are ranked
+ * floor first, then lower, then larger; a support earlier in that rank always holds, and a later one holds
+ * only where it closes no loop — so every build has an order in which each part follows its supports.
+ */
+function acyclic(out: Map<string, SupportInfo>, panels: Panel[], boxes: Map<string, Box>): Map<string, SupportInfo> {
+  const vol = (b: Box) => (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
+  const rank = new Map(
+    [...panels]
+      .sort((a, b) => {
+        const A = boxes.get(a.id)!, B = boxes.get(b.id)!;
+        const fa = out.get(a.id)?.how === "floor" ? 0 : 1, fb = out.get(b.id)?.how === "floor" ? 0 : 1;
+        return fa - fb || A.min[1] - B.min[1] || vol(B) - vol(A);
+      })
+      .map((p, i) => [p.id, i]),
+  );
+  const on = new Map<string, Set<string>>([...out].map(([k, i]) => [k, new Set(i.on.filter((s) => s !== k && rank.get(s)! < rank.get(k)!))]));
+  const reaches = (from: string, to: string) => {
+    const seen = new Set<string>();
+    const stack = [from];
+    while (stack.length) {
+      const x = stack.pop()!;
+      if (x === to) return true;
+      if (seen.has(x)) continue;
+      seen.add(x);
+      stack.push(...(on.get(x) ?? []));
+    }
+    return false;
+  };
+  for (const [k, info] of out) {
+    for (const s of info.on) {
+      if (s === k || on.get(k)!.has(s) || reaches(s, k)) continue;
+      on.get(k)!.add(s);
+    }
+  }
+  const next = new Map<string, SupportInfo>();
+  for (const [k, info] of out) next.set(k, { ...info, on: info.on.filter((s, i) => on.get(k)!.has(s) && info.on.indexOf(s) === i) });
+  return next;
 }
 
 /** Stick builds: each role group rests on the floor or on the groups that share its members' lower ends. */
