@@ -39,7 +39,7 @@ describe("named recipes are bound against the LLM form swap", () => {
 
   it("generic and fallback builds stay open to the LLM form", () => {
     assert.equal(benchBindsForm("bookcase 36 wide", generateFromPrompt("bookcase 36 wide")), false);
-    assert.equal(benchBindsForm("lemonade stand", generateFromPrompt("lemonade stand")), false);
+    assert.equal(benchBindsForm("puppet theater", generateFromPrompt("puppet theater")), false);
     // A HITS noun the bench did not build as that recipe (remapped fallback) is not bound by name.
     assert.equal(bindsNamedForm("lighthouse 24 tall", { kind: "closet" }), false);
     // Catch-alls never bind by name.
@@ -94,10 +94,10 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
   });
 
 
-  it("lemonade stand shows 'lemonade stand' in the box, not the primitive", () => {
-    const stand = generateFromPrompt("lemonade stand");
-    assert.equal(stand.typedPrompt, "lemonade stand");
-    assert.match(stand.name, /^Lemonade Stand \d/);
+  it("puppet theater shows 'puppet theater' in the box, not the primitive", () => {
+    const stand = generateFromPrompt("puppet theater");
+    assert.equal(stand.typedPrompt, "puppet theater");
+    assert.match(stand.name, /^Puppet Theater \d/);
   });
 
   it("store keeps the typed words through a repeat and a refinement", async () => {
@@ -111,21 +111,21 @@ describe("toy beds are a small bed frame; fallbacks keep the typed words", () =>
       length: 0,
     };
     const { useYard } = await import("./store.ts");
-    useYard.getState().generate("lemonade stand", undefined, undefined, { fresh: true });
-    assert.equal(useYard.getState().project.typedPrompt, "lemonade stand");
-    useYard.getState().generate("lemonade stand");
-    assert.equal(useYard.getState().project.typedPrompt, "lemonade stand");
+    useYard.getState().generate("puppet theater", undefined, undefined, { fresh: true });
+    assert.equal(useYard.getState().project.typedPrompt, "puppet theater");
+    useYard.getState().generate("puppet theater");
+    assert.equal(useYard.getState().project.typedPrompt, "puppet theater");
     assert.doesNotMatch(useYard.getState().project.prompt, /Then:/);
     const p = useYard.getState().project;
     useYard.getState().generate(p.prompt, "plywood-1-2-4x8", undefined, { restock: true });
-    assert.equal(useYard.getState().project.typedPrompt, "lemonade stand");
+    assert.equal(useYard.getState().project.typedPrompt, "puppet theater");
     useYard.getState().generate("taller");
-    assert.equal(useYard.getState().project.typedPrompt, "lemonade stand. Then: taller");
+    assert.equal(useYard.getState().project.typedPrompt, "puppet theater. Then: taller");
   });
 });
 
 describe("new subject without typed stock does not inherit bench stock", () => {
-  it("after a popsicle birdhouse, lemonade stand lands plywood fallback", async () => {
+  it("after a popsicle birdhouse, puppet theater lands plywood fallback", async () => {
     const mem = new Map<string, string>();
     (globalThis as { localStorage?: unknown }).localStorage = {
       getItem: (k: string) => mem.get(k) ?? null,
@@ -138,15 +138,15 @@ describe("new subject without typed stock does not inherit bench stock", () => {
     const { useYard } = await import("./store.ts");
     useYard.getState().generate("popsicle stick birdhouse", undefined, undefined, { fresh: true });
     assert.match(useYard.getState().project.primaryMaterialId, /popsicle/);
-    useYard.getState().generate("lemonade stand");
+    useYard.getState().generate("puppet theater");
     const next = useYard.getState().project;
     assert.doesNotMatch(next.primaryMaterialId, /popsicle|craft/);
     assert.match(next.primaryMaterialId, /plywood|lumber|wood/);
     assert.doesNotMatch(next.prompt, /Then:/);
-    assert.equal(next.typedPrompt, "lemonade stand");
+    assert.equal(next.typedPrompt, "puppet theater");
   });
 
-  it("lemonade stand 60 wide after a plywood lemonade rebuilds at 60, not as Then:", async () => {
+  it("puppet theater 60 wide after a plywood puppet theater rebuilds at 60, not as Then:", async () => {
     const mem = new Map<string, string>();
     (globalThis as { localStorage?: unknown }).localStorage = {
       getItem: (k: string) => mem.get(k) ?? null,
@@ -157,18 +157,18 @@ describe("new subject without typed stock does not inherit bench stock", () => {
       length: 0,
     };
     const { useYard } = await import("./store.ts");
-    useYard.getState().generate("lemonade stand", undefined, undefined, { fresh: true });
+    useYard.getState().generate("puppet theater", undefined, undefined, { fresh: true });
     assert.match(useYard.getState().project.primaryMaterialId, /plywood|lumber/);
-    useYard.getState().generate("lemonade stand 60 wide");
+    useYard.getState().generate("puppet theater 60 wide");
     const next = useYard.getState().project;
     assert.doesNotMatch(next.prompt, /Then:/);
     assert.equal(next.overall.width, 60);
     assert.ok(next.overall.height >= 36, `height ${next.overall.height}`);
     assert.doesNotMatch(next.primaryMaterialId, /popsicle|craft/);
-    assert.equal(next.typedPrompt, "lemonade stand 60 wide");
+    assert.equal(next.typedPrompt, "puppet theater 60 wide");
   });
 
-  it("taller after lemonade still refines and keeps stock", async () => {
+  it("taller after puppet theater still refines and keeps stock", async () => {
     const mem = new Map<string, string>();
     (globalThis as { localStorage?: unknown }).localStorage = {
       getItem: (k: string) => mem.get(k) ?? null,
@@ -179,7 +179,7 @@ describe("new subject without typed stock does not inherit bench stock", () => {
       length: 0,
     };
     const { useYard } = await import("./store.ts");
-    useYard.getState().generate("lemonade stand", undefined, undefined, { fresh: true });
+    useYard.getState().generate("puppet theater", undefined, undefined, { fresh: true });
     const stock = useYard.getState().project.primaryMaterialId;
     useYard.getState().generate("taller");
     const next = useYard.getState().project;

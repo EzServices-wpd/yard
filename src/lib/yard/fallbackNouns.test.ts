@@ -4,7 +4,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 
 const NOUNS = [
-  "lemonade stand", "guinea pig hutch", "record crate", "plant ladder", "kayak rack", "toy chest", "puppet theater",
+  "guinea pig hutch", "record crate", "plant ladder", "kayak rack", "toy chest", "puppet theater",
   "dollhouse", "bird feeder", "mailbox", "tiki bar", "garden bench", "raised bed", "sandbox", "rabbit hutch",
   "arcade cabinet", "firewood rack", "surfboard rack", "chicken coop", "doghouse", "playhouse", "boot tray",
   "laptop stand", "monitor riser", "headboard", "trellis", "cornhole boards", "toolbox", "spice rack",
@@ -23,8 +23,8 @@ describe("Any noun with no stock typed builds a simple real-size piece", () => {
     });
   }
   it("fallback says what it built in step 1", () => {
-    const plan = buildPlan(generateFromPrompt("lemonade stand"));
-    assert.match(plan.instructions[0].description ?? "", /^Yard built a lemonade stand as a simple .+ sized for it\. Change any size in Measure\./);
+    const plan = buildPlan(generateFromPrompt("puppet theater"));
+    assert.match(plan.instructions[0].description ?? "", /^Yard built a puppet theater as a simple .+ sized for it\. Change any size in Measure\./);
   });
   it("linen closet keeps its three numbers", () => {
     const o = generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep").overall;

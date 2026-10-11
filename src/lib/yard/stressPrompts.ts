@@ -83,6 +83,7 @@ export const STRESS_PROMPTS = [
   "baby gate",
   "swing set",
   "kids art easel",
+  "lemonade stand",
   "folding table 48 by 24 36 inches high",
   "bookshelf 36 wide 72 tall from 2x4",
   "dog crate 36 long",

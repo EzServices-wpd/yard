@@ -33,3 +33,19 @@ describe("scale and fit", () => {
     assert.ok(w >= 32 && w >= 32 * 0.872 + 6, String(w));
   });
 });
+
+describe("lemonade stand is a stand", () => {
+  const p = generateFromPrompt("lemonade stand");
+  it("has a counter, sign board, awning and posts", () => {
+    for (const re of [/^Counter$/, /^Sign board$/, /^Awning$/, /^Post /]) assert.ok(p.panels.some((x) => re.test(x.name)), String(re));
+    assert.ok(p.overall.height > 60, JSON.stringify(p.overall));
+  });
+  it("engine owns it", () => assert.ok(engineOwnsForm("lemonade stand", p)));
+  it("parts go on after their supports", () => {
+    const f = (re: RegExp) => firstStep("lemonade stand", re);
+    assert.ok(f(/^Post /) < f(/^Counter apron/));
+    assert.ok(f(/^Counter apron/) < f(/^Counter$/));
+    assert.ok(f(/^Top rail/) < f(/^Awning$/));
+    assert.ok(f(/^Top rail/) < f(/^Sign board$/));
+  });
+});
