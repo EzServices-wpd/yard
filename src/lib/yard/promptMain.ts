@@ -1290,6 +1290,10 @@ function generateRaw(
     const note = "No material typed, so this builds from cardboard boxes, the easy default. Type a material (plywood, popsicle sticks) to change it.";
     return enforceWeekendHonesty(withWireNote(attachFunction({ ...built, notes: [...built.notes, note] }), cardboard));
   }
+  if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes) && isDominantLength(box)) {
+    const tubed = buildGeneralTubeProject(prompt, item, box, recipe.name);
+    if (tubed) return enforceWeekendHonesty(withWireNote(attachFunction(tubed), item));
+  }
   if (wantsUnmatchedSheetShell(item, kind, !!recipe.wholeMembers, recipe.notes)) {
     return enforceWeekendHonesty(withWireNote(attachFunction(buildTypedSheetShell(prompt, item, box, recipe.name, !!recipe.unmatched)), item));
   }
@@ -1989,4 +1993,76 @@ function pipeHouse(project: YardProject, prompt: string): YardProject {
     ...(project.notes ?? []).filter((note) => !/popsicle|flat stick|wood screw/i.test(note)),
   ];
   return { ...project, notes };
+}
+
+/** True when the longest typed axis is more than twice the next. Unmatched sheet stock then builds a tube, not a closed rectangular shell. */
+function isDominantLength(size: { width: number; height: number; depth: number }): boolean {
+  const dims = [size.width, size.height, size.depth].sort((a, b) => b - a);
+  return dims[0] >= 2 * dims[1] && dims[0] > 6;
+}
+
+/** A long unmatched sheet noun is a tube of that length. Diameter comes from the next axis. Uses the existing tube block. */
+function buildGeneralTubeProject(
+  prompt: string,
+  item: CatalogItem,
+  size: { width: number; height: number; depth: number },
+  name: string,
+): YardProject | null {
+  const dims = [size.width, size.height, size.depth].sort((a, b) => b - a);
+  const L = dims[0];
+  const d = Math.max(dims[1], 2);
+  // Route through the rocket tube block, which already rolls sheet into a body of the typed length, then relabel.
+  const rocketPrompt = `rocket ${L} inches long`;
+  const built = buildBlocks(rocketPrompt, item, { length: L });
+  if (!built) return null;
+  const stockItem = getCatalogItem(built.stockId) ?? item;
+  const instances: YardInstance[] = built.pieces.map((p) => {
+    const it = getCatalogItem(p.stock);
+    const cyl = !p.section && !!it && (it.formFactor === "dowel" || it.formFactor === "tube" || it.formFactor === "pipe");
+    const rot = rotationForDirection(p.a, p.b, cyl);
+    return {
+      id: createId("i"),
+      catalogId: p.stock,
+      position: { x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2, z: (p.a.z + p.b.z) / 2 },
+      rotation: { x: rot[0], y: rot[1], z: rot[2] },
+      ...(p.cut != null ? { cutLength: p.cut } : {}),
+      role: p.role,
+      join: stockItem.preferredJoins?.[0] ?? "glue",
+      from: p.a,
+      to: p.b,
+      ...(p.face ? { face: p.face } : {}),
+      ...(p.section ? { section: p.section } : {}),
+      ...(p.round ? { round: p.round } : {}),
+    };
+  });
+  const stats = analyzePieces(instances, stockItem, { full: true });
+  const joinMethod = stockItem.category === "cardboard" ? "glue" : stockItem.preferredJoins?.[0] ?? "glue";
+  let project: YardProject = instances.length
+    ? toProject(prompt, stockItem, "custom", instances, [], false, { buildStats: stats, joinMethod, name })
+    : {
+        ...emptyProject(),
+        name,
+        prompt,
+        kind: "custom",
+        panels: [],
+        primaryMaterialId: stockItem.id,
+        joinMethod,
+        notes: [],
+        assumptions: { load: "light", units: "inches", installMode: "freestanding", wallType: "wood_stud", use: "display" },
+      };
+  if (built.panels.length) project = { ...project, panels: [...project.panels, ...built.panels] };
+  const bb = pieceBounds(built);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  project = {
+    ...project,
+    name,
+    overall: { width: r1(bb.max.x - bb.min.x), height: r1(bb.max.y), depth: r1(bb.max.z - bb.min.z) },
+    notes: [
+      `${name} is a tube ${inchFrac(L)}" long, about ${inchFrac(d)}" across. It lies along its length.`,
+      "Sheet stock: score long strips, roll them into the body, and tape the seam inside and out.",
+      ...(built.notes.filter((n) => !/rocket/i.test(n))),
+    ],
+    unmatched: true,
+  };
+  return project;
 }
