@@ -1480,7 +1480,8 @@
    ],
    "notes": [
     "Open slatted bays share their posts; no floor or roof so the pile drains and breathes.",
-    "Front slats lift out to turn the pile."
+    "Front slats lift out to turn the pile.",
+    "Set the posts in the ground 12\u2033 deep."
    ],
    "outdoor": true,
    "count": {
@@ -1595,7 +1596,7 @@
     }
    ],
    "notes": [
-    "Cut the stringers to a sawtooth: 7\u00bd\u2033 rise and 10\u00bd\u2033 run per step; set them on a concrete pad and bolt the top to the deck rim."
+    "Cut the stringers to a sawtooth: 7\u00bd\u2033 rise and 10\u00bd\u2033 run per step; set the stringer feet on pier blocks and bolt the top to the deck rim."
    ],
    "outdoor": true,
    "count": {
@@ -4162,7 +4163,7 @@
     }
    ],
    "notes": [
-    "No floor: lay landscape fabric under the sand so it drains."
+    "No floor: set it in the ground on a level bed and lay landscape fabric under the sand so it drains."
    ],
    "modifiers": [
     "seat"

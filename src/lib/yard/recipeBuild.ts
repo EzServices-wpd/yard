@@ -106,7 +106,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...(stock.craft ? ["Glue the joints."] : [])],
+    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...(stock.craft ? ["Glue the joints."] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
