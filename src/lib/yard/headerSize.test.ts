@@ -14,3 +14,17 @@ describe("the header labels every axis W × D × H and marks the untyped ones as
     assert.match(headerTitle(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep")), /^Linen · 31 1\/2" W × .+ D × 78" H$/);
   });
 });
+
+describe("the header says back typed counts and features the model builds", () => {
+  const cases: [string, RegExp][] = [
+    ["12 bottle wine rack", / · 12 bottles$/],
+    ["key holder with 4 hooks", / · 4 hooks$/],
+    ["shoe rack with cubbies", / · cubbies$/],
+    ["spice cabinet with 3 shelves", / · 3 shelves$/],
+    ["utility cabinet with shelves", / · \d+ shelves$/],
+    ["window seat with cubbies", / · cubbies$/],
+    ["mudroom bench with cubbies", / · cubbies$/],
+    ["wardrobe with a rod", / · with rod$/],
+  ];
+  for (const [q, re] of cases) it(q, () => assert.match(headerTitle(generateFromPrompt(q)), re));
+});

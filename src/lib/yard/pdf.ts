@@ -1214,5 +1214,30 @@ export function headerTitle(project: YardProject): string {
   const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
-  return `${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`;
+  return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...headerFeatures(project)].join(" · ");
+}
+
+const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
+
+/**
+ * The counts and features the prompt asked for, said back only as the model builds them: "12 bottles",
+ * "4 hooks", "3 shelves", "cubbies", "with rod". A count is the model's own count, never the typed word.
+ */
+export function headerFeatures(project: YardProject): string[] {
+  const lower = (project.typedPrompt ?? project.prompt ?? "").toLowerCase();
+  const names = project.panels.map((p) => p.name.replace(/\s*\d+$/, "").toLowerCase());
+  const count = (re: RegExp) => names.filter((n) => re.test(n)).length;
+  const typed = (noun: string) => new RegExp(String.raw`\b(?:\d+|${Object.keys(NUM).join("|")}|with|and|plus)\b[\w\s-]{0,12}\b${noun}`).test(lower) || new RegExp(String.raw`\b${noun}`).test(lower);
+  const out: string[] = [];
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  if (/\bbottles?\b/.test(lower)) {
+    const held = (project.notes ?? []).map((n) => n.match(/\bHolds (\d+) bottles\b/)?.[1]).find(Boolean);
+    if (held) out.push(`${held} bottles`);
+  }
+  if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
+  if (typed("shel(?:f|ves)\\b")) { const n = count(/^(?:grid |adjustable |fixed |inner )?shelf$/); if (n) out.push(plural(n, "shelf", "shelves")); }
+  if (typed("cubb(?:y|ies)\\b") && count(/cubby/)) out.push("cubbies");
+  if (typed("(?:hanging )?(?:rod|bar)\\b") && count(/\b(?:rod|hanging bar|closet rod)\b/)) out.push("with rod");
+  if (/\btrapezoid/.test(lower) && /trapezoid/i.test(`${project.name} ${(project.notes ?? []).join(" ")}`)) out.push("trapezoid");
+  return out;
 }
