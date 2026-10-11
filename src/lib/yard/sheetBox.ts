@@ -198,8 +198,8 @@ export function buildSheetHull(
  * A named sheet is faces of the typed envelope, not battens ripped for a stick recipe.
  * House and castle already have a walled sheet path. A figure stays a figure.
  * Every other class on sheet stock is that shell.
- * An open frame stays its members on any stock, including sheet (ripped strips) — the same form
- * any stock builds. A plain box is faces of the envelope.
+ * An open frame that places whole members stays its members on any stock, including sheet (ripped
+ * strips) — the same form any stock builds. A plain box or closed body is faces of the envelope.
  */
 export function wantsUnmatchedSheetShell(
   item: CatalogItem,
@@ -215,8 +215,9 @@ export function wantsUnmatchedSheetShell(
   if (kind === "figure" || kind === "eiffel") return false;
   // An open frame (truss bridge, lattice tower, arch, ladder, any frame) is its members — strips
   // ripped from the sheet keep the same form any other stock builds; a closed box is a different object.
-  if (kind === "bridge" || kind === "lattice" || kind === "tower" || kind === "arch" || kind === "ladder" || kind === "frame") return false;
-  // (wholeMembers kept for callers; frames already covered above)
+  if (kind === "bridge" || kind === "lattice" || kind === "tower" || kind === "arch" || kind === "ladder") return false;
+  // A "frame" kind is an open frame only when its recipe places whole members (trellis, sawhorse, pole frame);
+  // a closed body that lands in the frame class (drum, box with a window) is faces of its envelope.
   if (wholeMembers) return false;
   return true;
 }
