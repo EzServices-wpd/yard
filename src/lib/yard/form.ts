@@ -689,7 +689,8 @@ export function subjectFromPrompt(prompt: string): string {
   for (const [re] of namedLumberDetectPhrases()) s = s.replace(new RegExp(re.source, "g"), " ");
   s = s.replace(/(?<![\w/.])\d+(?:\.\d+)?(?![\w/])/g, " ");
   s = s.replace(/\b(build|make|made|a|an|the|of|that|with|using|out|model|replica|mini|miniature|scale)\b/g, " ");
-  return s.replace(/\s+/g, " ").trim() || prompt.trim();
+  // A clause break left behind by a removed size ("bridge, 30 inches tall") is not part of the name.
+  return s.replace(/\s+/g, " ").trim().replace(/^[\s,;:.\-–—]+|[\s,;:.\-–—]+$/g, "") || prompt.trim();
 }
 
 export function isFormOp(v: unknown): v is FormOp {

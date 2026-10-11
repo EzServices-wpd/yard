@@ -1046,7 +1046,7 @@
     "id": "straw-warren",
     "prompt": "straw Warren truss bridge",
     "bucket": "craft-kit",
-    "name": "Bridge",
+    "name": "Warren Truss Bridge",
     "kind": "bridge",
     "material": "straw-plastic",
     "overall": {
