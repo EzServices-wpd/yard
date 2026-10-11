@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { SiteChrome } from "@/components/site/chrome";
 import { IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
+import { isoFaces, recipeIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
 import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 
 type Row = Idea & { kept?: boolean };
@@ -48,6 +49,8 @@ function IdeasPage() {
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((hit) => hit.d);
   }, [q, rows]);
+
+  const recipes = useMemo(() => recipeIdeas(), []);
 
   function go(text: string) {
     const next = text.trim();
@@ -117,6 +120,16 @@ function IdeasPage() {
             );
           })
         )}
+        {!q && recipes.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Learned from recipes</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {recipes.map((r) => (
+                <RecipeCard key={r.id} idea={r} onOpen={() => go(r.prompt)} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
     </SiteChrome>
   );
@@ -137,6 +150,31 @@ function IdeaCard({ idea, onOpen }: { idea: Row; onOpen: () => void }) {
       <span className={`font-display text-lg text-ink group-hover:underline ${idea.stock || idea.kept ? "mt-2" : ""}`}>
         {idea.label}
       </span>
+      <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{idea.size}</span>
+      <span className="mt-2 flex-1 text-sm leading-snug text-ink-muted">{idea.blurb}</span>
+      <span className="mt-3 inline-flex items-center gap-1 text-xs text-ink-muted group-hover:text-ink">
+        Build
+        <ArrowRight className="size-3.5" />
+      </span>
+    </button>
+  );
+}
+/** A recipe card: the thumbnail is Yard's own model of the recipe, drawn in isometric. */
+function RecipeCard({ idea, onOpen }: { idea: RecipeIdea; onOpen: () => void }) {
+  const faces = useMemo(() => isoFaces(idea.panels, idea.box), [idea]);
+  const fill = ["#efe6d2", "#d9c7a3", "#c2ab80"];
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex flex-col rounded-xl border border-rule bg-paper p-4 text-left transition-[border-color,background-color] duration-150 hover:border-ink/35 hover:bg-surface/40"
+    >
+      <svg viewBox="-4 -4 108 108" className="h-28 w-full" role="img" aria-label={`${idea.label} model`}>
+        {faces.map((f, i) => (
+          <path key={i} d={f.d} fill={fill[f.shade]} stroke="#6b5a3e" strokeWidth={0.3} strokeLinejoin="round" />
+        ))}
+      </svg>
+      <span className="mt-2 font-display text-lg text-ink group-hover:underline">{idea.label}</span>
       <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{idea.size}</span>
       <span className="mt-2 flex-1 text-sm leading-snug text-ink-muted">{idea.blurb}</span>
       <span className="mt-3 inline-flex items-center gap-1 text-xs text-ink-muted group-hover:text-ink">
