@@ -249,6 +249,9 @@ export function weldGraph(graph: StructureGraph, tol = 0.28): StructureGraph {
     const pa = find(a);
     const pb = find(b);
     if (pa === pb) return;
+    // A joint welds only to a joint within reach: no chain of near neighbours drags a small feature
+    // (a dial ring, a belfry post) into one far corner.
+    if (dist(nodes[pa].position, nodes[pb].position) > tol * 1.5) return;
     const keep = roleRank(nodes[pa].role) <= roleRank(nodes[pb].role) ? pa : pb;
     const drop = keep === pa ? pb : pa;
     parent[drop] = keep;

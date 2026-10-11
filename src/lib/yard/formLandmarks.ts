@@ -258,9 +258,9 @@ export function clockTowerOps(s: Size3): FormOp[] {
   ops.push(poly(square(belfryTop, a * 1.05), "rail"));
   ops.push(poly(square((belfryTop + spireTop) / 2, a * 0.56), "ring"));
   // A dial on each face: a ring standing in the face plane, 12 sides when each side is at least
-  // three-quarters of an inch long, fewer (down to 6) on a small model so every side is a real stick.
+  // an inch and a fifth long (two stick widths clear of the weld), fewer (down to 6) on a small model so every side is a real stick.
   const dial = stage * 0.62;
-  const sides = Math.max(6, Math.min(12, Math.floor((2 * Math.PI * dial) / 0.75)));
+  const sides = Math.max(6, Math.min(12, Math.floor((2 * Math.PI * dial) / 1.2)));
   for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
     const pts: P[] = [];
     for (let i = 0; i <= sides; i++) {
@@ -269,6 +269,14 @@ export function clockTowerOps(s: Size3): FormOp[] {
       pts.push(nx ? { x: nx * stage, y: dialY + v, z: u } : { x: u, y: dialY + v, z: nz * stage });
     }
     ops.push(poly(pts, "ring"));
+    // The dial is set into the stage face: a rail corner to corner through its centre line carries it.
+    const at = (u: number): P => (nx ? { x: nx * stage, y: dialY, z: u } : { x: u, y: dialY, z: nz * stage });
+    ops.push(poly([at(-stage), at(-dial), at(dial), at(stage)], "rail"));
+  }
+  // The belfry: on each face a centre post splits the stage into two open bays.
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const at = (u: number, y: number): P => (nx ? { x: nx * a, y, z: u } : { x: u, y, z: nz * a });
+    ops.push(poly([at(0, stageTop), at(0, belfryTop)], "leg"));
   }
   ops.push(col(0, 0, spireTop, H, "tip"));
   return ops;
