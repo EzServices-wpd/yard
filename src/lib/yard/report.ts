@@ -2,12 +2,12 @@ import { isNoLidPrompt } from "./cueRules";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
-import { getCatalogItem } from "./catalog";
+import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
-import { bomLinesFromForge, buildForgeBom } from "./bom";
+import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
@@ -1541,7 +1541,53 @@ export function buildPlan(project: YardProject): BuildPlan {
     if (same.estimatedCost != null || b.estimatedCost != null) same.estimatedCost = (same.estimatedCost ?? 0) + (b.estimatedCost ?? 0);
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
-  return { ...plan, bom };
+  return smallestSheetStock({ ...plan, bom });
+}
+
+/**
+ * Small parts buy the smallest real sheet that yields them: when every part cut from a full sheet nests on
+ * one smaller sheet of the same thickness, Buy lists that sheet instead.
+ */
+function smallestSheetStock(plan: BuildPlan): BuildPlan {
+  let changed = false;
+  const swapped = new Map<string, string>();
+  const bom = plan.bom.map((b) => {
+    const item = b.catalogId ? getCatalogItem(b.catalogId) : undefined;
+    // Only a full 4×8 (or larger) sheet steps down; cut-to-size goods (glazing, mats) are already small.
+    if (!item || item.formFactor !== "sheet" || b.quantity !== 1 || (item.dims.length ?? 0) * (item.dims.width ?? 0) < 96 * 48) return b;
+    const parts = plan.cutList.filter((c) => c.id.split("|")[0] === item.id);
+    if (!parts.length) return b;
+    const rects: [number, number][] = parts.flatMap((c) =>
+      Array.from({ length: c.quantity }, () => [Math.max(c.lengthIn, c.widthIn ?? 0), Math.min(c.lengthIn, c.widthIn ?? 0)] as [number, number]),
+    );
+    const smaller = Object.values(CATALOG_BY_ID).filter(
+      (s) =>
+        s.formFactor === "sheet" &&
+        s.id !== item.id &&
+        s.category === item.category &&
+        s.dims.thickness === item.dims.thickness &&
+        (s.dims.length ?? 96) * (s.dims.width ?? 48) < (item.dims.length ?? 96) * (item.dims.width ?? 48) &&
+        s.unitCostUsd != null &&
+        nestSheets(rects, s.dims.length ?? 96, s.dims.width ?? 48) === 1,
+    ).sort((a, c) => (a.unitCostUsd ?? 0) - (c.unitCostUsd ?? 0))[0];
+    if (!smaller) return b;
+    changed = true;
+    swapped.set(item.id, smaller.name);
+    const size = `${(smaller.dims.width ?? 24) / 12}×${(smaller.dims.length ?? 48) / 12} ft`;
+    return {
+      ...b,
+      name: smaller.name,
+      catalogId: smaller.id,
+      searchQuery: smaller.searchQuery ?? b.searchQuery,
+      estimatedCost: smaller.unitCostUsd,
+      offers: undefined,
+      notes: `Every part fits one ${size} panel, so you buy the panel, not a full ${(item.dims.width ?? 48) / 12}×${(item.dims.length ?? 96) / 12} sheet.`,
+    };
+  });
+  if (!changed) return plan;
+  const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
+  const cutList = plan.cutList.map((c) => (swapped.has(c.id.split("|")[0]) ? { ...c, material: swapped.get(c.id.split("|")[0])! } : c));
+  return { ...plan, bom, cutList, totals: { ...plan.totals, estCostUsd: cost } };
 }
 
 /** A noun built as a simple primitive says so in step 1. */
