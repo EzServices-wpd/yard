@@ -1,3 +1,5 @@
+import { findRecipe } from "./recipes";
+import { buildRecipe } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
 import { frontCueNotes } from "./fittedShared";
 import { typedAxisNumber, typedSpan, typedDepth } from "./typedAxis";
@@ -1153,6 +1155,11 @@ function generateRaw(
       generateRaw(clause, materialOverride, undefined, { ...opts, noCompose: true }),
     );
     if (composed) return composed;
+  }
+  // A named object with a saved recipe builds from its defining parts (spec 001), never a template.
+  if (!formOverride && !opts.fittedOverride) {
+    const recipe = findRecipe(prompt);
+    if (recipe) return buildRecipe(recipe, prompt, materialOverride, opts.sizeOverride).project;
   }
   const lower = prompt.toLowerCase().trim();
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads

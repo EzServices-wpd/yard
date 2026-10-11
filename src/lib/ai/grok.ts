@@ -160,6 +160,29 @@ export const hintSubject = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Recipe lookup (spec 001 R1): a named object the engine has no family for comes back as a structured
+ * recipe of its defining parts, never a shape. At most two calls per unseen noun (lookup plus one retry
+ * with the failures); a saved recipe needs none.
+ */
+const RECIPE_SYSTEM = [
+  "You describe how a real object is built, as JSON only. Schema:",
+  '{"key":"head-noun","synonyms":[],"title":"","size":{"width":0,"height":0,"depth":0},"craftSize":{...}?,"feet":bool,"outdoor":bool,"wall":bool,',
+  '"count":{"word":"bays","default":1}?,"defining":["role"],"parts":[{"role":"post|rail|tower|cable|deck|wheel|axle|roof|bay|dome|minaret|stringer|tread|lid|hinge|...",',
+  '"name":"Unique name","box":[x,y,z,w,h,d],"kind":"member|panel|cover|hardware","on":["names of parts that carry it"],"repeat":"each|between"?}],',
+  '"moving":[{"part":"name","motion":"fold|hinge|pivot|spin|slide"}],"notes":[]}',
+  "Sizes are inches at the typical real size. box values are shares (0..1) of width, height, depth; y=0 is the floor.",
+  "Every part touches what it sits on; a part with no 'on' stands on the floor. Build the defining parts at real proportions; never a closed box.",
+].join("\n");
+
+export const lookupRecipe = createServerFn({ method: "POST" })
+  .validator((input: { prompt: string; feedback?: string[] }) => input)
+  .handler(async ({ data }) => {
+    const user = data.feedback?.length ? `${data.prompt}\nThe last recipe failed these checks; fix them: ${data.feedback.join("; ")}` : data.prompt;
+    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 1600, { json: true });
+    return result.ok ? { ok: true as const, recipeJson: JSON.stringify(parseModelJson(result.text)) } : { ok: false as const, error: result.error };
+  });
+
 export { writeInstructions } from "./writeInstructions";
 
 export const renderProject = createServerFn({ method: "POST" })

@@ -37,6 +37,13 @@ export type Recipe = {
   /** Read a bare "10x10" as feet. */
   feet?: boolean;
   outdoor?: boolean;
+  /** Hangs on the wall: parts with nothing under them hang there instead of standing on the floor. */
+  wall?: boolean;
+  /** Default catalog stock for members and for sheet parts; typed stock replaces them. */
+  stock?: string;
+  sheet?: string;
+  /** Roles that make the thing what it is; each must be built. */
+  defining?: string[];
   /** A typed count that repeats parts along the width ("3 bays"). */
   count?: { word: string; default: number };
   parts: RecipePart[];
@@ -47,6 +54,15 @@ export type Recipe = {
 export type RecipeStore = { schema: number; recipes: Recipe[] };
 
 export const RECIPES: RecipeStore = store as RecipeStore;
+
+/** Lookup recipes that passed on this instance, until they are committed to recipes.json. */
+const learned: Recipe[] = [];
+export function rememberRecipe(recipe: Recipe): void {
+  const i = learned.findIndex((r) => r.key === recipe.key);
+  if (i >= 0) learned.splice(i, 1);
+  learned.push(recipe);
+}
+const withLearned = (): RecipeStore => (learned.length ? { ...RECIPES, recipes: [...RECIPES.recipes, ...learned] } : RECIPES);
 
 /** Lower case, sizes, stock words and articles out: the words that name the thing. */
 export function normalizeNoun(prompt: string): string {
@@ -62,7 +78,7 @@ export function normalizeNoun(prompt: string): string {
 const words = (s: string) => new RegExp(String.raw`(?:^|\s)${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}s?(?:\s|$)`);
 
 /** The recipe a prompt names: the longest key or synonym found in it, with every modifier present. */
-export function findRecipe(prompt: string, lib: RecipeStore = RECIPES): Recipe | null {
+export function findRecipe(prompt: string, lib: RecipeStore = withLearned()): Recipe | null {
   const noun = normalizeNoun(prompt);
   const lower = prompt.toLowerCase();
   let best: { r: Recipe; len: number } | null = null;
@@ -99,6 +115,7 @@ export function parseRecipe(raw: unknown): Recipe | null {
   const okSize = (s: unknown) => !!s && ["width", "height", "depth"].every((a) => Number((s as Record<string, unknown>)[a]) > 0);
   if (!okSize(r.size) || (r.craftSize && !okSize(r.craftSize))) return null;
   const names = new Set(r.parts.map((p) => p?.name));
+  if (Array.isArray(r.defining) && r.defining.some((d) => !r.parts!.some((p) => p?.role === d))) return null;
   for (const p of r.parts) {
     if (!p || typeof p.role !== "string" || typeof p.name !== "string" || !["member", "panel", "cover", "hardware"].includes(p.kind)) return null;
     if (!Array.isArray(p.box) || p.box.length !== 6 || p.box.some((v) => typeof v !== "number" || v < -0.5 || v > 1.5)) return null;
@@ -115,6 +132,10 @@ export function parseRecipe(raw: unknown): Recipe | null {
     craftSize: r.craftSize,
     feet: !!r.feet,
     outdoor: !!r.outdoor,
+    wall: !!r.wall,
+    stock: typeof r.stock === "string" ? r.stock : undefined,
+    sheet: typeof r.sheet === "string" ? r.sheet : undefined,
+    defining: Array.isArray(r.defining) ? r.defining.filter((d) => typeof d === "string") : undefined,
     count: r.count,
     parts: r.parts,
     moving: r.moving,
