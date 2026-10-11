@@ -1686,7 +1686,11 @@ if (!/^Loft bed/i.test(loft.name)) failHonesty("loft title", loft.name);
 if (!nearInch(loft.overall.width, 44)) failHonesty("loft twin width ~44", loft.overall);
 if (!nearInch(loft.overall.depth, 82)) failHonesty("loft twin depth ~82 (75 mattress + rails + posts)", loft.overall);
 if (!loft.notes.some((n) => /\b75"/.test(n))) failHonesty("loft note names the 75\" twin mattress", loft.notes);
-if (!nearInch(loft.overall.height, 65)) failHonesty("loft height ~65", loft.overall);
+// A desk or a child stands under a loft: 54–60" clear under the frame (72" tall untyped).
+{
+  const under = Math.min(...loft.panels.filter((p) => /^Loft/.test(p.name)).map((p) => p.position.y));
+  if (!(under >= 54 && under <= 60)) failHonesty("loft clear under the frame 54–60", { under, overall: loft.overall });
+}
 const loftDecks = loft.panels.filter((p) => p.type === "deck");
 if (loftDecks.length !== 1) failHonesty("loft needs exactly one sleep deck", loft.panels.map((p) => p.name));
 if (loft.panels.filter((p) => /post/i.test(p.name) || p.type === "upright").length < 4) {

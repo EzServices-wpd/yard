@@ -93,4 +93,12 @@ export const STRESS_PROMPTS = [
   "chicken coop",
   "daybed",
   "bar stool from plywood",
+  "coat rack with 5 hooks",
+  "wardrobe with a rod",
+  "twin loft bed",
+  "window seat with cubbies",
+  "mudroom bench with cubbies",
+  "spice cabinet",
+  "display cabinet",
+  "utility cabinet",
 ];

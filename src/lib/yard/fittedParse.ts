@@ -765,7 +765,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? 22
                     : isSofaConsoleTable(lower)
                       ? 30
-                    : isBunkBed(lower) || isLoftBed(lower)
+                    : isLoftBed(lower)
+                      ? 72 // a desk or a child stands under a loft: about 56" clear under the frame
+                    : isBunkBed(lower)
                       ? 65
                     : isPictureLedge(lower)
                       ? 6

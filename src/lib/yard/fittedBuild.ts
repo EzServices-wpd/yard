@@ -2951,6 +2951,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : shelves
             ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",
+    ...(rodY != null ? [`A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it, so coats and shirts hang full length.`] : []),
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
       : "Level it. Add a back (already on the bench) so it cannot rack.",
