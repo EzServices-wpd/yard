@@ -1,5 +1,6 @@
 "use client";
 
+import { mainMaterialId } from "@/lib/yard/mainMaterial";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { fitBadge } from "@/lib/yard/fitBadge";
@@ -153,6 +154,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   const fit = fitBadge({ warnings, hasSpace: tabs.some((tab) => tab.id === "space"), depth: Number.isFinite(dNum) ? dNum : project.overall.depth, width: pieceW });
   const presets = classPresets(facts);
   const stock = getCatalogItem(project.primaryMaterialId);
+  const mainStock = getCatalogItem(mainMaterialId(project));
   const thickness = stock?.dims.thickness ?? stock?.dims.diameter ?? stock?.dims.height;
 
   function scaleLocked(axis: "width" | "height" | "depth", raw: string) {
@@ -600,7 +602,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
                   makePlan();
                   setSummary(changeLine(before, snap()) || `Stock is ${item.name}`);
                 }}
-                className={`h-12 rounded-full border px-3 text-xs ${item.id === project.primaryMaterialId ? "border-fg/40 text-fg" : "border-border text-muted"}`}
+                className={`h-12 rounded-full border px-3 text-xs ${item.formFactor === mainStock?.formFactor ? "border-fg/40 text-fg" : "border-border text-muted"}`}
               >
                 {item.name}
               </button>
