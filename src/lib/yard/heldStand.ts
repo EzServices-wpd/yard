@@ -13,10 +13,10 @@ const r16 = (n: number) => Math.round(n * 16) / 16;
 
 /** Typed "N in/inches/ft tall|high" → inches. */
 function typedTall(lower: string): number | null {
-  const m = lower.match(/(\d+(?:\.\d+)?)\s*(?:-|\s)?\s*(in|inch|inches|"|″|ft|feet|foot)\s*(?:tall|high)\b/);
+  const m = lower.match(/(\d+(?:\.\d+)?)\s*(?:-|\s)?\s*(in|inch|inches|"|″|ft|feet|foot)?\s*(?:tall|high)\b/);
   if (!m) return null;
   const n = parseFloat(m[1]);
-  return /ft|feet|foot/.test(m[2]) ? n * 12 : n;
+  return /ft|feet|foot/.test(m[2] ?? "") ? n * 12 : n;
 }
 function typedAxis(lower: string, axis: "wide|long" | "deep"): number | null {
   const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:-|\\s)?\\s*(in|inch|inches|"|″|ft|feet|foot)\\s*(?:${axis})\\b`);
@@ -87,7 +87,8 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   const gap = n > 1 ? 3 : 0;
   const objW = n * held.width + (n - 1) * gap;
   const objD = held.depth;
-  const margin = 0.5;
+  const cradle = /\b(?:propane|gas|helium|co2|oxygen)\b|\btanks?\b|\bcylinders?\b/.test(held.label.toLowerCase());
+  const margin = cradle ? 2 : 0.5;
   const wantW = r16(objW + 2 * margin);
   const wantD = r16(objD + 2 * margin);
   const typedW = typedAxis(lower, "wide|long");
@@ -130,7 +131,7 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   mk({ type: "rail", name: "Front apron", position: { x: 0, y: apronY, z: frame.legD }, size: { width: W, height: frame.apronH, depth: frame.apronT }, materialId: frame.apronId, cutNote: "Runs the full width behind the front legs; the deck screws down into it." });
   mk({ type: "rail", name: "Back apron", position: { x: 0, y: apronY, z: r16(D - frame.legD - frame.apronT) }, size: { width: W, height: frame.apronH, depth: frame.apronT }, materialId: frame.apronId, cutNote: "Runs the full width in front of the back legs." });
   const sideLen = r16(innerD - 2 * frame.apronT);
-  for (const [name, x] of [["Left apron", 0], ["Right apron", r16(W - frame.apronT)]] as const) {
+  for (const [name, x] of sideLen >= 1 ? ([["Left apron", 0], ["Right apron", r16(W - frame.apronT)]] as const) : []) {
     mk({ type: "rail", name, position: { x, y: apronY, z: r16(frame.legD + frame.apronT) }, size: { width: frame.apronT, height: frame.apronH, depth: sideLen }, materialId: frame.apronId, cutNote: "Fits between the front and back aprons." });
   }
   // Tall stands get a bottom frame and a lower shelf: it stiffens the legs and gives usable storage.
@@ -142,6 +143,14 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
     mk({ type: "shelf", name: "Lower shelf", position: { x: 0, y: r16(sy + frame.apronH), z: frame.legD }, size: { width: W, height: deckT, depth: innerD }, materialId: ply, cutNote: "Sits on the stretchers between the legs; notch the corners around the legs." });
   }
   mk({ type: "top", name: "Deck", position: { x: 0, y: legH, z: 0 }, size: { width: W, height: deckT, depth: D }, materialId: ply, cutNote: `Solid 3/4" plywood deck; the ${held.label} sits on it.` });
+
+  // A gas cylinder stands in a cradle: a 2×4 collar on the deck round its foot ring so it cannot tip or slide.
+  if (cradle) {
+    const cy = r16(deckTop);
+    mk({ type: "rail", name: "Cradle front", position: { x: 0, y: cy, z: r16(D - 1.5) }, size: { width: W, height: 3.5, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Screws down through the deck edge; the tank foot ring sits inside the collar." });
+    mk({ type: "rail", name: "Cradle back", position: { x: 0, y: cy, z: 0 }, size: { width: W, height: 3.5, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Matches the front cradle rail." });
+    for (const [name, x] of [["Cradle left", 0], ["Cradle right", r16(W - 1.5)]] as const) mk({ type: "rail", name, position: { x, y: cy, z: 1.5 }, size: { width: 1.5, height: 3.5, depth: r16(D - 3) }, materialId: "lumber-2x4-8", cutNote: "Fits between the front and back cradle rails." });
+  }
 
   // The held object, drawn as a plain proxy box at its real size (not a cut part).
   const item = held.item ?? proxyItem(held);
@@ -157,6 +166,7 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   const is = n > 1 ? "are" : "is";
   notes.push(`The ${held.label} ${sits} on a solid 3/4" plywood deck, ${inchFrac(W)}" × ${inchFrac(D)}", sized to its footprint with ${inchFrac(margin)}" to spare on each side. Legs and aprons stand under the deck.`);
   if (typedW != null && typedW < objW) notes.push(`The typed ${inchFrac(typedW)}" width wins; the ${held.label} ${is} ${inchFrac(objW - typedW)}" wider than the deck, so it overhangs.`);
+  if (cradle) notes.push(`A low cradle base: the deck sits ${inchFrac(deckTop)}" off the ground and a 2×4 collar round its edge holds the ${held.label}'s foot ring upright.`);
   if (!standWord && !tall) notes.push(`Riser: the deck sits at ${inchFrac(deckTop)}", leaving ${inchFrac(legH - frame.apronH)}" of clear space underneath for storage.`);
   const loadTalk = held.water ? `about ${held.pounds} lb filled` : `about ${held.pounds} lb`;
   if (frame.tier !== "light" || held.water) {

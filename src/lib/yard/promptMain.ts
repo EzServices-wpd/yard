@@ -1063,11 +1063,23 @@ function placeHeldProduct(prompt: string): YardProject | null {
     pounds,
     water: holdsWater,
     count: 1,
-    standHeight: 24,
+    standHeight: standHeightFor(phrase, w, d, h),
     note: item.notes || `${item.name} at its usual size.`,
     item,
   };
   return buildHeldStand(prompt, product, titleFor(raw));
+}
+
+/**
+ * A stand's deck height comes from what it holds: a cup or tumbler sits on a low riser a few inches up
+ * (the frame's own apron plus the deck), a cooler at a seat-side 18", a gas cylinder on a low cradle base so
+ * it never stands top-heavy; anything else at the 24" class stand height.
+ */
+function standHeightFor(phrase: string, w: number, d: number, h: number): number {
+  if (/\b(?:propane|gas|helium|co2|oxygen)\b|\btanks?\b|\bcylinders?\b/.test(phrase)) return 4.25;
+  if (/\bcoolers?\b/.test(phrase)) return 18;
+  if (Math.max(w, d) <= 6 && h <= 10) return 4.25;
+  return 24;
 }
 
 /** A named product is the piece, not a carcase that happens to mention a bottle. */
