@@ -1142,12 +1142,12 @@
     "kind": "castle",
     "material": "cardboard-corrugated-sheet",
     "overall": {
-      "width": 27.1,
+      "width": 26.9,
       "height": 23.8,
-      "depth": 24.2
+      "depth": 23.8
     },
     "panels": 0,
-    "instances": 112,
+    "instances": 48,
     "uniqueParts": [
       "battlement",
       "drawbridge",
