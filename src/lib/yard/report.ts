@@ -1458,6 +1458,36 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   if (folds && !/folding leg|fold bracket/.test(have)) extra.push({ name: "Locking folding leg brackets", quantity: folds, unit: "each", estimatedCost: 5.98 * folds, searchQuery: "locking folding table leg bracket", notes: "One at the top of each leg, so it folds flat under the top." });
   const latches = drawn(/^Latch \d+$/);
   if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, estimatedCost: 9.98 * (latches), unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
+  const hooks = drawn(/^Coat hook \d+$/);
+  if (hooks && !/hook/.test(have)) extra.push({ name: "Coat hooks", quantity: hooks, estimatedCost: 3.98 * hooks, unit: "each", searchQuery: "double coat hook wall mount", notes: "One per drawn hook." });
+  // Hardware the notes and steps name is bought, once: caulk, paint, lag screws, fabric, handles.
+  const said = `${notes} ${(project.notes ?? []).join(" ")}`;
+  const named: [RegExp, RegExp, BuildPlan["bom"][number]][] = [
+    [/\bcaulk/i, /caulk/, { name: "Exterior caulk", quantity: 1, estimatedCost: 6.98, unit: "tube", searchQuery: "exterior paintable caulk", notes: "Seal the seams the notes name." }],
+    [/\b(?:exterior|dark|latex)\s+paint|\bpaint (?:it|the outside)/i, /paint/, { name: "Exterior paint", quantity: 1, estimatedCost: 14.98, unit: "quart", searchQuery: "exterior latex paint quart", notes: "Outside faces only, as the notes say." }],
+    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { name: '5/16" × 3" lag screws with washers', quantity: 4, estimatedCost: 0.98 * 4, unit: "each", searchQuery: "5/16 x 3 lag screw", notes: "Into the wall studs." }],
+    [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
+    [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
+    [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
+    [/\bbed bolts?\b/i, /bolt/, { name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts', quantity: 8, estimatedCost: 1.5 * 8, unit: "each", searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut", notes: "The bed bolts the notes name." }],
+  ];
+  for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
+  // Craft sticks and dowels drawn as panels (recipe builds) are bought by the sticks that tile them.
+  const sticksById = new Map<string, number>();
+  for (const panel of project.panels) {
+    const item = getCatalogItem(panel.materialId);
+    if (!item || !(item.formFactor === "stick" || item.formFactor === "dowel") || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
+    const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
+    const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
+    const along = Math.max(1, Math.ceil(d[0] / Math.max(1, item.dims.length ?? 4.5)));
+    sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + (item.formFactor === "dowel" ? along : across * along));
+  }
+  for (const [id, n] of sticksById) {
+    const item = getCatalogItem(id)!;
+    if (have.includes(item.name.toLowerCase())) continue;
+    const per = Math.max(1, item.unitsPerPack ?? 1);
+    extra.push({ name: item.name, quantity: Math.ceil(n / per), estimatedCost: Math.ceil(n / per) * per * (item.unitCostUsd ?? 0), unit: per > 1 ? `pack of ${per}` : "each", searchQuery: item.searchQuery ?? item.name, notes: `${n} pieces tile the drawn parts.` });
+  }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
       name: "GRK RSS #9 x 3-1/8 structural screws",

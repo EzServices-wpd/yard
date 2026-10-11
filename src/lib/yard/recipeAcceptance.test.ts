@@ -5,6 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildRecipe, validateRecipe } from "./recipeBuild.ts";
 import { findRecipe } from "./recipes.ts";
 import { structureIssues } from "./structureCheck.ts";
+import { buildPlan } from "./report.ts";
 
 // prompt → recipe key, the roles that must be built, and typed checks.
 const RECIPE: [string, string, Record<string, number>?][] = [
@@ -71,5 +72,20 @@ describe("recipe stock switch (Critic item 3)", () => {
     const { p, m } = ids("pergola 10x10", "popsicle-standard");
     assert.equal(m("Post"), "lumber-4x4-8");
     assert.ok(p.notes.some((n) => /can't carry a pergola/.test(n)));
+  });
+});
+
+describe("Buy carries every drawn and noted hardware item (Critic item 6)", () => {
+  const cases: [string, RegExp[]][] = [
+    ["popsicle stick treasure chest with lid", [/hinge/i, /latch/i, /popsicle/i]],
+    ["mudroom locker 3 bays", [/coat hook/i]],
+    ["murphy bed queen", [/folding leg bracket/i, /lag screw/i]],
+    ["bat house", [/caulk/i, /paint/i]],
+    ["kids sandbox with corner seats", [/landscape fabric/i]],
+    ["dowel tipi for kids", [/canvas/i, /dowel/i]],
+  ];
+  for (const [q, want] of cases) it(q, () => {
+    const names = buildPlan(generateFromPrompt(q)).bom.map((b) => b.name).join(" | ");
+    for (const re of want) assert.match(names, re);
   });
 });

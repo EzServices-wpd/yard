@@ -66,11 +66,11 @@ function stockFor(prompt: string, recipe: Recipe, override?: string) {
 }
 
 function panelType(p: RecipePart, s: Size): PanelType {
-  if (p.kind === "cover") return "back";
+  if (p.kind === "cover") return "side";
   if (p.kind === "hardware") return "cleat";
   const tall = s.height >= Math.max(s.width, s.depth);
   if (p.kind === "member") return tall ? "upright" : "rail";
-  return s.height <= Math.min(s.width, s.depth) ? "shelf" : "side";
+  return s.height <= Math.min(s.width, s.depth) ? "top" : "side";
 }
 
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
@@ -106,7 +106,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
         name: reps > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }

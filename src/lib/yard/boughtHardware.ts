@@ -8,7 +8,7 @@ import { hookCount } from "./hookCount";
 
 /** Bought hardware drawn in the model (coat hooks, coat pegs, deck pier blocks): on Buy, never on the cut list. */
 export function isBoughtHardwareName(name: string): boolean {
-  return /^(?:Coat (?:hook|peg)|Footing|Hinge|Latch|A-frame bracket|Fold bracket) \d+$/.test(name);
+  return /^(?:Coat (?:hook|peg)|Footing|Hinge|Latch|A-frame bracket|Fold bracket|Canvas cover) \d+$/.test(name);
 }
 
 /** The same test Buy uses to add the coat-hook line. */
