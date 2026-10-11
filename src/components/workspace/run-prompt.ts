@@ -1,6 +1,7 @@
 "use client";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
+import { proposeRecipeFn } from "@/lib/ai/recipeBot";
 import { lookupAndBuild, needsRecipeLookup, timedLookup } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
@@ -384,6 +385,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
       const out = await lookupAndBuild(prompt, lookup, () => useYard.getState().project, namedStock);
       if (out.recipe) {
+        // Propose it for the committed store; quiet when the bot has no token.
+        void proposeRecipeFn({ data: { recipeJson: JSON.stringify(out.recipe) } }).catch(() => undefined);
         generate(prompt, namedStock, undefined, { fresh: true });
         makePlan();
         return;
