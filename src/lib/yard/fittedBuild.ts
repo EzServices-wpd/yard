@@ -2093,7 +2093,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wooden kennel the dog goes inside — slatted sides and back, a floor, a top, and a hinged door you can see through. ¾" plywood. No shelves.`,
+        `${name}. Wooden kennel the dog goes inside — slatted sides and back, a floor, a top, and a hinged door with a grid of air holes. ¾" plywood. No shelves.`,
         `The door is ${doorH}" tall, leaving a ${doorGap}" air gap at the top. Drill three 1½" holes near the top of each side and the back so it can breathe.`,
         "Latch the door with a barrel bolt. Sits on the floor. Not a bookcase.",
       ],

@@ -424,7 +424,7 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     if (p.materialId === "lumber-2x2-8" && item.id !== p.materialId) return p;
     const recast = { ...p, materialId: item.id, size: sectionSize(p.size, item) };
     return thick > 0.9 ? atBoardThickness(recast, thick, box) : recast;
-  });
+  }).map((p, i, now) => refitBetween(p, project.panels, now));
   const label = namedStockDisplayName(project.prompt ?? "", item);
   const face = item.dims.width ?? 3.5;
   const note = [
@@ -452,6 +452,20 @@ export function applyExplicitBoardCarcase(project: YardProject, item: CatalogIte
     )
     .filter((n) => !/Aprons nest on the 3\/4" sheet/.test(n));
   return { ...project, primaryMaterialId: item.id, panels, notes: [...notes, note] };
+}
+
+/** A thin back set between two sides follows them when they grow inward: it still meets both. */
+function refitBetween(p: Panel, was: Panel[], now: Panel[]): Panel {
+  if (Math.min(p.size.width, p.size.height, p.size.depth) > 0.26 || p.yaw || p.polygon) return p;
+  const x0 = p.position.x;
+  const x1 = x0 + p.size.width;
+  const left = was.findIndex((q) => q !== p && Math.abs(q.position.x + q.size.width - x0) < 0.02);
+  const right = was.findIndex((q) => q !== p && Math.abs(q.position.x - x1) < 0.02);
+  if (left < 0 || right < 0) return p;
+  const nx0 = now[left].position.x + now[left].size.width;
+  const nx1 = now[right].position.x;
+  if (!(nx1 - nx0 > 1) || (Math.abs(nx0 - x0) < 0.01 && Math.abs(nx1 - x1) < 0.01)) return p;
+  return { ...p, position: { ...p.position, x: nx0 }, size: { ...p.size, width: nx1 - nx0 } };
 }
 
 function panelBox(p: Panel) {
