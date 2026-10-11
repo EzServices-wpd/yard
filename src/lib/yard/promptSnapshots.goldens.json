@@ -340,14 +340,13 @@
       "height": 14.25,
       "depth": 12
     },
-    "panels": 14,
+    "panels": 13,
     "instances": 0,
     "uniqueParts": [
       "Back",
       "Bottle divider 1",
       "Bottle divider 2",
       "Bottle divider 3",
-      "Bottle divider 4",
       "Bottle rail 1",
       "Bottle rail 2",
       "Bottle rail 3",
@@ -359,8 +358,8 @@
       "Shelf 4"
     ],
     "notesHead": [
-      "Wine rack 24\" × 14 1/4\" × 12\". Wall-mounted open wine rack. Holds 15 bottles (room for the 12 bottles you asked for; 3 rows × 5 across, one opening per bottle, rows on a 4 1/2\" pitch, one bottle high). Built 14 1/4\" tall — just the rows the bottles need. Not a bookcase and not a hollow box.",
-      "Bottles lie on their sides, necks facing out. Each opening is 3 7/8\" wide × 3 3/4\" tall clear (at least 3 1/2\" both ways so a bottle fits, one bottle high). Glue a 1 1/2\" scalloped cradle rail on the front of every bottle-row shelf: one 3 1/2\" wide scallop per bottle, cut down to 3/16\", so each bottle slides in with 3 9/16\" clear above the cradle and its neck rests in the scallop. The 4 dividers half-lap over the 2 middle shelves (egg-crate). Glue the shelves in place — a loaded row is heavy."
+      "Wine rack 24\" × 14 1/4\" × 12\". Wall-mounted open wine rack. Holds 12 bottles — 3 rows × 4 across, one opening per bottle (rows on a 4 1/2\" pitch, one bottle high). Built 14 1/4\" tall — just the rows the bottles need. Not a bookcase and not a hollow box.",
+      "Bottles lie on their sides, necks facing out. Each opening is 5 1/16\" wide × 3 3/4\" tall clear (at least 3 1/2\" both ways so a bottle fits, one bottle high). Glue a 1 1/2\" scalloped cradle rail on the front of every bottle-row shelf: one 3 1/2\" wide scallop per bottle, cut down to 3/16\", so each bottle slides in with 3 9/16\" clear above the cradle and its neck rests in the scallop. The 3 dividers half-lap over the 2 middle shelves (egg-crate). Glue the shelves in place — a loaded row is heavy."
     ],
     "signals": {
       "mentionsYardBuilt": false,

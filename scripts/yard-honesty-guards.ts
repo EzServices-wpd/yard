@@ -4027,20 +4027,20 @@ console.log("SOFT-TRUST OK", {
     fill?: boolean;
   };
   const cases: Case[] = [
-    { prompt: "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots", asked: 12, width: 24, cols: 5, capacity: 15, height: 36, openShelves: 2 },
-    { prompt: "wine rack 24 wide 36 tall 12 deep with twelve slots", asked: 12, width: 24, cols: 5, capacity: 15, height: 36, openShelves: 2 },
-    { prompt: "pine wine rack for 12 bottles", asked: 12, cols: 5, capacity: 15, height: 14.25, stock: /^Pine 1×4$/ },
-    { prompt: "oak wine rack for 12 bottles, 36 inches tall", asked: 12, cols: 5, capacity: 15, height: 36, openShelves: 2, stock: /^Oak 1×4$/ },
+    { prompt: "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots", asked: 12, width: 24, cols: 4, capacity: 12, height: 36, openShelves: 2 },
+    { prompt: "wine rack 24 wide 36 tall 12 deep with twelve slots", asked: 12, width: 24, cols: 4, capacity: 12, height: 36, openShelves: 2 },
+    { prompt: "pine wine rack for 12 bottles", asked: 12, cols: 4, capacity: 12, height: 14.25, stock: /^Pine 1×4$/ },
+    { prompt: "oak wine rack for 12 bottles, 36 inches tall", asked: 12, cols: 4, capacity: 12, height: 36, openShelves: 2, stock: /^Oak 1×4$/ },
     { prompt: "pine wine rack for 20 bottles 30 inches tall", asked: 20, cols: 5, capacity: 20, height: 30, openShelves: 1, stock: /^Pine 1×4$/ },
     { prompt: "oak wine rack for 10 bottles 18 inches tall", asked: 10, cols: 5, capacity: 10, height: 18, openShelves: 1, stock: /^Oak 1×4$/ },
     { prompt: "pine wine rack for 15 bottles 20 inches tall", asked: 15, cols: 5, capacity: 15, height: 20, openShelves: 0, plinth: true, stock: /^Pine 1×4$/ },
-    { prompt: "pine wine rack for 12 bottles, 24 inches tall", asked: 12, cols: 5, capacity: 15, height: 24, openShelves: 1, stock: /^Pine 1×4$/ },
+    { prompt: "pine wine rack for 12 bottles, 24 inches tall", asked: 12, cols: 4, capacity: 12, height: 24, openShelves: 1, stock: /^Pine 1×4$/ },
     { prompt: "wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit", asked: 12, cols: 5, capacity: 35, height: 36, fill: true },
-    { prompt: "wine rack that holds 8 bottles", asked: 8 },
+    { prompt: "wine rack that holds 8 bottles", asked: 8, cols: 4, capacity: 8 },
     { prompt: "wine rack that holds 12 bottles, 30 inches wide", asked: 12, width: 30, cols: 6, capacity: 12 },
-    { prompt: "oak wine rack for 10 bottles, 18 inches wide", asked: 10, width: 18, cols: 4, capacity: 12, stock: /^Oak 1×4$/ },
-    { prompt: "pine wine rack with 15 slots, 20 inches wide", asked: 15, width: 20, cols: 4, capacity: 16, stock: /^Pine 1×4$/ },
-    { prompt: "pine wine rack 30 wide with 20 slots", asked: 20, width: 30, cols: 6, capacity: 24, stock: /^Pine 1×4$/ },
+    { prompt: "oak wine rack for 10 bottles, 18 inches wide", asked: 10, width: 18, cols: 2, capacity: 10, stock: /^Oak 1×4$/ },
+    { prompt: "pine wine rack with 15 slots, 20 inches wide", asked: 15, width: 20, cols: 3, capacity: 15, stock: /^Pine 1×4$/ },
+    { prompt: "pine wine rack 30 wide with 20 slots", asked: 20, width: 30, cols: 5, capacity: 20, stock: /^Pine 1×4$/ },
     { prompt: "wine rack 24 wide 12 tall 12 deep with 30 slots", asked: 30, width: 24, capped: true },
   ];
   for (const c of cases) {
@@ -4059,10 +4059,14 @@ console.log("SOFT-TRUST OK", {
       if (g > WINE_ROW_MAX_CLEAR + 1e-6) failWine(`bottle row taller than ${WINE_ROW_MAX_CLEAR}in (stretched opening)`, { prompt: c.prompt, vGaps: o.vGaps });
     }
     if (c.height != null && Math.abs(p.overall.height - c.height) > 0.01) failWine("height", { prompt: c.prompt, H: p.overall.height, want: c.height });
-    // A typed count wins: capacity ≥ N and < N + one full row (unless capped or "as many as fit").
+    // A typed count wins: the rack holds exactly N when the columns divide it evenly, else ≥ N and < N + one
+    // full row (unless capped or "as many as fit").
     const capNow = capacityOf(p);
     if (c.asked != null && !c.capped && !c.fill && capNow != null && !(capNow >= c.asked && capNow < c.asked + o.cols)) {
       failWine("capacity must be ≥ N and < N + one row", { prompt: c.prompt, cap: capNow, asked: c.asked, cols: o.cols });
+    }
+    if (c.asked === 12 && !c.capped && !c.fill && capNow !== 12) {
+      failWine("a typed 12 bottles holds exactly 12", { prompt: c.prompt, cap: capNow });
     }
     // Leftover typed height = open shelves above the grid, stated in the notes, at a useful pitch.
     const openGaps = (() => {

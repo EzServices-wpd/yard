@@ -132,7 +132,11 @@ export function wineRackLayout(o: {
   // The size that fits every asked bottle (rounded up to the next 1/4").
   const up4 = (n: number) => Math.ceil(n * 4 - 1e-9) / 4;
   if (asked != null && asked >= 1) {
-    const cols = Math.min(maxCols, asked);
+    // A typed count wins exactly: the most columns that fit and divide the count into full rows
+    // (no spare slots), unless that halves the columns or overruns a typed height; "as many as fit" fills instead.
+    const even = Array.from({ length: Math.min(maxCols, asked) }, (_, i) => Math.min(maxCols, asked) - i).find((c) => asked % c === 0) ?? 1;
+    const rowsFit = o.heightTyped ? Math.max(1, Math.floor((o.H - 2 * t + t) / pitch + 1e-9)) : Infinity;
+    const cols = !o.fill && even * 2 >= Math.min(maxCols, asked) && asked / even <= rowsFit ? even : Math.min(maxCols, asked);
     const cellW = (innerW - (cols - 1) * t) / cols;
     const wantRows = Math.ceil(asked / cols);
     if (!o.heightTyped) {
