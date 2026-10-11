@@ -116,8 +116,9 @@ function closetCuts(project: YardProject): CutLine[] {
     let matName = materialName;
     // Square stick posts (≈1½×1½) are solid 2x2 lumber — never laminated into
     // thin ply strips. Fixes platform/bunk/daybed cut list ×8 0.75" vs steps ×4 1.5".
-    if (isPly && isSquareLumberStick(dims)) {
-      family = "Leg";
+    // A named-board build's square stick (a ladder rung) is that 2x2 too, under its own name.
+    if ((isPly || (isSolidBoard && !/^leg$/i.test(family))) && isSquareLumberStick(dims)) {
+      if (isPly) family = "Leg";
       id = "lumber-2x2-8";
       matName = getCatalogItem(id)?.name ?? '2x2 (1-1/2" actual)';
     } else if (
@@ -587,7 +588,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     !!namedLumber &&
     !structural.some((c) => /ply|sheet/i.test(`${c.material ?? ""}`));
   // 1× boards beside sheet parts (slats and guards on a plywood-deck frame) are bought as boards too.
-  if (!buyNamedBoard && !boardPrimary && project.primaryMaterialId !== CATALOG_LUMBER_BIND) {
+  // An untyped 1×4 primary (a towel ladder's rails) is bought here too; a named-species 1×4 bought above.
+  if (!buyNamedBoard && !boardPrimary && !(project.primaryMaterialId === CATALOG_LUMBER_BIND && namedLumber)) {
     const byBoard = new Map<string, typeof structural>();
     for (const c of structural) {
       const id = c.id.split("|")[0];
@@ -644,7 +646,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     (c) => /^lumber-/.test(c.id) && !c.id.startsWith(`${CATALOG_LUMBER_BIND}|`) && (c.thicknessIn ?? 0) >= 2 && !isLumberLegCut(c),
   );
   const otherLumber = [
-    ...(boardPrimary || solidNamedBuy
+    // A named-species build buys its species boards above; its other lumber (2×2 rungs) is bought here.
+    ...(boardPrimary
       ? []
       : structural.filter(
           (c) =>

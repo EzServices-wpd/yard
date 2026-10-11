@@ -209,14 +209,14 @@ function buildRungLadder(prompt: string, size?: { width: number; height: number;
     panel("upright", "Left rail", 0, 0, 0, rail, H, D, "lumber-1x4-8"),
     panel("upright", "Right rail", W - rail, 0, 0, rail, H, D, "lumber-1x4-8"),
   ];
-  for (let i = 0; i < n; i++) panels.push(panel("rail", `Rung ${i + 1}`, rail, r16(12 + i * step), (D - rung) / 2, W - 2 * rail, rung, rung, "lumber-2x2-8"));
+  for (let i = 0; i < n; i++) panels.push(panel("rail", "Rung", rail, r16(12 + i * step), (D - rung) / 2, W - 2 * rail, rung, rung, "lumber-2x2-8"));
   const title = `${(lower.match(/\b(blanket|quilt|towel)\b/)?.[1] ?? "blanket").replace(/^\w/, (c) => c.toUpperCase())} ladder`;
   const name = `${title} ${inchFrac(W)}" × ${ft(H)}`;
   const notes = [
     `${name}: two 1×4 rails on edge with ${n} 2×2 rungs, ${inchFrac(r16(step))}" apart, the first 12" up. Two screws through each rail into every rung end.`,
     `Lean it against the wall with the feet about 8" out; a felt pad on each foot keeps it from sliding.`,
   ];
-  return project(prompt, name, panels, W, H, D, notes, "lumber-1x4-8");
+  return { ...project(prompt, name, panels, W, H, D, notes, "lumber-1x4-8"), kind: "ladder" };
 }
 
 /** Board cover for a sandbox / raised bed / well: 1×6 boards with 1/4" gaps screwed to 2×4 cleats underneath. */

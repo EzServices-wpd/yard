@@ -1099,7 +1099,7 @@ function generateRaw(
     // A real object named by its head noun (framed mirror, baby gate, firewood rack, sandbox cover) builds at real size.
     const real = realObjectKind(prompt, materialOverride);
     // A typed-stock towel / blanket ladder keeps its weekend ladder build.
-    if (real && !(real === "rung-ladder" && hasExplicitStock(prompt))) return withSwitchedSkin(buildRealObject(prompt, real, opts.sizeOverride), materialOverride);
+    if (real) return withSwitchedSkin(buildRealObject(prompt, real, opts.sizeOverride), materialOverride);
   }
   // Head noun last: "dog ramp for the couch" is a ramp, "cat scratching post" a post — never the animal.
   // An animal word before a furniture head ("bunny hutch") makes it the animal's enclosure.

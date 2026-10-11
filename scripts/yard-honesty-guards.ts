@@ -3687,8 +3687,10 @@ console.log("SOFT-TRUST OK", {
     if (/Drying\s*rack/i.test(towel.name)) failHonesty("b33 towel Drying steal", towel.name);
     if (Math.abs(towel.overall.height - 60) > 2.5) failHonesty("b33 towel height 60", towel.overall);
     if (Math.abs(towel.overall.width - 18) > 2.0) failHonesty("b33 towel width 18", towel.overall);
-    const rails = towel.instances.filter((i) => i.role === "rail");
-    if (rails.length !== 4) failHonesty("b33 four rungs densify", { rails: rails.length, overall: towel.overall });
+    // Typed stock builds the real ladder: two rails on edge and the four typed rungs between them.
+    const rungs = towel.panels.filter((p) => /^Rung\b/.test(p.name));
+    const sideRails = towel.panels.filter((p) => /\brail$/i.test(p.name));
+    if (rungs.length !== 4 || sideRails.length !== 2) failHonesty("b33 four rungs between two rails", { rungs: rungs.length, rails: sideRails.length, overall: towel.overall });
     const towelPlan = buildPlan(towel);
     const towelBlob = [
       towel.name,

@@ -1,3 +1,4 @@
+import { buildPlan } from "./report.ts";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
@@ -17,7 +18,15 @@ describe("with no stock typed, members are lumber where the real object uses lum
   }
   it("blanket ladder is two rails and rungs", () => {
     const names = generateFromPrompt("blanket ladder").panels.map((p) => p.name);
-    assert.ok(names.includes("Left rail") && names.includes("Right rail") && names.filter((n) => /^Rung \d+$/.test(n)).length >= 3, names.join());
+    assert.ok(names.includes("Left rail") && names.includes("Right rail") && names.filter((n) => n === "Rung").length >= 3, names.join());
+  });
+  it("a typed-stock towel ladder is the same rails and rungs, bought in full", () => {
+    const p = generateFromPrompt('pine towel ladder 60" tall × 18" wide with four rungs');
+    assert.equal(p.panels.filter((x) => x.name === "Rung").length, 4);
+    assert.equal(p.panels.filter((x) => /rail$/.test(x.name)).length, 2);
+    const buy = buildPlan(p).bom.map((b) => b.name).join(" | ");
+    assert.match(buy, /Pine 1×4/);
+    assert.match(buy, /2×2/);
   });
   it("queen platform bed sits 14 inches low", () => {
     assert.equal(generateFromPrompt("queen platform bed").overall.height, 14);
