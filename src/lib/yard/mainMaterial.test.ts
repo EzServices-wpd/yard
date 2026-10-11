@@ -9,3 +9,6 @@ it("the main material is what most parts are cut from", () => {
   const linen = generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep");
   assert.equal(mainMaterialId(linen), linen.primaryMaterialId);
 });
+it("the main material goes by wood volume, so the frame stock wins", () => {
+  assert.equal(mainMaterialId(generateFromPrompt("twin bunk bed")), "lumber-2x4-8");
+});
