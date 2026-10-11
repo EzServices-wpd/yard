@@ -38,16 +38,22 @@ export const BROOKLYN: SuspensionSpec = { lOverH: 3455 / 276.5, deck: 127 / 276.
  */
 export const TOWER_BRIDGE: SuspensionSpec = { lOverH: 244 / 65, deck: 9 / 65, main: 61 / 244, tower: "gothic", stays: false, sag: 0, walkway: 44 / 65 };
 
-/** A typed number is the length unless a height word is typed; no number builds 72" long. */
+/** Readable height of a landmark's signature feature when no size is typed. */
+export const LANDMARK_READABLE_IN = 11;
+
+/** A typed number is the length unless a height word is typed; no number builds the towers at a readable height. */
 export function fitSuspensionTo(spec: SuspensionSpec) {
   return (s: Size3, prompt: string): Size3 => {
     const lower = prompt.toLowerCase();
     const ft = lower.match(/(\d+(?:\.\d+)?)\s*(?:ft|foot|feet)\b/);
     const inch = lower.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/);
-    const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : 0;
+    const bare = lower.replace(/\d+(?:\.\d+)?\s*x\s*\d+(?:\.\d+)?/g, " ").match(/(\d+(?:\.\d+)?)/);
+    const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : bare ? parseFloat(bare[1]) : 0;
     const tall = /tall|high|height/.test(lower);
-    const h = tall && n ? n : (n || 72) / spec.lOverH;
-    return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.5, 14)) };
+    // Landmark default: no number builds the signature feature (the towers) at a readable height and
+    // derives the length from the real ratio — the ratio is never distorted to fit a bench.
+    const h = tall && n ? n : n ? n / spec.lOverH : LANDMARK_READABLE_IN;
+    return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.45, 14)) };
   };
 }
 

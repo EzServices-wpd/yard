@@ -34,3 +34,11 @@ it("Golden Gate keeps its true length-to-height ratio and a narrow deck about 5 
   assert.ok(Math.abs(p.overall.width / p.overall.height - 6450 / 746) < 1.2, `${p.overall.width}/${p.overall.height}`);
   assert.ok(p.overall.depth >= 4 && p.overall.depth <= 6, `${p.overall.depth}`);
 });
+
+it("a landmark with no size typed builds its signature towers at a readable height on the real ratio", () => {
+  const p = generateFromPrompt("Brooklyn Bridge");
+  assert.ok(p.overall.height >= 10 && p.overall.height <= 12.5, `${p.overall.height}`);
+  assert.ok(Math.abs(p.overall.width / p.overall.height - 3455 / 276.5) < 1.2, `${p.overall.width}/${p.overall.height}`);
+  const typed = generateFromPrompt("Brooklyn Bridge 48 long");
+  assert.ok(Math.abs(typed.overall.width - 48) < 0.5, `${typed.overall.width}`);
+});
