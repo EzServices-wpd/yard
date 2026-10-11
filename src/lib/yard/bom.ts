@@ -14,6 +14,8 @@ export type ForgeBomLine = {
   quantityPieces: number;
   packsNeeded: number;
   unitsPerPack: number;
+  /** Whole stock units the cut list draws from the packs (sticks from the pack), when known. */
+  stockUnits?: number;
   unitCostUsd?: number;
   estCostUsd?: number;
   searchQuery?: string;
@@ -147,6 +149,7 @@ export function buildForgeBom(
       quantityPieces: data.count,
       packsNeeded,
       unitsPerPack,
+      stockUnits: sticksUsed || data.count,
       unitCostUsd: unitCost,
       estCostUsd: estCost,
       searchQuery: item.searchQuery,
@@ -199,7 +202,8 @@ export function bomLinesFromForge(result: ForgeBomResult): BomLine[] {
     .map((l) => ({
       name: l.name,
       quantity: l.packsNeeded,
-      unit: l.unitsPerPack > 1 ? `pack of ${l.unitsPerPack}` : "ea",
+      // A pack line names how many of its pieces the cut list uses, so the count matches the cut list.
+      unit: l.unitsPerPack > 1 ? `${l.packsNeeded === 1 ? "pack" : "packs"} of ${l.unitsPerPack}${l.stockUnits ? ` (${l.stockUnits} ${/\b(skewer|dowel|stick|pipe|tube|rod|board|straw|stud)s?\b/i.test(l.name) ? stockNoun(l.name) : "piece"}${l.stockUnits === 1 ? "" : "s"} used)` : ""}` : "ea",
       searchQuery: l.searchQuery,
       asin: l.asin,
       catalogId: l.catalogId,
