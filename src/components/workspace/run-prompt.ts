@@ -1,6 +1,7 @@
 "use client";
 
-import { hintSubject, interpretPrompt } from "@/lib/ai/grok";
+import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
+import { lookupAndBuild, needsRecipeLookup, timedLookup } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
@@ -377,6 +378,22 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     }
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
+    // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
+    // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
+    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next))) {
+      const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
+      const out = await lookupAndBuild(prompt, lookup, () => useYard.getState().project, namedStock);
+      if (out.recipe) {
+        generate(prompt, namedStock, undefined, { fresh: true });
+        makePlan();
+        return;
+      }
+      if (out.rough) {
+        useYard.getState().setProject(out.project);
+        makePlan();
+        return;
+      }
+    }
     const hint = await hintSubject({ data: { prompt } });
     const bound = engineOwnsForm(prompt, useYard.getState().project);
     if (

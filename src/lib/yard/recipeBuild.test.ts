@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildRecipe, lookupAndBuild, validateRecipe } from "./recipeBuild.ts";
+import { buildRecipe, lookupAndBuild, needsRecipeLookup, timedLookup, validateRecipe } from "./recipeBuild.ts";
 import type { Recipe } from "./recipes.ts";
 import type { YardProject } from "./types.ts";
 
@@ -43,5 +43,19 @@ describe("recipe build and validate", () => {
     assert.equal(out.rough, true);
     assert.match(out.project.notes[0], /^Shown as a rough shape/);
     assert.equal(out.calls, 2);
+  });
+  it("an unavailable AI keeps the engine build, unlabelled, after one call", async () => {
+    const out = await lookupAndBuild("thing", timedLookup(async () => ({ ok: false, error: "AI is not available in this environment" })), rough);
+    assert.deepEqual([out.rough, out.unavailable, out.calls, out.project.notes.length], [false, true, 1, 0]);
+  });
+  it("a timeout counts as a failure: two tries, then the rough label", async () => {
+    const out = await lookupAndBuild("thing", timedLookup(() => new Promise(() => {}), 5), rough);
+    assert.equal(out.rough, true);
+  });
+  it("asks only when nothing owns the noun", () => {
+    assert.equal(needsRecipeLookup({ ...rough(), unmatched: true }, "zorb ramp", false), true);
+    assert.equal(needsRecipeLookup({ ...rough(), unmatched: true }, "zorb ramp", true), false);
+    assert.equal(needsRecipeLookup({ ...rough(), name: "Bookcase" }, "bookcase 36 wide", false), false);
+    assert.equal(needsRecipeLookup({ ...rough(), unmatched: true }, "cedar compost bin", false), false);
   });
 });

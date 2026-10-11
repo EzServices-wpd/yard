@@ -7,7 +7,7 @@
 import { getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
-import { parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
+import { findRecipe, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 
 type Size = { width: number; height: number; depth: number };
@@ -167,7 +167,7 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   return [...new Set(fail)];
 }
 
-export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number };
+export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean };
 export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
 
 /** The plain label a rough shape carries, in positive words. */
@@ -183,7 +183,14 @@ export function roughNote(title: string, failures: string[]): string {
 export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () => YardProject, materialOverride?: string): Promise<LookupOutcome> {
   let feedback: string[] = [];
   for (let call = 1; call <= 2; call++) {
-    const recipe = parseRecipe(await lookup(prompt, call > 1 ? feedback : undefined).catch(() => null));
+    let raw: unknown = null;
+    try {
+      raw = await lookup(prompt, call > 1 ? feedback : undefined);
+    } catch (e) {
+      // No AI here: the engine's own build stays, with no rough label and no second call.
+      if ((e as Error).message === UNAVAILABLE) return { project: rough(), recipe: null, rough: false, calls: call, unavailable: true };
+    }
+    const recipe = parseRecipe(raw);
     if (!recipe) { feedback = ["the recipe was missing fields or had a part on an unknown support"]; continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     feedback = validateRecipe(recipe, built, prompt);
@@ -194,4 +201,27 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
   }
   const shape = rough();
   return { project: { ...shape, notes: [roughNote(shape.name, feedback), ...(shape.notes ?? [])] }, recipe: null, rough: true, calls: 2 };
+}
+
+/**
+ * The live page asks the recipe lookup only when nothing owns the noun: no saved recipe, and the engine
+ * built a generic body or a build whose name shares no word with what was typed (a silent template swap).
+ */
+export function needsRecipeLookup(project: YardProject, prompt: string, engineOwns: boolean): boolean {
+  if (engineOwns || findRecipe(prompt)) return false;
+  if (project.unmatched) return true;
+  const name = (project.name ?? "").toLowerCase();
+  const typed = prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4).map((w) => w.replace(/s$/, ""));
+  return typed.length > 0 && !typed.some((w) => name.includes(w));
+}
+
+/** A lookup call that gives up after `ms`; an unavailable AI answers "unavailable" so the page keeps its build. */
+export const UNAVAILABLE = "unavailable";
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, ms = 9000): Lookup {
+  return async (_prompt, feedback) => {
+    const timer = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
+    const r = await Promise.race([call(feedback), timer]);
+    if (!r.ok) throw new Error(/not available/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
+    return r.recipeJson ? JSON.parse(r.recipeJson) : null;
+  };
 }
