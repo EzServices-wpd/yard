@@ -1454,6 +1454,8 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const drawn = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).length;
   const hinges = drawn(/^Hinge \d+$/);
   if (hinges && !/hinge/.test(have)) extra.push({ name: "Gate hinges", quantity: hinges, estimatedCost: 6.98 * (hinges), unit: "each", searchQuery: "self closing gate hinge", notes: "On the hinge stile, into the wall stud." });
+  const folds = drawn(/^Fold bracket \d+$/);
+  if (folds && !/folding leg|fold bracket/.test(have)) extra.push({ name: "Locking folding leg brackets", quantity: folds, unit: "each", estimatedCost: 5.98 * folds, searchQuery: "locking folding table leg bracket", notes: "One at the top of each leg, so it folds flat under the top." });
   const latches = drawn(/^Latch \d+$/);
   if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, estimatedCost: 9.98 * (latches), unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {

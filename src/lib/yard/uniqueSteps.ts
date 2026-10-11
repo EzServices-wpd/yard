@@ -26,7 +26,7 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
  */
 function withHardwareStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
   const all = project.panels.filter((p) => isBoughtHardwareName(p.name));
-  const mounted = all.filter((p) => /^(?:Hinge|Latch|A-frame bracket) \d+$/.test(p.name));
+  const mounted = all.filter((p) => /^(?:Hinge|Latch|A-frame bracket|Fold bracket) \d+$/.test(p.name));
   const hw = all.filter((p) => !mounted.includes(p));
   if (mounted.length) steps = withMountedHardware(steps, mounted);
   if (!hw.length) return steps;

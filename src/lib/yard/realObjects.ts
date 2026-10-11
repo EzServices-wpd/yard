@@ -9,7 +9,7 @@ import { inchFrac } from "./inchText";
 import type { Purpose } from "./purpose";
 import type { Panel, YardProject } from "./types";
 
-export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder";
+export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder" | "easel";
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
@@ -34,6 +34,7 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   if (/\b(?:baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gates?$/.test(head)) return "baby-gate";
   if (/\b(?:fire\s*wood|log|wood)\s+(?:racks?|holders?|stands?)$/.test(head)) return "firewood-rack";
   if (/\b(?:blanket|quilt|towel)\s+ladders?\b/.test(head)) return "rung-ladder";
+  if (/\b(?:art|kids?|children'?s|painting|standing|floor)\s+(?:art\s+)?easels?$/.test(head)) return "easel";
   if (/\b(?:sand\s*box|sand\s*pit|well|(?:raised\s+)?(?:garden\s+)?bed|fire\s*pit|hot\s*tub)\s+(?:covers?|lids?)$/.test(head)) return "cover";
   return null;
 }
@@ -222,6 +223,41 @@ function buildRungLadder(prompt: string, size?: { width: number; height: number;
   return { ...project(prompt, name, panels, W, H, D, notes, "lumber-1x4-8"), kind: "ladder" };
 }
 
+/**
+ * Standing art easel: two 1×3 legs on 1×3 feet that run front to back, a top rail, a ¼" plywood board
+ * screwed to the legs, and a tray with a lip under it for paint and chalk. Kids' size unless typed.
+ */
+function buildEasel(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const kid = /\b(?:kids?|child|children'?s|toddler)\b/.test(lower);
+  const W = size?.width ?? axis(lower, "wide|width") ?? (kid ? 24 : 30);
+  const H = size?.height ?? axis(lower, "tall|high|height") ?? (kid ? 48 : 66);
+  const D = size?.depth ?? axis(lower, "deep|depth") ?? (kid ? 20 : 24);
+  const id = "lumber-1x3-8";
+  const leg = 2.5;
+  const t = 0.75;
+  const z = (D - t) / 2;
+  const trayY = kid ? 20 : 28;
+  const boardH = Math.min(H - trayY - 4, W);
+  const inner = W - 2 * t;
+  const panels: Panel[] = [
+    panel("rail", "Left foot", 0, 0, 0, t, leg, D, id),
+    panel("rail", "Right foot", W - t, 0, 0, t, leg, D, id),
+    panel("upright", "Left leg", 0, leg, z, t, H - leg, leg, id),
+    panel("upright", "Right leg", W - t, leg, z, t, H - leg, leg, id),
+    panel("rail", "Top rail", t, H - leg, z, inner, leg, t, id),
+    panel("side", "Board", 0, trayY + t, z + leg, W, boardH, 0.25, "plywood-1-4-4x8"),
+    panel("rail", "Tray", 0, trayY, z + leg, W, t, leg, id),
+    panel("rail", "Tray lip", 0, trayY + t, z + 2 * leg - t, W, 1.5, t, id),
+  ];
+  const name = `${kid ? "Kids art easel" : "Art easel"} ${inchFrac(W)}" × ${ft(H)}`;
+  const notes = [
+    `${name}: two 1×3 legs standing on 1×3 feet ${inchFrac(D)}" long, a top rail across, a ¼" plywood drawing board ${inchFrac(W)}" × ${inchFrac(boardH)}" screwed to the legs, and a tray with a lip ${trayY}" up for paint and chalk.`,
+    `Clip paper to the board with two binder clips at the top rail. Round every edge and finish with a child-safe finish.`,
+  ];
+  return project(prompt, name, panels, W, H, D, notes, id);
+}
+
 /** Board cover for a sandbox / raised bed / well: 1×6 boards with 1/4" gaps screwed to 2×4 cleats underneath. */
 function buildCover(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
@@ -252,6 +288,7 @@ export function buildRealObject(prompt: string, kind: RealObject, size?: { width
   if (kind === "baby-gate") return buildBabyGate(prompt, size);
   if (kind === "firewood-rack") return buildFirewoodRack(prompt, size);
   if (kind === "rung-ladder") return buildRungLadder(prompt, size);
+  if (kind === "easel") return buildEasel(prompt, size);
   return buildCover(prompt, size);
 }
 

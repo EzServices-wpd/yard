@@ -1,3 +1,4 @@
+import { withFoldingLegs } from "./foldingLegs";
 import { frontCueNotes } from "./fittedShared";
 import { typedAxisNumber, typedSpan, typedDepth } from "./typedAxis";
 import { withFrontCuesBuilt } from "./cueRules";
@@ -305,7 +306,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const said = args[0] ?? "";
   args[0] = normalizeUserPrompt(said);
   const prompt = args[0];
-  const typedBuild = hooksShowInModel(generateTyped(...args));
+  const typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
   const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withLumberMembers(typedBuild);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
