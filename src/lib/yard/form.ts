@@ -296,7 +296,14 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
           ? "Ottoman"
           : null;
     const pole = hit.name === "Pole frame" ? poleFrameKind(prompt) : null;
-    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : hit.name);
+    const subject = subjectFromPrompt(prompt);
+    const specific =
+      subject &&
+      subject.length > hit.name.length &&
+      subject.toLowerCase().includes(hit.name.toLowerCase())
+        ? subject.replace(/\b\w/g, (c) => c.toUpperCase())
+        : null;
+    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : specific ?? hit.name);
     return {
       name,
       kind: hit.kind,
