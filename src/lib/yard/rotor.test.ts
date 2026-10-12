@@ -15,5 +15,7 @@ it("water wheel is a real rotor", () => {
   }
   const top = axle.position.y + axle.size.height, d = axle.size.height;
   for (const post of p.panels.filter((x) => /post/.test(x.name))) assert.ok(post.position.y + post.size.height >= top + d / 2 - 0.01, post.name);
+  const st = buildPlan(p).instructions, at = (re: RegExp) => st.findIndex((s) => (s.partsUsed ?? []).some((n) => re.test(n)));
+  assert.ok(at(/^hub$/) >= 0 && at(/^hub$/) < at(/^Spoke/) && at(/^hub$/) < at(/^wheel$/), "hub first");
   for (const s of buildPlan(p).instructions) assert.ok(!/turns? free/i.test(s.description) || !/screw/i.test(s.description.replace(/no (glue or )?screws/gi, "")), s.title);
 });

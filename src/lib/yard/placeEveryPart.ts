@@ -162,7 +162,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.
-  if (panel?.turns && onPin) return `Fix the ${part.name} to the wheel parts it meets with glue and ${fix.replace(/\.$/, "")}. The wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
+  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
     case "floor":
@@ -230,6 +230,14 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   let out = steps.map((s) => ({ ...s }));
   const fix = fastenerTalk(project);
   const supports = supportsOf(project);
+  // A rotor's hub goes on the axle first; the wheel parts on the axle are fixed to the hub, so it is their support.
+  {
+    const isPin = (k: string) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "");
+    const riders = project.panels.filter((p) => p.turns && !/^dowel-/.test(p.materialId) && (supports.get(p.id)?.on ?? []).some(isPin));
+    const span = (p: (typeof riders)[number]) => Math.max(p.size.width, p.size.height, p.size.depth);
+    const hub = riders.length > 1 ? riders.reduce((a, b) => (span(b) < span(a) ? b : a)) : undefined;
+    for (const p of riders) if (hub && p !== hub) supports.set(p.id, { ...supports.get(p.id)!, on: [hub.id] });
+  }
   const placed = () => placementIndex(project, out);
   // With no build step yet, parts go after the prep and cut steps (before "Level it").
   const firstBuild = () => {
