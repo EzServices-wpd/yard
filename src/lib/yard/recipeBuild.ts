@@ -212,6 +212,24 @@ function gnomonTriangles(panels: Panel[]): void {
   }
 }
 
+/**
+ * A trestle's leg is a wide upright, not a single 2x4 post: each tall leg under the top is at least a
+ * fifth of the table's depth across and 3" thick (boards glued face to face), centred where it stood.
+ */
+function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
+  const legs = new Set(recipe.parts.filter((p) => /^(?:leg|post|trestle|upright|pedestal)$/.test(p.role)).map((p) => p.name));
+  for (const p of panels.filter((q) => (legs.has(q.name) || legs.has(q.name.replace(/ \d+$/, ""))) && q.size.height > size.height / 2)) {
+    const across = size.depth / 5, thick = 3;
+    const cx = p.position.x + p.size.width / 2, cz = p.position.z + p.size.depth / 2;
+    // The widest 2x board that covers the face (2x6, 2x8, 2x10), so the cut list never asks a 2x4 for 7".
+    const board = [["lumber-2x6-8", 5.5], ["lumber-2x8-8", 7.25], ["lumber-2x10-8", 9.25]].find(([, f]) => (f as number) >= Math.max(p.size.depth, across)) ?? ["lumber-2x10-8", 9.25];
+    const w = Math.max(p.size.width, thick), d = board[1] as number;
+    if (/^lumber-2x/.test(p.materialId)) p.materialId = board[0] as string;
+    p.size = { ...p.size, width: w, depth: d };
+    p.position = { ...p.position, x: cx - w / 2, z: cz - d / 2 };
+  }
+}
+
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   const lids = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part), ...recipe.parts.filter((p) => p.role === "lid").map((p) => p.name)]);
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
@@ -385,6 +403,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
   steadyPedestal(panels, size);
+  if (/\btrestle\b/i.test(`${recipe.title} ${prompt}`)) trestleLegs(recipe, panels, size);
   gnomonTriangles(panels);
   const wide = new Set<string>();
   // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.

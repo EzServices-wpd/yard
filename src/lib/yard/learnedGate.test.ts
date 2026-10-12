@@ -224,9 +224,10 @@ it("layers that form one modelled thickness get a glue-up step: a 1 1/2in ply to
       { role: "top", name: "Tabletop", box: [0, 0.95, 0, 1, 0.05, 1], kind: "panel", on: ["Left post", "Right post"] }] } as unknown as Recipe;
   const plan = buildPlan(buildRecipe(r, "trestle table").project);
   const glue = plan.instructions.find((s) => s.title === "Glue up the thick parts")?.description ?? "";
-  assert.match(glue, /Left post: 2 layers of 2×4/);
+  assert.match(glue, /Left post: 2 layers of 2×8/); // a trestle leg is a wide upright, not one 2x4
   assert.match(glue, /Tabletop: 2 layers/);
   assert.equal(plan.cutList.find((c) => c.name === "Post")?.thicknessIn, 1.5);
+  assert.equal(plan.cutList.find((c) => c.name === "Post")?.widthIn, 7.25);
 });
 
 it("a food-contact board is hardwood, glued, oiled food-safe: no screws, floor or feet", async () => {
