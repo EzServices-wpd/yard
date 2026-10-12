@@ -390,6 +390,23 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
 export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean };
 export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
 
+/**
+ * The rough shape for a compound noun its builder only half matched ("chicken tractor" built as a toy
+ * tractor): never the last word's build. One plain block at that build's size, named for the whole noun.
+ */
+export function roughBlock(prompt: string, like: YardProject): YardProject {
+  const noun = prompt.trim().replace(/^\w/, (c) => c.toUpperCase());
+  const o = like.overall;
+  return {
+    ...like,
+    name: noun,
+    instances: [],
+    panels: [{ id: "rough-block", type: "rail", name: noun, position: { x: -o.width / 2, y: 0, z: 0 }, size: { ...o }, materialId: like.primaryMaterialId }],
+    notes: [],
+    standIn: true,
+  };
+}
+
 /** The plain label a rough shape carries, in positive words. */
 export function roughNote(title: string, failures: string[]): string {
   return `Shown as a rough shape: the real ${title.toLowerCase()} parts come next${failures.length ? ` (${failures.slice(0, 3).join("; ")})` : ""}.`;

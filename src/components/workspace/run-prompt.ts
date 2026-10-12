@@ -2,7 +2,7 @@
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
-import { lookupAndBuild, needsRecipeLookup, timedLookup } from "@/lib/yard/recipeBuild";
+import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
@@ -382,9 +382,17 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
     // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
-    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), ignoredTypedWords(next, prompt).length > 0)) {
+    const weak = ignoredTypedWords(next, prompt).length > 0;
+    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), weak)) {
       const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
-      const out = await lookupAndBuild(prompt, lookup, () => useYard.getState().project, namedStock);
+      // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
+      const engine = () => (weak ? roughBlock(prompt, useYard.getState().project) : useYard.getState().project);
+      const out = await lookupAndBuild(prompt, lookup, engine, namedStock);
+      if (weak && !out.recipe && !out.rough) {
+        useYard.getState().setProject({ ...out.project, notes: [roughNote(out.project.name, []), ...(out.project.notes ?? [])] });
+        makePlan();
+        return;
+      }
       if (out.recipe) {
         // Propose it for the committed store; quiet when the bot has no token.
         void proposeRecipeFn({ data: { recipeJson: JSON.stringify(out.recipe) } })
