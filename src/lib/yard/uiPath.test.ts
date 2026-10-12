@@ -46,6 +46,11 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(!/popsicle/.test(p.primaryMaterialId) && p.overall.height >= 36, JSON.stringify(p.overall));
   });
+  it("a bare easel is the full-size standing easel, not popsicle", async () => {
+    await runYardPrompt("easel", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
+    const p = useYard.getState().project;
+    assert.ok(!/popsicle/.test(p.primaryMaterialId) && p.overall.height >= 36, JSON.stringify(p.overall));
+  });
   it("trestle table 6 feet is a 72in table, not a seat or a bridge", async () => {
     await runYardPrompt("trestle table 6 feet", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;

@@ -35,7 +35,8 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   if (/\b(?:baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gates?$/.test(head)) return "baby-gate";
   if (/\b(?:fire\s*wood|log|wood)\s+(?:racks?|holders?|stands?)$/.test(head)) return "firewood-rack";
   if (/\b(?:blanket|quilt|towel)\s+ladders?\b/.test(head)) return "rung-ladder";
-  if (/\b(?:art|kids?|children'?s|painting|standing|floor)\s+(?:art\s+)?easels?$/.test(head)) return "easel";
+  // A bare "easel" is the standing art easel; other modifiers (tabletop, mini) stay with their own builds.
+  if (/(?:^|\b(?:art|kids?|children'?s|painting|standing|floor)\s+)(?:art\s+)?easels?$/.test(head)) return "easel";
   if (/\b(?:lemonade|snack|bake\s+sale|farm|vendor|market|kiosk|sales?)\s+(?:stands?|booths?)$/.test(head)) return "stand";
   if (/\b(?:sand\s*box|sand\s*pit|well|(?:raised\s+)?(?:garden\s+)?bed|fire\s*pit|hot\s*tub)\s+(?:covers?|lids?)$/.test(head)) return "cover";
   return null;
