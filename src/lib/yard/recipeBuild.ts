@@ -337,10 +337,13 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
 
 /**
  * The live page asks the recipe lookup only when nothing owns the noun: no saved recipe, and the engine
- * built a generic body or a build whose name shares no word with what was typed (a silent template swap).
+ * built a generic body or a build whose name shares no word with what was typed (a silent template swap),
+ * or the build ignores a word of the typed object (weakMatch, see ignoredTypedWords).
  */
-export function needsRecipeLookup(project: YardProject, prompt: string, engineOwns: boolean): boolean {
-  if (engineOwns || findRecipe(prompt)) return false;
+export function needsRecipeLookup(project: YardProject, prompt: string, engineOwns: boolean, weakMatch = false): boolean {
+  if (findRecipe(prompt)) return false;
+  if (weakMatch) return true;
+  if (engineOwns) return false;
   if (project.unmatched || project.standIn) return true;
   const name = (project.name ?? "").toLowerCase();
   const typed = prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4).map((w) => w.replace(/s$/, ""));

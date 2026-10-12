@@ -9,6 +9,7 @@ import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
+import { ignoredTypedWords } from "@/lib/yard/promptMain";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
@@ -381,7 +382,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
     // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
-    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next))) {
+    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), ignoredTypedWords(next, prompt).length > 0)) {
       const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
       const out = await lookupAndBuild(prompt, lookup, () => useYard.getState().project, namedStock);
       if (out.recipe) {

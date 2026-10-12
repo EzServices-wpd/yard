@@ -2223,3 +2223,19 @@ function buildGeneralTubeProject(
   };
   return project;
 }
+
+/** Words that set size, style, room or stock, never which object it is. */
+const FORM_NEUTRAL = /^(?:small|big|large|tall|short|wide|deep|long|mini|tiny|giant|simple|basic|easy|modern|rustic|farmhouse|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
+
+/**
+ * A weak noun match: a word of the typed object ("lap" desk, "chicken" tractor, tabletop "loom") that the
+ * build ignores — swapping it for a blank noun gives the same build — and that its builder's own name, kind or family does
+ * not carry. Such a build is a template, not the thing, so the recipe lookup gets the noun.
+ */
+export function ignoredTypedWords(project: YardProject, prompt: string): string[] {
+  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
+  const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}`;
+  const name = `${project.name ?? ""} ${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
+  return phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w) && !name.includes(w)
+    && sig(generateFromPrompt(phrase.replace(new RegExp(`\\b${w}\\b`), "thing"))) === sig(project));
+}
