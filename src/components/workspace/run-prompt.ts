@@ -386,7 +386,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       const out = await lookupAndBuild(prompt, lookup, () => useYard.getState().project, namedStock);
       if (out.recipe) {
         // Propose it for the committed store; quiet when the bot has no token.
-        void proposeRecipeFn({ data: { recipeJson: JSON.stringify(out.recipe) } }).catch(() => undefined);
+        void proposeRecipeFn({ data: { recipeJson: JSON.stringify(out.recipe) } })
+          .then((r) => console.info(`[recipe-bot] ${r.status}`))
+          .catch((e) => console.warn(`[recipe-bot] call failed: ${(e as Error).message}`));
         generate(prompt, namedStock, undefined, { fresh: true });
         makePlan();
         return;

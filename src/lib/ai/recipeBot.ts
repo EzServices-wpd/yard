@@ -56,7 +56,10 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
     const sha = (main.json as { object?: { sha: string } } | null)?.object?.sha;
     if (!sha) return { ok: false, status: `main not readable (${main.status})` };
     const made = await gh(token, `/git/refs`, { method: "POST", body: JSON.stringify({ ref: `refs/heads/${BRANCH}`, sha }) });
-    if (!made.ok) await gh(token, `/git/refs/heads/${BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha, force: true }) });
+    if (!made.ok) {
+      const moved = await gh(token, `/git/refs/heads/${BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha, force: true }) });
+      if (!moved.ok) return { ok: false, status: `branch not writable (${made.status}/${moved.status})` };
+    }
   }
   const file = await gh(token, `/contents/${FILE}?ref=${BRANCH}`);
   const f = file.json as { sha: string; content: string } | null;
@@ -74,6 +77,7 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
       body: JSON.stringify({ title: "Recipe candidates from the live site", head: BRANCH, base: "main", body: "Recipes that passed the build-and-validate checks on the live site, added as candidates. Run the gate before merging; Critic grades promote them to trusted." }),
     });
     pr = (made.json as { number?: number } | null)?.number;
+    if (!pr) return { ok: false, status: `pull request not opened (${made.status})` };
   }
   return { ok: true, status: "proposed", pr };
 }
@@ -81,9 +85,13 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
 export const proposeRecipeFn = createServerFn({ method: "POST" })
   .validator((input: { recipeJson: string }) => input)
   .handler(async ({ data }) => {
+    // One log line per proposal (never the token), so the runtime logs say why a PR did or didn't open.
     try {
-      return await proposeRecipe(JSON.parse(data.recipeJson));
-    } catch {
+      const out = await proposeRecipe(JSON.parse(data.recipeJson));
+      console.info(`[recipe-bot] ${out.status}${out.pr ? ` pr=${out.pr}` : ""}`);
+      return out;
+    } catch (e) {
+      console.error(`[recipe-bot] error: ${(e as Error).message}`);
       return { ok: false, status: "error" };
     }
   });
