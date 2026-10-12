@@ -145,6 +145,11 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
 /** One sentence that sets the part on its real support with the way it really holds. */
 function placeSentence(project: YardProject, part: Part, info: SupportInfo | undefined, fix: string): string {
   const onto = supportTalk(project, info);
+  // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
+  const panel = project.panels.find((p) => p.id === part.key);
+  if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
+  if (panel?.turns) return `Slide the ${part.name} onto ${onto}. It rides free: no screws or glue at this joint.`;
+  if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
@@ -257,7 +262,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
         }
       }
       const sentence = placeSentence(project, part, info, fix);
-      const verb = info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const turns = project.panels.find((p) => p.id === part.key)?.turns;
+      const verb = turns ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
       out.splice(insertAt, 0, {
         step: insertAt + 1,
         title: `${verb} the ${part.name}`,

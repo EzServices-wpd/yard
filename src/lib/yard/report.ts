@@ -324,7 +324,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const structural = cuts.filter(
     (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );
-  const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
+  // Thin sheet parts only: a 1/4" dowel rod is round stock, not a backer.
+  const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5 && !/dowel/i.test(c.material ?? ""));
   const sheet10 = getCatalogItem("plywood-3-4-4x10");
   // 2x4 / 2x6 bearers are boards, not sheet parts. Nesting them onto plywood inflates Buy.
   const stickBoards = structural.filter((c) => /^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id));

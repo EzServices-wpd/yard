@@ -2,17 +2,25 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { RECIPES } from "./recipes.ts";
 import { learnedRecipeFailures } from "./learnedGate.ts";
+import type { Recipe } from "./recipes.ts";
+
+/** The water wheel as the bot first learned it (posts on the floor, a box wheel): the failure fixture. */
+const OLD_WW = {"key": "water-wheel", "synonyms": ["waterwheel"], "version": 1, "trust": "candidate", "title": "2x4 Water Wheel", "size": {"width": 18, "height": 30, "depth": 24}, "feet": false, "outdoor": true, "wall": false, "defining": ["wheel", "axle"], "parts": [{"role": "post", "name": "left-post", "box": [0, 0, 0.35, 0.08, 1, 0.3], "kind": "member", "on": []}, {"role": "post", "name": "right-post", "box": [0.92, 0, 0.35, 0.08, 1, 0.3], "kind": "member", "on": []}, {"role": "axle", "name": "main-axle", "box": [0.08, 0.45, 0.45, 0.84, 0.08, 0.1], "kind": "member", "on": ["left-post", "right-post"]}, {"role": "wheel", "name": "paddle-wheel", "box": [0.35, 0.05, 0.05, 0.3, 0.9, 0.9], "kind": "member", "on": ["main-axle"]}], "moving": [{"part": "paddle-wheel", "motion": "spin"}], "notes": ["Built from 2x4 lumber stock", "Open rim with radial paddles", "Axle rests in notches on posts"], "learned": true} as unknown as Recipe;
 
 it("learned gate: the Critic-failed water wheel and abacus fail it; a learned recipe is flagged apart from seeds", () => {
   const get = (k: string) => RECIPES.recipes.find((r) => r.key === k)!;
-  assert.ok(learnedRecipeFailures(get("water-wheel")).some((f) => /wider than one|footprint/.test(f)));
-  assert.ok(learnedRecipeFailures(get("abacus")).some((f) => /no catalogue item/.test(f)));
+  // Rebuilt with round parts and real dowel stock, both pass and are back on Ideas.
+  assert.deepEqual(learnedRecipeFailures(get("water-wheel")), []);
+  assert.deepEqual(learnedRecipeFailures(get("abacus")), []);
+  assert.ok(!get("water-wheel").held && !get("abacus").held);
+  const box = { ...get("abacus"), parts: get("abacus").parts.map((p) => ({ ...p, shape: undefined, catalogId: p.role === "axle" ? undefined : p.catalogId, stock: undefined, kind: p.role === "bead" ? ("hardware" as const) : p.kind })) };
+  assert.ok(learnedRecipeFailures(box).some((f) => /no catalogue item|drawn as a box/.test(f)));
   assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate"));
 });
 
 it("floor uprights on a narrow footprint get full-depth feet and pass the tip check", async () => {
   const { buildRecipe, footprint, validateRecipe } = await import("./recipeBuild.ts");
-  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  const ww = OLD_WW;
   const b = buildRecipe(ww, "water wheel");
   assert.equal(b.project.panels.filter((p) => /^Foot under /.test(p.name)).length, 2);
   const f = footprint(b.project.panels);
@@ -24,7 +32,7 @@ it("floor uprights on a narrow footprint get full-depth feet and pass the tip ch
 
 it("round shapes: a ring wheel on an x axle draws a zy outline with an open centre; a bead is bored; a box wheel fails the gate", async () => {
   const { buildRecipe } = await import("./recipeBuild.ts");
-  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  const ww = OLD_WW;
   assert.ok(learnedRecipeFailures(ww).some((f) => /wheel drawn as a box/.test(f)));
   const round = { ...ww, parts: ww.parts.map((p) => (p.role === "wheel" ? { ...p, shape: "ring" as const } : p.role === "axle" ? { ...p, shape: "cylinder" as const } : p)) };
   const ps = buildRecipe(round, "water wheel").project.panels;

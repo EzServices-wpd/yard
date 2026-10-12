@@ -4178,7 +4178,7 @@
    ],
    "version": 1,
    "trust": "candidate",
-   "title": "2x4 Water Wheel",
+   "title": "Water Wheel",
    "size": {
     "width": 18,
     "height": 30,
@@ -4193,80 +4193,135 @@
    ],
    "parts": [
     {
-     "role": "post",
-     "name": "left-post",
+     "role": "base",
+     "name": "left base",
      "box": [
       0,
       0,
-      0.35,
-      0.08,
-      1,
-      0.3
+      0.1,
+      0.12,
+      0.06,
+      0.8
+     ],
+     "kind": "member",
+     "on": []
+    },
+    {
+     "role": "base",
+     "name": "right base",
+     "box": [
+      0.88,
+      0,
+      0.1,
+      0.12,
+      0.06,
+      0.8
      ],
      "kind": "member",
      "on": []
     },
     {
      "role": "post",
-     "name": "right-post",
+     "name": "left post",
      "box": [
-      0.92,
-      0,
-      0.35,
+      0.02,
+      0.06,
+      0.42,
       0.08,
-      1,
-      0.3
-     ],
-     "kind": "member",
-     "on": []
-    },
-    {
-     "role": "axle",
-     "name": "main-axle",
-     "box": [
-      0.08,
-      0.45,
-      0.45,
-      0.84,
-      0.08,
-      0.1
+      0.6,
+      0.16
      ],
      "kind": "member",
      "on": [
-      "left-post",
-      "right-post"
+      "left base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "right post",
+     "box": [
+      0.9,
+      0.06,
+      0.42,
+      0.08,
+      0.6,
+      0.16
+     ],
+     "kind": "member",
+     "on": [
+      "right base"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "axle",
+     "box": [
+      0.0,
+      0.6,
+      0.46,
+      1.0,
+      0.06,
+      0.08
+     ],
+     "kind": "hardware",
+     "on": [
+      "left post",
+      "right post"
      ]
     },
     {
      "role": "wheel",
-     "name": "paddle-wheel",
+     "name": "wheel",
      "box": [
-      0.35,
-      0.05,
-      0.05,
-      0.3,
-      0.9,
-      0.9
+      0.45,
+      0.07,
+      0.04,
+      0.04,
+      0.92,
+      0.92
      ],
-     "kind": "member",
+     "kind": "panel",
+     "shape": "ring",
+     "bore": 3,
      "on": [
-      "main-axle"
+      "axle"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "hub",
+     "box": [
+      0.4,
+      0.55,
+      0.42,
+      0.2,
+      0.16,
+      0.16
+     ],
+     "kind": "panel",
+     "shape": "disc",
+     "bore": 1,
+     "on": [
+      "axle"
      ]
     }
    ],
    "moving": [
     {
-     "part": "paddle-wheel",
+     "part": "wheel",
+     "motion": "spin"
+    },
+    {
+     "part": "hub",
      "motion": "spin"
     }
    ],
    "notes": [
-    "Built from 2x4 lumber stock",
-    "Open rim with radial paddles",
-    "Axle rests in notches on posts"
+    "Ring wheel cut from exterior plywood on a hub",
+    "Axle is a hardwood dowel resting in the posts",
+    "Each post stands on its own base"
    ],
-   "learned": true,
-   "held": "Critic FAIL 2026-10-12: hidden from Ideas until it passes the learned-recipe checks"
+   "learned": true
   },
   {
    "key": "abacus",
@@ -4275,7 +4330,7 @@
    ],
    "version": 1,
    "trust": "candidate",
-   "title": "2x4 Abacus",
+   "title": "Abacus",
    "size": {
     "width": 16,
     "height": 10,
@@ -4362,56 +4417,44 @@
      ]
     },
     {
-     "role": "rail",
-     "name": "beam",
-     "box": [
-      0.1,
-      0.55,
-      0.15,
-      0.8,
-      0.08,
-      0.7
-     ],
-     "kind": "member",
-     "on": [
-      "left post",
-      "right post"
-     ]
-    },
-    {
      "role": "axle",
      "name": "rod",
      "box": [
-      0.12,
+      0.4,
       0.12,
       0.4,
-      0.04,
+      0.2,
       0.76,
       0.2
      ],
-     "kind": "member",
+     "kind": "hardware",
      "on": [
       "bottom rail",
       "top rail"
      ],
-     "repeat": "between"
+     "repeat": "each",
+     "catalogId": "dowel-1-4-36"
     },
     {
      "role": "bead",
      "name": "bead",
      "box": [
-      0.1,
-      0.2,
       0.25,
-      0.08,
+      0.14,
+      0.25,
+      0.5,
       0.1,
       0.5
      ],
-     "kind": "hardware",
+     "kind": "member",
      "on": [
       "rod"
      ],
-     "repeat": "each"
+     "repeat": "each",
+     "stock": "dowel-1-36",
+     "shape": "bead",
+     "bore": 0.3125,
+     "per": 5
     }
    ],
    "moving": [
@@ -4421,13 +4464,11 @@
     }
    ],
    "notes": [
-    "frame members ripped and cut from 2x4 lumber",
-    "rods are dowels or thin stock spanning top to bottom rail",
-    "beads drilled to slide freely on each rod",
-    "open frame never boxed in"
+    "Frame cut from 2x4 lumber",
+    "Rods are 1/4 in hardwood dowels set in holes drilled through the top and bottom rails",
+    "Beads are slices of 1 in dowel, drilled to slide freely on each rod"
    ],
-   "learned": true,
-   "held": "Critic FAIL 2026-10-12: hidden from Ideas until it passes the learned-recipe checks"
+   "learned": true
   }
  ]
 }

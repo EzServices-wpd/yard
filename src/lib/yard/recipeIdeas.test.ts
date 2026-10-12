@@ -29,7 +29,11 @@ it("Popular recently ranks by prompt count, one card per noun, capped", async ()
 it("a held recipe (Critic fail) stays off Ideas and Popular recently", async () => {
   const { recipeIdeas, popularIdeas } = await import("./recipeIdeas.ts");
   const { RECIPES } = await import("./recipes.ts");
-  const held = RECIPES.recipes.filter((r) => r.held).map((r) => `recipe-${r.key}`);
-  assert.ok(held.includes("recipe-water-wheel") && held.includes("recipe-abacus"));
-  for (const d of [...recipeIdeas(), ...popularIdeas({ "water-wheel": 99, abacus: 99 })]) assert.ok(!held.includes(d.id));
+  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  ww.held = "Critic FAIL (test)";
+  try {
+    for (const d of [...recipeIdeas(), ...popularIdeas({ "water-wheel": 99 })]) assert.notEqual(d.id, "recipe-water-wheel");
+  } finally {
+    delete ww.held;
+  }
 });

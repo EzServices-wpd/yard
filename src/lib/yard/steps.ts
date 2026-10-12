@@ -2249,13 +2249,17 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       partsUsed: ["*"],
     });
   } else {
+    // A recipe object (abacus, water wheel) is a thing you build, not furniture placed on a floor footprint.
+    const objectBuild = project.id.startsWith("recipe-");
     steps.push({
       step: n++,
       title: alcove
         ? "Confirm the opening — do not cut yet"
         : wallHang
           ? "Confirm the hang — do not cut yet"
-          : "Confirm the footprint — do not cut yet",
+          : objectBuild
+            ? "Confirm the size — do not cut yet"
+            : "Confirm the footprint — do not cut yet",
       description: `${stampFinishedDepth(project.name, D, modelFinishedDepth(project.panels, D))}. Unit ${round(W)}" wide × ${round(modelFinishedDepth(project.panels, D))}" deep × ${round(H)}" high. ${
         modelProudNote(project.panels, D) ? `${modelProudNote(project.panels, D)[0].toUpperCase()}${modelProudNote(project.panels, D).slice(1)}. ` : ""
       }${
@@ -2265,6 +2269,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? "This hangs on the wall — do not mark a footprint on the floor. Find two studs."
             : project.panels.some((p) => /bow|hull/i.test(p.name))
               ? "Hull on the floor. The bow tapers. Check the two sides match before the seat goes in."
+            : objectBuild
+              ? "Check each overall size against the cut list and that the frame is square."
             : "Freestanding rectangle. Mark the footprint on the floor. Check it is square."
       } ${partsOnThisListPhrase(project)}.`,
       tips: "If a number on this plan disagrees with the cut list, trust the cut list. Geometry is from the bench, not from the prompt's adjectives.",
