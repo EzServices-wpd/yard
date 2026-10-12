@@ -181,6 +181,32 @@ function roundParts(recipe: Recipe, panels: Panel[]): void {
   }
 }
 
+/**
+ * A hinged lid rides free (no screws) on top of the walls under it: its hinge edge sits on the tallest wall, and
+ * over walls of two heights (a cold frame) it slopes from the low wall's top up to the tall one's.
+ */
+function hingedLids(recipe: Recipe, panels: Panel[]): void {
+  const lids = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part), ...recipe.parts.filter((p) => p.role === "lid").map((p) => p.name)]);
+  for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
+    lid.turns = true;
+    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
+      w.position.x < lid.position.x + lid.size.width && lid.position.x < w.position.x + w.size.width &&
+      w.position.z < lid.position.z + lid.size.depth && lid.position.z < w.position.z + w.size.depth);
+    if (!under.length) continue;
+    const top = (w: Panel) => w.position.y + w.size.height;
+    const hi = under.reduce((m, w) => (top(w) > top(m) ? w : m)), lo = under.reduce((m, w) => (top(w) < top(m) ? w : m));
+    // A lid floating above the walls is left for the load-path check; one sunk into them is seated.
+    if (lid.position.y > top(hi) + 0.1) continue;
+    const t = Math.min(lid.size.height, 1), rise = top(hi) - top(lo), D = lid.size.depth;
+    if (rise <= 1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
+    lid.position = { ...lid.position, y: top(lo) };
+    lid.size = { ...lid.size, height: rise + t };
+    const backHigh = hi.position.z + hi.size.depth / 2 < lo.position.z + lo.size.depth / 2;
+    const [y0, yD] = backHigh ? [rise, 0] : [0, rise];
+    lid.polygon = { plane: "zy", pts: [[0, y0], [0, y0 + t], [D, yD + t], [D, yD]] };
+  }
+}
+
 type Ax = "x" | "y" | "z";
 const SZ = { x: "width", y: "height", z: "depth" } as const;
 const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p.position[a] <= q.position[a] + q.size[SZ[a]] + 0.05 && q.position[a] <= p.position[a] + p.size[SZ[a]] + 0.05);
@@ -327,6 +353,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const fitted = snapMembers(recipe, panels, stock.member);
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
+  hingedLids(recipe, panels);
   roundParts(recipe, panels);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".

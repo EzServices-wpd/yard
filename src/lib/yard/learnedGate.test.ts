@@ -184,7 +184,8 @@ it("hinged parts touch what they hinge to, and a lid over walls of two heights s
     moving: [{ part: "Lid", motion: "hinge" }], notes: [],
   }) as unknown as Recipe;
   const flat = learnedRecipeFailures(frame(0.6, 0.04));
-  assert.ok(flat.some((f) => /Lid lies flat over walls of two heights/.test(f)));
+  // The builder seats a hinged lid on the tallest wall and slopes it over walls of two heights.
+  assert.ok(!flat.some((f) => /Lid lies flat over walls of two heights/.test(f)), flat.join("; "));
   const floating = learnedRecipeFailures({ ...frame(0.6, 0.04), parts: frame(0.6, 0.04).parts.map((p) => (p.name === "Lid" ? { ...p, box: [0, 0.2, 0.3, 0.5, 0.04, 0.3] as typeof p.box } : p)) });
   assert.ok(floating.some((f) => /Lid is hinged but does not touch/.test(f)));
   const sloped = learnedRecipeFailures(frame(0.6, 0.4));
