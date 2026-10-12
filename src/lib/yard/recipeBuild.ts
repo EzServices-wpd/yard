@@ -199,6 +199,12 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     for (const q of panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin))) {
       const deep = Math.round(Math.min(0.75, q.size[SZ[L]] * 0.6) * 16) / 16;
       const through = pin.position[L] < q.position[L] - 0.05 && pin.position[L] + pin.size[SZ[L]] > q.position[L] + q.size[SZ[L]] + 0.05;
+      // A hole keeps at least half its diameter of wood on every side across the pin.
+      for (const x of (["x", "y", "z"] as const).filter((x) => x !== L)) {
+        const c = pin.position[x] + pin.size[SZ[x]] / 2, lo0 = Math.min(q.position[x], c - dia), hi0 = Math.max(q.position[x] + q.size[SZ[x]], c + dia);
+        q.position = { ...q.position, [x]: lo0 };
+        q.size = { ...q.size, [SZ[x]]: hi0 - lo0 };
+      }
       const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.`;
       // The dowel runs into its hole: it reaches into a part at either end by the hole depth.
       const lo = pin.position[L], hi = lo + pin.size[SZ[L]];
@@ -213,8 +219,13 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const [a, b] = (["x", "y", "z"] as const).filter((x) => x !== long);
     const ca = pin.position[a] + pin.size[SZ[a]] / 2, cb = pin.position[b] + pin.size[SZ[b]] / 2;
     const riders = panels.filter((p) => p.turns && p !== pin && p.polygon && meets3(p, pin));
-    for (const p of riders) { p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 }; }
     const d = pin.size[SZ[a]];
+    // Only the glued-up rotor turns: each part bored for the axle clears it by 1/16".
+    for (const p of riders) {
+      p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 };
+      const h = p.polygon?.holes?.[0];
+      if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
+    }
     for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
       const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
       const t = rim.size[SZ[long]];
@@ -227,6 +238,10 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
           cutNote: `Half-lap the two spokes where they cross and bore ${fmtIn(d + 1 / 16)} there for the axle.`,
         });
       }
+      for (const hub of riders.filter((p) => p !== rim && p.size[SZ[a]] < r)) {
+        const n = `Cut a ${fmtIn(band)} wide, ${fmtIn(Math.min(t, hub.size[SZ[long]]))} deep slot across the hub face for each spoke.`;
+        if (!(hub.cutNote ?? "").includes(n)) hub.cutNote = `${hub.cutNote ? `${hub.cutNote} ` : ""}${n}`;
+      }
       const paddle = recipe.parts.find((q) => q.role === "paddle");
       const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
       if (tmpl) {
@@ -235,7 +250,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         panels.splice(0, panels.length, ...keep);
         const mid = rim.position[long] + t / 2;
         [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([u, v], i) => {
-          const pa = ca + u * (r - ph / 2), pb = cb + v * (r - ph / 2);
+          // A paddle straddles the rim's outer edge so half of it stands out past the rim to catch water.
+          const pa = ca + u * r, pb = cb + v * r;
           const sa = u ? ph : pt, sb = v ? ph : pt;
           panels.push({
             id: `${rim.id}-paddle-${i}`, type: "rail", name: `${paddle.name} ${i + 1}`, materialId: tmpl.materialId, turns: true,

@@ -149,7 +149,8 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const panel = project.panels.find((p) => p.id === part.key);
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
-  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. It turns free on it: no screws or glue into the pin.`;
+  // A rotor's parts are fixed to each other; only the assembly turns on the pin.
+  if (panel?.turns && onPin) return `Fix the ${part.name} to the wheel parts it meets with glue and ${fix.replace(/\.$/, "")}. The wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
     case "floor":
