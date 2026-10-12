@@ -1,5 +1,6 @@
 import { createId } from "@/lib/utils";
 import { isHingedLidChest } from "./family";
+import { isBoundingDrawerPanel } from "./shopPlural";
 import type { AssemblyStep, Panel, PanelType, YardProject } from "./types";
 
 /**
@@ -552,7 +553,8 @@ export function withDrillStep(project: YardProject, steps: AssemblyStep[]): Asse
 
 /** A sheet part thicker than 2" is laminated: its glue-up gets its own step before assembly. */
 export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
-  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > 2.05);
+  // A drawer is an assembly of its own parts, never a lamination.
+  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > 2.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
   if (!thick.length) return steps;
   const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before|Drill the holes)\b/i.test(s.title));
   const lines = [...new Set(thick.map((p) => {

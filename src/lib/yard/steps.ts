@@ -2678,6 +2678,13 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
       }
       continue;
     }
+    // A laminated sheet part is cut as its 3/4" layers, the glue-up step stacks them.
+    const t = Math.min(w, h, d);
+    if (/^plywood-/.test(p.materialId) && t > 2.05) {
+      const [a, b] = [w, h, d].sort((x, y) => y - x);
+      for (let k = Math.max(2, Math.round(t / 0.75)); k > 0; k--) push(`${p.name.replace(/ \d+$/, "")} layer`, p.type, a, b, 0.75);
+      continue;
+    }
     push(p.name, p.type, w, h, d);
   }
   return [...map.values()].map((g) => {
