@@ -133,3 +133,12 @@ it("bores run along their rod, rods are round dowels seated in drilled holes, wi
   assert.ok(drill > 0 && drill < t.findIndex((s) => /rod/.test(s.title)));
   assert.ok(!/Drive \d+/.test(t[drill].description));
 });
+
+it("short dowel parts are bought as shared stock, not one dowel each", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const bom = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus").project).bom;
+  assert.equal(bom.find((b) => /^1" Hardwood Dowel/.test(b.name))!.quantity, 2);
+  assert.equal(bom.find((b) => /^1\/4" Hardwood Dowel/.test(b.name))!.quantity, 3);
+  assert.ok(bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0) < 60);
+});

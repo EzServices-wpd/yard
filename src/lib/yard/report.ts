@@ -1476,19 +1476,34 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
   // Craft sticks and dowels drawn as panels (recipe builds) are bought by the sticks that tile them.
   const sticksById = new Map<string, number>();
+  const dowelCuts = new Map<string, number[]>();
+  const dowelNotes = new Map<string, string>();
   for (const panel of project.panels) {
     const item = getCatalogItem(panel.materialId);
     if (!item || !(item.formFactor === "stick" || item.formFactor === "dowel") || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
     const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
     const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
     const along = Math.max(1, Math.ceil(d[0] / Math.max(1, item.dims.length ?? 4.5)));
-    sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + (item.formFactor === "dowel" ? along : across * along));
+    if (item.formFactor === "dowel") dowelCuts.set(item.id, [...(dowelCuts.get(item.id) ?? []), d[0]]);
+    else sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + across * along);
+  }
+  // Short dowel parts share stock: pack every cut (with 1/8" kerf) onto as few full-length dowels as fit.
+  for (const [id, cuts] of dowelCuts) {
+    const L = getCatalogItem(id)?.dims.length ?? 36;
+    const bins: number[] = [];
+    for (const c of [...cuts].sort((a, b) => b - a)) {
+      if (c > L) { bins.push(...Array(Math.ceil(c / L) - 1).fill(0), L - (c % L || L)); continue; }
+      const i = bins.findIndex((left) => left >= c + 0.125);
+      if (i >= 0) bins[i] -= c + 0.125; else bins.push(L - c - 0.125);
+    }
+    sticksById.set(id, bins.length);
+    dowelNotes.set(id, `${cuts.length} part${cuts.length === 1 ? "" : "s"} cut from ${bins.length} × ${inchFrac(L)}" dowel${bins.length === 1 ? "" : "s"}, 1/8" kerf.`);
   }
   for (const [id, n] of sticksById) {
     const item = getCatalogItem(id)!;
     if (have.includes(item.name.toLowerCase())) continue;
     const per = Math.max(1, item.unitsPerPack ?? 1);
-    extra.push({ name: item.name, quantity: Math.ceil(n / per), estimatedCost: Math.ceil(n / per) * per * (item.unitCostUsd ?? 0), unit: per > 1 ? `pack of ${per}` : "each", searchQuery: item.searchQuery ?? item.name, notes: `${n} pieces tile the drawn parts.` });
+    extra.push({ name: item.name, quantity: Math.ceil(n / per), estimatedCost: Math.round(Math.ceil(n / per) * per * (item.unitCostUsd ?? 0) * 100) / 100, unit: per > 1 ? `pack of ${per}` : "each", searchQuery: item.searchQuery ?? item.name, notes: dowelNotes.get(id) ?? `${n} ${n === 1 ? "piece tiles" : "pieces tile"} the drawn parts.` });
   }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
