@@ -18,6 +18,7 @@ export function recipePrompt(r: Recipe): string {
 export function recipeIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
   const out: RecipeIdea[] = [];
   for (const r of recipes) {
+    if (r.held) continue;
     const prompt = recipePrompt(r);
     const built = buildRecipe(r, prompt);
     if (r.trust !== "trusted" && validateRecipe(r, built, prompt).length) continue;

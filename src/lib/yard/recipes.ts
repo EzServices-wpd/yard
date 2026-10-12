@@ -51,6 +51,10 @@ export type Recipe = {
   parts: RecipePart[];
   moving?: { part: string; motion: "fold" | "hinge" | "pivot" | "spin" | "slide" }[];
   notes: string[];
+  /** Learned on the live site (recipe bot), not a seed recipe: it must pass the learned-recipe checks. */
+  learned?: boolean;
+  /** Why the recipe is held off the Ideas library (a Critic fail); cleared only when it passes again. */
+  held?: string;
 };
 
 export type RecipeStore = { schema: number; recipes: Recipe[] };

@@ -4264,7 +4264,9 @@
     "Built from 2x4 lumber stock",
     "Open rim with radial paddles",
     "Axle rests in notches on posts"
-   ]
+   ],
+   "learned": true,
+   "held": "Critic FAIL 2026-10-12: hidden from Ideas until it passes the learned-recipe checks"
   },
   {
    "key": "abacus",
@@ -4423,7 +4425,9 @@
     "rods are dowels or thin stock spanning top to bottom rail",
     "beads drilled to slide freely on each rod",
     "open frame never boxed in"
-   ]
+   ],
+   "learned": true,
+   "held": "Critic FAIL 2026-10-12: hidden from Ideas until it passes the learned-recipe checks"
   }
  ]
 }
