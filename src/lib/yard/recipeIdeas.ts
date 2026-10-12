@@ -5,6 +5,7 @@
 import { buildRecipe, validateRecipe } from "./recipeBuild";
 import { RECIPES, type Recipe } from "./recipes";
 import type { Panel } from "./types";
+import COUNTS from "./promptCounts.json";
 
 export type RecipeIdea = { id: string; label: string; prompt: string; size: string; blurb: string; panels: Panel[]; box: { width: number; height: number; depth: number } };
 
@@ -24,6 +25,22 @@ export function recipeIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
     out.push({ id: `recipe-${r.key}`, label: r.title, prompt, size: `${inch(s.width)} W × ${inch(s.depth)} D × ${inch(s.height)} H`, blurb: r.notes[0] ?? "", panels: built.project.panels, box: s });
   }
   return out;
+}
+
+/** How many cards the Popular recently feed shows. */
+export const POPULAR_CAP = 12;
+
+/** Popular recently: passing recipe builds ranked by prompt count (promptCounts.json, updated on the bot PR),
+ * one card per head noun, capped. Ties keep store order. */
+export function popularIdeas(counts: Record<string, number> = (COUNTS as { counts: Record<string, number> }).counts, recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
+  const rank = new Map(recipes.map((r, i) => [r.key, i]));
+  const seen = new Set<string>();
+  return recipeIdeas(recipes)
+    .map((d) => ({ d, key: d.id.slice(7) }))
+    .sort((a, b) => (counts[b.key] ?? 0) - (counts[a.key] ?? 0) || (rank.get(a.key) ?? 0) - (rank.get(b.key) ?? 0))
+    .filter(({ key }) => { const noun = key.split("-").slice(-1)[0]; if (seen.has(noun)) return false; seen.add(noun); return true; })
+    .slice(0, POPULAR_CAP)
+    .map(({ d }) => d);
 }
 
 /** Isometric faces of each part, back to front, in a unit view box: the card thumbnail. */

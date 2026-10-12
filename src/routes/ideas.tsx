@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { SiteChrome } from "@/components/site/chrome";
-import { IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
-import { isoFaces, recipeIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
+import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
+import { isoFaces, popularIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
 import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 
 type Row = Idea & { kept?: boolean };
@@ -37,8 +37,8 @@ function IdeasPage() {
   }, []);
 
   const rows = useMemo<Row[]>(
-    () => [...learned.map((d) => ({ ...d, kept: true as const })), ...IDEAS],
-    [learned],
+    () => [...learned.map((d) => ({ ...d, kept: true as const })), ...(q ? IDEAS : CURATED_IDEAS)],
+    [learned, q],
   );
 
   const visible = useMemo(() => {
@@ -50,7 +50,7 @@ function IdeasPage() {
       .map((hit) => hit.d);
   }, [q, rows]);
 
-  const recipes = useMemo(() => recipeIdeas(), []);
+  const recipes = useMemo(() => popularIdeas(), []);
 
   function go(text: string) {
     const next = text.trim();
@@ -122,7 +122,7 @@ function IdeasPage() {
         )}
         {!q && recipes.length > 0 ? (
           <section className="mt-12">
-            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Learned from recipes</h2>
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Popular recently</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {recipes.map((r) => (
                 <RecipeCard key={r.id} idea={r} onOpen={() => go(r.prompt)} />

@@ -16,3 +16,12 @@ describe("ideas from recipes", () => {
     for (const i of ideas) assert.doesNotMatch(JSON.stringify({ ...i, panels: [] }), /https?:|amazon|\.jpe?g|\.png/i);
   });
 });
+
+it("Popular recently ranks by prompt count, one card per noun, capped", async () => {
+  const { popularIdeas, POPULAR_CAP } = await import("./recipeIdeas.ts");
+  const all = popularIdeas({});
+  assert.ok(all.length > 0 && all.length <= POPULAR_CAP);
+  const last = all[all.length - 1].id.slice(7);
+  assert.equal(popularIdeas({ [last]: 5 })[0].id.slice(7), last);
+  assert.equal(new Set(all.map((d) => d.id.slice(7).split("-").slice(-1)[0])).size, all.length);
+});

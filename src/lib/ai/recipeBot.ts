@@ -9,6 +9,7 @@ import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
 const REPO = process.env.YARD_RECIPE_REPO ?? "EzServices-wpd/yard";
 const BRANCH = "yard-recipe-bot";
 const FILE = "src/lib/yard/recipes.json";
+const COUNTS = "src/lib/yard/promptCounts.json";
 /** Per server instance: at most this many proposals an hour, and each key once. */
 const PER_HOUR = 10;
 const sent = new Set<string>();
@@ -21,6 +22,13 @@ export function addCandidate(text: string, recipe: Recipe): string | null {
   if (store.recipes.some((r) => r.key === recipe.key)) return null;
   store.recipes.push({ ...recipe, version: 1, trust: "candidate" });
   return `${JSON.stringify(store, null, 1)}\n`;
+}
+
+/** The prompt-count file with one more request for this key (the Popular recently ranking). */
+export function bumpCount(text: string, key: string): string {
+  const file = JSON.parse(text) as { counts: Record<string, number> };
+  file.counts[key] = (file.counts[key] ?? 0) + 1;
+  return `${JSON.stringify(file, null, 1)}\n`;
 }
 
 /** Rate limit and de-duplication by key; true when this key may be proposed now. */
@@ -65,12 +73,18 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
   const f = file.json as { sha: string; content: string } | null;
   if (!f) return { ok: false, status: `store not readable (${file.status})` };
   const next = addCandidate(Buffer.from(f.content, "base64").toString("utf8"), recipe);
-  if (!next) return { ok: true, status: "skipped: already in the store", pr };
-  const put = await gh(token, `/contents/${FILE}`, {
-    method: "PUT",
-    body: JSON.stringify({ message: `Recipe candidate: ${recipe.title} (${recipe.key})`, content: Buffer.from(next).toString("base64"), sha: f.sha, branch: BRANCH }),
-  });
-  if (!put.ok) return { ok: false, status: `commit failed (${put.status})` };
+  if (next) {
+    const put = await gh(token, `/contents/${FILE}`, {
+      method: "PUT",
+      body: JSON.stringify({ message: `Recipe candidate: ${recipe.title} (${recipe.key})`, content: Buffer.from(next).toString("base64"), sha: f.sha, branch: BRANCH }),
+    });
+    if (!put.ok) return { ok: false, status: `commit failed (${put.status})` };
+  }
+  // Every proposal counts one request on the same PR, so Popular recently ranks without a paid store.
+  const counts = await gh(token, `/contents/${COUNTS}?ref=${BRANCH}`);
+  const c = counts.json as { sha: string; content: string } | null;
+  if (c) await gh(token, `/contents/${COUNTS}`, { method: "PUT", body: JSON.stringify({ message: `Prompt count: ${recipe.key}`, content: Buffer.from(bumpCount(Buffer.from(c.content, "base64").toString("utf8"), recipe.key)).toString("base64"), sha: c.sha, branch: BRANCH }) });
+  if (!next && !pr) return { ok: true, status: "skipped: already in the store" };
   if (!pr) {
     const made = await gh(token, `/pulls`, {
       method: "POST",

@@ -465,3 +465,16 @@ export const IDEA_SECTIONS = [
   "Store",
   "Weekend",
 ] as const;
+
+/** Near-variants fold into one representative card per type of build (the middle-ground size and stock). */
+export const NEAR_VARIANTS: Record<string, string> = {
+  "corner-small": "corner",
+  ldesk: "desk",
+  coatbench: "bench",
+  uppercab: "wallcab",
+  laundryfold: "ironing",
+  jarshelf: "shelves",
+};
+
+/** The curated browse set: one card per type of build; search still reaches every idea. */
+export const CURATED_IDEAS: Idea[] = IDEAS.filter((d) => !(d.id in NEAR_VARIANTS));
