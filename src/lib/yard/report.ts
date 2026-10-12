@@ -1591,7 +1591,10 @@ export function buildPlan(project: YardProject): BuildPlan {
     if (same.estimatedCost != null || b.estimatedCost != null) same.estimatedCost = (same.estimatedCost ?? 0) + (b.estimatedCost ?? 0);
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
-  return smallestSheetStock({ ...plan, bom });
+  // The header total is the Buy list: the sum of its rows, never a separate estimate.
+  const out = smallestSheetStock({ ...plan, bom });
+  const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
+  return { ...out, totals: { ...out.totals, estCostUsd: sum } };
 }
 
 /**
