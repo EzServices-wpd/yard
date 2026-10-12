@@ -125,6 +125,7 @@ export function stepScrewCount(plan: BuildPlan): number {
   let n = 0;
   for (const s of plan.instructions) {
     const all = s.description.match(/(?:Drive|drives) (\d+) × #8 /);
+    if (/counted in another step's total\./.test(s.description)) continue;
     if (all) {
       n += Number(all[1]);
       continue;
@@ -161,6 +162,8 @@ export function stepsStateJointScrews(project: YardProject, plan: BuildPlan): Bu
     const t = perStep.get(i) ?? 0;
     const stated = [...s.description.matchAll(/with (\d+) × #8 /g)].reduce((n, m) => n + Number(m[1]), 0);
     if (t === stated) return s;
+    // The model's joints count these screws in the step that places the later part: say so, never "drives 0".
+    if (t === 0) return { ...s, description: `${s.description.replace(/\s*$/, "")} These screws are counted in another step's total.` };
     const sentence = stated
       ? `In all, this step drives ${t} × #8 × ${len}" screws, from the model's joints.`
       : `Drive ${t} × #8 × ${len}" screws in this step, from the model's joints: one about every 8" along each joint (at least 2).`;

@@ -23,3 +23,9 @@ it("pack lines buy ceil(count / pack size) packs at every store", () => {
     assert.ok((b.estimatedCost ?? 0) < 30, `${b.name} ${b.estimatedCost}`);
   }
 });
+
+it("no step says it drives 0 screws", () => {
+  for (const q of ["pocket vanity", "bookshelf", "coat rack", "linen closet 31.5 wide 78 tall 16 deep"]) {
+    for (const s of buildPlan(generateFromPrompt(q)).instructions) assert.doesNotMatch(s.description, /drives 0\b|Drive 0 ×/, `${q}: ${s.title}`);
+  }
+});
