@@ -86,7 +86,8 @@ function closetCuts(project: YardProject): CutLine[] {
     materialName: string,
     note?: string,
   ) => {
-    let family = partFamily(name, type);
+    // Numbered copies ("rod 1", "Paddle 3") are one part: identical copies share one line and letter.
+    let family = partFamily(name, type).replace(/\s+\d+$/, "");
     const side = name.match(/^(Left|Right)\s+(.+)$/i);
     if (side) {
       const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";

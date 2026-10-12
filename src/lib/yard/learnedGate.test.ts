@@ -142,3 +142,11 @@ it("short dowel parts are bought as shared stock, not one dowel each", async () 
   assert.equal(bom.find((b) => /^1\/4" Hardwood Dowel/.test(b.name))!.quantity, 3);
   assert.ok(bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0) < 60);
 });
+
+it("identical numbered parts share one cut-list line and letter", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const cut = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus").project).cutList;
+  assert.equal(cut.find((c) => c.name === "rod")?.quantity, 9);
+  assert.equal(cut.find((c) => c.name === "bead")?.quantity, 45);
+});
