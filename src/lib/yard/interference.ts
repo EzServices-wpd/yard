@@ -77,7 +77,7 @@ function triangulate(src: [number, number][]): [number, number][][] {
 }
 
 /** 2D outline(s) in the panel's own plane, and which plane that is. */
-function outlines(p: Panel): { plane: "xz" | "xy"; rings: [number, number][][] } {
+function outlines(p: Panel): { plane: "xz" | "xy" | "zy"; rings: [number, number][][] } {
   const { width: w, height: h, depth: d } = p.size;
   if (p.polygon) {
     const pts = p.polygon.pts as [number, number][];
@@ -122,6 +122,16 @@ export function panelPrisms(p: Panel): Prism[] {
         const [u2, v2] = ring[(i + 1) % ring.length];
         normals.push(rotV({ x: v2 - v, y: 0, z: -(u2 - u) }));
         edges.push(rotV({ x: u2 - u, y: 0, z: v2 - v }));
+      });
+    } else if (plane === "zy") {
+      // Outline in (z, y), extruded along x (a round face across x).
+      for (const t of [0, w]) for (const [u, v] of ring) verts.push(rotP({ x: x + t, y: y + v, z: z + u }));
+      normals.push(rotV({ x: 1, y: 0, z: 0 }));
+      edges.push(rotV({ x: 1, y: 0, z: 0 }));
+      ring.forEach(([u, v], i) => {
+        const [u2, v2] = ring[(i + 1) % ring.length];
+        normals.push(rotV({ x: 0, y: -(u2 - u), z: v2 - v }));
+        edges.push(rotV({ x: 0, y: v2 - v, z: u2 - u }));
       });
     } else {
       for (const t of [0, d]) for (const [u, v] of ring) verts.push(rotP({ x: x + u, y: y + v, z: z + t }));

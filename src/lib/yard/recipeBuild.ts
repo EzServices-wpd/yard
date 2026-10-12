@@ -150,6 +150,33 @@ function addFeet(recipe: Recipe, panels: Panel[], size: Size, member: string): b
   return true;
 }
 
+/** Words that name a round part; a learned recipe may not draw one as a plain box. */
+export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|drums?|rims?|rollers?)\b/i;
+
+/**
+ * Round recipe parts become real outlines: a disc or ring faces across its thinnest side, a cylinder or bead
+ * runs along its longest; the two cross sides close to one diameter, centred. A bore cuts a centred hole
+ * (a ring's rim is its bore width; a bead takes a 3/8 of its diameter bore unless it names one).
+ */
+function roundParts(recipe: Recipe, panels: Panel[]): void {
+  const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part?.shape) continue;
+    const by = [...AX].sort((a, b) => p.size[a[1]] - p.size[b[1]]);
+    const axis = part.shape === "disc" || part.shape === "ring" ? by[0] : by[2];
+    const cross = AX.filter((a) => a !== axis);
+    const dia = Math.min(...cross.map(([, k]) => p.size[k]));
+    for (const [a, k] of cross) { p.position = { ...p.position, [a]: p.position[a] + (p.size[k] - dia) / 2 }; p.size = { ...p.size, [k]: dia }; }
+    const r = dia / 2, pts: [number, number][] = [];
+    for (let i = 0; i < 32; i++) pts.push([r + r * Math.cos((i / 32) * 2 * Math.PI), r + r * Math.sin((i / 32) * 2 * Math.PI)]);
+    const hole = part.shape === "ring" ? r - (part.bore ?? dia * 0.12) : part.shape === "bead" ? (part.bore ?? dia * 0.375) / 2 : part.bore ? part.bore / 2 : 0;
+    const plane = axis[0] === "y" ? "xz" : axis[0] === "z" ? "xy" : "zy";
+    p.polygon = { plane, pts, ...(hole > 0 ? { holes: [{ x: r, y: r, r: hole }] } : {}) };
+    p.cutNote = `Cut round, ${fmtIn(dia)} diameter${hole > 0 ? `, ${part.shape === "ring" ? "open centre" : "bored"} ${fmtIn(hole * 2)}` : ""}.`;
+  }
+}
+
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
@@ -201,6 +228,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const fitted = snapMembers(recipe, panels, stock.member);
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
+  roundParts(recipe, panels);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];

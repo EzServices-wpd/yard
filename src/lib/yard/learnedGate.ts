@@ -4,7 +4,7 @@
  * Seed recipes keep the standard validateRecipe checks; this gate is what the bot's auto-merge waits on.
  */
 import { getCatalogItem } from "./catalog";
-import { buildRecipe, validateRecipe } from "./recipeBuild";
+import { buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
 import { buildPlan } from "./report";
@@ -19,6 +19,8 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   const fail = validateRecipe(recipe, built, prompt);
   const { panels } = built.project;
   const plan = buildPlan(built.project);
+  // Round things are drawn round: a wheel, bead, disc or drum part needs a round shape, not a box.
+  for (const part of recipe.parts) if (!part.shape && ROUND_WORD.test(`${part.role} ${part.name}`)) fail.push(`${part.name}: a ${part.role} drawn as a box`);
   // Cut list vs Buy: every part is a real catalogue item, no member is a glue-up billed as one stick,
   // and every cut-stock Buy line is used by some part.
   for (const p of panels) {

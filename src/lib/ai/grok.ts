@@ -169,9 +169,10 @@ const RECIPE_SYSTEM = [
   "You describe how a real object is built, as JSON only. Schema:",
   '{"key":"head-noun","synonyms":[],"title":"","size":{"width":0,"height":0,"depth":0},"craftSize":{...}?,"feet":bool,"outdoor":bool,"wall":bool,',
   '"count":{"word":"bays","default":1}?,"defining":["role"],"parts":[{"role":"post|rail|tower|cable|deck|wheel|axle|roof|bay|dome|minaret|stringer|tread|lid|hinge|...",',
-  '"name":"Unique name","box":[x,y,z,w,h,d],"kind":"member|panel|cover|hardware","on":["names of parts that carry it"],"repeat":"each|between"?}],',
+  '"name":"Unique name","box":[x,y,z,w,h,d],"kind":"member|panel|cover|hardware","on":["names of parts that carry it"],"repeat":"each|between"?,"shape":"disc|ring|cylinder|bead"?,"bore":inches?}],',
   '"moving":[{"part":"name","motion":"fold|hinge|pivot|spin|slide"}],"notes":[]}',
   "Sizes are inches at the typical real size. box values are shares (0..1) of width, height, depth; y=0 is the floor.",
+  "Round parts name their shape: a wheel is a ring (rim) or disc, an axle or drum a cylinder, a bead a bead with a bore over the rod's diameter.",
   "Every part touches what it sits on; a part with no 'on' stands on the floor. Build the defining parts at real proportions; never a closed box.",
 ].join("\n");
 

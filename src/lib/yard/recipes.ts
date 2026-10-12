@@ -23,6 +23,10 @@ export type RecipePart = {
   stock?: string;
   /** A catalog id for a hardware part. */
   catalogId?: string;
+  /** Round parts: a disc (solid wheel), ring (rim), cylinder (axle, drum) or bead (bored). Default box. */
+  shape?: "disc" | "ring" | "cylinder" | "bead";
+  /** Through-bore diameter in inches (bead on a rod, wheel on an axle); a ring's rim width when shape is ring. */
+  bore?: number;
 };
 
 export type Recipe = {

@@ -21,3 +21,19 @@ it("floor uprights on a narrow footprint get full-depth feet and pass the tip ch
   b.project.panels.splice(0, b.project.panels.length, ...b.project.panels.filter((p) => !/^Foot under /.test(p.name)));
   assert.ok(validateRecipe(ww, b, "water wheel").some((x) => /tips|floats/.test(x)));
 });
+
+it("round shapes: a ring wheel on an x axle draws a zy outline with an open centre; a bead is bored; a box wheel fails the gate", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  assert.ok(learnedRecipeFailures(ww).some((f) => /wheel drawn as a box/.test(f)));
+  const round = { ...ww, parts: ww.parts.map((p) => (p.role === "wheel" ? { ...p, shape: "ring" as const } : p.role === "axle" ? { ...p, shape: "cylinder" as const } : p)) };
+  const ps = buildRecipe(round, "water wheel").project.panels;
+  const wheel = ps.find((p) => p.name === "paddle-wheel")!;
+  assert.equal(wheel.polygon?.plane, "zy");
+  assert.ok((wheel.polygon?.holes?.[0].r ?? 0) > 0 && Math.abs(wheel.size.height - wheel.size.depth) < 1e-9);
+  assert.equal(ps.find((p) => p.name === "main-axle")!.polygon?.plane, "zy");
+  assert.ok(!learnedRecipeFailures(round).some((f) => /drawn as a box/.test(f)));
+  const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
+  const beads = buildRecipe({ ...ab, parts: ab.parts.map((p) => (p.role === "bead" ? { ...p, shape: "bead" as const, bore: 0.25 } : p)) }, "abacus").project.panels.filter((p) => /^bead/.test(p.name));
+  assert.ok(beads.length && beads.every((b) => b.polygon?.holes?.[0].r === 0.125));
+});

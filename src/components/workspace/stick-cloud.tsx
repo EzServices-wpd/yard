@@ -143,9 +143,24 @@ export function PanelMesh({
     if (poly && poly.pts.length >= 3) {
       // Odd-shape plate: real polygon. "xz" = plan outline extruded up; "xy" = face outline extruded back.
       const shape = new THREE.Shape();
+      const holes = (u: number, v: number) => {
+        for (const hole of poly.holes ?? []) { const path = new THREE.Path(); path.absarc(hole.x - u / 2, hole.y - v / 2, hole.r, 0, Math.PI * 2, true); shape.holes.push(path); }
+      };
+      if (poly.plane === "zy") {
+        // Round face across x (a wheel on an x axle): outline in (z, y), extruded along x.
+        poly.pts.forEach(([pz, py], i) => (i ? shape.lineTo(pz - d / 2, py - h / 2) : shape.moveTo(pz - d / 2, py - h / 2)));
+        shape.closePath();
+        holes(d, h);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: w, bevelEnabled: false, curveSegments: 24 });
+        geo.translate(0, 0, -w / 2);
+        geo.rotateY(-Math.PI / 2);
+        geo.computeVertexNormals();
+        return geo;
+      }
       if (poly.plane === "xz") {
         poly.pts.forEach(([px, pz], i) => (i ? shape.lineTo(px - w / 2, pz - d / 2) : shape.moveTo(px - w / 2, pz - d / 2)));
         shape.closePath();
+        holes(w, d);
         const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
         geo.rotateX(Math.PI / 2);
         geo.translate(0, h / 2, 0);
