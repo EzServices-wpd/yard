@@ -329,6 +329,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // A builder that wrote no build steps (a recipe) gets every build step from the model: those are its
   // steps, not fallbacks.
   if (!steps.some(isBuild)) out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
+  out = rotorBeforeSecondSupport(project, out, supports);
   return renumber(out);
 }
 
@@ -619,4 +620,32 @@ export function restsOnLaterStep(project: YardProject, steps: AssemblyStep[]): (
     project.panels
       .filter((p) => p.type === family || p.name.toLowerCase().split(/\s+/).pop() === family)
       .some((p) => (supports.get(p.id)?.on ?? []).some((k) => (where.get(k) ?? -1) > stepIndex));
+}
+
+/**
+ * A part that turns between two supports goes on the axle before the axle is glued into the second
+ * support: the axle is glued into the first, the rotor goes on, then the second support slides onto
+ * the axle's free end.
+ */
+function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], supports: ReturnType<typeof supportsOf>): AssemblyStep[] {
+  const pin = (k: string) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "");
+  let out = steps;
+  for (const axle of project.panels.filter((p) => p.turns && pin(p.id) && !p.polygon?.holes?.length)) {
+    const carriers = (supports.get(axle.id)?.on ?? []).filter((k) => !pin(k));
+    const rotor = new Set(project.panels.filter((p) => !pin(p.id) && (supports.get(p.id)?.on ?? []).includes(axle.id)).map((p) => p.id));
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const p of project.panels) if (!rotor.has(p.id) && (supports.get(p.id)?.on ?? []).some((k) => rotor.has(k))) { rotor.add(p.id); grew = true; }
+    }
+    if (carriers.length < 2 || !rotor.size) continue;
+    const at = placementIndex(project, out);
+    const ai = at.get(axle.id), lastR = Math.max(...[...rotor].map((k) => at.get(k) ?? -1));
+    const second = carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
+    const si = at.get(second), first = project.panels.find((p) => p.id === carriers.find((k) => k !== second))!, sec = project.panels.find((p) => p.id === second)!;
+    if (ai == null || si == null || si > ai || lastR < ai || (out[si].partsUsed ?? [sec.name]).length > 1) continue;
+    const moved = { ...out[si], description: `Slide the ${sec.name} onto the free end of the ${axle.name} and glue the ${axle.name} in it. ${out[si].description}` };
+    out = out.map((st, i) => (i === ai ? { ...st, description: st.description.replace(/^Pass the (.+?) through [^.]+\./, `Pass the $1 through the ${first.name} and glue it there; the other end stays free until the rotor is on.`) } : st));
+    out = [...out.slice(0, si), ...out.slice(si + 1, lastR + 1), moved, ...out.slice(lastR + 1)];
+  }
+  return out;
 }

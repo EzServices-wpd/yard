@@ -203,3 +203,13 @@ it("a panel wider than its board stock is cut from the sheet", async () => {
   const b = buildRecipe(r, "cold frame");
   assert.ok(b.project.panels.every((p) => !/2x4|2×4/.test(p.materialId)), b.project.panels.map((p) => p.materialId).join());
 });
+
+it("a rotor between two supports goes on the axle before the axle is glued into the second support", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const r = RECIPES.recipes.find((x) => x.key === "water-wheel")!;
+  const st = buildPlan(buildRecipe(r, "water wheel").project).instructions.map((s) => `${s.title} ${s.description}`);
+  const at = (re: RegExp) => st.findIndex((s) => re.test(s));
+  assert.ok(at(/Slide the F hub onto/) > at(/Pass the E axle 1 through the right post and glue it there/));
+  assert.ok(at(/Slide the left post onto the free end/) > at(/Fasten the 4 paddles/));
+});
