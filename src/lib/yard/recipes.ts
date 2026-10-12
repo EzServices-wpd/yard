@@ -121,8 +121,22 @@ export function saveRecipe(lib: RecipeStore, recipe: Recipe): RecipeStore {
 }
 
 /** A recipe from the lookup is accepted only when every field the build reads is there and in range. */
+/** One spelling per part: "paddle-wheel" and "Paddle_Wheel" are "Paddle wheel"; roles are lower case and singular. */
+export const partName = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+export const partRole = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/(?<=[^s])s$/, "");
+
 export function parseRecipe(raw: unknown): Recipe | null {
-  const r = raw as Partial<Recipe> | null;
+  const r0 = raw as Partial<Recipe> | null;
+  const r = r0 && Array.isArray(r0.parts)
+    ? {
+        ...r0,
+        defining: Array.isArray(r0.defining) ? r0.defining.map((d) => (typeof d === "string" ? partRole(d) : d)) : r0.defining,
+        moving: Array.isArray(r0.moving) ? r0.moving.map((m) => ({ ...m, part: typeof m?.part === "string" ? partName(m.part) : m?.part })) : r0.moving,
+        parts: r0.parts.map((p) => (p && typeof p.name === "string" && typeof p.role === "string"
+          ? { ...p, name: partName(p.name), role: partRole(p.role), on: Array.isArray(p.on) ? p.on.map((n) => (typeof n === "string" ? partName(n) : n)) : p.on }
+          : p)),
+      }
+    : r0;
   if (!r || typeof r.key !== "string" || typeof r.title !== "string" || !r.size || !Array.isArray(r.parts) || !r.parts.length) return null;
   const okSize = (s: unknown) => !!s && ["width", "height", "depth"].every((a) => Number((s as Record<string, unknown>)[a]) > 0);
   if (!okSize(r.size) || (r.craftSize && !okSize(r.craftSize))) return null;

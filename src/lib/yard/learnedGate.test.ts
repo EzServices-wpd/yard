@@ -68,3 +68,31 @@ it("repeats fill the clear span between the side posts, and beads per rod are th
   assert.equal(beads.length, 45);
   assert.ok(rods.every((p) => p.position.x >= 1.6 - 1e-6 && p.position.x + p.size.width <= 14.4 + 1e-6));
 });
+
+it("a moving part's step follows the step for its pin", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  const t = buildPlan(buildRecipe(ww, "water wheel").project).instructions.map((s) => s.title);
+  const axle = t.findIndex((x) => /axle/i.test(x));
+  assert.ok(axle >= 0 && t.findIndex((x) => /wheel|hub/i.test(x)) > axle);
+});
+
+it("notes are checked against the geometry, and names and roles are normalized", async () => {
+  const { parseRecipe } = await import("./recipes.ts");
+  const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
+  const f = learnedRecipeFailures({ ...ab, notes: [...ab.notes, "Uses 3 rods", "Backed with plywood"] });
+  assert.ok(f.some((x) => /note says 3 rod, the model has 9/.test(x)));
+  assert.ok(f.some((x) => /note names plywood/.test(x)));
+  const rail = learnedRecipeFailures({ ...ab, parts: ab.parts.map((p) => ({ ...p, role: "rail" })), defining: ["rail"] });
+  assert.ok(rail.some((x) => /every part has the role "rail"/.test(x)));
+  const p = parseRecipe({ ...ab, defining: ["Rails"], parts: ab.parts.map((q) => ({ ...q, name: q.name.replace(/ /g, "-").toUpperCase(), role: `${q.role}s`, on: q.on?.map((n) => n.replace(/ /g, "_")) })) })!;
+  assert.ok(p.parts.every((q) => /^[A-Z][a-z0-9 ]*$/.test(q.name) && q.role === q.role.toLowerCase() && !/s$/.test(q.role)));
+  assert.deepEqual(p.parts.find((q) => q.role === "post")!.on, ["Bottom rail"]);
+});
+
+it("hardware with no real catalogue item blocks the merge (existing gate)", () => {
+  const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
+  const fake = { ...ab, parts: ab.parts.map((p) => (p.role === "axle" ? { ...p, catalogId: "brass-rod-made-up" } : p)) };
+  assert.ok(learnedRecipeFailures(fake).some((x) => /no catalogue item \(brass-rod-made-up\)/.test(x)));
+});

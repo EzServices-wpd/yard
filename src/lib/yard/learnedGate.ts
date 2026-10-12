@@ -39,5 +39,24 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     const hit = text.match(FITTED);
     if (hit) fail.push(`fitted wording "${hit[0]}" on a freestanding build`);
   }
+  // Names and roles: each part is its own named thing, not every part one role ("rail" for posts, axle and wheel).
+  const roles = new Set(recipe.parts.map((p) => p.role));
+  if (recipe.parts.length >= 3 && roles.size < 2) fail.push(`every part has the role "${[...roles][0]}"`);
+  const dup = recipe.parts.map((p) => p.name.toLowerCase()).find((n, i, a) => a.indexOf(n) !== i);
+  if (dup) fail.push(`two parts are both named "${dup}"`);
+  // Notes agree with the geometry: a stock a note names is one the parts are cut from, and a counted
+  // part ("9 rods", "4 legs") is built that many times.
+  const used = panels.map((p) => getCatalogItem(p.materialId)?.name.toLowerCase() ?? "").join(" | ");
+  for (const note of recipe.notes) {
+    for (const m of note.toLowerCase().matchAll(/\b(\d x\d|\dx\d|plywood|dowels?)\b/g)) {
+      const want = m[1].replace(/s$/, "").replace(/x/, "×");
+      if (!used.includes(want) && !used.includes(m[1].replace(/s$/, ""))) fail.push(`note names ${m[1]} but no part is cut from it`);
+    }
+    for (const m of note.toLowerCase().matchAll(/\b(\d+)\s+([a-z]+?)s?\b/g)) {
+      const n = Number(m[1]);
+      const named = panels.filter((p) => p.name.toLowerCase().replace(/ \d+$/, "").split(" ").includes(m[2]));
+      if (named.length && named.length !== n) fail.push(`note says ${n} ${m[2]}, the model has ${named.length}`);
+    }
+  }
   return [...new Set(fail)];
 }
