@@ -4,7 +4,7 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
-import { getCatalogItem } from "./catalog";
+import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
@@ -318,6 +318,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     if (hole && !pins.includes(p)) hole.r += 1 / 32;
   }
   rotors(recipe, panels, pins);
+  const sized = dowelSizes(panels);
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
@@ -335,11 +336,32 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
   return { project, count, size };
+}
+
+/**
+ * A part cut from dowel uses the smallest dowel its round section fits; when no dowel matches that section
+ * within 1/16", the note says to turn it down from the next size up.
+ */
+function dowelSizes(panels: Panel[]): string[] {
+  const dowels = Object.values(CATALOG_BY_ID)
+    .filter((c) => c.formFactor === "dowel" && /^dowel-/.test(c.id) && (c.dims.diameter ?? 0) > 0)
+    .sort((a, b) => (a.dims.diameter ?? 0) - (b.dims.diameter ?? 0) || (a.dims.length ?? 0) - (b.dims.length ?? 0));
+  const notes = new Set<string>();
+  for (const p of panels) {
+    if (!/^dowel-/.test(p.materialId)) continue;
+    const [a, b] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
+    const across = Math.max(a, b);
+    const fit = dowels.find((d) => (d.dims.diameter ?? 0) >= across - 0.01);
+    if (!fit) continue;
+    p.materialId = fit.id;
+    if ((fit.dims.diameter ?? 0) > across + 1 / 16) notes.add(`${p.name.replace(/ \d+$/, "").replace(/^\w/, (c) => c.toUpperCase())} is ${fmtIn(across)} across: no ${fmtIn(across)} dowel is sold, so cut it from ${fit.name} and turn or sand it to ${fmtIn(across)}.`);
+  }
+  return [...notes];
 }
 
 /** The standard checks for a recipe build; an empty list passes. */
