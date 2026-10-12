@@ -86,6 +86,9 @@ jobs:
       - name: Linen closet exact (hard stop)
         run: npx tsx scripts/linen-check.ts
 
+      - name: Learned recipes pass support, cut list vs Buy and wording (blocks recipe-bot auto-merge)
+        run: npx tsx scripts/learned-recipe-check.ts
+
       - name: Unit tests (TypeScript, via tsx)
         if: always()
         run: npx tsx scripts/run-unit-tests.ts

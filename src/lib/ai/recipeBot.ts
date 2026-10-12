@@ -20,7 +20,7 @@ let inWindow = 0;
 export function addCandidate(text: string, recipe: Recipe): string | null {
   const store = JSON.parse(text) as RecipeStore;
   if (store.recipes.some((r) => r.key === recipe.key)) return null;
-  store.recipes.push({ ...recipe, version: 1, trust: "candidate" });
+  store.recipes.push({ ...recipe, version: 1, trust: "candidate", learned: true });
   return `${JSON.stringify(store, null, 1)}\n`;
 }
 
