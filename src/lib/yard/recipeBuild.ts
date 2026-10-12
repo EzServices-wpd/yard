@@ -65,12 +65,63 @@ function stockFor(prompt: string, recipe: Recipe, override?: string) {
   };
 }
 
-function panelType(p: RecipePart, s: Size): PanelType {
-  if (p.kind === "cover") return "side";
+/**
+ * Panel types that keep the recipe's own part names on the cut list, steps and Buy (a "Throwing arm",
+ * "Counterweight box"), instead of the generic Upright / Top a carcase type would print.
+ */
+function panelType(p: RecipePart): PanelType {
   if (p.kind === "hardware") return "cleat";
-  const tall = s.height >= Math.max(s.width, s.depth);
-  if (p.kind === "member") return tall ? "upright" : "rail";
-  return s.height <= Math.min(s.width, s.depth) ? "top" : "side";
+  return p.kind === "member" ? "rail" : "side";
+}
+
+/** A moving part's pin (axle, pivot, shaft) is real hardware: a hardwood dowel through its carriers. */
+const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin)s?\b/i;
+function pinDowel(memberId: string): string {
+  const it = getCatalogItem(memberId);
+  const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9);
+  return t >= 1.4 ? "dowel-1-36" : t >= 0.7 ? "dowel-1-2-36" : "dowel-1-4-36";
+}
+
+/**
+ * A member is one stick of its stock: its cross-section is the stock's section (centred in the recipe box),
+ * so an arm reads as one member, not an edge-glued cluster. Parts resting on (or hanging from) a member
+ * then settle onto its new face, so every load path still touches.
+ */
+function snapMembers(recipe: Recipe, panels: Panel[], memberId: string): Panel[] {
+  const it = getCatalogItem(memberId);
+  const th = it?.dims.thickness ?? it?.dims.height ?? it?.dims.diameter;
+  const fw = it?.dims.width ?? it?.dims.diameter;
+  if (!it || it.category !== "lumber" || !th || !fw) return panels;
+  const byName = new Map(recipe.parts.map((p) => [p.name, p]));
+  const base = (n: string) => byName.get(n) ?? byName.get(n.replace(/ \d+$/, ""));
+  const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
+  const gap = (a: Panel, b: Panel) => Math.max(...AX.map(([x, k]) => Math.max(a.position[x] - (b.position[x] + b.size[k]), b.position[x] - (a.position[x] + a.size[k]))));
+  // Load-path pairs that touch now must still touch after every snap.
+  const pairs: [number, number][] = [];
+  panels.forEach((p, i) => panels.forEach((q, j) => {
+    if (i !== j && base(p.name)?.on?.includes(base(q.name)?.name ?? "") && gap(p, q) <= CONTACT_GAP) pairs.push([i, j]);
+  }));
+  let out = panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const order = out.map((_, i) => i).sort((a, b) => out[a].position.y - out[b].position.y);
+  for (const i of order) {
+    const p = out[i];
+    if (base(p.name)?.kind !== "member" || p.materialId !== memberId) continue;
+    const [thin, wide] = AX.map(([a, k]) => ({ a, k, v: p.size[k] })).sort((m, n) => m.v - n.v);
+    // Only a member a little fatter than one stick snaps; a deliberately big block keeps its box.
+    if (thin.v > Math.max(th * 2.2, fw * 1.1) + 0.01 || wide.v > fw * 2.2 + 0.01) continue;
+    const next = out.map((q) => ({ ...q, position: { ...q.position }, size: { ...q.size } }));
+    const top0 = p.position.y + p.size.height;
+    for (const [m, to] of [[thin, Math.min(th, thin.v)], [wide, Math.min(fw, wide.v)]] as const) {
+      // Width and depth centre; height keeps the bottom on what it stands on.
+      if (m.a !== "y") next[i].position[m.a] += (next[i].size[m.k] - to) / 2;
+      next[i].size[m.k] = to;
+    }
+    // Parts resting on its top follow it down.
+    const drop = top0 - (next[i].position.y + next[i].size.height);
+    if (drop > 0.001) for (const [a, b] of pairs) if (b === i && Math.abs(out[a].position.y - top0) < CONTACT_GAP) next[a].position.y -= drop;
+    if (pairs.every(([a, b]) => gap(next[a], next[b]) <= CONTACT_GAP)) out = next;
+  }
+  return out;
 }
 
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
@@ -102,14 +153,35 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
       const sz = { width: pw * size.width, height: ph * size.height, depth: pd * size.depth };
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
-        type: panelType(part, sz),
+        type: panelType(part),
         name: reps > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(part.name) ? pinDowel(stock.member) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }
+  // A pin is round stock: its two short sides are the dowel's diameter, centred where the recipe put it.
+  for (const p of panels) {
+    const d = /^dowel-/.test(p.materialId) && PIN.test(p.name) && p.type === "cleat" ? getCatalogItem(p.materialId)?.dims.diameter : undefined;
+    if (!d) continue;
+    const ax = (["width", "height", "depth"] as const).slice().sort((a, b) => p.size[a] - p.size[b]).slice(0, 2);
+    for (const k of ax) {
+      const a = k === "width" ? "x" : k === "height" ? "y" : "z";
+      p.position = { ...p.position, [a]: p.position[a] + (p.size[k] - d) / 2 };
+      p.size = { ...p.size, [k]: d };
+    }
+  }
+  const fitted = snapMembers(recipe, panels, stock.member);
+  panels.splice(0, panels.length, ...fitted);
+  const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
+  const moving = (recipe.moving ?? []).map((m) => {
+    const pin = pins[0];
+    const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
+    return m.motion === "pivot" || m.motion === "spin" || m.motion === "hinge"
+      ? `${m.part} ${m.motion === "spin" ? "spins" : m.motion === "hinge" ? "swings" : "pivots"}${pinName ? ` on the ${pinName}: drill it 1/16" over the dowel so it turns, and glue the dowel only in its carriers` : ""}.`
+      : `${m.part} ${m.motion === "fold" ? "folds" : "slides"}.`;
+  });
   const counted = recipe.count ? [`${count} ${recipe.count.word}`] : [];
   const project: YardProject = {
     id: `recipe-${recipe.key}`,
@@ -120,7 +192,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
