@@ -268,7 +268,8 @@ function expectTableAprons(prompt: string, extra?: { legs?: number; round?: bool
 const laundryTable = expectTableAprons("laundry folding table 48 wide 36 high 24 deep", { legs: 4 });
 const round3 = expectTableAprons("40 inch round 3-leg table", { legs: 3, round: true });
 const seventy = expectTableAprons("give me a 70 inch table", { legs: 4 });
-if (!nearInch(seventy.overall.width, 70) || !nearInch(seventy.overall.depth, 70) || nearInch(seventy.overall.width, 40)) {
+// A bare size on a table is its length; depth comes from the table type (dining/plain ~36), so 70x36, not a 70 square.
+if (!nearInch(seventy.overall.width, 70) || !nearInch(seventy.overall.depth, 36) || nearInch(seventy.overall.width, 40)) {
   failHonesty("70 inch table collapsed to the 40 inch class default", seventy.overall);
 }
 if (seventy.fitted?.unit.shape === "round") {
@@ -316,16 +317,16 @@ if (!top || !nearInch(top.size.width, 70) || !nearInch(top.size.depth, 28)) {
 }
 {
   const voice: Array<[string, number, number, number]> = [
-    ["6 foot table", 72, 30, 72],
+    ["6 foot table", 72, 30, 36], // bare size = length; dining depth ~36 (real-world table, not a square)
     ["6' x 30\" table", 72, 30, 30],
     ["8 foot bench", 96, 18, 16],
-    ["coffee table around 48 inches", 48, 18, 48],
+    ["coffee table around 48 inches", 48, 18, 22], // coffee depth ~22
     ["bookcase 36x84x12", 36, 84, 12],
     ["36 inch nightstand", 36, 24, 16],
     ["60 inch bookshelf", 60, 84, 12],
     ["queen headboard", 60, 48, 0.75],
     ["counter height table 48 by 30", 48, 36, 30],
-    ["70 in. table", 70, 30, 70],
+    ["70 in. table", 70, 30, 36], // bare size = length, depth ~36
   ];
   for (const [p, w, h, d] of voice) {
     const g = generateFromPrompt(p);

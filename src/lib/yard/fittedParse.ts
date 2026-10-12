@@ -288,6 +288,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!Number.isFinite(width) && program === "table") {
     const span = tableSpanFromPrompt(t);
     if (Number.isFinite(span)) width = span;
+    // A single bare size is the top's length; depth comes from the table type. Square/round only when said.
+    if (Number.isFinite(span) && !Number.isFinite(depth) && !isRound && !isSquareTop && !isOval && !/\bsquare\b/.test(lower) && !/\b(?:side|end|night)\s*(?:table|stand)\b/.test(lower)) {
+      const typeDepth = /coffee/.test(lower) ? 22 : /console|sofa|hall/.test(lower) ? 14 : /desk/.test(lower) ? 24 : 36;
+      depth = Math.min(typeDepth, span);
+    }
   }
 
   if (!Number.isFinite(width) && trip.w) {
