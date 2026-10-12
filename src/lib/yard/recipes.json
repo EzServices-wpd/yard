@@ -4859,6 +4859,114 @@
     "Flat closed top serves as the desk"
    ],
    "learned": true
+  },
+  {
+   "key": "lap-desk",
+   "synonyms": [
+    "portable desk",
+    "writing lapboard"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Lap Desk",
+   "size": {
+    "width": 18,
+    "height": 3.5,
+    "depth": 13
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Cushion base",
+     "box": [
+      0.04,
+      0,
+      0.04,
+      0.92,
+      0.55,
+      0.92
+     ],
+     "kind": "cover"
+    },
+    {
+     "role": "deck",
+     "name": "Writing surface",
+     "box": [
+      0.03,
+      0.55,
+      0.03,
+      0.94,
+      0.2,
+      0.94
+     ],
+     "kind": "panel",
+     "on": [
+      "Cushion base"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front lip",
+     "box": [
+      0.03,
+      0.75,
+      0.03,
+      0.94,
+      0.18,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Writing surface"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left edge",
+     "box": [
+      0.03,
+      0.75,
+      0.08,
+      0.04,
+      0.12,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Writing surface"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right edge",
+     "box": [
+      0.93,
+      0.75,
+      0.08,
+      0.04,
+      0.12,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Writing surface"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Portable writing surface meant to rest on the lap",
+    "Soft cushion base conforms to the legs for stability",
+    "Shallow raised lip and side edges keep paper and pens from sliding off",
+    "Commonly used for writing, reading, or supporting a tablet"
+   ],
+   "learned": true
   }
  ]
 }
