@@ -203,12 +203,13 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     }
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
-      title: wall ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
+      title: wall || !feet.feet ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
       description:
         `Sand to 180 grit and wipe off the dust. Seal the end grain first: brush finish onto ${feet.where} and every other cut end, ` +
         "let it soak in, and add coats until the end grain stops drinking — end grain wicks water up into the wood. " +
         "Then brush three coats of exterior finish (spar urethane or exterior oil) on every face, inside and out, with a light sand between coats." +
-        (wall ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
+        // Glides only when the Buy list has them: real feet, never a base or skid.
+        (wall || !feet.feet ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
       tips: bom.some((b) => b.catalogId === "outdoor-screws")
         ? "Titebond III and exterior-coated or stainless screws are on the Buy list for every joint. Refresh the finish each spring."
         : "Titebond III is on the Buy list for every joint. Refresh the finish each spring.",
