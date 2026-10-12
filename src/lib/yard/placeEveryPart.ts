@@ -156,6 +156,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
     }).length === 3);
     return `Thread the ${part.name} onto ${rod ? `the ${rod.name}` : onto}. It slides free on it: no glue.`;
   }
+  // A dowel passes through only holes drilled right through; into blind holes it is set.
+  const blind = (info?.on ?? []).some((k) => / deep\./.test(project.panels.find((p) => p.id === k)?.cutNote ?? ""));
+  if (panel?.turns && /^dowel-/.test(panel.materialId) && blind) return `Set the ${part.name} into the drilled holes in ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.

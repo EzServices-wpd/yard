@@ -8,6 +8,7 @@ it("abacus: beads thread onto the rod, one step and one saw line per family", ()
   const steps = buildPlan(generateFromPrompt("abacus")).instructions;
   const all = steps.map((s) => s.description).join(" ");
   assert.ok(!/through the (?:[A-Z] )?bead/i.test(all));
+  assert.match(all, /Set each (?:[A-Z] )?rod into the drilled holes/);
   assert.match(all, /Thread each (?:[A-Z] )?bead onto its (?:[A-Z] )?rod/);
   assert.equal(steps.filter((s) => (s.partsUsed ?? []).some((n) => /^bead/i.test(n))).length, 1);
   assert.equal(steps.filter((s) => (s.partsUsed ?? []).some((n) => /^rod/i.test(n))).length, 1);
