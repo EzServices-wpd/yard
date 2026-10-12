@@ -307,7 +307,7 @@ const NAMED: { match: (q: string) => boolean; over: Partial<Envelope> }[] = [
   { match: (q) => /duplex|receptacle|\boutlets?\b/.test(q), over: { shape: "block", length: 4.5, width: 2.75, height: 1.1, color: "#ece7dc", note: "Usual standard duplex plate, 4 1/2″ × 2 3/4″. Type a size to match yours." } },
 ];
 
-const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b/;
+const BUILD_NOUN = /\b(racks?|shel(?:f|ves|ving)|holders?|stands?|cabinets?|closets?|crates?|organizers?|storage|houses?|frames?|benches|tables?|desks?|vanit(?:y|ies)|drawers?|cubb(?:y|ies)|bookcases?|wardrobes?|built-?ins?|alcoves?|towers?)\b|\b(?!concrete\b|cinder\b|cmu\b|foam\b|toy\b)[a-z]+\s+blocks?$/;
 
 /**
  * A sentence that names a product and not a thing to build for it.
