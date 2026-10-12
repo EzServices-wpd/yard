@@ -18,6 +18,8 @@ export function stepKindOf(s: AssemblyStep, ids: string[]): StepKind {
   const t = clean(s.title).toLowerCase();
   if (/^(confirm|read|measure|check the|mark|lay out)\b|do not cut yet|before you/.test(t)) return "prep";
   if (/^(cut|rip|trim)\b|\bcut (the|all|every|\d)|stay whole|\bdo not cut\b/.test(t) && !/^(screw|glue|attach)/.test(t)) return "cut";
+  // A bench glue-up (doors, laminated parts) makes a sub-assembly; it is placed when it goes on the build.
+  if (/^glue up the (?:\d+ frame-and-panel doors?|thick parts)\b/.test(t)) return "prep";
   if (!ids.length) return "prep";
   if ((s.partsUsed ?? []).includes("*") && /confirm|read|measure|check|lay out|mark|before/.test(t)) return "prep";
   return "build";

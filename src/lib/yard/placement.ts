@@ -799,7 +799,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const letterCount = new Map<string, number>();
   for (const L of letters.values()) letterCount.set(L, (letterCount.get(L) ?? 0) + 1);
   // Hinges and pulls lay out from a frame-and-panel leaf's assembled door, not from one stile.
-  const box = new Map(panels.map((p) => [p.id, boxOf(p.leaf ? leafDoor(panels, p) : p)]));
+  const box = new Map(panels.map((p) => [p.id, boxOf(p.leaf && p.leaf.role !== "part" ? leafDoor(panels, p) : p)]));
   const minY = panels.length ? Math.min(...panels.map((p) => box.get(p.id)!.min.y)) : 0;
   const wall = project.assumptions?.installMode === "wall";
   const ctx: Ctx = { project, panels, box, letters, letterCount, floor: !wall && Math.abs(minY) < 0.1, unitBottom: minY };

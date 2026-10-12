@@ -18,3 +18,12 @@ it("frame-and-panel doors: one panel stock, captured panel, glue-up before hangi
   assert.ok(!plan.instructions.some((s) => /Shaker (?:panel|rail|stile)/i.test(s.title)));
   assert.equal(plan.cutList.find((c) => c.name === "Upright")?.material, '3/4" Plywood 4×10');
 });
+
+it("vanity wording: thin parts named for what they are, the door glue-up has no carcase placement, recessed panels are never called flush", () => {
+  const plan = buildPlan(generateFromPrompt("pocket vanity with shaker fronts"));
+  assert.ok(!plan.bom.some((b) => /thin back panels \([^)]*E/.test(b.notes ?? "")));
+  const glue = plan.instructions.find((s) => /^Glue up the \d+ frame-and-panel/.test(s.title))!;
+  assert.ok(!/Where:/.test(glue.description));
+  assert.ok(!plan.instructions.some((s) => /flush with[^.]*shaker panels/i.test(s.description)));
+  assert.ok(!plan.instructions.some((s) => /Drive 0 /.test(s.description)));
+});

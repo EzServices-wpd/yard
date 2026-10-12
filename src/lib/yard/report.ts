@@ -712,7 +712,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         catalogId: "plywood-1-4-4x8",
         searchQuery: "1/4 inch sanded plywood 4x8",
         estimatedCost: 24.98 * n,
-        notes: `${thinQty} thin back panel${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,
+        // Name what they are: backs are back panels; a mix (Shaker panels, drawer bottoms) are thin 1/4" parts.
+        notes: `${thinQty} ${thinBacks.every((c) => /\bback\b/i.test(c.name)) ? "thin back panel" : 'thin 1/4" part'}${thinQty === 1 ? "" : "s"} (${thinBacks.map((c) => c.label ?? c.name).join(", ")}) — not nested on the 3/4" sheets.${spliceNote}`,
       });
     }
     if (t10 > 0) {
