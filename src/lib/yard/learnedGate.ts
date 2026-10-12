@@ -57,6 +57,31 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     const overlaps = (p: (typeof panels)[number]) => p.position[ax3] <= ring.position[ax3] + ring.size[k(ax3)] + 0.05 && ring.position[ax3] <= p.position[ax3] + p.size[k(ax3)] + 0.05;
     if (!panels.some((p) => p !== ring && overlaps(p) && reach(p) && !/^dowel-/.test(p.materialId))) fail.push(`${ring.name} floats: nothing joins its rim to the hub`);
   }
+  // Hinged parts: a lid, door or flap touches the part it hinges to, along one shared edge; a lid over
+  // walls of two heights (a cold frame's taller back) slopes from the low wall's top to the high one's.
+  const hinged = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge" || m.motion === "fold").map((m) => m.part), ...recipe.parts.filter((p) => /^(?:lid|door|flap|hatch)$/.test(p.role)).map((p) => p.name)]);
+  const boxOfName = (n: string) => panels.filter((p) => p.name === n || p.name.replace(/ \d+$/, "") === n);
+  const tol = 0.1;
+  const touch = (a: (typeof panels)[number], b: (typeof panels)[number]) => (["x", "y", "z"] as const).every((k) => {
+    const s = k === "x" ? "width" : k === "y" ? "height" : "depth";
+    return a.position[k] <= b.position[k] + b.size[s] + tol && b.position[k] <= a.position[k] + a.size[s] + tol;
+  });
+  for (const name of hinged) {
+    const part = recipe.parts.find((p) => p.name === name);
+    const carriers = (part?.on ?? []).flatMap(boxOfName);
+    for (const h of boxOfName(name)) {
+      if (!carriers.length || !carriers.some((c) => touch(h, c))) fail.push(`${h.name} is hinged but does not touch the part it hinges to`);
+    }
+    if (part?.role === "lid") {
+      const walls = panels.filter((p) => /\b(?:front|back)\b/i.test(p.name) && !hinged.has(p.name) && p.size.height > 1);
+      const tops = walls.map((w) => w.position.y + w.size.height);
+      if (tops.length >= 2 && Math.max(...tops) - Math.min(...tops) > 1) {
+        for (const h of boxOfName(name)) {
+          if (h.position.y > Math.min(...tops) + tol || h.position.y + h.size.height < Math.max(...tops) - tol) fail.push(`${h.name} lies flat over walls of two heights: it must slope from the front top to the back top`);
+        }
+      }
+    }
+  }
   // Names and roles: each part is its own named thing, not every part one role ("rail" for posts, axle and wheel).
   const roles = new Set(recipe.parts.map((p) => p.role));
   if (recipe.parts.length >= 3 && roles.size < 2) fail.push(`every part has the role "${[...roles][0]}"`);

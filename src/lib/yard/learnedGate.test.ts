@@ -169,3 +169,24 @@ it("a sheet part thicker than its sheet is a glue-up of plies with its own step"
   assert.equal(hub.quantity, 5);
   assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));
 });
+
+it("hinged parts touch what they hinge to, and a lid over walls of two heights slopes", () => {
+  const frame = (lidY: number, lidH: number) => ({
+    key: "test-cold-frame", synonyms: [], version: 1, trust: "candidate", title: "Cold frame", learned: true,
+    size: { width: 48, height: 18, depth: 36 }, defining: ["wall", "lid"],
+    parts: [
+      { role: "wall", name: "Back wall", box: [0, 0, 0.95, 1, 1, 0.05], kind: "panel" },
+      { role: "wall", name: "Front wall", box: [0, 0, 0, 1, 0.6, 0.05], kind: "panel" },
+      { role: "wall", name: "Left wall", box: [0, 0, 0.05, 0.03, 0.6, 0.9], kind: "panel", on: [] },
+      { role: "wall", name: "Right wall", box: [0.97, 0, 0.05, 0.03, 0.6, 0.9], kind: "panel" },
+      { role: "lid", name: "Lid", box: [0, lidY, 0, 1, lidH, 1], kind: "panel", on: ["Back wall"] },
+    ],
+    moving: [{ part: "Lid", motion: "hinge" }], notes: [],
+  }) as unknown as Recipe;
+  const flat = learnedRecipeFailures(frame(0.6, 0.04));
+  assert.ok(flat.some((f) => /Lid lies flat over walls of two heights/.test(f)));
+  const floating = learnedRecipeFailures({ ...frame(0.6, 0.04), parts: frame(0.6, 0.04).parts.map((p) => (p.name === "Lid" ? { ...p, box: [0, 0.2, 0.3, 0.5, 0.04, 0.3] as typeof p.box } : p)) });
+  assert.ok(floating.some((f) => /Lid is hinged but does not touch/.test(f)));
+  const sloped = learnedRecipeFailures(frame(0.6, 0.4));
+  assert.ok(!sloped.some((f) => /Lid (?:lies flat|is hinged)/.test(f)));
+});
