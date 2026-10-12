@@ -205,7 +205,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         q.position = { ...q.position, [x]: lo0 };
         q.size = { ...q.size, [SZ[x]]: hi0 - lo0 };
       }
-      const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.`;
+      // A fixed bore is named: the axle a rotor spins on is glued snug here, only the rotor's bores clear it.
+      const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.${pin.turns && panels.some((r) => r.turns && r.polygon && r !== pin && meets3(r, pin)) ? ` A snug fixed bore: glue the ${name} here.` : ""}`;
       // The dowel runs into its hole: it reaches into a part at either end by the hole depth.
       const lo = pin.position[L], hi = lo + pin.size[SZ[L]];
       if (!(q.cutNote ?? "").includes(n)) q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}${n}`;
@@ -225,6 +226,7 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
       p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 };
       const h = p.polygon?.holes?.[0];
       if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
+      if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [^,.]+/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} axle)`);
     }
     for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
       const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
