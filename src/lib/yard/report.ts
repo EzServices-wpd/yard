@@ -867,11 +867,12 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const hooks = hookCount({ prompt: project.prompt, name: project.name, railWidth: project.overall.width, pegs: /\bpegs?\b/i.test(project.prompt ?? "") });
     bom.push({
       name: "Coat hooks",
-      quantity: 1,
-      unit: "pack",
+      // Hooks come 6 to a pack: buy enough packs for every drawn hook.
+      quantity: Math.max(1, Math.ceil(hooks / 6)),
+      unit: "pack of 6",
       catalogId: "coat-hooks",
       searchQuery: "coat hooks wall mount 6 pack",
-      estimatedCost: 12.98,
+      estimatedCost: 12.98 * Math.max(1, Math.ceil(hooks / 6)),
       notes: `${hooks} hooks, 6" on center into the ${pegRailBuild ? "peg rail" : project.panels.some((p) => /body profile/i.test(p.name)) ? "body profile" : project.shape ? "body" : "rail"}, with ${hooks * SCREWS_PER_HOOK} hook screws (${SCREWS_PER_HOOK} per hook; most hook packs include them).`,
     });
   }

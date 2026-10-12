@@ -82,12 +82,26 @@ export function positiveText(text: string | undefined): string | undefined {
   return fractionizeInches(out);
 }
 
+/**
+ * A Buy line's noun agrees with how many things it holds: a pack of 100 is "Popsicle Sticks", one stick
+ * bought each is "Popsicle Stick". Only a plain trailing noun turns; units that name no count stay as written.
+ */
+export function countedName(name: string, quantity: number, unit?: string): string {
+  const inUnit = Number(unit?.match(/\bof (\d+)\b|\((\d+)\s*ct\)/)?.slice(1).find(Boolean) ?? NaN);
+  const many = Number.isFinite(inUnit) ? inUnit * quantity > 1 : /^(?:each|pcs?|pieces?)$/.test(unit ?? "") ? quantity > 1 : null;
+  if (many == null) return name;
+  const m = name.match(/^(.*\b)([A-Za-z]*[a-z])$/);
+  if (!m || !/^(?:stick|hook|peg|dowel|knob|pull|hinge|bracket|caster|glide|clamp|board|rod|skewer|bead)s?$/i.test(m[2])) return name;
+  const one = m[2].replace(/s$/, "");
+  return `${m[1]}${many ? `${one}s` : one}`;
+}
+
 /** The last pass over every string a person reads in the plan. */
 export function positivePlan(plan: BuildPlan): BuildPlan {
   return {
     ...plan,
     instructions: plan.instructions.map((s) => ({ ...s, title: positiveText(s.title), description: positiveText(s.description), tips: positiveText(s.tips) })),
-    bom: plan.bom.map((b) => ({ ...b, name: positiveText(b.name), notes: positiveText(b.notes) })),
+    bom: plan.bom.map((b) => ({ ...b, name: countedName(positiveText(b.name) ?? b.name, b.quantity, b.unit), notes: positiveText(b.notes) })),
     cutList: plan.cutList.map((c) => ({ ...c, name: positiveText(c.name), notes: positiveText(c.notes), material: positiveText(c.material) })),
     feasibility: plan.feasibility && {
       ...plan.feasibility,
