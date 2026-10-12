@@ -312,5 +312,21 @@ function acyclicRoles(out: Map<string, SupportInfo>, groups: Map<string, YardIns
 
 /** Supports for every part key the steps place (panel ids, or role names on stick builds). */
 export function supportsOf(project: YardProject): Map<string, SupportInfo> {
-  return project.panels.length ? panelSupports(project.panels) : roleSupports(project.instances);
+  if (!project.panels.length) return roleSupports(project.instances);
+  const out = panelSupports(project.panels);
+  // A moving part rides on its pin or axle: the pin carries it, so the pin goes on first.
+  const pins = project.panels.filter((p) => p.turns && /^dowel-/.test(p.materialId));
+  const meets = (a: Panel, b: Panel) => {
+    const [x, y] = [boxOf(a), boxOf(b)];
+    return [0, 1, 2].every((i) => x.min[i] <= y.max[i] + 0.05 && y.min[i] <= x.max[i] + 0.05);
+  };
+  for (const p of project.panels) {
+    if (!p.turns || pins.includes(p)) continue;
+    const on = pins.filter((q) => meets(p, q)).map((q) => q.id);
+    const info = out.get(p.id);
+    if (!on.length || !info) continue;
+    out.set(p.id, { ...info, how: "rests", on });
+    for (const k of on) { const pin = out.get(k); if (pin) out.set(k, { ...pin, on: pin.on.filter((x) => x !== p.id) }); }
+  }
+  return out;
 }
