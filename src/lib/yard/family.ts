@@ -776,6 +776,8 @@ export function ladderShelfTitleStem(lower: string): string | null {
 /** Utility shelf / utility shelving — never naked Storage unit. */
 export function isUtilityShelf(lower: string) {
   if (isOpenKitchenShelving(lower) || isLaundrySorter(lower) || isDryingRack(lower)) return false;
+  // "utility cabinet with shelves" names a cabinet; its shelves are a feature, not the noun.
+  if (/\butility\s+cabinet/.test(lower)) return false;
   if (/utility\s*shel(?:f|ves|ving)/.test(lower)) return true;
   if (/\butility\b/.test(lower) && /shel(?:f|ves|ving)/.test(lower)) return true;
   return false;

@@ -19,12 +19,15 @@ describe("the header says back typed counts and features the model builds", () =
   const cases: [string, RegExp][] = [
     ["12 bottle wine rack", / · 12 bottles$/],
     ["key holder with 4 hooks", / · 4 hooks$/],
-    ["shoe rack with cubbies", / · cubbies$/],
+    ["shoe rack with cubbies", / · \d+ cubbies$/],
     ["spice cabinet with 3 shelves", / · 3 shelves$/],
     ["utility cabinet with shelves", / · \d+ shelves$/],
-    ["window seat with cubbies", / · cubbies$/],
-    ["mudroom bench with cubbies", / · cubbies$/],
+    ["window seat with cubbies", / · \d+ cubbies$/],
+    ["mudroom bench with cubbies", / · \d+ cubbies$/],
     ["wardrobe with a rod", / · with rod$/],
+    ["window seat with 3 cubbies", / · 3 cubbies$/],
+    ["mudroom bench with 4 cubbies", / · 4 cubbies$/],
+    ["utility cabinet with 3 shelves", /^Utility cabinet · .* · 3 shelves$/],
   ];
   for (const [q, re] of cases) it(q, () => assert.match(headerTitle(generateFromPrompt(q)), re));
 });

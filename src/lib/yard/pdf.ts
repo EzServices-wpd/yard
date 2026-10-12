@@ -1236,7 +1236,12 @@ export function headerFeatures(project: YardProject): string[] {
   }
   if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
   if (typed("shel(?:f|ves)\\b")) { const n = count(/^(?:grid |adjustable |fixed |inner )?shelf$/); if (n) out.push(plural(n, "shelf", "shelves")); }
-  if (typed("cubb(?:y|ies)\\b") && count(/cubby/)) out.push("cubbies");
+  if (typed("cubb(?:y|ies)\\b")) {
+    // Cubbies said back as the model's own count: dividers split the run into dividers + 1 openings.
+    const dividers = count(/^cubby divider$/);
+    if (dividers) out.push(plural(dividers + 1, "cubby", "cubbies"));
+    else if (count(/cubby/)) out.push("cubbies");
+  }
   if (typed("(?:hanging )?(?:rod|bar)\\b") && count(/\b(?:rod|hanging bar|closet rod)\b/)) out.push("with rod");
   if (/\btrapezoid/.test(lower) && /trapezoid/i.test(`${project.name} ${(project.notes ?? []).join(" ")}`)) out.push("trapezoid");
   return out;
