@@ -241,6 +241,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         });
       }
       for (const hub of riders.filter((p) => p !== rim && p.size[SZ[a]] < r)) {
+        // The spokes lie in the rim's plane; the hub's face sits flush with it so they seat in its face slot.
+        hub.position = { ...hub.position, [long]: rim.position[long] };
         const n = `Cut a ${fmtIn(band)} wide, ${fmtIn(Math.min(t, hub.size[SZ[long]]))} deep slot across the hub face for each spoke.`;
         if (!(hub.cutNote ?? "").includes(n)) hub.cutNote = `${hub.cutNote ? `${hub.cutNote} ` : ""}${n}`;
       }
