@@ -185,7 +185,7 @@ function roundParts(recipe: Recipe, panels: Panel[]): void {
  * A hinged lid rides free (no screws) on top of the walls under it: its hinge edge sits on the tallest wall, and
  * over walls of two heights (a cold frame) it slopes from the low wall's top up to the tall one's.
  */
-function hingedLids(recipe: Recipe, panels: Panel[]): void {
+function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   const lids = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part), ...recipe.parts.filter((p) => p.role === "lid").map((p) => p.name)]);
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
@@ -197,7 +197,10 @@ function hingedLids(recipe: Recipe, panels: Panel[]): void {
     const hi = under.reduce((m, w) => (top(w) > top(m) ? w : m)), lo = under.reduce((m, w) => (top(w) < top(m) ? w : m));
     // A lid floating above the walls is left for the load-path check; one sunk into them is seated.
     if (lid.position.y > top(hi) + 0.1) continue;
-    const t = Math.min(lid.size.height, 1), rise = top(hi) - top(lo), D = lid.size.depth;
+    const t = Math.min(lid.size.height, 1);
+    // The lid stays inside the overall height: walls reaching above H - t are trimmed to carry it.
+    for (const w of under) if (top(w) > H - t) w.size = { ...w.size, height: Math.max(H - t - w.position.y, 0.5) };
+    const rise = top(hi) - top(lo), D = lid.size.depth;
     if (rise <= 1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
     lid.position = { ...lid.position, y: top(lo) };
     lid.size = { ...lid.size, height: rise + t };
@@ -353,7 +356,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const fitted = snapMembers(recipe, panels, stock.member);
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
-  hingedLids(recipe, panels);
+  hingedLids(recipe, panels, size.height);
   const wide = new Set<string>();
   // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.
   for (const p of panels) {

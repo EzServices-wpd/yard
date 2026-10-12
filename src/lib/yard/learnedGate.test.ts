@@ -170,7 +170,7 @@ it("a sheet part thicker than its sheet is a glue-up of plies with its own step"
   assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));
 });
 
-it("hinged parts touch what they hinge to, and a lid over walls of two heights slopes", () => {
+it("hinged parts touch what they hinge to, and a lid over walls of two heights slopes", async () => {
   const frame = (lidY: number, lidH: number) => ({
     key: "test-cold-frame", synonyms: [], version: 1, trust: "candidate", title: "Cold frame", learned: true,
     size: { width: 48, height: 18, depth: 36 }, defining: ["wall", "lid"],
@@ -190,6 +190,9 @@ it("hinged parts touch what they hinge to, and a lid over walls of two heights s
   assert.ok(floating.some((f) => /Lid is hinged but does not touch/.test(f)));
   const sloped = learnedRecipeFailures(frame(0.6, 0.4));
   assert.ok(!sloped.some((f) => /Lid (?:lies flat|is hinged)/.test(f)));
+  // Critic 8db4a41: seating the lid on the tallest wall must not push it out of the overall height.
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  for (const r of [frame(0.6, 0.04), frame(0.6, 0.4)]) assert.deepEqual(validateRecipe(r, buildRecipe(r, "cold frame"), "cold frame"), []);
 });
 
 it("a panel wider than its board stock is cut from the sheet", async () => {
