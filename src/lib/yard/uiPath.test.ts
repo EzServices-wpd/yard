@@ -52,6 +52,11 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(!calls.includes("lookup") && /^Bunk bed/.test(p.name) && p.panels.length > 10, `${p.name} ${calls}`);
   });
+  it("a tabletop loom is tabletop scale, never a storage cabinet", async () => {
+    await runYardPrompt("tabletop loom", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
+    const p = useYard.getState().project;
+    assert.ok(p.overall.width <= 24 && p.overall.height <= 18 && !/storage/i.test(p.name), `${p.name} ${JSON.stringify(p.overall)}`);
+  });
   it("a cutting board is cutting-board scale, never a table on legs", async () => {
     await runYardPrompt("cutting board", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;

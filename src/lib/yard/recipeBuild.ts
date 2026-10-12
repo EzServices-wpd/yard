@@ -481,7 +481,10 @@ export function roughBlock(prompt: string, like: YardProject): YardProject {
   const craftLike = /popsicle|craft|cardboard|skewer|paper|stick/i.test(like.primaryMaterialId ?? "") && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt);
   // A kitchen board's block is board scale (18x1.5x12), never furniture scale.
   const board = /\b(?:cutting|chopping|bread|serving|charcuterie|cheese|butcher)\s+board\b/i.test(prompt);
-  const o = { ...(board ? { width: 18, height: 1.5, depth: 12 } : craftLike ? { width: 36, height: 30, depth: 24 } : like.overall), ...typedSize(prompt, {} as Recipe) };
+  // A tabletop object sits on a table: its block is never bigger than 24x18x18.
+  const top = /\b(?:table-?top|desk-?top|counter-?top)\b/i.test(prompt);
+  const base = board ? { width: 18, height: 1.5, depth: 12 } : craftLike ? { width: 36, height: 30, depth: 24 } : like.overall;
+  const o = { ...(top ? { width: Math.min(base.width, 24), height: Math.min(base.height, 18), depth: Math.min(base.depth, 18) } : base), ...typedSize(prompt, {} as Recipe) };
   return {
     ...like,
     overall: o,
