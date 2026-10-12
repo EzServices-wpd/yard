@@ -185,6 +185,33 @@ function roundParts(recipe: Recipe, panels: Panel[]): void {
  * A hinged lid rides free (no screws) on top of the walls under it: its hinge edge sits on the tallest wall, and
  * over walls of two heights (a cold frame) it slopes from the low wall's top up to the tall one's.
  */
+/**
+ * A tall single pedestal stands on a foot spreading both ways: when every floor part is one strip much
+ * narrower than the build is tall, a crossing strip of the same stock is added under the pedestal.
+ */
+function steadyPedestal(panels: Panel[], size: Size): void {
+  const floor = panels.filter((p) => p.position.y < 0.05);
+  if (floor.length !== 1 || size.height < 24) return;
+  const f = floor[0], narrow = Math.min(f.size.width, f.size.depth), long = Math.max(f.size.width, f.size.depth);
+  if (narrow * 3 > size.height || long < narrow * 2) return;
+  // Only a single column standing on the strip (a sundial or birdbath pedestal), not a frame on runners.
+  const cols = panels.filter((p) => p !== f && Math.abs(p.position.y - (f.position.y + f.size.height)) < 0.1 && p.size.height > size.height / 2);
+  if (cols.length !== 1 || Math.max(cols[0].size.width, cols[0].size.depth) > narrow * 1.5) return;
+  const cx = f.position.x + f.size.width / 2, cz = f.position.z + f.size.depth / 2;
+  const w = f.size.depth, d = f.size.width;
+  panels.push({ ...f, id: `${f.id}-cross`, name: `${f.name.replace(/ \d+$/, "")} cross`, position: { x: cx - w / 2, y: f.position.y, z: cz - d / 2 }, size: { width: w, height: f.size.height, depth: d } });
+}
+
+/** A gnomon is a right triangle standing on its dial, never a rectangle. */
+function gnomonTriangles(panels: Panel[]): void {
+  for (const g of panels.filter((p) => /\bgnomon\b/i.test(p.name) && !p.polygon)) {
+    const H = g.size.height;
+    g.polygon = g.size.width <= g.size.depth
+      ? { plane: "zy", pts: [[0, 0], [g.size.depth, 0], [0, H]] }
+      : { plane: "xy", pts: [[0, 0], [g.size.width, 0], [0, H]] };
+  }
+}
+
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   const lids = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part), ...recipe.parts.filter((p) => p.role === "lid").map((p) => p.name)]);
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
@@ -357,6 +384,8 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
+  steadyPedestal(panels, size);
+  gnomonTriangles(panels);
   const wide = new Set<string>();
   // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.
   for (const p of panels) {

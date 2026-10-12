@@ -240,3 +240,16 @@ it("a food-contact board is hardwood, glued, oiled food-safe: no screws, floor o
   assert.match(text, /Maple/);
   assert.match(text, /food-safe/i);
 });
+
+it("a tall single pedestal gets a foot spreading both ways, and a gnomon is a triangle", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const r = { key: "t-sundial", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Sundial", size: { width: 16, height: 40, depth: 16 }, defining: ["pedestal"], notes: [],
+    parts: [{ role: "foot", name: "Foot", box: [0.32, 0, 0, 0.36, 0.04, 1], kind: "member" }, { role: "pedestal", name: "Pedestal", box: [0.4, 0.04, 0.4, 0.2, 0.9, 0.2], kind: "member", on: ["Foot"] },
+      { role: "dial", name: "Dial", box: [0, 0.94, 0, 1, 0.03, 1], kind: "panel", on: ["Pedestal"] }, { role: "gnomon", name: "Gnomon", box: [0.48, 0.97, 0.2, 0.03, 0.03, 0.5], kind: "member", on: ["Dial"] }] } as unknown as Recipe;
+  const b = buildRecipe(r, "sundial");
+  const floor = b.project.panels.filter((p) => p.position.y < 0.05);
+  const span = (a: "x" | "z", s: "width" | "depth") => Math.max(...floor.map((p) => p.position[a] + p.size[s])) - Math.min(...floor.map((p) => p.position[a]));
+  assert.ok(span("x", "width") >= 12 && span("z", "depth") >= 12, `${span("x", "width")} x ${span("z", "depth")}`);
+  assert.equal(b.project.panels.find((p) => p.name === "Gnomon")?.polygon?.pts.length, 3);
+  assert.ok(!validateRecipe(r, b, "sundial").some((f) => /tips/.test(f)));
+});
