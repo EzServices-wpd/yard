@@ -351,6 +351,8 @@ export type YardProject = {
   typedPrompt?: string;
   /** Built as a stand-in primitive (table, shelf, box) for a noun no builder owns; the recipe lookup may replace it. */
   standIn?: boolean;
+  /** A lookup-fallback block: drawn only, with no cut list, Buy, price or steps. */
+  displayOnly?: boolean;
   kind: StructureKind;
   overall: { width: number; height: number; depth: number };
   instances: YardInstance[];

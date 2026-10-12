@@ -41,7 +41,7 @@ describe("recipe build and validate", () => {
   it("two failures ship a labelled rough shape, never a relabelled template", async () => {
     const out = await lookupAndBuild("thing", async () => null, rough);
     assert.equal(out.rough, true);
-    assert.match(out.project.notes[0], /^Shown as a rough shape/);
+    assert.match(out.project.notes[0], /Shown as a rough shape/);
     assert.equal(out.calls, 2);
   });
   it("an unavailable AI keeps the engine build, unlabelled, after one call", async () => {

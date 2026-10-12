@@ -17,5 +17,10 @@ it("a compound noun never falls back to its last word's build: the rough shape i
   assert.equal(out.project.name, "Chicken tractor");
   assert.equal(out.project.panels.length, 1);
   assert.equal(out.project.instances.length, 0);
-  assert.match(out.project.notes[0], /^Shown as a rough shape: the real chicken tractor parts/);
+  assert.match(out.project.notes[0], /^Yard couldn.t learn this yet\. Shown as a rough shape: the real chicken tractor parts/);
+  // Critic 8db4a41: the fallback block is display-only, never a priced, stepped glue-up.
+  const { buildPlan } = await import("./report.ts");
+  const plan = buildPlan(out.project);
+  assert.equal(plan.bom.length + plan.instructions.length + plan.cutList.length + plan.totals.estCostUsd, 0);
+  assert.match(plan.feasibility.summary, /Yard couldn't learn this yet/);
 });

@@ -499,12 +499,13 @@ export function roughBlock(prompt: string, like: YardProject): YardProject {
     panels: [{ id: "rough-block", type: "rail", name: noun, position: { x: -o.width / 2, y: 0, z: 0 }, size: { ...o }, materialId: PLY }],
     notes: [],
     standIn: true,
+    displayOnly: true,
   };
 }
 
 /** The plain label a rough shape carries, in positive words. */
 export function roughNote(title: string, failures: string[]): string {
-  return `Shown as a rough shape: the real ${title.toLowerCase()} parts come next${failures.length ? ` (${failures.slice(0, 3).join("; ")})` : ""}.`;
+  return `Yard couldn't learn this yet. Shown as a rough shape: the real ${title.toLowerCase()} parts come next${failures.length ? ` (${failures.slice(0, 3).join("; ")})` : ""}.`;
 }
 
 /**

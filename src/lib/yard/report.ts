@@ -1577,6 +1577,10 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 const PIECE_UNIT = /^(?:boards?|pcs?|pieces?)$/;
 
 export function buildPlan(project: YardProject): BuildPlan {
+  // A lookup-fallback block is display-only: no cut list, Buy, price or steps, only a plain note.
+  if (project.displayOnly) {
+    return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
+  }
   const plan = fallbackStepOne(project, buildPlanInner(project));
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
