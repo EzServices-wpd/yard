@@ -68,6 +68,7 @@ import {
   SHOE_TIER_CLEAR,
   buildBedsideShelf,
   buildBunkBed,
+  bedHonesty,
   buildCoatBench,
   buildCollectionShelf,
   buildDaybed,
@@ -205,7 +206,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   if (isPlatformBed(sleepLower) || identityTitleStem(sleepLower) === "Platform bed") {
-    return buildPlatformBed(spec, prompt, affordances);
+    return bedHonesty(buildPlatformBed(spec, prompt, affordances), prompt);
   }
 
   if (
@@ -214,7 +215,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     isLoftBed(sleepLower) ||
     (affordances.includes("sleep-platforms") && !isDaybed(sleepLower) && !isPlatformBed(sleepLower))
   ) {
-    return buildBunkBed(spec, prompt, affordances);
+    return bedHonesty(buildBunkBed(spec, prompt, affordances), prompt);
   }
 
   // Ironing board wall mount — hung-open mount + PDF mount height + clear swing (not portal / Yard House wire).

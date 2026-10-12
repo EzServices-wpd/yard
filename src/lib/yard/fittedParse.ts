@@ -632,8 +632,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower)) {
     const labeledWide = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:wide|width)/i, NaN);
     const labeledTall = pick(t, /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:tall|high|height|H)\b/i, NaN);
-    if (Number.isFinite(labeledWide)) width = labeledWide;
-    if (Number.isFinite(labeledLong)) depth = labeledLong;
+    // A typed size that is the named mattress's own dimension is the mattress: the builder frames around it.
+    const mat = mattressDeck(lower);
+    if (Number.isFinite(labeledWide) && labeledWide !== mat?.width) width = labeledWide;
+    if (Number.isFinite(labeledLong) && labeledLong !== mat?.length) depth = labeledLong;
+    else if (labeledLong === mat?.length && depth === labeledLong) depth = NaN;
     if (Number.isFinite(labeledTall)) height = labeledTall;
   }
 

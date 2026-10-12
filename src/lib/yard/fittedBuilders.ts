@@ -1778,9 +1778,40 @@ export const BED_MATTRESS_T = 6;
  * Beds lie along the width: the builders lay the mattress length along z, then the frame turns a quarter
  * so the length runs along W and the ladder lands on a long side. Returns the turned W and D.
  */
+/** The typed bed size that is the named mattress's own standard dimension (a twin's 38 or 75), if any. */
+function typedMattress(prompt: string): number | null {
+  const m = mattressDeck(prompt.toLowerCase());
+  if (!m) return null;
+  for (const t of prompt.matchAll(/(\d+(?:\.\d+)?)\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:long|length|wide|width|deep|depth)\b/gi)) {
+    if (Number(t[1]) === m.length || Number(t[1]) === m.width) return Number(t[1]);
+  }
+  return null;
+}
+
+/**
+ * A bed's title and notes say what it builds: a typed mattress size is the mattress ("fits a 75" twin mattress,
+ * 82" outside"); the title never prints a size the frame is not.
+ */
+export function bedHonesty(project: YardProject, prompt: string): YardProject {
+  const { width: W, height: H, depth: D } = project.overall;
+  const lower = prompt.toLowerCase();
+  const m = mattressDeck(lower);
+  const hit = typedMattress(prompt);
+  const word = (lower.match(/cal(?:ifornia)?\s*king|\bking\b|\bqueen\b|\bfull\b|\bdouble\b|\btwin\b/) ?? [""])[0];
+  const ext = (a: "x" | "z", k: "width" | "depth") => Math.max(...project.panels.map((p) => p.position[a] + p.size[k])) - Math.min(...project.panels.map((p) => p.position[a]));
+  const built = [ext("x", "width"), H, ext("z", "depth")].map((n) => Math.round(n * 100) / 100);
+  const said = [...(project.name ?? "").matchAll(/(\d+(?:\.\d+)?)"/g)].map((x) => Number(x[1]));
+  const name = said.some((n) => !built.includes(n)) ? `${(project.name ?? "Bed").replace(/\s*\d.*$/, "")} ${inchFrac(W)}" × ${inchFrac(H)}" × ${inchFrac(D)}"` : project.name;
+  const fit = m && hit != null
+    ? `Fits a ${hit}" ${word} mattress, ${inchFrac(hit === m.length ? Math.max(W, D) : Math.min(W, D))}" outside.`
+    : null;
+  const notes = (project.notes ?? []).map((n, i) => (i === 0 && name !== project.name ? n.replace(project.name ?? "", name ?? "") : n));
+  return { ...project, name, notes: fit ? [notes[0], fit, ...notes.slice(1)].filter(Boolean) : notes, ...(project.fitted ? { fitted: { ...project.fitted, name: name ?? project.fitted.name } } : {}) };
+}
+
 function bedAlongWidth(panels: Panel[], x0: number, W: number, D: number, u: { width: number; depth: number }, prompt: string): { W: number; D: number } {
-  // A typed depth (or length) that is the long side keeps the bed lying along D, as typed.
-  if (u.depth > u.width && /\d\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:deep|long)\b/i.test(prompt)) return { W, D };
+  // A typed depth (or length) that is the long side keeps the bed lying along D, as typed, unless it is the mattress's own size.
+  if (u.depth > u.width && !typedMattress(prompt) && /\d\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:deep|long)\b/i.test(prompt)) return { W, D };
   for (const p of panels) {
     const { x, y, z } = p.position;
     p.position = { x: z - D / 2, y, z: x - x0 };

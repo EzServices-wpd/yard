@@ -57,6 +57,12 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(p.overall.width <= 24 && p.overall.height <= 18 && !/storage/i.test(p.name), `${p.name} ${JSON.stringify(p.overall)}`);
   });
+  it("a typed twin mattress length is the mattress: 82 outside along W, with the fit note", async () => {
+    await runYardPrompt("bunk bed twin over twin 75 long", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
+    const p = useYard.getState().project;
+    assert.equal(p.overall.width, 82);
+    assert.ok(!/\b75"/.test(p.name) && p.notes.some((n) => /Fits a 75" twin mattress, 82" outside/.test(n)), p.name);
+  });
   it("a cutting board is cutting-board scale, never a table on legs", async () => {
     await runYardPrompt("cutting board", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;

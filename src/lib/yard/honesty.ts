@@ -10,6 +10,7 @@ import { detectProgram, parseBrief } from "./fitted";
 import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWallMediaLedge, isPlatformBed, isBunkBed, isLoftBed, isBedsideShelf, isPlanterBox, isCoatHookBoard } from "./family";
 import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
+import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -120,6 +121,15 @@ export function axisOrderNote(prompt: string, overall: { width: number; height: 
 }
 
 /** Axes the prompt actually named. Defaults from parseBrief do not count. */
+/** A bed size equal to the named mattress's own dimension is the mattress, not the frame: the frame builds around it. */
+function mattressFree(t: TypedExtents | null, prompt: string): TypedExtents | null {
+  const mat = t && /\bbed\b/i.test(prompt) ? mattressDeck(prompt.toLowerCase()) : null;
+  if (!t || !mat) return t;
+  const out = { ...t, labeled: { ...t.labeled } } as TypedExtents;
+  for (const k of ["width", "depth"] as const) if (out[k] === mat.length || out[k] === mat.width) { delete out[k]; out.labeled[k] = false; }
+  return out;
+}
+
 export function typedExtents(prompt: string): TypedExtents | null {
   prompt = normalizeUserPrompt(prompt);
   const bareTable = tableSpanFromPrompt(prompt);
@@ -567,7 +577,7 @@ export function inspectHonesty(project: YardProject, plan?: BuildPlan | null): H
     ((project.pocket.walls.leftAngleDeg ?? 0) > 0.2 || (project.pocket.walls.rightAngleDeg ?? 0) > 0.2);
   const skipSize = pocketWonky || project.kind === "opening" || !project.fitted;
 
-  const typed = skipSize ? null : typedExtents(prompt);
+  const typed = skipSize ? null : mattressFree(typedExtents(prompt), prompt);
   if (typed && project.fitted) {
     const hud = sizeMismatch(typed, project.overall, "HUD");
     if (hud) issues.push(hud);
@@ -797,7 +807,7 @@ function applyLocalFixes(project: YardProject): YardProject {
   if (project.fitted?.unit?.odd) return project;
   let next = project;
   const tableLie = tableBraceIssues(next).length > 0;
-  const typed = typedExtents(next.prompt ?? "");
+  const typed = mattressFree(typedExtents(next.prompt ?? ""), next.prompt ?? "");
   // Do not snap HUD to hide a table apron/brace geometry lie — rebuild instead.
   if (typed && next.fitted && !tableLie && !isCoatHookBoard(next.prompt ?? "")) next = snapHud(next, typed);
   next = forceWallMount(next);
