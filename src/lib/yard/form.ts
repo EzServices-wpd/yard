@@ -255,9 +255,9 @@ export function benchBindsForm(prompt: string, project: { kind: StructureKind; s
  */
 export function engineOwnsForm(
   prompt: string,
-  project: { kind: StructureKind; shape?: unknown; flat?: unknown; unmatched?: boolean },
+  project: { kind: StructureKind; shape?: unknown; flat?: unknown; unmatched?: boolean; standIn?: boolean },
 ): boolean {
-  return (
+  return !project.standIn && (
     isLockedForm(project.kind) ||
     project.kind === "closet" ||
     project.kind === "opening" ||

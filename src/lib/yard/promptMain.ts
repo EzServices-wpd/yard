@@ -530,7 +530,7 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   // The primitive's size was Yard's pick, so a "You typed" line only stays when a size was typed.
   const saidSize = /\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|foot|feet|')?\s*(?:wide|tall|high|deep|long)|\d+(?:\.\d+)?\s*(?:"|inch|in\b|ft\b|foot|feet|')/i.test(prompt);
   const ownNotes = (built.notes ?? []).filter((n) => saidSize || !/^You typed\b/.test(n));
-  return { ...built, name: title, typedPrompt: prompt, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(ownNotes, p, subject, noun)] };
+  return { ...built, name: title, typedPrompt: prompt, standIn: true, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(ownNotes, p, subject, noun)] };
 }
 
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {

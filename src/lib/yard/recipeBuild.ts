@@ -341,7 +341,7 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
  */
 export function needsRecipeLookup(project: YardProject, prompt: string, engineOwns: boolean): boolean {
   if (engineOwns || findRecipe(prompt)) return false;
-  if (project.unmatched) return true;
+  if (project.unmatched || project.standIn) return true;
   const name = (project.name ?? "").toLowerCase();
   const typed = prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4).map((w) => w.replace(/s$/, ""));
   return typed.length > 0 && !typed.some((w) => name.includes(w));

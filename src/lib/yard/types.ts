@@ -347,6 +347,8 @@ export type YardProject = {
    * ("lemonade stand" → "table 48 wide 42 tall 24 deep"). The prompt box shows this, never the remap.
    */
   typedPrompt?: string;
+  /** Built as a stand-in primitive (table, shelf, box) for a noun no builder owns; the recipe lookup may replace it. */
+  standIn?: boolean;
   kind: StructureKind;
   overall: { width: number; height: number; depth: number };
   instances: YardInstance[];
