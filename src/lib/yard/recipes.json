@@ -5211,6 +5211,175 @@
     "Commonly bronze, stone or cast metal on a masonry or metal pedestal."
    ],
    "learned": true
+  },
+  {
+   "key": "stool",
+   "synonyms": [
+    "seat"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Simple four-leg wooden stool",
+   "size": {
+    "width": 16,
+    "height": 18,
+    "depth": 16
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "seat",
+    "leg"
+   ],
+   "parts": [
+    {
+     "role": "leg",
+     "name": "Frontleftleg",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.1,
+      0.85,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Frontrightleg",
+     "box": [
+      0.85,
+      0,
+      0.05,
+      0.1,
+      0.85,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Backleftleg",
+     "box": [
+      0.05,
+      0,
+      0.85,
+      0.1,
+      0.85,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Backrightleg",
+     "box": [
+      0.85,
+      0,
+      0.85,
+      0.1,
+      0.85,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Frontrail",
+     "box": [
+      0.15,
+      0.3,
+      0.05,
+      0.7,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Frontleftleg",
+      "Frontrightleg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Backrail",
+     "box": [
+      0.15,
+      0.3,
+      0.87,
+      0.7,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Backleftleg",
+      "Backrightleg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Leftrail",
+     "box": [
+      0.05,
+      0.3,
+      0.15,
+      0.08,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Frontleftleg",
+      "Backleftleg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rightrail",
+     "box": [
+      0.87,
+      0.3,
+      0.15,
+      0.08,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Frontrightleg",
+      "Backrightleg"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Seattop",
+     "box": [
+      0,
+      0.85,
+      0,
+      1,
+      0.15,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Frontleftleg",
+      "Frontrightleg",
+      "Backleftleg",
+      "Backrightleg"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Four vertical legs stand on the floor and support a flat square seat.",
+    "Horizontal rails brace the legs below the seat for rigidity.",
+    "Typical kitchen or workshop stool proportions."
+   ],
+   "learned": true
   }
  ]
 }
