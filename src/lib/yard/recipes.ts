@@ -125,28 +125,66 @@ export function saveRecipe(lib: RecipeStore, recipe: Recipe): RecipeStore {
 export const partName = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 export const partRole = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/(?<=[^s])s$/, "");
 
+/** Why the last lookup reply could not be used, for the one retry's feedback. */
+export let lastParseProblem = "";
+
+/**
+ * A recipe from the lookup is repaired before it is judged: a JSON string or fenced text is parsed,
+ * numbers given as strings are read, names and roles get one spelling, optional fields are filled,
+ * a support or defining role that names no part is dropped, a box is clamped into the envelope and
+ * an unknown kind reads as a member. Only a reply with no title, size or parts is refused.
+ */
 export function parseRecipe(raw: unknown): Recipe | null {
-  const r0 = raw as Partial<Recipe> | null;
-  const r = r0 && Array.isArray(r0.parts)
-    ? {
-        ...r0,
-        defining: Array.isArray(r0.defining) ? r0.defining.map((d) => (typeof d === "string" ? partRole(d) : d)) : r0.defining,
-        moving: Array.isArray(r0.moving) ? r0.moving.map((m) => ({ ...m, part: typeof m?.part === "string" ? partName(m.part) : m?.part })) : r0.moving,
-        parts: r0.parts.map((p) => (p && typeof p.name === "string" && typeof p.role === "string"
-          ? { ...p, name: partName(p.name), role: partRole(p.role), on: Array.isArray(p.on) ? p.on.map((n) => (typeof n === "string" ? partName(n) : n)) : p.on }
-          : p)),
-      }
-    : r0;
-  if (!r || typeof r.key !== "string" || typeof r.title !== "string" || !r.size || !Array.isArray(r.parts) || !r.parts.length) return null;
-  const okSize = (s: unknown) => !!s && ["width", "height", "depth"].every((a) => Number((s as Record<string, unknown>)[a]) > 0);
-  if (!okSize(r.size) || (r.craftSize && !okSize(r.craftSize))) return null;
-  const names = new Set(r.parts.map((p) => p?.name));
-  if (Array.isArray(r.defining) && r.defining.some((d) => !r.parts!.some((p) => p?.role === d))) return null;
-  for (const p of r.parts) {
-    if (!p || typeof p.role !== "string" || typeof p.name !== "string" || !["member", "panel", "cover", "hardware"].includes(p.kind)) return null;
-    if (!Array.isArray(p.box) || p.box.length !== 6 || p.box.some((v) => typeof v !== "number" || v < -0.5 || v > 1.5)) return null;
-    if (p.on?.some((n) => !names.has(n))) return null;
+  lastParseProblem = "";
+  let r0 = raw as Record<string, any> | null;
+  if (typeof raw === "string") {
+    try { r0 = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "")); } catch { lastParseProblem = "the reply was not JSON"; return null; }
   }
+  if (r0 && typeof r0 === "object" && !Array.isArray(r0.parts) && r0.recipe && typeof r0.recipe === "object") r0 = r0.recipe;
+  if (!r0 || typeof r0 !== "object") { lastParseProblem = "the reply was empty"; return null; }
+  const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number.parseFloat(v) : NaN);
+  const sizeOf = (s: any) => (s && typeof s === "object" ? { width: num(s.width), height: num(s.height), depth: num(s.depth) } : null);
+  const okSize = (s: { width: number; height: number; depth: number } | null) => !!s && [s.width, s.height, s.depth].every((v) => Number.isFinite(v) && v > 0);
+  const size = sizeOf(r0.size), craft = sizeOf(r0.craftSize);
+  const title = typeof r0.title === "string" && r0.title.trim() ? r0.title.trim() : typeof r0.key === "string" ? r0.key.replace(/-/g, " ") : "";
+  const rawParts: any[] = Array.isArray(r0.parts) ? r0.parts : [];
+  if (!title || !okSize(size) || !rawParts.length) {
+    lastParseProblem = `the recipe was missing ${[!title && "title", !okSize(size) && "size (width, height, depth in inches)", !rawParts.length && "parts"].filter(Boolean).join(", ")}`;
+    return null;
+  }
+  const parts = rawParts
+    .filter((p) => p && typeof p === "object" && (typeof p.name === "string" || typeof p.role === "string") && Array.isArray(p.box) && p.box.length === 6)
+    .map((p) => {
+      const box = (p.box as unknown[]).map(num);
+      if (box.some((v) => !Number.isFinite(v))) return null;
+      const [x, y, z] = box.slice(0, 3).map((v) => Math.min(Math.max(v, 0), 1));
+      const [w, h, d] = box.slice(3).map((v, k) => Math.min(Math.max(v, 0.005), 1 - [x, y, z][k]));
+      const name = partName(String(p.name ?? p.role));
+      return {
+        ...p,
+        name,
+        role: partRole(String(p.role ?? p.name)),
+        kind: ["member", "panel", "cover", "hardware"].includes(p.kind) ? p.kind : "member",
+        box: [x, y, z, w, h, d] as RecipePart["box"],
+        on: Array.isArray(p.on) ? p.on.filter((n: unknown) => typeof n === "string").map((n: string) => partName(n)) : undefined,
+        ...(p.bore != null && Number.isFinite(num(p.bore)) ? { bore: num(p.bore) } : {}),
+      } as RecipePart;
+    })
+    .filter((p): p is RecipePart => !!p);
+  if (!parts.length) { lastParseProblem = "no part had a name and a six-number box"; return null; }
+  const names = new Set(parts.map((p) => p.name));
+  for (const p of parts) if (p.on) p.on = p.on.filter((n) => names.has(n) && n !== p.name);
+  const roles = new Set(parts.map((p) => p.role));
+  const r = {
+    ...r0,
+    key: typeof r0.key === "string" && r0.key.trim() ? r0.key.trim().toLowerCase().replace(/\s+/g, "-") : title.toLowerCase().replace(/\s+/g, "-"),
+    title,
+    size: size!,
+    craftSize: okSize(craft) ? craft! : undefined,
+    defining: Array.isArray(r0.defining) ? r0.defining.filter((d: unknown) => typeof d === "string").map((d: string) => partRole(d)).filter((d: string) => roles.has(d)) : undefined,
+    moving: Array.isArray(r0.moving) ? r0.moving.filter((m: any) => m && typeof m.part === "string").map((m: any) => ({ ...m, part: partName(m.part) })).filter((m: any) => names.has(m.part)) : undefined,
+    parts,
+  } as Partial<Recipe> & { parts: RecipePart[]; key: string; title: string; size: Recipe["size"] };
   return {
     key: r.key,
     synonyms: Array.isArray(r.synonyms) ? r.synonyms.filter((s) => typeof s === "string") : [],
@@ -161,8 +199,8 @@ export function parseRecipe(raw: unknown): Recipe | null {
     wall: !!r.wall,
     stock: typeof r.stock === "string" ? r.stock : undefined,
     sheet: typeof r.sheet === "string" ? r.sheet : undefined,
-    defining: Array.isArray(r.defining) ? r.defining.filter((d) => typeof d === "string") : undefined,
-    count: r.count,
+    defining: r.defining,
+    count: r.count && typeof r.count.word === "string" && Number.isFinite(num(r.count.default)) ? { ...r.count, default: num(r.count.default) } : undefined,
     parts: r.parts,
     moving: r.moving,
     notes: Array.isArray(r.notes) ? r.notes.filter((n) => typeof n === "string") : [],

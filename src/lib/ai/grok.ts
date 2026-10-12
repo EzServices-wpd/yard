@@ -174,13 +174,16 @@ const RECIPE_SYSTEM = [
   "Sizes are inches at the typical real size. box values are shares (0..1) of width, height, depth; y=0 is the floor.",
   "Round parts name their shape: a wheel is a ring (rim) or disc, an axle or drum a cylinder, a bead a bead with a bore over the rod's diameter.",
   "Every part touches what it sits on; a part with no 'on' stands on the floor. Build the defining parts at real proportions; never a closed box.",
+  "Always include key, title, size, parts and notes. Every part needs role, name, box (six numbers) and kind; 'on' may only name other parts' exact names. At most 24 parts: use repeat for runs of identical parts.",
 ].join("\n");
 
 export const lookupRecipe = createServerFn({ method: "POST" })
   .validator((input: { prompt: string; feedback?: string[] }) => input)
   .handler(async ({ data }) => {
     const user = data.feedback?.length ? `${data.prompt}\nThe last recipe failed these checks; fix them: ${data.feedback.join("; ")}` : data.prompt;
-    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 1600, { json: true });
+    // grok-4.5 spends part of max_tokens on reasoning: 1600 cut long recipes off mid-JSON, which read as
+    // "missing fields". Give the reply room for a full part list.
+    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 8000, { json: true });
     return result.ok ? { ok: true as const, recipeJson: JSON.stringify(parseModelJson(result.text)) } : { ok: false as const, error: result.error };
   });
 

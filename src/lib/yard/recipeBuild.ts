@@ -7,7 +7,7 @@
 import { getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
-import { findRecipe, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
+import { findRecipe, lastParseProblem, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 
 type Size = { width: number; height: number; depth: number };
@@ -428,7 +428,7 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
       if ((e as Error).message === UNAVAILABLE) return { project: rough(), recipe: null, rough: false, calls: call, unavailable: true };
     }
     const recipe = parseRecipe(raw);
-    if (!recipe) { feedback = ["the recipe was missing fields or had a part on an unknown support"]; continue; }
+    if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     feedback = validateRecipe(recipe, built, prompt);
     if (!feedback.length) {

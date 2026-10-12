@@ -31,6 +31,7 @@ describe("recipe store", () => {
   it("parses only a complete recipe", () => {
     assert.ok(parseRecipe(bin));
     assert.equal(parseRecipe({ ...bin, parts: [] }), null);
-    assert.equal(parseRecipe({ ...bin, parts: [{ ...bin.parts[0], on: ["Nope"] }] }), null);
+    // A support that names no part is dropped (the load-path check then judges it), not a refusal.
+    assert.deepEqual(parseRecipe({ ...bin, parts: [{ ...bin.parts[0], on: ["Nope"] }] })!.parts[0].on, []);
   });
 });
