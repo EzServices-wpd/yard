@@ -213,3 +213,18 @@ it("a rotor between two supports goes on the axle before the axle is glued into 
   assert.ok(at(/Slide the F hub onto/) > at(/Pass the E axle 1 through the right post and glue it there/));
   assert.ok(at(/Slide the left post onto the free end/) > at(/Fasten the 4 paddles/));
 });
+
+it("layers that form one modelled thickness get a glue-up step: a 1 1/2in ply top, a 3 5/8in post from 2x4", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const r = { key: "t-trestle", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Trestle table", size: { width: 72, height: 30, depth: 36 }, defining: ["top"], notes: [],
+    parts: [{ role: "foot", name: "Left foot", box: [0.05, 0, 0.1, 0.05, 0.05, 0.8], kind: "member" }, { role: "leg", name: "Left post", box: [0.05, 0.05, 0.45, 0.05, 0.85, 0.1], kind: "member", on: ["Left foot"] },
+      { role: "foot", name: "Right foot", box: [0.9, 0, 0.1, 0.05, 0.05, 0.8], kind: "member" }, { role: "leg", name: "Right post", box: [0.9, 0.05, 0.45, 0.05, 0.85, 0.1], kind: "member", on: ["Right foot"] },
+      { role: "stretcher", name: "Stretcher", box: [0.1, 0.4, 0.47, 0.8, 0.1, 0.06], kind: "member", on: ["Left post", "Right post"] },
+      { role: "top", name: "Tabletop", box: [0, 0.95, 0, 1, 0.05, 1], kind: "panel", on: ["Left post", "Right post"] }] } as unknown as Recipe;
+  const plan = buildPlan(buildRecipe(r, "trestle table").project);
+  const glue = plan.instructions.find((s) => s.title === "Glue up the thick parts")?.description ?? "";
+  assert.match(glue, /Left post: 2 layers of 2×4/);
+  assert.match(glue, /Tabletop: 2 layers/);
+  assert.equal(plan.cutList.find((c) => c.name === "Post")?.thicknessIn, 1.5);
+});

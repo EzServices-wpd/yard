@@ -125,14 +125,15 @@ function closetCuts(project: YardProject): CutLine[] {
     } else if (
       // Class pack: sheet goods thicker than stock are laminated plies (island/desk
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
-      (isPly || isSolidBoard) &&
-      dims.thicknessIn > STOCK_T + 0.05 &&
-      !/^leg$/i.test(family)
+      (((isPly || isSolidBoard) && dims.thicknessIn > STOCK_T + 0.05 && !/^leg$/i.test(family)) ||
+        // A lumber part thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
+        (!isSolidBoard && /^lumber-/.test(id ?? "") && dims.thicknessIn > lumberT(id) + 0.05))
     ) {
       // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
-      const plies = Math.max(2, Math.round(dims.thicknessIn / STOCK_T));
+      const T = isPly || isSolidBoard ? STOCK_T : lumberT(id);
+      const plies = Math.max(2, Math.round(dims.thicknessIn / T));
       if (dims.thicknessIn > 2.05) note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for the ${inchFrac(dims.thicknessIn)}" thickness.`;
-      dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
+      dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: T };
       qty = plies;
     }
     // 0.25" ply is ¼″ backer even when the envelope was stamped ¾″ (mirror, drawer bottoms).
@@ -1575,6 +1576,9 @@ function featureBayWording(project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 const PIECE_UNIT = /^(?:boards?|pcs?|pieces?)$/;
+
+/** A lumber stock's actual thickness (1 1/2" for a 2x4). */
+const lumberT = (id?: string) => { const d = getCatalogItem(id ?? "")?.dims; return d?.width && d.height ? Math.min(d.width, d.height) : 1.5; };
 
 export function buildPlan(project: YardProject): BuildPlan {
   // A lookup-fallback block is display-only: no cut list, Buy, price or steps, only a plain note.

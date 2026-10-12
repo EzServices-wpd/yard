@@ -554,17 +554,20 @@ export function withDrillStep(project: YardProject, steps: AssemblyStep[]): Asse
 
 /** The thickness of a sheet stock (3/4 when unknown). */
 export const sheetT = (id: string) => getCatalogItem(id)?.dims.thickness ?? 0.75;
+/** A stock's thickness: a sheet's, or a lumber board's smaller face (1 1/2" for a 2x4). */
+export const stockT = (id: string) => { const d = getCatalogItem(id)?.dims; return /^lumber-/.test(id) && d?.width && d.height ? Math.min(d.width, d.height) : sheetT(id); };
 
 /** A sheet part thicker than its sheet is laminated: its glue-up gets its own step before assembly. */
 export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
   // A drawer is an assembly of its own parts, never a lamination.
   // Any sheet part thicker than its sheet is a glue-up of sheet layers, not a part cut at a thickness no sheet has.
-  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > sheetT(p.materialId) + 0.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
+  // Lumber thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
+  const thick = project.panels.filter((p) => (/^plywood-/.test(p.materialId) || (/^lumber-/.test(p.materialId) && p.materialId !== "lumber-1x4-8")) && Math.min(p.size.width, p.size.height, p.size.depth) > stockT(p.materialId) + 0.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
   if (!thick.length) return steps;
   const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before|Drill the holes)\b/i.test(s.title));
   const lines = [...new Set(thick.map((p) => {
     const t = Math.min(p.size.width, p.size.height, p.size.depth);
-    return `${p.name.replace(/ \d+$/, "")}: ${Math.max(2, Math.round(t / sheetT(p.materialId)))} layers of ${getCatalogItem(p.materialId)?.name ?? "plywood"}`;
+    return `${p.name.replace(/ \d+$/, "")}: ${Math.max(2, Math.round(t / stockT(p.materialId)))} layers of ${getCatalogItem(p.materialId)?.name ?? "plywood"}`;
   }))];
   const step: AssemblyStep = { step: 0, title: "Glue up the thick parts", description: `${lines.join("; ")}. Spread glue on each face, stack the layers with the edges flush, clamp them flat and let them cure before shaping or drilling.`, partsUsed: [] };
   const i = at < 0 ? steps.length : at;
