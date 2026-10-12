@@ -2235,7 +2235,16 @@ const FORM_NEUTRAL = /^(?:small|big|large|tall|short|wide|deep|long|mini|tiny|gi
 export function ignoredTypedWords(project: YardProject, prompt: string): string[] {
   const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
   const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}`;
-  const name = `${project.name ?? ""} ${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
-  return phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w) && !name.includes(w)
-    && sig(generateFromPrompt(phrase.replace(new RegExp(`\\b${w}\\b`), "thing"))) === sig(project));
+  const own = `${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
+  const words = phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w));
+  // The head noun and the word right before it name the object; outer words refine a style (Warren truss bridge).
+  return words.slice(-2).filter((w) => {
+    if (own.includes(w)) return false;
+    const q = generateFromPrompt(phrase.replace(new RegExp(`\\b${w}\\b`), "thing"));
+    if (sig(q) !== sig(project)) return false;
+    // A title carries the word only when it is the builder's own name: one that echoes typed words ("Thing Frame") does not.
+    const echo = /\bthing\b/i.test(q.name ?? "");
+    const says = (t: string) => new RegExp(`\\b${w}\\b`, "i").test(t);
+    return !(!echo && says(project.name ?? "")) && !says((q.notes ?? []).join(" "));
+  });
 }
