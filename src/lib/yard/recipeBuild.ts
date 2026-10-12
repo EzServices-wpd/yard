@@ -354,6 +354,17 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels);
+  const wide = new Set<string>();
+  // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.
+  for (const p of panels) {
+    const c = getCatalogItem(p.materialId);
+    if (c?.formFactor !== "board" || !c.dims.width) continue;
+    const [, mid] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
+    if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
+    else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
+  }
   roundParts(recipe, panels);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".
@@ -383,7 +394,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [...sized, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };

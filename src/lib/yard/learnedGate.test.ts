@@ -191,3 +191,12 @@ it("hinged parts touch what they hinge to, and a lid over walls of two heights s
   const sloped = learnedRecipeFailures(frame(0.6, 0.4));
   assert.ok(!sloped.some((f) => /Lid (?:lies flat|is hinged)/.test(f)));
 });
+
+it("a panel wider than its board stock is cut from the sheet", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const r = { key: "t-cf", synonyms: [], version: 1, trust: "candidate", title: "Cold frame", learned: true, stock: "lumber-2x4-8",
+    size: { width: 48, height: 20, depth: 36 }, defining: ["wall"], notes: [],
+    parts: [{ role: "wall", name: "Back wall", box: [0, 0, 0.95, 1, 1, 0.05], kind: "panel" }, { role: "wall", name: "Front wall", box: [0, 0, 0, 1, 0.5, 0.05], kind: "panel" }] } as unknown as Recipe;
+  const b = buildRecipe(r, "cold frame");
+  assert.ok(b.project.panels.every((p) => !/2x4|2×4/.test(p.materialId)), b.project.panels.map((p) => p.materialId).join());
+});
