@@ -10,9 +10,8 @@ const OLD_WW = {"key": "water-wheel", "synonyms": ["waterwheel"], "version": 1, 
 it("learned gate: the Critic-failed water wheel and abacus fail it; a learned recipe is flagged apart from seeds", () => {
   const get = (k: string) => RECIPES.recipes.find((r) => r.key === k)!;
   // Critic's regrade: a ring with no spokes floats, fallback steps and closet wording fail; both are held.
-  const ww = learnedRecipeFailures(get("water-wheel")), ab = learnedRecipeFailures(get("abacus"));
-  assert.ok(ww.some((f) => /wheel floats: nothing joins its rim/.test(f)));
-  for (const f of [ww, ab]) assert.ok(f.some((x) => /fallback step/.test(x)) && f.some((x) => /"closet"/.test(x)));
+  const spokeless = { ...OLD_WW, parts: OLD_WW.parts.map((p) => (p.role === "wheel" ? { ...p, shape: "ring" as const } : p)) };
+  assert.ok(learnedRecipeFailures(spokeless).some((f) => /floats: nothing joins its rim/.test(f)));
   assert.ok(get("water-wheel").held && get("abacus").held);
   const box = { ...get("abacus"), parts: get("abacus").parts.map((p) => ({ ...p, shape: undefined, catalogId: p.role === "axle" ? undefined : p.catalogId, stock: undefined, kind: p.role === "bead" ? ("hardware" as const) : p.kind })) };
   assert.ok(learnedRecipeFailures(box).some((f) => /no catalogue item|drawn as a box/.test(f)));
@@ -56,7 +55,9 @@ it("moving parts are a clearance fit on their pin with no screws at the joint", 
   const ps = buildRecipe(round, "water wheel").project.panels;
   const turning = new Set(ps.filter((p) => p.turns).map((p) => p.id));
   assert.ok(turning.size);
-  assert.ok(!panelJoints(ps).some((j) => turning.has(j.a) || turning.has(j.b)));
+  // Parts that turn together (rim, spokes, paddles) fasten to each other; nothing fastens across the moving joint.
+  const pin = new Set(ps.filter((p) => /^dowel-/.test(p.materialId)).map((p) => p.id));
+  assert.ok(!panelJoints(ps).some((j) => turning.has(j.a) !== turning.has(j.b) || pin.has(j.a) || pin.has(j.b)));
 });
 
 it("repeats fill the clear span between the side posts, and beads per rod are their own count", async () => {
@@ -96,4 +97,22 @@ it("hardware with no real catalogue item blocks the merge (existing gate)", () =
   const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
   const fake = { ...ab, parts: ab.parts.map((p) => (p.role === "axle" ? { ...p, catalogId: "brass-rod-made-up" } : p)) };
   assert.ok(learnedRecipeFailures(fake).some((x) => /no catalogue item \(brass-rod-made-up\)/.test(x)));
+});
+
+it("a spinning rim gets spokes to the hub and paddles, centred on the axle, and the posts are drilled", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const ps = buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project.panels;
+  const axle = ps.find((p) => /^axle/.test(p.name))!, rim = ps.find((p) => p.name === "Wheel" || p.name === "wheel")!;
+  const c = (p: typeof axle, a: "y" | "z", k: "height" | "depth") => p.position[a] + p.size[k] / 2;
+  assert.ok(Math.abs(c(rim, "y", "height") - c(axle, "y", "height")) < 0.01 && Math.abs(c(rim, "z", "depth") - c(axle, "z", "depth")) < 0.01);
+  assert.equal(ps.filter((p) => /^Spoke/.test(p.name)).length, 2);
+  assert.equal(ps.filter((p) => /^Paddle/.test(p.name)).length, 4);
+  assert.ok(ps.filter((p) => /post/.test(p.name)).every((p) => /hole for the axle/.test(p.cutNote ?? "")));
+});
+
+it("recipe builds: their model-made steps are real steps, and no closet or opening wording", () => {
+  for (const k of ["water-wheel", "abacus"]) {
+    const f = learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!);
+    assert.ok(!f.some((x) => /fallback|fitted wording/.test(x)), `${k}: ${f.join("; ")}`);
+  }
 });

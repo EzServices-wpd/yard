@@ -177,6 +177,60 @@ function roundParts(recipe: Recipe, panels: Panel[]): void {
   }
 }
 
+type Ax = "x" | "y" | "z";
+const SZ = { x: "width", y: "height", z: "depth" } as const;
+const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p.position[a] <= q.position[a] + q.size[SZ[a]] + 0.05 && q.position[a] <= p.position[a] + p.size[SZ[a]] + 0.05);
+
+/**
+ * A spinning wheel is a rotor: its round parts sit centred on the axle, a rim (ring) is joined to the hub by
+ * crossed spokes, paddles stand on the rim at the quarter points, and every fixed part the axle passes is
+ * drilled for it.
+ */
+function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
+  for (const pin of pins.filter((p) => p.turns)) {
+    const long = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
+    const [a, b] = (["x", "y", "z"] as const).filter((x) => x !== long);
+    const ca = pin.position[a] + pin.size[SZ[a]] / 2, cb = pin.position[b] + pin.size[SZ[b]] / 2;
+    const riders = panels.filter((p) => p.turns && p !== pin && p.polygon && meets3(p, pin));
+    for (const p of riders) { p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 }; }
+    const d = pin.size[SZ[a]];
+    for (const q of panels.filter((p) => !p.turns && meets3(p, pin))) {
+      q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}Drill a ${fmtIn(d + 1 / 16)} hole for the ${pin.name.replace(/ \d+$/, "").toLowerCase()} where it passes through.`;
+    }
+    for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
+      const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
+      const t = rim.size[SZ[long]];
+      for (const [i, along] of [a, b].entries()) {
+        const across = along === a ? b : a;
+        panels.push({
+          id: `${rim.id}-spoke-${i}`, type: "rail", name: `Spoke ${i + 1}`, materialId: rim.materialId, turns: true,
+          position: { ...rim.position, [along]: (along === a ? ca : cb) - r + band / 2, [across]: (across === a ? ca : cb) - band / 2 } as Panel["position"],
+          size: { ...rim.size, [SZ[along]]: 2 * r - band, [SZ[across]]: band, [SZ[long]]: t } as Panel["size"],
+          cutNote: `Half-lap the two spokes where they cross and bore ${fmtIn(d + 1 / 16)} there for the axle.`,
+        });
+      }
+      const paddle = recipe.parts.find((q) => q.role === "paddle");
+      const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
+      if (tmpl) {
+        const pl = Math.max(tmpl.size[SZ[long]], t * 4), ph = Math.max(Math.min(tmpl.size[SZ[a]], tmpl.size[SZ[b]], r / 3), 2), pt = 0.75;
+        const keep = panels.filter((p) => p.name.replace(/ \d+$/, "") !== paddle.name);
+        panels.splice(0, panels.length, ...keep);
+        const mid = rim.position[long] + t / 2;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([u, v], i) => {
+          const pa = ca + u * (r - ph / 2), pb = cb + v * (r - ph / 2);
+          const sa = u ? ph : pt, sb = v ? ph : pt;
+          panels.push({
+            id: `${rim.id}-paddle-${i}`, type: "rail", name: `${paddle.name} ${i + 1}`, materialId: tmpl.materialId, turns: true,
+            position: { [a]: pa - sa / 2, [b]: pb - sb / 2, [long]: mid - pl / 2 } as Panel["position"],
+            size: { [SZ[a]]: sa, [SZ[b]]: sb, [SZ[long]]: pl } as Panel["size"],
+            cutNote: "Glue and screw to the rim, square to it.",
+          });
+        });
+      }
+    }
+  }
+}
+
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
@@ -245,6 +299,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     const hole = p.polygon?.holes?.[0];
     if (hole && !pins.includes(p)) hole.r += 1 / 32;
   }
+  rotors(recipe, panels, pins);
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;

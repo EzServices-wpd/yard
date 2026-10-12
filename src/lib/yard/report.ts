@@ -1230,7 +1230,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
+  if (!project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -1894,7 +1894,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
                   const sit = sitBenchTitleStem(lower);
                   if (sit) return sit.replace(/ bench$/i, "").trim() || sit;
                   if ((project.fitted?.program ?? "") === "bench") return "seat";
-                  return project.fitted?.program ?? "closet";
+                  // A recipe object is not a closet: it names itself.
+                  return project.fitted?.program ?? (project.id.startsWith("recipe-") ? "built from its recipe" : "closet");
                 })()
         }.`,
         suggestion: measureRefitTalk({

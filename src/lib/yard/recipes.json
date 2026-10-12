@@ -4189,7 +4189,8 @@
    "wall": false,
    "defining": [
     "wheel",
-    "axle"
+    "axle",
+    "paddle"
    ],
    "parts": [
     {
@@ -4304,6 +4305,22 @@
      "on": [
       "axle"
      ]
+    },
+    {
+     "role": "paddle",
+     "name": "Paddle",
+     "box": [
+      0.4,
+      0.05,
+      0.05,
+      0.2,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "wheel"
+     ]
     }
    ],
    "moving": [
@@ -4314,11 +4331,16 @@
     {
      "part": "hub",
      "motion": "spin"
+    },
+    {
+     "part": "Paddle",
+     "motion": "spin"
     }
    ],
    "notes": [
-    "Ring wheel cut from exterior plywood on a hub",
-    "Axle is a hardwood dowel resting in the posts",
+    "Rim cut from exterior plywood, joined to the hub by crossed spokes",
+    "Four paddles stand on the rim",
+    "The hardwood dowel axle turns in holes drilled through the posts",
     "Each post stands on its own base"
    ],
    "learned": true,

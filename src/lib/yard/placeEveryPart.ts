@@ -148,7 +148,8 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
   const panel = project.panels.find((p) => p.id === part.key);
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
-  if (panel?.turns) return `Slide the ${part.name} onto ${onto}. It rides free: no screws or glue at this joint.`;
+  const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
+  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. It rides free: no screws or glue at this joint.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
     case "floor":
@@ -263,7 +264,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       }
       const sentence = placeSentence(project, part, info, fix);
       const turns = project.panels.find((p) => p.id === part.key)?.turns;
-      const verb = turns ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const verb = turns && (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "")) ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
       out.splice(insertAt, 0, {
         step: insertAt + 1,
         title: `${verb} the ${part.name}`,
@@ -304,6 +305,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // Merged steps sit at their family's first slot: order them by support once more.
   out = supportOrder(project, mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s)))), parts, supports);
   if (project.panels.length) out = supportOrder(project, lowerSupports(project, out, parts, supports, fix), parts, supports);
+  // A builder that wrote no build steps (a recipe) gets every build step from the model: those are its
+  // steps, not fallbacks.
+  if (!steps.some(isBuild)) out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
   return renumber(out);
 }
 
