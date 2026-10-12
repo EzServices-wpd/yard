@@ -1701,9 +1701,10 @@ export function buildDaybed(spec: FittedSpec, prompt: string, affordances: House
 
 export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
-  let W = u.width;
+  // The mattress lies along the longer plan side, whichever axis it was typed on.
   const H = u.height;
-  let D = u.depth;
+  let W = Math.min(u.width, u.depth);
+  let D = Math.max(u.width, u.depth);
   // Shared bed frame: 4×4 legs to the rail tops, the deck 1½" under them on slats, ledgers and rails.
   // A named mattress fits between the legs.
   const mattress = mattressDeck(prompt.toLowerCase());
@@ -1713,6 +1714,7 @@ export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: 
   const panels: Panel[] = [];
   pushBedPosts(panels, x0, W, D, H, false);
   pushBedLevel(panels, { label: "", x0, W, D, postX: 3.5, postZ: 3.5, deckTop: H - 1.5, floorUnder: true });
+  ({ W, D } = bedAlongWidth(panels, x0, W, D, u, prompt));
   const sized = `${inchFrac(W)}" × ${inchFrac(H)}" × ${inchFrac(D)}"`;
   const name = spec.name.match(/platform\s*bed/i)
     ? spec.name.replace(/\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"/, sized)
@@ -1771,6 +1773,21 @@ const BED_RAIL_H = 5.5;
 const BED_RAIL_T = 1.5;
 /** Thickest mattress the guards are set for: guard tops stand 5" above it (16 CFR 1513). */
 export const BED_MATTRESS_T = 6;
+
+/**
+ * Beds lie along the width: the builders lay the mattress length along z, then the frame turns a quarter
+ * so the length runs along W and the ladder lands on a long side. Returns the turned W and D.
+ */
+function bedAlongWidth(panels: Panel[], x0: number, W: number, D: number, u: { width: number; depth: number }, prompt: string): { W: number; D: number } {
+  // A typed depth (or length) that is the long side keeps the bed lying along D, as typed.
+  if (u.depth > u.width && /\d\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:deep|long)\b/i.test(prompt)) return { W, D };
+  for (const p of panels) {
+    const { x, y, z } = p.position;
+    p.position = { x: z - D / 2, y, z: x - x0 };
+    p.size = { width: p.size.depth, height: p.size.height, depth: p.size.width };
+  }
+  return { W: D, D: W };
+}
 
 /**
  * Shared bed-frame structure (bunk, loft, platform): the load runs deck → slats → ledger cleats →
@@ -1870,8 +1887,8 @@ export function buildBunkBed(spec: FittedSpec, prompt: string, affordances: Hous
   const postX = 3;
   const postZ = 3.5;
   const mattress = mattressDeck(lower) ?? { width: 38, length: 75 };
-  let W = u.width;
-  let D = u.depth;
+  let W = Math.min(u.width, u.depth);
+  let D = Math.max(u.width, u.depth);
   if (W - postX * 2 < mattress.width - 0.25) W = mattress.width + postX * 2;
   if (D - postZ * 2 < mattress.length - 0.25) D = mattress.length + postZ * 2;
   const x0 = -W / 2;
@@ -1883,6 +1900,7 @@ export function buildBunkBed(spec: FittedSpec, prompt: string, affordances: Hous
   if (!loft) pushBedLevel(panels, { label: "Lower", x0, W, D, postX, postZ, deckTop: lowerY, floorUnder: true });
   const up = pushBedLevel(panels, { label: loft ? "Loft" : "Upper", x0, W, D, postX, postZ, deckTop: upperY, floorUnder: false });
   pushBedLadder(panels, x0, W, postZ, up.guardTop ?? upperY, upperY - P);
+  ({ W, D } = bedAlongWidth(panels, x0, W, D, u, prompt));
   const bolts = (loft ? 1 : 2) * 16;
   const headroom = upperY - 4 - (loft ? 0 : lowerY + BED_MATTRESS_T);
   const guardH = BED_MATTRESS_T + 5;
