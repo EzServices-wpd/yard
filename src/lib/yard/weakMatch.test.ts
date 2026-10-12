@@ -24,3 +24,10 @@ it("a compound noun never falls back to its last word's build: the rough shape i
   assert.equal(plan.bom.length + plan.instructions.length + plan.cutList.length + plan.totals.estCostUsd, 0);
   assert.match(plan.feasibility.summary, /Yard couldn't learn this yet/);
 });
+
+it("only a closet's Check card says closet", async () => {
+  const { buildPlan } = await import("./report.ts");
+  const msg = (q: string) => JSON.stringify(buildPlan(generateFromPrompt(q)).feasibility.issues);
+  assert.doesNotMatch(msg("easel for kids"), /closet/i);
+  assert.match(msg("linen closet 31.5 wide 78 tall 16 deep"), /— closet\./);
+});

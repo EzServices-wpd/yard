@@ -1954,8 +1954,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
                   const sit = sitBenchTitleStem(lower);
                   if (sit) return sit.replace(/ bench$/i, "").trim() || sit;
                   if ((project.fitted?.program ?? "") === "bench") return "seat";
-                  // A recipe object is not a closet: it names itself.
-                  return project.fitted?.program ?? (project.id.startsWith("recipe-") ? "built from its recipe" : "closet");
+                  // Only a closet is called a closet: a recipe object names itself, anything else is freestanding.
+                  return project.fitted?.program ?? (project.id.startsWith("recipe-") ? "built from its recipe" : project.kind === "closet" ? "closet" : "freestanding build");
                 })()
         }.`,
         suggestion: measureRefitTalk({
