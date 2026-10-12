@@ -13,3 +13,13 @@ it("Buy nouns agree with the count and packs cover what is drawn", () => {
   const stick = buildPlan(generateFromPrompt("doll bed")).bom.find((b) => /stick/i.test(b.name))!;
   assert.match(stick.name, /Sticks$/);
 });
+
+it("pack lines buy ceil(count / pack size) packs at every store", () => {
+  const plan = buildPlan(generateFromPrompt("coat rack"));
+  for (const b of plan.bom) {
+    const n = b.unit.match(/pack of (\d+)/i);
+    if (!n) continue;
+    for (const o of b.offers ?? []) if (o.unitPrice > 0) assert.equal(o.packsNeeded, Math.ceil((b.quantity * Number(n[1])) / o.packQty), `${b.name} ${o.retailer}`);
+    assert.ok((b.estimatedCost ?? 0) < 30, `${b.name} ${b.estimatedCost}`);
+  }
+});

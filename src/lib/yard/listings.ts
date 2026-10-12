@@ -1305,7 +1305,16 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     const priced = canPriceFromCatalog
       ? offersFor(id!, Math.max(1, pieces), dims)
       : [];
-    let offers: ShopOffer[] = priced.map((o) => ({
+    // A line bought in packs of N prices each listing as a pack: packs = ceil(count / N), never one per item.
+    const packN = packMatch ? parseInt(packMatch[1], 10) : 0;
+    const packed = priced.map((o) => {
+      if (!(packN > 1 && o.packQty === 1)) return o;
+      const packsNeeded = Math.ceil(pieces / packN);
+      return { ...o, packQty: packN, unitPrice: o.packPrice / packN, packsNeeded, lineTotal: Math.round(o.packPrice * packsNeeded * 100) / 100 };
+    });
+    const low = Math.min(...packed.map((o) => o.lineTotal).filter((t) => t > 0));
+    const repriced = packed.some((o, i) => o !== priced[i]) ? packed.map((o) => ({ ...o, best: o.lineTotal === low })) : priced;
+    let offers: ShopOffer[] = repriced.map((o) => ({
       retailer: o.retailer,
       label: retailerLabel(o.retailer as ShopRetailer),
       title: o.title,
