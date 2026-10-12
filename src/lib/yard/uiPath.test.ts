@@ -31,6 +31,21 @@ describe("uiPath: half-read compound nouns", () => {
       assert.match(p.notes.join(" "), /rough shape/);
     });
   }
+  // Batch nouns: a failed lookup is a full-size labelled block, never a popsicle stick cloud or craft scale.
+  for (const noun of ["spinning wheel", "butter churn", "wheelbarrow", "sundial", "sawbuck", "knife block", "chicken tractor"]) {
+    it(`${noun}: failed lookup is full size, never craft`, async () => {
+      await runYardPrompt(noun, { fresh: true, ai: stubs(async () => ({ ok: false, error: "bad" }), []) });
+      const p = useYard.getState().project;
+      assert.ok(!/popsicle|craft|stick/.test(p.primaryMaterialId), p.primaryMaterialId);
+      assert.ok(Math.max(p.overall.width, p.overall.height, p.overall.depth) >= 24, JSON.stringify(p.overall));
+      assert.equal(p.name.toLowerCase(), noun);
+    });
+  }
+  it("easel for kids is the kids' easel, not craft", async () => {
+    await runYardPrompt("easel for kids", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
+    const p = useYard.getState().project;
+    assert.ok(!/popsicle/.test(p.primaryMaterialId) && p.overall.height >= 36, JSON.stringify(p.overall));
+  });
   it("a hung lookup ends in the labelled block within the bound", async () => {
     await runYardPrompt("chicken tractor", { fresh: true, boundMs: 50, ai: stubs(() => new Promise((r) => setTimeout(() => r({ ok: false }), 300)), []) });
     assert.equal(useYard.getState().project.name, "Chicken tractor");

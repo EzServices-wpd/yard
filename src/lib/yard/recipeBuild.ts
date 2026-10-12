@@ -435,9 +435,12 @@ export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
 const PLY = "plywood-3-4-4x8";
 export function roughBlock(prompt: string, like: YardProject): YardProject {
   const noun = prompt.trim().replace(/^\w/, (c) => c.toUpperCase());
-  const o = like.overall;
+  // With no craft cue typed, a craft-stock build (stick cloud, toy) never sets the scale: full-size default, typed sizes win.
+  const craftLike = /popsicle|craft|cardboard|skewer|paper|stick/i.test(like.primaryMaterialId ?? "") && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt);
+  const o = { ...(craftLike ? { width: 36, height: 30, depth: 24 } : like.overall), ...typedSize(prompt, {} as Recipe) };
   return {
     ...like,
+    overall: o,
     // Only the size carries over: no fitted brief, opening, closet label or craft stock from the half-read build.
     id: `recipe-rough-${noun.toLowerCase().replace(/\W+/g, "-")}`,
     kind: "frame",

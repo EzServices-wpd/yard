@@ -29,7 +29,8 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   const lower = prompt.toLowerCase();
   if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(lower)) return null;
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
-  const head = headPhrase(lower);
+  // "X for kids" is the kids' X.
+  const head = `${/\bfor\s+(?:kids?|children|toddlers?)\b/.test(lower) ? "kids " : ""}${headPhrase(lower)}`;
   if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head)) return "mirror";
   if (/\b(?:baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gates?$/.test(head)) return "baby-gate";
   if (/\b(?:fire\s*wood|log|wood)\s+(?:racks?|holders?|stands?)$/.test(head)) return "firewood-rack";
