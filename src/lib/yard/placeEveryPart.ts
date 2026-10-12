@@ -10,7 +10,7 @@ import { ANATOMY_NOTE } from "./classAnatomy";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
 
-const PREP = /^(confirm|read|measure|check|lay out|mark|snap|do not cut|before|drill the holes)/i;
+const PREP = /^(confirm|read|measure|check|lay out|mark|snap|do not cut|before|drill the holes|glue up the thick parts)/i;
 
 function fastenerTalk(project: YardProject): string {
   const join = project.shopJoin;

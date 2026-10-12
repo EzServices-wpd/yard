@@ -127,10 +127,11 @@ function closetCuts(project: YardProject): CutLine[] {
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
       (isPly || isSolidBoard) &&
       dims.thicknessIn > STOCK_T + 0.05 &&
-      dims.thicknessIn <= 2.05 &&
       !/^leg$/i.test(family)
     ) {
+      // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
       const plies = Math.max(2, Math.round(dims.thicknessIn / STOCK_T));
+      if (dims.thicknessIn > 2.05) note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for the ${inchFrac(dims.thicknessIn)}" thickness.`;
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: STOCK_T };
       qty = plies;
     }

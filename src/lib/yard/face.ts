@@ -549,3 +549,17 @@ export function withDrillStep(project: YardProject, steps: AssemblyStep[]): Asse
   const i = at < 0 ? steps.length : at;
   return [...steps.slice(0, i), step, ...steps.slice(i)].map((s, k) => ({ ...s, step: k + 1 }));
 }
+
+/** A sheet part thicker than 2" is laminated: its glue-up gets its own step before assembly. */
+export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > 2.05);
+  if (!thick.length) return steps;
+  const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before|Drill the holes)\b/i.test(s.title));
+  const lines = [...new Set(thick.map((p) => {
+    const t = Math.min(p.size.width, p.size.height, p.size.depth);
+    return `${p.name.replace(/ \d+$/, "")}: ${Math.max(2, Math.round(t / 0.75))} layers of 3/4" plywood`;
+  }))];
+  const step: AssemblyStep = { step: 0, title: "Glue up the thick parts", description: `${lines.join("; ")}. Spread glue on each face, stack the layers with the edges flush, clamp them flat and let them cure before shaping or drilling.`, partsUsed: [] };
+  const i = at < 0 ? steps.length : at;
+  return [...steps.slice(0, i), step, ...steps.slice(i)].map((s, k) => ({ ...s, step: k + 1 }));
+}
