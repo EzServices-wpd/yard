@@ -581,7 +581,11 @@ function primaryFromParts(p: YardProject): YardProject {
   for (const x of p.panels) if (x.materialId) n.set(x.materialId, (n.get(x.materialId) ?? 0) + 1);
   const lumber = [...n].filter(([id]) => /^lumber-[24]x\d/.test(id)).sort((x, y) => y[1] - x[1]);
   const sheet = (n.get(p.primaryMaterialId) ?? 0);
-  if (!lumber.length || lumber.reduce((t, [, c]) => t + c, 0) <= sheet || p.primaryMaterialId !== "plywood-3-4-4x8") return p;
+  const frame = lumber.reduce((t, [, c]) => t + c, 0);
+  const oneBy = [...n].filter(([id]) => /^lumber-1x/.test(id)).reduce((t, [, c]) => t + c, 0);
+  // A 2x frame means 2x4 or heavier present and the 2x parts outnumber the 1x rails: a ply top on 2x2 legs
+  // (folding, round coffee table) or a ply seat on mostly 1x rails (bar stool) stays a plywood build.
+  if (!lumber.some(([id]) => /^lumber-(?:2x(?:[4-9]|1\d)|4x)/.test(id)) || frame <= sheet || frame <= oneBy || p.primaryMaterialId !== "plywood-3-4-4x8") return p;
   return { ...p, primaryMaterialId: n.has("lumber-2x4-8") ? "lumber-2x4-8" : lumber[0][0] };
 }
 

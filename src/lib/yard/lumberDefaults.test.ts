@@ -38,3 +38,10 @@ describe("with no stock typed, members are lumber where the real object uses lum
     assert.ok(b.panels.every((p) => p.materialId === "plywood-3-4-4x8"));
   });
 });
+
+it("header stock: a 2x frame reads 2x4; a ply top on 2x2 legs or a ply seat on 1x rails stays plywood", async () => {
+  const { generateFromPrompt } = await import("./promptMain.ts");
+  const prim = (q: string) => generateFromPrompt(q).primaryMaterialId;
+  for (const q of ["bunk bed", "dining chair", "platform bed", "daybed"]) assert.equal(prim(q), "lumber-2x4-8", q);
+  for (const q of ["folding table 48x24x36", "round coffee table 48x18", "bar stool"]) assert.equal(prim(q), "plywood-3-4-4x8", q);
+});
