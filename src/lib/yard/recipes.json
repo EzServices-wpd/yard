@@ -4265,6 +4265,165 @@
     "Open rim with radial paddles",
     "Axle rests in notches on posts"
    ]
+  },
+  {
+   "key": "abacus",
+   "synonyms": [
+    "counting frame"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "2x4 Abacus",
+   "size": {
+    "width": 16,
+    "height": 10,
+    "depth": 3.5
+   },
+   "craftSize": {
+    "width": 3.5,
+    "height": 1.5,
+    "depth": 1.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "rail",
+    "post",
+    "axle"
+   ],
+   "count": {
+    "word": "rods",
+    "default": 9
+   },
+   "parts": [
+    {
+     "role": "rail",
+     "name": "bottom rail",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "left post",
+     "box": [
+      0,
+      0.12,
+      0,
+      0.1,
+      0.76,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "bottom rail"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "right post",
+     "box": [
+      0.9,
+      0.12,
+      0,
+      0.1,
+      0.76,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "bottom rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "top rail",
+     "box": [
+      0,
+      0.88,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "left post",
+      "right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "beam",
+     "box": [
+      0.1,
+      0.55,
+      0.15,
+      0.8,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "left post",
+      "right post"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "rod",
+     "box": [
+      0.12,
+      0.12,
+      0.4,
+      0.04,
+      0.76,
+      0.2
+     ],
+     "kind": "member",
+     "on": [
+      "bottom rail",
+      "top rail"
+     ],
+     "repeat": "between"
+    },
+    {
+     "role": "bead",
+     "name": "bead",
+     "box": [
+      0.1,
+      0.2,
+      0.25,
+      0.08,
+      0.1,
+      0.5
+     ],
+     "kind": "hardware",
+     "on": [
+      "rod"
+     ],
+     "repeat": "each"
+    }
+   ],
+   "moving": [
+    {
+     "part": "bead",
+     "motion": "slide"
+    }
+   ],
+   "notes": [
+    "frame members ripped and cut from 2x4 lumber",
+    "rods are dowels or thin stock spanning top to bottom rail",
+    "beads drilled to slide freely on each rod",
+    "open frame never boxed in"
+   ]
   }
  ]
 }
