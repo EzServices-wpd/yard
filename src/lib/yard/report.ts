@@ -1580,12 +1580,41 @@ const PIECE_UNIT = /^(?:boards?|pcs?|pieces?)$/;
 /** A lumber stock's actual thickness (1 1/2" for a 2x4). */
 const lumberT = (id?: string) => { const d = getCatalogItem(id ?? "")?.dims; return d?.width && d.height ? Math.min(d.width, d.height) : 1.5; };
 
+/** Food-contact objects: boards and trays food sits on or is cut on. */
+const FOOD = /\b(?:cutting|chopping|bread|serving|charcuterie|cheese|butcher|pastry)\s+boards?\b|\b(?:butcher\s+block|serving\s+tray|salad\s+bowl|spoon|spatula|rolling\s+pin)\b/i;
+const HARDWOOD = /\b(?:maple|oak|walnut|cherry|beech|birch|teak|ash|hickory|mahogany|acacia)\b/i;
+
+/** A food-contact build is hardwood, glued with Type II glue and oiled food-safe: no screws, no floor or feet talk. */
+function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
+  const cut = plan.instructions.filter((s) => /^(?:Confirm|Cut)\b/.test(s.title)).map((s) => ({ ...s, description: s.description.replace(/\s*Predrill near the ends[^.]*\.(?:[^.]*split\.)?/, "").replace(/ and that the frame is square/, "") }));
+  const steps = [
+    ...cut,
+    { step: 0, title: "Glue up the board", description: "Spread food-safe wood glue (Type II) along the mating edges, clamp the pieces flat with the faces flush, and let it cure overnight. No screws or nails: metal dulls knives and traps food.", partsUsed: [] },
+    { step: 0, title: "Flatten and sand", description: "Scrape off the squeeze-out, plane or sand both faces flat, ease every edge, and sand to 220 grit.", partsUsed: [] },
+    { step: 0, title: "Finish with a food-safe oil", description: "Wipe on food-grade mineral oil or board butter, let it soak in, wipe off the excess, and repeat until it stops soaking in. No varnish or stain on a food surface.", partsUsed: [] },
+  ].map((s, i) => ({ ...s, step: i + 1 }));
+  const bom = plan.bom.filter((b) => !/screw|nail|bracket|backer|glide|\bfeet\b|\bfoot\b|stain|varnish|polyurethane|sealer/i.test(b.name));
+  if (!bom.some((b) => /mineral oil|board butter/i.test(b.name))) bom.push({ name: "Food-safe mineral oil", quantity: 1, unit: "bottle", searchQuery: "food grade mineral oil cutting board", estimatedCost: 8.98 });
+  const glue = bom.find((b) => b.catalogId === "glue");
+  if (glue) Object.assign(glue, { name: "Wood glue (food-safe, Type II)", searchQuery: "titebond II wood glue" });
+  return { ...plan, instructions: steps, bom };
+}
+
 export function buildPlan(project: YardProject): BuildPlan {
+  if (!project.displayOnly && FOOD.test(`${project.prompt ?? ""} ${project.name}`)) {
+    // Hardwood unless a species was typed: the board is planned under that species' stock.
+    const prompt = HARDWOOD.test(project.prompt ?? "") ? project.prompt : `maple ${project.prompt ?? project.name}`;
+    return buildPlanBody({ ...project, prompt, panels: project.panels.filter((p) => !/\b(?:foot|feet|glides?)\b/i.test(p.name)) }, foodContact);
+  }
+  return buildPlanBody(project);
+}
+
+function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: BuildPlan) => BuildPlan = (_p, plan) => plan): BuildPlan {
   // A lookup-fallback block is display-only: no cut list, Buy, price or steps, only a plain note.
   if (project.displayOnly) {
     return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
   }
-  const plan = fallbackStepOne(project, buildPlanInner(project));
+  const plan = shape(project, fallbackStepOne(project, buildPlanInner(project)));
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));

@@ -228,3 +228,15 @@ it("layers that form one modelled thickness get a glue-up step: a 1 1/2in ply to
   assert.match(glue, /Tabletop: 2 layers/);
   assert.equal(plan.cutList.find((c) => c.name === "Post")?.thicknessIn, 1.5);
 });
+
+it("a food-contact board is hardwood, glued, oiled food-safe: no screws, floor or feet", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const r = { key: "t-board", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Cutting board", size: { width: 18, height: 1.5, depth: 12 }, defining: ["board"], notes: [], count: { word: "strips", default: 4 },
+    parts: [{ role: "board", name: "Board strip", box: [0, 0, 0, 0.25, 1, 1], kind: "member", repeat: "each" }, { role: "foot", name: "Foot", box: [0.05, 0, 0.05, 0.1, 0.2, 0.1], kind: "member" }] } as unknown as Recipe;
+  const plan = buildPlan(buildRecipe(r, "cutting board").project);
+  const text = JSON.stringify([plan.instructions, plan.bom]);
+  assert.doesNotMatch(text.replace(/No screws or nails/g, ""), /screw|\bfloor\b|\bfeet\b|\bfoot\b/i);
+  assert.match(text, /Maple/);
+  assert.match(text, /food-safe/i);
+});
