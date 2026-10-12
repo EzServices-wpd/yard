@@ -15,7 +15,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
   let width = 24;
   let depth = 24;
 
-  const isBridge = /bridge|span|viaduct|overpass|trestle|golden gate|brooklyn/.test(lower);
+  const isBridge = /bridge|span|viaduct|overpass|trestle(?!\s+(?:table|bench|desk))|golden gate|brooklyn/.test(lower);
   const isArch = /arch|arbor|arbour|pergola|gateway|portal/.test(lower);
   const dimText = stripLumberStock(lower).replace(/[″″]/g, '"').replace(/[–—]/g, "-");
 

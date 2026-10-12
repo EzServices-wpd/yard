@@ -727,7 +727,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
     const typed = weekendTypedSize(prompt);
     if (typed) {
       const tol = sizeTol(stock);
-      const isBridge = /bridge|span|viaduct|overpass|trestle|golden gate|brooklyn/.test(prompt.toLowerCase());
+      const isBridge = /bridge|span|viaduct|overpass|trestle(?!\s+(?:table|bench|desk))|golden gate|brooklyn/.test(prompt.toLowerCase());
       const bits: string[] = [];
       const longOnly =
         /\d+(?:\.\d+)?\s*(?:in|inch|inches|["″])?\s*long\b/.test(prompt.toLowerCase()) &&

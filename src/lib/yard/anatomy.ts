@@ -29,7 +29,7 @@ const LOFT =
   /tower|spire|pylon|obelisk|lighthouse|minaret|chimney|steeple|skyscraper|column|stack|rocket|pagoda|windmill|monument/;
 const SHELL =
   /dome|capitol|mosque|rotunda|igloo|onion|basilica|stupa|planetarium|opera|pantheon|capitol|observatory|geodesic/;
-const SPAN = /bridge|viaduct|overpass|trestle/;
+const SPAN = /bridge|viaduct|overpass|trestle(?!\s+(?:table|bench|desk))/;
 const CARCASE = /chair|stool|table|desk|bed|bench|box|cube|frame|shelf|crate|cabinet/;
 const FIGURE =
   /giraffe|horse|\bdog\b|\bcat\b|animal|creature|dinosaur|t-?rex|raptor|dino|robot|android|person|human|\bman\b|\bwoman\b|figure|statue|liberty|bird|eagle|dragon|unicorn|elephant|lion|bear|wolf|fox|deer|\bcow\b|\bpig\b|sheep|goat|\bcamels?\b|llama|zebra|moose|kangaroo|monkey|\bape\b|gorilla|troll|ogre|alien|character|mascot|godzilla|pokemon|pokémon|sonic|mario|charizard|pikachu|kaiju|wyvern/;

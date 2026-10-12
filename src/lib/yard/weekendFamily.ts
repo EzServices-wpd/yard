@@ -645,7 +645,7 @@ const LATTICE_NOUN =
 
 const ARCH_NOUN = /arch|gateway|portal|arbor|arbour|pergola/;
 
-const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle|warren|\btruss\b/;
+const TRUSS_NOUN = /bridge|span|viaduct|overpass|trestle(?!\s+(?:table|bench|desk))|warren|\btruss\b/;
 
 const FRAME_NOUN = /\bbox\b|\bcube\b|\bframe\b|platform|catapult|trebuchet|mangonel|onager|ballista|launcher|slingshot|easel|scaffold|\bladder\b|soft-?launch|\bramp\b|\btrough\b|marble\s+run|phone\s*(?:lean\s*)?stand|lean\s*stand|lean\s*frame|picture\s*ledge|(?:photo|art)\s*ledge|\bledge\b|tablet\s*lean|laptop\s*lean|music\s*sheet|sheet\s*music|recipe[- ]?card|plant\s*stand|pot\s*stand|hamper\s*stand|basket\s*stand|figurine\s*stand|umbrella\s*stand|hose\s*reel(?:\s*stand)?|monitor\s*stand|monitor\s*riser|screen\s*stand|floor\s*lamp(?:\s*stand)?|lamp\s*stand|step-?up|step\s*stool|one-?\s*step|step-?shelf|climb\s+step|climb\s+stool|climb(?:ing)?\s*triangle|pikler|step\s*triangle|two-?\s*step|three-?\s*step/;
 

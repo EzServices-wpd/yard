@@ -94,7 +94,7 @@ function isNotHouse(lower: string) {
   if (/birdhouse/.test(lower)) return true;
   // Planter box stays house (open-top fitted) — not craft Wire skeleton.
   // Bridge spans only — a shelf/rail spanning a door portal or wall-mount tool rail stays house.
-  if (/bridge|viaduct|overpass|trestle/.test(lower) && !/tool\s*rail|pegboard|lumber\s*rack/.test(lower)) return true;
+  if (/bridge|viaduct|overpass|trestle(?!\s+(?:table|bench|desk))/.test(lower) && !/tool\s*rail|pegboard|lumber\s*rack/.test(lower)) return true;
   if (
     /(?:\bspan\b|spanning)/.test(lower) &&
     !/door\s*portal|portal|doorway|door opening|wall\s*span|tool\s*rail|wall\s*mount|clear\s*wall|hooks?|pegboard|peg\s*board|lumber\s*rack/.test(
