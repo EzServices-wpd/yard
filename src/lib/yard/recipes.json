@@ -5119,6 +5119,98 @@
     "Top is 6 ft long by 3 ft deep."
    ],
    "learned": true
+  },
+  {
+   "key": "sundial",
+   "synonyms": [
+    "sun-dial",
+    "garden sundial"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Horizontal Garden Sundial",
+   "size": {
+    "width": 16,
+    "height": 40,
+    "depth": 16
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "gnomon"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Pedestal",
+     "box": [
+      0.32,
+      0,
+      0.32,
+      0.36,
+      0.82,
+      0.36
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "plate",
+     "name": "Capital",
+     "box": [
+      0.22,
+      0.82,
+      0.22,
+      0.56,
+      0.04,
+      0.56
+     ],
+     "kind": "member",
+     "on": [
+      "Pedestal"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Dialplate",
+     "box": [
+      0.06,
+      0.86,
+      0.06,
+      0.88,
+      0.03,
+      0.88
+     ],
+     "kind": "panel",
+     "on": [
+      "Capital"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "gnomon",
+     "name": "Gnomon",
+     "box": [
+      0.47,
+      0.89,
+      0.22,
+      0.06,
+      0.10999999999999999,
+      0.52
+     ],
+     "kind": "member",
+     "on": [
+      "Dialplate"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Triangular gnomon set at an angle equal to local latitude casts the time-telling shadow.",
+    "Dial plate carries radial hour lines; north-pointing style edge is the shadow-caster.",
+    "Commonly bronze, stone or cast metal on a masonry or metal pedestal."
+   ],
+   "learned": true
   }
  ]
 }
