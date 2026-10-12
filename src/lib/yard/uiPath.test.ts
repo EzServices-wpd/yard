@@ -46,6 +46,12 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(!/popsicle/.test(p.primaryMaterialId) && p.overall.height >= 36, JSON.stringify(p.overall));
   });
+  it("bunk bed twin over twin 75 long is the bunk builder, not a lookup block", async () => {
+    const calls: string[] = [];
+    await runYardPrompt("bunk bed twin over twin 75 long", { fresh: true, ai: stubs(async () => ({ ok: false }), calls) });
+    const p = useYard.getState().project;
+    assert.ok(!calls.includes("lookup") && /^Bunk bed/.test(p.name) && p.panels.length > 10, `${p.name} ${calls}`);
+  });
   it("a cutting board is cutting-board scale, never a table on legs", async () => {
     await runYardPrompt("cutting board", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;
