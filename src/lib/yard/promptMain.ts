@@ -540,7 +540,7 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   if (recipe) return withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
   const built = (a: Parameters<typeof generateRaw>) => {
     const solved = solveModel(generateRaw(...a));
-    return solved.panels.length ? applySpokenFace(solved, a[0]) : solved;
+    return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
   };
   const project = built(args);
   const override = args[3]?.sizeOverride;
@@ -567,7 +567,10 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   const finished = tabled.panels.length && !tabled.pocket ? { ...tabled, notes: notesWithFinishedDepth(tabled.notes ?? [], tabled.panels, tabled.overall.depth) } : tabled;
   const joined = spokenJoin(args[0]);
   const stamped = joined ? { ...finished, shopJoin: joined } : finished;
-  return settleOnFloor(hooksShowInModel(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0]))));
+  // A door style frames each front only after its slab size, reveal and position are final, so a style
+  // switch changes the face construction and nothing else.
+  const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
+  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])))));
 }
 
 /**

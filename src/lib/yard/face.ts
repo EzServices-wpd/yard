@@ -246,7 +246,8 @@ function makePanel(
     id: createId(type.slice(0, 2)),
     type,
     name,
-    position: { x: r8(x), y: r8(y), z: r8(z) },
+    // Positions stay exact: a 1/16" reveal must survive; cut sizes read on the 1/8" grid.
+    position: { x, y, z },
     size: { width: r8(w), height: r8(h), depth: r8(d) },
     materialId,
     ...extra,
@@ -426,8 +427,10 @@ function addBase(panels: Panel[]): "added" | "drawers" | "short" | "skip" {
  * Apply the face the prompt asked for. No-op when the prompt names none,
  * so a plain generate stays the piece it already was.
  */
-export function applySpokenFace(project: YardProject, prompt: string): YardProject {
-  const want = readSpokenFace(prompt);
+export function applySpokenFace(project: YardProject, prompt: string, phase?: "body" | "fronts"): YardProject {
+  const said = readSpokenFace(prompt);
+  // "body" builds the headboard and base; "fronts" frames the doors once their size and reveal are final.
+  const want = phase === "body" ? { ...said, shaker: false } : phase === "fronts" ? { headboard: "plain" as const, base: false, shaker: said.shaker } : said;
   const head = isHeadboard(project);
   if (want.headboard === "plain" && !want.shaker && !want.base) return project;
   if (!project.panels.length) return project;
