@@ -9,3 +9,15 @@ it("learned gate: the Critic-failed water wheel and abacus fail it; a learned re
   assert.ok(learnedRecipeFailures(get("abacus")).some((f) => /no catalogue item/.test(f)));
   assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate"));
 });
+
+it("floor uprights on a narrow footprint get full-depth feet and pass the tip check", async () => {
+  const { buildRecipe, footprint, validateRecipe } = await import("./recipeBuild.ts");
+  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  const b = buildRecipe(ww, "water wheel");
+  assert.equal(b.project.panels.filter((p) => /^Foot under /.test(p.name)).length, 2);
+  const f = footprint(b.project.panels);
+  assert.ok(f.z[1] - f.z[0] >= b.size.depth - 0.01);
+  assert.ok(!validateRecipe(ww, b, "water wheel").some((x) => /tips|floats/.test(x)));
+  b.project.panels.splice(0, b.project.panels.length, ...b.project.panels.filter((p) => !/^Foot under /.test(p.name)));
+  assert.ok(validateRecipe(ww, b, "water wheel").some((x) => /tips|floats/.test(x)));
+});

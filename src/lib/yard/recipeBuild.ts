@@ -124,6 +124,32 @@ function snapMembers(recipe: Recipe, panels: Panel[], memberId: string): Panel[]
   return out;
 }
 
+/** Floor footprint (x and z reach of the parts on the floor) and the volume-weighted center of mass. */
+export function footprint(panels: Panel[]) {
+  const floor = panels.filter((p) => p.position.y < 0.01);
+  const ext = (a: "x" | "z", k: "width" | "depth") => floor.length ? [Math.min(...floor.map((p) => p.position[a])), Math.max(...floor.map((p) => p.position[a] + p.size[k]))] : [0, 0];
+  let v = 0, cx = 0, cz = 0;
+  for (const p of panels) { const w = p.size.width * p.size.height * p.size.depth; v += w; cx += w * (p.position.x + p.size.width / 2); cz += w * (p.position.z + p.size.depth / 2); }
+  return { x: ext("x", "width"), z: ext("z", "depth"), com: { x: cx / (v || 1), z: cz / (v || 1) } };
+}
+/** A build on floor uprights tips when they reach less than half its depth front to back. */
+const tippy = (f: ReturnType<typeof footprint>, size: Size) => f.z[1] - f.z[0] < size.depth / 2 - 0.01;
+/** Uprights: parts on the floor taller than two stock thicknesses (a low toy on wheels just settles). */
+const uprights = (panels: Panel[]) => panels.some((p) => p.position.y < 0.01 && (p.size.height > 3 || /^Foot under /.test(p.name)));
+const fmtIn = (n: number) => `${Math.round(n * 8) / 8}"`;
+
+/** Free-standing uprights on a too-narrow footprint get a foot each, the full depth, cut from the member stock. */
+function addFeet(recipe: Recipe, panels: Panel[], size: Size, member: string): boolean {
+  if (recipe.wall || !uprights(panels) || !tippy(footprint(panels), size)) return false;
+  const fh = getCatalogItem(member)?.dims.height ?? 1.5;
+  for (const p of panels.filter((q) => q.position.y < 0.01 && q.size.height > fh * 2)) {
+    p.position = { ...p.position, y: fh };
+    p.size = { ...p.size, height: p.size.height - fh };
+    panels.push({ id: `${p.id}-foot`, type: "rail", name: `Foot under ${p.name}`, position: { x: p.position.x, y: 0, z: 0 }, size: { width: p.size.width, height: fh, depth: size.depth }, materialId: member });
+  }
+  return true;
+}
+
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
@@ -174,6 +200,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   }
   const fitted = snapMembers(recipe, panels, stock.member);
   panels.splice(0, panels.length, ...fitted);
+  const footed = addFeet(recipe, panels, size, stock.member);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
@@ -192,7 +219,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     instances: [],
     panels,
     primaryMaterialId: stock.member,
-    notes: [`${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
@@ -233,8 +260,13 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
       if (part.on?.length) {
         const carriers = part.on.flatMap(byName);
         if (!carriers.some((c) => c !== b && boxGap(b, c) <= CONTACT_GAP)) fail.push(`${b.role} does not touch ${part.on.join(" or ")}`);
-      } else if (!recipe.wall && b.c.y - b.h[1] > 0.01) fail.push(`${b.role} floats: it stands on nothing`);
+      } else if (!recipe.wall && b.c.y - b.h[1] > 0.01 && !boxes.some((f) => f.role === `Foot under ${b.role}` && boxGap(b, f) <= CONTACT_GAP)) fail.push(`${b.role} floats: it stands on nothing`);
     }
+  }
+  if (!recipe.wall && uprights(project.panels)) {
+    const f = footprint(project.panels);
+    if (tippy(f, project.overall)) fail.push(`tips: floor footprint ${fmtIn(f.z[1] - f.z[0])} deep under a ${fmtIn(project.overall.height)} build`);
+    if (f.com.x < f.x[0] || f.com.x > f.x[1] || f.com.z < f.z[0] || f.com.z > f.z[1]) fail.push("tips: center of mass outside the footprint");
   }
   return [...new Set(fail)];
 }
