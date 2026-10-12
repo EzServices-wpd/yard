@@ -4967,6 +4967,158 @@
     "Commonly used for writing, reading, or supporting a tablet"
    ],
    "learned": true
+  },
+  {
+   "key": "table",
+   "synonyms": [
+    "trestle table"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "6-Foot Trestle Table",
+   "size": {
+    "width": 72,
+    "height": 30,
+    "depth": 36
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "rail",
+     "name": "Left foot",
+     "box": [
+      0.05,
+      0,
+      0.1,
+      0.04,
+      0.1,
+      0.8
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left post",
+     "box": [
+      0.06,
+      0.1,
+      0.45,
+      0.03,
+      0.8,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Left foot"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left beam",
+     "box": [
+      0.05,
+      0.9,
+      0.1,
+      0.04,
+      0.05,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Left post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right foot",
+     "box": [
+      0.91,
+      0,
+      0.1,
+      0.04,
+      0.1,
+      0.8
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right post",
+     "box": [
+      0.92,
+      0.1,
+      0.45,
+      0.03,
+      0.8,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Right foot"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right beam",
+     "box": [
+      0.91,
+      0.9,
+      0.1,
+      0.04,
+      0.05,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Stretcher",
+     "box": [
+      0.06,
+      0.4,
+      0.45,
+      0.88,
+      0.05,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Left post",
+      "Right post"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Tabletop",
+     "box": [
+      0,
+      0.95,
+      0,
+      1,
+      0.05,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left beam",
+      "Right beam"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Traditional trestle table with end supports joined by a central stretcher.",
+    "Top is 6 ft long by 3 ft deep."
+   ],
+   "learned": true
   }
  ]
 }
