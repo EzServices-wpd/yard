@@ -4256,10 +4256,10 @@
      "role": "axle",
      "name": "axle",
      "box": [
-      0.0,
+      0,
       0.6,
       0.46,
-      1.0,
+      1,
       0.06,
       0.08
      ],
@@ -4467,6 +4467,162 @@
     "Frame cut from 2x4 lumber",
     "Rods are 1/4 in hardwood dowels set in holes drilled through the top and bottom rails",
     "Beads are slices of 1 in dowel, drilled to slide freely on each rod"
+   ],
+   "learned": true
+  },
+  {
+   "key": "cold-frame",
+   "synonyms": [
+    "coldframe",
+    "garden frame"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cold Frame",
+   "size": {
+    "width": 48,
+    "height": 24,
+    "depth": 36
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "lid",
+    "bay"
+   ],
+   "parts": [
+    {
+     "role": "bay",
+     "name": "Front wall",
+     "box": [
+      0.04,
+      0,
+      0,
+      0.92,
+      0.42,
+      0.06
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "bay",
+     "name": "Back wall",
+     "box": [
+      0.04,
+      0,
+      0.94,
+      0.92,
+      0.96,
+      0.06
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "bay",
+     "name": "Left wall",
+     "box": [
+      0,
+      0,
+      0.04,
+      0.06,
+      0.96,
+      0.92
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "bay",
+     "name": "Right wall",
+     "box": [
+      0.94,
+      0,
+      0.04,
+      0.06,
+      0.96,
+      0.92
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "rail",
+     "name": "Front top rail",
+     "box": [
+      0.04,
+      0.42,
+      0,
+      0.92,
+      0.06,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Front wall"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back top rail",
+     "box": [
+      0.04,
+      0.9,
+      0.94,
+      0.92,
+      0.06,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "lid",
+     "name": "Glazed lid",
+     "box": [
+      0.02,
+      0.45,
+      0.02,
+      0.96,
+      0.08,
+      0.96
+     ],
+     "kind": "cover",
+     "on": [
+      "Front top rail",
+      "Back top rail",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Lid hinges",
+     "box": [
+      0.15,
+      0.92,
+      0.93,
+      0.7,
+      0.04,
+      0.05
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back top rail",
+      "Glazed lid"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Glazed lid",
+     "motion": "hinge"
+    }
+   ],
+   "notes": [
+    "open bottom sits on soil",
+    "lid slopes down toward front for light and drainage",
+    "glazing is glass or clear plastic"
    ],
    "learned": true
   }
