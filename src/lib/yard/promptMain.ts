@@ -388,7 +388,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const asTyped = generateTyped(prompt);
     if (asTyped.kind === "figure" && (asTyped.panels ?? []).length) typedBuild = hooksShowInModel(withFoldingLegs(refuseUnusedStock(asTyped, args[1], true), prompt));
   }
-  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt);
+  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,
@@ -571,6 +571,18 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
   return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])))));
+}
+
+/** The header names the stock the frame is cut from: a sheet primary on a mostly-lumber build (a ply seat or
+ * deck on a 2x frame) gives way to the frame lumber, 2x4 when the frame uses it. A 1x build keeps its sheet. */
+function primaryFromParts(p: YardProject): YardProject {
+  if (getCatalogItem(p.primaryMaterialId)?.category === "lumber") return p;
+  const n = new Map<string, number>();
+  for (const x of p.panels) if (x.materialId) n.set(x.materialId, (n.get(x.materialId) ?? 0) + 1);
+  const lumber = [...n].filter(([id]) => /^lumber-[24]x\d/.test(id)).sort((x, y) => y[1] - x[1]);
+  const sheet = (n.get(p.primaryMaterialId) ?? 0);
+  if (!lumber.length || lumber.reduce((t, [, c]) => t + c, 0) <= sheet || p.primaryMaterialId !== "plywood-3-4-4x8") return p;
+  return { ...p, primaryMaterialId: n.has("lumber-2x4-8") ? "lumber-2x4-8" : lumber[0][0] };
 }
 
 /**
