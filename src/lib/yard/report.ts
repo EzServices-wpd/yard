@@ -1594,7 +1594,9 @@ export function buildPlan(project: YardProject): BuildPlan {
   // The header total is the Buy list: the sum of its rows, never a separate estimate.
   const out = smallestSheetStock({ ...plan, bom });
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
-  return { ...out, totals: { ...out.totals, estCostUsd: sum } };
+  // The summary line (and the Check card that reads it) prices from the same Buy total.
+  const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
+  return { ...out, feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
 }
 
 /**
