@@ -252,7 +252,7 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
       p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 };
       const h = p.polygon?.holes?.[0];
       if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
-      if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [^,.]+/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} axle)`);
+      if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [\d./]+"?/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} ${pin.name.replace(/ \d+$/, "").toLowerCase()})`);
     }
     for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
       const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);

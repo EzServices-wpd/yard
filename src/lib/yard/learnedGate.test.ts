@@ -12,7 +12,7 @@ it("learned gate: the Critic-failed water wheel and abacus fail it; a learned re
   // Critic's regrade: a ring with no spokes floats, fallback steps and closet wording fail; both are held.
   const spokeless = { ...OLD_WW, parts: OLD_WW.parts.map((p) => (p.role === "wheel" ? { ...p, shape: "ring" as const } : p)) };
   assert.ok(learnedRecipeFailures(spokeless).some((f) => /floats: nothing joins its rim/.test(f)));
-  assert.ok(get("water-wheel").held && get("abacus").held);
+  assert.ok(get("water-wheel").held && !get("abacus").held); // Critic 8db4a41: abacus TRUSTED
   const box = { ...get("abacus"), parts: get("abacus").parts.map((p) => ({ ...p, shape: undefined, catalogId: p.role === "axle" ? undefined : p.catalogId, stock: undefined, kind: p.role === "bead" ? ("hardware" as const) : p.kind })) };
   assert.ok(learnedRecipeFailures(box).some((f) => /no catalogue item|drawn as a box/.test(f)));
   assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate"));
