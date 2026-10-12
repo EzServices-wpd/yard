@@ -10,7 +10,7 @@ import { ANATOMY_NOTE } from "./classAnatomy";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
 
-const PREP = /^(confirm|read|measure|check|lay out|mark|snap|do not cut|before)/i;
+const PREP = /^(confirm|read|measure|check|lay out|mark|snap|do not cut|before|drill the holes)/i;
 
 function fastenerTalk(project: YardProject): string {
   const join = project.shopJoin;
@@ -149,7 +149,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const panel = project.panels.find((p) => p.id === part.key);
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
-  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. It rides free: no screws or glue at this joint.`;
+  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. It turns free on it: no screws or glue into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
     case "floor":

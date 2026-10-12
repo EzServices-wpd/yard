@@ -4456,7 +4456,8 @@
       "top rail"
      ],
      "repeat": "each",
-     "catalogId": "dowel-1-4-36"
+     "catalogId": "dowel-1-4-36",
+     "shape": "cylinder"
     },
     {
      "role": "bead",

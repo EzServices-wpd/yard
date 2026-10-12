@@ -107,7 +107,7 @@ it("a spinning rim gets spokes to the hub and paddles, centred on the axle, and 
   assert.ok(Math.abs(c(rim, "y", "height") - c(axle, "y", "height")) < 0.01 && Math.abs(c(rim, "z", "depth") - c(axle, "z", "depth")) < 0.01);
   assert.equal(ps.filter((p) => /^Spoke/.test(p.name)).length, 2);
   assert.equal(ps.filter((p) => /^Paddle/.test(p.name)).length, 4);
-  assert.ok(ps.filter((p) => /post/.test(p.name)).every((p) => /hole for the axle/.test(p.cutNote ?? "")));
+  assert.ok(ps.filter((p) => /post/.test(p.name)).every((p) => /hole for each axle/.test(p.cutNote ?? "")));
 });
 
 it("recipe builds: their model-made steps are real steps, and no closet or opening wording", () => {
@@ -115,4 +115,21 @@ it("recipe builds: their model-made steps are real steps, and no closet or openi
     const f = learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!);
     assert.ok(!f.some((x) => /fallback|fitted wording/.test(x)), `${k}: ${f.join("; ")}`);
   }
+});
+
+it("bores run along their rod, rods are round dowels seated in drilled holes, with a drilling step", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const b = buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus");
+  const ps = b.project.panels;
+  const rod = ps.find((p) => p.name === "rod 1")!, bead = ps.find((p) => p.name === "bead 1")!;
+  assert.equal(rod.polygon?.plane, "xz");
+  assert.equal(bead.polygon?.plane, "xz");
+  const rail = ps.find((p) => p.name === "bottom rail")!;
+  assert.ok(rod.position.y < rail.position.y + rail.size.height - 0.5);
+  assert.match(rail.cutNote ?? "", /Drill a .* hole for each rod/);
+  const t = buildPlan(b.project).instructions;
+  const drill = t.findIndex((s) => s.title === "Drill the holes");
+  assert.ok(drill > 0 && drill < t.findIndex((s) => /rod/.test(s.title)));
+  assert.ok(!/Drive \d+/.test(t[drill].description));
 });

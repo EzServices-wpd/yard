@@ -75,7 +75,7 @@ function panelType(p: RecipePart): PanelType {
 }
 
 /** A moving part's pin (axle, pivot, shaft) is real hardware: a hardwood dowel through its carriers. */
-const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin)s?\b/i;
+const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel)s?\b/i;
 function pinDowel(memberId: string): string {
   const it = getCatalogItem(memberId);
   const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9);
@@ -160,11 +160,15 @@ export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|dru
  */
 function roundParts(recipe: Recipe, panels: Panel[]): void {
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
+  const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   for (const p of panels) {
     const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
     if (!part?.shape) continue;
     const by = [...AX].sort((a, b) => p.size[a[1]] - p.size[b[1]]);
-    const axis = part.shape === "disc" || part.shape === "ring" ? by[0] : by[2];
+    // A bored part on a pin turns about the pin: its bore runs along the pin's length.
+    const pin = part.bore || part.shape === "bead" || part.shape === "ring" ? pins.find((q) => q !== p && meets3(p, q)) : undefined;
+    const pinAxis = pin && [...AX].sort((a, b) => pin.size[b[1]] - pin.size[a[1]])[0];
+    const axis = pinAxis ?? (part.shape === "disc" || part.shape === "ring" ? by[0] : by[2]);
     const cross = AX.filter((a) => a !== axis);
     const dia = Math.min(...cross.map(([, k]) => p.size[k]));
     for (const [a, k] of cross) { p.position = { ...p.position, [a]: p.position[a] + (p.size[k] - dia) / 2 }; p.size = { ...p.size, [k]: dia }; }
@@ -187,6 +191,23 @@ const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p
  * drilled for it.
  */
 function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
+  // Every dowel sits in drilled holes: each fixed part it meets is drilled for it.
+  for (const pin of pins) {
+    const L = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
+    const dia = Math.min(...(["x", "y", "z"] as const).filter((x) => x !== L).map((x) => pin.size[SZ[x]]));
+    const name = pin.name.replace(/ \d+$/, "").toLowerCase();
+    for (const q of panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin))) {
+      const deep = Math.round(Math.min(0.75, q.size[SZ[L]] * 0.6) * 16) / 16;
+      const through = pin.position[L] < q.position[L] - 0.05 && pin.position[L] + pin.size[SZ[L]] > q.position[L] + q.size[SZ[L]] + 0.05;
+      const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.`;
+      // The dowel runs into its hole: it reaches into a part at either end by the hole depth.
+      const lo = pin.position[L], hi = lo + pin.size[SZ[L]];
+      if (!(q.cutNote ?? "").includes(n)) q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}${n}`;
+      if (through) continue;
+      if (q.position[L] >= hi - 0.05) pin.size = { ...pin.size, [SZ[L]]: pin.size[SZ[L]] + deep };
+      else if (q.position[L] + q.size[SZ[L]] <= lo + 0.05) { pin.position = { ...pin.position, [L]: lo - deep }; pin.size = { ...pin.size, [SZ[L]]: pin.size[SZ[L]] + deep }; }
+    }
+  }
   for (const pin of pins.filter((p) => p.turns)) {
     const long = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
     const [a, b] = (["x", "y", "z"] as const).filter((x) => x !== long);
@@ -194,9 +215,6 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const riders = panels.filter((p) => p.turns && p !== pin && p.polygon && meets3(p, pin));
     for (const p of riders) { p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 }; }
     const d = pin.size[SZ[a]];
-    for (const q of panels.filter((p) => !p.turns && meets3(p, pin))) {
-      q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}Drill a ${fmtIn(d + 1 / 16)} hole for the ${pin.name.replace(/ \d+$/, "").toLowerCase()} where it passes through.`;
-    }
     for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
       const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
       const t = rim.size[SZ[long]];

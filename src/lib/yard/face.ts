@@ -533,3 +533,19 @@ export function withLeafGlueUp(project: YardProject, steps: AssemblyStep[]): Ass
   const hang = { ...steps[at], partsUsed: [...new Set([...(steps[at].partsUsed ?? []), ...kinds])] };
   return [...steps.slice(0, at), step, hang, ...steps.slice(at + 1)].map((s, i) => ({ ...s, step: i + 1 }));
 }
+
+/** Parts with drilled holes (dowel rods, axles) get a drilling step before the first part goes on. */
+export function withDrillStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const drilled = project.panels.filter((p) => /\bDrill an? .*?(?:deep|through)\./.test(p.cutNote ?? ""));
+  if (!drilled.length) return steps;
+  const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before)\b/i.test(s.title));
+  const notes = [...new Map(drilled.map((p) => [p.name.replace(/ \d+$/, ""), p.cutNote!.match(/Drill an? .*?(?:deep|through)\./)![0]])).entries()];
+  const step: AssemblyStep = {
+    step: 0,
+    title: "Drill the holes",
+    description: `${notes.map(([n, d]) => `${n}: ${d.replace(/^Drill/, "drill")}`).join(" ")} Mark each hole from the model's spacing, clamp a scrap under the part, and drill square to the face.`,
+    partsUsed: [],
+  };
+  const i = at < 0 ? steps.length : at;
+  return [...steps.slice(0, i), step, ...steps.slice(i)].map((s, k) => ({ ...s, step: k + 1 }));
+}
