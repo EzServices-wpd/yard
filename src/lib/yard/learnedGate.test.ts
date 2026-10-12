@@ -49,3 +49,14 @@ it("moving parts are a clearance fit on their pin with no screws at the joint", 
   assert.ok(turning.size);
   assert.ok(!panelJoints(ps).some((j) => turning.has(j.a) || turning.has(j.b)));
 });
+
+it("repeats fill the clear span between the side posts, and beads per rod are their own count", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
+  const r2 = { ...ab, parts: ab.parts.map((p) => (p.role === "axle" ? { ...p, repeat: "each" as const, box: [0.4, 0.12, 0.4, 0.2, 0.76, 0.2] as typeof p.box } : p.role === "bead" ? { ...p, per: 5 } : p)) };
+  const ps = buildRecipe(r2, "abacus").project.panels;
+  const rods = ps.filter((p) => /^rod/.test(p.name)), beads = ps.filter((p) => /^bead/.test(p.name));
+  assert.equal(rods.length, 9);
+  assert.equal(beads.length, 45);
+  assert.ok(rods.every((p) => p.position.x >= 1.6 - 1e-6 && p.position.x + p.size.width <= 14.4 + 1e-6));
+});

@@ -190,13 +190,20 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const size: Size = { ...base, ...perUnit, ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) };
   const panels: Panel[] = [];
   const seen = new Map<string, number>();
+  // Repeats fill the clear span between the side members (posts, sides at the width's edges), not the full width.
+  const sides = recipe.parts.filter((p) => !p.repeat && p.box[3] < 0.25);
+  const L = Math.max(0, ...sides.filter((p) => p.box[0] < 0.01).map((p) => p.box[0] + p.box[3]));
+  const R = Math.min(1, ...sides.filter((p) => p.box[0] + p.box[3] > 0.99).map((p) => p.box[0]));
   for (const part of recipe.parts) {
     const reps = part.repeat === "each" || part.repeat === "stair" ? count : part.repeat === "between" ? count + 1 : 1;
-    for (let i = 0; i < reps; i++) {
-      const [x, y, z, w, h, d] = part.box;
+    for (let r = 0; r < reps * (part.per ?? 1); r++) {
+      const i = Math.floor(r / (part.per ?? 1)), k = r % (part.per ?? 1);
+      const [x, y0, z, w, h, d] = part.box;
+      const y = y0 + k * h;
       const cell = part.repeat === "each" ? 1 / count : 1;
-      const px = part.repeat === "between" ? Math.min(Math.max(i / count - w / 2, 0), 1 - w) : part.repeat === "each" ? (i + x) * cell : x;
-      const pw = part.repeat === "each" ? w * cell : w;
+      const span = part.repeat === "each" || part.repeat === "between" ? R - L : 1, at = span === 1 ? 0 : L;
+      const px = at + span * (part.repeat === "between" ? Math.min(Math.max(i / count - w / 2, 0), 1 - w) : part.repeat === "each" ? (i + x) * cell : x / span);
+      const pw = part.repeat === "each" ? w * cell * span : w;
       const n = (seen.get(part.name) ?? 0) + 1;
       seen.set(part.name, n);
       // A stair step i sits one rise up and one run back from the step below it (z = 1 is the front).
@@ -207,7 +214,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
-        name: reps > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
+        name: reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
         materialId: part.kind === "hardware" && !part.catalogId && PIN.test(part.name) ? pinDowel(stock.member) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),

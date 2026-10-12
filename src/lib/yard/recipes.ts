@@ -19,6 +19,8 @@ export type RecipePart = {
   on?: string[];
   /** "each" repeats the part once per counted unit, "between" once per boundary (count + 1). */
   repeat?: "each" | "between" | "stair";
+  /** Copies on each carrier (beads per rod), stacked one box-height apart along the carrier; its own count. */
+  per?: number;
   /** Catalog stock for this part when no stock is typed (4x4 posts under 2x6 beams). */
   stock?: string;
   /** A catalog id for a hardware part. */
