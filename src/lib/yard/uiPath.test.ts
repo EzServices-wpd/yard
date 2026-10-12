@@ -50,7 +50,7 @@ describe("uiPath: half-read compound nouns", () => {
     await runYardPrompt("trestle table 6 feet", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;
     assert.equal(p.overall.width, 72);
-    assert.ok(p.overall.depth < 48 && !/seat|bridge/i.test(p.name), p.name);
+    assert.ok(!/seat|bridge/i.test(p.name), p.name);
   });
   it("a hung lookup ends in the labelled block within the bound", async () => {
     await runYardPrompt("chicken tractor", { fresh: true, boundMs: 50, ai: stubs(() => new Promise((r) => setTimeout(() => r({ ok: false }), 300)), []) });

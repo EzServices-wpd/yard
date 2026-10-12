@@ -288,8 +288,6 @@ export function parseBrief(prompt: string): FittedSpec | null {
   if (!Number.isFinite(width) && program === "table") {
     const span = tableSpanFromPrompt(t);
     if (Number.isFinite(span)) width = span;
-    // A bare span ("table 6 feet") is the length of a rectangular top: it never squares the plan.
-    if (Number.isFinite(span) && !Number.isFinite(depth) && !isRound && !isSquareTop && !isOval && !trip.h && span > 48) depth = /coffee/.test(lower) ? 22 : 36;
   }
 
   if (!Number.isFinite(width) && trip.w) {
