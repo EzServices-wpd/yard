@@ -565,3 +565,29 @@ export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): A
   const i = at < 0 ? steps.length : at;
   return [...steps.slice(0, i), step, ...steps.slice(i)].map((s, k) => ({ ...s, step: k + 1 }));
 }
+
+/** Repeated dowel parts (rods, beads) go in as one step per family, not one step per rod. */
+export function foldRepeats(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const fam = (n: string) => n.replace(/ \d+$/, "");
+  const dowel = new Set(project.panels.filter((p) => /^dowel-/.test(p.materialId)).map((p) => p.name.toLowerCase()));
+  const families = new Set([...dowel].map(fam));
+  const famOf = (s: AssemblyStep) => {
+    const f = [...new Set((s.partsUsed ?? []).map((n) => (dowel.has(n.toLowerCase()) ? fam(n.toLowerCase()) : "")))];
+    return f.length === 1 && f[0] ? f[0] : "";
+  };
+  const groups = new Map<string, number[]>();
+  steps.forEach((s, i) => { const f = famOf(s); if (f) groups.set(f, [...(groups.get(f) ?? []), i]); });
+  const drop = new Set<number>();
+  const out = steps.map((s) => ({ ...s }));
+  for (const [f, idx] of groups) {
+    if (idx.length < 2) continue;
+    const used = idx.flatMap((i) => steps[i].partsUsed ?? []);
+    let text = steps[idx[0]].description;
+    for (const g of families) text = text.replace(new RegExp(`the (?:[A-Z]{1,2} )?${g} \\d+\\b`, "gi"), g === f ? `each ${g}` : `its ${g}`);
+    text = [...new Set(text.split(/(?<=\.)\s+/).filter((x) => !/^Where:/.test(x)))].join(" ");
+    const last = idx[idx.length - 1];
+    out[last] = { ...steps[last], title: `${steps[last].title.split(" ")[0]} ${steps[last].title.split(" ")[1] === "on" ? "on " : ""}the ${used.length} ${f}s`, description: `${used.length} ${f}s, the same way: ${text}`, partsUsed: used };
+    idx.slice(0, -1).forEach((i) => drop.add(i));
+  }
+  return out.filter((_, i) => !drop.has(i)).map((s, k) => ({ ...s, step: k + 1 }));
+}

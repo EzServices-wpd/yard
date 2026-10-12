@@ -2,7 +2,7 @@ import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
 import { jobFurnitureSteps } from "./jobFurniture";
 import { placeEveryPart } from "./placeEveryPart";
-import { withDrillStep, withLaminateStep, withLeafGlueUp } from "./face";
+import { foldRepeats, withDrillStep, withLaminateStep, withLeafGlueUp } from "./face";
 import { classAnatomySteps } from "./classAnatomy";
 import type { AssemblyStep, YardProject } from "./types";
 import { isBoughtHardwareName } from "./boughtHardware";
@@ -18,7 +18,7 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
     .map((s) => display && /^(Sit on it|Load it|Stand on it)$/i.test(s.title)
       ? { ...s, title: "Set it on display", description: "This is a display model. Set it on a shelf where it can be seen and enjoyed." }
       : s);
-  return withLaminateStep(project, withDrillStep(project, placeEveryPart(project, withLeafGlueUp(project, withHardwareStep(project, withFrameStack(project, steps))))));
+  return withLaminateStep(project, withDrillStep(project, foldRepeats(project, placeEveryPart(project, withLeafGlueUp(project, withHardwareStep(project, withFrameStack(project, steps)))))));
 }
 
 /**

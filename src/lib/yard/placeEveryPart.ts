@@ -147,6 +147,15 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const onto = supportTalk(project, info);
   // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
   const panel = project.panels.find((p) => p.id === part.key);
+  // A bored bead threads onto the rod it rides on, never through the bead before it.
+  if (panel?.turns && /^dowel-/.test(panel.materialId) && panel.polygon?.holes?.length) {
+    const c = (p: typeof panel, a: "x" | "y" | "z", k: "width" | "height" | "depth") => p.position[a] + p.size[k] / 2;
+    const rod = project.panels.find((q) => q !== panel && /^dowel-/.test(q.materialId) && !q.polygon?.holes?.length && (["x", "y", "z"] as const).filter((a, i) => {
+      const k = (["width", "height", "depth"] as const)[i];
+      return q.position[a] - 0.01 <= c(panel, a, k) && c(panel, a, k) <= q.position[a] + q.size[k] + 0.01;
+    }).length === 3);
+    return `Thread the ${part.name} onto ${rod ? `the ${rod.name}` : onto}. It slides free on it: no glue.`;
+  }
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.

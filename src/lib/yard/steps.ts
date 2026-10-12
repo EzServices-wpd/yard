@@ -2685,7 +2685,8 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
       for (let k = Math.max(2, Math.round(t / 0.75)); k > 0; k--) push(`${p.name.replace(/ \d+$/, "")} layer`, p.type, a, b, 0.75);
       continue;
     }
-    push(p.name, p.type, w, h, d);
+    // Identical repeated parts (rod 1 … rod 9) are one saw line.
+    push(p.name.replace(/ \d+$/, ""), p.type, w, h, d);
   }
   return [...map.values()].map((g) => {
     return `${g.qty} ${shopPlural(g.label, g.qty)} ${fmtSheetCut(g.w, g.h, g.d)}".`;

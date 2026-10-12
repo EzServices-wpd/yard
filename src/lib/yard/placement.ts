@@ -244,7 +244,7 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   for (const t of [...tops].sort((a, b) => a - b)) if (!uniq.some((u) => Math.abs(u - t) < 1 / 32)) uniq.push(t);
   const floorTalk = (t: number) => (ref && ctx.floor ? ` (${f(t)} from the floor)` : "");
   const L = ctx.letters.get(first.id);
-  const fam = cutListName(first.name, first.type).toLowerCase();
+  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "");
   const supTop = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
   const supBottom = sups.length ? Math.min(...sups.map((id) => ctx.box.get(id)!.min.y)) : null;
   if (group.length === 1 || uniq.length === 1) {
@@ -406,7 +406,7 @@ function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
   const uniq: number[] = [];
   for (const t of [...tops].sort((a, b) => a - b)) if (!uniq.some((u) => Math.abs(u - t) < 1 / 32)) uniq.push(t);
   const L = ctx.letters.get(first.id);
-  const fam = cutListName(first.name, first.type).toLowerCase();
+  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "");
   const supTop = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
   const who = group.length === 1 ? nameOf(ctx, first) : `${countWord(group.length)} ${L ? `${L} ` : ""}${plural(fam)}`;
   const supTops = sups.map((id) => ctx.box.get(id)!.max.y);
@@ -424,7 +424,8 @@ function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
       out.sentences.push(`That is ${f(gaps[0])} apart, measured top to top.`);
       out.measures.push({ kind: "spacing", ids: group.map((p) => p.id), value: gaps[0] });
     }
-    if (sups.length) out.sentences.push(`Mark every height on ${supTalk} before you fix any ${fam}.`);
+    // Parts that slide free on a rod (beads) have no fixed heights to mark.
+    if (sups.length && !group.every((p) => p.turns)) out.sentences.push(`Mark every height on ${supTalk} before you fix any ${fam}.`);
   }
   // Inset from the outside faces of the supports (legs) or the unit front.
   if (sups.length && !first.yaw) {
