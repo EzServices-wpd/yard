@@ -166,6 +166,8 @@ export type Panel = {
    * plane "xz" = plan outline extruded up by size.height; "xy" = front outline extruded by size.depth.
    */
   polygon?: { plane: "xz" | "xy" | "zy"; pts: [number, number][]; /** Round through-holes (drilled), same local frame as pts. */ holes?: { x: number; y: number; r: number }[] };
+  /** Turns or rides on a pin (wheel, lid, arm): its joints take no screws, it is bored 1/16" over its pin. */
+  turns?: boolean;
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */

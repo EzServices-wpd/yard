@@ -230,6 +230,14 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   const footed = addFeet(recipe, panels, size, stock.member);
   roundParts(recipe, panels);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
+  // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".
+  const movers = new Set((recipe.moving ?? []).map((m) => m.part));
+  for (const p of panels) {
+    if (!movers.has(p.name) && !movers.has(p.name.replace(/ \d+$/, "")) && !(movers.size && pins.includes(p))) continue;
+    p.turns = true;
+    const hole = p.polygon?.holes?.[0];
+    if (hole && !pins.includes(p)) hole.r += 1 / 32;
+  }
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;

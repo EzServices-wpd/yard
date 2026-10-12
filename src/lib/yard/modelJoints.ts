@@ -52,7 +52,8 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       const declared =
         parts[i].joints?.some((x) => x.with === parts[j].id) || parts[j].joints?.some((x) => x.with === parts[i].id);
       if (g < -tol && !declared && g < -0.8) continue;
-      if (noScrew(parts[i], parts[j])) continue;
+      // A moving joint is a clearance fit on its pin, never screwed shut.
+      if (parts[i].turns || parts[j].turns || noScrew(parts[i], parts[j])) continue;
       const [l1, l2] = others.sort((x, y) => y - x);
       // Boards laid side by side (or stacked) in one plane, touching along their full length, are not
       // fastened to each other — each one fastens to what it rests on. Ends and short edges still join.

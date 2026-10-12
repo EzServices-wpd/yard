@@ -35,5 +35,17 @@ it("round shapes: a ring wheel on an x axle draws a zy outline with an open cent
   assert.ok(!learnedRecipeFailures(round).some((f) => /drawn as a box/.test(f)));
   const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
   const beads = buildRecipe({ ...ab, parts: ab.parts.map((p) => (p.role === "bead" ? { ...p, shape: "bead" as const, bore: 0.25 } : p)) }, "abacus").project.panels.filter((p) => /^bead/.test(p.name));
-  assert.ok(beads.length && beads.every((b) => b.polygon?.holes?.[0].r === 0.125));
+  assert.ok(beads.length && beads.every((b) => b.polygon?.holes?.[0].r === 0.125 + 1 / 32 && b.turns));
+});
+
+it("moving parts are a clearance fit on their pin with no screws at the joint", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { panelJoints } = await import("./modelJoints.ts");
+  const ww = RECIPES.recipes.find((r) => r.key === "water-wheel")!;
+  assert.ok(ww.moving?.length);
+  const round = { ...ww, parts: ww.parts.map((p) => (p.role === "wheel" ? { ...p, shape: "ring" as const } : p)) };
+  const ps = buildRecipe(round, "water wheel").project.panels;
+  const turning = new Set(ps.filter((p) => p.turns).map((p) => p.id));
+  assert.ok(turning.size);
+  assert.ok(!panelJoints(ps).some((j) => turning.has(j.a) || turning.has(j.b)));
 });
