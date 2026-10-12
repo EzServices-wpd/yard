@@ -35,9 +35,27 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   for (const b of plan.bom) if (!SUPPLY.test(b.name) && !cutStock.has(b.name)) fail.push(`Buy ${b.name}: no part is cut from it`);
   // Wording: a freestanding recipe prints no closet / footprint / opening text.
   if (!recipe.wall) {
-    const text = [built.project.name, ...built.project.notes, ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
+    const text = [built.project.name, ...built.project.notes, plan.feasibility?.summary ?? "", ...(plan.feasibility?.issues ?? []).map((i) => i.message), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
     const hit = text.match(FITTED);
     if (hit) fail.push(`fitted wording "${hit[0]}" on a freestanding build`);
+  }
+  // Every part has a real step: no "not yet in a step" fallback.
+  if (plan.instructions.some((s) => /not yet in a step/i.test(`${s.tips ?? ""} ${s.description}`))) fail.push("a part has only a fallback step");
+  // A ring floats unless some other part reaches across its open centre to the rim (spokes, a web).
+  for (const ring of panels.filter((p) => p.polygon?.holes?.length && recipe.parts.some((q) => q.shape === "ring" && (q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))))) {
+    const [a, b] = ring.polygon!.plane === "zy" ? (["z", "y"] as const) : ring.polygon!.plane === "xy" ? (["x", "y"] as const) : (["x", "z"] as const);
+    const k = (ax: "x" | "y" | "z") => (ax === "x" ? "width" : ax === "y" ? "height" : "depth");
+    const c = [ring.position[a] + ring.size[k(a)] / 2, ring.position[b] + ring.size[k(b)] / 2];
+    const inner = ring.polygon!.holes![0].r;
+    const reach = (p: (typeof panels)[number]) => {
+      const lo = [p.position[a], p.position[b]], hi = [p.position[a] + p.size[k(a)], p.position[b] + p.size[k(b)]];
+      const far = Math.hypot(Math.max(Math.abs(lo[0] - c[0]), Math.abs(hi[0] - c[0])), Math.max(Math.abs(lo[1] - c[1]), Math.abs(hi[1] - c[1])));
+      const near = Math.hypot(Math.max(lo[0] - c[0], 0, c[0] - hi[0]), Math.max(lo[1] - c[1], 0, c[1] - hi[1]));
+      return near < inner - 0.05 && far >= inner;
+    };
+    const ax3 = (["x", "y", "z"] as const).find((x) => x !== a && x !== b)!;
+    const overlaps = (p: (typeof panels)[number]) => p.position[ax3] <= ring.position[ax3] + ring.size[k(ax3)] + 0.05 && ring.position[ax3] <= p.position[ax3] + p.size[k(ax3)] + 0.05;
+    if (!panels.some((p) => p !== ring && overlaps(p) && reach(p) && !/^dowel-/.test(p.materialId))) fail.push(`${ring.name} floats: nothing joins its rim to the hub`);
   }
   // Names and roles: each part is its own named thing, not every part one role ("rail" for posts, axle and wheel).
   const roles = new Set(recipe.parts.map((p) => p.role));

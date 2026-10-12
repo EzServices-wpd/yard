@@ -9,10 +9,11 @@ const OLD_WW = {"key": "water-wheel", "synonyms": ["waterwheel"], "version": 1, 
 
 it("learned gate: the Critic-failed water wheel and abacus fail it; a learned recipe is flagged apart from seeds", () => {
   const get = (k: string) => RECIPES.recipes.find((r) => r.key === k)!;
-  // Rebuilt with round parts and real dowel stock, both pass and are back on Ideas.
-  assert.deepEqual(learnedRecipeFailures(get("water-wheel")), []);
-  assert.deepEqual(learnedRecipeFailures(get("abacus")), []);
-  assert.ok(!get("water-wheel").held && !get("abacus").held);
+  // Critic's regrade: a ring with no spokes floats, fallback steps and closet wording fail; both are held.
+  const ww = learnedRecipeFailures(get("water-wheel")), ab = learnedRecipeFailures(get("abacus"));
+  assert.ok(ww.some((f) => /wheel floats: nothing joins its rim/.test(f)));
+  for (const f of [ww, ab]) assert.ok(f.some((x) => /fallback step/.test(x)) && f.some((x) => /"closet"/.test(x)));
+  assert.ok(get("water-wheel").held && get("abacus").held);
   const box = { ...get("abacus"), parts: get("abacus").parts.map((p) => ({ ...p, shape: undefined, catalogId: p.role === "axle" ? undefined : p.catalogId, stock: undefined, kind: p.role === "bead" ? ("hardware" as const) : p.kind })) };
   assert.ok(learnedRecipeFailures(box).some((f) => /no catalogue item|drawn as a box/.test(f)));
   assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate"));
