@@ -1,6 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
-import { leafDoor } from "./face";
+import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stoolRiseRunTalk, stoolStepCount } from "./climb";
@@ -2680,9 +2680,10 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     }
     // A laminated sheet part is cut as its 3/4" layers, the glue-up step stacks them.
     const t = Math.min(w, h, d);
-    if (/^plywood-/.test(p.materialId) && t > 2.05) {
+    const st = sheetT(p.materialId);
+    if (/^plywood-/.test(p.materialId) && t > st + 0.05) {
       const [a, b] = [w, h, d].sort((x, y) => y - x);
-      for (let k = Math.max(2, Math.round(t / 0.75)); k > 0; k--) push(`${p.name.replace(/ \d+$/, "")} layer`, p.type, a, b, 0.75);
+      for (let k = Math.max(2, Math.round(t / st)); k > 0; k--) push(`${p.name.replace(/ \d+$/, "")} layer`, p.type, a, b, st);
       continue;
     }
     // Identical repeated parts (rod 1 … rod 9) are one saw line.

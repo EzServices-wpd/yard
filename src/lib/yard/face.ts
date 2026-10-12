@@ -1,3 +1,4 @@
+import { getCatalogItem } from "./catalog";
 import { createId } from "@/lib/utils";
 import { isHingedLidChest } from "./family";
 import { isBoundingDrawerPanel } from "./shopPlural";
@@ -551,15 +552,19 @@ export function withDrillStep(project: YardProject, steps: AssemblyStep[]): Asse
   return [...steps.slice(0, i), step, ...steps.slice(i)].map((s, k) => ({ ...s, step: k + 1 }));
 }
 
-/** A sheet part thicker than 2" is laminated: its glue-up gets its own step before assembly. */
+/** The thickness of a sheet stock (3/4 when unknown). */
+export const sheetT = (id: string) => getCatalogItem(id)?.dims.thickness ?? 0.75;
+
+/** A sheet part thicker than its sheet is laminated: its glue-up gets its own step before assembly. */
 export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
   // A drawer is an assembly of its own parts, never a lamination.
-  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > 2.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
+  // Any sheet part thicker than its sheet is a glue-up of sheet layers, not a part cut at a thickness no sheet has.
+  const thick = project.panels.filter((p) => /^plywood-/.test(p.materialId) && Math.min(p.size.width, p.size.height, p.size.depth) > sheetT(p.materialId) + 0.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
   if (!thick.length) return steps;
   const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before|Drill the holes)\b/i.test(s.title));
   const lines = [...new Set(thick.map((p) => {
     const t = Math.min(p.size.width, p.size.height, p.size.depth);
-    return `${p.name.replace(/ \d+$/, "")}: ${Math.max(2, Math.round(t / 0.75))} layers of 3/4" plywood`;
+    return `${p.name.replace(/ \d+$/, "")}: ${Math.max(2, Math.round(t / sheetT(p.materialId)))} layers of ${getCatalogItem(p.materialId)?.name ?? "plywood"}`;
   }))];
   const step: AssemblyStep = { step: 0, title: "Glue up the thick parts", description: `${lines.join("; ")}. Spread glue on each face, stack the layers with the edges flush, clamp them flat and let them cure before shaping or drilling.`, partsUsed: [] };
   const i = at < 0 ? steps.length : at;
