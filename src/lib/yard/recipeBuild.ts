@@ -287,9 +287,13 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
   return typed.length > 0 && !typed.some((w) => name.includes(w));
 }
 
-/** A lookup call that gives up after `ms`; an unavailable AI answers "unavailable" so the page keeps its build. */
+/**
+ * A lookup call that gives up after `ms`; an unavailable AI answers "unavailable" so the page keeps its build.
+ * A live recipe answer takes 30-60 s (measured on yard.wiki); a 9 s cut timed out every call, so no recipe
+ * ever passed and the recipe bot never proposed one.
+ */
 export const UNAVAILABLE = "unavailable";
-export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, ms = 9000): Lookup {
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, ms = 75_000): Lookup {
   return async (_prompt, feedback) => {
     const timer = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
     const r = await Promise.race([call(feedback), timer]);
