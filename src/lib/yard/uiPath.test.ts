@@ -86,3 +86,16 @@ describe("uiPath: half-read compound nouns", () => {
     assert.equal(useYard.getState().grokBusy, false);
   });
 });
+
+it("bed axes: 'long' is the mattress axis (W), 'wide' runs across it (D); the header prints the built size and a mattress note", async () => {
+  const { generateFromPrompt } = await import("./promptMain.ts");
+  const bed = (q: string) => generateFromPrompt(q);
+  const a = bed("bunk bed 90 long");
+  assert.deepEqual([a.overall.width, a.overall.depth, a.overall.height], [90, 44, 65]);
+  assert.match(a.name, /90" long × 44" wide × 65" tall/);
+  const b = bed("bunk bed 40 wide");
+  assert.deepEqual([b.overall.width, b.overall.depth], [82, 40]);
+  assert.match(b.name, /82" long × 40" wide/);
+  assert.ok((b.notes ?? []).some((n) => /No standard mattress fits|Too narrow/.test(n)));
+  assert.ok((bed("bunk bed").notes ?? []).some((n) => /Fits a 75" twin/.test(n)));
+});

@@ -1870,10 +1870,11 @@ if (!/^Loft bed/i.test(loftStill.name) || loftStill.panels.filter((p) => p.type 
 }
 
 // Batch-22: platform bed identity + W×L×H + sleep deck (never Yard House wire).
+// Every bed lies along W (YARD Chief, bed axes): 'long' is the mattress axis (model W), 'wide' runs across it (D).
 const platformPrompts: Array<[string, number, number, number]> = [
-  ["house: platform bed 60″ wide × 80″ long × 14″ tall", 60, 14, 80],
-  ["house: platform bed 76″ wide × 80″ long × 14″ tall", 76, 14, 80],
-  ["platform bed 60 wide × 80 long × 14 tall", 60, 14, 80],
+  ["house: platform bed 60″ wide × 80″ long × 14″ tall", 80, 14, 60],
+  ["house: platform bed 76″ wide × 80″ long × 14″ tall", 80, 14, 76],
+  ["platform bed 60 wide × 80 long × 14 tall", 80, 14, 60],
 ];
 for (const [pp, w, h, d] of platformPrompts) {
   if (!isPlatformBed(pp.toLowerCase())) failHonesty("isPlatformBed miss", pp);

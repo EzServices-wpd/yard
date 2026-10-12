@@ -1701,15 +1701,15 @@ export function buildDaybed(spec: FittedSpec, prompt: string, affordances: House
 
 export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: HouseAffordance[]): YardProject {
   const u = spec.unit;
-  // The mattress lies along the longer plan side, whichever axis it was typed on.
+  // 'wide' is across the mattress and 'long' along it, as typed; an untyped side frames the mattress.
   const H = u.height;
-  let W = Math.min(u.width, u.depth);
-  let D = Math.max(u.width, u.depth);
+  let W = u.width;
+  let D = u.depth;
   // Shared bed frame: 4×4 legs to the rail tops, the deck 1½" under them on slats, ledgers and rails.
   // A named mattress fits between the legs.
   const mattress = mattressDeck(prompt.toLowerCase());
-  if (mattress && W - 7 < mattress.width - 0.25) W = mattress.width + 7;
-  if (mattress && D - 7 < mattress.length - 0.25) D = mattress.length + 7;
+  if (mattress && bedTyped(prompt, "wide") == null && W - 7 < mattress.width - 0.25) W = mattress.width + 7;
+  if (mattress && bedTyped(prompt, "long") == null && D - 7 < mattress.length - 0.25) D = mattress.length + 7;
   const x0 = -W / 2;
   const panels: Panel[] = [];
   pushBedPosts(panels, x0, W, D, H, false);
@@ -1793,25 +1793,43 @@ function typedMattress(prompt: string): number | null {
  * 82" outside"); the title never prints a size the frame is not.
  */
 export function bedHonesty(project: YardProject, prompt: string): YardProject {
-  const { width: W, height: H, depth: D } = project.overall;
+  const { height: H } = project.overall;
   const lower = prompt.toLowerCase();
   const m = mattressDeck(lower);
   const hit = typedMattress(prompt);
   const word = (lower.match(/cal(?:ifornia)?\s*king|\bking\b|\bqueen\b|\bfull\b|\bdouble\b|\btwin\b/) ?? [""])[0];
   const ext = (a: "x" | "z", k: "width" | "depth") => Math.max(...project.panels.map((p) => p.position[a] + p.size[k])) - Math.min(...project.panels.map((p) => p.position[a]));
-  const built = [ext("x", "width"), H, ext("z", "depth")].map((n) => Math.round(n * 100) / 100);
-  const said = [...(project.name ?? "").matchAll(/(\d+(?:\.\d+)?)"/g)].map((x) => Number(x[1]));
-  const name = said.some((n) => !built.includes(n)) ? `${(project.name ?? "Bed").replace(/\s*\d.*$/, "")} ${inchFrac(W)}" × ${inchFrac(H)}" × ${inchFrac(D)}"` : project.name;
+  // The header prints the built outside size: long (the mattress axis, W) × wide (D) × tall.
+  const L = Math.round(ext("x", "width") * 100) / 100, Wd = Math.round(ext("z", "depth") * 100) / 100;
+  const base = (project.name ?? "Bed").replace(/\s*\d.*$/, "");
+  const name = `${base} ${inchFrac(L)}" long × ${inchFrac(Wd)}" wide × ${inchFrac(H)}" tall`;
+  // About 3 1/2" of frame each side along the mattress and 3" across it.
+  const room = { length: L - 7, width: Wd - 6 };
+  const STD = [["cal king", 72, 84], ["king", 76, 80], ["queen", 60, 80], ["full", 54, 75], ["twin XL", 38, 80], ["twin", 38, 75]] as const;
+  const fits = STD.filter(([, w, l]) => w <= room.width + 0.5 && l <= room.length + 0.5).sort((a, b) => b[1] * b[2] - a[1] * a[2])[0];
   const fit = m && hit != null
-    ? `Fits a ${hit}" ${word} mattress, ${inchFrac(hit === m.length ? Math.max(W, D) : Math.min(W, D))}" outside.`
-    : null;
-  const notes = (project.notes ?? []).map((n, i) => (i === 0 && name !== project.name ? n.replace(project.name ?? "", name ?? "") : n));
-  return { ...project, name, notes: fit ? [notes[0], fit, ...notes.slice(1)].filter(Boolean) : notes, ...(project.fitted ? { fitted: { ...project.fitted, name: name ?? project.fitted.name } } : {}) };
+    ? `Fits a ${hit}" ${word} mattress, ${inchFrac(hit === m.length ? L : Wd)}" outside.`
+    : m && (room.width < m.width - 0.5 || room.length < m.length - 0.5)
+      ? `Too ${room.width < m.width - 0.5 ? "narrow" : "short"} for a ${word} mattress (${m.width}" × ${m.length}"): ${inchFrac(L)}" × ${inchFrac(Wd)}" outside leaves ${inchFrac(room.length)}" × ${inchFrac(room.width)}" inside.`
+      : fits
+        ? `Fits a ${fits[2]}" ${fits[0]} mattress (${fits[1]}" × ${fits[2]}") inside ${inchFrac(L)}" × ${inchFrac(Wd)}" outside.`
+        : `No standard mattress fits: ${inchFrac(L)}" × ${inchFrac(Wd)}" outside leaves ${inchFrac(room.length)}" × ${inchFrac(room.width)}" inside.`;
+  const notes = (project.notes ?? []).map((n, i) => (i === 0 ? n.replace(project.name ?? "", name) : n));
+  return { ...project, name, notes: [notes[0], fit, ...notes.slice(1)].filter(Boolean), ...(project.fitted ? { fitted: { ...project.fitted, name } } : {}) };
+}
+
+/** A typed bed size on one axis ('wide' or 'long'), unless it is the named mattress's own dimension. */
+export function bedTyped(prompt: string, axis: "wide" | "long"): number | null {
+  const re = axis === "wide" ? /(\d+(?:\.\d+)?)\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:wide|width)\b/i : /(\d+(?:\.\d+)?)\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:long|length)\b/i;
+  const t = prompt.match(re);
+  const m = mattressDeck(prompt.toLowerCase());
+  if (!t || (m && Number(t[1]) === (axis === "wide" ? m.width : m.length))) return null;
+  return Number(t[1]);
 }
 
 function bedAlongWidth(panels: Panel[], x0: number, W: number, D: number, u: { width: number; depth: number }, prompt: string): { W: number; D: number } {
-  // A typed depth (or length) that is the long side keeps the bed lying along D, as typed, unless it is the mattress's own size.
-  if (u.depth > u.width && !typedMattress(prompt) && /\d\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:deep|long)\b/i.test(prompt)) return { W, D };
+  // Every bed lies along W: 'long' is the mattress axis (model W), 'wide' runs across it (model D).
+  void u; void prompt;
   for (const p of panels) {
     const { x, y, z } = p.position;
     p.position = { x: z - D / 2, y, z: x - x0 };
@@ -1918,10 +1936,11 @@ export function buildBunkBed(spec: FittedSpec, prompt: string, affordances: Hous
   const postX = 3;
   const postZ = 3.5;
   const mattress = mattressDeck(lower) ?? { width: 38, length: 75 };
-  let W = Math.min(u.width, u.depth);
-  let D = Math.max(u.width, u.depth);
-  if (W - postX * 2 < mattress.width - 0.25) W = mattress.width + postX * 2;
-  if (D - postZ * 2 < mattress.length - 0.25) D = mattress.length + postZ * 2;
+  // 'wide' is across the mattress and 'long' along it, as typed; an untyped side frames the mattress.
+  let W = u.width;
+  let D = u.depth;
+  if (bedTyped(prompt, "wide") == null && W - postX * 2 < mattress.width - 0.25) W = mattress.width + postX * 2;
+  if (bedTyped(prompt, "long") == null && D - postZ * 2 < mattress.length - 0.25) D = mattress.length + postZ * 2;
   const x0 = -W / 2;
   // Upper guard tops sit ½" under the post tops; the lower deck sits about a foot up.
   const upperY = H - 0.5 - BED_MATTRESS_T - 5;

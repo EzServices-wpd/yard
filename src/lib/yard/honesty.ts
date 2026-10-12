@@ -124,9 +124,17 @@ export function axisOrderNote(prompt: string, overall: { width: number; height: 
 /** A bed size equal to the named mattress's own dimension is the mattress, not the frame: the frame builds around it. */
 function mattressFree(t: TypedExtents | null, prompt: string): TypedExtents | null {
   const mat = t && /\bbed\b/i.test(prompt) ? mattressDeck(prompt.toLowerCase()) : null;
-  if (!t || !mat) return t;
+  const lower = prompt.toLowerCase();
+  const bed = isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower);
+  if (!t || (!mat && !bed)) return t;
   const out = { ...t, labeled: { ...t.labeled } } as TypedExtents;
-  for (const k of ["width", "depth"] as const) if (out[k] === mat.length || out[k] === mat.width) { delete out[k]; out.labeled[k] = false; }
+  if (mat) for (const k of ["width", "depth"] as const) if (out[k] === mat.length || out[k] === mat.width) { delete out[k]; out.labeled[k] = false; }
+  if (!bed) return out;
+  // A bed lies along W: 'long' (read as depth) is model W and 'wide' (read as width) is model D.
+  const [w, d, lw, ld] = [out.width, out.depth, out.labeled.width, out.labeled.depth];
+  if (d == null) delete out.width; else out.width = d;
+  if (w == null) delete out.depth; else out.depth = w;
+  out.labeled.width = ld; out.labeled.depth = lw;
   return out;
 }
 
