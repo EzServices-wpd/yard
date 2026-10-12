@@ -4625,6 +4625,112 @@
     "glazing is glass or clear plastic"
    ],
    "learned": true
+  },
+  {
+   "key": "frame",
+   "synonyms": [
+    "coldframe",
+    "garden frame"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cold Frame",
+   "size": {
+    "width": 48,
+    "height": 20,
+    "depth": 36
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "lid"
+   ],
+   "parts": [
+    {
+     "role": "rail",
+     "name": "Front",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.96,
+      0.45,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Back",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.96,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.06,
+      1,
+      0.96
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Right",
+     "box": [
+      0.92,
+      0,
+      0.02,
+      0.06,
+      1,
+      0.96
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "lid",
+     "name": "Lid",
+     "box": [
+      0,
+      0.45,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "cover",
+     "on": [
+      "Back",
+      "Left",
+      "Right",
+      "Front"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Lid",
+     "motion": "hinge"
+    }
+   ],
+   "notes": [
+    "Lid hinges along the back rail and slopes down from the taller back to the lower front",
+    "Transparent glazing covers the lid",
+    "Sits directly on soil or paving outdoors"
+   ],
+   "learned": true
   }
  ]
 }
