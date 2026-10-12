@@ -7,6 +7,7 @@
  * side, and hardware spots (hinges, pulls, slides, brackets). The same records feed the step
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
+import { leafDoor } from "./face";
 import { ANATOMY_NOTE } from "./classAnatomy";
 import { panelWorldCorners } from "./geometry";
 import { partLetters } from "./pdfDraw";
@@ -797,7 +798,8 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const letters = partLetters(project, cutList);
   const letterCount = new Map<string, number>();
   for (const L of letters.values()) letterCount.set(L, (letterCount.get(L) ?? 0) + 1);
-  const box = new Map(panels.map((p) => [p.id, boxOf(p)]));
+  // Hinges and pulls lay out from a frame-and-panel leaf's assembled door, not from one stile.
+  const box = new Map(panels.map((p) => [p.id, boxOf(p.leaf ? leafDoor(panels, p) : p)]));
   const minY = panels.length ? Math.min(...panels.map((p) => box.get(p.id)!.min.y)) : 0;
   const wall = project.assumptions?.installMode === "wall";
   const ctx: Ctx = { project, panels, box, letters, letterCount, floor: !wall && Math.abs(minY) < 0.1, unitBottom: minY };

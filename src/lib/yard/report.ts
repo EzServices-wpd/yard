@@ -1598,6 +1598,8 @@ function smallestSheetStock(plan: BuildPlan): BuildPlan {
         s.dims.thickness === item.dims.thickness &&
         (s.dims.length ?? 96) * (s.dims.width ?? 48) < (item.dims.length ?? 96) * (item.dims.width ?? 48) &&
         s.unitCostUsd != null &&
+        // Every part must fit the smaller sheet whole: a 102" upright never steps down to a 4×8.
+        rects.every(([a, b]) => a <= (s.dims.length ?? 96) && b <= (s.dims.width ?? 48)) &&
         nestSheets(rects, s.dims.length ?? 96, s.dims.width ?? 48) === 1,
     ).sort((a, c) => (a.unitCostUsd ?? 0) - (c.unitCostUsd ?? 0))[0];
     if (!smaller) return b;

@@ -1,6 +1,6 @@
 import { createId } from "@/lib/utils";
 import { isHingedLidChest } from "./family";
-import type { Panel, PanelType, YardProject } from "./types";
+import type { AssemblyStep, Panel, PanelType, YardProject } from "./types";
 
 /**
  * A face is a cut, not a sticker.
@@ -12,6 +12,8 @@ import type { Panel, PanelType, YardProject } from "./types";
 
 const STILE = 2.25;
 const GAP = 0.125;
+/** A captured panel reaches 5/16" into its 3/8" groove. */
+const CAP = 0.3125;
 const MOLD_H = 3.5;
 const MOLD_T = 0.75;
 
@@ -315,9 +317,11 @@ function frameFace(
       leaf: leaf("part"),
       cutNote: '2 1/4" wide.',
     }),
-    makePanel("rail", names.panel, x + STILE + GAP, y + STILE + GAP, z, pw, ph, panelT, mat, {
+    // The panel is 1/4" plywood captured in a 1/4" × 3/8" groove in the stiles and rails, 1/16" shy of the
+    // groove bottom all round: never glued or screwed, so it floats.
+    makePanel("rail", names.panel, x + STILE - CAP, y + STILE - CAP, z + (t - 0.25) / 2, r8(innerW + CAP * 2), r8(innerH + CAP * 2), 0.25, "plywood-1-4-4x8", {
       leaf: leaf("part"),
-      cutNote: 'Resaw to 3/8" thick. The field sits back from the frame.',
+      cutNote: 'Sits in a 1/4" groove, 3/8" deep, in the stiles and rails. No glue or screws on the panel.',
     }),
   ];
   return parts;
@@ -458,7 +462,7 @@ export function applySpokenFace(project: YardProject, prompt: string, phase?: "b
     panels = framed.panels;
     if (framed.changed) {
       changed = true;
-      notes.push('Shaker front: 2 1/4" stiles and rails, and a panel resawn to 3/8" so it sits back from the frame.');
+      notes.push('Shaker front: 2 1/4" stiles and rails glued up around a 1/4" plywood panel that floats in a groove.');
     }
   }
 
@@ -499,4 +503,33 @@ export function applySpokenFace(project: YardProject, prompt: string, phase?: "b
     ? { ...project.overall, depth: r8(project.overall.depth + depthBump) }
     : project.overall;
   return { ...project, panels, notes, overall };
+}
+
+/** The assembled door of a frame-and-panel leaf: the box around every part sharing its leaf id. */
+export function leafDoor(panels: Panel[], p: Panel): Panel {
+  const parts = panels.filter((q) => q.leaf?.id === p.leaf?.id);
+  const lo = (a: "x" | "y" | "z") => Math.min(...parts.map((q) => q.position[a]));
+  const hi = (a: "x" | "y" | "z", k: "width" | "height" | "depth") => Math.max(...parts.map((q) => q.position[a] + q.size[k]));
+  const position = { x: lo("x"), y: lo("y"), z: lo("z") };
+  return { ...p, position, size: { width: hi("x", "width") - position.x, height: hi("y", "height") - position.y, depth: hi("z", "depth") - position.z } };
+}
+
+/** Frame-and-panel doors are glued up as one door before the step that hangs them. */
+export function withLeafGlueUp(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const members = project.panels.filter((p) => p.leaf);
+  if (!members.length) return steps;
+  const names = new Set(members.map((p) => p.name));
+  const at = steps.findIndex((s) => s.partsUsed?.some((n) => names.has(n)));
+  if (at < 0) return steps;
+  const leaves = new Set(members.map((p) => p.leaf!.id)).size;
+  const kinds = [...names];
+  const step: AssemblyStep = {
+    step: 0,
+    title: `Glue up the ${leaves} frame-and-panel door${leaves === 1 ? "" : "s"}`,
+    description: `Each door is two stiles, two rails and a panel (${kinds.join(", ")}). Cut a 1/4" groove 3/8" deep along the inside edge of every stile and rail, centred on the thickness. Dry-fit, then glue only the stile-to-rail joints with the 1/4" plywood panel floating in the groove, never glued or screwed. Clamp each door flat and check it is square by measuring both diagonals. Let the glue cure before hanging.`,
+    partsUsed: kinds,
+  };
+  // The hanging step places the whole leaf: its stiles, rails and panel go up as one door.
+  const hang = { ...steps[at], partsUsed: [...new Set([...(steps[at].partsUsed ?? []), ...kinds])] };
+  return [...steps.slice(0, at), step, hang, ...steps.slice(at + 1)].map((s, i) => ({ ...s, step: i + 1 }));
 }

@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { leafDoor } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stoolRiseRunTalk, stoolStepCount } from "./climb";
@@ -491,7 +492,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   // Bought hardware drawn in the model (coat hooks) is placed by its own step, never cut or listed with the boards.
   const of = (t: Panel["type"]) => panels.filter((p) => p.type === t && !isBoughtHardwareName(p.name));
   const names = (list: Panel[]) => list.map((p) => p.name);
-  const cutLine = (p: Panel) => `${p.name} — ${dim(p)}"`;
+  // A frame-and-panel leaf is hung as its glued-up door, never as the stile that carries the hinges.
+  const cutLine = (p: Panel) => (p.leaf ? `${p.name.replace(/\s*stile$/i, "")} door — ${dim(leafDoor(panels, p))}" glued up` : `${p.name} — ${dim(p)}"`);
 
   const uprights = of("upright");
   const backs = of("back");
