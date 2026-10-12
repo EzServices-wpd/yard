@@ -394,14 +394,21 @@ export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
  * The rough shape for a compound noun its builder only half matched ("chicken tractor" built as a toy
  * tractor): never the last word's build. One plain block at that build's size, named for the whole noun.
  */
+const PLY = "plywood-3-4-4x8";
 export function roughBlock(prompt: string, like: YardProject): YardProject {
   const noun = prompt.trim().replace(/^\w/, (c) => c.toUpperCase());
   const o = like.overall;
   return {
     ...like,
+    // Only the size carries over: no fitted brief, opening, closet label or craft stock from the half-read build.
+    id: `recipe-rough-${noun.toLowerCase().replace(/\W+/g, "-")}`,
+    kind: "frame",
+    fitted: undefined,
+    opening: undefined,
+    primaryMaterialId: PLY,
     name: noun,
     instances: [],
-    panels: [{ id: "rough-block", type: "rail", name: noun, position: { x: -o.width / 2, y: 0, z: 0 }, size: { ...o }, materialId: like.primaryMaterialId }],
+    panels: [{ id: "rough-block", type: "rail", name: noun, position: { x: -o.width / 2, y: 0, z: 0 }, size: { ...o }, materialId: PLY }],
     notes: [],
     standIn: true,
   };
@@ -463,8 +470,9 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
 export const UNAVAILABLE = "unavailable";
 export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, ms = 75_000): Lookup {
   return async (_prompt, feedback) => {
-    const timer = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms));
-    const r = await Promise.race([call(feedback), timer]);
+    let id: ReturnType<typeof setTimeout> | undefined;
+    const timer = new Promise<never>((_, reject) => (id = setTimeout(() => reject(new Error("timeout")), ms)));
+    const r = await Promise.race([call(feedback), timer]).finally(() => clearTimeout(id));
     if (!r.ok) throw new Error(/not available/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
     return r.recipeJson ? JSON.parse(r.recipeJson) : null;
   };

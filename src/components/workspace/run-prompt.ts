@@ -307,9 +307,18 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   };
 }
 
+function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("timeout")), ms)));
+  return Promise.race([p, late]).finally(() => clearTimeout(timer));
+}
+
 /** Homepage ?q= and the bench prompt bar share this so house prompts never fall through to craft interpret. */
-export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {}) {
+const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
+
+export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number } = {}) {
   const prompt = raw.trim();
+  const { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn } = { ...AI, ...opts.ai };
   if (!prompt) return;
 
   const generate = useYard.getState().generate;
@@ -352,7 +361,10 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
   }
 
   // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
+  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
+  const weak = ignoredTypedWords(next, prompt).length > 0;
   const houseLike =
+    !weak &&
     isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
   useYard.getState().beginBuild();
   useYard.setState({ grokBusy: true });
@@ -363,7 +375,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
 
   try {
     if (houseLike) {
-      const house = await briefHousePrompt({ data: { prompt } });
+      const house = await withDeadline(briefHousePrompt({ data: { prompt } }), 30_000);
       if (house.ok && house.brief) {
         generate(prompt, undefined, undefined, {
           fresh: true,
@@ -382,12 +394,15 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
     // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
-    const weak = ignoredTypedWords(next, prompt).length > 0;
     if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), weak)) {
       const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
       // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
       const engine = () => (weak ? roughBlock(prompt, useYard.getState().project) : useYard.getState().project);
-      const out = await lookupAndBuild(prompt, lookup, engine, namedStock);
+      // Two tries at 75s each, one bound on the whole lookup so the bench never waits on it.
+      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000).catch(() => {
+        if (!weak) throw new Error("lookup failed");
+        return { project: roughBlock(prompt, next), recipe: null, rough: false } as const;
+      });
       if (weak && !out.recipe && !out.rough) {
         useYard.getState().setProject({ ...out.project, notes: [roughNote(out.project.name, []), ...(out.project.notes ?? [])] });
         makePlan();
@@ -462,7 +477,12 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean } = {})
       });
     }
   } catch {
-    /* deterministic already on the bench */
+    // Deterministic already on the bench, except a half-read compound noun, which shows its labelled block.
+    if (weak) {
+      const block = roughBlock(prompt, next);
+      useYard.getState().setProject({ ...block, notes: [roughNote(block.name, [])] });
+      makePlan();
+    }
   } finally {
     window.clearTimeout(timeout);
     useYard.setState({ grokBusy: false });
