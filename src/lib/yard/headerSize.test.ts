@@ -31,3 +31,16 @@ describe("the header says back typed counts and features the model builds", () =
   ];
   for (const [q, re] of cases) it(q, () => assert.match(headerTitle(generateFromPrompt(q)), re));
 });
+
+describe("walk leftovers: stand height, thin rack, assumed marks", () => {
+  const cases: [string, RegExp][] = [
+    ["igloo cooler stand", / × 18" H/],
+    ["20lb propane tank stand", / × 7 3\/4" H \(size assumed\)$/],
+    ["magazine rack", /^Magazine rack · 16" W × 10" D × 24" H/],
+    ["thin magazine rack", / × 6" D × /],
+    ["compost bin 3 bays", /\(size assumed\)$/],
+    ["doghouse for a 50 lb dog", /\(size assumed\)$/],
+    ["dog house 36 wide 30 tall", /\(D assumed\)$/],
+  ];
+  for (const [q, re] of cases) it(q, () => assert.match(headerTitle(generateFromPrompt(q)), re));
+});

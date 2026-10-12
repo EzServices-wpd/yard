@@ -175,7 +175,10 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   if (held.water && held.pounds >= 60) {
     notes.push("Water weighs about 8.3 lb a gallon. Set the stand level on a solid floor and shim under the legs so the deck sits dead flat before you fill.");
   }
-  const overallH = r16(deckTop + held.height);
+  // The size is the stand's own (deck, plus the cradle collar): the held object is not a cut part.
+  const standTop = r16(cradle ? deckTop + 3.5 : deckTop);
+  notes.push(`With the ${held.label} on it, the top stands about ${inchFrac(r16(deckTop + held.height))}" off the floor.`);
+  const overallH = standTop;
   return {
     id: createId("proj"),
     name: title,

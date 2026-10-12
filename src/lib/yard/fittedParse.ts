@@ -372,6 +372,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                 // A broom cabinet is one narrow tall door: brooms and a mop, not a pantry's width.
                 : program === "storage" && /\bbroom\b/.test(lower)
                   ? 24
+                : isMagazineRack(lower)
+                  ? 16
                 : isSpiceCabinet(lower)
                   ? 12
                 : isOverToilet(lower)
@@ -755,6 +757,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                   ? 30
                 : isMedicineCabinet(lower)
                   ? 24
+                : isMagazineRack(lower)
+                  ? 24
                 : isSpiceCabinet(lower)
                   ? 20
                 : isOverToilet(lower)
@@ -833,6 +837,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
                     ? 10
                   : isMedicineCabinet(lower)
                     ? 4
+                  : isMagazineRack(lower)
+                    ? (/\b(?:thin|slim|narrow|skinny)\b/.test(lower) ? 6 : 10)
                   : isSpiceCabinet(lower)
                     ? 4.5
                   : isOverToilet(lower)

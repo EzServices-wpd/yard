@@ -74,6 +74,16 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     else extra.push(`${m[3] ? `${clean(m[3]).replace(/\s*(?:class\s+)?default$/i, "")} ` : ""}${frac(v)} ${AXIS_WORD[axis]}`);
   }
   const noDigits = !/\d/.test(prompt);
+  // Digits that size nothing ("3 bays", "20lb tank", "for a 50 lb dog") type no axis: with no
+  // dimension triple and no bare length, an axis no "N wide/tall/deep" names is assumed.
+  {
+    const lp = prompt.toLowerCase();
+    const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(lp);
+    if (!noDigits && !sized) {
+      const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
+      for (const a of ["width", "height", "depth"] as Axis[]) if (!named[a].test(lp)) assumed[a] = true;
+    }
+  }
   const axes: Axis[] = ["width", "height", "depth"];
   // Nothing typed is still stock size when the build's own Assumed notes cover every axis.
   const stock = noDigits && !extra.length && (!Object.keys(assumed).length || axes.every((a) => assumed[a]));
