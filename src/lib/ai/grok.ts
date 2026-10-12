@@ -175,6 +175,7 @@ const RECIPE_SYSTEM = [
   "Round parts name their shape: a wheel is a ring (rim) or disc, an axle or drum a cylinder, a bead a bead with a bore over the rod's diameter.",
   "Every part touches what it sits on; a part with no 'on' stands on the floor. Build the defining parts at real proportions; never a closed box.",
   "Always include key, title, size, parts and notes. Every part needs role, name, box (six numbers) and kind; 'on' may only name other parts' exact names. At most 24 parts: use repeat for runs of identical parts.",
+  "Keep every part inside the size box (shares 0..1); a wheel's axle sits at the wheel's centre, and the wheel reaches the floor.",
   "A lid, door or other hinged part touches the part it hinges to along one edge, lists it in 'on', and has a moving entry with motion hinge; a cold frame's lid slopes from a low front to a taller back.",
 ].join("\n");
 

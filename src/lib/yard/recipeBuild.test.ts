@@ -49,8 +49,15 @@ describe("recipe build and validate", () => {
     assert.deepEqual([out.rough, out.unavailable, out.calls, out.project.notes.length], [false, true, 1, 0]);
   });
   it("a timeout counts as a failure: two tries, then the rough label", async () => {
-    const out = await lookupAndBuild("thing", timedLookup(() => new Promise(() => {}), 5), rough);
+    const out = await lookupAndBuild("thing", timedLookup(() => new Promise(() => {}), 5, 5), rough);
     assert.equal(out.rough, true);
+    assert.deepEqual(out.reasons, ["call 1: timeout", "call 2: timeout"]);
+  });
+  it("a round body (butter churn barrel) is a defining part, not the closed-shell box", () => {
+    const churn = { key: "butter-churn", synonyms: [], version: 1, trust: "candidate", title: "Butter churn", size: { width: 12, height: 36, depth: 12 }, defining: ["body", "dasher"], notes: [],
+      parts: [{ role: "body", name: "Body", box: [0, 0, 0, 1, 0.8, 1], kind: "member", shape: "cylinder" }, { role: "lid", name: "Lid", box: [0, 0.8, 0, 1, 0.04, 1], kind: "panel", on: ["Body"] },
+        { role: "dasher", name: "Dasher", box: [0.45, 0.1, 0.45, 0.1, 0.9, 0.1], kind: "member", shape: "cylinder", on: ["Lid"] }] } as unknown as Recipe;
+    assert.deepEqual(validateRecipe(churn, buildRecipe(churn, "butter churn"), "butter churn"), []);
   });
   it("asks only when nothing owns the noun", () => {
     assert.equal(needsRecipeLookup({ ...rough(), unmatched: true }, "zorb ramp", false), true);

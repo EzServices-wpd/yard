@@ -440,12 +440,15 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
     const hi = Math.max(...project.panels.map((p) => p.position[a] + p.size[s]));
-    if (lo < -0.01 || hi > project.overall[s] + 0.01) fail.push(`parts leave the ${s}`);
+    // A builder snap (a wheel recentred on its axle) may spill up to 1"; a recipe part outside the box fails.
+    if (lo < -1 || hi > project.overall[s] + 1) fail.push(`parts leave the ${s}`);
   };
   ext("x", "width"); ext("y", "height"); ext("z", "depth");
   // One box filling the envelope is the closed-shell fallback.
   const vol = project.overall.width * project.overall.height * project.overall.depth;
-  if (project.panels.some((p) => p.size.width * p.size.height * p.size.depth > 0.6 * vol)) fail.push("closed shell: one part fills the envelope");
+  // A round body (a churn's barrel, a drum) is a real defining part, not the closed-shell box.
+  const round = new Set(recipe.parts.filter((p) => p.shape).map((p) => p.name));
+  if (project.panels.some((p) => !round.has(p.name.replace(/ \d+$/, "")) && p.size.width * p.size.height * p.size.depth > 0.6 * vol)) fail.push("closed shell: one part fills the envelope");
   for (const role of recipe.defining ?? []) {
     const names = recipe.parts.filter((p) => p.role === role).map((p) => p.name);
     if (!project.panels.some((p) => names.includes(p.name) || names.includes(p.name.replace(/ \d+$/, "")))) fail.push(`missing ${role}`);
@@ -470,7 +473,7 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   return [...new Set(fail)];
 }
 
-export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean };
+export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean; reasons?: string[] };
 export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
 
 /**
@@ -518,6 +521,9 @@ export function roughNote(title: string, failures: string[]): string {
  */
 export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () => YardProject, materialOverride?: string): Promise<LookupOutcome> {
   let feedback: string[] = [];
+  // Why each call failed (timeout, error, parse, or the gate checks), logged so a miss is diagnosable.
+  const reasons: string[] = [];
+  const why = (call: number, r: string) => { reasons.push(`call ${call}: ${r}`); console.info(`[recipe-lookup] ${prompt} call ${call}: ${r}`); };
   for (let call = 1; call <= 2; call++) {
     let raw: unknown = null;
     try {
@@ -525,18 +531,23 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     } catch (e) {
       // No AI here: the engine's own build stays, with no rough label and no second call.
       if ((e as Error).message === UNAVAILABLE) return { project: rough(), recipe: null, rough: false, calls: call, unavailable: true };
+      why(call, (e as Error).message === "timeout" ? "timeout" : `error: ${(e as Error).message}`);
+      // A timed-out or failed call has nothing to fix: the retry asks afresh, not with a parse complaint.
+      feedback = [];
+      continue;
     }
     const recipe = parseRecipe(raw);
-    if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; continue; }
+    if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     feedback = validateRecipe(recipe, built, prompt);
     if (!feedback.length) {
       rememberRecipe(recipe);
-      return { project: built.project, recipe, rough: false, calls: call };
+      return { project: built.project, recipe, rough: false, calls: call, reasons };
     }
+    why(call, `gate: ${feedback.join("; ")}`);
   }
   const shape = rough();
-  return { project: { ...shape, notes: [roughNote(shape.name, feedback), ...(shape.notes ?? [])] }, recipe: null, rough: true, calls: 2 };
+  return { project: { ...shape, notes: [roughNote(shape.name, feedback), ...(shape.notes ?? [])] }, recipe: null, rough: true, calls: 2, reasons };
 }
 
 /**
@@ -560,8 +571,11 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
-export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, ms = 75_000): Lookup {
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 105_000, retryMs = 50_000): Lookup {
+  let calls = 0;
   return async (_prompt, feedback) => {
+    // Two 75s halves timed out long recipes twice (110-155s, nothing learned): the first reply gets most of the bound.
+    const ms = calls++ ? retryMs : firstMs;
     let id: ReturnType<typeof setTimeout> | undefined;
     const timer = new Promise<never>((_, reject) => (id = setTimeout(() => reject(new Error("timeout")), ms)));
     const r = await Promise.race([call(feedback), timer]).finally(() => clearTimeout(id));
