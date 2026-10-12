@@ -71,7 +71,10 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
         Math.abs(A.max[thinAxis(A)] - B.max[thinAxis(A)]) < 0.07 &&
         l1 >= 0.9 * Math.min(longest(A), longest(B));
       if (coplanar) continue;
-      const thinBack = thinnest(parts[i]) < 0.5 || thinnest(parts[j]) < 0.5;
+      // A back edge is a thin sheet (backer, panel) on a box, never a dowel or a round part.
+      const sheetThin = (p: Panel) => thinnest(p) < 0.5 && !/^dowel-/.test(p.materialId) && !p.polygon;
+      if ((thinnest(parts[i]) < 0.5 && !sheetThin(parts[i])) || (thinnest(parts[j]) < 0.5 && !sheetThin(parts[j]))) continue;
+      const thinBack = sheetThin(parts[i]) || sheetThin(parts[j]);
       let kind: JointKind;
       let screws: number;
       if (thinBack) {

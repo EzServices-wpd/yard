@@ -150,3 +150,12 @@ it("identical numbered parts share one cut-list line and letter", async () => {
   assert.equal(cut.find((c) => c.name === "rod")?.quantity, 9);
   assert.equal(cut.find((c) => c.name === "bead")?.quantity, 45);
 });
+
+it("hardware comes only from parts that exist: dowels are never counted as back edges", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const ab = RECIPES.recipes.find((r) => r.key === "abacus")!;
+  const still = { ...ab, moving: [] };
+  const bom = buildPlan(buildRecipe(still, "abacus").project).bom;
+  assert.ok(!bom.some((b) => /back edge/.test(b.notes ?? "")));
+});
