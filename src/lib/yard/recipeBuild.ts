@@ -479,7 +479,9 @@ export function roughBlock(prompt: string, like: YardProject): YardProject {
   const noun = prompt.trim().replace(/^\w/, (c) => c.toUpperCase());
   // With no craft cue typed, a craft-stock build (stick cloud, toy) never sets the scale: full-size default, typed sizes win.
   const craftLike = /popsicle|craft|cardboard|skewer|paper|stick/i.test(like.primaryMaterialId ?? "") && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt);
-  const o = { ...(craftLike ? { width: 36, height: 30, depth: 24 } : like.overall), ...typedSize(prompt, {} as Recipe) };
+  // A kitchen board's block is board scale (18x1.5x12), never furniture scale.
+  const board = /\b(?:cutting|chopping|bread|serving|charcuterie|cheese|butcher)\s+board\b/i.test(prompt);
+  const o = { ...(board ? { width: 18, height: 1.5, depth: 12 } : craftLike ? { width: 36, height: 30, depth: 24 } : like.overall), ...typedSize(prompt, {} as Recipe) };
   return {
     ...like,
     overall: o,

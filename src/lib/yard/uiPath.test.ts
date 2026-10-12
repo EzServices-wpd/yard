@@ -46,6 +46,11 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(!/popsicle/.test(p.primaryMaterialId) && p.overall.height >= 36, JSON.stringify(p.overall));
   });
+  it("a cutting board is cutting-board scale, never a table on legs", async () => {
+    await runYardPrompt("cutting board", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
+    const p = useYard.getState().project;
+    assert.ok(p.overall.width <= 30 && p.overall.height <= 3 && p.overall.depth <= 24 && !/Leg/.test(p.panels.map((x) => x.name).join()), JSON.stringify(p.overall));
+  });
   it("a bare easel is the full-size standing easel, not popsicle", async () => {
     await runYardPrompt("easel", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;

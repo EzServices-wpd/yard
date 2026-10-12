@@ -97,6 +97,8 @@ export function pickPrimitive(noun: string): Prim | null {
     if (FLOOR_RACK.test(lower) || /ladder/.test(head)) return prim("storage unit", "open frame", 48, 48, 16);
     return prim("wall shelf", "wall-hung shelf", 24, 12, 6);
   }
+  // A kitchen board (cutting, chopping, bread, serving, charcuterie) is its own object for the recipe lookup, never the table-on-legs board template.
+  if (/board$/.test(head) && /\b(?:cutting|chopping|bread|serving|charcuterie|cheese|butcher)\s+board/.test(lower)) return null;
   if (/(board|game)$/.test(head)) return prim("table", "platform on legs", 24, 4, 48);
   if (/(sign|trellis|panel|backboard|target)$/.test(head)) {
     if (/trellis/.test(head)) return prim("sign", "panel", 24, 48, 1);
