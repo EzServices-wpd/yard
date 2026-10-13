@@ -423,9 +423,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               Drag to turn it · pinch or scroll to zoom
             </p>
           )}
-          {ready && project.displayOnly && !pending && (
-            <p data-yard-not-learned="1" className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
-              Yard couldn't learn the {project.name.toLowerCase()} yet. The grey block is a placeholder: no parts, price or stock.
+          {ready && project.displayOnly && (
+            <p data-yard-not-learned={/^Yard is learning/.test(project.notes?.[0] ?? "") ? "learning" : "1"} className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
+              {/^Yard is learning/.test(project.notes?.[0] ?? "")
+                ? `Yard is learning the ${project.name.toLowerCase()}. The real parts appear here in a minute or two; keep this page open.`
+                : `Yard couldn't learn the ${project.name.toLowerCase()} yet. The grey block is a placeholder: no parts, price or stock.`}
             </p>
           )}
           {ready && pieceCount === 0 && !project.displayOnly && !side && !pending && (

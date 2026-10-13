@@ -68,11 +68,15 @@ export type RecipeStore = { schema: number; recipes: Recipe[] };
 export const RECIPES: RecipeStore = store as RecipeStore;
 
 /** Lookup recipes that passed on this instance, until they are committed to recipes.json. */
-const learned: Recipe[] = [];
+// Kept in this browser too, so a reload or rerun shows a passed recipe at once instead of learning it again.
+const LEARNED_KEY = "yard.learnedRecipes.v1";
+const local = () => (typeof localStorage !== "undefined" ? localStorage : null);
+const learned: Recipe[] = (() => { try { return JSON.parse(local()?.getItem(LEARNED_KEY) ?? "[]") as Recipe[]; } catch { return []; } })();
 export function rememberRecipe(recipe: Recipe): void {
   const i = learned.findIndex((r) => r.key === recipe.key);
   if (i >= 0) learned.splice(i, 1);
   learned.push(recipe);
+  try { local()?.setItem(LEARNED_KEY, JSON.stringify(learned.slice(-40))); } catch { /* storage full or blocked: memory only */ }
 }
 const withLearned = (): RecipeStore => (learned.length ? { ...RECIPES, recipes: [...RECIPES.recipes, ...learned] } : RECIPES);
 
@@ -80,6 +84,8 @@ const withLearned = (): RecipeStore => (learned.length ? { ...RECIPES, recipes: 
 export function normalizeNoun(prompt: string): string {
   return ` ${prompt.toLowerCase()} `
     .replace(/[^a-z0-9\s'-]/g, " ")
+    // "from maple", "made of cedar", "out of 2x4": the stock it is made from, not its name.
+    .replace(/\b(?:from|made (?:of|from)|out of)\b.*$/, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:x|by)\s*\d+(?:\.\d+)?\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:'|ft|foot|feet|in|inch|inches)?\b/g, " ")
     .replace(/\b(?:a|an|the|for|kids?|from|of|made|out|with|and|wide|tall|high|deep|long)\b/g, " ")
