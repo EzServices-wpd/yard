@@ -15,7 +15,8 @@ it("learned gate: the Critic-failed water wheel and abacus fail it; a learned re
   assert.ok(!get("water-wheel").held && !get("abacus").held); // Critic: abacus TRUSTED (8db4a41), water wheel TRUSTED (2fe1234)
   const box = { ...get("abacus"), parts: get("abacus").parts.map((p) => ({ ...p, shape: undefined, catalogId: p.role === "axle" ? undefined : p.catalogId, stock: undefined, kind: p.role === "bead" ? ("hardware" as const) : p.kind })) };
   assert.ok(learnedRecipeFailures(box).some((f) => /no catalogue item|drawn as a box/.test(f)));
-  assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate"));
+  // A learned recipe stays a candidate until Critic grades it TRUSTED (scripts/apply-ledger.ts); a trusted one is never held.
+  assert.ok(RECIPES.recipes.filter((r) => r.learned).every((r) => r.trust === "candidate" || (r.trust === "trusted" && !r.held)));
 });
 
 it("floor uprights on a narrow footprint get full-depth feet and pass the tip check", async () => {

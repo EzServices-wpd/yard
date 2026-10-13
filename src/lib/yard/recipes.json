@@ -4177,7 +4177,7 @@
     "waterwheel"
    ],
    "version": 1,
-   "trust": "candidate",
+   "trust": "trusted",
    "title": "Water Wheel",
    "size": {
     "width": 18,
@@ -4257,10 +4257,10 @@
      "role": "axle",
      "name": "axle",
      "box": [
-      0.0,
+      0,
       0.6,
       0.46,
-      1.0,
+      1,
       0.06,
       0.08
      ],
@@ -4351,7 +4351,7 @@
     "counting frame"
    ],
    "version": 1,
-   "trust": "candidate",
+   "trust": "trusted",
    "title": "Abacus",
    "size": {
     "width": 16,
