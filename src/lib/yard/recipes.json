@@ -6093,6 +6093,114 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
+  },
+  {
+   "key": "window-box",
+   "synonyms": [
+    "flower-box",
+    "planter-box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "30-Inch Cedar Window Box",
+   "size": {
+    "width": 30,
+    "height": 8,
+    "depth": 9
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [
+    "panel"
+   ],
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Bottom",
+     "box": [
+      0.03,
+      0,
+      0.03,
+      0.94,
+      0.125,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Front",
+     "box": [
+      0,
+      0.125,
+      0,
+      1,
+      0.875,
+      0.11
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0,
+      0.125,
+      0.89,
+      1,
+      0.875,
+      0.10999999999999999
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left end",
+     "box": [
+      0,
+      0.125,
+      0.11,
+      0.03,
+      0.875,
+      0.78
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right end",
+     "box": [
+      0.97,
+      0.125,
+      0.11,
+      0.03,
+      0.875,
+      0.78
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from 1-inch cedar boards",
+    "Open top planter for mounting beneath a window",
+    "Typical overall length 30 inches"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy Landscape fabric liner, 3 ft × 50 ft roll: no part is cut from it; a part has only a fallback step; every part has the role \"panel\""
   }
  ]
 }
