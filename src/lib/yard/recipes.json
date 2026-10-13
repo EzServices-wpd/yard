@@ -5380,6 +5380,130 @@
     "Typical kitchen or workshop stool proportions."
    ],
    "learned": true
+  },
+  {
+   "key": "churn",
+   "synonyms": [
+    "dash churn",
+    "plunger churn"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Butter Churn",
+   "size": {
+    "width": 12,
+    "height": 40,
+    "depth": 12
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "barrel"
+   ],
+   "parts": [
+    {
+     "role": "barrel",
+     "name": "Churn barrel",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.9,
+      0.78,
+      0.9
+     ],
+     "kind": "member",
+     "shape": "cylinder"
+    },
+    {
+     "role": "lid",
+     "name": "Barrel lid",
+     "box": [
+      0.05,
+      0.78,
+      0.05,
+      0.9,
+      0.05,
+      0.9
+     ],
+     "kind": "cover",
+     "on": [
+      "Churn barrel"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "post",
+     "name": "Dasher staff",
+     "box": [
+      0.43,
+      0.03,
+      0.43,
+      0.14,
+      0.94,
+      0.14
+     ],
+     "kind": "member",
+     "on": [
+      "Barrel lid"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "deck",
+     "name": "Dasher plate",
+     "box": [
+      0.2,
+      0.03,
+      0.2,
+      0.6,
+      0.05,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Dasher staff"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "rail",
+     "name": "Dasher handle",
+     "box": [
+      0.25,
+      0.93,
+      0.43,
+      0.5,
+      0.05,
+      0.14
+     ],
+     "kind": "member",
+     "on": [
+      "Dasher staff"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Dasher staff",
+     "motion": "slide"
+    },
+    {
+     "part": "Dasher plate",
+     "motion": "slide"
+    },
+    {
+     "part": "Dasher handle",
+     "motion": "slide"
+    }
+   ],
+   "notes": [
+    "Upright plunge-style wooden churn for turning cream into butter",
+    "Dasher plate is typically perforated; staff slides freely through a hole in the lid",
+    "Operated by hand with repeated vertical strokes"
+   ],
+   "learned": true
   }
  ]
 }
