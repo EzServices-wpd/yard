@@ -6938,6 +6938,131 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
+  },
+  {
+   "key": "maple-knife-block",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Maple Knife Block",
+   "size": {
+    "width": 9,
+    "height": 10,
+    "depth": 5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "count": {
+    "word": "slots",
+    "default": 5
+   },
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Bottom",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.08,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "panel",
+     "name": "Left panel",
+     "box": [
+      0,
+      0.08,
+      0,
+      0.07,
+      0.92,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right panel",
+     "box": [
+      0.93,
+      0.08,
+      0,
+      0.06999999999999995,
+      0.92,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back panel",
+     "box": [
+      0.07,
+      0.08,
+      0.92,
+      0.86,
+      0.92,
+      0.07999999999999996
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Front panel",
+     "box": [
+      0.07,
+      0.08,
+      0,
+      0.86,
+      0.92,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Divider",
+     "box": [
+      0.22,
+      0.08,
+      0.08,
+      0.04,
+      0.92,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ],
+     "repeat": "between"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Solid maple hardwood construction",
+    "Open top with vertical maple dividers forming narrow slots for knife blades",
+    "Sits stably on a countertop",
+    "Typical capacity five to seven knives plus optional steel"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
   }
  ]
 }
