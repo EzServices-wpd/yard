@@ -247,6 +247,11 @@ function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
     for (const w of under) if (top(w) > H - t) w.size = { ...w.size, height: Math.max(H - t - w.position.y, 0.5) };
     const rise = top(hi) - top(lo), D = lid.size.depth;
     // Any rise slopes the lid so it rests on the low wall too (a lap desk's front never floats).
+    // A growing frame's lid is glazed (clear acrylic or polycarbonate), never a solid board.
+    if (/\b(?:cold\s*frame|green\s*house|hot\s*bed|cloche|propagator)\b/i.test(recipe.title) && getCatalogItem("acrylic-sheet")) {
+      lid.materialId = "acrylic-sheet";
+      lid.cutNote = "Clear glazing: acrylic or twin-wall polycarbonate, cut to the lid size.";
+    }
     if (rise <= 0.1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
     lid.position = { ...lid.position, y: top(lo) };
     lid.size = { ...lid.size, height: rise + t };
@@ -441,6 +446,22 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
   }
   rotors(recipe, panels, pins);
   const sized = dowelSizes(panels);
+  // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
+  // and the parts that turn on it, so it stands on the floor, never through it.
+  for (const pin of pins) {
+    const group = [pin, ...panels.filter((p) => p !== pin && p.turns && !pins.includes(p))];
+    const sink = -Math.min(0, ...group.map((p) => p.position.y));
+    if (sink > 0.001) for (const p of group) p.position = { ...p.position, y: p.position.y + sink };
+  }
+  // The box is the real build: a builder snap that reaches past the recipe size grows that (untyped) side.
+  const typedAxes = typedSize(prompt, recipe);
+  const real = { ...size };
+  for (const [a, k] of [["x", "width"], ["y", "height"], ["z", "depth"]] as const) {
+    const lo = Math.min(...panels.map((p) => p.position[a]));
+    if (a !== "y" && typedAxes[k] == null && lo < 0 && lo >= -1.5) for (const p of panels) p.position = { ...p.position, [a]: p.position[a] - lo };
+    const hi = Math.max(...panels.map((p) => p.position[a] + p.size[k]));
+    if (typedAxes[k] == null && hi > real[k] && hi - real[k] <= 1.5) real[k] = Math.round(hi * 8) / 8;
+  }
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
@@ -454,7 +475,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     name: recipe.title,
     prompt,
     kind: "custom",
-    overall: size,
+    overall: real,
     instances: [],
     panels,
     primaryMaterialId: stock.member,
@@ -504,7 +525,9 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
     const hi = Math.max(...project.panels.map((p) => p.position[a] + p.size[s]));
     // A builder snap (a wheel recentred on its axle) may spill up to 1"; a recipe part outside the box fails.
-    if (lo < -1 || hi > project.overall[s] + 1) fail.push(`parts leave the ${s}`);
+    // Geometry is real: nothing below the floor and nothing outside the box.
+    if (a === "y" && lo < -0.01) fail.push(`a part goes below the floor (${fmtIn(-lo)})`);
+    else if (lo < -0.01 || hi > project.overall[s] + 0.01) fail.push(`parts leave the ${s}`);
   };
   ext("x", "width"); ext("y", "height"); ext("z", "depth");
   // One box filling the envelope is the closed-shell fallback.
