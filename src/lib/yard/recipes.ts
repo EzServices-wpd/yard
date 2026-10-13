@@ -102,7 +102,9 @@ export function findRecipe(prompt: string, lib: RecipeStore = withLearned()): Re
   let best: { r: Recipe; len: number } | null = null;
   for (const r of lib.recipes) {
     if (r.modifiers?.some((m) => !lower.includes(m))) continue;
-    for (const name of [r.key.replace(/-/g, " "), ...r.synonyms]) {
+    // A learned recipe answers only to its typed noun: an AI synonym ("planter box" on window box) would take
+    // over a noun the engine builds.
+    for (const name of [r.key.replace(/-/g, " "), ...(r.learned ? [] : r.synonyms)]) {
       if (words(name.replace(/-/g, " ")).test(noun) && (!best || name.length > best.len)) best = { r, len: name.length };
     }
   }
