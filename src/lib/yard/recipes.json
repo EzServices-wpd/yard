@@ -5603,6 +5603,175 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Left leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Left leg B: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Right leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft)"
+  },
+  {
+   "key": "compost-tumbler-frame",
+   "synonyms": [
+    "compost tumbler stand"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Compost Tumbler Frame",
+   "size": {
+    "width": 48,
+    "height": 42,
+    "depth": 30
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail",
+    "axle"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left front post",
+     "box": [
+      0.04,
+      0,
+      0.08,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left rear post",
+     "box": [
+      0.04,
+      0,
+      0.86,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right front post",
+     "box": [
+      0.9,
+      0,
+      0.08,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right rear post",
+     "box": [
+      0.9,
+      0,
+      0.86,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left top rail",
+     "box": [
+      0.04,
+      0.8,
+      0.08,
+      0.06,
+      0.08,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Left rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right top rail",
+     "box": [
+      0.9,
+      0.8,
+      0.08,
+      0.06,
+      0.08,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Right front post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front base",
+     "box": [
+      0.04,
+      0.02,
+      0.08,
+      0.92,
+      0.05,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Right front post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear base",
+     "box": [
+      0.04,
+      0.02,
+      0.86,
+      0.92,
+      0.05,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left rear post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.04,
+      0.82,
+      0.42,
+      0.92,
+      0.05,
+      0.16
+     ],
+     "kind": "member",
+     "on": [
+      "Left top rail",
+      "Right top rail"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Axle spans and rests directly on Left top rail and Right top rail",
+    "Supports a spinning compost drum above ground clearance",
+    "Outdoor garden frame of wood or steel"
+   ],
+   "learned": true
   }
  ]
 }
