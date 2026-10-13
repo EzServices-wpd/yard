@@ -4605,6 +4605,133 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Peg1 1: no catalogue item (hardware); Peg2 1: no catalogue item (hardware); Peg3 1: no catalogue item (hardware)"
+  },
+  {
+   "key": "knife-block-maple",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Maple Knife Block",
+   "size": {
+    "width": 9,
+    "height": 10,
+    "depth": 4.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "post"
+   ],
+   "count": {
+    "word": "slots",
+    "default": 6
+   },
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.06,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Left side",
+     "box": [
+      0,
+      0.06,
+      0,
+      0.05,
+      0.94,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Right side",
+     "box": [
+      0.95,
+      0.06,
+      0,
+      0.05,
+      0.94,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back panel",
+     "box": [
+      0.05,
+      0.06,
+      0.93,
+      0.9,
+      0.94,
+      0.06999999999999995
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Front panel",
+     "box": [
+      0.05,
+      0.06,
+      0,
+      0.9,
+      0.94,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Slot divider",
+     "box": [
+      0.18,
+      0.06,
+      0.05,
+      0.03,
+      0.88,
+      0.88
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ],
+     "repeat": "between"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Constructed from solid maple boards",
+    "Open top with vertical slots formed by spaced dividers",
+    "Holds knives upright by the blade"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
   }
  ]
 }
