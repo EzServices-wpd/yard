@@ -5504,6 +5504,191 @@
     "Operated by hand with repeated vertical strokes"
    ],
    "learned": true
+  },
+  {
+   "key": "sawbuck",
+   "synonyms": [
+    "log buck",
+    "firewood buck"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Sawbuck",
+   "size": {
+    "width": 36,
+    "height": 30,
+    "depth": 22
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Leftlega",
+     "box": [
+      0.04,
+      0,
+      0,
+      0.1,
+      1,
+      0.65
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leftlegb",
+     "box": [
+      0.04,
+      0,
+      0.35,
+      0.1,
+      1,
+      0.65
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rightlega",
+     "box": [
+      0.86,
+      0,
+      0,
+      0.1,
+      1,
+      0.65
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rightlegb",
+     "box": [
+      0.86,
+      0,
+      0.35,
+      0.1,
+      1,
+      0.65
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Topraila",
+     "box": [
+      0.04,
+      0.62,
+      0.18,
+      0.92,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leftlega",
+      "Rightlega"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Toprailb",
+     "box": [
+      0.04,
+      0.62,
+      0.74,
+      0.92,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leftlegb",
+      "Rightlegb"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lowerraila",
+     "box": [
+      0.04,
+      0.18,
+      0.18,
+      0.92,
+      0.06,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Leftlega",
+      "Rightlega"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lowerrailb",
+     "box": [
+      0.04,
+      0.18,
+      0.74,
+      0.92,
+      0.06,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Leftlegb",
+      "Rightlegb"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Leftcross",
+     "box": [
+      0.04,
+      0.38,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Leftlega",
+      "Leftlegb"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rightcross",
+     "box": [
+      0.86,
+      0.38,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Rightlega",
+      "Rightlegb"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "X-framed stand that cradles a log for crosscut sawing",
+    "Paired end frames splay upward into a V",
+    "Usually built from dimensional lumber"
+   ],
+   "learned": true
   }
  ]
 }
