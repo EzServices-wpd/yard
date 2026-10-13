@@ -5813,6 +5813,98 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Buy Food-safe mineral oil: no part is cut from it"
+  },
+  {
+   "key": "wall-clock-frame",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "12-Inch Wall Clock Frame",
+   "size": {
+    "width": 12,
+    "height": 12,
+    "depth": 1.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [
+    "frame"
+   ],
+   "parts": [
+    {
+     "role": "frame",
+     "name": "Rim",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+     ],
+     "kind": "member",
+     "shape": "ring"
+    },
+    {
+     "role": "face",
+     "name": "Dial",
+     "box": [
+      0.08,
+      0.08,
+      0.15,
+      0.84,
+      0.84,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "cover",
+     "name": "Crystal",
+     "box": [
+      0.06,
+      0.06,
+      0.55,
+      0.88,
+      0.88,
+      0.15
+     ],
+     "kind": "cover",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "hardware",
+     "name": "Hanger",
+     "box": [
+      0.45,
+      0.92,
+      0.7,
+      0.1,
+      0.06,
+      0.2
+     ],
+     "kind": "hardware",
+     "on": [
+      "Rim"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Circular wooden or metal rim sized for a standard 12-inch dial",
+    "Thin depth typical of a wall-mounted clock case",
+    "Hanger centered at top rear for nail or hook"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Hanger 1: no catalogue item (hardware); Buy 1/4\" plywood 4x8 (backer): no part is cut from it; Buy Hanger: no part is cut from it"
   }
  ]
 }
