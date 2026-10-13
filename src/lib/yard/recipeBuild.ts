@@ -737,10 +737,11 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
-export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 105_000, totalMs = 155_000): Lookup {
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 145_000, totalMs = 155_000): Lookup {
   let start = 0;
   return async (_prompt, feedback) => {
-    // The first reply gets up to 105s; the retry gets whatever is left of the bound, never a fixed 50s
+    // The first reply gets up to 145s (live replies that pass land at 20-140s; a 105s cut timed out cornhole,
+    // miter saw station and rain barrel stand both times); a retry gets whatever is left of the bound.
     // (a fixed 50s retry timed out the common fix-the-checks retry that used to land at ~130s).
     const ms = start ? Math.max(totalMs - (Date.now() - start), 1) : Math.min(firstMs, totalMs);
     if (!start) start = Date.now();

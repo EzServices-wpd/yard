@@ -72,16 +72,20 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
       if (!moved.ok) return { ok: false, status: `branch not writable (${made.status}/${moved.status})` };
     }
   }
-  const file = await gh(token, `/contents/${FILE}?ref=${BRANCH}`);
-  const f = file.json as { sha: string; content: string } | null;
-  if (!f) return { ok: false, status: `store not readable (${file.status})` };
-  const next = addCandidate(Buffer.from(f.content, "base64").toString("utf8"), recipe);
-  if (next) {
+  // Two visitors can propose at once: a 409 means the store moved under us, so read it again and retry.
+  let next: string | null = null;
+  for (let attempt = 1; ; attempt++) {
+    const file = await gh(token, `/contents/${FILE}?ref=${BRANCH}`);
+    const f = file.json as { sha: string; content: string } | null;
+    if (!f) return { ok: false, status: `store not readable (${file.status})` };
+    next = addCandidate(Buffer.from(f.content, "base64").toString("utf8"), recipe);
+    if (!next) break;
     const put = await gh(token, `/contents/${FILE}`, {
       method: "PUT",
       body: JSON.stringify({ message: `Recipe candidate: ${recipe.title} (${recipe.key})`, content: Buffer.from(next).toString("base64"), sha: f.sha, branch: BRANCH }),
     });
-    if (!put.ok) return { ok: false, status: `commit failed (${put.status})` };
+    if (put.ok) break;
+    if (put.status !== 409 || attempt >= 3) return { ok: false, status: `commit failed (${put.status})` };
   }
   // Every proposal counts one request on the same PR, so Popular recently ranks without a paid store.
   const counts = await gh(token, `/contents/${COUNTS}?ref=${BRANCH}`);
