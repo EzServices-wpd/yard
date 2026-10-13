@@ -1,3 +1,5 @@
+import { roughBlock, roughNote } from "./recipeBuild";
+import { findRecipe } from "./recipes";
 import { solveModel } from "./solve";
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
@@ -920,8 +922,12 @@ export const useYard = create<YardState>((set, get) => ({
 
 export function hydrateYard() {
   if (typeof window === "undefined") return;
-  const loaded = loadProject();
-  if (!loaded) return;
+  const stored = loadProject();
+  if (!stored) return;
+  // A restored engine guess for a noun nothing owns (a stick cloud) comes back as the display-only block.
+  const loaded = !stored.displayOnly && (stored.unmatched || stored.standIn) && stored.prompt && !findRecipe(stored.prompt)
+    ? { ...roughBlock(stored.prompt, stored), notes: [roughNote(stored.prompt, [])] }
+    : stored;
   const flags = defaultGhostFlags(loaded.kind, loaded.prompt, loaded.historic);
   useYard.setState({
     project: {

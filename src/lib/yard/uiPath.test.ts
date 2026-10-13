@@ -99,3 +99,22 @@ it("bed axes: 'long' is the mattress axis (W), 'wide' runs across it (D); the he
   assert.ok((b.notes ?? []).some((n) => /No standard mattress fits|Too narrow/.test(n)));
   assert.ok((bed("bunk bed").notes ?? []).some((n) => /Fits a 75" twin/.test(n)));
 });
+
+describe("uiPath: every entry point shows the display-only block, never the engine's guess", () => {
+  const grok = ["knife block", "cold frame", "spinning wheel", "butter churn", "chicken tractor", "wheelbarrow", "sundial", "sawbuck", "sandbox with lid", "wooden ruler", "rolling pin", "wall clock", "rain gauge post", "flurbleglarp"];
+  for (const noun of grok) {
+    it(`${noun}: while learning and after a failed lookup the bench is display-only`, async () => {
+      let seen: unknown = null;
+      const pending = () => new Promise<{ ok: boolean; error: string }>((res) => { seen = useYard.getState().project; res({ ok: false, error: "bad" }); });
+      await runYardPrompt(noun, { fresh: true, ai: stubs(pending, []) });
+      const p = useYard.getState().project;
+      if (seen) assert.ok((seen as { displayOnly?: boolean }).displayOnly, `${noun} showed the engine guess while learning`);
+      assert.ok(p.displayOnly || /recipe/.test(p.id), `${noun}: ${p.name} ${p.primaryMaterialId}`);
+      assert.ok(!/popsicle|stick/.test(p.primaryMaterialId), p.primaryMaterialId);
+    });
+  }
+  it("a lookup that never answers ends on the block (the ?q= and share paths call the same runYardPrompt)", async () => {
+    await runYardPrompt("flurbleglarp", { fresh: true, boundMs: 20, ai: stubs(() => new Promise(() => {}), []) });
+    assert.ok(useYard.getState().project.displayOnly);
+  });
+});

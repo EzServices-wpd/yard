@@ -1,3 +1,4 @@
+import { findRecipe } from "@/lib/yard/recipes";
 "use client";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
@@ -336,6 +337,18 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   generate(prompt, undefined, undefined, { fresh: opts.fresh });
 
   const next = useYard.getState().project;
+  // A noun the engine does not own goes to the learner, from every entry point (bar, ?q=, share link, idea):
+  // while it learns, and if it fails, the bench shows the display-only block, never the engine's guess
+  // (a stick cloud or thin frame with a price and piece count).
+  const half = ignoredTypedWords(next, prompt).length > 0;
+  // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
+  const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
+  const learn = (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  const block = (why?: string[]) => {
+    const b = roughBlock(prompt, next);
+    return { ...b, notes: [roughNote(b.name, why ?? []), ...(b.notes ?? [])] };
+  };
+  if (learn) useYard.getState().setProject({ ...roughBlock(prompt, next), notes: [`Yard is learning the ${prompt.toLowerCase()}: the real parts come next.`] });
   // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
   const wonky =
     !!next.pocket ||
@@ -344,7 +357,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
       ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
   const skipLlm =
     next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt);
-  if (skipLlm) {
+  if (skipLlm && !learn) {
     revealBench();
     makePlan();
     return;
@@ -356,6 +369,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     typeof window !== "undefined" &&
     /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
   if (offline) {
+    if (learn) useYard.getState().setProject(block());
     revealBench();
     return;
   }
@@ -374,7 +388,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   }, 22000);
 
   try {
-    if (houseLike) {
+    if (houseLike && !learn) {
       const house = await withDeadline(briefHousePrompt({ data: { prompt } }), 30_000);
       if (house.ok && house.brief) {
         generate(prompt, undefined, undefined, {
@@ -394,17 +408,16 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
     // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
-    if (needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), weak)) {
+    if (learn) {
       const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
       // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
-      const engine = () => (weak ? roughBlock(prompt, useYard.getState().project) : useYard.getState().project);
+      const engine = () => roughBlock(prompt, next);
       // Two tries at 75s each, one bound on the whole lookup so the bench never waits on it.
-      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000).catch(() => {
-        if (!weak) throw new Error("lookup failed");
-        return { project: roughBlock(prompt, next), recipe: null, rough: false } as const;
-      });
-      if (weak && !out.recipe && !out.rough) {
-        useYard.getState().setProject({ ...out.project, notes: [roughNote(out.project.name, []), ...(out.project.notes ?? [])] });
+      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000).catch(
+        () => ({ project: block(["the lookup ran out of time"]), recipe: null, rough: true }) as const,
+      );
+      if (!out.recipe && !out.rough) {
+        useYard.getState().setProject(block(out.unavailable ? ["no AI here"] : []));
         makePlan();
         return;
       }
