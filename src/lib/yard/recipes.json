@@ -5799,6 +5799,123 @@
     "Four-legged seat with simple back panel at typical stool proportions; legs stand on floor."
    ],
    "learned": true
+  },
+  {
+   "key": "chair",
+   "synonyms": [
+    "dining chair",
+    "side chair"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Wooden Dining Chair",
+   "size": {
+    "width": 18,
+    "height": 36,
+    "depth": 18
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "post"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.1,
+      0.5,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.85,
+      0,
+      0.05,
+      0.1,
+      0.5,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back left leg",
+     "box": [
+      0.05,
+      0,
+      0.85,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back right leg",
+     "box": [
+      0.85,
+      0,
+      0.85,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "deck",
+     "name": "Seat",
+     "box": [
+      0.05,
+      0.5,
+      0.05,
+      0.9,
+      0.05,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Backrest",
+     "box": [
+      0.05,
+      0.55,
+      0.85,
+      0.9,
+      0.4,
+      0.1
+     ],
+     "kind": "panel",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Four-legged chair with continuous back posts supporting a vertical backrest panel that shares face contact along the inner sides of both back legs"
+   ],
+   "learned": true
   }
  ]
 }
