@@ -6792,6 +6792,152 @@
     "Five spaced top slats rest on the side rails for a drained seating surface"
    ],
    "learned": true
+  },
+  {
+   "key": "wall-mounted-mail-organizer",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Wall-Mounted Mail Organizer",
+   "size": {
+    "width": 12,
+    "height": 14,
+    "depth": 3.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [],
+   "count": {
+    "word": "slots",
+    "default": 3
+   },
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Backboard",
+     "box": [
+      0,
+      0,
+      0.86,
+      1,
+      1,
+      0.14
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.07,
+      1,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Right side",
+     "box": [
+      0.93,
+      0,
+      0,
+      0.06999999999999995,
+      1,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Bottom shelf",
+     "box": [
+      0.07,
+      0,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lower divider",
+     "box": [
+      0.07,
+      0.32,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Upper divider",
+     "box": [
+      0.07,
+      0.64,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top rail",
+     "box": [
+      0.07,
+      0.95,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open-front horizontal slots hold letters and flat mail",
+    "Mounts flush to wall by the backboard"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
   }
  ]
 }
