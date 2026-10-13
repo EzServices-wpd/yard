@@ -1050,7 +1050,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const steps: { title: string; description: string; tips: string; partsUsed: string[] }[] = [
       {
         title: "Confirm the sleep size — do not cut yet",
-        description: `${project.name}. ${what}, ${round(W)}" wide × ${round(D)}" long × ${round(H)}" high. Match the deck${decks.length > 1 ? "s" : ""} to your mattress (twin is usually 38 × 75). ${partsOnThisListPhrase(project)}.`,
+        description: `${project.name}. ${what}, ${round(W)}" long × ${round(D)}" wide × ${round(H)}" tall. Match the deck${decks.length > 1 ? "s" : ""} to your mattress (twin is usually 38 × 75). ${partsOnThisListPhrase(project)}.`,
         tips: "If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },

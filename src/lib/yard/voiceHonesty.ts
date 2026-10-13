@@ -1255,11 +1255,13 @@ export function untypedAxisAssumedNotes(
     .flatMap((n) => (/\bassumed\b/i.test(n) ? [n] : n.match(/[^.]*\bworked out from\b[^.]*/gi) ?? []))
     .join(" ");
   const typedNums = (prompt.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).flatMap((n) => [n, n * 12]);
+  // A bed reads long × wide (its header says so): width is the long axis, depth is how wide it is.
+  const bed = notes.some((n) => /" long × [^.]*" wide × /.test(n));
   const axes = [
-    ["width", "wide", "a width", /\b(?:wide|width|across|along each wall)\b/i],
-    ["height", "tall", "a height", /\b(?:tall|height|high|to the top)\b/i],
-    ["depth", "deep", "a depth", /\b(?:deep|depth|across|along each wall)\b/i],
-  ] as const;
+    bed ? ["width", "long", "a length", /\b(?:long|length)\b/i] as const : ["width", "wide", "a width", /\b(?:wide|width|across|along each wall)\b/i] as const,
+    ["height", "tall", "a height", /\b(?:tall|height|high|to the top)\b/i] as const,
+    bed ? ["depth", "wide", "a width", /\b(?:wide|width)\b/i] as const : ["depth", "deep", "a depth", /\b(?:deep|depth|across|along each wall)\b/i] as const,
+  ];
   const out: string[] = [];
   for (const [axis, word, ask, covered] of axes) {
     const v = overall[axis];
