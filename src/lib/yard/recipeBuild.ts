@@ -212,6 +212,38 @@ function hollowVessels(recipe: Recipe): Recipe {
 }
 
 /**
+ * Two legs standing in the same plane and overlapping (a sawbuck's a/b legs drawn as parallel slabs) are an
+ * X: each becomes a board running corner to corner, the pair crossing at a half-lap so they sit flush.
+ */
+function crossLegs(recipe: Recipe, panels: Panel[]): void {
+  const legRoles = new Set(recipe.parts.filter((p) => /^(?:leg|x ?leg|trestle)$/.test(p.role)).map((p) => p.name));
+  const legs = panels.filter((p) => (legRoles.has(p.name) || legRoles.has(p.name.replace(/ \d+$/, ""))) && !p.polygon && p.position.y < 0.05);
+  const over = (a: Panel, b: Panel, ax: "x" | "z", k: "width" | "depth") => a.position[ax] < b.position[ax] + b.size[k] - 0.05 && b.position[ax] < a.position[ax] + a.size[k] - 0.05;
+  const used = new Set<Panel>();
+  for (const a of legs) {
+    if (used.has(a)) continue;
+    const b = legs.find((q) => q !== a && !used.has(q) && over(a, q, "x", "width") && over(a, q, "z", "depth"));
+    if (!b) continue;
+    used.add(a); used.add(b);
+    // The X runs along the pair's longer plan side.
+    const alongZ = Math.max(a.position.z + a.size.depth, b.position.z + b.size.depth) - Math.min(a.position.z, b.position.z) >= Math.max(a.position.x + a.size.width, b.position.x + b.size.width) - Math.min(a.position.x, b.position.x);
+    const [ax, k, cx, ck] = alongZ ? (["z", "depth", "x", "width"] as const) : (["x", "width", "z", "depth"] as const);
+    const lo = Math.min(a.position[ax], b.position[ax]), D = Math.max(a.position[ax] + a.size[k], b.position[ax] + b.size[k]) - lo;
+    const H = Math.max(a.size.height, b.size.height), w = Math.min(3.5, D / 3), t = 1.5;
+    const c = Math.min(a.position[cx], b.position[cx]);
+    const plane = alongZ ? "zy" : "xy";
+    [a, b].forEach((p, i) => {
+      p.position = { ...p.position, [ax]: lo, [cx]: c, y: 0 } as Panel["position"];
+      p.size = { ...p.size, [k]: D, [ck]: t, height: H } as Panel["size"];
+      p.polygon = { plane, pts: i ? [[D - w, 0], [D, 0], [w, H], [0, H]] : [[0, 0], [w, 0], [D, H], [D - w, H]] };
+      p.blank = { lengthIn: Math.round(Math.hypot(D - w, H) * 8) / 8, widthIn: w, thicknessIn: t };
+      p.joints = [{ with: (i ? a : b).name, kind: "lap" }];
+      p.cutNote = `Cut the ends to the X's angle; half-lap the crossing with the ${(i ? a : b).name} (half the thickness from each) so the pair sits flush.`;
+    });
+  }
+}
+
+/**
  * A tall single pedestal stands on a foot spreading both ways: when every floor part is one strip much
  * narrower than the build is tall, a crossing strip of the same stock is added under the pedestal.
  */
@@ -448,6 +480,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   panels.splice(0, panels.length, ...fitted);
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
+  crossLegs(recipe, panels);
   steadyPedestal(panels, size);
   if (/\btrestle\b/i.test(`${recipe.title} ${prompt}`)) trestleLegs(recipe, panels, size);
   gnomonTriangles(panels);

@@ -122,7 +122,8 @@ export function saveRecipe(lib: RecipeStore, recipe: Recipe): RecipeStore {
 
 /** A recipe from the lookup is accepted only when every field the build reads is there and in range. */
 /** One spelling per part: "paddle-wheel" and "Paddle_Wheel" are "Paddle wheel"; roles are lower case and singular. */
-export const partName = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+// camelCase and snake_case names read as words ("leftLegA" is "Left leg A"), never "Leftlega".
+export const partName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/^\w/, (c) => c.toUpperCase()).replace(/ ([a-z])$/, (_m, c: string) => ` ${c.toUpperCase()}`);
 export const partRole = (n: string) => n.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase().replace(/(?<=[^s])s$/, "");
 
 /** Why the last lookup reply could not be used, for the one retry's feedback. */

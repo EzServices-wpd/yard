@@ -313,3 +313,17 @@ it("a hollow vessel is a staved shell with its inner parts in the cavity, never 
   assert.ok(b.project.panels.filter((p) => /stave/.test(p.name)).length >= 4);
   assert.ok(!buildPlan(b.project).instructions.some((s) => /Glue up the thick parts/.test(s.title) && /Barrel/.test(s.description)));
 });
+
+import { buildRecipe as bR, validateRecipe as vR } from "./recipeBuild.ts";
+it("overlapping leg pairs become half-lapped X boards", () => {
+    const SB: any = {key:"sawbuck",synonyms:[],version:1,trust:"candidate",learned:true,title:"Sawbuck",size:{width:36,height:30,depth:22},defining:["leg","rail"],notes:[],parts:[
+{role:"leg",name:"Left leg A",box:[0.04,0,0,0.1,1,0.65],kind:"member"},{role:"leg",name:"Left leg B",box:[0.04,0,0.35,0.1,1,0.65],kind:"member"},
+{role:"leg",name:"Right leg A",box:[0.86,0,0,0.1,1,0.65],kind:"member"},{role:"leg",name:"Right leg B",box:[0.86,0,0.35,0.1,1,0.65],kind:"member"},
+{role:"rail",name:"Top rail A",box:[0.04,0.62,0.19,0.92,0.08,0.07],kind:"member",on:["Left leg A","Right leg A"]},
+{role:"rail",name:"Top rail B",box:[0.04,0.62,0.74,0.92,0.08,0.07],kind:"member",on:["Left leg B","Right leg B"]}]};
+    const b: any = bR(SB, "sawbuck");
+    assert.deepEqual(vR(SB, b, "sawbuck"), []);
+    const a = b.project.panels.find((p: any) => p.name === "Left leg A");
+    assert.ok(a.polygon);
+    assert.deepEqual(a.joints[0], { with: "Left leg B", kind: "lap" });
+});
