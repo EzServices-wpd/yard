@@ -7653,6 +7653,100 @@
     "Frame typically 2x4 lumber with plywood decks and fence"
    ],
    "learned": true
+  },
+  {
+   "key": "sundial",
+   "synonyms": [
+    "sun clock",
+    "garden sundial"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Garden Pedestal Sundial",
+   "size": {
+    "width": 20,
+    "height": 42,
+    "depth": 20
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "gnomon"
+   ],
+   "parts": [
+    {
+     "role": "plinth",
+     "name": "Plinth",
+     "box": [
+      0.15,
+      0,
+      0.15,
+      0.7,
+      0.07,
+      0.7
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Pedestal",
+     "box": [
+      0.375,
+      0.07,
+      0.375,
+      0.25,
+      0.72,
+      0.25
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Dial plate",
+     "box": [
+      0.1,
+      0.79,
+      0.1,
+      0.8,
+      0.025,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Pedestal"
+     ]
+    },
+    {
+     "role": "gnomon",
+     "name": "Gnomon",
+     "box": [
+      0.48,
+      0.815,
+      0.25,
+      0.04,
+      0.18,
+      0.45
+     ],
+     "kind": "member",
+     "on": [
+      "Dial plate"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Horizontal dial with fixed triangular gnomon; style edge slopes at local latitude angle",
+    "Plinth is low square stone or cast base roughly 14 in across",
+    "Pedestal is a 5 in square or turned column",
+    "Dial plate is a round or square metal/stone disk with engraved hour lines",
+    "Gnomon is a thin right-triangle plate fixed along the noon line, pointing true north"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Plinth: 2.94×14.00 is wider than one 2×4 Stud (8 ft); Pedestal: 5.00×5.00 is wider than one 2×4 Stud (8 ft); Buy 2 2×4 Stud (8 ft) for 303\" of strips"
   }
  ]
 }
