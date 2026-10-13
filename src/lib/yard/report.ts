@@ -875,7 +875,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       name: "Coat hooks",
       // Hooks come 6 to a pack: buy enough packs for every drawn hook.
       quantity: Math.max(1, Math.ceil(hooks / 6)),
-      unit: "pack of 6",
+      // Bought hardware shows its piece count, the way stick packs do.
+      unit: `pack of 6 (${hooks} hook${hooks === 1 ? "" : "s"} used)`,
       catalogId: "coat-hooks",
       searchQuery: "coat hooks wall mount 6 pack",
       estimatedCost: 12.98 * Math.max(1, Math.ceil(hooks / 6)),
