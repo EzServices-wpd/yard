@@ -4,6 +4,8 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
+import { learnedRecipeFailures } from "./learnedGate";
+import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
@@ -707,10 +709,15 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     const recipe = parsed && title && { ...parsed, title, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
     if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
-    feedback = validateRecipe(recipe, built, prompt);
-    if (!feedback.length) {
-      rememberRecipe(recipe);
-      return { project: built.project, recipe, rough: false, calls: call, reasons };
+    const hard = validateRecipe(recipe, built, prompt);
+    // The learned-recipe gate runs here too: its failures go back in the retry; still failing on the
+    // second call, the recipe builds held (Unverified) instead of passing silently.
+    const soft = hard.length ? [] : learnedRecipeFailures(recipe, prompt);
+    feedback = [...hard, ...soft];
+    if (!hard.length && (!soft.length || call === 2)) {
+      const kept = soft.length ? { ...recipe, held: `Flagged by the learned-recipe checks: ${soft.slice(0, 3).join("; ")}` } : recipe;
+      rememberRecipe(kept);
+      return { project: soft.length ? { ...built.project, notes: [UNVERIFIED, ...built.project.notes] } : built.project, recipe: kept, rough: false, calls: call, reasons };
     }
     why(call, `gate: ${feedback.join("; ")}`);
   }

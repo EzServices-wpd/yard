@@ -106,7 +106,7 @@ function cutHow(item?: CatalogItem | null) {
     };
   }
   if (ff === "board") {
-    return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: "Cedar and 1× split. Predrill." };
+    return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: /cedar/i.test(item.name) ? "Cedar splits. Predrill." : "Board ends split. Predrill." };
   }
   if (item.category === "plastic") {
     return { how: "Sharp snips. Square the cut so tape has a face to grab.", tip: "A crushed straw will not take a joint." };
@@ -2633,6 +2633,9 @@ function sheetCutDescription(
   especially = "",
 ): string {
   const groups = cutStockGroups(panels, fallbackItem);
+  // A board part thinner than its board (a 1 1/4" rail from a 2×4) is planed or resawn to thickness first.
+  const planed = [...new Set(panels.filter((p) => { const t = getCatalogItem(p.materialId)?.dims.height; return getCatalogItem(p.materialId)?.category === "lumber" && t && Math.min(p.size.width, p.size.height, p.size.depth) < t - 0.05; }).map((p) => cutListName(p.name, p.type).toLowerCase()))];
+  if (planed.length) especially = `${especially ? `${especially} ` : ""}Plane or resaw the ${planed.join(", ")} to the thickness on the list before you cut to length.`;
   const how = (groups[0]?.tool ?? cutHow(fallbackItem)).how;
   if (groups.length <= 1) {
     const cuts = groupSheetCuts(groups[0]?.panels ?? panels).join(" ");

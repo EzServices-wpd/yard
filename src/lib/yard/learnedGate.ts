@@ -101,5 +101,42 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
       if (named.length && named.length !== n) fail.push(`note says ${n} ${m[2]}, the model has ${named.length}`);
     }
   }
+  // Critic's classes, each an automatic check (RESULTS-2026-10-13):
+  const all = `${plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`).join("\n")}\n${plan.bom.map((b) => b.notes ?? "").join("\n")}`;
+  const minT = (p: (typeof panels)[number]) => Math.min(p.size.width, p.size.height, p.size.depth);
+  const isDowel = (p: (typeof panels)[number]) => /^dowel-/.test(p.materialId);
+  // (a) A note that names holes or slots needs a part that has them: a bore, a drilled step, or slots between repeated dividers.
+  const noteText = recipe.notes.join(" ").toLowerCase();
+  if (/\b(?:holes?|drilled|bored)\b/.test(noteText) && !recipe.parts.some((p) => p.bore || p.shape === "ring" || p.shape === "bead") && !/\bdrill\b/i.test(all)) fail.push("a note names holes but no part is drilled");
+  if (/\bslots?\b/.test(noteText) && !recipe.parts.some((p) => p.repeat === "between") && !/\bslot\b/i.test(all)) fail.push("a note names slots but no part forms them");
+  // (b) Dividers repeated between the sides stand on edge: their thin side runs along the repeat (x).
+  for (const part of recipe.parts.filter((q) => q.repeat === "between" && q.kind !== "member")) {
+    for (const p of panels.filter((q) => q.name.replace(/ \d+$/, "") === part.name)) if (p.size.width > minT(p) + 0.01) { fail.push(`${part.name} lies flat: a divider repeated between the sides must stand on edge`); break; }
+  }
+  // (c) Hardware is a catalogue item, never cut from stock, and nothing under 3/4" is screwed.
+  for (const part of recipe.parts.filter((q) => q.kind === "hardware")) {
+    if (plan.cutList.some((c) => c.name.toLowerCase().replace(/ \d+$/, "") === part.name.toLowerCase().replace(/\d+$/, "") && !/dowel/i.test(c.material))) fail.push(`${part.name} is hardware cut from stock`);
+  }
+  for (const s of plan.instructions.filter((x) => /\bscrews?\b/i.test(x.description) && !/no screws/i.test(x.description))) {
+    const thin = panels.find((p) => !isDowel(p) && minT(p) < 0.7 && (s.partsUsed ?? []).includes(p.name));
+    if (thin) fail.push(`${thin.name} is ${minT(thin).toFixed(2)}" thick and screwed: nothing under 3/4" takes a screw`);
+  }
+  // (d) Glue-up boards cover the strip length, and a thickness under the board's is planed or resawn.
+  for (const b of plan.bom) {
+    const it = getCatalogItem(b.catalogId ?? "");
+    if (!it || it.category !== "lumber" || !it.dims.width || !it.dims.length) continue;
+    const mine = plan.cutList.filter((c) => c.material === it.name);
+    const need = mine.reduce((n, c) => n + c.quantity * Math.max(1, Math.ceil((c.widthIn - 0.01) / it.dims.width!)) * c.lengthIn, 0);
+    if (need > b.quantity * it.dims.length + 0.5) fail.push(`Buy ${b.quantity} ${it.name} for ${Math.round(need)}" of strips`);
+    if (it.dims.height && mine.some((c) => c.thicknessIn < it.dims.height! - 0.05 && c.thicknessIn > 0) && !/\b(?:plane|resaw)/i.test(all)) fail.push(`${it.name} parts thinner than the board with no plane or resaw step`);
+  }
+  // (f) Template text matches this build: no cedar on other wood, no back edges without a back, the stock chip is cut.
+  const woods = panels.map((p) => getCatalogItem(p.materialId)?.name ?? "").join(" ");
+  if (/cedar/i.test(all) && !/cedar/i.test(woods)) fail.push("cedar wording on a build with no cedar");
+  if (/back edges?/i.test(all) && !panels.some((p) => /\bback\b/i.test(p.name))) fail.push("back-edge wording with no back");
+  const chip = built.project.primaryMaterialId;
+  if (chip && !panels.some((p) => p.materialId === chip) && !plan.cutList.some((c) => c.material === getCatalogItem(chip)?.name)) fail.push(`the stock chip (${getCatalogItem(chip)?.name ?? chip}) is not on the cut list`);
+  // (g) Parts are named, not numbered slugs ("Peg1"): a repeat is one part with a count.
+  for (const part of recipe.parts) if (/[a-z]\d+$/i.test(part.name)) fail.push(`"${part.name}" is a numbered slug: one part with a count`);
   return [...new Set(fail)];
 }

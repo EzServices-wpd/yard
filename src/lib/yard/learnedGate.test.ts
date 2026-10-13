@@ -328,3 +328,12 @@ it("overlapping leg pairs become half-lapped X boards", () => {
     assert.ok(a.polygon);
     assert.deepEqual(a.joints[0], { with: "Left leg B", kind: "lap" });
 });
+
+it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, hardware and thin parts screwed", async () => {
+  const { learnedRecipeFailures } = await import("./learnedGate.ts");
+  const f = (k: string) => learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!).join("\n");
+  assert.match(f("cribbage-board"), /names holes but no part is drilled/);
+  assert.match(f("cribbage-board"), /"Peg1" is a numbered slug/);
+  assert.match(f("knife-block-maple"), /under 3\/4" takes a screw/);
+  for (const k of ["water-wheel", "abacus"]) assert.equal(f(k), "", k);
+});
