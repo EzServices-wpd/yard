@@ -4343,8 +4343,7 @@
     "The hardwood dowel axle turns in holes drilled through the posts",
     "Each post stands on its own base"
    ],
-   "learned": true,
-   "held": "Critic FAIL 2026-10-12 regrade: hidden from Ideas and Popular until it passes the learned-recipe checks"
+   "learned": true
   },
   {
    "key": "abacus",
