@@ -6201,6 +6201,201 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Buy Landscape fabric liner, 3 ft × 50 ft roll: no part is cut from it; a part has only a fallback step; every part has the role \"panel\""
+  },
+  {
+   "key": "barn-birdhouse",
+   "synonyms": [
+    "barn-style birdhouse",
+    "nest box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Barn Birdhouse",
+   "size": {
+    "width": 10,
+    "height": 14,
+    "depth": 8
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Floor",
+     "box": [
+      0.08,
+      0,
+      0.08,
+      0.84,
+      0.05,
+      0.84
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Front",
+     "box": [
+      0.08,
+      0.05,
+      0.08,
+      0.84,
+      0.55,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0.08,
+      0.05,
+      0.86,
+      0.84,
+      0.55,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left",
+     "box": [
+      0.08,
+      0.05,
+      0.08,
+      0.06,
+      0.5,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right",
+     "box": [
+      0.86,
+      0.05,
+      0.08,
+      0.06,
+      0.5,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Left roof",
+     "box": [
+      0,
+      0.55,
+      0,
+      0.55,
+      0.32,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left",
+      "Front",
+      "Back"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Right roof",
+     "box": [
+      0.45,
+      0.55,
+      0,
+      0.55,
+      0.32,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Right",
+      "Front",
+      "Back"
+     ]
+    },
+    {
+     "role": "tower",
+     "name": "Cupola",
+     "box": [
+      0.37,
+      0.82,
+      0.35,
+      0.26,
+      0.12,
+      0.3
+     ],
+     "kind": "member",
+     "on": [
+      "Left roof",
+      "Right roof"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Cupola roof",
+     "box": [
+      0.34,
+      0.94,
+      0.32,
+      0.32,
+      0.06,
+      0.36
+     ],
+     "kind": "cover",
+     "on": [
+      "Cupola"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Perch",
+     "box": [
+      0.42,
+      0.28,
+      0.02,
+      0.16,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Front"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Gable roof meets at center peak for classic barn profile with slight overhang",
+    "1.25-inch round entrance hole centered in Front above the perch",
+    "Cupola adds barn character; often louvered or solid",
+    "Typically painted barn-red with white trim and corner boards",
+    "Wall-mounted via back panel or hung from cupola; floor clear interior roughly 5 by 5 inches",
+    "No feet; outdoor use only"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
   }
  ]
 }
