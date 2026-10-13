@@ -4492,6 +4492,119 @@
     "Beads are slices of 1 in dowel, drilled to slide freely on each rod"
    ],
    "learned": true
+  },
+  {
+   "key": "cribbage-board",
+   "synonyms": [
+    "cribbage board",
+    "crib board"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cribbage Board",
+   "size": {
+    "width": 15,
+    "height": 1.5,
+    "depth": 4
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Board",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.5,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "peg",
+     "name": "Peg1",
+     "box": [
+      0.04,
+      0.5,
+      0.18,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg2",
+     "box": [
+      0.08,
+      0.5,
+      0.18,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg3",
+     "box": [
+      0.04,
+      0.5,
+      0.72,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg4",
+     "box": [
+      0.08,
+      0.5,
+      0.72,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Solid hardwood plank drilled with two parallel tracks of holes (typically 60 holes per track in pairs) plus starter and finish holes",
+    "Four short cylindrical pegs (two per player) are placed in the holes to track scores up to 121",
+    "Holes are spaced about 0.5 in apart along each track; tracks run the length of the board",
+    "Often finished with oil or varnish; some include a small end compartment or recessed tray for storing the pegs"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Peg1 1: no catalogue item (hardware); Peg2 1: no catalogue item (hardware); Peg3 1: no catalogue item (hardware)"
   }
  ]
 }
