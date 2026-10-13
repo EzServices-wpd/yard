@@ -7,7 +7,7 @@
 import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
-import { findRecipe, lastParseProblem, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
+import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 
 type Size = { width: number; height: number; depth: number };
@@ -684,7 +684,11 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
       feedback = [];
       continue;
     }
-    const recipe = parseRecipe(raw);
+    const parsed = parseRecipe(raw);
+    // A learned recipe is keyed by the noun the maker typed, never the model's head noun ("lap desk", not
+    // "desk"): a generic key would take over a noun the engine already builds. Shorter synonyms go too.
+    const noun = normalizeNoun(prompt), n = noun.split(" ").length;
+    const recipe = parsed && { ...parsed, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
     if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     feedback = validateRecipe(recipe, built, prompt);
