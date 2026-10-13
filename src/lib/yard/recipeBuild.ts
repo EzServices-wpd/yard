@@ -468,6 +468,13 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       const py = st ? (i + y) / count : y, ph = st ? h / count : h;
       const pz = st ? (count - 1 - i + z) / count : z, pd = st ? d / count : d;
       const sz = { width: pw * size.width, height: ph * size.height, depth: pd * size.depth };
+      // A divider repeated between the sides stands on edge: its thin side runs along the repeat (x), never
+      // a flat slat spanning the width (the knife block's slots).
+      if (part.repeat === "between" && part.kind !== "member" && sz.width > Math.min(sz.height, sz.depth) + 0.01) {
+        const span = sz.width;
+        if (sz.height <= sz.depth) [sz.width, sz.height] = [sz.height, Math.min(span, size.height * (1 - py))];
+        else [sz.width, sz.depth] = [sz.depth, Math.min(span, size.depth * (1 - pz))];
+      }
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
@@ -536,6 +543,10 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     const hi = Math.max(...panels.map((p) => p.position[a] + p.size[k]));
     if (typedAxes[k] == null && hi > real[k] && hi - real[k] <= 1.5) real[k] = Math.round(hi * 8) / 8;
   }
+  // The header height is the body's: pegs standing in their holes (a cribbage board's) don't count.
+  const peg = (p: Panel) => p.type === "cleat" && /^dowel-/.test(p.materialId) && /\bpegs?\b/i.test(p.name);
+  const bodyTop = Math.max(0, ...panels.filter((p) => !peg(p)).map((p) => p.position.y + p.size.height));
+  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.ceil(bodyTop * 8 - 1e-6) / 8;
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
@@ -605,7 +616,7 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
   // The parts reach the overall box on every axis (nothing outside it; a real build fills its envelope).
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
-    const hi = Math.max(...project.panels.map((p) => p.position[a] + p.size[s]));
+    const hi = Math.max(...project.panels.filter((p) => a !== "y" || !/\bpegs?\b/i.test(p.name)).map((p) => p.position[a] + p.size[s]));
     // A builder snap (a wheel recentred on its axle) may spill up to 1"; a recipe part outside the box fails.
     // Geometry is real: nothing below the floor and nothing outside the box.
     if (a === "y" && lo < -0.01) fail.push(`a part goes below the floor (${fmtIn(-lo)})`);

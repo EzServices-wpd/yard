@@ -343,3 +343,20 @@ it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, h
   assert.match(f("knife-block-maple"), /under 3\/4" takes a screw/);
   for (const k of ["water-wheel", "abacus"]) assert.equal(f(k), "", k);
 });
+
+it("a divider repeated between the sides stands on edge even when the recipe lays it flat", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const kb = RECIPES.recipes.find((r) => r.key === "knife-block-maple")!;
+  const flat = { ...kb, parts: kb.parts.map((p) => (p.repeat === "between" ? { ...p, box: [0.05, 0.9, 0.05, 0.9, 0.04, 0.88] as typeof p.box } : p)) };
+  for (const d of buildRecipe(flat, "knife block").project.panels.filter((p) => /divider/i.test(p.name))) assert.ok(d.size.width < d.size.height && d.size.width < d.size.depth, JSON.stringify(d.size));
+});
+
+it("pegs don't raise the header height; thin board parts are glued and bought with the board, never an orphan backer", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  assert.equal(buildRecipe(RECIPES.recipes.find((r) => r.key === "cribbage-board")!, "cribbage board").project.overall.height, 0.75);
+  const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "knife-block-maple")!, "knife block").project);
+  const ids = new Set(plan.cutList.map((c) => c.id.split("|")[0]));
+  for (const b of plan.bom.filter((x) => /-1-4-|lumber/.test(x.catalogId ?? ""))) assert.ok(ids.has(b.catalogId!), b.name);
+  assert.ok(plan.instructions.some((s) => /Glue the (?:[A-Z] )?Slot divider/.test(s.description)));
+});

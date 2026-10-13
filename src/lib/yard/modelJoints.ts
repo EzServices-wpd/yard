@@ -75,6 +75,8 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       const sheetThin = (p: Panel) => thinnest(p) < 0.5 && !/^dowel-/.test(p.materialId) && !p.polygon;
       if ((thinnest(parts[i]) < 0.5 && !sheetThin(parts[i])) || (thinnest(parts[j]) < 0.5 && !sheetThin(parts[j]))) continue;
       const thinBack = sheetThin(parts[i]) || sheetThin(parts[j]);
+      // Only a back takes screws through its face; any other thin part (a divider, a thin front) is glued.
+      if (thinBack && ![parts[i], parts[j]].some((p) => sheetThin(p) && /\bback\b/i.test(p.name))) continue;
       let kind: JointKind;
       let screws: number;
       if (thinBack) {

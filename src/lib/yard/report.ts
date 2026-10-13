@@ -326,11 +326,13 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   let legsMerged = false;
   // ¾" board stocks already bought on their own lines (mixed-board branch); the linear packer skips them.
   const boardsBought = new Set<string>();
+  // Thin sheet parts only are a backer: a 1/4" dowel rod is round stock, and a thin part cut from a board
+  // (a 3/8" maple divider) is bought with that board, never as an orphan backer line.
+  const thinSheet = (c: CutLine) => (c.thicknessIn ?? 0.75) < 0.5 && /plywood/i.test(c.material ?? "");
   const structural = cuts.filter(
-    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
+    (c) => ((c.thicknessIn ?? 0.75) >= 0.5 || (!thinSheet(c) && !/dowel/i.test(c.material ?? ""))) && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );
-  // Thin sheet parts only: a 1/4" dowel rod is round stock, not a backer.
-  const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5 && !/dowel/i.test(c.material ?? ""));
+  const thinBacks = cuts.filter(thinSheet);
   const sheet10 = getCatalogItem("plywood-3-4-4x10");
   // 2x4 / 2x6 bearers are boards, not sheet parts. Nesting them onto plywood inflates Buy.
   const stickBoards = structural.filter((c) => /^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id));

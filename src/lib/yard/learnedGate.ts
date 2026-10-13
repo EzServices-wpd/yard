@@ -32,7 +32,8 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     }
   }
   const cutStock = new Set(plan.cutList.map((c) => c.material));
-  for (const b of plan.bom) if (!SUPPLY.test(b.name) && !cutStock.has(b.name)) fail.push(`Buy ${b.name}: no part is cut from it`);
+  const cutIds = new Set(plan.cutList.map((c) => c.id.split("|")[0]));
+  for (const b of plan.bom) if (!SUPPLY.test(b.name) && !cutStock.has(b.name) && !(b.catalogId && cutIds.has(b.catalogId))) fail.push(`Buy ${b.name}: no part is cut from it`);
   // Wording: a freestanding recipe prints no closet / footprint / opening text.
   if (!recipe.wall) {
     const text = [built.project.name, ...built.project.notes, plan.feasibility?.summary ?? "", ...(plan.feasibility?.issues ?? []).map((i) => i.message), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
@@ -120,8 +121,9 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   for (const part of recipe.parts.filter((q) => q.kind === "hardware")) {
     if (plan.cutList.some((c) => c.name.toLowerCase().replace(/ \d+$/, "") === part.name.toLowerCase().replace(/\d+$/, "") && !/dowel/i.test(c.material))) fail.push(`${part.name} is hardware cut from stock`);
   }
-  for (const s of plan.instructions.filter((x) => /\bscrews?\b/i.test(x.description) && !/no screws/i.test(x.description))) {
-    const thin = panels.find((p) => !isDowel(p) && minT(p) < 0.7 && (s.partsUsed ?? []).includes(p.name));
+  // A back is screwed through into the carcase edges; any other part under 3/4" is glued.
+  for (const s of plan.instructions.filter((x) => /\bscrews?\b/i.test(x.description.replace(/too thin for a screw|no screws/gi, "")))) {
+    const thin = panels.find((p) => !isDowel(p) && !/\bback\b/i.test(p.name) && minT(p) < 0.7 && (s.partsUsed ?? []).includes(p.name));
     if (thin) fail.push(`${thin.name} is ${minT(thin).toFixed(2)}" thick and screwed: nothing under 3/4" takes a screw`);
   }
   // (d) Glue-up boards cover the strip length, and a thickness under the board's is planed or resawn.

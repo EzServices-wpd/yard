@@ -167,6 +167,8 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
   if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
+  // Nothing under 1/2" but a back takes a screw: a thin divider or face is glued in place.
+  if (panel && !/\bback\b/i.test(part.name) && info?.how !== "floor" && Math.min(panel.size.width, panel.size.height, panel.size.depth) < 0.5) return `Glue the ${part.name} to ${onto} and clamp it until it sets. It is too thin for a screw.`;
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
