@@ -186,6 +186,32 @@ function roundParts(recipe: Recipe, panels: Panel[]): void {
  * over walls of two heights (a cold frame) it slopes from the low wall's top up to the tall one's.
  */
 /**
+ * A hollow vessel (churn, barrel, bucket, tub) is a staved shell, never a solid glue-up: a round body that
+ * other parts sit in (a dasher, a lid) becomes a bottom and four ¾" staves around an open cavity.
+ */
+function hollowVessels(recipe: Recipe): Recipe {
+  const VESSEL = /^(?:body|barrel|bucket|tub|vessel|churn|keg|drum|pail|cask|shell)$/;
+  let parts = recipe.parts;
+  for (const body of recipe.parts.filter((p) => VESSEL.test(p.role) && (p.shape === "cylinder" || p.shape === "ring"))) {
+    const [x, y, z, w, h, d] = body.box;
+    const inside = recipe.parts.some((q) => q !== body && q.box[0] >= x - 0.01 && q.box[0] + q.box[3] <= x + w + 0.01 && q.box[2] >= z - 0.01 && q.box[2] + q.box[5] <= z + d + 0.01 && q.box[1] < y + h && q.box[1] + q.box[4] > y);
+    if (!inside) continue;
+    const S = recipe.size, tw = 0.75 / S.width, td = 0.75 / S.depth, th = 0.75 / S.height;
+    const n = body.name, on = body.on;
+    const shell: Recipe["parts"] = [
+      { ...body, name: `${n} bottom`, box: [x, y, z, w, th, d], kind: "panel", shape: undefined, on },
+      { ...body, name: `${n} front stave`, box: [x, y + th, z, w, h - th, td], kind: "panel", shape: undefined, on: [`${n} bottom`] },
+      { ...body, name: `${n} back stave`, box: [x, y + th, z + d - td, w, h - th, td], kind: "panel", shape: undefined, on: [`${n} bottom`] },
+      { ...body, name: `${n} left stave`, box: [x, y + th, z + td, tw, h - th, d - 2 * td], kind: "panel", shape: undefined, on: [`${n} bottom`] },
+      { ...body, name: `${n} right stave`, box: [x + w - tw, y + th, z + td, tw, h - th, d - 2 * td], kind: "panel", shape: undefined, on: [`${n} bottom`] },
+    ];
+    const walls = shell.slice(1).map((p) => p.name);
+    parts = parts.flatMap((p) => (p === body ? shell : [{ ...p, on: p.on?.flatMap((o) => (o === n ? walls : [o])) }]));
+  }
+  return parts === recipe.parts ? recipe : { ...recipe, parts };
+}
+
+/**
  * A tall single pedestal stands on a foot spreading both ways: when every floor part is one strip much
  * narrower than the build is tall, a crossing strip of the same stock is added under the pedestal.
  */
@@ -231,7 +257,8 @@ function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
 }
 
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
-  const lids = new Set([...(recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part), ...recipe.parts.filter((p) => p.role === "lid").map((p) => p.name)]);
+  // Only a hinged lid is seated and sloped; a loose lid (a churn's) stays where the recipe put it.
+  const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part));
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
     const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
@@ -364,7 +391,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
-export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
+export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
+  const recipe = hollowVessels(recipe0);
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
   const count = typedCount(prompt, recipe);
@@ -508,7 +536,8 @@ function dowelSizes(panels: Panel[]): string[] {
 }
 
 /** The standard checks for a recipe build; an empty list passes. */
-export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: string): string[] {
+export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: string): string[] {
+  const recipe = hollowVessels(recipe0);
   const fail: string[] = [];
   const { project, count } = built;
   const want = typedSize(prompt, recipe);

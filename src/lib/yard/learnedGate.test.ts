@@ -301,3 +301,15 @@ it("geometry is real: a recentred wheel stands on the floor, the box is the buil
   assert.ok(c.project.panels.find((p) => p.name === "Left wall")?.polygon, "side walls clamp under the slope");
   assert.deepEqual(validateRecipe(cf, c, "cold frame"), []);
 });
+
+it("a hollow vessel is a staved shell with its inner parts in the cavity, never a solid glue-up", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const r = { key: "t-churn", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Butter churn", size: { width: 12, height: 36, depth: 12 }, defining: ["body", "dasher"], notes: [],
+    parts: [{ role: "body", name: "Barrel", box: [0, 0, 0, 1, 0.8, 1], kind: "member", shape: "cylinder" }, { role: "lid", name: "Lid", box: [0, 0.8, 0, 1, 0.04, 1], kind: "panel", on: ["Barrel"] },
+      { role: "dasher", name: "Dasher staff", box: [0.45, 0.1, 0.45, 0.1, 0.9, 0.1], kind: "member", shape: "cylinder", on: ["Lid"] }] } as unknown as Recipe;
+  const b = buildRecipe(r, "butter churn");
+  assert.deepEqual(validateRecipe(r, b, "butter churn"), []);
+  assert.ok(b.project.panels.filter((p) => /stave/.test(p.name)).length >= 4);
+  assert.ok(!buildPlan(b.project).instructions.some((s) => /Glue up the thick parts/.test(s.title) && /Barrel/.test(s.description)));
+});
