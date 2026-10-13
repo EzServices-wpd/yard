@@ -2239,10 +2239,15 @@ export function ignoredTypedWords(project: YardProject, prompt: string): string[
   const own = `${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
   const words = phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w));
   // The head noun and the word right before it name the object; outer words refine a style (Warren truss bridge).
-  return words.slice(-2).filter((w) => {
+  // Compare like with like: the bare phrase against the phrase with the word blanked (sizes and stock
+  // after it change the build either way, so the typed build itself is never the baseline).
+  const base = sig(generateFromPrompt(phrase));
+  // A typed plan shape (hexagon, octagon, round) names the object anywhere in the phrase.
+  const named = [...new Set([...words.filter((w) => /^(?:hexagon|hexagonal|octagon|octagonal|pentagon|round|oval|circular|triangular)$/.test(w)), ...words.slice(-2)])];
+  return named.filter((w) => {
     if (own.includes(w)) return false;
     const q = generateFromPrompt(phrase.replace(new RegExp(`\\b${w}\\b`), "thing"));
-    if (sig(q) !== sig(project)) return false;
+    if (sig(q) !== base) return false;
     // A title carries the word only when it is the builder's own name: one that echoes typed words ("Thing Frame") does not.
     const echo = /\bthing\b/i.test(q.name ?? "");
     const says = (t: string) => new RegExp(`\\b${w}\\b`, "i").test(t);
