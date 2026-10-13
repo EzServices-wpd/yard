@@ -5772,6 +5772,47 @@
     "Outdoor garden frame of wood or steel"
    ],
    "learned": true
+  },
+  {
+   "key": "cutting-board",
+   "synonyms": [
+    "chopping-board"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cutting Board",
+   "size": {
+    "width": 18,
+    "height": 1,
+    "depth": 12
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Board",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+     ],
+     "kind": "panel"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Flat rectangular hardwood slab used as a food prep surface"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy Food-safe mineral oil: no part is cut from it"
   }
  ]
 }
