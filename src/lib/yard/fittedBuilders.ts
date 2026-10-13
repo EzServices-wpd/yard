@@ -1813,7 +1813,7 @@ export function bedHonesty(project: YardProject, prompt: string): YardProject {
       ? `Too ${room.width < m.width - 0.5 ? "narrow" : "short"} for a ${word} mattress (${m.width}" × ${m.length}"): ${inchFrac(L)}" × ${inchFrac(Wd)}" outside leaves ${inchFrac(room.length)}" × ${inchFrac(room.width)}" inside.`
       : fits
         ? `Fits a ${fits[2]}" ${fits[0]} mattress (${fits[1]}" × ${fits[2]}") inside ${inchFrac(L)}" × ${inchFrac(Wd)}" outside.`
-        : `No standard mattress fits: ${inchFrac(L)}" × ${inchFrac(Wd)}" outside leaves ${inchFrac(room.length)}" × ${inchFrac(room.width)}" inside.`;
+        : `${room.width < 37.5 ? "Narrow deck — too narrow for even a twin (38\" wide)" : "Short deck — too short for a twin (75\" long)"}: ${inchFrac(L)}" × ${inchFrac(Wd)}" outside leaves ${inchFrac(room.length)}" × ${inchFrac(room.width)}" inside.`;
   const notes = (project.notes ?? []).map((n, i) => (i === 0 ? n.replace(project.name ?? "", name) : n));
   return { ...project, name, notes: [notes[0], fit, ...notes.slice(1)].filter(Boolean), ...(project.fitted ? { fitted: { ...project.fitted, name } } : {}) };
 }

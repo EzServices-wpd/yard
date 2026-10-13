@@ -3,7 +3,7 @@
  */
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
-import { boardFace } from "./fittedParse";
+import { boardFace, mattressDeck } from "./fittedParse";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
@@ -206,7 +206,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   if (isPlatformBed(sleepLower) || identityTitleStem(sleepLower) === "Platform bed") {
-    return bedHonesty(buildPlatformBed(spec, prompt, affordances), prompt);
+    // No mattress and no size typed: build the outside around a full mattress rather than at its size.
+    const bedPrompt = mattressDeck(sleepLower) || /\d/.test(prompt) ? prompt : `${prompt} full`;
+    return bedHonesty(buildPlatformBed(spec, bedPrompt, affordances), bedPrompt);
   }
 
   if (

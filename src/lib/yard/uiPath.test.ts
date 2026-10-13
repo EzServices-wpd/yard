@@ -96,7 +96,7 @@ it("bed axes: 'long' is the mattress axis (W), 'wide' runs across it (D); the he
   const b = bed("bunk bed 40 wide");
   assert.deepEqual([b.overall.width, b.overall.depth], [82, 40]);
   assert.match(b.name, /82" long × 40" wide/);
-  assert.ok((b.notes ?? []).some((n) => /No standard mattress fits|Too narrow/.test(n)));
+  assert.ok((b.notes ?? []).some((n) => /No standard mattress fits|[Tt]oo narrow/.test(n)));
   assert.ok((bed("bunk bed").notes ?? []).some((n) => /Fits a 75" twin/.test(n)));
 });
 
