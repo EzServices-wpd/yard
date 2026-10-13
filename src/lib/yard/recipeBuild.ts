@@ -483,7 +483,9 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
     if (typed[a] != null && Math.abs(project.overall[a] - (want[a] ?? 0)) > 0.01) fail.push(`typed ${a} ${want[a]} not honored`);
   }
   const boxes = projectBoxes(project);
-  if (boxes.length < 3) fail.push("closed shell: fewer than 3 parts");
+  // A flat object (a cutting board, a tray: at most 2" thick) may be one slab; the closed-shell checks are for 3D bodies.
+  const flat = Math.min(project.overall.width, project.overall.height, project.overall.depth) <= 2;
+  if (boxes.length < 3 && !flat) fail.push("closed shell: fewer than 3 parts");
   // The parts reach the overall box on every axis (nothing outside it; a real build fills its envelope).
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
@@ -496,7 +498,7 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   const vol = project.overall.width * project.overall.height * project.overall.depth;
   // A round body (a churn's barrel, a drum) is a real defining part, not the closed-shell box.
   const round = new Set(recipe.parts.filter((p) => p.shape).map((p) => p.name));
-  if (project.panels.some((p) => !round.has(p.name.replace(/ \d+$/, "")) && p.size.width * p.size.height * p.size.depth > 0.6 * vol)) fail.push("closed shell: one part fills the envelope");
+  if (!flat && project.panels.some((p) => !round.has(p.name.replace(/ \d+$/, "")) && p.size.width * p.size.height * p.size.depth > 0.6 * vol)) fail.push("closed shell: one part fills the envelope");
   for (const role of recipe.defining ?? []) {
     const names = recipe.parts.filter((p) => p.role === role).map((p) => p.name);
     if (!project.panels.some((p) => names.includes(p.name) || names.includes(p.name.replace(/ \d+$/, "")))) fail.push(`missing ${role}`);
@@ -619,11 +621,13 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
-export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 105_000, retryMs = 50_000): Lookup {
-  let calls = 0;
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 105_000, totalMs = 155_000): Lookup {
+  let start = 0;
   return async (_prompt, feedback) => {
-    // Two 75s halves timed out long recipes twice (110-155s, nothing learned): the first reply gets most of the bound.
-    const ms = calls++ ? retryMs : firstMs;
+    // The first reply gets up to 105s; the retry gets whatever is left of the bound, never a fixed 50s
+    // (a fixed 50s retry timed out the common fix-the-checks retry that used to land at ~130s).
+    const ms = start ? Math.max(totalMs - (Date.now() - start), 1) : Math.min(firstMs, totalMs);
+    if (!start) start = Date.now();
     let id: ReturnType<typeof setTimeout> | undefined;
     const timer = new Promise<never>((_, reject) => (id = setTimeout(() => reject(new Error("timeout")), ms)));
     const r = await Promise.race([call(feedback), timer]).finally(() => clearTimeout(id));
