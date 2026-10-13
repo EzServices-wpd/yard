@@ -289,8 +289,8 @@ function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
 }
 
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
-  // Only a hinged lid is seated and sloped; a loose lid (a churn's) stays where the recipe put it.
-  const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge").map((m) => m.part));
+  // Only a hinged lid is seated (a hinged gate or door swings sideways and is never a lid) and sloped; a loose lid (a churn's) stays where the recipe put it.
+  const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge" && !/\b(?:gates?|doors?)\b/i.test(m.part)).map((m) => m.part));
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
     const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
