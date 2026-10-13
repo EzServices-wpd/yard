@@ -5905,6 +5905,194 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Hanger 1: no catalogue item (hardware); Buy 1/4\" plywood 4x8 (backer): no part is cut from it; Buy Hanger: no part is cut from it"
+  },
+  {
+   "key": "toy-train-track-riser",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Toy Train Track Riser",
+   "size": {
+    "width": 5,
+    "height": 4,
+    "depth": 3
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.9,
+      0.08,
+      0.9
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.12,
+      0.08,
+      0.12,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.76,
+      0.08,
+      0.12,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Rear left leg",
+     "box": [
+      0.12,
+      0.08,
+      0.76,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Rear right leg",
+     "box": [
+      0.76,
+      0.08,
+      0.76,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front brace",
+     "box": [
+      0.24,
+      0.35,
+      0.15,
+      0.52,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear brace",
+     "box": [
+      0.24,
+      0.35,
+      0.77,
+      0.52,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top platform",
+     "box": [
+      0.08,
+      0.8,
+      0.08,
+      0.84,
+      0.12,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Track guide left",
+     "box": [
+      0.18,
+      0.92,
+      0.25,
+      0.08,
+      0.06,
+      0.5
+     ],
+     "kind": "member",
+     "on": [
+      "Top platform"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Track guide right",
+     "box": [
+      0.74,
+      0.92,
+      0.25,
+      0.08,
+      0.06,
+      0.5
+     ],
+     "kind": "member",
+     "on": [
+      "Top platform"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open trestle-style support for elevating wooden or plastic toy train track",
+    "Top platform holds a short straight track section",
+    "Typical molded plastic or plywood construction"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
   }
  ]
 }
