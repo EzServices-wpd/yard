@@ -6396,6 +6396,134 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
+  },
+  {
+   "key": "knife-block",
+   "synonyms": [
+    "knife block",
+    "knife holder",
+    "cutlery block"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Maple Knife Block",
+   "size": {
+    "width": 9,
+    "height": 8.5,
+    "depth": 4.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "count": {
+    "word": "slots",
+    "default": 6
+   },
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.09,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0,
+      0.09,
+      0.82,
+      1,
+      0.91,
+      0.18
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left side",
+     "box": [
+      0,
+      0.09,
+      0,
+      0.09,
+      0.91,
+      0.82
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right side",
+     "box": [
+      0.91,
+      0.09,
+      0,
+      0.08999999999999997,
+      0.91,
+      0.82
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front rail",
+     "box": [
+      0.09,
+      0.09,
+      0,
+      0.82,
+      0.22,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Divider",
+     "box": [
+      0.12,
+      0.09,
+      0.12,
+      0.06,
+      0.82,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ],
+     "repeat": "between"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from hard maple boards",
+    "Vertical dividers form narrow slots that hold knife blades safely",
+    "Open top allows knives to be inserted and removed",
+    "Sits stably on a countertop"
+   ],
+   "learned": true
   }
  ]
 }
