@@ -32,7 +32,7 @@ const KINDS: StructureKind[] = [
 async function chat(
   messages: { role: "system" | "user"; content: string }[],
   maxTokens = 700,
-  opts?: { json?: boolean },
+  opts?: { json?: boolean; effort?: "low" | "medium" | "high" },
 ) {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
@@ -43,6 +43,7 @@ async function chat(
     max_tokens: maxTokens,
     temperature: 0.2,
   };
+  if (opts?.effort) body.reasoning_effort = opts.effort;
   if (opts?.json) {
     body.response_format = { type: "json_object" };
   }
@@ -184,8 +185,9 @@ export const lookupRecipe = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = data.feedback?.length ? `${data.prompt}\nThe last recipe failed these checks; fix them: ${data.feedback.join("; ")}` : data.prompt;
     // grok-4.5 spends part of max_tokens on reasoning: 1600 cut long recipes off mid-JSON, which read as
-    // "missing fields". Give the reply room for a full part list.
-    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 8000, { json: true });
+    // "missing fields". Give the reply room for a full part list. Medium effort (default is high): cornhole and
+    // dog feeder replies ran past the 155s bound on high.
+    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 8000, { json: true, effort: "medium" });
     return result.ok ? { ok: true as const, recipeJson: JSON.stringify(parseModelJson(result.text)) } : { ok: false as const, error: result.error };
   });
 
