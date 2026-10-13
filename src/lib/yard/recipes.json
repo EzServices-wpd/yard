@@ -4732,6 +4732,177 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
+  },
+  {
+   "key": "raised-dog-feeder-stand",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Raised Dog Feeder Stand",
+   "size": {
+    "width": 24,
+    "height": 14,
+    "depth": 12
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "post",
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Leg fl",
+     "box": [
+      0.02,
+      0,
+      0.03,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg fr",
+     "box": [
+      0.91,
+      0,
+      0.03,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg bl",
+     "box": [
+      0.02,
+      0,
+      0.85,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg br",
+     "box": [
+      0.91,
+      0,
+      0.85,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Apron front",
+     "box": [
+      0.09,
+      0.82,
+      0.03,
+      0.82,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fl",
+      "Leg fr"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron back",
+     "box": [
+      0.09,
+      0.82,
+      0.89,
+      0.82,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leg bl",
+      "Leg br"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron left",
+     "box": [
+      0.02,
+      0.82,
+      0.15,
+      0.07,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fl",
+      "Leg bl"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron right",
+     "box": [
+      0.91,
+      0.82,
+      0.15,
+      0.07,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fr",
+      "Leg br"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top",
+     "box": [
+      0,
+      0.93,
+      0,
+      1,
+      0.06999999999999995,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Leg fl",
+      "Leg fr",
+      "Leg bl",
+      "Leg br",
+      "Apron front",
+      "Apron back",
+      "Apron left",
+      "Apron right"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Top deck has two circular cutouts that hold removable food and water bowls",
+    "Four-legged open frame elevates bowls for comfortable feeding height",
+    "Typical size suited to medium dogs"
+   ],
+   "learned": true
   }
  ]
 }
