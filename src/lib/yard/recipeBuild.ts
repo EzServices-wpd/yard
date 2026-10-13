@@ -28,6 +28,13 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
     out.width = Number(pair[1]) * k;
     out.depth = Number(pair[2]) * k;
   }
+  // A bare size with no axis word ("window box 30 inches", "12 inch clock") is the object's longest side.
+  const bare = !Object.keys(out).length && !pair && lower.match(/\b(\d+(?:\.\d+)?)\s*(ft|feet|foot|'|in|inch|inches|")(?![a-z])/);
+  if (bare) {
+    const s = recipe.size ?? { width: 1, height: 0, depth: 0 };
+    const longest = (["width", "height", "depth"] as const).reduce((a, k) => (s[k] > s[a] ? k : a), "width" as "width" | "height" | "depth");
+    out[longest] = Number(bare[1]) * (/^(ft|feet|foot|')$/.test(bare[2]) ? 12 : 1);
+  }
   return out;
 }
 
