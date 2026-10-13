@@ -423,7 +423,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               Drag to turn it · pinch or scroll to zoom
             </p>
           )}
-          {ready && pieceCount === 0 && !side && !pending && (
+          {ready && project.displayOnly && !pending && (
+            <p data-yard-not-learned="1" className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
+              Yard couldn't learn the {project.name.toLowerCase()} yet. The grey block is a placeholder: no parts, price or stock.
+            </p>
+          )}
+          {ready && pieceCount === 0 && !project.displayOnly && !side && !pending && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
               <div className="max-w-sm text-center">
                 <p className="font-display text-2xl text-fg">Empty bench</p>

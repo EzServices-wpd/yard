@@ -12,6 +12,6 @@ export function useStockLabel(): { label: string; wire: boolean } {
   const wire = isWireStock(material);
   const nest = honestNestSheetStockName(project, plan);
   const named = namedStockDisplayName(project.prompt ?? "", material);
-  const label = wire ? "Choose stock" : nest ? nest : named !== "stock" ? named : material?.name ?? "No stock";
+  const label = project.displayOnly ? "Not learned yet" : wire ? "Choose stock" : nest ? nest : named !== "stock" ? named : material?.name ?? "No stock";
   return { label, wire };
 }

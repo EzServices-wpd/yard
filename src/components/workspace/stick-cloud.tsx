@@ -45,6 +45,8 @@ export function PanelMesh({
 }) {
   // The part's real stock — the same answer the cut list prints (walnut legs render walnut).
   const prompt = useYard((s) => s.project.prompt ?? "");
+  // A shape Yard could not learn is a plain grey placeholder: no wood, no grain, nothing to buy.
+  const placeholder = useYard((s) => !!s.project.displayOnly);
   const partLook = panelRenderLook(prompt, panel);
   const item = getCatalogItem(partLook.catalogId) ?? getCatalogItem(panel.materialId);
   const look = stockLook(item);
@@ -53,7 +55,7 @@ export function PanelMesh({
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
   const opacity = ghost ? 0.16 : glass ? 0.42 : 1;
-  const color = ghost ? "#8a7c68" : partLook.color(!!look.map);
+  const color = placeholder ? "#9a9a9a" : ghost ? "#8a7c68" : partLook.color(!!look.map);
   const glow = inStep ? 0.22 : selected ? 0.14 : 0;
   const edgeColor = inStep ? "#e0782f" : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
@@ -251,7 +253,7 @@ export function PanelMesh({
           )}
           <meshStandardMaterial
             color={color}
-            map={glass ? undefined : grain ?? look.map ?? undefined}
+            map={glass || placeholder ? undefined : grain ?? look.map ?? undefined}
             transparent={opacity < 1 || glass}
             opacity={opacity}
             roughness={glass ? 0.08 : look.roughness}
