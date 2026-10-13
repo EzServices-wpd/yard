@@ -790,7 +790,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b));
   BUY_JOINTS.set(project, buyJoints);
   const modelScrews = screwTalk(buyJoints);
-  if (!headboard && !glueOnly) {
+  // A build with no screwed joint (pegs glued in holes) buys no screws.
+  if (!headboard && !glueOnly && (modelScrews.screws > 0 || project.fitted?.unit?.corner || floating)) {
     const cornerUnit = project.fitted?.unit?.corner;
     const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
     const cornerWallPanelScrews = cornerUnit && !cornerUnit.wallHung ? Math.max(4, Math.ceil(cornerUnit.height / 8)) : 0;

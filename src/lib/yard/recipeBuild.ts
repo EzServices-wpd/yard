@@ -84,10 +84,11 @@ function panelType(p: RecipePart): PanelType {
 }
 
 /** A moving part's pin (axle, pivot, shaft) is real hardware: a hardwood dowel through its carriers. */
-const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel)s?\b/i;
-function pinDowel(memberId: string): string {
+const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel|peg)s?\b/i;
+function pinDowel(memberId: string, section = 9): string {
   const it = getCatalogItem(memberId);
-  const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9);
+  // A peg no thicker than a 1/4" dowel's section is that dowel, never the member's 1" pin.
+  const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9, section < 0.4 ? section : 9);
   return t >= 1.4 ? "dowel-1-36" : t >= 0.7 ? "dowel-1-2-36" : "dowel-1-4-36";
 }
 
@@ -457,8 +458,11 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       const span = part.repeat === "each" || part.repeat === "between" ? R - L : 1, at = span === 1 ? 0 : L;
       const px = at + span * (part.repeat === "between" ? Math.min(Math.max(i / count - w / 2, 0), 1 - w) : part.repeat === "each" ? (i + x) * cell : x / span);
       const pw = part.repeat === "each" ? w * cell * span : w;
-      const n = (seen.get(part.name) ?? 0) + 1;
-      seen.set(part.name, n);
+      // Numbered slugs (Peg1…Peg4) are one family: "Peg 1…4", batched on the cut list as 4 Pegs.
+      const base = part.name.replace(/(?<=[a-z])\d+$/i, "");
+      const fam = base !== part.name;
+      const n = (seen.get(base) ?? 0) + 1;
+      seen.set(base, n);
       // A stair step i sits one rise up and one run back from the step below it (z = 1 is the front).
       const st = part.repeat === "stair";
       const py = st ? (i + y) / count : y, ph = st ? h / count : h;
@@ -467,10 +471,10 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
-        name: reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
+        name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(part.name) ? pinDowel(stock.member) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }

@@ -332,8 +332,14 @@ it("overlapping leg pairs become half-lapped X boards", () => {
 it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, hardware and thin parts screwed", async () => {
   const { learnedRecipeFailures } = await import("./learnedGate.ts");
   const f = (k: string) => learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!).join("\n");
-  assert.match(f("cribbage-board"), /names holes but no part is drilled/);
-  assert.match(f("cribbage-board"), /"Peg1" is a numbered slug/);
+  assert.match(f("cribbage-board"), /names 60 holes the model does not drill/);
+  // Engine side: Peg1…Peg4 are 4 Pegs cut from a 1/4" dowel, glued into drilled holes, with no screws bought.
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "cribbage-board")!, "cribbage board").project);
+  assert.equal(plan.cutList.find((c) => /^peg$/i.test(c.name))?.quantity, 4);
+  assert.match(plan.cutList.find((c) => /^peg$/i.test(c.name))!.material, /1\/4" Hardwood Dowel/);
+  assert.ok(!plan.bom.some((b) => /screw/i.test(b.name)));
   assert.match(f("knife-block-maple"), /under 3\/4" takes a screw/);
   for (const k of ["water-wheel", "abacus"]) assert.equal(f(k), "", k);
 });
