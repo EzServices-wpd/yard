@@ -5450,6 +5450,159 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Left apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft); Right apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft)"
+  },
+  {
+   "key": "sawbuck",
+   "synonyms": [
+    "log buck",
+    "sawing buck"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "2x4 Sawbuck",
+   "size": {
+    "width": 36,
+    "height": 32,
+    "depth": 24
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left leg A",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left leg B",
+     "box": [
+      0.11,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right leg A",
+     "box": [
+      0.83,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right leg B",
+     "box": [
+      0.89,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left cross rail",
+     "box": [
+      0.05,
+      0.35,
+      0.15,
+      0.12,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right cross rail",
+     "box": [
+      0.83,
+      0.35,
+      0.15,
+      0.12,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Right leg A",
+      "Right leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front long rail",
+     "box": [
+      0.05,
+      0.1,
+      0.1,
+      0.9,
+      0.08,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B",
+      "Right leg A",
+      "Right leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back long rail",
+     "box": [
+      0.05,
+      0.1,
+      0.84,
+      0.9,
+      0.08,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B",
+      "Right leg A",
+      "Right leg B"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from standard 2x4 lumber",
+    "Pairs of legs crossed and bolted into X-frames",
+    "Log rests in the upper crotches of the X-frames"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Left leg B: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Right leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft)"
   }
  ]
 }
