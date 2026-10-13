@@ -5244,6 +5244,212 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it; fitted wording \"footprint\" on a freestanding build"
+  },
+  {
+   "key": "router-table",
+   "synonyms": [
+    "router bench"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Router Table",
+   "size": {
+    "width": 36,
+    "height": 36,
+    "depth": 24
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "rail"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.92,
+      0,
+      0.02,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back left leg",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back right leg",
+     "box": [
+      0.92,
+      0,
+      0.92,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front apron",
+     "box": [
+      0.08,
+      0.82,
+      0.02,
+      0.84,
+      0.12,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back apron",
+     "box": [
+      0.08,
+      0.82,
+      0.93,
+      0.84,
+      0.12,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left apron",
+     "box": [
+      0.02,
+      0.82,
+      0.08,
+      0.05,
+      0.12,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Back left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right apron",
+     "box": [
+      0.93,
+      0.82,
+      0.08,
+      0.05,
+      0.12,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Table top",
+     "box": [
+      0,
+      0.94,
+      0,
+      1,
+      0.04,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Back left leg",
+      "Back right leg",
+      "Front apron",
+      "Back apron",
+      "Left apron",
+      "Right apron"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Insert plate",
+     "box": [
+      0.35,
+      0.945,
+      0.35,
+      0.3,
+      0.03,
+      0.3
+     ],
+     "kind": "cover",
+     "on": [
+      "Table top"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Fence",
+     "box": [
+      0.05,
+      0.98,
+      0.42,
+      0.9,
+      0.020000000000000018,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Table top"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open-stand woodworking table with flush center insert for a router mounted below the top",
+    "Fence sits across the top and is typically clamped or tracked for adjustment",
+    "Aprons stiffen the leg frame just under the top"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft); Right apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft)"
   }
  ]
 }
