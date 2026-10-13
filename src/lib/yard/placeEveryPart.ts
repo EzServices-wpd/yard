@@ -162,6 +162,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.
+  // A hinged lid swings on its hinges: it is hung, never screwed down.
+  if (panel?.turns && !onPin && !/^dowel-/.test(panel.materialId) && isLid(panel) && project.panels.some((q) => /\bhinge/i.test(q.name))) return `Hang the ${part.name} on its hinges: screw each hinge's free leaf to the ${part.name} with the short hinge screws. The ${part.name} itself takes no screws: it rests on the walls and swings open.`;
+  if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
   if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   switch (info?.how) {
@@ -330,6 +333,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // steps, not fallbacks.
   if (!steps.some(isBuild)) out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
   out = rotorBeforeSecondSupport(project, out, supports);
+  out = hingedLidLast(project, out);
   return renumber(out);
 }
 
@@ -648,4 +652,24 @@ function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], s
     out = [...out.slice(0, si), ...out.slice(si + 1, lastR + 1), moved, ...out.slice(lastR + 1)];
   }
   return out;
+}
+
+/** A hinged lid (and its hinges) goes on after every wall it rests on: last of the build steps. */
+function hingedLidLast(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  if (!project.panels.some((q) => /\bhinge/i.test(q.name))) return steps;
+  const lidNames = project.panels.filter((p) => p.turns && !/^dowel-/.test(p.materialId) && p.materialId !== "hardware" && isLid(p)).map((p) => p.name);
+  if (!lidNames.length) return steps;
+  const moving = (st: AssemblyStep) => isBuild(st) && (st.partsUsed ?? []).length > 0 && (st.partsUsed ?? []).every((n) => lidNames.includes(n) || /\bhinge/i.test(n));
+  const lastBuild = steps.reduce((m, st, i) => (isBuild(st) && !moving(st) ? i : m), -1);
+  if (lastBuild < 0) return steps;
+  const keep = steps.filter((st, i) => !(moving(st) && i < lastBuild));
+  const isHinge = (st: AssemblyStep) => (st.partsUsed ?? []).every((n) => /\bhinge/i.test(n));
+  const moved = steps.filter((st, i) => moving(st) && i < lastBuild).sort((a, b) => Number(isHinge(b)) - Number(isHinge(a)));
+  const at = keep.indexOf(steps[lastBuild]) + 1;
+  return [...keep.slice(0, at), ...moved, ...keep.slice(at)];
+}
+
+/** A lid lies flat (its height is its smallest side); a hinged door or gate stands up. */
+function isLid(p: { size: { width: number; height: number; depth: number }; blank?: unknown }): boolean {
+  return !!p.blank || p.size.height <= Math.min(p.size.width, p.size.depth);
 }

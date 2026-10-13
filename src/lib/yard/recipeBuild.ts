@@ -246,12 +246,25 @@ function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
     // The lid stays inside the overall height: walls reaching above H - t are trimmed to carry it.
     for (const w of under) if (top(w) > H - t) w.size = { ...w.size, height: Math.max(H - t - w.position.y, 0.5) };
     const rise = top(hi) - top(lo), D = lid.size.depth;
-    if (rise <= 1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
+    // Any rise slopes the lid so it rests on the low wall too (a lap desk's front never floats).
+    if (rise <= 0.1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
     lid.position = { ...lid.position, y: top(lo) };
     lid.size = { ...lid.size, height: rise + t };
     const backHigh = hi.position.z + hi.size.depth / 2 < lo.position.z + lo.size.depth / 2;
     const [y0, yD] = backHigh ? [rise, 0] : [0, rise];
     lid.polygon = { plane: "zy", pts: [[0, y0], [0, y0 + t], [D, yD + t], [D, yD]] };
+    // Cut from a flat blank as long as the slope: never a glue-up of the sloped bounding box.
+    lid.blank = { lengthIn: Math.round(lid.size.width * 8) / 8, widthIn: Math.round(Math.hypot(D, rise) * 8) / 8, thicknessIn: t };
+    // The other walls clamp under the slope: their tops follow the lid's underside, never through it.
+    const under0 = top(lo), z0 = lid.position.z;
+    const yAt = (z: number) => under0 + y0 + ((yD - y0) * Math.min(Math.max((z - z0) / D, 0), 1));
+    for (const w of under.filter((q) => q !== hi && q !== lo)) {
+      const ya = yAt(w.position.z) - w.position.y, yb = yAt(w.position.z + w.size.depth) - w.position.y;
+      if (top(w) <= Math.min(ya, yb) + w.position.y + 0.01) continue;
+      w.size = { ...w.size, height: Math.max(ya, yb) };
+      w.polygon = { plane: "zy", pts: [[0, 0], [w.size.depth, 0], [w.size.depth, yb], [0, ya]] };
+      w.blank = { lengthIn: Math.round(w.size.depth * 8) / 8, widthIn: Math.round(w.size.height * 8) / 8, thicknessIn: Math.round(w.size.width * 8) / 8 };
+    }
   }
 }
 

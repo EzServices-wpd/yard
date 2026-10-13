@@ -163,6 +163,8 @@ function closetCuts(project: YardProject): CutLine[] {
     });
   };
   for (const p of project.panels) {
+    // Hardware (hinges, catches) is bought, never cut: it goes on the Buy list, not the cut list.
+    if (p.materialId === "hardware") continue;
     const w = Math.round(p.size.width * 8) / 8;
     const d = Math.round(p.size.depth * 8) / 8;
     const h = Math.round(p.size.height * 8) / 8;
@@ -1614,7 +1616,11 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   if (project.displayOnly) {
     return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
   }
-  const plan = shape(project, fallbackStepOne(project, buildPlanInner(project)));
+  const plan0 = shape(project, fallbackStepOne(project, buildPlanInner(project)));
+  // Hardware parts (hinges, catches) are bought by count.
+  const hw = new Map<string, number>();
+  for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
+  const plan = { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] };
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));

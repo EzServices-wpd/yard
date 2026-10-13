@@ -254,3 +254,28 @@ it("a tall single pedestal gets a foot spreading both ways, and a gnomon is a tr
   assert.equal(b.project.panels.find((p) => p.name === "Gnomon")?.polygon?.pts.length, 3);
   assert.ok(!validateRecipe(r, b, "sundial").some((f) => /tips/.test(f)));
 });
+
+it("a hinged lid rests on every wall, is hung on its hinges (never screwed), and hinges are bought, not cut", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const r = { key: "t-lap", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Lap desk", size: { width: 18, height: 5, depth: 12 }, defining: ["lid"], notes: [],
+    parts: [{ role: "bottom", name: "Bottom", box: [0.03, 0, 0.03, 0.94, 0.12, 0.94], kind: "panel" },
+      { role: "rail", name: "Front rail", box: [0.03, 0.12, 0.03, 0.94, 0.28, 0.08], kind: "member", on: ["Bottom"] },
+      { role: "rail", name: "Back rail", box: [0.03, 0.12, 0.89, 0.94, 0.48, 0.08], kind: "member", on: ["Bottom"] },
+      { role: "rail", name: "Left rail", box: [0.03, 0.12, 0.03, 0.08, 0.4, 0.94], kind: "member", on: ["Bottom"] },
+      { role: "rail", name: "Right rail", box: [0.89, 0.12, 0.03, 0.08, 0.4, 0.94], kind: "member", on: ["Bottom"] },
+      { role: "lid", name: "Writing lid", box: [0.03, 0.6, 0.03, 0.94, 0.12, 0.94], kind: "panel", on: ["Back rail"] },
+      { role: "hinge", name: "Left hinge", box: [0.18, 0.42, 0.86, 0.12, 0.08, 0.1], kind: "hardware", on: ["Back rail", "Writing lid"] },
+      { role: "hinge", name: "Right hinge", box: [0.7, 0.42, 0.86, 0.12, 0.08, 0.1], kind: "hardware", on: ["Back rail", "Writing lid"] }],
+    moving: [{ part: "Writing lid", motion: "hinge" }] } as unknown as Recipe;
+  const b = buildRecipe(r, "lap desk");
+  assert.deepEqual(validateRecipe(r, b, "lap desk"), []);
+  const lid = b.project.panels.find((p) => p.name === "Writing lid")!, front = b.project.panels.find((p) => p.name === "Front rail")!;
+  assert.ok(Math.abs(lid.position.y - (front.position.y + front.size.height)) < 0.05, "lid rests on the front rail");
+  const plan = buildPlan(b.project);
+  assert.ok(!plan.cutList.some((c) => /hinge/i.test(c.name)));
+  assert.ok(plan.bom.some((x) => /hinge/i.test(x.name)));
+  const lidStep = plan.instructions.find((s) => (s.partsUsed ?? []).includes("Writing lid"))!;
+  assert.match(lidStep.description, /takes no screws/);
+  assert.ok(!plan.instructions.some((s) => /Glue up the thick parts/.test(s.title) && /Writing lid/.test(s.description)));
+});

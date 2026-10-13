@@ -562,7 +562,7 @@ export function withLaminateStep(project: YardProject, steps: AssemblyStep[]): A
   // A drawer is an assembly of its own parts, never a lamination.
   // Any sheet part thicker than its sheet is a glue-up of sheet layers, not a part cut at a thickness no sheet has.
   // Lumber thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
-  const thick = project.panels.filter((p) => (/^plywood-/.test(p.materialId) || (/^lumber-/.test(p.materialId) && p.materialId !== "lumber-1x4-8")) && Math.min(p.size.width, p.size.height, p.size.depth) > stockT(p.materialId) + 0.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
+  const thick = project.panels.filter((p) => (/^plywood-/.test(p.materialId) || (/^lumber-/.test(p.materialId) && p.materialId !== "lumber-1x4-8")) && (p.blank ? p.blank.thicknessIn : Math.min(p.size.width, p.size.height, p.size.depth)) > stockT(p.materialId) + 0.05 && p.type !== "drawer" && !isBoundingDrawerPanel(p.name, p.type));
   if (!thick.length) return steps;
   const at = steps.findIndex((s) => !/^(?:Confirm|Cut|Read|Measure|Check|Mark|Before|Drill the holes)\b/i.test(s.title));
   const lines = [...new Set(thick.map((p) => {
