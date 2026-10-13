@@ -37,3 +37,14 @@ it("a held recipe (Critic fail) stays off Ideas and Popular recently", async () 
     delete ww.held;
   }
 });
+
+it("a flagged learned recipe lands held, stays off Ideas and Popular, and is never promoted", async () => {
+  const { addCandidate } = await import("../ai/recipeBot.ts");
+  const bad = { key: "t-flagged", synonyms: [], version: 1, trust: "candidate", title: "Box", learned: true, size: { width: 20, height: 10, depth: 12 }, defining: ["wall"], notes: [],
+    parts: [{ role: "wall", name: "Back wall", box: [0, 0, 0.9, 1, 1, 0.1], kind: "panel" }, { role: "wall", name: "Front wall", box: [0, 0, 0, 1, 1, 0.1], kind: "panel" },
+      { role: "lid", name: "Lid", box: [0, 0.2, 0.3, 0.5, 0.04, 0.3], kind: "panel", on: ["Back wall"] }], moving: [{ part: "Lid", motion: "hinge" }] } as unknown as (typeof RECIPES.recipes)[number];
+  const text = addCandidate(JSON.stringify({ recipes: [] }), bad)!;
+  const added = JSON.parse(text).recipes[0];
+  assert.ok(added.held && added.trust === "candidate");
+  assert.ok(!recipeIdeas([added]).length);
+});

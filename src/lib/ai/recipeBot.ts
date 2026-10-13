@@ -5,6 +5,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
+import { learnedRecipeFailures } from "@/lib/yard/learnedGate";
 
 const REPO = process.env.YARD_RECIPE_REPO ?? "EzServices-wpd/yard";
 const BRANCH = "yard-recipe-bot";
@@ -20,7 +21,9 @@ let inWindow = 0;
 export function addCandidate(text: string, recipe: Recipe): string | null {
   const store = JSON.parse(text) as RecipeStore;
   if (store.recipes.some((r) => r.key === recipe.key)) return null;
-  store.recipes.push({ ...recipe, version: 1, trust: "candidate", learned: true });
+  // A recipe the learned-recipe checks flag lands held: off Ideas and Popular, and merging it promotes nothing.
+  const flags = learnedRecipeFailures(recipe);
+  store.recipes.push({ ...recipe, version: 1, trust: "candidate", learned: true, ...(flags.length ? { held: `Flagged by the learned-recipe checks: ${flags.slice(0, 3).join("; ")}` } : {}) });
   return `${JSON.stringify(store, null, 1)}\n`;
 }
 
