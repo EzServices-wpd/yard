@@ -6524,6 +6524,274 @@
     "Sits stably on a countertop"
    ],
    "learned": true
+  },
+  {
+   "key": "adirondack-footrest",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Adirondack Footrest",
+   "size": {
+    "width": 20,
+    "height": 14,
+    "depth": 18
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail",
+    "slat"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.85,
+      0,
+      0.05,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear left leg",
+     "box": [
+      0.05,
+      0,
+      0.85,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear right leg",
+     "box": [
+      0.85,
+      0,
+      0.85,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left side rail",
+     "box": [
+      0.05,
+      0.75,
+      0.1,
+      0.1,
+      0.1,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Rear left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right side rail",
+     "box": [
+      0.85,
+      0.75,
+      0.1,
+      0.1,
+      0.1,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front rail",
+     "box": [
+      0.1,
+      0.75,
+      0.05,
+      0.8,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear rail",
+     "box": [
+      0.1,
+      0.75,
+      0.85,
+      0.8,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left stretcher",
+     "box": [
+      0.05,
+      0.25,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Rear left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right stretcher",
+     "box": [
+      0.85,
+      0.25,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 1",
+     "box": [
+      0.1,
+      0.85,
+      0.15,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 2",
+     "box": [
+      0.1,
+      0.85,
+      0.3,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 3",
+     "box": [
+      0.1,
+      0.85,
+      0.45,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 4",
+     "box": [
+      0.1,
+      0.85,
+      0.6,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 5",
+     "box": [
+      0.1,
+      0.85,
+      0.75,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Classic low outdoor wooden footrest paired with Adirondack chairs",
+    "Four legs with side rails, end rails and lower stretchers form the frame",
+    "Five spaced top slats rest on the side rails for a drained seating surface"
+   ],
+   "learned": true
   }
  ]
 }
