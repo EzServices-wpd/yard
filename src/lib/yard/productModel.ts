@@ -341,6 +341,8 @@ export function isBareProductPrompt(prompt: string): boolean {
   const q = prompt.trim().toLowerCase();
   if (q.length < 3 || (BUILD_NOUN.test(q) && !isSoldStorageBox(q))) return false;
   if (namesBuildStock(q)) return false;
+  // "<thing> from|made of|out of <stock>" is built from that stock, never a bought product.
+  if (/\b(?:from|made (?:of|from)|out of)\s+\S/.test(q)) return false;
   if (SPECS.some((row) => row.match(q))) return true;
   if (NAMED.some((row) => row.match(q))) return true;
   return shapeOf(q) !== "object";
