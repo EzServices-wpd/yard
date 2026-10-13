@@ -7338,6 +7338,321 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: note names 4x4 but no part is cut from it"
+  },
+  {
+   "key": "miter-saw-station",
+   "synonyms": [
+    "miter saw bench",
+    "chop saw station"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Miter Saw Station",
+   "size": {
+    "width": 96,
+    "height": 36,
+    "depth": 30
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "rail"
+   ],
+   "count": {
+    "word": "bays",
+    "default": 1
+   },
+   "parts": [
+    {
+     "role": "post",
+     "name": "Lf leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rf leg",
+     "box": [
+      0.95,
+      0,
+      0.02,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Lb leg",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rb leg",
+     "box": [
+      0.95,
+      0,
+      0.92,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front lower rail",
+     "box": [
+      0.05,
+      0.08,
+      0.02,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Rf leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back lower rail",
+     "box": [
+      0.05,
+      0.08,
+      0.92,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lb leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left lower rail",
+     "box": [
+      0.02,
+      0.08,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Lb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right lower rail",
+     "box": [
+      0.95,
+      0.08,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Rf leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Bottom shelf",
+     "box": [
+      0.05,
+      0.12,
+      0.05,
+      0.9,
+      0.02,
+      0.87
+     ],
+     "kind": "panel",
+     "on": [
+      "Front lower rail",
+      "Back lower rail",
+      "Left lower rail",
+      "Right lower rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front upper rail",
+     "box": [
+      0.05,
+      0.84,
+      0.02,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Rf leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back upper rail",
+     "box": [
+      0.05,
+      0.84,
+      0.92,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lb leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left upper rail",
+     "box": [
+      0.02,
+      0.84,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Lb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right upper rail",
+     "box": [
+      0.95,
+      0.84,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Rf leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Left wing",
+     "box": [
+      0.05,
+      0.88,
+      0.05,
+      0.28,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail",
+      "Left upper rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Saw platform",
+     "box": [
+      0.35,
+      0.88,
+      0.05,
+      0.3,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Right wing",
+     "box": [
+      0.67,
+      0.88,
+      0.05,
+      0.28,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail",
+      "Right upper rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Fence",
+     "box": [
+      0.05,
+      0.92,
+      0.88,
+      0.9,
+      0.07999999999999996,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Left wing",
+      "Saw platform",
+      "Right wing",
+      "Back upper rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Left and right wings sit flush with the miter saw table surface",
+    "Saw bolts to the center platform so its fence aligns with the continuous station fence",
+    "Lower shelf provides storage for cutoffs and accessories",
+    "Frame typically 2x4 lumber with plywood decks and fence"
+   ],
+   "learned": true
   }
  ]
 }
