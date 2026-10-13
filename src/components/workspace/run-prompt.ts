@@ -356,7 +356,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     (parsed?.walls != null &&
       ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
   const skipLlm =
-    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt);
+    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
+    // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
+    !!findRecipe(prompt);
   if (skipLlm && !learn) {
     revealBench();
     makePlan();

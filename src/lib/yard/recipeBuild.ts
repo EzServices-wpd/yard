@@ -546,12 +546,19 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     overall: real,
     instances: [],
     panels,
-    primaryMaterialId: stock.member,
+    // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
+    primaryMaterialId: mainStock(panels) ?? stock.member,
     notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
   return { project, count, size };
+}
+
+function mainStock(panels: Panel[]): string | undefined {
+  const vol = new Map<string, number>();
+  for (const p of panels) if (p.materialId && p.materialId !== "hardware") vol.set(p.materialId, (vol.get(p.materialId) ?? 0) + p.size.width * p.size.height * p.size.depth);
+  return [...vol].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
 /**

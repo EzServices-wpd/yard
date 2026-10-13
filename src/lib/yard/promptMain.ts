@@ -576,7 +576,8 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
 /** The header names the stock the frame is cut from: a sheet primary on a mostly-lumber build (a ply seat or
  * deck on a 2x frame) gives way to the frame lumber, 2x4 when the frame uses it. A 1x build keeps its sheet. */
 function primaryFromParts(p: YardProject): YardProject {
-  if (getCatalogItem(p.primaryMaterialId)?.category === "lumber") return p;
+  // A recipe build already names the stock it is mostly made of (by volume), not the stock with most parts.
+  if (getCatalogItem(p.primaryMaterialId)?.category === "lumber" || p.id.startsWith("recipe-")) return p;
   const n = new Map<string, number>();
   for (const x of p.panels) if (x.materialId) n.set(x.materialId, (n.get(x.materialId) ?? 0) + 1);
   const lumber = [...n].filter(([id]) => /^lumber-[24]x\d/.test(id)).sort((x, y) => y[1] - x[1]);
