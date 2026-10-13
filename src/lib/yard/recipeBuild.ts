@@ -702,7 +702,9 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     // A learned recipe is keyed by the noun the maker typed, never the model's head noun ("lap desk", not
     // "desk"): a generic key would take over a noun the engine already builds. Shorter synonyms go too.
     const noun = normalizeNoun(prompt), n = noun.split(" ").length;
-    const recipe = parsed && { ...parsed, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
+    // The title names what was typed: the AI's own noun ("Table" for a dog feeder stand) is dropped.
+    const title = parsed && (parsed.title.toLowerCase().includes(noun) ? parsed.title : noun.replace(/(^|\s)\w/g, (c) => c.toUpperCase()));
+    const recipe = parsed && title && { ...parsed, title, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
     if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     feedback = validateRecipe(recipe, built, prompt);
