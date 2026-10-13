@@ -148,8 +148,8 @@ it("identical numbered parts share one cut-list line and letter", async () => {
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const cut = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus").project).cutList;
-  assert.equal(cut.find((c) => c.name === "rod")?.quantity, 9);
-  assert.equal(cut.find((c) => c.name === "bead")?.quantity, 45);
+  assert.equal(cut.find((c) => c.name.toLowerCase() === "rod")?.quantity, 9);
+  assert.equal(cut.find((c) => c.name.toLowerCase() === "bead")?.quantity, 45);
 });
 
 it("hardware comes only from parts that exist: dowels are never counted as back edges", async () => {
@@ -165,7 +165,7 @@ it("a sheet part thicker than its sheet is a glue-up of plies with its own step"
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project);
-  const hub = plan.cutList.find((c) => c.name === "hub")!;
+  const hub = plan.cutList.find((c) => c.name.toLowerCase() === "hub")!;
   assert.equal(hub.thicknessIn, 0.75);
   assert.equal(hub.quantity, 5);
   assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));

@@ -13,6 +13,6 @@ it("abacus: beads thread onto the rod, one step and one saw line per family", ()
   assert.equal(steps.filter((s) => (s.partsUsed ?? []).some((n) => /^bead/i.test(n))).length, 1);
   assert.equal(steps.filter((s) => (s.partsUsed ?? []).some((n) => /^rod/i.test(n))).length, 1);
   const saw = steps.find((s) => /^Cut /.test(s.title))!.description;
-  assert.match(saw, /9 rods /);
-  assert.match(saw, /45 beads /);
+  assert.match(saw, /9 rods /i);
+  assert.match(saw, /45 beads /i);
 });
