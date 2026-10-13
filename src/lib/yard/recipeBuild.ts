@@ -247,14 +247,18 @@ function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
     for (const w of under) if (top(w) > H - t) w.size = { ...w.size, height: Math.max(H - t - w.position.y, 0.5) };
     const rise = top(hi) - top(lo), D = lid.size.depth;
     // Any rise slopes the lid so it rests on the low wall too (a lap desk's front never floats).
-    if (rise <= 0.1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; continue; }
+    // A growing frame's lid is glazed (clear acrylic or polycarbonate over the bed), never a solid board.
+    const glazed = /\b(?:cold\s*frame|green\s*house|hot\s*bed|cloche|propagator)\b/i.test(recipe.title);
+    if (glazed) { lid.materialId = "acrylic-sheet"; lid.cutNote = "Clear glazing: acrylic or twin-wall polycarbonate, cut to the lid size."; }
+    const gT = glazed ? (getCatalogItem("acrylic-sheet")?.dims.thickness ?? 0.08) : t;
+    if (rise <= 0.1) { lid.position = { ...lid.position, y: top(hi) }; lid.size = { ...lid.size, height: t }; if (glazed) lid.blank = { lengthIn: Math.round(lid.size.width * 8) / 8, widthIn: Math.round(lid.size.depth * 8) / 8, thicknessIn: gT }; continue; }
     lid.position = { ...lid.position, y: top(lo) };
     lid.size = { ...lid.size, height: rise + t };
     const backHigh = hi.position.z + hi.size.depth / 2 < lo.position.z + lo.size.depth / 2;
     const [y0, yD] = backHigh ? [rise, 0] : [0, rise];
     lid.polygon = { plane: "zy", pts: [[0, y0], [0, y0 + t], [D, yD + t], [D, yD]] };
     // Cut from a flat blank as long as the slope: never a glue-up of the sloped bounding box.
-    lid.blank = { lengthIn: Math.round(lid.size.width * 8) / 8, widthIn: Math.round(Math.hypot(D, rise) * 8) / 8, thicknessIn: t };
+    lid.blank = { lengthIn: Math.round(lid.size.width * 8) / 8, widthIn: Math.round(Math.hypot(D, rise) * 8) / 8, thicknessIn: gT };
     // The other walls clamp under the slope: their tops follow the lid's underside, never through it.
     const under0 = top(lo), z0 = lid.position.z;
     const yAt = (z: number) => under0 + y0 + ((yD - y0) * Math.min(Math.max((z - z0) / D, 0), 1));
@@ -277,7 +281,7 @@ const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p
  * crossed spokes, paddles stand on the rim at the quarter points, and every fixed part the axle passes is
  * drilled for it.
  */
-function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
+function rotors(recipe: Recipe, panels: Panel[], pins: Panel[], size?: Size): void {
   // Every dowel sits in drilled holes: each fixed part it meets is drilled for it.
   for (const pin of pins) {
     const L = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
@@ -314,6 +318,16 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
       const h = p.polygon?.holes?.[0];
       if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
       if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [\d./]+"?/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} ${pin.name.replace(/ \d+$/, "").toLowerCase()})`);
+    }
+    // A recentred wheel never sinks into the floor: the axle and its wheel lift so the wheel stands on it.
+    const sink = -Math.min(0, ...riders.map((p) => p.position.y));
+    if (sink > 0) for (const p of [pin, ...riders]) p.position = { ...p.position, y: p.position.y + sink };
+    // ...and stays inside the box front to back and side to side.
+    if (size) for (const [ax, k] of [["x", "width"], ["z", "depth"]] as const) {
+      if (ax === long || !riders.length) continue;
+      const lo = Math.min(...riders.map((p) => p.position[ax])), hi = Math.max(...riders.map((p) => p.position[ax] + p.size[k]));
+      const shift = lo < 0 ? -lo : hi > size[k] ? size[k] - hi : 0;
+      if (shift) for (const p of [pin, ...riders]) p.position = { ...p.position, [ax]: p.position[ax] + shift };
     }
     for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
       const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
@@ -439,7 +453,7 @@ export function buildRecipe(recipe: Recipe, prompt: string, materialOverride?: s
     const hole = p.polygon?.holes?.[0];
     if (hole && !pins.includes(p)) hole.r += 1 / 32;
   }
-  rotors(recipe, panels, pins);
+  rotors(recipe, panels, pins, size);
   const sized = dowelSizes(panels);
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
@@ -503,8 +517,9 @@ export function validateRecipe(recipe: Recipe, built: RecipeBuild, prompt: strin
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
     const hi = Math.max(...project.panels.map((p) => p.position[a] + p.size[s]));
-    // A builder snap (a wheel recentred on its axle) may spill up to 1"; a recipe part outside the box fails.
-    if (lo < -1 || hi > project.overall[s] + 1) fail.push(`parts leave the ${s}`);
+    // Geometry is real: nothing below the floor or outside the box.
+    if (a === "y" && lo < -0.01) fail.push(`a part goes below the floor (${fmtIn(-lo)}): lower its carrier or shrink it so it stands on the floor`);
+    else if (lo < -0.01 || hi > project.overall[s] + 0.01) fail.push(`parts leave the ${s}`);
   };
   ext("x", "width"); ext("y", "height"); ext("z", "depth");
   // One box filling the envelope is the closed-shell fallback.

@@ -279,3 +279,24 @@ it("a hinged lid rests on every wall, is hung on its hinges (never screwed), and
   assert.match(lidStep.description, /takes no screws/);
   assert.ok(!plan.instructions.some((s) => /Glue up the thick parts/.test(s.title) && /Writing lid/.test(s.description)));
 });
+
+it("geometry is real: a recentred wheel stands on the floor inside the box, and a cold frame lid is glazed", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const wb = { key: "t-wb", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Wheelbarrow", size: { width: 24, height: 26, depth: 56 }, defining: ["wheel", "handle"], notes: [],
+    parts: [{ role: "wheel", name: "Wheel", box: [0.33, 0, 0, 0.34, 0.62, 0.29], kind: "member", shape: "disc" },
+      { role: "axle", name: "Axle", box: [0.2, 0.25, 0.12, 0.6, 0.06, 0.04], kind: "hardware", shape: "cylinder", on: ["Left handle", "Right handle"] },
+      { role: "handle", name: "Left handle", box: [0.15, 0.2, 0.1, 0.08, 0.08, 0.9], kind: "member", on: ["Left leg"] }, { role: "handle", name: "Right handle", box: [0.77, 0.2, 0.1, 0.08, 0.08, 0.9], kind: "member", on: ["Right leg"] },
+      { role: "leg", name: "Left leg", box: [0.15, 0, 0.6, 0.08, 0.28, 0.06], kind: "member" }, { role: "leg", name: "Right leg", box: [0.77, 0, 0.6, 0.08, 0.28, 0.06], kind: "member" }],
+    moving: [{ part: "Wheel", motion: "spin" }] } as unknown as Recipe;
+  const b = buildRecipe(wb, "wheelbarrow");
+  const wheel = b.project.panels.find((p) => p.name === "Wheel")!;
+  assert.equal(Math.round(wheel.position.y * 100) / 100, 0);
+  assert.ok(!validateRecipe(wb, b, "wheelbarrow").some((f) => /below the floor|leave/.test(f)));
+  const cf = { key: "t-cf2", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Cold frame", size: { width: 48, height: 18, depth: 36 }, defining: ["wall"], notes: [],
+    parts: [{ role: "wall", name: "Back wall", box: [0, 0, 0.95, 1, 1, 0.05], kind: "panel" }, { role: "wall", name: "Front wall", box: [0, 0, 0, 1, 0.6, 0.05], kind: "panel" },
+      { role: "wall", name: "Left wall", box: [0, 0, 0.05, 0.03, 1, 0.9], kind: "panel" }, { role: "lid", name: "Lid", box: [0, 0.6, 0, 1, 0.04, 1], kind: "panel", on: ["Back wall"] }],
+    moving: [{ part: "Lid", motion: "hinge" }] } as unknown as Recipe;
+  const c = buildRecipe(cf, "cold frame").project;
+  assert.equal(c.panels.find((p) => p.name === "Lid")?.materialId, "acrylic-sheet");
+  assert.ok(c.panels.find((p) => p.name === "Left wall")?.polygon, "side wall clamps under the sloped lid");
+});
