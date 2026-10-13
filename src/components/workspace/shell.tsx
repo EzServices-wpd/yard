@@ -423,6 +423,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               Drag to turn it · pinch or scroll to zoom
             </p>
           )}
+          {ready && /^Unverified:/.test(project.notes?.[0] ?? "") && (
+            <p data-yard-unverified="1" className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
+              {project.notes[0]}
+            </p>
+          )}
           {ready && project.displayOnly && (
             <p data-yard-not-learned={/^Yard is learning/.test(project.notes?.[0] ?? "") ? "learning" : "1"} className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
               {/^Yard is learning/.test(project.notes?.[0] ?? "")
