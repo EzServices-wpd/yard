@@ -44,7 +44,8 @@ describe("recipe acceptance (grade 2da150e)", () => {
       }
       for (const [k, v] of Object.entries(want ?? {})) {
         if (k === "width" || k === "depth" || k === "height") assert.equal(p.overall[k], v, k);
-        else assert.equal(p.panels.filter((x) => x.name.replace(/ \d+$/, "") === k).length, v, k);
+        // A slatted wall split into boards is still one part (its boards share the wall's id).
+        else assert.equal(new Set(p.panels.filter((x) => x.name.replace(/ \d+$/, "") === k).map((x) => x.id.replace(/-s\d+$/, ""))).size, v, k);
       }
     });
   }

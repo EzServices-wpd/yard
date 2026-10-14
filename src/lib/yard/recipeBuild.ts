@@ -84,6 +84,8 @@ function panelType(p: RecipePart): PanelType {
 }
 
 /** A moving part's pin (axle, pivot, shaft) is real hardware: a hardwood dowel through its carriers. */
+/** A pivot that is a bought mechanism (a Murphy bed's fold bracket, a lift kit) is hardware, never a cut dowel. */
+const BOUGHT_MECHANISM = /\b(?:bracket|mechanism|kit|lift|piston|spring)s?\b/i;
 const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel|peg)s?\b/i;
 function pinDowel(memberId: string, section = 9): string {
   const it = getCatalogItem(memberId);
@@ -136,6 +138,17 @@ function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[
       const over = (q: Panel) => q.position.x < p.position.x + p.size.width - 0.01 && q.position.x + q.size.width > p.position.x + 0.01 && q.position.z < p.position.z + p.size.depth - 0.01 && q.position.z + q.size.depth > p.position.z + 0.01;
       if (Math.abs(drop) > 0.001) out.forEach((q, a) => { if (!group.includes(a) && ((q.position.y > p.position.y + p.size.height / 2 && over(q)) || pairs.some(([x, y]) => x === a && y === i && q.position.y > top0 - 0.25 && q.position.y < top0 + CONTACT_GAP))) next[a].position.y = q.position.y - drop; });
     }
+    // A part fastened to a member that narrowed by a hair (a 3.6" post to 3 1/2") reaches the hair to stay on it.
+    for (const [a, b] of pairs) {
+      const g = gap(next[a], next[b]);
+      if (group.includes(a) || g <= CONTACT_GAP || g > 0.25) continue;
+      for (const [x, k] of AX) {
+        const lo = next[b].position[x] - (next[a].position[x] + next[a].size[k]), hi = next[a].position[x] - (next[b].position[x] + next[b].size[k]);
+        // Stretch the hair, so a wall between two posts stays on both.
+        if (lo > CONTACT_GAP) next[a].size[k] += lo;
+        else if (hi > CONTACT_GAP) { next[a].position[x] -= hi; next[a].size[k] += hi; }
+      }
+    }
     if (pairs.every(([a, b]) => gap(next[a], next[b]) <= CONTACT_GAP)) out = next;
   }
   return out;
@@ -168,9 +181,9 @@ function realBoards(recipe: Recipe, panels: Panel[]) {
  * the board) another board of the same length as one board thick (a 1.4×0.96 rail is a 1×2, never a 3 1/2" 2×4 face; a 1×4 is never a glued post).
  */
 export function closestBoards(materialId: string, size: Panel["size"], named = false): { id: string; to: Panel["size"] }[] {
-  // A named board binds only when the part fits its face; a 5" deck board named "2×4" is re-picked.
+  // A named board binds when the part is about its face (a 3.6" post is a 4×4); a 5" deck board named "2×4" is re-picked.
   const face = getCatalogItem(materialId)?.dims.width ?? 0;
-  if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face + 0.05) named = false;
+  if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face * 1.1 + 0.05) named = false;
   const len = getCatalogItem(materialId)?.dims.length ?? 96;
   const one = (id: string, to: Panel["size"]) => Math.min(to.width, to.height, to.depth) <= (getCatalogItem(id)?.dims.height ?? 0) + 0.01;
   return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height && c.dims.length === len)
@@ -402,6 +415,96 @@ function steadyPedestal(panels: Panel[], size: Size): void {
 }
 
 /** A gnomon is a right triangle standing on its dial, never a rectangle. */
+/**
+ * The shapes that define the object are modelled, not left as boxes:
+ * - a stringer is notched to the treads it carries (a sawtooth cut from one board, not a solid rectangle);
+ * - a part the notes tilt ("Tilt each ramp about 5°") is drawn at that slope, down toward the drop it feeds;
+ * - a slatted wall (notes: slatted, breathes, airflow) is separate boards with gaps, not one solid sheet.
+ */
+export function definingShapes(recipe: Recipe, panels: Panel[]): void {
+  const roleOf = (p: Panel) => recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))?.role ?? "";
+  const notes = recipe.notes.join(" ");
+  // Stringers: the profile steps up under each tread (z, y in the stringer's own frame), underside parallel to the pitch.
+  const treads = panels.filter((p) => roleOf(p) === "tread").sort((a, b) => a.position.y - b.position.y);
+  for (const s of panels.filter((p) => roleOf(p) === "stringer" && !p.polygon)) {
+    const mine = treads.filter((t) => t.position.x < s.position.x + s.size.width && t.position.x + t.size.width > s.position.x);
+    if (mine.length < 2) continue;
+    const D = s.size.depth, z0 = s.position.z, y0 = s.position.y;
+    // Ascending treads: each sits at its own height; the stair climbs toward the end the top tread is at.
+    const up = mine[mine.length - 1].position.z < mine[0].position.z ? -1 : 1;
+    const loc = (z: number) => (up < 0 ? z - z0 : D - (z - z0));
+    const steps = mine.map((t) => {
+      const a = loc(t.position.z), b = loc(t.position.z + t.size.depth);
+      return { near: Math.max(a, b), far: Math.min(a, b), y: t.position.y - y0 };
+    });
+    const run = Math.max(...steps.map((q) => q.near - q.far));
+    const rise = (steps[steps.length - 1].y - steps[0].y) / (steps.length - 1);
+    const tan = rise / Math.max(1, run);
+    const top = steps[steps.length - 1].y;
+    // Throat: 5" of board left square to the pitch under every notch; the underside runs parallel to the pitch.
+    const back = Math.max(0, top - 5 * Math.hypot(1, tan));
+    const pts: [number, number][] = [[Math.min(steps[0].near, back / tan), 0], [steps[0].near, 0]];
+    for (const q of steps) pts.push([q.near, q.y], [q.far, q.y]);
+    if (steps[steps.length - 1].far > 0.01) pts.push([0, top]);
+    pts.push([0, back]);
+    const poly = up < 0 ? pts : pts.map(([z, y]) => [D - z, y] as [number, number]);
+    s.polygon = { plane: "zy", pts: poly };
+    const th = getCatalogItem(s.materialId)?.dims.height;
+    if (th) s.size = { ...s.size, width: th };
+    s.size = { ...s.size, height: Math.max(...poly.map((q) => q[1])) };
+    const len = Math.hypot(D, top);
+    s.blank = { lengthIn: Math.ceil(len) + 1, widthIn: getCatalogItem(s.materialId)?.dims.width ?? 11.25, thicknessIn: s.size.width };
+    s.cutNote = `Notch ${mine.length} steps: ${fmtIn(run)} run and ${fmtIn(mine[1].position.y - mine[0].position.y)} rise each, leaving a 5" throat under every notch.`;
+  }
+  // Tilt: "Tilt each ramp about 5°" slopes every part of that role down toward the lower part it feeds.
+  for (const m of notes.matchAll(/\btilt (?:each|the|every) ([a-z]+?)s? (?:about |by )?(\d+(?:\.\d+)?)\s*°/gi)) {
+    const role = m[1].toLowerCase(), t = Math.tan((Number(m[2]) * Math.PI) / 180);
+    const lows = panels.filter((p) => !["", role].includes(roleOf(p)) && p.materialId !== "hardware");
+    const decks = panels.filter((p) => roleOf(p) === role && !p.polygon && p.size.width > p.size.height * 3);
+    const owner = (p: Panel) => decks.find((d) => p !== d && p.name.startsWith(d.name)) ?? p;
+    // Each runs down toward the highest part below it that it can feed (a drop, the catch tray); a rail follows its ramp.
+    const downRight = new Map(decks.map((d) => {
+      const below = lows.filter((q) => q.position.y + q.size.height <= d.position.y + 1).sort((a, b) => b.position.y + b.size.height - (a.position.y + a.size.height))[0];
+      return [d, below ? below.position.x + below.size.width / 2 > d.position.x + d.size.width / 2 : true] as const;
+    }));
+    for (const p of decks) {
+      const right = downRight.get(owner(p))!;
+      const W = p.size.width, h = p.size.height, fall = W * t;
+      p.polygon = { plane: "xy", pts: right ? [[0, fall], [W, 0], [W, h], [0, fall + h]] : [[0, 0], [W, fall], [W, fall + h], [0, h]] };
+      p.position = { ...p.position, y: p.position.y - fall };
+      p.size = { ...p.size, height: h + fall };
+      p.blank = { lengthIn: Math.round(Math.hypot(W, fall) * 8) / 8, widthIn: p.size.depth, thicknessIn: h };
+      p.cutNote = `Set it at ${m[2]}°: the ${right ? "right" : "left"} end ${fmtIn(fall)} lower.`;
+    }
+  }
+  // Slatted walls breathe: each solid slat or divider sheet becomes 1×6 boards with 1" gaps.
+  if (/slatted|breathes?|airflow|air gaps?/i.test(notes)) {
+    const gap = 1;
+    const out: Panel[] = [];
+    const slatNo = new Map<string, number>();
+    for (const p of panels) {
+      const role = roleOf(p);
+      const own = getCatalogItem(p.materialId);
+      // A sheet stays that sheet, ripped into 5 1/2" strips (a plywood skin switch keeps its plywood).
+      const sheet = own?.formFactor === "sheet";
+      // The wall's own board when it is about the wall's thickness (a 2×6 is never a 1" slat), else 1×6.
+      const thin = Math.min(p.size.width, p.size.depth);
+      const board = sheet || (own?.category === "lumber" && own.formFactor === "board" && (own.dims.width ?? 0) >= 3.5 && (own.dims.height ?? 9) <= thin + 0.25) ? own! : getCatalogItem("lumber-1x6-8")!;
+      const face = sheet ? 5.5 : board.dims.width!, t = sheet ? (board.dims.thickness ?? board.dims.height ?? 0.75) : board.dims.height!;
+      if (!(role === "slat" || (role === "divider" && /slatted/i.test(notes))) || p.size.height < face * 2) { out.push(p); continue; }
+      const n = Math.max(2, Math.floor((p.size.height + gap) / (face + gap)));
+      const thinX = p.size.width < p.size.depth;
+      const fam = p.name.replace(/ \d+$/, "");
+      for (let i = 0; i < n; i++) out.push({ ...p, id: `${p.id}-s${i}`, name: `${fam} ${(slatNo.get(fam) ?? 0) + i + 1}`, materialId: board.id,
+        // Inside the wall's own box: a thicker board never pushes past the outside face.
+        position: { ...p.position, y: p.position.y + i * (face + gap), ...(thinX ? { x: Math.min(p.position.x, p.position.x + p.size.width - t) } : { z: Math.min(p.position.z, p.position.z + p.size.depth - t) }) },
+        size: thinX ? { width: t, height: face, depth: p.size.depth } : { width: p.size.width, height: face, depth: t } });
+      slatNo.set(fam, (slatNo.get(fam) ?? 0) + n);
+    }
+    panels.splice(0, panels.length, ...out);
+  }
+}
+
 function gnomonTriangles(panels: Panel[]): void {
   for (const g of panels.filter((p) => /\bgnomon\b/i.test(p.name) && !p.polygon)) {
     const H = g.size.height;
@@ -624,7 +727,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
         name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }
@@ -639,6 +742,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       p.size = { ...p.size, [k]: d };
     }
   }
+  definingShapes(recipe, panels);
   const fitted = snapMembers(recipe, panels, stock.member);
   // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
@@ -803,7 +907,8 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
     if (!project.panels.some((p) => names.includes(p.name) || names.includes(p.name.replace(/ \d+$/, "")))) fail.push(`missing ${role}`);
   }
   const reps = recipe.parts.filter((p) => p.repeat === "each" || p.repeat === "stair");
-  if (recipe.count && reps.length && project.panels.filter((p) => p.name.replace(/ \d+$/, "") === reps[0].name).length !== count) fail.push(`count ${count} not built`);
+  // A slatted wall split into boards is still one built part (ids share the wall's id).
+  if (recipe.count && reps.length && new Set(project.panels.filter((p) => p.name.replace(/ \d+$/, "") === reps[0].name).map((p) => p.id.replace(/-s\d+$/, ""))).size !== count) fail.push(`count ${count} not built`);
   // Load path: each part touches what carries it; a part on nothing stands on the floor (or the wall).
   const byName = (name: string) => boxes.filter((b) => b.role === name || b.role.replace(/ \d+$/, "") === name);
   for (const part of recipe.parts) {

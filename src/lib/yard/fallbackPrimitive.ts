@@ -82,6 +82,8 @@ export function pickPrimitive(noun: string): Prim | null {
     if (/theat/.test(head)) return prim("cabinet", "carcase box", 36, 48, 12);
     return prim("cabinet", "carcase box", 36, 36, 18);
   }
+  // A chest is the lidded chest the engine builds (lid, hinge, stay), never an open box.
+  if (head === "chest" && !TOY.test(lower)) return null;
   if (/(box|chest|crate|bin|feeder|trough|bed|tub|crib|bassinet|cot|cradle)$/.test(head)) {
     if (/sandbox|bed$/.test(whole)) return prim("planter box", "open box", 48, 10, 48);
     if (/feeder|mailbox/.test(whole)) return prim("planter box", "open box", 10, 10, 8);

@@ -12,7 +12,7 @@ import { generateFromPrompt } from "./promptMain";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
 // Consumables (oil, fabric liner, finish) are bought, never cut: no part comes from them, by design.
-const SUPPLY = /screw|nail|glue|bolt|nut|washer|hinge|glide|finish|stain|sandpaper|brad|pin|latch|hook|bracket|dowel|bead|\boil\b|fabric|liner/i;
+const SUPPLY = /screw|nail|glue|bolt|mechanism|\bstay\b|nut|washer|hinge|glide|finish|stain|sandpaper|brad|pin|latch|hook|bracket|dowel|bead|\boil\b|fabric|liner/i;
 /** Fitted-build wording that a freestanding (non-wall) recipe must never print. */
 const FITTED = /\bcloset\b|\bfootprint\b|\bopening\b/i;
 
@@ -54,6 +54,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     const real = part?.kind === "member" && !p.polygon ? boardSection(p.materialId, p.size) : null;
     if (real) fail.push(`${p.name}: ${[p.size.width, p.size.height, p.size.depth].map((n) => Math.round(n * 100) / 100).join("×")} is not a real ${getCatalogItem(p.materialId)?.name} section`);
   }
+  fail.push(...definingFailures(recipe, built.project, plan));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   const sawCount = cutStepCount(plan);
   const listCount = plan.cutList.reduce((n, c) => n + c.quantity, 0);
@@ -174,4 +175,32 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   // (g) Parts are named, not numbered slugs ("Peg1"): a repeat is one part with a count.
   for (const p of panels) if (/[a-z]\d+$/i.test(p.name)) fail.push(`"${p.name}" is a numbered slug: one part with a count`);
   return [...new Set(fail)];
+}
+
+/**
+ * The parts and hardware that define the object are in the build: every defining role is modelled (hardware on Buy),
+ * a hinged lid buys its hinges and a stay, a bed that pivots buys its lift mechanism, stringers are notched,
+ * a part the notes tilt is sloped, and a slatted wall is boards with air gaps.
+ */
+export function definingFailures(recipe: Recipe, project: { panels: { name: string; materialId: string; polygon?: unknown; size: { width: number; height: number; depth: number } }[] }, plan: { bom: { name: string }[] }): string[] {
+  const fail: string[] = [];
+  const roleOf = (n: string) => recipe.parts.find((q) => q.name === n || q.name === n.replace(/ \d+$/, ""))?.role ?? "";
+  const of = (role: string) => project.panels.filter((p) => roleOf(p.name) === role);
+  const buy = plan.bom.map((b) => b.name).join(" | ");
+  for (const role of recipe.defining ?? []) {
+    const parts = of(role);
+    if (!parts.length) fail.push(`defining ${role}: not in the model`);
+    else if (parts.every((p) => p.materialId === "hardware") && !new RegExp(role, "i").test(buy)) fail.push(`defining ${role}: not on Buy`);
+  }
+  for (const m of recipe.moving ?? []) {
+    const role = roleOf(m.part);
+    if (m.motion === "hinge" && !/hinge/i.test(buy)) fail.push(`${m.part} swings on hinges, but Buy has none`);
+    if (m.motion === "hinge" && role === "lid" && !/\bstay\b|lid support/i.test(buy)) fail.push(`${m.part} is a hinged lid with no lid stay on Buy`);
+    if (m.motion === "pivot" && role === "bed" && !/lift mechanism|murphy bed hardware/i.test(buy)) fail.push(`${m.part} pivots down with no lift mechanism on Buy`);
+  }
+  for (const s of of("stringer")) if (!s.polygon) fail.push(`${s.name}: a stringer drawn as a solid board, not notched for its treads`);
+  const notes = recipe.notes.join(" ");
+  for (const m of notes.matchAll(/\btilt (?:each|the|every) ([a-z]+?)s? (?:about |by )?\d/gi)) for (const p of of(m[1].toLowerCase())) if (!p.polygon) fail.push(`${p.name}: the notes tilt it, the model is flat`);
+  if (/slatted|breathes?|airflow|air gaps?/i.test(notes)) for (const p of of("slat")) if (Math.min(...[p.size.width, p.size.height, p.size.depth].sort((a, b) => b - a).slice(0, 2)) > 8) fail.push(`${p.name}: a solid wall where the notes want slats with air gaps`);
+  return fail;
 }

@@ -1478,6 +1478,9 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const drawn = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).length;
   const hinges = drawn(/^Hinge \d+$/);
   if (hinges && !/hinge/.test(have)) extra.push({ name: "Gate hinges", quantity: hinges, estimatedCost: 6.98 * (hinges), unit: "each", searchQuery: "self closing gate hinge", notes: "On the hinge stile, into the wall stud." });
+  // A bed that pivots down out of the wall is carried by a bought lift mechanism (pivot arms + springs or pistons).
+  if ((/\bmurphy\b/i.test(project.name) || /\bbed\b[^.]*\bpivots?\b/i.test(notes)) && !/lift mechanism|murphy bed hardware/.test(have))
+    extra.push({ name: "Murphy bed lift mechanism (pivot arms + springs or pistons)", quantity: 1, unit: "kit", estimatedCost: 289, searchQuery: "murphy bed hardware kit vertical queen", notes: "The pivot arms bolt to the cabinet sides and the bed frame rails; the springs or pistons carry the bed up and down. Size it to the mattress." });
   const folds = drawn(/^Fold bracket \d+$/);
   if (folds && !/folding leg|fold bracket/.test(have)) extra.push({ name: "Locking folding leg brackets", quantity: folds, unit: "each", estimatedCost: 5.98 * folds, searchQuery: "locking folding table leg bracket", notes: "One at the top of each leg, so it folds flat under the top." });
   const latches = drawn(/^Latch \d+$/);
