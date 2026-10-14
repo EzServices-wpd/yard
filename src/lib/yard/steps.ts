@@ -1313,7 +1313,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Glue the mirror to the outside face of the door, flush with that face, not buried in the slab. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },

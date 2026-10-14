@@ -10,7 +10,7 @@ test("shallow wall cabinet keeps typed depth and clears the hinge", () => {
   assert.equal(face.outer, 4);
   assert.equal(face.box, face.doorZ, "carcase stops where the door begins");
   assert.equal(face.mirrorZ + face.mirrorT, 4, "mirror's face is the typed depth, not depth + slab");
-  assert.equal(face.mirrorZ, face.doorZ + face.doorT, "mirror sits on the door's outer face, not buried in it");
+  assert.equal(face.mirrorZ + face.mirrorT, face.doorZ + face.doorT, "mirror is flush with the door's outer face, set in a rabbet");
   const plain = shallowWallCabinetFace(4, 0.75);
   assert.equal(plain.doorZ + plain.doorT, 4, "no mirror: door outer face is the typed depth");
   assert.ok(face.doorZ - 0.75 >= face.shelfDepth, "shelf stops short of the hinge arm");
@@ -29,7 +29,7 @@ test("16x24x4 medicine cabinet: the solved layout matches the shallow rule", () 
   assert.ok(door && mirror && shelf && back && upright);
   const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 0.01, `${a} vs ${b}`);
   near(upright.position.z + upright.size.depth, door.position.z); // door closes on the carcase front
-  near(mirror.position.z, door.position.z + door.size.depth); // mirror on the door's outer face
+  near(mirror.position.z + mirror.size.depth, door.position.z + door.size.depth); // mirror flush with the door face
   near(mirror.position.z + mirror.size.depth, 4); // nothing past the typed depth
   for (const p of project.panels) assert.ok(p.position.z + p.size.depth <= 4 + 0.01, `${p.name} stands past 4"`);
   assert.ok(shelf.position.z + shelf.size.depth <= door.position.z - 0.5);
@@ -45,4 +45,18 @@ test("16x24x4 medicine cabinet: the solved layout matches the shallow rule", () 
   assert.ok(anchors, "buy list includes anchors when the back misses a stud");
   const screws = plan.bom.find((l) => /structural screws/i.test(l.name));
   assert.match(screws?.notes ?? "", /cannot take a screw in two studs|reaches only one stud/i);
+});
+
+// Class check: a mirror or glass panel on a door sits flush with the door face and inside the door's edges.
+test("door mirrors and glass sit flush, inside the door frame", () => {
+  for (const q of ["medicine cabinet", "bathroom medicine cabinet 16 wide 24 high 4 deep", "medicine cabinet 20 wide 30 tall 5 deep", "medicine cabinet with mirror door"]) {
+    const ps = generateFromPrompt(q).panels;
+    for (const g of ps.filter((p) => p.type === "mirror" || p.type === "glass_panel")) {
+      const door = ps.find((d) => d.type === "door" && g.position.x >= d.position.x - 0.01 && g.position.x + g.size.width <= d.position.x + d.size.width + 0.01 && g.position.y >= d.position.y - 0.01 && g.position.y + g.size.height <= d.position.y + d.size.height + 0.01);
+      if (!door) continue;
+      const front = door.position.z + door.size.depth;
+      assert.ok(Math.abs(g.position.z + g.size.depth - front) < 0.01, `${q}: ${g.name} not flush with the door face`);
+      assert.ok(g.position.z >= door.position.z - 0.01, `${q}: ${g.name} passes through the door`);
+    }
+  }
 });

@@ -337,8 +337,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       const y = P + (innerH * i) / (shelfN + 1);
       panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, face.shelfDepth));
     }
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT));
-    panels.push(panel("mirror", "Mirror", x0 + 1.1, 1.1, face.mirrorZ, W - 2.2, H - 2.2, face.mirrorT));
+    const door = panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT);
+    panels.push(door);
+    // Set in a rabbet in the door face: flush, inside the door's edges.
+    panels.push({ ...panel("mirror", "Mirror", x0 + 1.1, 1.1, face.mirrorZ, W - 2.2, H - 2.2, face.mirrorT), joints: [{ with: door.id, kind: "rabbet" }] });
     const name = `Medicine cabinet ${W}" × ${H}" × ${D}"`;
     const studNote = backReachesTwoStuds(innerW)
       ? "Hang the carcase on studs through the back."
@@ -354,7 +356,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
-        `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close. Glue the mirror to the outside face of the door.`,
+        `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close. The mirror sits flush in a rabbet in the door's outer face.`,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },

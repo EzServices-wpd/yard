@@ -52,13 +52,14 @@ describe("popsicle picture frame: one photo, one outer size", () => {
 });
 
 describe("door-front carcase: the door closes inside the typed depth", () => {
-  it("medicine cabinet 20 x 26 x 5: carcase, door and mirror stack to exactly 5", () => {
+  it("medicine cabinet 20 x 26 x 5: carcase and door stack to exactly 5, mirror flush in the door", () => {
     const { p, notes } = build("medicine cabinet 20 wide 26 tall 5 deep");
     const door = p.panels.find((x) => x.type === "door")!;
     const mirror = p.panels.find((x) => x.type === "mirror")!;
     const upright = p.panels.find((x) => x.type === "upright")!;
     assert.ok(Math.abs(upright.position.z + upright.size.depth - door.position.z) < 0.01);
-    assert.ok(Math.abs(mirror.position.z - (door.position.z + door.size.depth)) < 0.01);
+    // Mirror set flush in a rabbet in the door face, not standing proud of it.
+    assert.ok(Math.abs(mirror.position.z + mirror.size.depth - (door.position.z + door.size.depth)) < 0.01);
     assert.ok(Math.abs(panelDepth(p) - 5) < 0.01, `model ${panelDepth(p)}`);
     assert.doesNotMatch(notes, /stand proud/);
   });

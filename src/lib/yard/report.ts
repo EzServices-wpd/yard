@@ -948,7 +948,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       unit: "pc",
       searchQuery: "adhesive bathroom cabinet mirror",
       estimatedCost: 14.98,
-      notes: "Glue to the outside face of the door, flush with that face, so the cabinet mirrors when closed. Do not bury it in the door slab.",
+      notes: "Set into a 1/8\" rabbet in the door's outer face with mirror adhesive, flush with that face and inside the door's edges.",
     });
     const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
     if (backW > 0 && !backReachesTwoStuds(backW)) {
