@@ -43,7 +43,8 @@ for (const file of files) {
     }
   });
   const pass = rows.filter((x) => x.ok).length;
-  const crashed = r.status !== 0 && rows.length === 0;
+  // A file that timed out or exited non-zero mid-run (a slow box) only printed some rows: that is a failure, never a pass.
+  const crashed = (r.status !== 0 || !!r.signal || !!r.error) && !rows.some((x) => !x.ok);
   if (crashed) unknown.push(`(no TAP output — test file crashed)\n${out.slice(-1500)}`);
   for (const k of known) console.warn(`KNOWN ${file}: ${k}`);
   if (unknown.length) {

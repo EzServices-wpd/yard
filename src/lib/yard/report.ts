@@ -127,16 +127,14 @@ function closetCuts(project: YardProject): CutLine[] {
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
       (((isPly || isSolidBoard) && dims.thicknessIn > STOCK_T + 0.05 && !/^leg$/i.test(family)) ||
         // A lumber part thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
-        (!isSolidBoard && /^lumber-/.test(id ?? "") && dims.thicknessIn > lumberT(id) + 0.05)) &&
-      // Glue up only when a second layer is really needed: a 1 1/8" side is one 3/4" sheet, a 1 3/4" rafter one 2x.
-      dims.thicknessIn / (isPly || isSolidBoard ? STOCK_T : lumberT(id)) > 1.51
+        (!isSolidBoard && /^lumber-/.test(id ?? "") && dims.thicknessIn > lumberT(id) + 0.05))
+      // Any part thicker than its stock is a real glue-up, even under 1.5x of it.
     ) {
       // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
       const T = isPly || isSolidBoard ? STOCK_T : lumberT(id);
       const plies = Math.max(2, Math.round(dims.thicknessIn / T));
-      // Each row is one glue layer, named as a layer, so the part count still reads off the model.
+      // The row counts layers, so the note always says how many make each part: the part count reads off the model.
       note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for each ${inchFrac(dims.thicknessIn)}" ${family.toLowerCase()}.`;
-      family = `${family} layer`;
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: T };
       qty = plies;
     }

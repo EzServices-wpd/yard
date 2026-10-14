@@ -165,7 +165,7 @@ it("a sheet part thicker than its sheet is a glue-up of plies with its own step"
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project);
-  const hub = plan.cutList.find((c) => c.name.toLowerCase() === "hub layer")!;
+  const hub = plan.cutList.find((c) => c.name.toLowerCase() === "hub")!;
   assert.equal(hub.thicknessIn, 0.75);
   assert.equal(hub.quantity, 5);
   assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));

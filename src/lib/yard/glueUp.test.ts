@@ -23,10 +23,14 @@ it("a part thicker than its sheet is cut as layers", () => {
   assert.match(ins.find((s) => s.title === "Glue up the thick parts")!.description, /hub: 2 layers/);
 });
 
-// Critic: cut-list counts equal model counts. A glue-up row is named as layers; a part within half a sheet of stock is one piece.
-it("cut-list counts: one piece per model part, glue layers named as layers (deck stairs, pergola, murphy bed, mudroom locker)", () => {
+// Critic: cut-list counts equal model counts. Any part thicker than its stock is a glue-up (even under 1.5x), so a glue-up
+// row counts layers and its note says how many make each part: rows / layers is the model's part count.
+it("cut-list counts: one piece per model part, glue layers counted as layers (deck stairs, pergola, murphy bed, mudroom locker)", () => {
   const cut = (q: string) => buildPlan(generateFromPrompt(q)).cutList;
-  const n = (q: string, name: string) => cut(q).find((c) => c.name === name)?.quantity;
+  const n = (q: string, name: string) => {
+    const c = cut(q).find((x) => x.name === name)!;
+    return c.quantity / Number(/Glue up (\d+) layers/.exec(c.notes ?? "")?.[1] ?? 1);
+  };
   assert.equal(n("deck stairs", "Tread"), 3);
   assert.equal(n("pergola", "Rafter"), 8);
   assert.equal(n("mudroom locker", "Side"), 4);
@@ -35,7 +39,6 @@ it("cut-list counts: one piece per model part, glue layers named as layers (deck
     for (const c of cut(q)) {
       const m = /Glue up (\d+) layers/.exec(c.notes ?? "");
       if (!m) continue;
-      assert.match(c.name, /\blayers?\b/i, `${q}: ${c.name} is a glue layer`);
       assert.equal(c.quantity % Number(m[1]), 0, `${q}: ${c.name} layers come in whole parts`);
     }
 });

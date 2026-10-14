@@ -618,7 +618,7 @@ function dimsKey(a: number, b: number, c: number) {
 /** Map every panel (and craft instance) to its cut-list letter, by family name and size. */
 export function partLetters(project: YardProject, cutList: CutLine[]): Map<string, string> {
   const out = new Map<string, string>();
-  const lines = cutList.map((c) => ({ c, key: dimsKey(c.lengthIn, c.widthIn, c.thicknessIn), fam: c.name.toLowerCase().replace(/ layer\b/, "") }));
+  const lines = cutList.map((c) => ({ c, key: dimsKey(c.lengthIn, c.widthIn, c.thicknessIn), fam: c.name.toLowerCase() }));
   for (const p of project.panels) {
     const fam = cutListName(p.name, p.type).toLowerCase();
     const key = p.blank
