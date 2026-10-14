@@ -577,7 +577,11 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     const lo = Math.min(...panels.map((p) => p.position[a]));
     if (a !== "y" && typedAxes[k] == null && lo < 0 && lo >= -1.5) for (const p of panels) p.position = { ...p.position, [a]: p.position[a] - lo };
     const hi = Math.max(...panels.map((p) => p.position[a] + p.size[k]));
-    if (typedAxes[k] == null && hi > real[k] && hi - real[k] <= 1.5) real[k] = Math.round(hi * 8) / 8;
+    // An untyped side is the model's own extent, grown or shrunk: the header never names a size the model isn't.
+    const from = a === "y" ? 0 : Math.min(...panels.map((p) => p.position[a]));
+    if (typedAxes[k] != null) continue;
+    if (from > 0) for (const p of panels) p.position = { ...p.position, [a]: p.position[a] - from };
+    real[k] = Math.ceil((hi - from) * 8 - 1e-6) / 8;
   }
   // The header height is the body's: pegs standing in their holes (a cribbage board's) don't count.
   const peg = (p: Panel) => p.type === "cleat" && /^dowel-/.test(p.materialId) && /\bpegs?\b/i.test(p.name);

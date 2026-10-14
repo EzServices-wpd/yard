@@ -20,6 +20,13 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   const fail = validateRecipe(recipe, built, prompt);
   const { panels } = built.project;
   const plan = buildPlan(built.project);
+  // The header is the model: each side of the overall size matches the parts' extent (pegs standing proud excepted).
+  const o = built.project.overall;
+  if (o) for (const [a, k] of [["x", "width"], ["y", "height"], ["z", "depth"]] as const) {
+    const body = panels.filter((p) => !(k === "height" && /\bpegs?\b/i.test(p.name)));
+    const ext = Math.max(...body.map((p) => p.position[a] + p.size[k])) - (a === "y" ? 0 : Math.min(...body.map((p) => p.position[a])));
+    if (Math.abs(ext - o[k]) > 0.13) fail.push(`header ${k} ${o[k]}" but the model is ${Math.round(ext * 8) / 8}"`);
+  }
   // Round things are drawn round: a wheel, bead, disc or drum part needs a round shape, not a box.
   for (const part of recipe.parts) if (!part.shape && ROUND_WORD.test(`${part.role} ${part.name}`)) fail.push(`${part.name}: a ${part.role} drawn as a box`);
   // Cut list vs Buy: every part is a real catalogue item, no member is a glue-up billed as one stick,

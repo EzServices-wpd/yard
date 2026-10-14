@@ -377,3 +377,11 @@ it("a hole array is drilled in the model: a cribbage board shows its 120 peg hol
   const bare = { ...r, parts: [{ ...r.parts[0], holes: undefined }] } as unknown as Recipe;
   assert.ok(learnedRecipeFailures(bare).some((f) => /names 60 holes the model does not drill/.test(f)));
 });
+
+it("the header is the model: the saved sundial's overall size is its parts' extent, and the gate checks every recipe", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const sd = RECIPES.recipes.find((r) => r.key === "sundial")!;
+  const o = buildRecipe(sd, "sundial").project.overall!;
+  assert.deepEqual([o.width, o.depth, o.height], [16, 16, 37.75]);
+  for (const r of RECIPES.recipes) assert.ok(!learnedRecipeFailures(r).some((f) => /^header /.test(f)), r.key);
+});
