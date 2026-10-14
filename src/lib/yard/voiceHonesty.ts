@@ -782,9 +782,11 @@ export function wantsCabinetryShopWords(hay: string): boolean {
  * Cabinetry still names Main box / Kick strip (needed on fitted walks), but never
  * introduces carcase/toekick jargon on the stranger path.
  */
-export function shopWordsChipTalk(hay: string): string {
+export function shopWordsChipTalk(hay: string, parts?: string): string {
   if (wantsCabinetryShopWords(hay)) {
-    return "Main box = uprights, top, bottom, and back screwed together · Kick strip = recessed strip along the bottom of the front · Dry-fit = assemble without glue first · Kerf = width the saw blade removes";
+    // A word is explained only when the build has that part: no kick strip, no "Kick strip".
+    const kick = !parts || KICK_PART.test(parts) ? " · Kick strip = recessed strip along the bottom of the front" : "";
+    return `Main box = uprights, top, bottom, and back screwed together${kick} · Dry-fit = assemble without glue first · Kerf = width the saw blade removes`;
   }
   return "Dry-fit = assemble without glue first · Kerf = width the saw blade removes · Square = matching diagonals within about 1/16\"";
 }
@@ -800,8 +802,10 @@ const CABINETRY_GLOSSARY_TERM_RE =
  * the project is cabinetry / fitted alcove. Entries themselves use plain shop
  * words — never carcase/toekick on the stranger PDF path.
  */
-export function glossaryForPlan(hay: string, entries: GlossaryEntry[]): GlossaryEntry[] {
-  const plain = entries.map((e) => ({
+const KICK_PART = /kick|toe/i;
+
+export function glossaryForPlan(hay: string, entries: GlossaryEntry[], parts?: string): GlossaryEntry[] {
+  const plain = entries.filter((e) => !parts || !KICK_PART.test(e.term) || KICK_PART.test(parts)).map((e) => ({
     term: strangerPlainShopTalk(e.term),
     def: strangerPlainShopTalk(e.def),
   }));

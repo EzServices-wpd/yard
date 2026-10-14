@@ -57,6 +57,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     if (real) fail.push(`${p.name}: ${[p.size.width, p.size.height, p.size.depth].map((n) => Math.round(n * 100) / 100).join("×")} is not a real ${getCatalogItem(p.materialId)?.name} section`);
   }
   fail.push(...definingFailures(recipe, built.project, plan));
+  fail.push(...hingeDrift(plan));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
   fail.push(...bearingFailures(recipe, panels), ...glueUpFailures(recipe, panels));
@@ -253,4 +254,16 @@ export function buildClassFailures(project: { panels: Panel[] }, plan: BuildPlan
   if (outdoor) for (const p of project.panels) if (/^plywood/.test(p.materialId) && /\b(?:tread|riser|wall|slats?|seat|deck|step)\b/i.test(p.name)) fail.push(`${p.name} is plywood on an outdoor build`);
   fail.push(...floatingWalls(project.panels));
   return fail;
+}
+
+const HINGE_KINDS: [string, RegExp][] = [["concealed", /concealed|cup hinge|euro hinge/i], ["butt", /(?<!not (?:two |a )?)butt hinge/i], ["piano", /piano hinge|continuous hinge/i], ["utility", /utility hinge/i], ["strap", /strap hinge|t-hinge/i]];
+/** One hinge choice: the kinds of hinge the steps name are the kinds Buy sells (and the reverse). */
+export function hingeDrift(plan: Pick<BuildPlan, "bom" | "instructions">): string[] {
+  const kinds = (t: string) => new Set(HINGE_KINDS.filter(([, re]) => re.test(t)).map(([k]) => k));
+  const steps = kinds(plan.instructions.map((s) => `${s.title} ${s.description}`).join(" "));
+  const buy = kinds(plan.bom.map((b) => b.name).join(" "));
+  const out: string[] = [];
+  for (const k of steps) if (buy.size && !buy.has(k)) out.push(`the steps hang ${k} hinges but Buy sells ${[...buy].join(" and ")} hinges`);
+  for (const k of buy) if (steps.size && !steps.has(k)) out.push(`Buy sells ${k} hinges but the steps hang ${[...steps].join(" and ")} hinges`);
+  return out;
 }

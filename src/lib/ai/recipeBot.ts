@@ -6,6 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
 import { learnedRecipeFailures } from "@/lib/yard/learnedGate";
+import { shadowsBuiltIn } from "@/lib/yard/promptMain";
 
 const REPO = process.env.YARD_RECIPE_REPO ?? "EzServices-wpd/yard";
 const BRANCH = "yard-recipe-bot";
@@ -17,10 +18,12 @@ const sent = new Set<string>();
 let window0 = 0;
 let inWindow = 0;
 
-/** The store with the recipe added as a version-1 candidate, or null when the key is already there. */
+/** The store with the recipe added as a version-1 candidate, or null when the key is already there or the engine builds it. */
 export function addCandidate(text: string, recipe: Recipe): string | null {
   const store = JSON.parse(text) as RecipeStore;
   if (store.recipes.some((r) => r.key === recipe.key)) return null;
+  // The engine builds this noun itself: a candidate for it would never build, so none is proposed.
+  if (shadowsBuiltIn({ ...recipe, learned: true })) return null;
   // A recipe the learned-recipe checks flag lands held: off Ideas and Popular, and merging it promotes nothing.
   const flags = learnedRecipeFailures(recipe);
   store.recipes.push({ ...recipe, version: 1, trust: "candidate", learned: true, ...(flags.length ? { held: `Flagged by the learned-recipe checks: ${flags.slice(0, 3).join("; ")}` } : {}) });

@@ -832,7 +832,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
 
   // ═════════════════════════ SHOP WORDS
-  const glossary = craft ? CRAFT_GLOSSARY : glossaryForPlan(`${project.prompt ?? ""} ${project.name}`, SHOP_GLOSSARY);
+  const glossary = craft ? CRAFT_GLOSSARY : glossaryForPlan(`${project.prompt ?? ""} ${project.name}`, SHOP_GLOSSARY, project.panels.map((p) => `${p.name} ${p.type}`).join(" "));
   if (glossary.length) {
     const colW = (W - GRID.gutter) / 2;
     const itemH = (g: { def: string }) => 12 + wrap(g.def, colW, 8.5).length * 11 + 6;

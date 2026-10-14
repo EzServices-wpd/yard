@@ -1,5 +1,6 @@
 import { learnedRecipeFailures } from "./learnedGate";
 import { findRecipe, RECIPES } from "./recipes";
+import { shadowsBuiltIn } from "./promptMain";
 import type { YardProject } from "./types";
 
 /** The checks every recipe build runs before it is saved (learnedGate.ts); named for the "How this was built" panel. */
@@ -12,7 +13,8 @@ export function buildInfo(project: Pick<YardProject, "prompt" | "typedPrompt" | 
   const prompt = project.typedPrompt || project.prompt;
   if (project.displayOnly) return { source: "Placeholder", trust: "Unverified", passed: [], failed: ["Not learned yet"] };
   const recipe = findRecipe(prompt);
-  if (!recipe) return { source: "Built-in shape", trust: "Trusted", passed: ["Yard engine guards (run on every release)"], failed: [] };
+  // A learned recipe the engine shadows is ignored: what builds is the built-in shape.
+  if (!recipe || shadowsBuiltIn(recipe, prompt)) return { source: "Built-in shape", trust: "Trusted", passed: ["Yard engine guards (run on every release)"], failed: [] };
   const failed = learnedRecipeFailures(recipe, prompt);
   const saved = RECIPES.recipes.some((r) => r.key === recipe.key);
   const unverified = recipe.trust !== "trusted" || !!recipe.held || failed.length > 0 || /^Unverified:/.test(project.notes?.[0] ?? "");

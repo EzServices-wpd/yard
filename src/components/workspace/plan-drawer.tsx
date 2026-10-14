@@ -363,7 +363,7 @@ function PlanBody({
             {housePath && (
               <div className="mt-2 rounded-md border border-border/70 bg-elevated/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
                 <p className="font-medium text-fg">Shop words used in this plan</p>
-                <p className="mt-1">{shopWordsChipTalk(`${project.prompt ?? ""} ${project.name}`)}</p>
+                <p className="mt-1">{shopWordsChipTalk(`${project.prompt ?? ""} ${project.name}`, project.panels.map((p) => `${p.name} ${p.type}`).join(" "))}</p>
               </div>
             )}
             {project.holdStockId && (project.notes ?? []).some((n) => n.startsWith("This is a display model")) && (

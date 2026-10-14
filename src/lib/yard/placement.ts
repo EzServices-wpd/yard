@@ -142,7 +142,8 @@ function groupTalk(ctx: Ctx, ids: string[]): string {
   }
   const parts: string[] = [];
   for (const [L, list] of [...byL.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    const fam = cutListName(list[0].name, list[0].type).toLowerCase();
+    // "both B uprights", never "both B left uprights": the pair is left and right.
+    const fam = cutListName(list[0].name, list[0].type).toLowerCase().replace(list.length > 1 ? /^(?:left|right|front|back|upper|lower|inner|outer)\s+/ : /^$/, "");
     if (list.length === 1) parts.push(L);
     else if (list.length === 2) parts.push(`both ${L} ${fam.replace(/y$/, "ie")}s`);
     else parts.push(`each ${L} ${fam}`);

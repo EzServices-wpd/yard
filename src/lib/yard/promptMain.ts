@@ -553,6 +553,11 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   return engineCore(...args);
 }
 
+/** A learned recipe the engine shadows: the engine builds its noun itself, so the recipe never builds. */
+export function shadowsBuiltIn(recipe: { key: string; learned?: boolean }, prompt = recipe.key.replace(/-/g, " ")): boolean {
+  return !!recipe.learned && builtInShape(prompt, engineCore(normalizeUserPrompt(prompt)), recipe.key.replace(/-/g, " "));
+}
+
 /** The engine owns this noun outright: its own build is named for it (a fitted medicine cabinet), never a
  * stand-in or a nearby family ("Table" for a router table, "Planter box" for a window box). */
 export function builtInShape(prompt: string, p: YardProject, noun: string): boolean {
