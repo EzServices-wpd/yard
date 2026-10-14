@@ -260,7 +260,8 @@
      "part": "Front rim",
      "motion": "spin"
     }
-   ]
+   ],
+   "held": "Critic FLAGGED"
   },
   {
    "key": "glider",
@@ -366,7 +367,8 @@
     "Sand the wing's leading edge round for lift."
    ],
    "stock": "popsicle-jumbo",
-   "sheet": "plywood-1-4-4x8"
+   "sheet": "plywood-1-4-4x8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "toy-airplane",
@@ -548,7 +550,8 @@
      "part": "Left wheel",
      "motion": "spin"
     }
-   ]
+   ],
+   "held": "Critic FLAGGED"
   },
   {
    "key": "reindeer",
@@ -756,7 +759,8 @@
     "Antlers branch from the head; screw each joint with two 2½″ screws."
    ],
    "stock": "lumber-2x4-8",
-   "sheet": "lumber-2x4-8"
+   "sheet": "lumber-2x4-8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "marble-run",
@@ -1021,7 +1025,8 @@
    ],
    "stock": "cardboard-corrugated-sheet",
    "sheet": "cardboard-corrugated-sheet",
-   "moving": []
+   "moving": [],
+   "held": "Critic FLAGGED"
   },
   {
    "key": "tipi",
@@ -1213,7 +1218,8 @@
     "A kid-size play tipi: lash the poles at the top and drape the fabric cover, with a door gap at the front."
    ],
    "stock": "dowel-1-1-4-36",
-   "sheet": "other"
+   "sheet": "other",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "treasure-chest",
@@ -1373,7 +1379,8 @@
      "part": "Lid",
      "motion": "hinge"
     }
-   ]
+   ],
+   "held": "Critic FLAGGED"
   },
   {
    "key": "compost-bin",
@@ -1492,7 +1499,8 @@
     }
    },
    "stock": "lumber-2x6-8",
-   "sheet": "lumber-2x6-8"
+   "sheet": "lumber-2x6-8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "deck-stairs",
@@ -1607,7 +1615,8 @@
     }
    },
    "stock": "lumber-2x12-8",
-   "sheet": "lumber-2x6-8"
+   "sheet": "lumber-2x6-8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "pergola",
@@ -1869,7 +1878,8 @@
    "feet": true,
    "outdoor": true,
    "stock": "lumber-4x4-8",
-   "sheet": "lumber-2x6-8"
+   "sheet": "lumber-2x6-8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "taj-mahal",
@@ -2297,7 +2307,8 @@
     "Onion dome on a drum over the square hall, four arched iwans and four corner minarets on the plinth."
    ],
    "stock": "cardboard-corrugated-sheet",
-   "sheet": "cardboard-corrugated-sheet"
+   "sheet": "cardboard-corrugated-sheet",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "colosseum",
@@ -3361,7 +3372,8 @@
     "An elliptical ring of piers with three tiers of arcades around an open arena."
    ],
    "stock": "cardboard-corrugated-sheet",
-   "sheet": "cardboard-corrugated-sheet"
+   "sheet": "cardboard-corrugated-sheet",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "murphy-bed",
@@ -3551,7 +3563,8 @@
      "part": "Bed face",
      "motion": "pivot"
     }
-   ]
+   ],
+   "held": "Critic FLAGGED"
   },
   {
    "key": "mudroom-locker",
@@ -3700,7 +3713,8 @@
     }
    },
    "stock": "plywood-3-4-4x8",
-   "sheet": "plywood-3-4-4x8"
+   "sheet": "plywood-3-4-4x8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "floating-desk",
@@ -3791,7 +3805,8 @@
    ],
    "wall": true,
    "stock": "lumber-2x4-8",
-   "sheet": "plywood-3-4-4x8"
+   "sheet": "plywood-3-4-4x8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "under-stairs-shelf",
@@ -3801,7 +3816,7 @@
     "under stair shelf"
    ],
    "version": 1,
-   "trust": "candidate",
+   "trust": "trusted",
    "title": "Under-stairs shelves",
    "size": {
     "width": 48,
@@ -4169,7 +4184,8 @@
    ],
    "outdoor": true,
    "stock": "lumber-2x6-8",
-   "sheet": "lumber-2x6-8"
+   "sheet": "lumber-2x6-8",
+   "held": "Critic FLAGGED"
   },
   {
    "key": "water-wheel",

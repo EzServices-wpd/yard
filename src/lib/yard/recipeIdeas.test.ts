@@ -85,6 +85,10 @@ it("ungraded, unheld seed recipes show under New (Unverified), and every card si
   const { newIdeas, popularIdeas } = await import("./recipeIdeas.ts");
   const fresh = newIdeas().map((d) => d.id.slice(7));
   for (const r of RECIPES.recipes.filter((x) => !x.learned && x.trust !== "trusted" && !x.held)) if (newIdeas().length < 51) assert.ok(fresh.includes(r.key) || !recipeIdeas().some((d) => d.id === `recipe-${r.key}`), r.key);
-  assert.ok(fresh.includes("ferris-wheel") && fresh.includes("glider"));
+  // Critic graded the starters (regrade-2d3f8d4): FLAGGED ones are held and off New; under-stairs shelf is TRUSTED on Popular.
+  assert.ok(!fresh.includes("ferris-wheel") && !fresh.includes("glider"));
+  assert.ok(popularIdeas().some((d) => d.id === "recipe-under-stairs-shelf"));
+  const seed = { ...RECIPES.recipes.find((r) => r.key === "glider")!, held: undefined, trust: "candidate" as const };
+  assert.ok(newIdeas([seed]).some((d) => d.id === "recipe-glider"), "an ungraded, unheld seed shows under New");
   for (const d of [...newIdeas(), ...popularIdeas()]) assert.doesNotMatch(d.size, /\d\.\d/, d.size);
 });

@@ -13,6 +13,11 @@ for (const m of ledger.matchAll(/^- [^\n]*· ([^·\n]+?) — (TRUSTED|FLAGGED)\b
   const r = findRecipe(m[1].replace(/\(.*?\)/g, "").trim(), store);
   if (r) verdicts.set(r.key, m[2] === "TRUSTED" ? "trusted" : "candidate");
 }
+// Table rows name keys directly: "| ferris-wheel, glider (note) | FLAGGED |" (in ledger order, so later rows win).
+const keys = new Set(store.recipes.map((r) => r.key));
+for (const m of ledger.matchAll(/^\| (?:Seeds: )?([a-z0-9, ()-]+?(?:\([^)]*\))?[a-z0-9, ()-]*) \| (TRUSTED|FLAGGED)\b/gm)) {
+  for (const k of m[1].replace(/\([^)]*\)/g, "").split(",").map((x) => x.trim())) if (keys.has(k)) verdicts.set(k, m[2] === "TRUSTED" ? "trusted" : "candidate");
+}
 for (const r of store.recipes) {
   const v = verdicts.get(r.key);
   // A FLAGGED verdict holds the recipe (off Ideas, Unverified when typed); TRUSTED unholds it.
