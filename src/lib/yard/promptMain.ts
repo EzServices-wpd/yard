@@ -30,7 +30,7 @@ import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
-import { detectForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
+import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
 import { buildFormGraph } from "./buildGraph";
 import { analyzePieces, finishGraph } from "./connect";
 import { pruneTopology } from "./topo";
@@ -539,11 +539,25 @@ function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
   const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  // A learned recipe never replaces a built-in shape: when the engine itself builds the noun (a fitted
+  // medicine cabinet, a locked family), the engine's build wins and the recipe is ignored.
+  const engine = recipe?.learned ? engineCore(...args) : null;
+  if (engine && builtInShape(args[0], engine, recipe!.key.replace(/-/g, " "))) return engine;
   if (recipe) {
     const p = withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
     // A held recipe never builds silently: it says plainly that review is still pending.
     return recipe.held ? { ...p, notes: [UNVERIFIED, ...p.notes] } : p;
   }
+  return engineCore(...args);
+}
+
+/** The engine owns this noun outright: its own build is named for it (a fitted medicine cabinet), never a
+ * stand-in or a nearby family ("Table" for a router table, "Planter box" for a window box). */
+export function builtInShape(prompt: string, p: YardProject, noun: string): boolean {
+  return !p.standIn && !p.unmatched && (!!p.fitted || isLockedForm(p.kind)) && engineOwnsForm(prompt, p) && p.name.toLowerCase().replace(/-/g, " ").startsWith(noun);
+}
+
+function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   const built = (a: Parameters<typeof generateRaw>) => {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
