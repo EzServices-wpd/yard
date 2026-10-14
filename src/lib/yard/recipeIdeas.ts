@@ -1,3 +1,4 @@
+import { inchFrac } from "./inchText";
 import { learnedRecipeFailures } from "./learnedGate";
 /**
  * The Ideas library grows from the recipe store: every trusted or passing recipe is a card, drawn from
@@ -10,7 +11,8 @@ import COUNTS from "./promptCounts.json";
 
 export type RecipeIdea = { id: string; label: string; prompt: string; size: string; blurb: string; panels: Panel[]; box: { width: number; height: number; depth: number } };
 
-const inch = (n: number) => `${Math.round(n * 4) / 4}″`;
+// Cards print shop fractions (30 3/4″), never decimals.
+const inch = (n: number) => `${inchFrac(n)}″`;
 
 export function recipePrompt(r: Recipe): string {
   return [r.key.replace(/-/g, " "), ...(r.modifiers ?? []).map((m) => `with ${m}`)].join(" ");
@@ -53,8 +55,11 @@ export function popularIdeas(counts: Record<string, number> = (COUNTS as { count
 /** New (Unverified): learned recipes that pass every gate check but no Critic grade has trusted yet, newest first. */
 export function newIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
   // Never a held or Critic-failed (FLAGGED, held) recipe.
-  const fresh = new Set(recipes.filter((r) => r.learned && r.trust !== "trusted" && !r.held).map((r) => `recipe-${r.key}`));
-  return recipeIdeas(recipes).filter((d) => fresh.has(d.id)).reverse().slice(0, POPULAR_CAP);
+  // Hand-seeded starters count too until Critic grades them; learned ones (newest) first.
+  const fresh = new Set(recipes.filter((r) => r.trust !== "trusted" && !r.held).map((r) => `recipe-${r.key}`));
+  const learned = new Set(recipes.filter((r) => r.learned).map((r) => `recipe-${r.key}`));
+  const all = recipeIdeas(recipes).filter((d) => fresh.has(d.id)).reverse();
+  return [...all.filter((d) => learned.has(d.id)), ...all.filter((d) => !learned.has(d.id))].slice(0, POPULAR_CAP * 3);
 }
 
 /** Isometric faces of each part, back to front, in a unit view box: the card thumbnail. */

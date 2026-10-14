@@ -53,7 +53,7 @@ it("New (Unverified) lists learned recipes that pass the gate, held ones never, 
   const { newIdeas, popularIdeas } = await import("./recipeIdeas.ts");
   const { RECIPES } = await import("./recipes.ts");
   const fresh = newIdeas().map((d) => d.id.slice(7));
-  for (const k of fresh) { const r = RECIPES.recipes.find((x) => x.key === k)!; assert.ok(r.learned && r.trust !== "trusted" && !r.held, k); }
+  for (const k of fresh) { const r = RECIPES.recipes.find((x) => x.key === k)!; assert.ok(r.trust !== "trusted" && !r.held, k); }
   assert.ok(!fresh.includes("cribbage-board") && !fresh.includes("water-wheel"));
   const pop = new Set(popularIdeas().map((d) => d.id.slice(7)));
   assert.ok(fresh.every((k) => !pop.has(k)));
@@ -65,7 +65,7 @@ it("Popular shows only TRUSTED recipes; New (Unverified) only untrusted, unheld 
   const pop = popularIdeas().map((d) => d.id.slice(7)), fresh = newIdeas().map((d) => d.id.slice(7));
   assert.ok(pop.length > 0);
   for (const k of pop) assert.equal(by.get(k)!.trust, "trusted", k);
-  for (const k of fresh) assert.ok(by.get(k)!.trust !== "trusted" && !by.get(k)!.held && by.get(k)!.learned, k);
+  for (const k of fresh) assert.ok(by.get(k)!.trust !== "trusted" && !by.get(k)!.held, k);
   for (const k of ["raised-dog-feeder-stand", "compost-tumbler-frame", "knife-block", "adirondack-footrest", "miter-saw-station"]) {
     assert.ok(by.get(k)!.held, k);
     assert.ok(!pop.includes(k) && !fresh.includes(k), k);
@@ -79,4 +79,12 @@ it("the rain barrel stand's opening between the posts clears a 23 in barrel", as
   const posts = p.panels.filter((q) => /post/i.test(q.name));
   const inner = Math.max(...posts.map((q) => q.position.x)) - Math.min(...posts.map((q) => q.position.x + q.size.width));
   assert.ok(inner >= 23, String(inner));
+});
+
+it("ungraded, unheld seed recipes show under New (Unverified), and every card size is a fraction, never a decimal", async () => {
+  const { newIdeas, popularIdeas } = await import("./recipeIdeas.ts");
+  const fresh = newIdeas().map((d) => d.id.slice(7));
+  for (const r of RECIPES.recipes.filter((x) => !x.learned && x.trust !== "trusted" && !x.held)) if (newIdeas().length < 51) assert.ok(fresh.includes(r.key) || !recipeIdeas().some((d) => d.id === `recipe-${r.key}`), r.key);
+  assert.ok(fresh.includes("ferris-wheel") && fresh.includes("glider"));
+  for (const d of [...newIdeas(), ...popularIdeas()]) assert.doesNotMatch(d.size, /\d\.\d/, d.size);
 });
