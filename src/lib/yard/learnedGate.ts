@@ -4,10 +4,10 @@
  * Seed recipes keep the standard validateRecipe checks; this gate is what the bot's auto-merge waits on.
  */
 import { getCatalogItem } from "./catalog";
-import { bearingFailures, boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
+import { bearingFailures, glueUpFailures, boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
-import { buildPlan, cutStepCount, duplicateBuyLines, overlongCuts } from "./report";
+import { buildPlan, cutStepCount, dedupeBuy, duplicateBuyLines, overlongCuts } from "./report";
 import { isOutdoorPrompt } from "./outdoor";
 import type { BuildPlan, Panel } from "./types";
 import { generateFromPrompt } from "./promptMain";
@@ -59,7 +59,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   fail.push(...definingFailures(recipe, built.project, plan));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
-  fail.push(...bearingFailures(recipe, panels));
+  fail.push(...bearingFailures(recipe, panels), ...glueUpFailures(recipe, panels));
   // No cut part is longer than its bought stock unless the plan splices it.
   const spliced = plan.instructions.some((st) => /^Splice\b/.test(st.title));
   for (const c of overlongCuts(plan)) if (!spliced) fail.push(`${c.name}: ${c.lengthIn}" is longer than its ${c.material} with no splice step`);
@@ -190,7 +190,8 @@ export function definingFailures(recipe: Recipe, project: { panels: { name: stri
   for (const role of recipe.defining ?? []) {
     const parts = of(role);
     if (!parts.length) fail.push(`defining ${role}: not in the model`);
-    else if (parts.every((p) => p.materialId === "hardware") && !new RegExp(role, "i").test(buy)) fail.push(`defining ${role}: not on Buy`);
+    // On Buy by its role, or folded into the Buy line of its kind ("Canvas cover" into the canvas drop cloth).
+    else if (parts.every((p) => p.materialId === "hardware") && !new RegExp(role, "i").test(buy) && !parts.some((p) => dedupeBuy([...plan.bom, { name: p.name.replace(/ \d+$/, ""), quantity: 1, unit: "pcs" }] as BuildPlan["bom"]).length === plan.bom.length)) fail.push(`defining ${role}: not on Buy`);
   }
   for (const m of recipe.moving ?? []) {
     const role = roleOf(m.part);

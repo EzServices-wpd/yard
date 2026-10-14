@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RECIPES } from "./recipes";
-import { bearingFailures, buildRecipe } from "./recipeBuild";
+import { bearingFailures, buildRecipe, glueUpFailures } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import { buildPlan } from "./report";
 import { generateFromPrompt } from "./promptMain";
 import { isOutdoorPrompt } from "./outdoor";
-import { buildClassFailures } from "./learnedGate";
+import { buildClassFailures, definingFailures } from "./learnedGate";
 
 // Every recipe, starters included (the learned-recipe gate only sees learned ones), and typed prompts.
 test("every starter and learned recipe passes the build-class checks", () => {
@@ -14,7 +14,7 @@ test("every starter and learned recipe passes the build-class checks", () => {
   for (const r of RECIPES.recipes) {
     const prompt = recipePrompt(r);
     const { project } = buildRecipe(r, prompt);
-    for (const f of [...buildClassFailures(project, buildPlan(project), !!r.outdoor || isOutdoorPrompt(prompt)), ...bearingFailures(r, project.panels)]) bad.push(`${r.key}: ${f}`);
+    for (const f of [...buildClassFailures(project, buildPlan(project), !!r.outdoor || isOutdoorPrompt(prompt)), ...bearingFailures(r, project.panels), ...glueUpFailures(r, project.panels), ...definingFailures(r, project, buildPlan(project))]) bad.push(`${r.key}: ${f}`);
   }
   assert.deepEqual(bad, []);
 });

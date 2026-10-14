@@ -558,6 +558,87 @@ export function exteriorBoards(panels: Panel[]): void {
   panels.splice(0, panels.length, ...out);
 }
 
+/** The notes ask for this part laminated ("glue two plies for the top"). */
+const laminated = (recipe: Recipe, name: string) => recipe.notes.some((n) => /lamin|glue[- ]up|layers|plies/i.test(n) && n.toLowerCase().includes(name.replace(/ \d+$/, "").toLowerCase()));
+/** A work or table top doubled to two plies is a real design (a 1 1/2" ply top), not an accidental glue-up. */
+const doubledTop = (name: string, thin: number, t: number) => /\b(?:top|tabletop|desktop|counter|worktop|work surface|bench ?top)\b/i.test(name) && Math.abs(thin - 2 * t) < 0.15;
+const BLOCK_ROLE = /post|leg|plinth|kick|base|block|beam|foot|feet|toe|stand|gnomon|pedestal|hub|axle|rim/i;
+
+/**
+ * A sheet part is one sheet thick: a side, shelf, rail or top modelled thicker than the sheet (a 2" Murphy side,
+ * 1 1/2" locker shelves) is cut from one sheet, never glued up in layers. It keeps the face on the build's outside
+ * (or its centre when it stands inside), and parts that met its other face stretch to keep meeting it.
+ */
+export function oneSheetThick(recipe: Recipe, panels: Panel[]): void {
+  const env = { x: [Math.min(...panels.map((p) => p.position.x)), Math.max(...panels.map((p) => p.position.x + p.size.width))], y: [Math.min(...panels.map((p) => p.position.y)), Math.max(...panels.map((p) => p.position.y + p.size.height))], z: [Math.min(...panels.map((p) => p.position.z)), Math.max(...panels.map((p) => p.position.z + p.size.depth))] } as Record<"x" | "y" | "z", number[]>;
+  const K = { x: "width", y: "height", z: "depth" } as const;
+  for (const p of panels) {
+    const item = getCatalogItem(p.materialId);
+    if (item?.formFactor !== "sheet" || !/^plywood|^mdf|^osb/.test(p.materialId) || p.polygon) continue;
+    const role = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))?.role ?? "";
+    if (BLOCK_ROLE.test(`${role} ${p.name}`) || laminated(recipe, p.name)) continue;
+    const t = item.dims.thickness ?? item.dims.height ?? 0.75;
+    const a = (["x", "y", "z"] as const).reduce((m, k) => (p.size[K[k]] < p.size[K[m]] ? k : m), "x" as "x" | "y" | "z");
+    const thin = p.size[K[a]];
+    const sorted = [p.size.width, p.size.height, p.size.depth].sort((m, n) => m - n);
+    if (thin <= t * 1.25 || sorted[1] < thin * 4 || doubledTop(p.name, thin, t)) continue;
+    const o0 = p.position[a], o1 = o0 + thin;
+    const others = panels.filter((q) => q !== p);
+    const across = (q: Panel) => (["x", "y", "z"] as const).filter((k) => k !== a).every((k) => Math.min(q.position[k] + q.size[K[k]], p.position[k] + p.size[K[k]]) - Math.max(q.position[k], p.position[k]) > 0.05);
+    // The face on what carries it wins (a bed rail stays on its cabinet side); else any face that meets a part.
+    const onNames = new Set(recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))?.on ?? []);
+    const carried = others.filter((q) => onNames.has(q.name) || onNames.has(q.name.replace(/ \d+$/, "")));
+    const pool = carried.some((q) => across(q) && (Math.abs(q.position[a] + q.size[K[a]] - o0) < 0.03 || Math.abs(q.position[a] - o1) < 0.03)) ? carried : others;
+    const touchLo = pool.some((q) => across(q) && Math.abs(q.position[a] + q.size[K[a]] - o0) < 0.03);
+    const touchHi = pool.some((q) => across(q) && Math.abs(q.position[a] - o1) < 0.03);
+    const atLo = Math.abs(o0 - env[a][0]) < 0.02, atHi = Math.abs(o1 - env[a][1]) < 0.02;
+    // Keep the face that meets something (or the outside face); a free-standing inner part keeps its centre.
+    const n0 = atLo ? o0 : atHi ? o1 - t : touchLo && !touchHi ? o0 : touchHi && !touchLo ? o1 - t : (o0 + o1 - t) / 2, n1 = n0 + t;
+    // A face moved from `from` to `to`: parts that met it follow. One that runs that way stretches to the new face;
+    // a panel lying flat against it slides over, and what met its far face follows in turn.
+    const follow = (src: Panel, from: number, to: number, seen: Set<Panel>) => {
+      const meets = (q: Panel) => (["x", "y", "z"] as const).filter((k) => k !== a).every((k) => Math.min(q.position[k] + q.size[K[k]], src.position[k] + src.size[K[k]]) - Math.max(q.position[k], src.position[k]) > 0.05);
+      for (const q of panels) {
+        if (q === p || seen.has(q) || !meets(q)) continue;
+        const q0 = q.position[a], q1 = q0 + q.size[K[a]];
+        const grow = to > from ? Math.abs(q1 - from) < 0.03 : Math.abs(q0 - from) < 0.03;
+        // The outside of the build never moves: exact W×D×H.
+        if (!grow || Math.abs(q0 - env[a][0]) < 0.02 || Math.abs(q1 - env[a][1]) < 0.02) continue;
+        seen.add(q);
+        const thinQ = Math.min(q.size.width, q.size.height, q.size.depth) === q.size[K[a]];
+        if (!thinQ) {
+          if (to < from) q.position = { ...q.position, [a]: to }, q.size = { ...q.size, [K[a]]: q1 - to };
+          else q.size = { ...q.size, [K[a]]: to - q0 };
+        } else {
+          const d = to - from;
+          const far = to < from ? q1 : q0;
+          q.position = { ...q.position, [a]: q0 + d };
+          follow(q, far, far + d, seen);
+        }
+      }
+    };
+    if (n1 < o1) follow(p, o1, n1, new Set());
+    if (n0 > o0) follow(p, o0, n0, new Set());
+    p.position = { ...p.position, [a]: n0 };
+    p.size = { ...p.size, [K[a]]: t };
+  }
+}
+
+/** Gate: sheet parts modelled thicker than one sheet (a glue-up nobody asked for). */
+export function glueUpFailures(recipe: Recipe, panels: Panel[]): string[] {
+  const out: string[] = [];
+  for (const p of panels) {
+    const item = getCatalogItem(p.materialId);
+    if (item?.formFactor !== "sheet" || !/^plywood|^mdf|^osb/.test(p.materialId) || p.polygon) continue;
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (BLOCK_ROLE.test(`${part?.role ?? ""} ${p.name}`) || laminated(recipe, p.name)) continue;
+    const t = item.dims.thickness ?? item.dims.height ?? 0.75;
+    const d = [p.size.width, p.size.height, p.size.depth].sort((m, n) => m - n);
+    if (d[0] > t * 1.25 && d[1] >= d[0] * 4 && !doubledTop(p.name, d[0], t)) out.push(`${p.name} is ${Math.round(d[0] * 100) / 100}" thick: one ${item.name}, not a glue-up`);
+  }
+  return out;
+}
+
 const LOAD_ROLE = /^(?:deck|shelf|tread|seat|slat|floor|platform|top)$/;
 
 /** Carriers a load-bearing board rests on: its "on" parts whose top meets its underside. */
@@ -570,7 +651,8 @@ function bearers(recipe: Recipe, panels: Panel[], p: Panel): Panel[] {
   return panels.filter((c) => {
     if (c === p || !(on.has(c.name) || on.has(c.name.replace(/ \d+$/, ""))) || Math.abs(c.position.y + c.size.height - p.position.y) >= 0.15) return false;
     const role = recipe.parts.find((q) => q.name === c.name || q.name === c.name.replace(/ \d+$/, ""))?.role ?? "";
-    if (!/rail|cleat|joist|stringer|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`)) return false;
+    // (A notched stringer carries its treads in the notch.)
+    if (!/rail|cleat|joist|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`) || /stringer/i.test(`${role} ${c.name}`)) return false;
     const cLong = c.size.width >= c.size.depth ? "x" : "z";
     return cLong !== pLong;
   });
@@ -602,9 +684,6 @@ export function bearOnCarriers(recipe: Recipe, panels: Panel[]): void {
         const lo = Math.min(p0, c0), hi = Math.max(p1, c1);
         p.position = { ...p.position, [b.a]: lo };
         p.size = { ...p.size, [k]: hi - lo };
-      } else {
-        // Across its width a board keeps its face: it slides over onto the carrier.
-        p.position = { ...p.position, [b.a]: p0 > c0 ? c0 : c1 - p.size[k] };
       }
     }
   }
@@ -903,8 +982,10 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   }
   rotors(recipe, panels, pins);
   realBoards(recipe, panels);
+  // Outdoors the flat parts become exterior boards instead (exteriorBoards).
+  if (!((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride)) oneSheetThick(recipe, panels);
   bearOnCarriers(recipe, panels);
-  if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) exteriorBoards(panels);
+  if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) { exteriorBoards(panels); oneSheetThick(recipe, panels); }
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
   // and the parts that turn on it, so it stands on the floor, never through it.
