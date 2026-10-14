@@ -4,7 +4,7 @@
  * Seed recipes keep the standard validateRecipe checks; this gate is what the bot's auto-merge waits on.
  */
 import { getCatalogItem } from "./catalog";
-import { boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
+import { bearingFailures, boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
 import { buildPlan, cutStepCount, duplicateBuyLines, overlongCuts } from "./report";
@@ -59,6 +59,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   fail.push(...definingFailures(recipe, built.project, plan));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
+  fail.push(...bearingFailures(recipe, panels));
   // No cut part is longer than its bought stock unless the plan splices it.
   const spliced = plan.instructions.some((st) => /^Splice\b/.test(st.title));
   for (const c of overlongCuts(plan)) if (!spliced) fail.push(`${c.name}: ${c.lengthIn}" is longer than its ${c.material} with no splice step`);

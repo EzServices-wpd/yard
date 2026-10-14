@@ -6969,7 +6969,7 @@
     "rain barrel platform"
    ],
    "version": 1,
-   "trust": "trusted",
+   "trust": "candidate",
    "title": "Rain Barrel Stand",
    "size": {
     "width": 34,
@@ -7236,7 +7236,8 @@
     "Platform supports standard 50-gallon rain barrel",
     "The space between the posts clears a 23\" (50-gallon) barrel with room to set it down."
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "miter-saw-station",

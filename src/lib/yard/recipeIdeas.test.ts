@@ -70,7 +70,9 @@ it("Popular shows only TRUSTED recipes; New (Unverified) only untrusted, unheld 
     assert.ok(by.get(k)!.held, k);
     assert.ok(!pop.includes(k) && !fresh.includes(k), k);
   }
-  for (const k of ["wall-mounted-mail-organizer", "rain-barrel-stand"]) assert.ok(pop.includes(k), k);
+  for (const k of ["wall-mounted-mail-organizer"]) assert.ok(pop.includes(k), k);
+  // Critic FLAGGED the rain barrel stand (regrade 7fe2b83): held, off Popular.
+  assert.ok(!pop.includes("rain-barrel-stand") && by.get("rain-barrel-stand")!.held);
 });
 
 it("the rain barrel stand's opening between the posts clears a 23 in barrel", async () => {

@@ -558,6 +558,77 @@ export function exteriorBoards(panels: Panel[]): void {
   panels.splice(0, panels.length, ...out);
 }
 
+const LOAD_ROLE = /^(?:deck|shelf|tread|seat|slat|floor|platform|top)$/;
+
+/** Carriers a load-bearing board rests on: its "on" parts whose top meets its underside. */
+function bearers(recipe: Recipe, panels: Panel[], p: Panel): Panel[] {
+  const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+  if (!part || !LOAD_ROLE.test(part.role ?? "") || !part.on?.length) return [];
+  const on = new Set(part.on);
+  // Rails, cleats and joists that run across the board's length (a parallel rail along its edge is a fascia, a leg is a corner).
+  const pLong = p.size.width >= p.size.depth ? "x" : "z";
+  return panels.filter((c) => {
+    if (c === p || !(on.has(c.name) || on.has(c.name.replace(/ \d+$/, ""))) || Math.abs(c.position.y + c.size.height - p.position.y) >= 0.15) return false;
+    const role = recipe.parts.find((q) => q.name === c.name || q.name === c.name.replace(/ \d+$/, ""))?.role ?? "";
+    if (!/rail|cleat|joist|stringer|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`)) return false;
+    const cLong = c.size.width >= c.size.depth ? "x" : "z";
+    return cLong !== pLong;
+  });
+}
+
+const span = (p: Panel, a: "x" | "z") => [p.position[a], p.position[a] + (a === "x" ? p.size.width : p.size.depth)] as const;
+/** How far a board bears on a carrier, measured along the axis the carrier runs across (its narrow plan side). */
+function bearing(p: Panel, c: Panel): { a: "x" | "z"; got: number; need: number } | null {
+  const a = c.size.width <= c.size.depth ? "x" : "z", o = a === "x" ? "z" : "x";
+  const [p0, p1] = span(p, a), [c0, c1] = span(c, a), [q0, q1] = span(p, o), [d0, d1] = span(c, o);
+  if (Math.min(q1, d1) - Math.max(q0, d0) <= 0.05) return null;
+  return { a, got: Math.min(p1, c1) - Math.max(p0, c0), need: Math.min(1.5, c1 - c0) - 0.01 };
+}
+
+/**
+ * Load-bearing boards sit ON their rails or cleats: a deck board, shelf or tread that only meets a carrier's
+ * edge (held by end screws) is lengthened to run across the carrier's full width.
+ */
+export function bearOnCarriers(recipe: Recipe, panels: Panel[]): void {
+  for (const p of panels) {
+    for (const c of bearers(recipe, panels, p)) {
+      const b = bearing(p, c);
+      if (!b || b.got >= b.need) continue;
+      const k = b.a === "x" ? "width" : "depth";
+      const [p0, p1] = span(p, b.a), [c0, c1] = span(c, b.a);
+      const long = p.size[k] >= Math.max(p.size.width, p.size.depth) - 0.01;
+      if (long) {
+        // Along its length the board runs on across the carrier.
+        const lo = Math.min(p0, c0), hi = Math.max(p1, c1);
+        p.position = { ...p.position, [b.a]: lo };
+        p.size = { ...p.size, [k]: hi - lo };
+      } else {
+        // Across its width a board keeps its face: it slides over onto the carrier.
+        p.position = { ...p.position, [b.a]: p0 > c0 ? c0 : c1 - p.size[k] };
+      }
+    }
+  }
+  // A post that rises through a board it now carries stops under it: the deck sits on the post tops.
+  for (const p of panels) {
+    if (!bearers(recipe, panels, p).length) continue;
+    for (const post of panels.filter((q) => /\bpost\b/i.test(q.name) && q.position.y < p.position.y && q.position.y + q.size.height > p.position.y + 0.01)) {
+      const ox = Math.min(span(p, "x")[1], span(post, "x")[1]) - Math.max(span(p, "x")[0], span(post, "x")[0]);
+      const oz = Math.min(span(p, "z")[1], span(post, "z")[1]) - Math.max(span(p, "z")[0], span(post, "z")[0]);
+      if (ox > 0.05 && oz > 0.05) post.size = { ...post.size, height: p.position.y - post.position.y };
+    }
+  }
+}
+
+/** Gate: load-bearing boards that bear on a carrier by less than its width (up to 1 1/2"). */
+export function bearingFailures(recipe: Recipe, panels: Panel[]): string[] {
+  const out: string[] = [];
+  for (const p of panels) for (const c of bearers(recipe, panels, p)) {
+    const b = bearing(p, c);
+    if (b && b.got < b.need) out.push(`${p.name} bears ${Math.max(0, Math.round(b.got * 16) / 16)}" on ${c.name}: sit it on the rail, not end screws`);
+  }
+  return out;
+}
+
 function gnomonTriangles(panels: Panel[]): void {
   for (const g of panels.filter((p) => /\bgnomon\b/i.test(p.name) && !p.polygon)) {
     const H = g.size.height;
@@ -832,6 +903,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   }
   rotors(recipe, panels, pins);
   realBoards(recipe, panels);
+  bearOnCarriers(recipe, panels);
   if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) exteriorBoards(panels);
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle

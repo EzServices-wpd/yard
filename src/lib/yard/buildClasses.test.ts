@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RECIPES } from "./recipes";
-import { buildRecipe } from "./recipeBuild";
+import { bearingFailures, buildRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import { buildPlan } from "./report";
 import { generateFromPrompt } from "./promptMain";
@@ -14,7 +14,7 @@ test("every starter and learned recipe passes the build-class checks", () => {
   for (const r of RECIPES.recipes) {
     const prompt = recipePrompt(r);
     const { project } = buildRecipe(r, prompt);
-    for (const f of buildClassFailures(project, buildPlan(project), !!r.outdoor || isOutdoorPrompt(prompt))) bad.push(`${r.key}: ${f}`);
+    for (const f of [...buildClassFailures(project, buildPlan(project), !!r.outdoor || isOutdoorPrompt(prompt)), ...bearingFailures(r, project.panels)]) bad.push(`${r.key}: ${f}`);
   }
   assert.deepEqual(bad, []);
 });
