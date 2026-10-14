@@ -679,7 +679,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   for (const [id, lines] of byStock) {
     const item = getCatalogItem(id);
     const stockLen = item?.dims.length ?? 96;
-    const lengths = lines.flatMap((c) => Array.from({ length: c.quantity }, () => Math.max(c.lengthIn, c.widthIn)));
+    // A part wider than the stick's face is edge-glued from that many strips, each its full length.
+    const strips = (c: CutLine) => (item?.dims.width && c.widthIn < c.lengthIn ? Math.max(1, Math.ceil((c.widthIn - 0.01) / item.dims.width)) : 1);
+    const lengths = lines.flatMap((c) => Array.from({ length: c.quantity * strips(c) }, () => Math.max(c.lengthIn, c.widthIn)));
     const packed = packLengths(lengths, stockLen, 0.125);
     const qty = Math.max(1, packed.sticks);
     const pieceQty = lengths.length;

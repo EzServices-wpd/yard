@@ -508,9 +508,11 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.
   for (const p of panels) {
     const c = getCatalogItem(p.materialId);
-    if (c?.formFactor !== "board" || !c.dims.width) continue;
-    const [, mid] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
+    const [thin, mid] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
     const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    // A member wider than one stick both ways (a sawbuck's 21" leg, a 1.8×4.3 apron) is never one 2x4: it is cut from the sheet, glued up in layers when thick.
+    if (c?.category === "lumber" && p.materialId === stock.member && c.dims.width && c.dims.height && part?.kind === "member" && !stock.typed && thin > c.dims.height + 0.01 && mid > c.dims.width + 0.01) { p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8"; continue; }
+    if (c?.formFactor !== "board" || !c.dims.width) continue;
     if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
     if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
