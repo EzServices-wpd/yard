@@ -438,7 +438,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
         return;
       }
     }
-    const hint = await hintSubject({ data: { prompt } });
+    // Every AI call is bounded: a slow hint or interpret reply never holds the Building overlay over a finished bench.
+    const hint = await withDeadline(hintSubject({ data: { prompt } }), opts.boundMs ?? 20_000);
     const bound = engineOwnsForm(prompt, useYard.getState().project);
     if (
       !bound &&
@@ -457,9 +458,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
         useYard.getState().setProject({ ...current, notes: [...current.notes, note] });
       }
     }
-    const interp = await interpretPrompt({
+    const interp = await withDeadline(interpretPrompt({
       data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
-    });
+    }), opts.boundMs ?? 20_000);
     const after = useYard.getState().project;
     const locked =
       // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.

@@ -120,3 +120,32 @@ describe("uiPath: every entry point shows the display-only block, never the engi
     assert.ok(useYard.getState().project.displayOnly);
   });
 });
+
+describe("uiPath: starter recipes never fall through", () => {
+  it("every starter's own noun builds on the bar (its recipe or the engine's own family): no lookup, no grey block (toy airplane)", async () => {
+    const { RECIPES } = await import("./recipes");
+    const { recipePrompt } = await import("./recipeIdeas");
+    // Each starter's card prompt (modifiers included), plus Critic's bare "toy airplane".
+    for (const noun of [...RECIPES.recipes.filter((x) => !x.learned).map(recipePrompt), "toy airplane"]) {
+      const calls: string[] = [];
+      await runYardPrompt(noun, { fresh: true, ai: stubs(async () => ({ ok: false, error: "bad" }), calls) });
+      const p = useYard.getState().project;
+      assert.ok(!calls.includes("lookup"), `${noun} asked the learner`);
+      assert.ok(p.panels.length + p.instances.length > 1 && !p.unmatched && !p.displayOnly, `${noun} fell through to ${p.name}`);
+    }
+  });
+});
+
+describe("uiPath: the Building overlay always clears", () => {
+  it("a hint or interpret reply that never comes still lets the run finish and the bench reveal (easel)", async () => {
+    const never = new Promise<never>(() => {});
+    const ai = { ...stubs(async () => ({ ok: false, error: "bad" }), []), hintSubject: (() => never) as never, interpretPrompt: (() => never) as never };
+    const t0 = Date.now();
+    await runYardPrompt("easel", { fresh: true, ai, boundMs: 300 } as never);
+    assert.ok(Date.now() - t0 < 5000, "run finished");
+    assert.equal(useYard.getState().grokBusy, false);
+    assert.ok(useYard.getState().project.panels.length > 1);
+    await new Promise((r) => setTimeout(r, 4200));
+    assert.equal(useYard.getState().building, false);
+  });
+});
