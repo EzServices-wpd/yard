@@ -2,7 +2,7 @@ import { isNoLidPrompt } from "./cueRules";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
-import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
+import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
@@ -29,7 +29,7 @@ import { packLengths } from "./linearPack";
 import { panelJoints, screwTalk } from "./modelJoints";
 import { withOutdoorPackage } from "./outdoor";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
-import type { AssemblyStep, BuildPlan, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
+import type { AssemblyStep, BuildPlan, CatalogItem, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
 import { restsOnLaterStep } from "./placeEveryPart";
 import { panelStock } from "./partStock";
@@ -143,6 +143,12 @@ function closetCuts(project: YardProject): CutLine[] {
     if ((/plywood/i.test(id ?? "") || id === CATALOG_LUMBER_BIND) && dims.thicknessIn <= 0.26) {
       id = "plywood-1-4-4x8";
       matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
+    }
+    // A part longer than its board is bought as the longer board of the same size when the catalogue sells one.
+    const sold = getCatalogItem(id ?? "");
+    if (sold?.category === "lumber" && sold.dims.length && dims.lengthIn > sold.dims.length + 0.01) {
+      const longer = longerLumber(sold, dims.lengthIn);
+      if (longer) { id = longer.id; matName = longer.name; }
     }
     // A notched (half-lapped) board is a different cut from its plain twin.
     const lapKey = note && /Egg-crate half-lap/.test(note) ? `|${note}` : "";
@@ -1711,9 +1717,38 @@ function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
   const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
   const extra = spaceCutStep(project);
-  if (!extra) return positivePlan(plan);
+  if (!extra) return positivePlan(spliceStep(plan));
   const step = plan.instructions.length + 1;
-  return positivePlan({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] });
+  return positivePlan(spliceStep({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] }));
+}
+
+/** The shortest catalogue board of the same section that is at least `len` long. */
+export function longerLumber(item: CatalogItem, len: number): CatalogItem | undefined {
+  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01)
+    .sort((x, y) => (x.dims.length ?? 0) - (y.dims.length ?? 0))[0];
+}
+
+/** Cut rows longer than the board they are bought as (no longer board in the catalogue): they are spliced. */
+export function overlongCuts(plan: BuildPlan): BuildPlan["cutList"] {
+  return plan.cutList.filter((c) => {
+    const it = getCatalogItem((c.id ?? "").split("|")[0]);
+    return !c.whole && it?.category === "lumber" && !!it.dims.length && c.lengthIn > it.dims.length + 0.01;
+  });
+}
+
+/** A member longer than any board sold gets a splice step after the cuts. */
+function spliceStep(plan: BuildPlan): BuildPlan {
+  const long = overlongCuts(plan);
+  if (!long.length) return plan;
+  const what = long.map((c) => `${c.quantity} × ${inchFrac(c.lengthIn)}" ${c.name.toLowerCase()}`).join(", ");
+  const at = Math.max(0, plan.instructions.findIndex((s) => /^Cut\b/.test(s.title))) + 1;
+  const step: AssemblyStep = {
+    step: 0,
+    title: "Splice the long members",
+    description: `No board in the catalogue is long enough for the ${what}. Make each from two boards joined with a half-lap splice: cut a 12" half-lap on the mating ends, glue, and through-bolt or screw it, with the joint over a post or support, never mid-span.`,
+  };
+  const instructions = [...plan.instructions.slice(0, at), step, ...plan.instructions.slice(at)].map((s, i) => ({ ...s, step: i + 1 }));
+  return { ...plan, instructions };
 }
 
 /**
