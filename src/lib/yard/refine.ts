@@ -1,4 +1,6 @@
 import { detectMaterial, hasExplicitStock, promptNamingStock } from "./promptHelpers";
+import { getCatalogItem } from "./catalog";
+import { generateFromPrompt } from "./promptMain";
 import type { YardProject } from "./types";
 
 /**
@@ -26,9 +28,9 @@ function withSizes(prompt: string, o: { width: number; height: number; depth: nu
   return tidy(`${tidy(t)}, ${fmt(o.width)} wide ${fmt(o.height)} tall ${fmt(o.depth)} deep`);
 }
 
-export function refinePrompt(prompt: string, phrase: string, project: Pick<YardProject, "overall" | "panels">): { prompt: string; materialId?: string } {
+export function refinePrompt(prompt: string, phrase: string, project: Pick<YardProject, "overall" | "panels">): { prompt: string; materialId?: string; kind: "size" | "count" | "stock" | "text" } {
   const p = phrase.trim().toLowerCase().replace(/[.!]+$/, "");
-  if (!p) return { prompt };
+  if (!p) return { prompt, kind: "text" };
   const o = { ...project.overall };
 
   // Size by: "make it 6 inches taller", "2 in lower".
@@ -36,13 +38,13 @@ export function refinePrompt(prompt: string, phrase: string, project: Pick<YardP
   if (by) {
     const [axis, sign] = AXIS[by[2]];
     o[axis] = Math.max(1, o[axis] + sign * num(by[1]));
-    return { prompt: withSizes(prompt, o) };
+    return { prompt: withSizes(prompt, o), kind: "size" };
   }
   // Size to: "make it 40 tall", "36 inches wide".
   const to = p.match(/(\d+(?:\.\d+)?)\s*(?:inches|inch|in|")?\s*(wide|long|tall|high|deep)\b/);
   if (to && !/\b(shel|drawer|door|cubb|hook)/.test(p)) {
     o[SET_AXIS[to[2]]] = Number(to[1]);
-    return { prompt: withSizes(prompt, o) };
+    return { prompt: withSizes(prompt, o), kind: "size" };
   }
   // Counts: "add a drawer", "two shelves", "one less shelf", "remove a door".
   for (const [noun, re] of Object.entries(COUNTS)) {
@@ -54,13 +56,40 @@ export function refinePrompt(prompt: string, phrase: string, project: Pick<YardP
     const less = m[1] === "remove" || m[1] === "drop" || /\b(less|fewer)\b/.test(p);
     const next = Math.max(0, m[1] === "add" || /\bmore\b/.test(p) ? have + n : less ? have - n : n);
     const base = tidy(prompt.replace(new RegExp(`(?:,?\\s*with\\s+)?${NUM}\\s+(?:${re.source})\\b`, "gi"), " "));
-    return { prompt: tidy(`${base} with ${next} ${noun}`) };
+    return { prompt: tidy(`${base} with ${next} ${noun}`), kind: "count" };
   }
   // Stock: "use plywood", "make it from cedar", "in pine".
   const stock = p.match(/^(?:use|make it (?:from|out of|in)|from|out of|in|switch to)\s+(.+)$/);
   if (stock && hasExplicitStock(`from ${stock[1]}`)) {
-    return { prompt: promptNamingStock(prompt, stock[1]), materialId: detectMaterial(`from ${stock[1]}`).id };
+    return { prompt: promptNamingStock(prompt, stock[1]), materialId: detectMaterial(`from ${stock[1]}`).id, kind: "stock" };
   }
   // Anything else goes to the parser as written.
-  return { prompt: tidy(`${prompt}, ${phrase.trim()}`) };
+  return { prompt: tidy(`${prompt}, ${phrase.trim()}`), kind: "text" };
+}
+
+const AXES = [["width", "Width"], ["height", "Height"], ["depth", "Depth"]] as const;
+const COUNTED = [["shelf", "Shelves"], ["drawer", "Drawers"], ["door", "Doors"]] as const;
+const n = (p: Pick<YardProject, "panels">, t: string) => p.panels.filter((x) => x.type === t).length;
+
+/** What differs between two builds, in shop words ("Height 60" → 66""). */
+export function describeChange(a: YardProject, b: YardProject): string[] {
+  const out: string[] = [];
+  for (const [k, label] of AXES) if (Math.abs(a.overall[k] - b.overall[k]) > 0.01) out.push(`${label} ${fmt(a.overall[k])}" → ${fmt(b.overall[k])}"`);
+  for (const [t, label] of COUNTED) if (n(a, t) !== n(b, t)) out.push(`${label} ${n(a, t)} → ${n(b, t)}`);
+  if (a.primaryMaterialId !== b.primaryMaterialId) out.push(`Stock ${getCatalogItem(a.primaryMaterialId)?.name ?? a.primaryMaterialId} → ${getCatalogItem(b.primaryMaterialId)?.name ?? b.primaryMaterialId}`);
+  return out;
+}
+
+/**
+ * One change to the build on the bench: size, a count or the stock. Free text is refused (type it in the prompt),
+ * so Refine never starts a new build. Pure and local: no AI, no network.
+ */
+export function refineProject(project: YardProject, phrase: string): { project: YardProject; changed: string[] } | { project: null; why: string } {
+  // The engine prompt rebuilds exactly this build (a fallback keeps its primitive); the merged words stay that build.
+  const r = refinePrompt(project.prompt, phrase, project);
+  if (r.kind === "text") return { project: null, why: "Refine changes the size, a count or the stock. For anything else, type it in the prompt above." };
+  const next = generateFromPrompt(r.prompt, r.materialId ?? project.primaryMaterialId);
+  const changed = describeChange(project, next);
+  if (!changed.length) return { project: null, why: "This build can't take that change." };
+  return { project: next, changed };
 }

@@ -26,3 +26,8 @@ free Refine box under the model that edits the current build with no AI call.
 desk 2 inches lower / one drawer; workbench use plywood / 12 inches longer; medicine cabinet 2 inches deeper;
 bookcase use plywood keeps shape and size. Each asserts the changed size, count or stock. One test stubs `fetch` and
 asserts it is never called.
+
+## Amendment (one change at a time)
+- **R6** Refine applies one change (size, a count or the stock) to the build on the bench with `commit`, so the
+  store's history keeps the previous build; the box shows "Changed: …" and an Undo. Free text is refused with a
+  pointer to the prompt bar, so Refine never starts a new build.

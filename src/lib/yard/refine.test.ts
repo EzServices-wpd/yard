@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import fs from "node:fs";
 import { generateFromPrompt } from "./promptMain.ts";
-import { refinePrompt } from "./refine.ts";
+import { refinePrompt, refineProject } from "./refine.ts";
 
 const count = (q: string, re: RegExp) => generateFromPrompt(q).panels.filter((p) => re.test(p.name)).length;
 function refine(prompt: string, phrase: string) {
@@ -60,5 +60,30 @@ describe("spec 003: refine makes zero AI calls", () => {
       const src = fs.readFileSync(f, "utf8");
       assert.doesNotMatch(src, /lib\/ai|serverFn|createServerFn|runYardPrompt|lookupRecipe|interpretPrompt|hintSubject|fetch\(/);
     }
+  });
+});
+
+describe("refineProject: one change to the current build, never a new one", () => {
+  it("taller changes only the height", () => {
+    const p = generateFromPrompt("bookshelf 30 wide, 60 tall, five shelves");
+    const r = refineProject(p, "make it 6 inches taller");
+    assert.ok(r.project);
+    assert.deepEqual(r.changed, ['Height 60" → 66"']);
+  });
+  it("add a drawer reports the count", () => {
+    const r = refineProject(generateFromPrompt("nightstand"), "add a drawer");
+    assert.ok(r.project);
+    assert.deepEqual(r.changed, ["Drawers 1 → 2"]);
+  });
+  it("free text is refused, nothing rebuilt", () => {
+    const r = refineProject(generateFromPrompt("nightstand"), "paint it blue");
+    assert.equal(r.project, null);
+  });
+  it("no fetch to xAI or the lookup", () => {
+    const real = globalThis.fetch;
+    const urls: string[] = [];
+    globalThis.fetch = ((u: unknown) => { urls.push(String(u)); throw new Error("no network"); }) as typeof fetch;
+    try { for (const [q, ph] of [["nightstand", "add a drawer"], ["workbench", "use plywood"], ["bookshelf", "2 inches wider"]]) refineProject(generateFromPrompt(q), ph); } finally { globalThis.fetch = real; }
+    assert.equal(urls.length, 0);
   });
 });
