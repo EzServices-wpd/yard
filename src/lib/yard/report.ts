@@ -328,7 +328,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const boardsBought = new Set<string>();
   // Thin sheet parts only are a backer: a 1/4" dowel rod is round stock, and a thin part cut from a board
   // (a 3/8" maple divider) is bought with that board, never as an orphan backer line.
-  const thinSheet = (c: CutLine) => (c.thicknessIn ?? 0.75) < 0.5 && /plywood/i.test(c.material ?? "");
+  // A real 1/4" backer only (up to 5/16"): a 3/8" learned part stays on the sheet its cut line names, so no orphan backer.
+  const thinSheet = (c: CutLine) => (c.thicknessIn ?? 0.75) < (/plywood-1-4/.test(c.id) ? 0.5 : 0.34) && /plywood/i.test(c.material ?? "");
   const structural = cuts.filter(
     (c) => ((c.thicknessIn ?? 0.75) >= 0.5 || (!thinSheet(c) && !/dowel/i.test(c.material ?? ""))) && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );

@@ -10,7 +10,8 @@ import type { Recipe } from "./recipes";
 import { buildPlan } from "./report";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
-const SUPPLY = /screw|nail|glue|bolt|nut|washer|hinge|glide|finish|stain|sandpaper|brad|pin|latch|hook|bracket|dowel|bead/i;
+// Consumables (oil, fabric liner, finish) are bought, never cut: no part comes from them, by design.
+const SUPPLY = /screw|nail|glue|bolt|nut|washer|hinge|glide|finish|stain|sandpaper|brad|pin|latch|hook|bracket|dowel|bead|\boil\b|fabric|liner/i;
 /** Fitted-build wording that a freestanding (non-wall) recipe must never print. */
 const FITTED = /\bcloset\b|\bfootprint\b|\bopening\b/i;
 

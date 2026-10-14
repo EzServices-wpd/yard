@@ -335,7 +335,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   if (project.panels.length) out = supportOrder(project, lowerSupports(project, out, parts, supports, fix), parts, supports);
   // A builder that wrote no build steps (a recipe) gets every build step from the model: those are its
   // steps, not fallbacks.
-  if (!steps.some(isBuild)) out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
+  // A recipe build's own steps (hang it, confirm the size) don't make the model's steps fallbacks either.
+  if (!steps.some(isBuild) || project.kind === "custom") out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
   out = rotorBeforeSecondSupport(project, out, supports);
   out = hingedLidLast(project, out);
   return renumber(out);

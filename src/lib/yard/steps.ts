@@ -2150,14 +2150,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             step: 5,
             title: "Lift-off test",
             description: "Lift the lid straight off and set it back on a few times — it should clear the main box without binding. Not an open/close hinge swing.",
-            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
             partsUsed: names(lidPanel),
           },
           {
             step: 6,
             title: "Level it",
             description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still lift off cleanly after leveling.",
-            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
             partsUsed: names([...carcaseOnly, ...lidPanel]),
           },
         ];
@@ -2202,7 +2202,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           step: 6,
           title: "Level it",
           description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still open/close after leveling.",
-          tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+          tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
           partsUsed: names([...carcaseOnly, ...lidPanel]),
         },
       ];
@@ -2512,7 +2512,8 @@ function cutStockGroups(
       /plywood/i.test(p.materialId ?? "") ||
       /plywood/i.test(item?.name ?? "");
 
-    if (isSheet && t < 0.5) {
+    // Same rule as the Buy backer (report.ts thinSheet): only a real 1/4" part comes off the backer.
+    if (isSheet && t < (/plywood-1-4/.test(p.materialId ?? "") ? 0.5 : 0.34)) {
       thin.push(p);
       return;
     }

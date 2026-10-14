@@ -433,8 +433,20 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
+/** A note that names a lumber section for some parts ("Posts are cut from 4x4 stock") sets those parts' stock. */
+function noteStock(recipe: Recipe): Recipe {
+  const said = recipe.notes.flatMap((n) => [...n.toLowerCase().matchAll(/\b(\d)\s*x\s*(\d+)\b/g)].map((m) => ({ n: n.toLowerCase(), id: `lumber-${m[1]}x${m[2]}-8` }))).filter((x) => getCatalogItem(x.id));
+  if (!said.length) return recipe;
+  const word = (p: RecipePart) => [p.role, ...p.name.toLowerCase().split(/[\s-]+/)].map((w) => w.replace(/s$/, ""));
+  return { ...recipe, parts: recipe.parts.map((p) => {
+    if (p.stock || p.kind !== "member") return p;
+    const hit = said.find((x) => word(p).some((w) => w.length > 2 && new RegExp(`\\b${w}s?\\b`).test(x.n)));
+    return hit ? { ...p, stock: hit.id } : p;
+  }) };
+}
+
 export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
-  const recipe = hollowVessels(recipe0);
+  const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
   const count = typedCount(prompt, recipe);
@@ -497,7 +509,8 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     }
   }
   const fitted = snapMembers(recipe, panels, stock.member);
-  panels.splice(0, panels.length, ...fitted);
+  // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
+  panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
   crossLegs(recipe, panels);
@@ -557,9 +570,12 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       : `${m.part} ${m.motion === "fold" ? "folds" : "slides"}.`;
   });
   const counted = recipe.count ? [`${count} ${recipe.count.word}`] : [];
+  // The title never names a species the build isn't cut from ("Cedar Window Box" built in pine plywood).
+  const woods = panels.map((p) => getCatalogItem(p.materialId)?.name ?? "").join(" ").toLowerCase();
+  const title = recipe.title.replace(/\b(cedar|redwood|maple|oak|walnut|cherry|pine|birch|poplar|ash|teak)\s+/gi, (m, w: string) => (woods.includes(w.toLowerCase()) ? m : "")).replace(/^\w/, (c) => c.toUpperCase());
   const project: YardProject = {
     id: `recipe-${recipe.key}`,
-    name: recipe.title,
+    name: title,
     prompt,
     kind: "custom",
     overall: real,
@@ -567,7 +583,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
