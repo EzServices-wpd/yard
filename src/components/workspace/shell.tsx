@@ -12,6 +12,7 @@ import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
+import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
@@ -504,7 +505,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <div data-bench-overlay="dock" className="pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <DockFrame className="pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -670,7 +671,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   })()}
                 </button>
               </div>
-            </div>
+            </DockFrame>
           </div>
           )}
         </div>
