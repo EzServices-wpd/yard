@@ -21,6 +21,7 @@ describe("How this was built", () => {
     const r = RECIPES.recipes.find((x) => x.trust !== "trusted" || x.held)!;
     assert.equal(buildInfo(generateFromPrompt(r.key.replace(/-/g, " "))).trust, "Unverified");
   });
+  it("an ungraded built-in shape is Unverified (toy airplane)", () => assert.equal(buildInfo(generateFromPrompt("toy airplane")).trust, "Unverified"));
   it("a placeholder says so", () => assert.equal(buildInfo({ prompt: "flurbleglarp", notes: [], displayOnly: true }).source, "Placeholder"));
   it("makes no network call", () => {
     const real = globalThis.fetch;

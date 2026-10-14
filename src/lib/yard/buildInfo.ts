@@ -14,7 +14,9 @@ export function buildInfo(project: Pick<YardProject, "prompt" | "typedPrompt" | 
   if (project.displayOnly) return { source: "Placeholder", trust: "Unverified", passed: [], failed: ["Not learned yet"] };
   const recipe = findRecipe(prompt);
   // A learned recipe the engine shadows is ignored: what builds is the built-in shape.
-  if (!recipe || shadowsBuiltIn(recipe, prompt)) return { source: "Built-in shape", trust: "Trusted", passed: ["Yard engine guards (run on every release)"], failed: [] };
+  // Trusted only once graded: a built-in shape whose noun has an ungraded or flagged recipe (e.g. toy airplane) is Unverified.
+  const ungraded = RECIPES.recipes.some((r) => r.trust !== "trusted" && findRecipe(prompt, { ...RECIPES, recipes: [{ ...r, modifiers: [] }] }));
+  if (!recipe || shadowsBuiltIn(recipe, prompt)) return { source: "Built-in shape", trust: ungraded ? "Unverified" : "Trusted", passed: ["Yard engine guards (run on every release)"], failed: ungraded ? ["Not graded yet"] : [] };
   const failed = learnedRecipeFailures(recipe, prompt);
   const saved = RECIPES.recipes.some((r) => r.key === recipe.key);
   const unverified = recipe.trust !== "trusted" || !!recipe.held || failed.length > 0 || /^Unverified:/.test(project.notes?.[0] ?? "");
