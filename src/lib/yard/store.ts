@@ -287,7 +287,8 @@ export const useYard = create<YardState>((set, get) => ({
       isRepeatPrompt(prompt, current.prompt, current.name) || (!!current.typedPrompt && isRepeatPrompt(prompt, current.typedPrompt));
     // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
     // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
-    const retypedFallback = !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt);
+    // A saved or just-learned recipe always wins: the bench's fallback prompt (a closet under a learning block) never replaces it.
+    const retypedFallback = !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
     let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
     const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
     let mode: "auto" | "cut" | "whole" = get().cutMode;

@@ -533,11 +533,17 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
   return { ...built, name: title, typedPrompt: prompt, standIn: true, notes: [fallbackNote(noun.toLowerCase(), p.label), ...primitiveNotes(ownNotes, p, subject, noun)] };
 }
 
+export const UNVERIFIED = "Unverified: Yard learned this build but it has not passed review yet. Check every part before you cut.";
+
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
   const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
-  if (recipe) return withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
+  if (recipe) {
+    const p = withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
+    // A held recipe never builds silently: it says plainly that review is still pending.
+    return recipe.held ? { ...p, notes: [UNVERIFIED, ...p.notes] } : p;
+  }
   const built = (a: Parameters<typeof generateRaw>) => {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;

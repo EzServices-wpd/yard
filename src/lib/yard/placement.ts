@@ -269,7 +269,7 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
     } else if (sups.length && !flushEnd && underside > EPS) {
       out.sentences.push(`Mark ${f(t - ry)} up from ${refTalk(ctx, ref)} on the inside face of ${supTalk} and line the top face up with the marks.`);
       if (underside >= 1.5 && underside <= 30) {
-        out.sentences.push(`Or cut a spacer block ${f(underside)} long, stand it on ${ref ? nameOf(ctx, ref) : ctx.floor ? "the floor" : "the bottom edge"}, and rest the part on it while you screw.`);
+        out.sentences.push(`Or cut a spacer block ${f(underside)} long, stand it on ${ref ? nameOf(ctx, ref) : ctx.floor ? "the floor" : "the bottom edge"}, and rest the part on it while you fasten it.`);
       }
     }
   } else {

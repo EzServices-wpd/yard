@@ -9,6 +9,7 @@
  * Sticks: members meet at welded ends. Every member past the first at a node is one joint, 2 screws
  * on lumber and boards (one screw lets the joint spin), 1 on thin stock.
  */
+import { getCatalogItem } from "./catalog";
 import { isBoughtHardwareName } from "./boughtHardware";
 import { panelWorldCorners } from "./geometry";
 import type { Panel, YardInstance } from "./types";
@@ -26,6 +27,11 @@ function boxOf(p: Panel): Box {
     min: [Math.min(...c.map((q) => q.x)), Math.min(...c.map((q) => q.y)), Math.min(...c.map((q) => q.z))],
     max: [Math.max(...c.map((q) => q.x)), Math.max(...c.map((q) => q.y)), Math.max(...c.map((q) => q.z))],
   };
+}
+
+export function panelStockThickness(p: Panel) {
+  const it = getCatalogItem(p.materialId);
+  return it?.dims.thickness ?? it?.dims.height ?? 0.75;
 }
 
 function thinnest(p: Panel) {
@@ -74,7 +80,12 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       // A back edge is a thin sheet (backer, panel) on a box, never a dowel or a round part.
       const sheetThin = (p: Panel) => thinnest(p) < 0.5 && !/^dowel-/.test(p.materialId) && !p.polygon;
       if ((thinnest(parts[i]) < 0.5 && !sheetThin(parts[i])) || (thinnest(parts[j]) < 0.5 && !sheetThin(parts[j]))) continue;
+      // A part under 3/4" planed thinner than its stock (a learned 0.45" side or divider) is glued, never screwed; a back
+      // and a full-thickness 1/2" sheet still take screws (placeEveryPart's step says glue).
+      if ([parts[i], parts[j]].some((p) => thinnest(p) < 0.7 && thinnest(p) < panelStockThickness(p) - 0.05 && !/\bback\b/i.test(p.name) && !/^dowel-/.test(p.materialId) && !p.polygon)) continue;
       const thinBack = sheetThin(parts[i]) || sheetThin(parts[j]);
+      // Only a back takes screws through its face; any other thin part (a divider, a thin front) is glued.
+      if (thinBack && ![parts[i], parts[j]].some((p) => sheetThin(p) && /\bback\b/i.test(p.name))) continue;
       let kind: JointKind;
       let screws: number;
       if (thinBack) {

@@ -4,6 +4,8 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
+import { learnedRecipeFailures } from "./learnedGate";
+import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
@@ -82,10 +84,11 @@ function panelType(p: RecipePart): PanelType {
 }
 
 /** A moving part's pin (axle, pivot, shaft) is real hardware: a hardwood dowel through its carriers. */
-const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel)s?\b/i;
-function pinDowel(memberId: string): string {
+const PIN = /\b(?:axle|pivot|shaft|pin|spindle|hinge pin|rod|dowel|peg)s?\b/i;
+function pinDowel(memberId: string, section = 9): string {
   const it = getCatalogItem(memberId);
-  const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9);
+  // A peg no thicker than a 1/4" dowel's section is that dowel, never the member's 1" pin.
+  const t = Math.min(it?.dims.thickness ?? it?.dims.height ?? 1.5, it?.dims.width ?? 1.5, it?.dims.diameter ?? 9, section < 0.4 ? section : 9);
   return t >= 1.4 ? "dowel-1-36" : t >= 0.7 ? "dowel-1-2-36" : "dowel-1-4-36";
 }
 
@@ -430,8 +433,20 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
+/** A note that names a lumber section for some parts ("Posts are cut from 4x4 stock") sets those parts' stock. */
+function noteStock(recipe: Recipe): Recipe {
+  const said = recipe.notes.flatMap((n) => [...n.toLowerCase().matchAll(/\b(\d)\s*x\s*(\d+)\b/g)].map((m) => ({ n: n.toLowerCase(), id: `lumber-${m[1]}x${m[2]}-8` }))).filter((x) => getCatalogItem(x.id));
+  if (!said.length) return recipe;
+  const word = (p: RecipePart) => [p.role, ...p.name.toLowerCase().split(/[\s-]+/)].map((w) => w.replace(/s$/, ""));
+  return { ...recipe, parts: recipe.parts.map((p) => {
+    if (p.stock || p.kind !== "member") return p;
+    const hit = said.find((x) => word(p).some((w) => w.length > 2 && new RegExp(`\\b${w}s?\\b`).test(x.n)));
+    return hit ? { ...p, stock: hit.id } : p;
+  }) };
+}
+
 export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
-  const recipe = hollowVessels(recipe0);
+  const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
   const count = typedCount(prompt, recipe);
@@ -455,20 +470,30 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       const span = part.repeat === "each" || part.repeat === "between" ? R - L : 1, at = span === 1 ? 0 : L;
       const px = at + span * (part.repeat === "between" ? Math.min(Math.max(i / count - w / 2, 0), 1 - w) : part.repeat === "each" ? (i + x) * cell : x / span);
       const pw = part.repeat === "each" ? w * cell * span : w;
-      const n = (seen.get(part.name) ?? 0) + 1;
-      seen.set(part.name, n);
+      // Numbered slugs (Peg1…Peg4) are one family: "Peg 1…4", batched on the cut list as 4 Pegs.
+      const base = part.name.replace(/(?<=[a-z])\d+$/i, "");
+      const fam = base !== part.name;
+      const n = (seen.get(base) ?? 0) + 1;
+      seen.set(base, n);
       // A stair step i sits one rise up and one run back from the step below it (z = 1 is the front).
       const st = part.repeat === "stair";
       const py = st ? (i + y) / count : y, ph = st ? h / count : h;
       const pz = st ? (count - 1 - i + z) / count : z, pd = st ? d / count : d;
       const sz = { width: pw * size.width, height: ph * size.height, depth: pd * size.depth };
+      // A divider repeated between the sides stands on edge: its thin side runs along the repeat (x), never
+      // a flat slat spanning the width (the knife block's slots).
+      if (part.repeat === "between" && part.kind !== "member" && sz.width > Math.min(sz.height, sz.depth) + 0.01) {
+        const span = sz.width;
+        if (sz.height <= sz.depth) [sz.width, sz.height] = [sz.height, Math.min(span, size.height * (1 - py))];
+        else [sz.width, sz.depth] = [sz.depth, Math.min(span, size.depth * (1 - pz))];
+      }
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
-        name: reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${part.name} ${n}` : part.name,
+        name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
         position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
         size: sz,
-        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(part.name) ? pinDowel(stock.member) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
     }
   }
@@ -484,7 +509,8 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     }
   }
   const fitted = snapMembers(recipe, panels, stock.member);
-  panels.splice(0, panels.length, ...fitted);
+  // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
+  panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
   crossLegs(recipe, panels);
@@ -495,9 +521,11 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   // A panel wider than its board stock is cut from the sheet (or flagged when the board was typed); one thicker than the sheet stays a glue-up.
   for (const p of panels) {
     const c = getCatalogItem(p.materialId);
-    if (c?.formFactor !== "board" || !c.dims.width) continue;
-    const [, mid] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
+    const [thin, mid] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => x - y);
     const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    // A member wider than one stick both ways (a sawbuck's 21" leg, a 1.8×4.3 apron) is never one 2x4: it is cut from the sheet, glued up in layers when thick.
+    if (c?.category === "lumber" && p.materialId === stock.member && c.dims.width && c.dims.height && part?.kind === "member" && !stock.typed && thin > c.dims.height + 0.01 && mid > c.dims.width + 0.01) { p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8"; continue; }
+    if (c?.formFactor !== "board" || !c.dims.width) continue;
     if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
     if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
@@ -530,6 +558,10 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     const hi = Math.max(...panels.map((p) => p.position[a] + p.size[k]));
     if (typedAxes[k] == null && hi > real[k] && hi - real[k] <= 1.5) real[k] = Math.round(hi * 8) / 8;
   }
+  // The header height is the body's: pegs standing in their holes (a cribbage board's) don't count.
+  const peg = (p: Panel) => p.type === "cleat" && /^dowel-/.test(p.materialId) && /\bpegs?\b/i.test(p.name);
+  const bodyTop = Math.max(0, ...panels.filter((p) => !peg(p)).map((p) => p.position.y + p.size.height));
+  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.ceil(bodyTop * 8 - 1e-6) / 8;
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
@@ -538,9 +570,12 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
       : `${m.part} ${m.motion === "fold" ? "folds" : "slides"}.`;
   });
   const counted = recipe.count ? [`${count} ${recipe.count.word}`] : [];
+  // The title never names a species the build isn't cut from ("Cedar Window Box" built in pine plywood).
+  const woods = panels.map((p) => getCatalogItem(p.materialId)?.name ?? "").join(" ").toLowerCase();
+  const title = recipe.title.replace(/\b(cedar|redwood|maple|oak|walnut|cherry|pine|birch|poplar|ash|teak)\s+/gi, (m, w: string) => (woods.includes(w.toLowerCase()) ? m : "")).replace(/^\w/, (c) => c.toUpperCase());
   const project: YardProject = {
     id: `recipe-${recipe.key}`,
-    name: recipe.title,
+    name: title,
     prompt,
     kind: "custom",
     overall: real,
@@ -548,7 +583,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...recipe.notes, ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
@@ -599,7 +634,7 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
   // The parts reach the overall box on every axis (nothing outside it; a real build fills its envelope).
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
-    const hi = Math.max(...project.panels.map((p) => p.position[a] + p.size[s]));
+    const hi = Math.max(...project.panels.filter((p) => a !== "y" || !/\bpegs?\b/i.test(p.name)).map((p) => p.position[a] + p.size[s]));
     // A builder snap (a wheel recentred on its axle) may spill up to 1"; a recipe part outside the box fails.
     // Geometry is real: nothing below the floor and nothing outside the box.
     if (a === "y" && lo < -0.01) fail.push(`a part goes below the floor (${fmtIn(-lo)})`);
@@ -702,13 +737,20 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     // A learned recipe is keyed by the noun the maker typed, never the model's head noun ("lap desk", not
     // "desk"): a generic key would take over a noun the engine already builds. Shorter synonyms go too.
     const noun = normalizeNoun(prompt), n = noun.split(" ").length;
-    const recipe = parsed && { ...parsed, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
+    // The title names what was typed: the AI's own noun ("Table" for a dog feeder stand) is dropped.
+    const title = parsed && (parsed.title.toLowerCase().includes(noun) ? parsed.title : noun.replace(/(^|\s)\w/g, (c) => c.toUpperCase()));
+    const recipe = parsed && title && { ...parsed, title, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
     if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
-    feedback = validateRecipe(recipe, built, prompt);
-    if (!feedback.length) {
-      rememberRecipe(recipe);
-      return { project: built.project, recipe, rough: false, calls: call, reasons };
+    const hard = validateRecipe(recipe, built, prompt);
+    // The learned-recipe gate runs here too: its failures go back in the retry; still failing on the
+    // second call, the recipe builds held (Unverified) instead of passing silently.
+    const soft = hard.length ? [] : learnedRecipeFailures(recipe, prompt);
+    feedback = [...hard, ...soft];
+    if (!hard.length && (!soft.length || call === 2)) {
+      const kept = soft.length ? { ...recipe, held: `Flagged by the learned-recipe checks: ${soft.slice(0, 3).join("; ")}` } : recipe;
+      rememberRecipe(kept);
+      return { project: soft.length ? { ...built.project, notes: [UNVERIFIED, ...built.project.notes] } : built.project, recipe: kept, rough: false, calls: call, reasons };
     }
     why(call, `gate: ${feedback.join("; ")}`);
   }
@@ -737,10 +779,11 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
-export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 105_000, totalMs = 155_000): Lookup {
+export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 145_000, totalMs = 155_000): Lookup {
   let start = 0;
   return async (_prompt, feedback) => {
-    // The first reply gets up to 105s; the retry gets whatever is left of the bound, never a fixed 50s
+    // The first reply gets up to 145s (live replies that pass land at 20-140s; a 105s cut timed out cornhole,
+    // miter saw station and rain barrel stand both times); a retry gets whatever is left of the bound.
     // (a fixed 50s retry timed out the common fix-the-checks retry that used to land at ~130s).
     const ms = start ? Math.max(totalMs - (Date.now() - start), 1) : Math.min(firstMs, totalMs);
     if (!start) start = Date.now();

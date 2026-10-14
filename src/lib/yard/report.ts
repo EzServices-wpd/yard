@@ -326,11 +326,14 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   let legsMerged = false;
   // ¾" board stocks already bought on their own lines (mixed-board branch); the linear packer skips them.
   const boardsBought = new Set<string>();
+  // Thin sheet parts only are a backer: a 1/4" dowel rod is round stock, and a thin part cut from a board
+  // (a 3/8" maple divider) is bought with that board, never as an orphan backer line.
+  // A real 1/4" backer only (up to 5/16"): a 3/8" learned part stays on the sheet its cut line names, so no orphan backer.
+  const thinSheet = (c: CutLine) => (c.thicknessIn ?? 0.75) < (/plywood-1-4/.test(c.id) ? 0.5 : 0.34) && /plywood/i.test(c.material ?? "");
   const structural = cuts.filter(
-    (c) => (c.thicknessIn ?? 0.75) >= 0.5 && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
+    (c) => ((c.thicknessIn ?? 0.75) >= 0.5 || (!thinSheet(c) && !/dowel/i.test(c.material ?? ""))) && (c.thicknessIn ?? 0) < 2 && !isLumberLegCut(c),
   );
-  // Thin sheet parts only: a 1/4" dowel rod is round stock, not a backer.
-  const thinBacks = cuts.filter((c) => (c.thicknessIn ?? 0.75) < 0.5 && !/dowel/i.test(c.material ?? ""));
+  const thinBacks = cuts.filter(thinSheet);
   const sheet10 = getCatalogItem("plywood-3-4-4x10");
   // 2x4 / 2x6 bearers are boards, not sheet parts. Nesting them onto plywood inflates Buy.
   const stickBoards = structural.filter((c) => /^lumber-2x(?:4|6|8|10|12)-\d+\|/.test(c.id));
@@ -677,7 +680,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   for (const [id, lines] of byStock) {
     const item = getCatalogItem(id);
     const stockLen = item?.dims.length ?? 96;
-    const lengths = lines.flatMap((c) => Array.from({ length: c.quantity }, () => Math.max(c.lengthIn, c.widthIn)));
+    // A part wider than the stick's face is edge-glued from that many strips, each its full length.
+    const strips = (c: CutLine) => (item?.dims.width && c.widthIn < c.lengthIn ? Math.max(1, Math.ceil((c.widthIn - 0.01) / item.dims.width)) : 1);
+    const lengths = lines.flatMap((c) => Array.from({ length: c.quantity * strips(c) }, () => Math.max(c.lengthIn, c.widthIn)));
     const packed = packLengths(lengths, stockLen, 0.125);
     const qty = Math.max(1, packed.sticks);
     const pieceQty = lengths.length;
@@ -790,7 +795,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b));
   BUY_JOINTS.set(project, buyJoints);
   const modelScrews = screwTalk(buyJoints);
-  if (!headboard && !glueOnly) {
+  // A build with no screwed joint (pegs glued in holes) buys no screws.
+  if (!headboard && !glueOnly && (modelScrews.screws > 0 || project.fitted?.unit?.corner || floating)) {
     const cornerUnit = project.fitted?.unit?.corner;
     const cornerShelves = project.panels.filter((p) => p.type === "shelf").length;
     const cornerWallPanelScrews = cornerUnit && !cornerUnit.wallHung ? Math.max(4, Math.ceil(cornerUnit.height / 8)) : 0;
@@ -943,7 +949,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       unit: "pc",
       searchQuery: "adhesive bathroom cabinet mirror",
       estimatedCost: 14.98,
-      notes: "Glue to the outside face of the door, flush with that face, so the cabinet mirrors when closed. Do not bury it in the door slab.",
+      notes: "Set into a 1/8\" rabbet in the door's outer face with mirror adhesive, flush with that face and inside the door's edges.",
     });
     const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
     if (backW > 0 && !backReachesTwoStuds(backW)) {
@@ -1962,7 +1968,7 @@ function buildPlanCore(project: YardProject): BuildPlan {
                   if (sit) return sit.replace(/ bench$/i, "").trim() || sit;
                   if ((project.fitted?.program ?? "") === "bench") return "seat";
                   // Only a closet is called a closet: a recipe object names itself, anything else is freestanding.
-                  return project.fitted?.program ?? (project.id.startsWith("recipe-") ? "built from its recipe" : project.kind === "closet" ? "closet" : "freestanding build");
+                  return project.fitted?.program ?? (project.id.startsWith("recipe-") ? (/^Unverified:/.test(project.notes?.[0] ?? "") ? "learned, not yet verified" : "built from its recipe") : project.kind === "closet" ? "closet" : "freestanding build");
                 })()
         }.`,
         suggestion: measureRefitTalk({

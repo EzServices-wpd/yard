@@ -148,8 +148,8 @@ it("identical numbered parts share one cut-list line and letter", async () => {
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const cut = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus").project).cutList;
-  assert.equal(cut.find((c) => c.name === "rod")?.quantity, 9);
-  assert.equal(cut.find((c) => c.name === "bead")?.quantity, 45);
+  assert.equal(cut.find((c) => c.name.toLowerCase() === "rod")?.quantity, 9);
+  assert.equal(cut.find((c) => c.name.toLowerCase() === "bead")?.quantity, 45);
 });
 
 it("hardware comes only from parts that exist: dowels are never counted as back edges", async () => {
@@ -165,7 +165,7 @@ it("a sheet part thicker than its sheet is a glue-up of plies with its own step"
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project);
-  const hub = plan.cutList.find((c) => c.name === "hub")!;
+  const hub = plan.cutList.find((c) => c.name.toLowerCase() === "hub")!;
   assert.equal(hub.thicknessIn, 0.75);
   assert.equal(hub.quantity, 5);
   assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));
@@ -327,4 +327,37 @@ it("overlapping leg pairs become half-lapped X boards", () => {
     const a = b.project.panels.find((p: any) => p.name === "Left leg A");
     assert.ok(a.polygon);
     assert.deepEqual(a.joints[0], { with: "Left leg B", kind: "lap" });
+});
+
+it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, hardware and thin parts screwed", async () => {
+  const { learnedRecipeFailures } = await import("./learnedGate.ts");
+  const f = (k: string) => learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!).join("\n");
+  assert.match(f("cribbage-board"), /names 60 holes the model does not drill/);
+  // Engine side: Peg1…Peg4 are 4 Pegs cut from a 1/4" dowel, glued into drilled holes, with no screws bought.
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "cribbage-board")!, "cribbage board").project);
+  assert.equal(plan.cutList.find((c) => /^peg$/i.test(c.name))?.quantity, 4);
+  assert.match(plan.cutList.find((c) => /^peg$/i.test(c.name))!.material, /1\/4" Hardwood Dowel/);
+  assert.ok(!plan.bom.some((b) => /screw/i.test(b.name)));
+  // Engine side: its 0.45" sides are glued at build time, so the gate's screw check finds nothing.
+  assert.doesNotMatch(f("knife-block-maple"), /takes a screw/);
+  for (const k of ["water-wheel", "abacus"]) assert.equal(f(k), "", k);
+});
+
+it("a divider repeated between the sides stands on edge even when the recipe lays it flat", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const kb = RECIPES.recipes.find((r) => r.key === "knife-block-maple")!;
+  const flat = { ...kb, parts: kb.parts.map((p) => (p.repeat === "between" ? { ...p, box: [0.05, 0.9, 0.05, 0.9, 0.04, 0.88] as typeof p.box } : p)) };
+  for (const d of buildRecipe(flat, "knife block").project.panels.filter((p) => /divider/i.test(p.name))) assert.ok(d.size.width < d.size.height && d.size.width < d.size.depth, JSON.stringify(d.size));
+});
+
+it("pegs don't raise the header height; thin board parts are glued and bought with the board, never an orphan backer", async () => {
+  const { buildRecipe } = await import("./recipeBuild.ts");
+  const { buildPlan } = await import("./report.ts");
+  assert.equal(buildRecipe(RECIPES.recipes.find((r) => r.key === "cribbage-board")!, "cribbage board").project.overall.height, 0.75);
+  const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "knife-block-maple")!, "knife block").project);
+  const ids = new Set(plan.cutList.map((c) => c.id.split("|")[0]));
+  for (const b of plan.bom.filter((x) => /-1-4-|lumber/.test(x.catalogId ?? ""))) assert.ok(ids.has(b.catalogId!), b.name);
+  assert.ok(plan.instructions.some((s) => /Glue the (?:[A-Z] )?Slot divider/.test(s.description)));
 });

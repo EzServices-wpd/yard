@@ -106,7 +106,7 @@ function cutHow(item?: CatalogItem | null) {
     };
   }
   if (ff === "board") {
-    return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: "Cedar and 1× split. Predrill." };
+    return { how: "Hand saw or circular saw. Square every cut. Predrill near the ends — boards split.", tip: /cedar/i.test(item.name) ? "Cedar splits. Predrill." : "Board ends split. Predrill." };
   }
   if (item.category === "plastic") {
     return { how: "Sharp snips. Square the cut so tape has a face to grab.", tip: "A crushed straw will not take a joint." };
@@ -1313,7 +1313,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Glue the mirror to the outside face of the door, flush with that face, not buried in the slab. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
+        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
@@ -2150,14 +2150,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             step: 5,
             title: "Lift-off test",
             description: "Lift the lid straight off and set it back on a few times — it should clear the main box without binding. Not an open/close hinge swing.",
-            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
             partsUsed: names(lidPanel),
           },
           {
             step: 6,
             title: "Level it",
             description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still lift off cleanly after leveling.",
-            tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+            tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
             partsUsed: names([...carcaseOnly, ...lidPanel]),
           },
         ];
@@ -2202,7 +2202,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           step: 6,
           title: "Level it",
           description: "This chest sits on the floor. Shim the feet if the floor is out — do not twist the main box. The lid should still open/close after leveling.",
-          tips: "Guidance only — confirm the real footprint before you cut. Not stamped engineering.",
+          tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
           partsUsed: names([...carcaseOnly, ...lidPanel]),
         },
       ];
@@ -2512,7 +2512,8 @@ function cutStockGroups(
       /plywood/i.test(p.materialId ?? "") ||
       /plywood/i.test(item?.name ?? "");
 
-    if (isSheet && t < 0.5) {
+    // Same rule as the Buy backer (report.ts thinSheet): only a real 1/4" part comes off the backer.
+    if (isSheet && t < (/plywood-1-4/.test(p.materialId ?? "") ? 0.5 : 0.34)) {
       thin.push(p);
       return;
     }
@@ -2633,6 +2634,9 @@ function sheetCutDescription(
   especially = "",
 ): string {
   const groups = cutStockGroups(panels, fallbackItem);
+  // A board part thinner than its board (a 1 1/4" rail from a 2×4) is planed or resawn to thickness first.
+  const planed = [...new Set(panels.filter((p) => { const t = getCatalogItem(p.materialId)?.dims.height; return getCatalogItem(p.materialId)?.category === "lumber" && t && Math.min(p.size.width, p.size.height, p.size.depth) < t - 0.05; }).map((p) => cutListName(p.name, p.type).toLowerCase()))];
+  if (planed.length) especially = `${especially ? `${especially} ` : ""}Plane or resaw the ${planed.join(", ")} to the thickness on the list before you cut to length.`;
   const how = (groups[0]?.tool ?? cutHow(fallbackItem)).how;
   if (groups.length <= 1) {
     const cuts = groupSheetCuts(groups[0]?.panels ?? panels).join(" ");

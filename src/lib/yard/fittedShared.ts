@@ -31,14 +31,15 @@ export function cabinetStem(lower: string): string {
 /**
  * Door-front carcase: the typed depth is the finished depth, door (and mirror) included.
  * The carcase stops where the overlay door begins (`box`), the door sits on its front edge,
- * and a mirror sits on the door's outer face — nothing adds a slab past the label.
+ * and a mirror is set into a rabbet in the door's outer face, flush with it and inside the door's edges —
+ * nothing adds a slab past the label.
  * Shelves stop short of the hinge arm.
  */
 export function shallowWallCabinetFace(typedDepth: number, backT = P, mirror = false) {
   const doorT = P;
   const outer = typedDepth;
   const mirrorT = mirror ? DOOR_MIRROR_T : 0;
-  const doorZ = Math.max(0, outer - doorT - mirrorT);
+  const doorZ = Math.max(0, outer - doorT);
   const shelfStop = Math.max(backT + 0.5, doorZ - HINGE_ARM_CLEAR_IN);
   return {
     doorT,
@@ -47,7 +48,7 @@ export function shallowWallCabinetFace(typedDepth: number, backT = P, mirror = f
     outer,
     shelfDepth: Math.max(0.5, shelfStop - backT),
     mirrorT,
-    mirrorZ: doorZ + doorT,
+    mirrorZ: doorZ + doorT - mirrorT,
   };
 }
 

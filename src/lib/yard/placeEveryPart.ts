@@ -3,6 +3,7 @@
  * A missing step is written from the part, not from a class template.
  */
 import { faceScrewInches, stockThickness } from "./shopJoin";
+import { panelStockThickness } from "./modelJoints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
@@ -167,6 +168,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
   if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
+  // Nothing under 3/4" but a back takes a screw: a thin divider or face (under 1/2", or planed thinner than its stock) is glued in place.
+  const t = panel ? Math.min(panel.size.width, panel.size.height, panel.size.depth) : 1;
+  if (panel && !/\bback\b/i.test(part.name) && info?.how !== "floor" && (t < 0.5 || (t < 0.7 && t < panelStockThickness(panel) - 0.05))) return `Glue the ${part.name} to ${onto} and clamp it until it sets. It is too thin for a screw.`;
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
@@ -331,7 +335,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   if (project.panels.length) out = supportOrder(project, lowerSupports(project, out, parts, supports, fix), parts, supports);
   // A builder that wrote no build steps (a recipe) gets every build step from the model: those are its
   // steps, not fallbacks.
-  if (!steps.some(isBuild)) out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
+  // A recipe build's own steps (hang it, confirm the size) don't make the model's steps fallbacks either.
+  if (!steps.some(isBuild) || project.kind === "custom") out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
   out = rotorBeforeSecondSupport(project, out, supports);
   out = hingedLidLast(project, out);
   return renumber(out);

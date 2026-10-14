@@ -220,9 +220,9 @@ export function cutListName(name: string, type?: string): string {
   if (type === "door") return "Door";
   if (type === "rail") {
     const stripped = name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Bay \d+)\s+/i, "").trim();
-    return stripped || "Rail";
+    return cap(stripped) || "Rail";
   }
-  return name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "") || name;
+  return cap(name.replace(/^(Left|Right|Center|Upper|Lower|Front|Rear|Top|Bottom)\s+/i, "")) || name;
 }
 
 /**
@@ -272,3 +272,6 @@ export function woodCutPieceCount(project: {
   return n;
 }
 
+
+/** A cut-list name starts with a capital ("Front panel" → "Panel", never "panel"). */
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
