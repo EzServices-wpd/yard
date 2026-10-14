@@ -1219,7 +1219,9 @@ export { planStepParts, stepKindOf };
 export function headerTitle(project: YardProject): string {
   const { assumed } = typedAxesTalk(project);
   const o = project.pocket?.unit ?? project.overall;
-  const d = modelFinishedDepth(project.panels, o.depth);
+  // A typed depth is the size said back (the linen closet's 16″, doors standing proud are a note); only an
+  // assumed depth reads the model's finished depth.
+  const d = assumed.depth ? modelFinishedDepth(project.panels, o.depth) : o.depth;
   const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
   const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
