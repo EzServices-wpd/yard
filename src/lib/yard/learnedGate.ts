@@ -109,10 +109,10 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   const isDowel = (p: (typeof panels)[number]) => /^dowel-/.test(p.materialId);
   // (a) A note that names holes or slots needs a part that has them: a bore, a drilled step, or slots between repeated dividers.
   const noteText = recipe.notes.join(". ").toLowerCase();
-  if (/\b(?:holes?|drilled|bored)\b/.test(noteText) && !recipe.parts.some((p) => p.bore || p.shape === "ring" || p.shape === "bead") && !/\bdrill\b/i.test(all)) fail.push("a note names holes but no part is drilled");
+  if (/\b(?:holes?|drilled|bored)\b/.test(noteText) && !recipe.parts.some((p) => p.bore || p.holes || p.shape === "ring" || p.shape === "bead") && !/\bdrill\b/i.test(all)) fail.push("a note names holes but no part is drilled");
   // A counted hole array ("60 holes per track") needs that many drilled holes, not just a peg's.
   const holeCount = Math.max(0, ...[...noteText.matchAll(/(\d+)\s+holes?\b/g)].map((m) => Number(m[1])));
-  if (holeCount > panels.filter(isDowel).length + recipe.parts.filter((p) => p.bore).length) fail.push(`a note names ${holeCount} holes the model does not drill`);
+  if (holeCount > panels.filter(isDowel).length + recipe.parts.filter((p) => p.bore).length + panels.reduce((n, p) => n + (p.polygon?.holes?.length ?? 0), 0)) fail.push(`a note names ${holeCount} holes the model does not drill`);
   if (/\bslots?\b/.test(noteText) && !recipe.parts.some((p) => p.repeat === "between") && !/\bslot\b/i.test(all)) fail.push("a note names slots but no part forms them");
   // (b) Dividers repeated between the sides stand on edge: their thin side runs along the repeat (x).
   for (const part of recipe.parts.filter((q) => q.repeat === "between" && q.kind !== "member")) {

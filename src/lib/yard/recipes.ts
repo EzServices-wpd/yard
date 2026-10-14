@@ -29,6 +29,8 @@ export type RecipePart = {
   shape?: "disc" | "ring" | "cylinder" | "bead";
   /** Through-bore diameter in inches (bead on a rod, wheel on an axle); a ring's rim width when shape is ring. */
   bore?: number;
+  /** A drilled hole array in its largest face (a cribbage board's peg tracks): count holes of dia inches in rows. */
+  holes?: { count: number; dia: number; rows?: number };
 };
 
 export type Recipe = {
@@ -177,6 +179,7 @@ export function parseRecipe(raw: unknown): Recipe | null {
         box: [x, y, z, w, h, d] as RecipePart["box"],
         on: Array.isArray(p.on) ? p.on.filter((n: unknown) => typeof n === "string").map((n: string) => partName(n)) : undefined,
         ...(p.bore != null && Number.isFinite(num(p.bore)) ? { bore: num(p.bore) } : {}),
+        ...(p.holes && num(p.holes.count) >= 1 && num(p.holes.dia) > 0 ? { holes: { count: Math.min(Math.round(num(p.holes.count)), 500), dia: num(p.holes.dia), ...(num(p.holes.rows) >= 1 ? { rows: Math.round(num(p.holes.rows)) } : {}) } } : {}),
       } as RecipePart;
     })
     .filter((p): p is RecipePart => !!p);

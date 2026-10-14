@@ -332,7 +332,8 @@ it("overlapping leg pairs become half-lapped X boards", () => {
 it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, hardware and thin parts screwed", async () => {
   const { learnedRecipeFailures } = await import("./learnedGate.ts");
   const f = (k: string) => learnedRecipeFailures(RECIPES.recipes.find((r) => r.key === k)!).join("\n");
-  assert.match(f("cribbage-board"), /names 60 holes the model does not drill/);
+  // The saved board now drills its 120-hole peg tracks, so the hole check passes on it.
+  assert.doesNotMatch(f("cribbage-board"), /holes/);
   // Engine side: Peg1…Peg4 are 4 Pegs cut from a 1/4" dowel, glued into drilled holes, with no screws bought.
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
@@ -360,4 +361,19 @@ it("pegs don't raise the header height; thin board parts are glued and bought wi
   const ids = new Set(plan.cutList.map((c) => c.id.split("|")[0]));
   for (const b of plan.bom.filter((x) => /-1-4-|lumber/.test(x.catalogId ?? ""))) assert.ok(ids.has(b.catalogId!), b.name);
   assert.ok(plan.instructions.some((s) => /Glue the (?:[A-Z] )?Slot divider/.test(s.description)));
+});
+
+it("a hole array is drilled in the model: a cribbage board shows its 120 peg holes and the gate counts them", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const r = { key: "t-crib", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Cribbage board", size: { width: 15, height: 0.75, depth: 4 }, defining: ["deck"],
+    notes: ["Two tracks of 60 holes per track"],
+    parts: [{ role: "deck", name: "Board", box: [0, 0, 0, 1, 1, 1], kind: "panel", holes: { count: 120, dia: 0.125, rows: 4 } }] } as unknown as Recipe;
+  const b = buildRecipe(r, "cribbage board");
+  const board = b.project.panels.find((p) => p.name === "Board")!;
+  assert.equal(board.polygon?.holes?.length, 120);
+  assert.ok(board.polygon!.holes!.every((h) => h.x > 0 && h.x < board.size.width && h.y > 0 && h.y < board.size.depth));
+  assert.ok(!validateRecipe(r, b, "cribbage board").some((f) => /holes/.test(f)));
+  assert.ok(!learnedRecipeFailures(r).some((f) => /holes/.test(f)));
+  const bare = { ...r, parts: [{ ...r.parts[0], holes: undefined }] } as unknown as Recipe;
+  assert.ok(learnedRecipeFailures(bare).some((f) => /names 60 holes the model does not drill/.test(f)));
 });

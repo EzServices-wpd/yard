@@ -4525,7 +4525,12 @@
       0.5,
       1
      ],
-     "kind": "panel"
+     "kind": "panel",
+     "holes": {
+      "count": 120,
+      "dia": 0.125,
+      "rows": 4
+     }
     },
     {
      "role": "peg",

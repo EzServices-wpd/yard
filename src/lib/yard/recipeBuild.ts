@@ -168,6 +168,26 @@ export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|dru
  * runs along its longest; the two cross sides close to one diameter, centred. A bore cuts a centred hole
  * (a ring's rim is its bore width; a bead takes a 3/8 of its diameter bore unless it names one).
  */
+/** A part's hole array is drilled in its largest face: an even grid of round holes, rows along the short side. */
+function holeArrays(recipe: Recipe, panels: Panel[]): void {
+  for (const p of panels) {
+    const h = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))?.holes;
+    if (!h || p.polygon) continue;
+    const { width: w, height: ht, depth: d } = p.size;
+    const plane = ht <= w && ht <= d ? "xz" : d <= w ? "xy" : "zy";
+    const [a, b] = plane === "xz" ? [w, d] : plane === "xy" ? [w, ht] : [d, ht];
+    const [long, short, flip] = a >= b ? [a, b, false] : [b, a, true];
+    const rows = Math.max(1, h.rows ?? 1), cols = Math.ceil(h.count / rows), r = Math.min(h.dia, short / (rows + 1), long / (cols + 1)) / 2;
+    const holes: { x: number; y: number; r: number }[] = [];
+    for (let i = 0; i < h.count; i++) {
+      const u = (long * ((i % cols) + 1)) / (cols + 1), v = (short * (Math.floor(i / cols) + 1)) / (rows + 1);
+      holes.push(flip ? { x: v, y: u, r } : { x: u, y: v, r });
+    }
+    p.polygon = { plane, pts: [[0, 0], [a, 0], [a, b], [0, b]], holes };
+    p.cutNote = `${p.cutNote ? `${p.cutNote} ` : ""}Drill ${h.count} holes, ${fmtIn(r * 2)} diameter, in ${rows} row${rows > 1 ? "s" : ""}.`;
+  }
+}
+
 function roundParts(recipe: Recipe, panels: Panel[]): void {
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
@@ -531,6 +551,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
   }
   roundParts(recipe, panels);
+  holeArrays(recipe, panels);
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".
   const movers = new Set((recipe.moving ?? []).map((m) => m.part));
