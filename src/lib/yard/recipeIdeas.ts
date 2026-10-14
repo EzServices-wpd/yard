@@ -24,7 +24,8 @@ export function recipeIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
     const prompt = recipePrompt(r);
     const built = buildRecipe(r, prompt);
     if (r.trust !== "trusted" && validateRecipe(r, built, prompt).length) continue;
-    const s = built.size;
+    // The card names the size the header does: the model's (a 31" water wheel, never the recipe's 30").
+    const s = built.project.overall ?? built.size;
     out.push({ id: `recipe-${r.key}`, label: r.title, prompt, size: `${inch(s.width)} W × ${inch(s.depth)} D × ${inch(s.height)} H`, blurb: r.notes[0] ?? "", panels: built.project.panels, box: s });
   }
   return out;
@@ -38,12 +39,20 @@ export const POPULAR_CAP = 12;
 export function popularIdeas(counts: Record<string, number> = (COUNTS as { counts: Record<string, number> }).counts, recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
   const rank = new Map(recipes.map((r, i) => [r.key, i]));
   const seen = new Set<string>();
+  const fresh = new Set(newIdeas(recipes).map((d) => d.id));
   return recipeIdeas(recipes)
+    .filter((d) => !fresh.has(d.id))
     .map((d) => ({ d, key: d.id.slice(7) }))
     .sort((a, b) => (counts[b.key] ?? 0) - (counts[a.key] ?? 0) || (rank.get(a.key) ?? 0) - (rank.get(b.key) ?? 0))
     .filter(({ key }) => { const noun = key.split("-").slice(-1)[0]; if (seen.has(noun)) return false; seen.add(noun); return true; })
     .slice(0, POPULAR_CAP)
     .map(({ d }) => d);
+}
+
+/** New (Unverified): learned recipes that pass every gate check but no Critic grade has trusted yet, newest first. */
+export function newIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
+  const fresh = new Set(recipes.filter((r) => r.learned && r.trust !== "trusted").map((r) => `recipe-${r.key}`));
+  return recipeIdeas(recipes).filter((d) => fresh.has(d.id)).reverse().slice(0, POPULAR_CAP);
 }
 
 /** Isometric faces of each part, back to front, in a unit view box: the card thumbnail. */

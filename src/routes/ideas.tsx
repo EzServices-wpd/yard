@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { SiteChrome } from "@/components/site/chrome";
 import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
-import { isoFaces, popularIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
+import { isoFaces, newIdeas, popularIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
 import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 
 type Row = Idea & { kept?: boolean };
@@ -51,6 +51,7 @@ function IdeasPage() {
   }, [q, rows]);
 
   const recipes = useMemo(() => popularIdeas(), []);
+  const fresh = useMemo(() => newIdeas(), []);
 
   function go(text: string) {
     const next = text.trim();
@@ -120,6 +121,17 @@ function IdeasPage() {
             );
           })
         )}
+        {!q && fresh.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">New (Unverified)</h2>
+            <p className="mt-1 text-sm text-ink-muted">Learned from visitors and passed Yard's checks, not reviewed yet. Check every part before you cut.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {fresh.map((r) => (
+                <RecipeCard key={r.id} idea={r} onOpen={() => go(r.prompt)} />
+              ))}
+            </div>
+          </section>
+        ) : null}
         {!q && recipes.length > 0 ? (
           <section className="mt-12">
             <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Popular recently</h2>

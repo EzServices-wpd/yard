@@ -48,3 +48,14 @@ it("a flagged learned recipe lands held, stays off Ideas and Popular, and is nev
   assert.ok(added.held && added.trust === "candidate");
   assert.ok(!recipeIdeas([added]).length);
 });
+
+it("New (Unverified) lists learned recipes that pass the gate, held ones never, and Popular doesn't repeat them", async () => {
+  const { newIdeas, popularIdeas } = await import("./recipeIdeas.ts");
+  const { RECIPES } = await import("./recipes.ts");
+  const fresh = newIdeas().map((d) => d.id.slice(7));
+  assert.ok(fresh.length > 0);
+  for (const k of fresh) { const r = RECIPES.recipes.find((x) => x.key === k)!; assert.ok(r.learned && r.trust !== "trusted" && !r.held, k); }
+  assert.ok(!fresh.includes("cribbage-board") && !fresh.includes("water-wheel"));
+  const pop = new Set(popularIdeas().map((d) => d.id.slice(7)));
+  assert.ok(fresh.every((k) => !pop.has(k)));
+});
