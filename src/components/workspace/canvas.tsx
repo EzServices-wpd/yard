@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -189,6 +189,20 @@ export function WorkspaceCanvas() {
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
   const useShadows = project.instances.length + project.panels.length < 180;
+  // No WebGL (a headless or locked-down browser): say what the model is in words, never a blank stage.
+  const [noGl, setNoGl] = useState(false);
+  useEffect(() => {
+    const c = document.createElement("canvas");
+    setNoGl(!(c.getContext("webgl2") || c.getContext("webgl")));
+  }, []);
+  if (noGl) {
+    const parts = [...new Set(project.panels.map((p) => p.name.replace(/ \d+$/, "")))];
+    return (
+      <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm opacity-80" data-yard-no-webgl>
+        <p>3D view needs WebGL. {project.name}: {parts.length > 12 ? `${parts.slice(0, 12).join(", ")} and more` : parts.join(", ")}.</p>
+      </div>
+    );
+  }
 
   return (
     <div
