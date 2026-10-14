@@ -395,3 +395,25 @@ it("a learned recipe never replaces a built-in shape: the fitted medicine cabine
     parts: [{ role: "side", name: "Left side", box: [0, 0, 0, 0.05, 1, 1], kind: "panel" }, { role: "side", name: "Right side", box: [0.95, 0, 0, 0.05, 1, 1], kind: "panel" }, { role: "door", name: "Door", box: [0, 0, 0.9, 1, 1, 0.1], kind: "panel", on: ["Left side"] }] } as unknown as Recipe;
   assert.ok(learnedRecipeFailures(r).some((f) => /never replaces a built-in shape/.test(f)));
 });
+
+it("curved and stick forms are never solid: ferris spokes fan round the hub, tipi poles lean to the top under a cone, the Taj dome is a dome", async () => {
+  const { buildRecipe, validateRecipe } = await import("./recipeBuild.ts");
+  const get = (k: string) => RECIPES.recipes.find((r) => r.key === k)!;
+  const fw = buildRecipe(get("ferris-wheel"), "ferris wheel").project;
+  assert.ok(fw.panels.filter((p) => /spoke/i.test(p.name) && p.strut).length >= 6);
+  assert.ok(fw.panels.filter((p) => /rim/i.test(p.name)).every((p) => p.polygon?.holes?.length));
+  const tp = buildRecipe(get("tipi"), "tipi").project;
+  const poles = tp.panels.filter((p) => /pole/i.test(p.name));
+  assert.equal(poles.length, 4);
+  for (const p of poles) { assert.ok(p.strut && p.blank!.lengthIn > p.size.height, p.name); }
+  assert.equal(tp.panels.find((p) => /cover/i.test(p.name))?.form, "cone");
+  assert.equal(buildRecipe(get("taj-mahal"), "taj mahal").project.panels.find((p) => p.name === "Dome")?.form, "dome");
+  for (const k of ["ferris-wheel", "tipi", "taj-mahal", "reindeer"]) assert.deepEqual(validateRecipe(get(k), buildRecipe(get(k), k.replace(/-/g, " ")), k), [], k);
+  // The check: a dome left as a box, upright tipi poles, a one-spoke wheel all fail.
+  const box = { ...get("taj-mahal"), parts: get("taj-mahal").parts.map((p) => (p.name === "Dome" ? { ...p, shape: undefined } : p)) };
+  assert.ok(validateRecipe(box, buildRecipe(box, "taj mahal"), "taj mahal").some((f) => /dome drawn as a box/.test(f)));
+  const up = { ...get("tipi"), parts: get("tipi").parts.map((p) => ({ ...p, lean: undefined })) };
+  assert.ok(validateRecipe(up, buildRecipe(up, "tipi"), "tipi").some((f) => /tipi pole stands upright/.test(f)));
+  const one = { ...get("ferris-wheel"), parts: get("ferris-wheel").parts.map((p) => ({ ...p, spokes: undefined })) };
+  assert.ok(validateRecipe(one, buildRecipe(one, "ferris wheel"), "ferris wheel").some((f) => /fewer than 3 spokes/.test(f)));
+});

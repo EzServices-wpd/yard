@@ -131,7 +131,9 @@
      "kind": "panel",
      "on": [
       "Axle"
-     ]
+     ],
+     "shape": "ring",
+     "bore": 1.5
     },
     {
      "role": "wheel",
@@ -147,7 +149,9 @@
      "kind": "panel",
      "on": [
       "Axle"
-     ]
+     ],
+     "shape": "ring",
+     "bore": 1.5
     },
     {
      "role": "spoke",
@@ -163,7 +167,8 @@
      "kind": "member",
      "on": [
       "Front rim"
-     ]
+     ],
+     "spokes": 4
     },
     {
      "role": "spoke",
@@ -179,7 +184,8 @@
      "kind": "member",
      "on": [
       "Back rim"
-     ]
+     ],
+     "spokes": 4
     },
     {
      "role": "gondola",
@@ -625,21 +631,102 @@
     },
     {
      "role": "body",
-     "name": "Body",
+     "name": "Body top",
+     "kind": "panel",
+     "box": [
+      0.12,
+      0.63,
+      0.1,
+      0.7,
+      0.02,
+      0.8
+     ],
+     "on": [
+      "Body left",
+      "Body right"
+     ]
+    },
+    {
+     "role": "body",
+     "name": "Body back end",
+     "kind": "panel",
+     "box": [
+      0.12,
+      0.47000000000000003,
+      0.18,
+      0.02,
+      0.16,
+      0.64
+     ],
+     "on": [
+      "Body bottom"
+     ]
+    },
+    {
+     "role": "body",
+     "name": "Body front end",
+     "kind": "panel",
+     "box": [
+      0.7999999999999999,
+      0.47000000000000003,
+      0.18,
+      0.02,
+      0.16,
+      0.64
+     ],
+     "on": [
+      "Body bottom"
+     ]
+    },
+    {
+     "role": "body",
+     "name": "Body bottom",
+     "kind": "panel",
      "box": [
       0.12,
       0.45,
       0.1,
       0.7,
-      0.2,
+      0.02,
       0.8
      ],
-     "kind": "member",
      "on": [
       "Front left leg",
       "Front right leg",
       "Back left leg",
       "Back right leg"
+     ]
+    },
+    {
+     "role": "body",
+     "name": "Body left",
+     "kind": "panel",
+     "box": [
+      0.12,
+      0.47000000000000003,
+      0.1,
+      0.7,
+      0.16,
+      0.08
+     ],
+     "on": [
+      "Body bottom"
+     ]
+    },
+    {
+     "role": "body",
+     "name": "Body right",
+     "kind": "panel",
+     "box": [
+      0.12,
+      0.47000000000000003,
+      0.8200000000000001,
+      0.7,
+      0.16,
+      0.08
+     ],
+     "on": [
+      "Body bottom"
      ]
     },
     {
@@ -655,7 +742,8 @@
      ],
      "kind": "member",
      "on": [
-      "Body"
+      "Body top",
+      "Body front end"
      ]
     },
     {
@@ -751,7 +839,7 @@
      ],
      "kind": "member",
      "on": [
-      "Body"
+      "Body back end"
      ]
     }
    ],
@@ -1055,7 +1143,8 @@
       1,
       0.05
      ],
-     "kind": "member"
+     "kind": "member",
+     "lean": "apex"
     },
     {
      "role": "pole",
@@ -1068,7 +1157,8 @@
       1,
       0.05
      ],
-     "kind": "member"
+     "kind": "member",
+     "lean": "apex"
     },
     {
      "role": "pole",
@@ -1081,7 +1171,8 @@
       1,
       0.05
      ],
-     "kind": "member"
+     "kind": "member",
+     "lean": "apex"
     },
     {
      "role": "pole",
@@ -1094,122 +1185,26 @@
       1,
       0.05
      ],
-     "kind": "member"
-    },
-    {
-     "role": "tie",
-     "name": "Back tie",
-     "box": [
-      0,
-      0.92,
-      0.05,
-      1,
-      0.04,
-      0.05
-     ],
      "kind": "member",
-     "on": [
-      "Pole 1",
-      "Pole 2"
-     ]
-    },
-    {
-     "role": "tie",
-     "name": "Front tie",
-     "box": [
-      0,
-      0.92,
-      0.9,
-      1,
-      0.04,
-      0.05
-     ],
-     "kind": "member",
-     "on": [
-      "Pole 3",
-      "Pole 4"
-     ]
+     "lean": "apex"
     },
     {
      "role": "cover",
-     "name": "Canvas cover 1",
+     "name": "Canvas cover",
      "box": [
-      0.05,
+      0.06,
       0.02,
-      0.1,
+      0.06,
+      0.88,
       0.9,
-      0.9,
-      0.01
+      0.88
      ],
      "kind": "cover",
+     "shape": "cone",
      "on": [
       "Pole 1",
-      "Pole 2"
-     ]
-    },
-    {
-     "role": "cover",
-     "name": "Canvas cover 2",
-     "box": [
-      0.1,
-      0.02,
-      0.1,
-      0.01,
-      0.9,
-      0.8
-     ],
-     "kind": "cover",
-     "on": [
-      "Pole 1",
-      "Pole 3"
-     ]
-    },
-    {
-     "role": "cover",
-     "name": "Canvas cover 3",
-     "box": [
-      0.89,
-      0.02,
-      0.1,
-      0.01,
-      0.9,
-      0.8
-     ],
-     "kind": "cover",
-     "on": [
       "Pole 2",
-      "Pole 4"
-     ]
-    },
-    {
-     "role": "cover",
-     "name": "Canvas cover 4",
-     "box": [
-      0.05,
-      0.02,
-      0.89,
-      0.3,
-      0.9,
-      0.01
-     ],
-     "kind": "cover",
-     "on": [
-      "Pole 3"
-     ]
-    },
-    {
-     "role": "cover",
-     "name": "Canvas cover 5",
-     "box": [
-      0.65,
-      0.02,
-      0.89,
-      0.3,
-      0.9,
-      0.01
-     ],
-     "kind": "cover",
-     "on": [
+      "Pole 3",
       "Pole 4"
      ]
     }
@@ -2220,7 +2215,8 @@
      "kind": "panel",
      "on": [
       "Drum"
-     ]
+     ],
+     "shape": "dome"
     },
     {
      "role": "finial",
@@ -2252,7 +2248,8 @@
      "kind": "panel",
      "on": [
       "Roof"
-     ]
+     ],
+     "shape": "dome"
     },
     {
      "role": "chhatri",
@@ -2268,7 +2265,8 @@
      "kind": "panel",
      "on": [
       "Roof"
-     ]
+     ],
+     "shape": "dome"
     },
     {
      "role": "chhatri",
@@ -2284,7 +2282,8 @@
      "kind": "panel",
      "on": [
       "Roof"
-     ]
+     ],
+     "shape": "dome"
     },
     {
      "role": "chhatri",
@@ -2300,7 +2299,8 @@
      "kind": "panel",
      "on": [
       "Roof"
-     ]
+     ],
+     "shape": "dome"
     }
    ],
    "notes": [

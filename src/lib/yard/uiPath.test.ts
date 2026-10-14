@@ -126,7 +126,7 @@ describe("uiPath: starter recipes never fall through", () => {
     const { RECIPES } = await import("./recipes");
     const { recipePrompt } = await import("./recipeIdeas");
     // Each starter's card prompt (modifiers included), plus Critic's bare "toy airplane".
-    for (const noun of [...RECIPES.recipes.filter((x) => !x.learned).map(recipePrompt), "toy airplane"]) {
+    for (const noun of [...RECIPES.recipes.filter((x) => !x.learned).map(recipePrompt), "toy airplane", "sandbox"]) {
       const calls: string[] = [];
       await runYardPrompt(noun, { fresh: true, ai: stubs(async () => ({ ok: false, error: "bad" }), calls) });
       const p = useYard.getState().project;

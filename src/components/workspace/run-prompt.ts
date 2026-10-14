@@ -1,4 +1,5 @@
-import { findRecipe } from "@/lib/yard/recipes";
+import { findRecipe, RECIPES } from "@/lib/yard/recipes";
+import { recipePrompt } from "@/lib/yard/recipeIdeas";
 "use client";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
@@ -343,7 +344,17 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   const half = ignoredTypedWords(next, prompt).length > 0;
   // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
   const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
-  const learn = (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  const learn0 = (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
+  // starter instead of going to the learner, but only when the engine has nothing of its own for it.
+  const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;
+  if (bare) {
+    generate(recipePrompt(bare), undefined, undefined, { fresh: opts.fresh });
+    makePlan();
+    revealBench();
+    return;
+  }
+  const learn = learn0;
   const block = (why?: string[]) => {
     const b = roughBlock(prompt, next);
     return { ...b, notes: [roughNote(b.name, why ?? []), ...(b.notes ?? [])] };

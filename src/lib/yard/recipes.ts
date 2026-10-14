@@ -26,7 +26,11 @@ export type RecipePart = {
   /** A catalog id for a hardware part. */
   catalogId?: string;
   /** Round parts: a disc (solid wheel), ring (rim), cylinder (axle, drum) or bead (bored). Default box. */
-  shape?: "disc" | "ring" | "cylinder" | "bead";
+  shape?: "disc" | "ring" | "cylinder" | "bead" | "dome" | "cone";
+  /** "apex": a pole leans from its foot to the top centre of the build (a tipi's poles). */
+  lean?: "apex";
+  /** A spoke part fans this many copies round the wheel's centre, each a rod across the wheel. */
+  spokes?: number;
   /** Through-bore diameter in inches (bead on a rod, wheel on an axle); a ring's rim width when shape is ring. */
   bore?: number;
   /** A drilled hole array in its largest face (a cribbage board's peg tracks): count holes of dia inches in rows. */

@@ -156,6 +156,10 @@ export type Panel = {
   materialId: string;
   /** Yaw in radians — table legs/aprons rotate about Y. */
   yaw?: number;
+  /** A round rod from a to b (inches, from the box's min corner), drawn inside its bounding box: a leaning tipi pole. */
+  strut?: { a: [number, number, number]; b: [number, number, number]; r: number };
+  /** Curved form drawn in the part's box: a dome (half sphere, base down) or an open cone (tipi cover). */
+  form?: "dome" | "cone";
   /**
    * Plate outline inside the width × depth box. Corner-unit shelves are right triangles
    * (right angle at −x/−z, the wall corner) or quarter-rounds (arc centered on that corner).

@@ -142,6 +142,18 @@ export function PanelMesh({
   // Corner-unit plates: right triangle or quarter-round, right angle at −x/−z (the wall corner).
   const poly = panel.polygon;
   const outlineGeo = useMemo(() => {
+    // Curved forms are never boxes: a dome is a half sphere on its base, a cone an open shell to a point.
+    if (panel.form === "dome") return new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2).scale(w / 2, h, d / 2).translate(0, -h / 2, 0);
+    if (panel.form === "cone") return new THREE.ConeGeometry(1, 1, 32, 1, true).scale(w / 2, h, d / 2);
+    if (panel.strut) {
+      const { a, b, r } = panel.strut;
+      const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), dir = B.clone().sub(A);
+      const geo = new THREE.CylinderGeometry(r, r, dir.length(), 16);
+      geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()));
+      const mid = A.add(B).multiplyScalar(0.5);
+      geo.translate(mid.x - w / 2, mid.y - h / 2, mid.z - d / 2);
+      return geo;
+    }
     if (poly && poly.pts.length >= 3) {
       // Odd-shape plate: real polygon. "xz" = plan outline extruded up; "xy" = face outline extruded back.
       const shape = new THREE.Shape();
@@ -210,7 +222,7 @@ export function PanelMesh({
     geo.translate(0, h / 2, 0);
     geo.computeVertexNormals();
     return geo;
-  }, [panel.outline, poly, w, h, d]);
+  }, [panel.outline, panel.form, panel.strut, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
   if (hiddenInStep) return null;

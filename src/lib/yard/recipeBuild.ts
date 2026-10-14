@@ -188,12 +188,51 @@ function holeArrays(recipe: Recipe, panels: Panel[]): void {
   }
 }
 
+/**
+ * Curved and stick forms are never solid boxes: a dome or cone part is drawn as one; a leaning pole is a rod
+ * from its foot to the top centre (a tipi); a spoke part fans round the wheel centre as rods across the wheel.
+ * Each rod keeps its bounding box (so contact checks still hold) and cuts from a blank of its true length.
+ */
+function curvedParts(recipe: Recipe, panels: Panel[], size: { width: number; height: number; depth: number }): Panel[] {
+  const out: Panel[] = [];
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (part?.shape === "dome" || part?.shape === "cone") { out.push({ ...p, form: part.shape }); continue; }
+    const r = Math.min(p.size.width, p.size.depth, p.size.height) / 2;
+    if (part?.lean === "apex") {
+      const foot = [p.position.x + p.size.width / 2, p.position.y, p.position.z + p.size.depth / 2];
+      const top = [size.width / 2, p.position.y + p.size.height, size.depth / 2];
+      const x0 = Math.min(foot[0], top[0]) - r, z0 = Math.min(foot[2], top[2]) - r;
+      const len = Math.hypot(top[0] - foot[0], top[1] - foot[1], top[2] - foot[2]);
+      out.push({ ...p, position: { x: x0, y: p.position.y, z: z0 }, size: { width: Math.abs(top[0] - foot[0]) + 2 * r, height: p.size.height, depth: Math.abs(top[2] - foot[2]) + 2 * r },
+        strut: { a: [foot[0] - x0, 0, foot[2] - z0], b: [top[0] - x0, p.size.height, top[2] - z0], r },
+        blank: { lengthIn: len, widthIn: 2 * r, thicknessIn: 2 * r }, cutNote: `Cut ${fmtIn(len)} long; it leans from its foot to meet the others at the top.` });
+      continue;
+    }
+    if (part?.spokes && part.spokes > 1) {
+      const n = Math.round(part.spokes), D = Math.max(p.size.width, p.size.height), t = p.size.depth;
+      const c = { x: p.position.x + p.size.width / 2, y: p.position.y + p.size.height / 2 };
+      const base = p.name.replace(/ \d+$/, "");
+      for (let k = 0; k < n; k++) {
+        const th = (k * Math.PI) / n, hx = (Math.sin(th) * D) / 2, hy = (Math.cos(th) * D) / 2;
+        const w = Math.abs(hx) * 2 + 2 * r, h = Math.abs(hy) * 2 + 2 * r;
+        out.push({ ...p, id: `${p.id}-s${k}`, name: `${base} ${k + 1}`, position: { x: c.x - w / 2, y: c.y - h / 2, z: p.position.z }, size: { width: w, height: h, depth: t },
+          strut: { a: [w / 2 - hx, h / 2 - hy, t / 2], b: [w / 2 + hx, h / 2 + hy, t / 2], r: Math.min(r, t / 2) },
+          blank: { lengthIn: D, widthIn: 2 * r, thicknessIn: t }, cutNote: `Cut ${fmtIn(D)} long; spokes cross at the centre, ${n} round the wheel.` });
+      }
+      continue;
+    }
+    out.push(p);
+  }
+  return out;
+}
+
 function roundParts(recipe: Recipe, panels: Panel[]): void {
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   for (const p of panels) {
     const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
-    if (!part?.shape) continue;
+    if (!part?.shape || part.shape === "dome" || part.shape === "cone") continue;
     const by = [...AX].sort((a, b) => p.size[a[1]] - p.size[b[1]]);
     // A bored part on a pin turns about the pin: its bore runs along the pin's length.
     const pin = part.bore || part.shape === "bead" || part.shape === "ring" ? pins.find((q) => q !== p && meets3(p, q)) : undefined;
@@ -552,6 +591,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   }
   roundParts(recipe, panels);
   holeArrays(recipe, panels);
+  panels.splice(0, panels.length, ...curvedParts(recipe, panels, size));
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".
   const movers = new Set((recipe.moving ?? []).map((m) => m.part));
@@ -656,6 +696,20 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
   // A flat object (a cutting board, a tray: at most 2" thick) may be one slab; the closed-shell checks are for 3D bodies.
   const flat = Math.min(project.overall.width, project.overall.height, project.overall.depth) <= 2;
   if (boxes.length < 3 && !flat) fail.push("closed shell: fewer than 3 parts");
+  // Curved and stick forms are never solid boxes: a dome or cone is drawn curved, tipi poles lean to the top,
+  // and a spoked wheel has at least 3 spokes round its centre.
+  for (const part of recipe.parts) {
+    const words = `${part.role} ${part.name}`.toLowerCase();
+    if (/\b(?:dome|cupola|chhatri)s?\b/.test(words) && part.shape !== "dome") fail.push(`${part.name}: a dome drawn as a box`);
+    if (/\bcones?\b/.test(words) && part.shape !== "cone") fail.push(`${part.name}: a cone drawn as a box`);
+    if (/\b(?:tipi|teepee|tepee)\b/i.test(`${recipe.key} ${recipe.title}`) && /\bpole\b/.test(words) && part.lean !== "apex") fail.push(`${part.name}: a tipi pole stands upright, not leaning to the top`);
+  }
+  for (const wheelRole of ["wheel", "rim"]) {
+    if (!recipe.parts.some((q) => q.role === wheelRole || new RegExp(`\\b${wheelRole}\\b`, "i").test(q.name))) continue;
+    const spokes = recipe.parts.filter((q) => /\bspokes?\b/i.test(`${q.role} ${q.name}`));
+    if (spokes.length && project.panels.filter((p) => /\bspoke\b/i.test(p.name)).length < 3) fail.push("a spoked wheel has fewer than 3 spokes");
+    break;
+  }
   // The parts reach the overall box on every axis (nothing outside it; a real build fills its envelope).
   const ext = (a: "x" | "y" | "z", s: "width" | "height" | "depth") => {
     const lo = Math.min(...project.panels.map((p) => p.position[a]));
