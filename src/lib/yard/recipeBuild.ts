@@ -11,6 +11,7 @@ import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
+import { isOutdoorPrompt } from "./outdoor";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -505,6 +506,58 @@ export function definingShapes(recipe: Recipe, panels: Panel[]): void {
   }
 }
 
+/**
+ * Outdoors, flat parts are exterior boards, never plywood: each plywood tread, riser, wall or slat becomes
+ * 5 1/2" boards (2×6 when the part is over 1" thick, else 1×6) inside its own box. Flat (horizontal) boards
+ * keep a 1/4" drain gap; upright walls stack tight.
+ */
+export function exteriorBoards(panels: Panel[]): void {
+  const out: Panel[] = [];
+  for (const p of panels) {
+    const own = getCatalogItem(p.materialId);
+    if (!/^plywood/.test(p.materialId) || own?.formFactor !== "sheet" || p.polygon || p.turns || !/\b(?:tread|riser|wall|slats?|seat|deck|step)\b/i.test(p.name)) { out.push(p); continue; }
+    const dims = [p.size.width, p.size.height, p.size.depth];
+    const thin = Math.min(...dims);
+    const sorted = [...dims].sort((m, n) => m - n);
+    // Flat parts only: a post or block cut from glued-up sheet is not a board.
+    if (thin > 1.6 || (sorted[1] < thin * 2 && sorted[1] > 1.6)) { out.push(p); continue; }
+    // A plywood stick (a laminated slat) is a 2×2 outdoors, its underside where it was.
+    if (sorted[1] < thin * 2) {
+      const sq = getCatalogItem("lumber-2x2-8")!, w = sq.dims.width!;
+      const size = { ...p.size };
+      for (const k of ["width", "height", "depth"] as const) if (p.size[k] < 1.7) size[k] = w;
+      out.push({ ...p, materialId: sq.id, size });
+      continue;
+    }
+    const board = getCatalogItem(thin > 1.1 ? "lumber-2x6-8" : "lumber-1x6-8")!;
+    const face = board.dims.width!, t = board.dims.height!;
+    const flat = p.size.height === thin;
+    // A flat board keeps its underside on its support; an upright one keeps its inner face and grows outward.
+    const cx = panels.reduce((m, q) => m + q.position.x + q.size.width / 2, 0) / panels.length;
+    const cz = panels.reduce((m, q) => m + q.position.z + q.size.depth / 2, 0) / panels.length;
+    // Split across the part's width: the axis that is neither its thickness nor its length.
+    const axes = (["x", "y", "z"] as const).map((a, i) => ({ a, k: (["width", "height", "depth"] as const)[i], v: dims[i] }));
+    const thick = axes.find((x) => x.v === thin)!;
+    const rest = axes.filter((x) => x !== thick).sort((m, n) => m.v - n.v);
+    const across = rest[0];
+    const gap = flat ? 0.25 : 0;
+    const n = Math.max(1, Math.ceil((across.v + gap - 0.01) / (face + gap)));
+    const w = n === 1 ? across.v : face;
+    for (let i = 0; i < n; i++) {
+      const start = i * (w + gap);
+      const span = Math.min(w, across.v - start);
+      if (span <= 0.25) break;
+      // Inside the part's box: a thicker board never pushes past its outer face.
+      const mid = thick.a === "x" ? cx : cz;
+      const low = !flat && p.position[thick.a] + thin / 2 < mid;
+      out.push({ ...p, id: n === 1 ? p.id : `${p.id}-s${i}`, materialId: board.id,
+        position: { ...p.position, [across.a]: p.position[across.a] + start, [thick.a]: p.position[thick.a] + (low ? thin - t : 0) },
+        size: { ...p.size, [across.k]: span, [thick.k]: t } });
+    }
+  }
+  panels.splice(0, panels.length, ...out);
+}
+
 function gnomonTriangles(panels: Panel[]): void {
   for (const g of panels.filter((p) => /\bgnomon\b/i.test(p.name) && !p.polygon)) {
     const H = g.size.height;
@@ -779,6 +832,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   }
   rotors(recipe, panels, pins);
   realBoards(recipe, panels);
+  if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) exteriorBoards(panels);
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
   // and the parts that turn on it, so it stands on the floor, never through it.
@@ -916,7 +970,8 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
       if (part.on?.length) {
         const carriers = part.on.flatMap(byName);
         if (!carriers.some((c) => c !== b && boxGap(b, c) <= CONTACT_GAP)) fail.push(`${b.role} does not touch ${part.on.join(" or ")}`);
-      } else if (!recipe.wall && b.c.y - b.h[1] > 0.01 && !boxes.some((f) => f.role === `Foot under ${b.role}` && boxGap(b, f) <= CONTACT_GAP)) fail.push(`${b.role} floats: it stands on nothing`);
+      } else if (!recipe.wall && b.c.y - b.h[1] > 0.01 && !boxes.some((f) => f.role === `Foot under ${b.role}` && boxGap(b, f) <= CONTACT_GAP) && !boxes.some((f) => f !== b && f.role === b.role && f.c.y < b.c.y && boxGap(b, f) <= CONTACT_GAP)) fail.push(`${b.role} floats: it stands on nothing`);
+      // (A wall stacked from boards stands on its own lower board.)
     }
   }
   if (!recipe.wall && uprights(project.panels)) {

@@ -1,5 +1,5 @@
 import { findRecipe } from "./recipes";
-import { buildRecipe } from "./recipeBuild";
+import { buildRecipe, exteriorBoards } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
 import { frontCueNotes } from "./fittedShared";
 import { typedAxisNumber, typedSpan, typedDepth } from "./typedAxis";
@@ -388,7 +388,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const asTyped = generateTyped(prompt);
     if (asTyped.kind === "figure" && (asTyped.panels ?? []).length) typedBuild = hooksShowInModel(withFoldingLegs(refuseUnusedStock(asTyped, args[1], true), prompt));
   }
-  const members = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
+  const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
+  // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
+  const members = isOutdoorPrompt(prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,

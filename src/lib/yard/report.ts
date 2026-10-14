@@ -1638,7 +1638,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const plan0 = shape(project, fallbackStepOne(project, buildPlanInner(project)));
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
-  for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
+  for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
   const plan = { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] };
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
@@ -1654,11 +1654,36 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
   // The header total is the Buy list: the sum of its rows, never a separate estimate.
-  const out = smallestSheetStock({ ...plan, bom });
+  const out = smallestSheetStock({ ...plan, bom: dedupeBuy(bom) });
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
-  return { ...out, feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
+  return cutStepFromList({ ...out, feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } });
+}
+
+/**
+ * The cut step cuts the cut list. When its counted pieces differ from the list (spliced halves, layers counted
+ * from the model instead of the list), its pieces are rewritten from the cut list, grouped by stock.
+ */
+export function cutStepFromList(plan: BuildPlan): BuildPlan {
+  const n = cutStepCount(plan);
+  const total = plan.cutList.reduce((t, c) => t + c.quantity, 0);
+  if (n == null || n === total || !plan.cutList.length) return plan;
+  const at = plan.instructions.findIndex((s) => /^Cut the\b/.test(s.title));
+  const st = plan.instructions[at];
+  // Only the piece sentences are rewritten: every other sentence (how to cut, an arc or bevel) stays where it was.
+  const sentences = st.description.split(/(?<=[.:])\s+(?=From the |\d+ [A-Za-z]|[A-Z])/);
+  const isPiece = (t: string) => /^(?:From the [^:]+:\s*)?\d+ [A-Za-z][^."]*?\d[^."]*"\.?$/.test(t) || /^From the [^:]+:$/.test(t);
+  const firstPiece = sentences.findIndex(isPiece);
+  const lead = sentences.slice(0, Math.max(0, firstPiece)).join(" ");
+  const tail = sentences.slice(Math.max(0, firstPiece)).filter((t) => !isPiece(t)).join(" ");
+  const mats = [...new Set(plan.cutList.map((c) => c.material))];
+  const piece = (c: BuildPlan["cutList"][number]) =>
+    `${c.quantity} ${c.label ? c.label + " " : ""}${c.name} ${inchFrac(c.lengthIn)} × ${inchFrac(c.widthIn)} × ${inchFrac(c.thicknessIn)}".`;
+  const body = mats.map((m) => `${mats.length > 1 ? `From the ${m}: ` : ""}${plan.cutList.filter((c) => c.material === m).map(piece).join(" ")}`).join(" ");
+  const title = `Cut the ${mats.join(" and ")}`;
+  const instructions = plan.instructions.map((s, i) => (i === at ? { ...s, title, description: [lead, body, tail].filter(Boolean).join(" ") } : s));
+  return { ...plan, instructions };
 }
 
 /**
@@ -1715,6 +1740,45 @@ function fallbackStepOne(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!note || !plan.instructions.length || (plan.instructions[0].description ?? "").includes(note)) return plan;
   const instructions = plan.instructions.map((s, i) => (i === 0 ? { ...s, description: `${note} ${s.description ?? ""}`.trim() } : s));
   return { ...plan, instructions };
+}
+
+/** One Buy line per piece of hardware: a kind and the generic name a recipe part leaves behind ("Hinge", "Fold bracket"). */
+const BUY_KINDS: [RegExp, RegExp][] = [
+  [/\bhinges?\b/i, /^hinges?$/i],
+  [/\blatch(?:es)?\b/i, /^latch(?:es)?$/i],
+  [/\bhooks?\b/i, /^(?:coat )?hooks?$/i],
+  [/canvas|drop cloth/i, /^canvas(?: cover)?$/i],
+  [/lift mechanism|^fold bracket/i, /^fold brackets?$/i],
+  [/\bstay\b|lid support/i, /^(?:lid )?stays?$/i],
+];
+
+/**
+ * Buy merges duplicates once, at the end: two lines with the same name are one line (the larger count), and a
+ * generic line a recipe part leaves ("Hinge", "Latch", "Canvas cover", "Fold bracket") folds into the specific
+ * line of its kind (Piano hinge, Gate latch, Canvas drop cloth, the Murphy lift kit).
+ */
+export function dedupeBuy(bom: BuildPlan["bom"]): BuildPlan["bom"] {
+  const out: BuildPlan["bom"] = [];
+  for (const b of bom) {
+    const same = out.findIndex((o) => o.name.toLowerCase() === b.name.toLowerCase());
+    if (same >= 0) { if (b.quantity > out[same].quantity) out[same] = b; continue; }
+    const kind = BUY_KINDS.find(([k]) => k.test(b.name));
+    const specific = (x: { name: string }) => kind && kind[0].test(x.name) && !kind[1].test(x.name.trim());
+    if (kind && kind[1].test(b.name.trim()) && bom.some((o) => o !== b && specific(o))) continue;
+    out.push(b);
+  }
+  return out;
+}
+
+/** Buy lines that duplicate another of the same kind (the gate check for dedupeBuy). */
+export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
+  const names = bom.map((b) => b.name.toLowerCase());
+  const dup = names.filter((n, i) => names.indexOf(n) !== i);
+  for (const [k, generic] of BUY_KINDS) {
+    const lines = bom.filter((b) => k.test(b.name));
+    if (lines.length > 1 && lines.some((b) => generic.test(b.name.trim()))) dup.push(lines.map((b) => b.name).join(" / "));
+  }
+  return dup;
 }
 
 function buildPlanInner(project: YardProject): BuildPlan {

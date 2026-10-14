@@ -544,7 +544,7 @@ function overhangTalk(ctx: Ctx, p: Panel, under: Panel[]): string {
       ? `${f(o.fr)} front and back`
       : ""
     : Math.abs(o.bk) < EPS
-      ? `${f(o.fr)} past the front (back edge flush)`
+      ? `${f(o.fr)} past the front (${ctx.panels.some((q) => /\bback\b/i.test(q.name)) ? "back" : "rear"} edge flush)`
       : Math.abs(o.fr) < EPS
         ? `${f(o.bk)} past the back (front edge flush)`
         : `${f(o.fr)} at the front and ${f(o.bk)} at the back`;

@@ -7,7 +7,9 @@ import { getCatalogItem } from "./catalog";
 import { boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
-import { buildPlan, cutStepCount, overlongCuts } from "./report";
+import { buildPlan, cutStepCount, duplicateBuyLines, overlongCuts } from "./report";
+import { isOutdoorPrompt } from "./outdoor";
+import type { BuildPlan, Panel } from "./types";
 import { generateFromPrompt } from "./promptMain";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
@@ -56,9 +58,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   }
   fail.push(...definingFailures(recipe, built.project, plan));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
-  const sawCount = cutStepCount(plan);
-  const listCount = plan.cutList.reduce((n, c) => n + c.quantity, 0);
-  if (sawCount != null && sawCount !== listCount) fail.push(`the cut step cuts ${sawCount} pieces but the cut list has ${listCount}`);
+  fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
   // No cut part is longer than its bought stock unless the plan splices it.
   const spliced = plan.instructions.some((st) => /^Splice\b/.test(st.title));
   for (const c of overlongCuts(plan)) if (!spliced) fail.push(`${c.name}: ${c.lengthIn}" is longer than its ${c.material} with no splice step`);
@@ -169,7 +169,6 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   // (f) Template text matches this build: no cedar on other wood, no back edges without a back, the stock chip is cut.
   const woods = panels.map((p) => getCatalogItem(p.materialId)?.name ?? "").join(" ");
   if (/cedar/i.test(all) && !/cedar/i.test(woods)) fail.push("cedar wording on a build with no cedar");
-  if (/back edges?/i.test(all) && !panels.some((p) => /\bback\b/i.test(p.name))) fail.push("back-edge wording with no back");
   const chip = built.project.primaryMaterialId;
   if (chip && !panels.some((p) => p.materialId === chip) && !plan.cutList.some((c) => c.material === getCatalogItem(chip)?.name)) fail.push(`the stock chip (${getCatalogItem(chip)?.name ?? chip}) is not on the cut list`);
   // (g) Parts are named, not numbered slugs ("Peg1"): a repeat is one part with a count.
@@ -202,5 +201,54 @@ export function definingFailures(recipe: Recipe, project: { panels: { name: stri
   const notes = recipe.notes.join(" ");
   for (const m of notes.matchAll(/\btilt (?:each|the|every) ([a-z]+?)s? (?:about |by )?\d/gi)) for (const p of of(m[1].toLowerCase())) if (!p.polygon) fail.push(`${p.name}: the notes tilt it, the model is flat`);
   if (/slatted|breathes?|airflow|air gaps?/i.test(notes)) for (const p of of("slat")) if (Math.min(...[p.size.width, p.size.height, p.size.depth].sort((a, b) => b - a).slice(0, 2)) > 8) fail.push(`${p.name}: a solid wall where the notes want slats with air gaps`);
+  return fail;
+}
+
+/**
+ * Walls stand on something: every upright wall or slat board has its underside on the ground, or touching the
+ * top of a part under its footprint, or fixed to a part beside it that it overlaps up its height (a post, a
+ * corner, the next board). A wall hanging in the air with a gap under it fails.
+ */
+export function floatingWalls(panels: Panel[]): string[] {
+  const WALL = /\b(?:wall|slat|side|siding|panel)\b/i;
+  const ground = Math.min(...panels.map((p) => p.position.y));
+  const tol = 1 / 16;
+  const out: string[] = [];
+  const overlaps = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0) > tol;
+  for (const p of panels) {
+    if (!WALL.test(p.name) || p.size.height <= Math.min(p.size.width, p.size.depth)) continue;
+    const y = p.position.y;
+    if (y - ground <= tol) continue;
+    const foot = (q: Panel) => overlaps(p.position.x, p.position.x + p.size.width, q.position.x, q.position.x + q.size.width) && overlaps(p.position.z, p.position.z + p.size.depth, q.position.z, q.position.z + q.size.depth);
+    // Beside: touching or overlapping in plan (x and z), and sharing more than a corner on one of them.
+    const ov = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0);
+    const near = (q: Panel) => {
+      const ox = ov(p.position.x, p.position.x + p.size.width, q.position.x, q.position.x + q.size.width);
+      const oz = ov(p.position.z, p.position.z + p.size.depth, q.position.z, q.position.z + q.size.depth);
+      return ox >= -tol && oz >= -tol && (ox > tol || oz > tol);
+    };
+    const sits = panels.some((q) => q !== p && foot(q) && Math.abs(q.position.y + q.size.height - y) <= tol);
+    // Fastened beside a part that reaches below its underside (a post, a cleat, the board under it).
+    const hung = panels.some((q) => q !== p && near(q) && q.position.y < y - tol && q.position.y + q.size.height > y + tol);
+    if (!sits && !hung) out.push(`${p.name} floats ${(y - ground).toFixed(2)}" up with nothing under it`);
+  }
+  return out;
+}
+
+/**
+ * Checks every build passes, starter recipes and typed prompts alike (not only learned recipes):
+ * one Buy line per piece of hardware, the cut step counts the cut list, back-edge wording only on a build
+ * with a back, no plywood treads, walls or slats outdoors, and no wall floating with a gap under it.
+ */
+export function buildClassFailures(project: { panels: Panel[] }, plan: BuildPlan, outdoor: boolean): string[] {
+  const fail: string[] = [];
+  for (const d of duplicateBuyLines(plan.bom)) fail.push(`duplicate Buy line: ${d}`);
+  const sawCount = cutStepCount(plan);
+  const listCount = plan.cutList.reduce((n, c) => n + c.quantity, 0);
+  if (sawCount != null && sawCount !== listCount) fail.push(`the cut step cuts ${sawCount} pieces but the cut list has ${listCount}`);
+  const all = plan.instructions.map((st) => `${st.title} ${st.description}`).join(" ");
+  if (/back[- ]edges?/i.test(all) && !project.panels.some((p) => /\bback\b/i.test(p.name))) fail.push("back-edge wording with no back");
+  if (outdoor) for (const p of project.panels) if (/^plywood/.test(p.materialId) && /\b(?:tread|riser|wall|slats?|seat|deck|step)\b/i.test(p.name)) fail.push(`${p.name} is plywood on an outdoor build`);
+  fail.push(...floatingWalls(project.panels));
   return fail;
 }
