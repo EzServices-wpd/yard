@@ -121,6 +121,13 @@ export function refineProject(project: YardProject, phrase: string): RefineResul
   let cur = project;
   for (const clause of clauses) {
     // The engine prompt rebuilds exactly this build (a fallback keeps its primitive).
+    // Outdoor keeps every part (supports never drop) and moves Buy to exterior glue, screws and finish.
+    if (/^(?:make it |for )?(?:outdoors?|outside|exterior)(?: use)?$/i.test(clause)) {
+      if (/\b(outdoors?|outside|exterior)\b/i.test(cur.typedPrompt || cur.prompt)) { out.refused.push(`"${clause}": this build is already outdoor`); continue; }
+      cur = { ...cur, prompt: `${cur.prompt}, outdoor`, ...(cur.typedPrompt ? { typedPrompt: `${cur.typedPrompt}, outdoor` } : {}) };
+      out.applied.push("Outdoor: exterior glue, screws and finish");
+      continue;
+    }
     const r = refinePrompt(cur.prompt, clause, cur);
     if (r.kind === "text") { out.notUnderstood.push(clause); continue; }
     const next = generateFromPrompt(r.prompt, r.materialId ?? cur.primaryMaterialId);

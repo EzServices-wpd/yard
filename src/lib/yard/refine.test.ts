@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import fs from "node:fs";
 import { generateFromPrompt } from "./promptMain.ts";
+import { buildPlan } from "./report.ts";
 import { refineChips, refinePrompt, refineProject } from "./refine.ts";
 
 const count = (q: string, re: RegExp) => generateFromPrompt(q).panels.filter((p) => re.test(p.name)).length;
@@ -82,11 +83,11 @@ describe("refineProject: one change to the current build, with feedback", () => 
     assert.equal(r.project, null);
     assert.deepEqual(r.notUnderstood, ["paint it blue"]);
   });
-  it("outdoor is not applied, so supports never drop", () => {
+  it("outdoor keeps every part, so supports never drop", () => {
     const b = g("garden bench");
     const r = refineProject(b, "outdoor");
-    assert.equal(r.project, null);
-    assert.ok(r.notUnderstood.length + r.refused.length > 0);
+    assert.deepEqual(r.project?.panels ?? b.panels, b.panels);
+    assert.equal(r.notUnderstood.length, 0);
   });
   it("remove the doors never merges them into one", () => {
     const k = g("kitchen base cabinet");
@@ -155,7 +156,13 @@ it("refine keeps the form: remove doors keeps the carcase, add drawer on a bench
   const r2 = refineProject(generateFromPrompt("entry bench 48 wide"), "add a drawer");
   assert.equal(r2.project, null);
   assert.match(r2.refused[0], /can't take drawers/);
-  const r3 = refineProject(bc, "outdoor");
-  assert.equal(r3.project, null);
-  assert.deepEqual(r3.notUnderstood, ["outdoor"]);
+  for (const q of ["entry bench 48 wide", "bookcase 36 wide 72 tall"]) {
+    const before = generateFromPrompt(q);
+    const r3 = refineProject(before, "outdoor");
+    assert.deepEqual(r3.notUnderstood, []);
+    assert.deepEqual(r3.project?.panels, before.panels, `${q}: outdoor keeps every part`);
+    const bom = buildPlan(r3.project!).bom.map((b) => b.name).join(" | ");
+    assert.match(bom, /exterior/i);
+    assert.match(bom, /Titebond III/);
+  }
 });
