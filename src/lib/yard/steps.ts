@@ -2700,6 +2700,17 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
   });
 }
 
+/** Pieces cut from more than one stock name every stock — never pin the whole count on the primary board. */
+export function piecesOfStock(instances: YardInstance[], itemName: string) {
+  const by = new Map<string, number>();
+  for (const i of instances) by.set(i.catalogId, (by.get(i.catalogId) ?? 0) + 1);
+  if (by.size <= 1) return `${countWord(instances.length, "piece")} of ${itemName}`;
+  const bits = [...by.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => `${n} of ${getCatalogItem(id)?.name ?? id}`);
+  return `${countWord(instances.length, "piece")}: ${bits.join(", ")}`;
+}
+
 function cutSummary(instances: YardInstance[], itemName: string) {
   const marked = instances.filter((i) => i.cutLength);
   if (marked.length === 0) {
@@ -2715,7 +2726,7 @@ function cutSummary(instances: YardInstance[], itemName: string) {
   const shown = bits.slice(0, 12).map(([len, qty]) => `${qty} × ${inchFrac(Number(len))}"`);
   const more = bits.length > 12 ? `, and ${bits.length - 12} more lengths — every one is on the cut list` : "";
   const fullTalk = full === 0 ? "Every piece is cut to its mark." : `${full} ${full === 1 ? "piece stays" : "pieces stay"} full stock.`;
-  return `${countWord(instances.length, "piece")} of ${itemName}. ${countWord(marked.length, "marked cut")} (${shown.join(", ")}${more}). ${fullTalk}`;
+  return `${piecesOfStock(instances, itemName)}. ${countWord(marked.length, "marked cut")} (${shown.join(", ")}${more}). ${fullTalk}`;
 }
 
 function midY(i: YardInstance) {

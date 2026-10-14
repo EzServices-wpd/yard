@@ -8437,3 +8437,16 @@ console.log("STRANGER PLAN OK", {
   if (stick.instructions.some((s) => /sit on it/i.test(s.title))) failHonesty("display sit", { titles: stick.instructions.map((s) => s.title) });
   console.log("PASS dining chair is full-size wood");
 }
+
+{
+  // Step 1 never pins every piece on one stock when the pieces come from several boards.
+  for (const prompt of ["adirondack chair", "doll bed", "trebuchet"]) {
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const ids = new Set(project.instances.map((i) => i.catalogId));
+    const s1 = plan.instructions[0]?.description ?? "";
+    const m = s1.match(/^(\S+) pieces? of ([^.]+)\./);
+    if (ids.size > 1 && m) failHonesty("step 1 pins mixed stock on one board", { prompt, s1: s1.slice(0, 120), ids: [...ids] });
+  }
+  console.log("PASS step 1 names every stock the pieces come from");
+}
