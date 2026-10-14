@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import fs from "node:fs";
 import { generateFromPrompt } from "./promptMain.ts";
-import { refinePrompt } from "./refine.ts";
+import { refinePrompt, refineProject } from "./refine.ts";
 
 const count = (q: string, re: RegExp) => generateFromPrompt(q).panels.filter((p) => re.test(p.name)).length;
 function refine(prompt: string, phrase: string) {
@@ -60,5 +60,63 @@ describe("spec 003: refine makes zero AI calls", () => {
       const src = fs.readFileSync(f, "utf8");
       assert.doesNotMatch(src, /lib\/ai|serverFn|createServerFn|runYardPrompt|lookupRecipe|interpretPrompt|hintSubject|fetch\(/);
     }
+  });
+});
+
+describe("refineProject: one change to the current build, with feedback", () => {
+  const g = generateFromPrompt;
+  it("taller changes only the height", () => assert.deepEqual(refineProject(g("bookshelf 30 wide, 60 tall, five shelves"), "make it 6 inches taller").applied, ['Height 60" → 66"']));
+  it("a bare comparative steps 2 inches", () => assert.deepEqual(refineProject(g("bookshelf 30 wide, 60 tall"), "make it narrower").applied, ['Width 30" → 28"']));
+  it("add a shelf fits the bookcase", () => assert.deepEqual(refineProject(g("bookshelf 30 wide 60 tall"), "add a shelf").applied, ["Shelves 5 → 6"]));
+  it("two clauses apply in order", () => {
+    const r = refineProject(g("bookshelf 30 wide, 60 tall"), "2 inches taller and add a shelf");
+    assert.deepEqual(r.applied, ['Height 60" → 62"', "Shelves 5 → 6"]);
+  });
+  it("conflicting clauses: the second is reported, not applied", () => {
+    const r = refineProject(g("bookshelf 30 wide, 60 tall"), "2 inches taller, 4 inches shorter");
+    assert.deepEqual(r.applied, ['Height 60" → 62"']);
+    assert.equal(r.conflicts.length, 1);
+  });
+  it("nonsense is reported as not understood", () => {
+    const r = refineProject(g("nightstand"), "paint it blue");
+    assert.equal(r.project, null);
+    assert.deepEqual(r.notUnderstood, ["paint it blue"]);
+  });
+  it("outdoor is not applied, so supports never drop", () => {
+    const b = g("garden bench");
+    const r = refineProject(b, "outdoor");
+    assert.equal(r.project, null);
+    assert.ok(r.notUnderstood.length + r.refused.length > 0);
+  });
+  it("remove the doors never merges them into one", () => {
+    const k = g("kitchen base cabinet");
+    const r = refineProject(k, "remove the doors");
+    if (r.project) assert.equal(r.project.panels.filter((p) => p.type === "door").length, 0);
+    else assert.equal(r.refused.length, 1);
+  });
+  it("add drawers to a door cabinet is refused, not bolted in behind the doors", () => {
+    for (const ph of ["add drawers", "add a drawer"]) {
+      const r = refineProject(g("kitchen base cabinet"), ph);
+      assert.equal(r.project, null, ph);
+      assert.equal(r.refused.length, 1, ph);
+    }
+  });
+  it("a bench stays a bench", () => {
+    const b = g("garden bench");
+    for (const ph of ["add a drawer", "2 inches taller", "use cedar"]) {
+      const r = refineProject(b, ph);
+      if (r.project) {
+        assert.match(r.project.name.toLowerCase(), /garden bench/, ph);
+        assert.equal(r.project.panels.filter((p) => p.type === "upright").length, 4, ph);
+        assert.equal(r.project.panels.filter((p) => p.type === "divider").length, 2, `${ph}: supports kept`);
+      }
+    }
+  });
+  it("no fetch to xAI or the lookup", () => {
+    const real = globalThis.fetch;
+    const urls: string[] = [];
+    globalThis.fetch = ((u: unknown) => { urls.push(String(u)); throw new Error("no network"); }) as typeof fetch;
+    try { for (const [q, ph] of [["nightstand", "add a drawer"], ["workbench", "use plywood"], ["bookshelf", "2 inches wider"]]) refineProject(g(q), ph); } finally { globalThis.fetch = real; }
+    assert.equal(urls.length, 0);
   });
 });

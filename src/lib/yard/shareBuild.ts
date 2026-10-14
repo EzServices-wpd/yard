@@ -99,3 +99,21 @@ export function loadSaved(): SharePayload | null {
     return null;
   }
 }
+
+const sameBuild = (a: YardProject, b: YardProject) =>
+  a.primaryMaterialId === b.primaryMaterialId && a.panels.length === b.panels.length &&
+  (["width", "height", "depth"] as const).every((k) => Math.abs(a.overall[k] - b.overall[k]) < 0.01);
+
+/**
+ * A permanent link for the build on the bench: the token carries the words, stock and (when the words
+ * don't already) the size, and is checked to rebuild the same model before it is offered. No server.
+ */
+export function permalink(project: YardProject, origin = "https://yard.wiki"): string | null {
+  const o = project.overall;
+  const sized = `${project.prompt}, ${o.width} wide ${o.height} tall ${o.depth} deep`;
+  for (const prompt of [project.prompt, sized]) {
+    const payload: SharePayload = { prompt, measure: {}, stockId: project.primaryMaterialId };
+    if (prompt.trim() && sameBuild(replayShare(payload), project)) return shareUrl(payload, origin);
+  }
+  return null;
+}

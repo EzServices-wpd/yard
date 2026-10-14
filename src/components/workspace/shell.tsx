@@ -11,6 +11,7 @@ import {
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
+import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
@@ -537,6 +538,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 />
               )}
               {!pending && workMode !== "walk" && !project.displayOnly && <RefineBox />}
+              {!pending && workMode !== "walk" && <BuildInfoPanel />}
               {steps.length > 0 && !pending && (
                 <div
                   data-bench-overlay="step-pill"
