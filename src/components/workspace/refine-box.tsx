@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useYard } from "@/lib/yard/store";
-import { refineProject, type RefineResult } from "@/lib/yard/refine";
+import { refineChips, refineProject, type RefineResult } from "@/lib/yard/refine";
 
 /**
  * Spec 003: free Refine box under the model. One change at a time to the build on the bench (size, a count,
@@ -11,6 +11,13 @@ import { refineProject, type RefineResult } from "@/lib/yard/refine";
 export function RefineBox() {
   const [value, setValue] = useState("");
   const [msg, setMsg] = useState<RefineResult | null>(null);
+  const project = useYard((s) => s.project);
+  const [chips, setChips] = useState<ReturnType<typeof refineChips>>([]);
+  useEffect(() => {
+    // Checked after paint: each chip is a trial rebuild, so the bench never waits on it.
+    const t = window.setTimeout(() => setChips(project.prompt.trim() ? refineChips(project) : []), 60);
+    return () => window.clearTimeout(t);
+  }, [project]);
   function apply(phrase: string) {
     const s = useYard.getState();
     if (!phrase.trim() || !s.project.prompt.trim()) return;
@@ -37,6 +44,15 @@ export function RefineBox() {
         />
         <button type="submit" className="h-8 shrink-0 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg">Apply</button>
       </form>
+      {chips.length > 0 && (
+        <div data-yard-refine-chips="1" className="mt-1.5 flex flex-wrap gap-1.5">
+          {chips.map((c) => (
+            <button key={c.label} type="button" onClick={() => apply(c.phrase)} className="rounded-full border border-border px-2.5 py-0.5 text-xs text-fg hover:bg-elevated">
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
       {msg && (
         <div data-yard-refine-result={msg.project ? "changed" : "kept"} className="mt-1 space-y-0.5 text-xs text-muted">
           {msg.applied.length > 0 && (

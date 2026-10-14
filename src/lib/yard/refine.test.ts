@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import fs from "node:fs";
 import { generateFromPrompt } from "./promptMain.ts";
-import { refinePrompt, refineProject } from "./refine.ts";
+import { refineChips, refinePrompt, refineProject } from "./refine.ts";
 
 const count = (q: string, re: RegExp) => generateFromPrompt(q).panels.filter((p) => re.test(p.name)).length;
 function refine(prompt: string, phrase: string) {
@@ -118,5 +118,32 @@ describe("refineProject: one change to the current build, with feedback", () => 
     globalThis.fetch = ((u: unknown) => { urls.push(String(u)); throw new Error("no network"); }) as typeof fetch;
     try { for (const [q, ph] of [["nightstand", "add a drawer"], ["workbench", "use plywood"], ["bookshelf", "2 inches wider"]]) refineProject(g(q), ph); } finally { globalThis.fetch = real; }
     assert.equal(urls.length, 0);
+  });
+});
+
+describe("refine chips are offered only when the engine supports the change", () => {
+  const labels = (q: string) => refineChips(generateFromPrompt(q)).map((c) => c.label);
+  it("bookcase: taller, wider, add a shelf; never a drawer it can't fit", () => {
+    const l = labels("bookshelf 30 wide, 60 tall");
+    for (const x of ["Taller", "Wider", "Add a shelf"]) assert.ok(l.includes(x), x);
+  });
+  it("plywood is not offered on a plywood build", () => assert.ok(!labels("bookshelf 30 wide, 60 tall").includes("Plywood")));
+  it("kitchen base with doors: no drawer chip", () => assert.ok(!labels("kitchen base cabinet").includes("Add a drawer")));
+  it("garden bench: no drawer or shelf chip", () => {
+    const l = labels("garden bench");
+    assert.ok(!l.includes("Add a drawer") && !l.includes("Add a shelf"));
+  });
+  it("every offered chip applies cleanly", () => {
+    for (const q of ["nightstand", "desk", "workbench", "bookshelf", "medicine cabinet"]) {
+      const p = generateFromPrompt(q);
+      for (const c of refineChips(p)) assert.ok(refineProject(p, c.phrase).project, `${q}: ${c.label}`);
+    }
+  });
+  it("no fetch while choosing chips", () => {
+    const real = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (() => { calls++; throw new Error("no network"); }) as typeof fetch;
+    try { for (const q of ["nightstand", "garden bench", "kitchen base cabinet"]) refineChips(generateFromPrompt(q)); } finally { globalThis.fetch = real; }
+    assert.equal(calls, 0);
   });
 });

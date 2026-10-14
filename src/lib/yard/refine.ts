@@ -140,3 +140,15 @@ export function refineProject(project: YardProject, phrase: string): RefineResul
   out.project = cur === project ? null : cur;
   return out;
 }
+
+/** One-tap refine chips: only the changes this build can take without breaking its form. */
+export const REFINE_CHIPS = [
+  { label: "Taller", phrase: "2 inches taller" },
+  { label: "Wider", phrase: "2 inches wider" },
+  { label: "Plywood", phrase: "use plywood" },
+  { label: "Add a drawer", phrase: "add a drawer" },
+  { label: "Add a shelf", phrase: "add a shelf" },
+] as const;
+export function refineChips(project: YardProject) {
+  return REFINE_CHIPS.filter((c) => refineProject(project, c.phrase).project);
+}
