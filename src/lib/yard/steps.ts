@@ -2684,8 +2684,10 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     }
     // A laminated sheet part is cut as its 3/4" layers, the glue-up step stacks them.
     const t = Math.min(w, h, d);
-    const st = sheetT(p.materialId);
-    if (/^plywood-/.test(p.materialId) && t > st + 0.05) {
+    // Lumber thicker than its board (a 1 3/4" rafter from a 2×6) is layers too, the same rule as the cut list.
+    const lumberT = getCatalogItem(p.materialId)?.category === "lumber" ? getCatalogItem(p.materialId)?.dims.height : undefined;
+    const st = lumberT ?? sheetT(p.materialId);
+    if ((/^plywood-/.test(p.materialId) || lumberT) && t > st + 0.05) {
       const [a, b] = [w, h, d].sort((x, y) => y - x);
       for (let k = Math.max(2, Math.round(t / st)); k > 0; k--) push(`${p.name.replace(/ \d+$/, "")} layer`, p.type, a, b, st);
       continue;

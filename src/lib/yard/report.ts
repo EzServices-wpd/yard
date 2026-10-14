@@ -1722,6 +1722,13 @@ function buildPlanInner(project: YardProject): BuildPlan {
   return positivePlan(spliceStep({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] }));
 }
 
+/** Pieces the "Cut the …" step tells you to cut ("4 Posts …", "16 Rafter layers …"), or null with no such step. */
+export function cutStepCount(plan: BuildPlan): number | null {
+  const st = plan.instructions.find((s) => /^Cut the\b/.test(s.title));
+  if (!st) return null;
+  return [...st.description.matchAll(/(?:^|[:.]\s)(\d+) [A-Za-z][^."]*?\d[^."]*"/g)].reduce((n, m) => n + Number(m[1]), 0);
+}
+
 /** The shortest catalogue board of the same section that is at least `len` long. */
 export function longerLumber(item: CatalogItem, len: number): CatalogItem | undefined {
   return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01)
@@ -1740,15 +1747,18 @@ export function overlongCuts(plan: BuildPlan): BuildPlan["cutList"] {
 function spliceStep(plan: BuildPlan): BuildPlan {
   const long = overlongCuts(plan);
   if (!long.length) return plan;
-  const what = long.map((c) => `${c.quantity} × ${inchFrac(c.lengthIn)}" ${c.name.toLowerCase()}`).join(", ");
+  const what = long.map((c) => `${c.quantity} × ${inchFrac(c.lengthIn)}" ${c.name.toLowerCase()}${/Glue up/.test(c.notes ?? "") ? " layers" : ""}`).join(", ");
   const at = Math.max(0, plan.instructions.findIndex((s) => /^Cut\b/.test(s.title))) + 1;
   const step: AssemblyStep = {
     step: 0,
     title: "Splice the long members",
-    description: `No board in the catalogue is long enough for the ${what}. Make each from two boards joined with a half-lap splice: cut a 12" half-lap on the mating ends, glue, and through-bolt or screw it, with the joint over a post or support, never mid-span.`,
+    description: `No board in the catalogue is long enough for the ${what}. Make each from two boards joined with a half-lap splice: cut a 12" half-lap on the mating ends, glue, and through-bolt or screw it, with the joint over a post or support. Never splice mid-span.`,
   };
+  // Buy says the same: those boards are joined end to end, the count already covers the overlap.
+  const ids = new Set(long.map((c) => (c.id ?? "").split("|")[0]));
+  const bom = plan.bom.map((b) => (b.catalogId && ids.has(b.catalogId) ? { ...b, notes: `${b.notes ?? ""} Parts longer than this board are spliced from two boards (half-lap over a support, see the splice step).`.trim() } : b));
   const instructions = [...plan.instructions.slice(0, at), step, ...plan.instructions.slice(at)].map((s, i) => ({ ...s, step: i + 1 }));
-  return { ...plan, instructions };
+  return { ...plan, instructions, bom };
 }
 
 /**

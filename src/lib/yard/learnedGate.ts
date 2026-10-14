@@ -7,7 +7,7 @@ import { getCatalogItem } from "./catalog";
 import { buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
-import { buildPlan, overlongCuts } from "./report";
+import { buildPlan, cutStepCount, overlongCuts } from "./report";
 import { generateFromPrompt } from "./promptMain";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
@@ -48,6 +48,10 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
       if (a > it.dims.height + 0.01 && b > it.dims.width + 0.01) fail.push(`${p.name}: ${a.toFixed(2)}×${b.toFixed(2)} is wider than one ${it.name}`);
     }
   }
+  // The saw step counts what the cut list counts (glue layers as layers, not parts).
+  const sawCount = cutStepCount(plan);
+  const listCount = plan.cutList.reduce((n, c) => n + c.quantity, 0);
+  if (sawCount != null && sawCount !== listCount) fail.push(`the cut step cuts ${sawCount} pieces but the cut list has ${listCount}`);
   // No cut part is longer than its bought stock unless the plan splices it.
   const spliced = plan.instructions.some((st) => /^Splice\b/.test(st.title));
   for (const c of overlongCuts(plan)) if (!spliced) fail.push(`${c.name}: ${c.lengthIn}" is longer than its ${c.material} with no splice step`);
