@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useYard } from "@/lib/yard/store";
-import { refineProject } from "@/lib/yard/refine";
+import { refineProject, type RefineResult } from "@/lib/yard/refine";
 
 /**
  * Spec 003: free Refine box under the model. One change at a time to the build on the bench (size, a count,
@@ -10,16 +10,17 @@ import { refineProject } from "@/lib/yard/refine";
  */
 export function RefineBox() {
   const [value, setValue] = useState("");
-  const [msg, setMsg] = useState<{ changed?: string[]; why?: string } | null>(null);
+  const [msg, setMsg] = useState<RefineResult | null>(null);
   function apply(phrase: string) {
     const s = useYard.getState();
     if (!phrase.trim() || !s.project.prompt.trim()) return;
     const r = refineProject(s.project, phrase);
-    if (!r.project) return setMsg({ why: r.why });
-    s.commit(r.project);
-    s.makePlan();
-    setMsg({ changed: r.changed });
-    setValue("");
+    if (r.project) {
+      s.commit(r.project);
+      s.makePlan();
+      setValue("");
+    }
+    setMsg(r);
   }
   return (
     <div data-yard-refine="1" className="border-t border-border/60 px-3 py-2">
@@ -37,14 +38,19 @@ export function RefineBox() {
         <button type="submit" className="h-8 shrink-0 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg">Apply</button>
       </form>
       {msg && (
-        <p data-yard-refine-result={msg.changed ? "changed" : "kept"} className="mt-1 flex items-center gap-2 text-xs text-muted">
-          <span className="min-w-0 flex-1">{msg.changed ? `Changed: ${msg.changed.join(" · ")}` : msg.why}</span>
-          {msg.changed && (
-            <button type="button" className="shrink-0 rounded-full px-2 py-0.5 text-fg hover:bg-elevated" onClick={() => { const s = useYard.getState(); s.undo(); s.makePlan(); setMsg(null); }}>
-              Undo
-            </button>
+        <div data-yard-refine-result={msg.project ? "changed" : "kept"} className="mt-1 space-y-0.5 text-xs text-muted">
+          {msg.applied.length > 0 && (
+            <p className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 text-fg">Changed: {msg.applied.join(" · ")}</span>
+              <button type="button" className="shrink-0 rounded-full px-2 py-0.5 text-fg hover:bg-elevated" onClick={() => { const s = useYard.getState(); s.undo(); s.makePlan(); setMsg(null); }}>
+                Undo
+              </button>
+            </p>
           )}
-        </p>
+          {msg.refused.map((t) => <p key={t}>Kept as is: {t}.</p>)}
+          {msg.conflicts.map((t) => <p key={t}>Conflict: {t}.</p>)}
+          {msg.notUnderstood.length > 0 && <p>Didn't understand "{msg.notUnderstood.join('", "')}". Try a size ("2 inches taller"), a count ("add a shelf") or a stock ("use plywood"); anything else goes in the prompt above.</p>}
+        </div>
       )}
     </div>
   );

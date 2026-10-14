@@ -31,3 +31,7 @@ asserts it is never called.
 - **R6** Refine applies one change (size, a count or the stock) to the build on the bench with `commit`, so the
   store's history keeps the previous build; the box shows "Changed: …" and an Undo. Free text is refused with a
   pointer to the prompt bar, so Refine never starts a new build.
+- **R7** (Critic, regrade 8695bdc) Every phrase gets feedback: what changed, what wasn't understood, conflicts
+  between clauses (the first wins). A change must keep the form: same name and kind, no other part counts move
+  (supports stay), the asked count is met exactly ("remove the doors" → 0, never 1), no new collisions, no
+  drawers behind doors. Otherwise it is refused with the reason.
