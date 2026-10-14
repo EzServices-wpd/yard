@@ -1,6 +1,7 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import { getCatalogItem } from "./catalog.ts";
+import { boardSection } from "./recipeBuild.ts";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan, cutStepCount, longerLumber, overlongCuts } from "./report.ts";
 
@@ -24,7 +25,20 @@ it("cut step counts match the cut list; the splice step and Buy say the splice",
     if (n != null) assert.equal(n, plan.cutList.reduce((s, c) => s + c.quantity, 0), q);
   }
   const plan = buildPlan(generateFromPrompt("pergola"));
-  assert.match(plan.instructions.find((s) => /^Cut the/.test(s.title))!.description, /16 Rafter layers/);
+  assert.match(plan.instructions.find((s) => /^Cut the/.test(s.title))!.description, /8 Rafters 120 × 5 1\/2 × 1 1\/2"/);
   assert.match(plan.instructions.find((s) => /^Splice/.test(s.title))!.description, /Never splice mid-span/);
   assert.match(plan.bom.find((b) => b.catalogId === "lumber-2x6-8")!.notes!, /spliced/);
+});
+
+// Dimensional lumber is real board sizes: the pergola rafter is one 1 1/2 × 5 1/2 2×6; Buy adds the 12" lap per splice.
+it("lumber members are real board sections; splices buy their overlap", () => {
+  const project = generateFromPrompt("pergola");
+  const rafter = project.panels.find((p) => p.name === "Rafter 1")!;
+  assert.deepEqual([rafter.size.width, rafter.size.height].sort((a, b) => a - b), [1.5, 5.5]);
+  const plan = buildPlan(project);
+  assert.equal(plan.cutList.find((c) => c.name === "Rafter")!.quantity, 8);
+  // 8 × 120" rafters spliced with a 12" lap: 8 full boards + 8 × 36" offcuts at two per board = 12.
+  assert.equal(plan.bom.find((b) => b.catalogId === "lumber-2x6-8")!.quantity, 12);
+  assert.equal(boardSection("lumber-2x6-8", { width: 1.8, height: 3.84, depth: 120 })?.height, 5.5);
+  assert.equal(boardSection("lumber-2x8-8", { width: 120, height: 7.25, depth: 3.6 }), null); // a deliberate glue-up
 });

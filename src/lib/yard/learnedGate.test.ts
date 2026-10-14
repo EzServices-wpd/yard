@@ -382,7 +382,8 @@ it("the header is the model: the saved sundial's overall size is its parts' exte
   const { buildRecipe } = await import("./recipeBuild.ts");
   const sd = RECIPES.recipes.find((r) => r.key === "sundial")!;
   const o = buildRecipe(sd, "sundial").project.overall!;
-  assert.deepEqual([o.width, o.depth, o.height], [16, 16, 37.75]);
+  // The gnomon is its recipe's 7 1/4" (one 1×8, a real board), no longer cut down to a 2×4's 3 1/2" face: the dial stands 41 1/2".
+  assert.deepEqual([o.width, o.depth, o.height], [16, 16, 41.5]);
   for (const r of RECIPES.recipes) assert.ok(!learnedRecipeFailures(r).some((f) => /^header /.test(f)), r.key);
 });
 

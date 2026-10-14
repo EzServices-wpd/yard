@@ -6,7 +6,7 @@
  */
 import { learnedRecipeFailures } from "./learnedGate";
 import { UNVERIFIED } from "./promptMain";
-import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
+import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
@@ -97,11 +97,7 @@ function pinDowel(memberId: string, section = 9): string {
  * so an arm reads as one member, not an edge-glued cluster. Parts resting on (or hanging from) a member
  * then settle onto its new face, so every load path still touches.
  */
-function snapMembers(recipe: Recipe, panels: Panel[], memberId: string): Panel[] {
-  const it = getCatalogItem(memberId);
-  const th = it?.dims.thickness ?? it?.dims.height ?? it?.dims.diameter;
-  const fw = it?.dims.width ?? it?.dims.diameter;
-  if (!it || it.category !== "lumber" || !th || !fw) return panels;
+function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[] {
   const byName = new Map(recipe.parts.map((p) => [p.name, p]));
   const base = (n: string) => byName.get(n) ?? byName.get(n.replace(/ \d+$/, ""));
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
@@ -112,26 +108,102 @@ function snapMembers(recipe: Recipe, panels: Panel[], memberId: string): Panel[]
     if (i !== j && base(p.name)?.on?.includes(base(q.name)?.name ?? "") && gap(p, q) <= CONTACT_GAP) pairs.push([i, j]);
   }));
   let out = panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
-  const order = out.map((_, i) => i).sort((a, b) => out[a].position.y - out[b].position.y);
-  for (const i of order) {
-    const p = out[i];
-    if (base(p.name)?.kind !== "member" || p.materialId !== memberId) continue;
-    const [thin, wide] = AX.map(([a, k]) => ({ a, k, v: p.size[k] })).sort((m, n) => m.v - n.v);
-    // Only a member a little fatter than one stick snaps; a deliberately big block keeps its box.
-    if (thin.v > Math.max(th * 2.2, fw * 1.1) + 0.01 || wide.v > fw * 2.2 + 0.01) continue;
+  // Members of one role at one height (front and back beam) snap together, so what spans them stays on both.
+  const groups = new Map<string, number[]>();
+  out.forEach((p, i) => {
+    if (base(p.name)?.kind !== "member" || p.polygon || !boardSection(p.materialId, p.size)) return;
+    const key = `${base(p.name)?.role}|${p.materialId}|${Math.round(p.position.y * 8)}`;
+    groups.set(key, [...(groups.get(key) ?? []), i]);
+  });
+  const order = [...groups.values()].sort((a, b) => out[a[0]].position.y - out[b[0]].position.y);
+  for (const group of order) {
     const next = out.map((q) => ({ ...q, position: { ...q.position }, size: { ...q.size } }));
-    const top0 = p.position.y + p.size.height;
-    for (const [m, to] of [[thin, Math.min(th, thin.v)], [wide, Math.min(fw, wide.v)]] as const) {
-      // Width and depth centre; height keeps the bottom on what it stands on.
-      if (m.a !== "y") next[i].position[m.a] += (next[i].size[m.k] - to) / 2;
-      next[i].size[m.k] = to;
+    for (const i of group) {
+      const p = out[i];
+      // Every lumber member snaps to its own board (the recipe's member stock or a part's named 2x6), never a scaled section.
+      const best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
+      const to = best?.to ?? p.size;
+      if (best) next[i].materialId = best.id;
+      const top0 = p.position.y + p.size.height;
+      for (const [a, k] of AX) {
+        // Width and depth centre; height keeps the bottom on what it stands on.
+        if (a !== "y") next[i].position[a] += (next[i].size[k] - to[k]) / 2;
+        next[i].size[k] = to[k];
+      }
+      // Parts resting on its top follow it (down when it shrank, up when it grew to the full board).
+      const drop = top0 - (next[i].position.y + next[i].size.height);
+      // Everything standing above it in its footprint follows (a post on a rail, the top rail, the beads on the rods), and every part resting on it.
+      const over = (q: Panel) => q.position.x < p.position.x + p.size.width - 0.01 && q.position.x + q.size.width > p.position.x + 0.01 && q.position.z < p.position.z + p.size.depth - 0.01 && q.position.z + q.size.depth > p.position.z + 0.01;
+      if (Math.abs(drop) > 0.001) out.forEach((q, a) => { if (!group.includes(a) && ((q.position.y > p.position.y + p.size.height / 2 && over(q)) || pairs.some(([x, y]) => x === a && y === i && q.position.y > top0 - 0.25 && q.position.y < top0 + CONTACT_GAP))) next[a].position.y = q.position.y - drop; });
     }
-    // Parts resting on its top follow it down.
-    const drop = top0 - (next[i].position.y + next[i].size.height);
-    if (drop > 0.001) for (const [a, b] of pairs) if (b === i && Math.abs(out[a].position.y - top0) < CONTACT_GAP) next[a].position.y -= drop;
     if (pairs.every(([a, b]) => gap(next[a], next[b]) <= CONTACT_GAP)) out = next;
   }
   return out;
+}
+
+/**
+ * Last word on lumber members placed after the snap (paddles, deck boards): one that is still not a real
+ * section is rebound to the catalogue board closest to it and cut to that board's real section, centred.
+ */
+function realBoards(recipe: Recipe, panels: Panel[]) {
+  const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
+  const touches = (a: Panel, b: Panel) => Math.max(...AX.map(([x, k]) => Math.max(a.position[x] - (b.position[x] + b.size[k]), b.position[x] - (a.position[x] + a.size[k])))) <= CONTACT_GAP;
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (part?.kind !== "member" || p.polygon || !boardSection(p.materialId, p.size)) continue;
+    const was = { position: { ...p.position }, size: { ...p.size } };
+    const touching = panels.filter((q) => q !== p && touches(p, q));
+    for (const o of closestBoards(p.materialId, p.size, !!part.stock)) {
+      for (const [a, k] of [["x", "width"], ["z", "depth"]] as const) p.position[a] = was.position[a] + (was.size[k] - o.to[k]) / 2;
+      p.size = { ...o.to };
+      // Every joint it had stays a joint, or it keeps its box (and the gate says so).
+      if (touching.every((q) => touches(p, q))) { p.materialId = o.id; break; }
+      Object.assign(p, { position: { ...was.position }, size: { ...was.size } });
+    }
+  }
+}
+
+/**
+ * Real boards a lumber member could be cut as, closest first: its own board, or (unless the recipe names
+ * the board) another board of the same length as one board thick (a 1.4×0.96 rail is a 1×2, never a 3 1/2" 2×4 face; a 1×4 is never a glued post).
+ */
+export function closestBoards(materialId: string, size: Panel["size"], named = false): { id: string; to: Panel["size"] }[] {
+  // A named board binds only when the part fits its face; a 5" deck board named "2×4" is re-picked.
+  const face = getCatalogItem(materialId)?.dims.width ?? 0;
+  if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face + 0.05) named = false;
+  const len = getCatalogItem(materialId)?.dims.length ?? 96;
+  const one = (id: string, to: Panel["size"]) => Math.min(to.width, to.height, to.depth) <= (getCatalogItem(id)?.dims.height ?? 0) + 0.01;
+  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height && c.dims.length === len)
+    .map((b) => ({ id: b.id, to: boardSection(b.id, size) }))
+    // A board the recipe names for the part (rafters from 2×6) is kept; only the default member stock is re-picked.
+    .filter((o): o is { id: string; to: Panel["size"] } => !!o.to && (o.id === materialId || (!named && one(o.id, o.to))))
+    .map((o) => ({ ...o, cost: (["width", "height", "depth"] as const).reduce((n, k) => n + Math.abs(o.to[k] - size[k]), 0), face: getCatalogItem(o.id)!.dims.width! }))
+    .sort((x, y) => x.cost - y.cost || y.face - x.face);
+}
+
+/**
+ * The real section a lumber member is cut to: one board thick (or a deliberate face glue-up of
+ * 2+ boards), the board's full face. A big block (more than ~2 boards) is not a member.
+ * Returns null when the part is not dimensional lumber or is already a real section.
+ */
+export function boardSection(materialId: string, size: Panel["size"]): Panel["size"] | null {
+  const it = getCatalogItem(materialId);
+  const th = it?.dims.height;
+  const fw = it?.dims.width;
+  if (!it || it.category !== "lumber" || it.formFactor !== "board" || !th || !fw) return null;
+  const axes = (["width", "height", "depth"] as const).map((k) => ({ k, v: size[k] })).sort((m, n) => m.v - n.v);
+  const [thin, wide] = axes;
+  if (thin.v > Math.max(th * 2.2, fw * 1.1) + 0.01 || wide.v > fw * 2.2 + 0.01) return null;
+  const out = { ...size };
+  // A square stick (4x4 post, 2x2) is the same board both ways.
+  if (Math.abs(th - fw) < 0.01) {
+    for (const m of [thin, wide]) out[m.k] = th;
+  } else {
+    // Under 2 boards thick is one board (a 1.8" rafter is a 1 1/2" 2×6); thicker is a glue-up on purpose and keeps its thickness.
+    if (thin.v < th * 2) out[thin.k] = th;
+    out[wide.k] = fw;
+  }
+  return axes.every((m) => Math.abs(out[m.k] - size[m.k]) < 0.01) ? null : out;
 }
 
 /** Floor footprint (x and z reach of the parts on the floor) and the volume-weighted center of mass. */
@@ -602,6 +674,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     if (hole && !pins.includes(p)) hole.r += 1 / 32;
   }
   rotors(recipe, panels, pins);
+  realBoards(recipe, panels);
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
   // and the parts that turn on it, so it stands on the floor, never through it.

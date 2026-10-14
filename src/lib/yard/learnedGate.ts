@@ -4,7 +4,7 @@
  * Seed recipes keep the standard validateRecipe checks; this gate is what the bot's auto-merge waits on.
  */
 import { getCatalogItem } from "./catalog";
-import { buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
+import { boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
 import { buildPlan, cutStepCount, overlongCuts } from "./report";
@@ -47,6 +47,12 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
       const [a, b] = [p.size.width, p.size.height, p.size.depth].sort((m, n) => m - n);
       if (a > it.dims.height + 0.01 && b > it.dims.width + 0.01) fail.push(`${p.name}: ${a.toFixed(2)}×${b.toFixed(2)} is wider than one ${it.name}`);
     }
+  }
+  // A lumber member is a real board section (whole boards thick, the full face), never a scaled 1.8×3.84.
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    const real = part?.kind === "member" && !p.polygon ? boardSection(p.materialId, p.size) : null;
+    if (real) fail.push(`${p.name}: ${[p.size.width, p.size.height, p.size.depth].map((n) => Math.round(n * 100) / 100).join("×")} is not a real ${getCatalogItem(p.materialId)?.name} section`);
   }
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   const sawCount = cutStepCount(plan);

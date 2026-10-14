@@ -691,7 +691,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     // A part wider than the stick's face is edge-glued from that many strips, each its full length.
     const strips = (c: CutLine) => (item?.dims.width && c.widthIn < c.lengthIn ? Math.max(1, Math.ceil((c.widthIn - 0.01) / item.dims.width)) : 1);
     const lengths = lines.flatMap((c) => Array.from({ length: c.quantity * strips(c) }, () => Math.max(c.lengthIn, c.widthIn)));
-    const packed = packLengths(lengths, stockLen, 0.125);
+    // A member longer than the board is half-lap spliced: each joint needs SPLICE_LAP more board (the splice step's 12").
+    const packed = packLengths(lengths.map((n) => (n > stockLen + 0.01 ? n + SPLICE_LAP * Math.ceil((n - stockLen) / (stockLen - SPLICE_LAP)) : n)), stockLen, 0.125);
     const qty = Math.max(1, packed.sticks);
     const pieceQty = lengths.length;
     const feet = Math.round(stockLen / 12);
@@ -1729,6 +1730,9 @@ export function cutStepCount(plan: BuildPlan): number | null {
   return [...st.description.matchAll(/(?:^|[:.]\s)(\d+) [A-Za-z][^."]*?\d[^."]*"/g)].reduce((n, m) => n + Number(m[1]), 0);
 }
 
+/** Overlap of a half-lap splice: Buy adds it per joint, the splice step cuts it. */
+const SPLICE_LAP = 12;
+
 /** The shortest catalogue board of the same section that is at least `len` long. */
 export function longerLumber(item: CatalogItem, len: number): CatalogItem | undefined {
   return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01)
@@ -1752,7 +1756,7 @@ function spliceStep(plan: BuildPlan): BuildPlan {
   const step: AssemblyStep = {
     step: 0,
     title: "Splice the long members",
-    description: `No board in the catalogue is long enough for the ${what}. Make each from two boards joined with a half-lap splice: cut a 12" half-lap on the mating ends, glue, and through-bolt or screw it, with the joint over a post or support. Never splice mid-span.`,
+    description: `No board in the catalogue is long enough for the ${what}. Make each from two boards joined with a half-lap splice: cut a ${SPLICE_LAP}" half-lap on the mating ends, glue, and through-bolt or screw it, with the joint over a post or support. Never splice mid-span.`,
   };
   // Buy says the same: those boards are joined end to end, the count already covers the overlap.
   const ids = new Set(long.map((c) => (c.id ?? "").split("|")[0]));

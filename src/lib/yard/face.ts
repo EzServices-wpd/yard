@@ -588,8 +588,9 @@ export function foldRepeats(project: YardProject, steps: AssemblyStep[]): Assemb
   const drop = new Set<number>();
   const out = steps.map((s) => ({ ...s }));
   for (const [f, idx] of groups) {
-    if (idx.length < 2) continue;
     const used = idx.flatMap((i) => steps[i].partsUsed ?? []);
+    // One step that already sets several of the family (rods 1–9 in one step) folds the same way.
+    if (idx.length < 2 && used.length < 2) continue;
     let text = steps[idx[0]].description;
     for (const g of families) text = text.replace(new RegExp(`the (?:[A-Z]{1,2} )?${g} \\d+\\b`, "gi"), g === f ? `each ${g}` : `its ${g}`);
     text = [...new Set(text.split(/(?<=\.)\s+/).filter((x) => !/^Where:/.test(x)))].join(" ");
