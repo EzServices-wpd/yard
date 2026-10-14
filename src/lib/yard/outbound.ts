@@ -25,7 +25,7 @@ export const AFFILIATE_ENV = {
 
 /** Server/node aliases (guards, SSR) — same values, no prefix. */
 const NODE_ALIASES: Record<keyof AffiliateConfig, string[]> = {
-  amazonTag: ["NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG", "AMAZON_ASSOCIATES_TAG", "AMAZON_ASSOCIATE_TAG"],
+  amazonTag: ["YARD_AMAZON_TAG", "NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG", "AMAZON_ASSOCIATES_TAG", "AMAZON_ASSOCIATE_TAG"],
   homedepotTemplate: ["HOMEDEPOT_AFFILIATE_TEMPLATE"],
   lowesTemplate: ["LOWES_AFFILIATE_TEMPLATE"],
 };

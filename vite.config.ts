@@ -109,6 +109,8 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
   },
   resolve: { tsconfigPaths: true },
+  // The Amazon Associates tag for Buy links: YARD_AMAZON_TAG on Vercel (no tag when unset). Not a secret.
+  define: { "import.meta.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG": JSON.stringify(process.env.YARD_AMAZON_TAG || process.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG || "") },
   plugins: [
     pgliteBootstrapPlugin(),
     authPopupPlugin(),
