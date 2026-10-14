@@ -128,9 +128,9 @@ export function refineProject(project: YardProject, phrase: string): RefineResul
     const keys = changed.map((c) => c.split(" ")[0]);
     const clash = keys.find((k) => touched.has(k));
     if (clash) { out.conflicts.push(`"${clause}" and "${touched.get(clash)}" both change ${clash.toLowerCase()}; kept the first`); continue; }
-    if (!changed.length) { out.refused.push(`"${clause}": this build already has that`); continue; }
     const noun = r.kind === "count" ? Object.keys(COUNTS).find((k) => r.prompt.endsWith(` ${k}`)) : undefined;
     const want = noun ? Number(r.prompt.match(/with (\d+) \w+$/)?.[1]) : undefined;
+    if (!changed.length) { out.refused.push(`"${clause}": ${noun && want != null && n(cur, TARGET[noun]![0]) !== want ? `the ${stem(cur.name) || "build"} can't take ${noun} without changing its form` : "this build already has that"}`); continue; }
     const why = formBreak(cur, next, r.kind, noun, want);
     if (why) { out.refused.push(`"${clause}": ${why}`); continue; }
     keys.forEach((k) => touched.set(k, clause));

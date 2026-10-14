@@ -147,3 +147,15 @@ describe("refine chips are offered only when the engine supports the change", ()
     assert.equal(calls, 0);
   });
 });
+
+it("refine keeps the form: remove doors keeps the carcase, add drawer on a bench is refused plainly, outdoor drops nothing", () => {
+  const bc = generateFromPrompt("bookcase 36 wide 72 tall with two doors");
+  const r1 = refineProject(bc, "remove doors");
+  assert.equal(r1.project?.panels.filter((p) => p.type === "upright").length, bc.panels.filter((p) => p.type === "upright").length);
+  const r2 = refineProject(generateFromPrompt("entry bench 48 wide"), "add a drawer");
+  assert.equal(r2.project, null);
+  assert.match(r2.refused[0], /can't take drawers/);
+  const r3 = refineProject(bc, "outdoor");
+  assert.equal(r3.project, null);
+  assert.deepEqual(r3.notUnderstood, ["outdoor"]);
+});
