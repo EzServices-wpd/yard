@@ -11,18 +11,14 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
-/** Plausible analytics. Defaults to production host. Set VITE_PUBLIC_PLAUSIBLE_DOMAIN=off to disable. */
-function Plausible() {
+/** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
+function VercelAnalytics() {
   useEffect(() => {
-    const raw = (import.meta.env.VITE_PUBLIC_PLAUSIBLE_DOMAIN as string | undefined)?.trim();
-    if (raw === "off") return;
-    const domain = raw || host;
-    if (!domain) return;
-    if (document.querySelector(`script[data-domain="${domain}"]`)) return;
+    if (!/yard\.wiki$/.test(location.hostname) || document.querySelector("script[data-yard-va]")) return;
     const s = document.createElement("script");
     s.defer = true;
-    s.dataset.domain = domain;
-    s.src = "https://plausible.io/js/script.js";
+    s.dataset.yardVa = "1";
+    s.src = "/_vercel/insights/script.js";
     document.head.appendChild(s);
   }, []);
   return null;
@@ -82,7 +78,7 @@ export const Route = createRootRoute({
           <Outlet />
         </AuthProvider>
         <Scripts />
-        <Plausible />
+        <VercelAnalytics />
       </body>
     </html>
   ),

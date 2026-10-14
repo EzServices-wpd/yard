@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as GallerySlugRouteImport } from './routes/gallery/$slug'
@@ -44,6 +45,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/ideas': typeof IdeasRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/gallery/': typeof GalleryIndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/ideas': typeof IdeasRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/gallery': typeof GalleryIndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/ideas': typeof IdeasRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/gallery/': typeof GalleryIndexRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/ideas'
     | '/login'
     | '/privacy'
+    | '/terms'
     | '/workspace'
     | '/gallery/$slug'
     | '/gallery/'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/ideas'
     | '/login'
     | '/privacy'
+    | '/terms'
     | '/workspace'
     | '/gallery/$slug'
     | '/gallery'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/ideas'
     | '/login'
     | '/privacy'
+    | '/terms'
     | '/workspace'
     | '/gallery/$slug'
     | '/gallery/'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   IdeasRoute: typeof IdeasRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
   GallerySlugRoute: typeof GallerySlugRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/workspace': {
       id: '/workspace'
       path: '/workspace'
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdeasRoute: IdeasRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
   GallerySlugRoute: GallerySlugRoute,
   GalleryIndexRoute: GalleryIndexRoute,

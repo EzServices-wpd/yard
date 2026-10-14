@@ -10,6 +10,7 @@ const NAV = [
 const FOOT = [
   { to: "/about" as const, label: "About" },
   { to: "/privacy" as const, label: "Privacy" },
+  { to: "/terms" as const, label: "Terms" },
 ];
 
 export function SiteChrome({
@@ -17,7 +18,7 @@ export function SiteChrome({
   active,
 }: {
   children: ReactNode;
-  active?: "ideas" | "about" | "privacy" | "home";
+  active?: "ideas" | "about" | "privacy" | "terms" | "home";
 }) {
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -50,7 +51,7 @@ export function SiteChrome({
   );
 }
 
-export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" | "home" }) {
+export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" | "terms" | "home" }) {
   return (
     <footer className="border-t border-rule/80">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +63,8 @@ export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" 
               to={n.to}
               className={`text-sm transition-colors duration-150 ${
                 (n.to === "/about" && active === "about") ||
-                (n.to === "/privacy" && active === "privacy")
+                (n.to === "/privacy" && active === "privacy") ||
+                (n.to === "/terms" && active === "terms")
                   ? "text-ink"
                   : "text-ink-muted hover:text-ink"
               }`}
@@ -70,8 +72,8 @@ export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" 
               {n.label}
             </Link>
           ))}
-          <a href="mailto:hello@yard.wiki" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
-            Contact
+          <a href="mailto:hello@yard.wiki?subject=Yard%20feedback" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+            Feedback
           </a>
         </nav>
       </div>

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { underDailyCap } from "./dailyCap.server";
 import { FORGE_CATALOG } from "@/lib/yard/catalog";
 import { isFormOp, isFormStroke, subjectFromPrompt, type FormOp, type FormRecipe, type FormStroke } from "@/lib/yard/form";
 import { parseModelJson } from "@/lib/yard/parseJson";
@@ -36,6 +37,7 @@ async function chat(
 ) {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
+  if (!underDailyCap()) return { ok: false as const, error: "That's today's free AI lookups for this visitor. Built-in shapes and saved recipes still work; lookups reset tomorrow." };
 
   const body: Record<string, unknown> = {
     model: "grok-4.5",

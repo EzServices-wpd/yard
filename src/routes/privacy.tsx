@@ -27,7 +27,7 @@ function PrivacyPage() {
         <h1 className="mt-3 font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-4 text-sm text-ink-muted">Last updated 28 Sep 2026.</p>
+        <p className="mt-4 text-sm text-ink-muted">Last updated 14 Oct 2026.</p>
 
         <div className="mt-8 space-y-8 text-base leading-relaxed text-ink-muted">
           <section>
@@ -64,16 +64,13 @@ function PrivacyPage() {
           <section>
             <h2 className="font-display text-xl text-ink">Analytics</h2>
             <p className="mt-2">
-              Yard uses Plausible Analytics on production to count visits in aggregate — page views,
-              referrers, and device class. Plausible does not use advertising cookies and does not
-              track you across other sites. You can read their policy at{" "}
-              <a
-                href="https://plausible.io/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-rule underline-offset-4 hover:decoration-ink"
-              >
-                plausible.io/privacy
+              Yard uses Vercel Web Analytics to count visits in aggregate: page views, referrers,
+              country and device class. It sets no cookies and does not track you across other sites.
+              AI lookups are limited to a fair number per visitor each day; to apply that limit, the
+              server counts lookups by IP address for that day only and keeps nothing else. Vercel&apos;s
+              policy is at{" "}
+              <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+                vercel.com/docs/analytics/privacy-policy
               </a>
               .
             </p>
