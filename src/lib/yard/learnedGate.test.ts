@@ -340,7 +340,8 @@ it("Critic's 10-13 classes are gate checks: holes no part has, numbered slugs, h
   assert.equal(plan.cutList.find((c) => /^peg$/i.test(c.name))?.quantity, 4);
   assert.match(plan.cutList.find((c) => /^peg$/i.test(c.name))!.material, /1\/4" Hardwood Dowel/);
   assert.ok(!plan.bom.some((b) => /screw/i.test(b.name)));
-  assert.match(f("knife-block-maple"), /under 3\/4" takes a screw/);
+  // Engine side: its 0.45" sides are glued at build time, so the gate's screw check finds nothing.
+  assert.doesNotMatch(f("knife-block-maple"), /takes a screw/);
   for (const k of ["water-wheel", "abacus"]) assert.equal(f(k), "", k);
 });
 
