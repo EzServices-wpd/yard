@@ -1,1 +1,7627 @@
-{"schema": 1, "recipes": [{"key": "ferris-wheel", "synonyms": ["ferris"], "version": 1, "trust": "candidate", "title": "Ferris wheel", "size": {"width": 18, "height": 19, "depth": 8}, "defining": ["wheel", "axle", "a-frame", "gondola"], "parts": [{"role": "base", "name": "Base", "box": [0, 0, 0, 1, 0.03, 1], "kind": "panel"}, {"role": "a-frame", "name": "Left front leg", "box": [0.4, 0.03, 0, 0.04, 0.5, 0.1], "kind": "member", "on": ["Base"]}, {"role": "a-frame", "name": "Left back leg", "box": [0.4, 0.03, 0.9, 0.04, 0.5, 0.1], "kind": "member", "on": ["Base"]}, {"role": "a-frame", "name": "Right front leg", "box": [0.56, 0.03, 0, 0.04, 0.5, 0.1], "kind": "member", "on": ["Base"]}, {"role": "a-frame", "name": "Right back leg", "box": [0.56, 0.03, 0.9, 0.04, 0.5, 0.1], "kind": "member", "on": ["Base"]}, {"role": "axle", "name": "Axle", "box": [0.44, 0.5, 0, 0.12, 0.04, 1], "kind": "member", "on": ["Left front leg", "Left back leg", "Right front leg", "Right back leg"]}, {"role": "wheel", "name": "Front rim", "box": [0.03, 0.06, 0.25, 0.94, 0.92, 0.04], "kind": "panel", "on": ["Axle"]}, {"role": "wheel", "name": "Back rim", "box": [0.03, 0.06, 0.71, 0.94, 0.92, 0.04], "kind": "panel", "on": ["Axle"]}, {"role": "spoke", "name": "Front spoke", "box": [0.48, 0.06, 0.21, 0.04, 0.92, 0.04], "kind": "member", "on": ["Front rim"]}, {"role": "spoke", "name": "Back spoke", "box": [0.48, 0.06, 0.75, 0.04, 0.92, 0.04], "kind": "member", "on": ["Back rim"]}, {"role": "gondola", "name": "Gondola 1", "box": [0.45, 0.88, 0.29, 0.09, 0.07, 0.42], "kind": "panel", "on": ["Front rim", "Back rim"]}, {"role": "gondola", "name": "Gondola 2", "box": [0.03, 0.45, 0.29, 0.09, 0.07, 0.42], "kind": "panel", "on": ["Front rim", "Back rim"]}, {"role": "gondola", "name": "Gondola 3", "box": [0.88, 0.45, 0.29, 0.09, 0.07, 0.42], "kind": "panel", "on": ["Front rim", "Back rim"]}, {"role": "gondola", "name": "Gondola 4", "box": [0.45, 0.02, 0.29, 0.09, 0.07, 0.42], "kind": "panel", "on": ["Front rim", "Back rim"]}], "notes": ["The wheel stands upright on its axle between two A-frames and turns."], "stock": "popsicle-standard", "sheet": "popsicle-standard", "moving": [{"part": "Front rim", "motion": "spin"}]}, {"key": "glider", "synonyms": ["balsa glider", "glider plane"], "version": 1, "trust": "candidate", "title": "Balsa glider", "size": {"width": 16, "height": 2.5, "depth": 12}, "defining": ["fuselage", "wing", "tail", "fin"], "parts": [{"role": "fuselage", "name": "Fuselage", "box": [0.47, 0, 0, 0.06, 0.3, 1], "kind": "member"}, {"role": "wing", "name": "Wing", "box": [0, 0.3, 0.25, 1, 0.1, 0.25], "kind": "panel", "on": ["Fuselage"]}, {"role": "tail", "name": "Tailplane", "box": [0.32, 0.3, 0.86, 0.36, 0.08, 0.14], "kind": "panel", "on": ["Fuselage"]}, {"role": "fin", "name": "Fin", "box": [0.485, 0.38, 0.86, 0.03, 0.6, 0.14], "kind": "panel", "on": ["Tailplane"]}, {"role": "nose", "name": "Nose weight", "box": [0.46, 0.05, 0, 0.08, 0.2, 0.06], "kind": "panel", "on": ["Fuselage"]}], "notes": ["Glue only; thin balsa splits on screws.", "Sand the wing's leading edge round for lift."], "stock": "popsicle-jumbo", "sheet": "plywood-1-4-4x8"}, {"key": "toy-airplane", "synonyms": ["airplane", "plane"], "version": 1, "trust": "candidate", "title": "Toy airplane", "size": {"width": 14, "height": 7, "depth": 14}, "defining": ["fuselage", "wing", "tail", "wheel", "axle", "propeller"], "parts": [{"role": "wheel", "name": "Left wheel", "box": [0.2, 0, 0.22, 0.05, 0.16, 0.12], "kind": "panel"}, {"role": "wheel", "name": "Right wheel", "box": [0.75, 0, 0.22, 0.05, 0.16, 0.12], "kind": "panel"}, {"role": "axle", "name": "Axle", "box": [0.25, 0.06, 0.25, 0.5, 0.04, 0.06], "kind": "member", "on": ["Left wheel", "Right wheel"]}, {"role": "fuselage", "name": "Fuselage", "box": [0.42, 0.1, 0.06, 0.16, 0.3, 0.94], "kind": "member", "on": ["Axle"]}, {"role": "wing", "name": "Wing", "box": [0, 0.25, 0.25, 1, 0.07, 0.22], "kind": "panel", "on": ["Fuselage"]}, {"role": "tail", "name": "Tailplane", "box": [0.3, 0.4, 0.86, 0.4, 0.05, 0.14], "kind": "panel", "on": ["Fuselage"]}, {"role": "fin", "name": "Fin", "box": [0.485, 0.45, 0.86, 0.03, 0.4, 0.14], "kind": "panel", "on": ["Tailplane"]}, {"role": "propeller", "name": "Prop shaft", "box": [0.49, 0.23, 0, 0.02, 0.04, 0.06], "kind": "member", "on": ["Fuselage"]}, {"role": "propeller", "name": "Propeller", "box": [0.3, 0.235, 0, 0.4, 0.03, 0.02], "kind": "panel", "on": ["Prop shaft"]}], "notes": ["The propeller spins on a dowel shaft; the wheels turn on a through axle."], "modifiers": ["propeller"], "stock": "lumber-1x4-8", "sheet": "lumber-1x4-8", "moving": [{"part": "Propeller", "motion": "spin"}, {"part": "Left wheel", "motion": "spin"}]}, {"key": "reindeer", "synonyms": [], "version": 1, "trust": "candidate", "title": "Reindeer", "size": {"width": 36, "height": 40, "depth": 10}, "defining": ["leg", "body", "head", "antler"], "parts": [{"role": "leg", "name": "Front left leg", "box": [0.7, 0, 0.1, 0.08, 0.45, 0.2], "kind": "member"}, {"role": "leg", "name": "Front right leg", "box": [0.7, 0, 0.7, 0.08, 0.45, 0.2], "kind": "member"}, {"role": "leg", "name": "Back left leg", "box": [0.15, 0, 0.1, 0.08, 0.45, 0.2], "kind": "member"}, {"role": "leg", "name": "Back right leg", "box": [0.15, 0, 0.7, 0.08, 0.45, 0.2], "kind": "member"}, {"role": "body", "name": "Body", "box": [0.12, 0.45, 0.1, 0.7, 0.2, 0.8], "kind": "member", "on": ["Front left leg", "Front right leg", "Back left leg", "Back right leg"]}, {"role": "neck", "name": "Neck", "box": [0.72, 0.65, 0.3, 0.1, 0.15, 0.4], "kind": "member", "on": ["Body"]}, {"role": "head", "name": "Head", "box": [0.72, 0.8, 0.3, 0.26, 0.1, 0.4], "kind": "member", "on": ["Neck"]}, {"role": "antler", "name": "Left antler", "box": [0.74, 0.9, 0.3, 0.03, 0.1, 0.05], "kind": "member", "on": ["Head"]}, {"role": "antler", "name": "Right antler", "box": [0.74, 0.9, 0.65, 0.03, 0.1, 0.05], "kind": "member", "on": ["Head"]}, {"role": "antler", "name": "Left tine", "box": [0.62, 0.95, 0.3, 0.12, 0.03, 0.05], "kind": "member", "on": ["Left antler"]}, {"role": "antler", "name": "Right tine", "box": [0.62, 0.95, 0.65, 0.12, 0.03, 0.05], "kind": "member", "on": ["Right antler"]}, {"role": "tail", "name": "Tail", "box": [0.06, 0.58, 0.45, 0.06, 0.05, 0.1], "kind": "member", "on": ["Body"]}], "notes": ["Antlers branch from the head; screw each joint with two 2½″ screws."], "stock": "lumber-2x4-8", "sheet": "lumber-2x4-8"}, {"key": "marble-run", "synonyms": ["marble maze"], "version": 1, "trust": "candidate", "title": "Marble run", "size": {"width": 24, "height": 30, "depth": 8}, "defining": ["ramp", "drop", "catch", "backboard"], "parts": [{"role": "base", "name": "Base", "box": [0, 0, 0, 1, 0.04, 1], "kind": "panel"}, {"role": "backboard", "name": "Back board", "box": [0, 0.04, 0, 1, 0.96, 0.15], "kind": "panel", "on": ["Base"]}, {"role": "ramp", "name": "Ramp 1", "box": [0.05, 0.8, 0.15, 0.75, 0.03, 0.6], "kind": "panel", "on": ["Back board"]}, {"role": "ramp", "name": "Ramp 1 rail", "box": [0.05, 0.83, 0.72, 0.75, 0.04, 0.03], "kind": "panel", "on": ["Ramp 1"]}, {"role": "ramp", "name": "Ramp 2", "box": [0.2, 0.6, 0.15, 0.75, 0.03, 0.6], "kind": "panel", "on": ["Back board"]}, {"role": "ramp", "name": "Ramp 2 rail", "box": [0.2, 0.63, 0.72, 0.75, 0.04, 0.03], "kind": "panel", "on": ["Ramp 2"]}, {"role": "ramp", "name": "Ramp 3", "box": [0.05, 0.4, 0.15, 0.75, 0.03, 0.6], "kind": "panel", "on": ["Back board"]}, {"role": "ramp", "name": "Ramp 3 rail", "box": [0.05, 0.43, 0.72, 0.75, 0.04, 0.03], "kind": "panel", "on": ["Ramp 3"]}, {"role": "ramp", "name": "Ramp 4", "box": [0.2, 0.2, 0.15, 0.75, 0.03, 0.6], "kind": "panel", "on": ["Back board"]}, {"role": "ramp", "name": "Ramp 4 rail", "box": [0.2, 0.23, 0.72, 0.75, 0.04, 0.03], "kind": "panel", "on": ["Ramp 4"]}, {"role": "drop", "name": "Drop 1", "box": [0.8, 0.63, 0.15, 0.15, 0.17, 0.02], "kind": "panel", "on": ["Back board"]}, {"role": "drop", "name": "Drop 2", "box": [0.05, 0.43, 0.15, 0.15, 0.17, 0.02], "kind": "panel", "on": ["Back board"]}, {"role": "drop", "name": "Drop 3", "box": [0.8, 0.23, 0.15, 0.15, 0.17, 0.02], "kind": "panel", "on": ["Back board"]}, {"role": "start", "name": "Start cup", "box": [0.05, 0.83, 0.15, 0.15, 0.06, 0.3], "kind": "panel", "on": ["Ramp 1"]}, {"role": "catch", "name": "Catch tray", "box": [0.7, 0.04, 0.15, 0.3, 0.06, 0.6], "kind": "panel", "on": ["Base"]}], "notes": ["Tilt each ramp about 5° down toward its drop; the marble zig-zags to the catch tray."], "stock": "cardboard-corrugated-sheet", "sheet": "cardboard-corrugated-sheet", "moving": []}, {"key": "tipi", "synonyms": [], "version": 1, "trust": "candidate", "title": "Kids tipi", "size": {"width": 48, "height": 66, "depth": 48}, "defining": ["pole", "cover"], "parts": [{"role": "pole", "name": "Pole 1", "box": [0.05, 0, 0.05, 0.05, 1, 0.05], "kind": "member"}, {"role": "pole", "name": "Pole 2", "box": [0.9, 0, 0.05, 0.05, 1, 0.05], "kind": "member"}, {"role": "pole", "name": "Pole 3", "box": [0.05, 0, 0.9, 0.05, 1, 0.05], "kind": "member"}, {"role": "pole", "name": "Pole 4", "box": [0.9, 0, 0.9, 0.05, 1, 0.05], "kind": "member"}, {"role": "tie", "name": "Back tie", "box": [0, 0.92, 0.05, 1, 0.04, 0.05], "kind": "member", "on": ["Pole 1", "Pole 2"]}, {"role": "tie", "name": "Front tie", "box": [0, 0.92, 0.9, 1, 0.04, 0.05], "kind": "member", "on": ["Pole 3", "Pole 4"]}, {"role": "cover", "name": "Canvas cover 1", "box": [0.05, 0.02, 0.1, 0.9, 0.9, 0.01], "kind": "cover", "on": ["Pole 1", "Pole 2"]}, {"role": "cover", "name": "Canvas cover 2", "box": [0.1, 0.02, 0.1, 0.01, 0.9, 0.8], "kind": "cover", "on": ["Pole 1", "Pole 3"]}, {"role": "cover", "name": "Canvas cover 3", "box": [0.89, 0.02, 0.1, 0.01, 0.9, 0.8], "kind": "cover", "on": ["Pole 2", "Pole 4"]}, {"role": "cover", "name": "Canvas cover 4", "box": [0.05, 0.02, 0.89, 0.3, 0.9, 0.01], "kind": "cover", "on": ["Pole 3"]}, {"role": "cover", "name": "Canvas cover 5", "box": [0.65, 0.02, 0.89, 0.3, 0.9, 0.01], "kind": "cover", "on": ["Pole 4"]}], "notes": ["A kid-size play tipi: lash the poles at the top and drape the fabric cover, with a door gap at the front."], "stock": "dowel-1-1-4-36", "sheet": "other"}, {"key": "treasure-chest", "synonyms": ["pirate chest"], "version": 1, "trust": "candidate", "title": "Treasure chest", "size": {"width": 10, "height": 7, "depth": 6}, "defining": ["wall", "lid", "hinge"], "parts": [{"role": "bottom", "name": "Bottom", "box": [0, 0, 0, 1, 0.08, 1], "kind": "panel"}, {"role": "wall", "name": "Front wall", "box": [0, 0.08, 0.92, 1, 0.62, 0.08], "kind": "panel", "on": ["Bottom"]}, {"role": "wall", "name": "Back wall", "box": [0, 0.08, 0, 1, 0.62, 0.08], "kind": "panel", "on": ["Bottom"]}, {"role": "wall", "name": "Left wall", "box": [0, 0.08, 0.08, 0.08, 0.62, 0.84], "kind": "panel", "on": ["Bottom"]}, {"role": "wall", "name": "Right wall", "box": [0.92, 0.08, 0.08, 0.08, 0.62, 0.84], "kind": "panel", "on": ["Bottom"]}, {"role": "lid", "name": "Lid", "box": [0, 0.7, 0, 1, 0.12, 1], "kind": "panel", "on": ["Front wall", "Back wall", "Left wall", "Right wall"]}, {"role": "hinge", "name": "Hinge", "box": [0.2, 0.64, 0, 0.12, 0.12, 0.02], "kind": "hardware", "on": ["Back wall"]}, {"role": "latch", "name": "Latch", "box": [0.45, 0.6, 0.98, 0.1, 0.15, 0.02], "kind": "hardware", "on": ["Front wall"]}], "notes": ["A craft-size chest; the lid swings up on a hinge at the back."], "stock": "popsicle-standard", "sheet": "popsicle-standard", "moving": [{"part": "Lid", "motion": "hinge"}]}, {"key": "compost-bin", "synonyms": ["compost bay", "compost bins"], "version": 1, "trust": "candidate", "title": "Compost bin", "size": {"width": 36, "height": 36, "depth": 36}, "defining": ["post", "slat", "divider"], "parts": [{"role": "post", "name": "Back post", "box": [0, 0, 0, 0.035, 1, 0.1], "kind": "member", "repeat": "between", "stock": "lumber-4x4-8"}, {"role": "post", "name": "Front post", "box": [0, 0, 0.9, 0.035, 1, 0.1], "kind": "member", "repeat": "between", "stock": "lumber-4x4-8"}, {"role": "slat", "name": "Back slats", "box": [0, 0.04, 0, 1, 0.96, 0.03], "kind": "panel", "on": ["Back post"], "repeat": "each"}, {"role": "divider", "name": "Bay wall", "box": [0, 0.04, 0.1, 0.02, 0.96, 0.8], "kind": "panel", "on": ["Back post", "Front post"], "repeat": "between"}, {"role": "slat", "name": "Front slats", "box": [0, 0.04, 0.97, 1, 0.5, 0.03], "kind": "panel", "on": ["Front post"], "repeat": "each"}], "notes": ["Open slatted bays share their posts; no floor or roof so the pile drains and breathes.", "Front slats lift out to turn the pile.", "Set the posts in the ground 12″ deep."], "outdoor": true, "count": {"word": "bays", "default": 1, "unit": {"width": 36}}, "stock": "lumber-2x6-8", "sheet": "lumber-2x6-8"}, {"key": "deck-stairs", "synonyms": ["deck steps", "porch steps", "porch stairs", "outdoor stairs"], "version": 1, "trust": "candidate", "title": "Deck stairs", "size": {"width": 36, "height": 22.5, "depth": 31.5}, "defining": ["stringer", "tread", "riser"], "parts": [{"role": "stringer", "name": "Left stringer", "box": [0, 0, 0, 0.04, 1, 1], "kind": "member"}, {"role": "stringer", "name": "Center stringer", "box": [0.48, 0, 0, 0.04, 1, 1], "kind": "member"}, {"role": "stringer", "name": "Right stringer", "box": [0.96, 0, 0, 0.04, 1, 1], "kind": "member"}, {"role": "tread", "name": "Tread", "box": [0, 0.85, 0, 1, 0.15, 1], "kind": "panel", "on": ["Left stringer", "Center stringer", "Right stringer"], "repeat": "stair"}, {"role": "riser", "name": "Riser", "box": [0, 0, 0.95, 1, 0.85, 0.05], "kind": "panel", "on": ["Left stringer", "Center stringer", "Right stringer"], "repeat": "stair"}], "notes": ["Cut the stringers to a sawtooth: 7½″ rise and 10½″ run per step; set the stringer feet on pier blocks and bolt the top to the deck rim."], "outdoor": true, "count": {"word": "steps", "default": 3, "unit": {"height": 7.5, "depth": 10.5}}, "stock": "lumber-2x12-8", "sheet": "lumber-2x6-8"}, {"key": "pergola", "synonyms": [], "version": 1, "trust": "candidate", "title": "Pergola", "size": {"width": 120, "height": 96, "depth": 120}, "defining": ["post", "beam", "rafter"], "parts": [{"role": "post", "name": "Post 1", "box": [0.08, 0, 0.08, 0.03, 0.9, 0.03], "kind": "member", "stock": "lumber-4x4-8"}, {"role": "post", "name": "Post 2", "box": [0.89, 0, 0.08, 0.03, 0.9, 0.03], "kind": "member", "stock": "lumber-4x4-8"}, {"role": "post", "name": "Post 3", "box": [0.08, 0, 0.89, 0.03, 0.9, 0.03], "kind": "member", "stock": "lumber-4x4-8"}, {"role": "post", "name": "Post 4", "box": [0.89, 0, 0.89, 0.03, 0.9, 0.03], "kind": "member", "stock": "lumber-4x4-8"}, {"role": "beam", "name": "Front beam", "box": [0, 0.9, 0.08, 1, 0.06, 0.03], "kind": "member", "on": ["Post 1", "Post 2"], "stock": "lumber-2x8-8"}, {"role": "beam", "name": "Back beam", "box": [0, 0.9, 0.89, 1, 0.06, 0.03], "kind": "member", "on": ["Post 3", "Post 4"], "stock": "lumber-2x8-8"}, {"role": "rafter", "name": "Rafter 1", "box": [0.04, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 2", "box": [0.17, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 3", "box": [0.3, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 4", "box": [0.43, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 5", "box": [0.56, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 6", "box": [0.69, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 7", "box": [0.82, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}, {"role": "rafter", "name": "Rafter 8", "box": [0.95, 0.96, 0, 0.015, 0.04, 1], "kind": "member", "on": ["Front beam", "Back beam"], "stock": "lumber-2x6-8"}], "notes": ["4×4 posts set in concrete footings, doubled beams, rafters on top."], "feet": true, "outdoor": true, "stock": "lumber-4x4-8", "sheet": "lumber-2x6-8"}, {"key": "taj-mahal", "synonyms": ["taj"], "version": 1, "trust": "candidate", "title": "Taj Mahal", "size": {"width": 24, "height": 20, "depth": 24}, "defining": ["plinth", "minaret", "dome", "drum", "iwan"], "parts": [{"role": "plinth", "name": "Plinth", "box": [0, 0, 0, 1, 0.08, 1], "kind": "panel"}, {"role": "minaret", "name": "Minaret 1", "box": [0.02, 0.08, 0.02, 0.06, 0.72, 0.06], "kind": "member", "on": ["Plinth"]}, {"role": "minaret", "name": "Minaret 1 cap", "box": [0.01, 0.8, 0.01, 0.08, 0.05, 0.08], "kind": "panel", "on": ["Minaret 1"]}, {"role": "minaret", "name": "Minaret 2", "box": [0.92, 0.08, 0.02, 0.06, 0.72, 0.06], "kind": "member", "on": ["Plinth"]}, {"role": "minaret", "name": "Minaret 2 cap", "box": [0.91, 0.8, 0.01, 0.08, 0.05, 0.08], "kind": "panel", "on": ["Minaret 2"]}, {"role": "minaret", "name": "Minaret 3", "box": [0.02, 0.08, 0.92, 0.06, 0.72, 0.06], "kind": "member", "on": ["Plinth"]}, {"role": "minaret", "name": "Minaret 3 cap", "box": [0.01, 0.8, 0.91, 0.08, 0.05, 0.08], "kind": "panel", "on": ["Minaret 3"]}, {"role": "minaret", "name": "Minaret 4", "box": [0.92, 0.08, 0.92, 0.06, 0.72, 0.06], "kind": "member", "on": ["Plinth"]}, {"role": "minaret", "name": "Minaret 4 cap", "box": [0.91, 0.8, 0.91, 0.08, 0.05, 0.08], "kind": "panel", "on": ["Minaret 4"]}, {"role": "hall", "name": "Front wall", "box": [0.2, 0.08, 0.78, 0.6, 0.42, 0.02], "kind": "panel", "on": ["Plinth"]}, {"role": "hall", "name": "Back wall", "box": [0.2, 0.08, 0.2, 0.6, 0.42, 0.02], "kind": "panel", "on": ["Plinth"]}, {"role": "hall", "name": "Left wall", "box": [0.2, 0.08, 0.22, 0.02, 0.42, 0.56], "kind": "panel", "on": ["Plinth"]}, {"role": "hall", "name": "Right wall", "box": [0.78, 0.08, 0.22, 0.02, 0.42, 0.56], "kind": "panel", "on": ["Plinth"]}, {"role": "iwan", "name": "Front iwan", "box": [0.4, 0.1, 0.8, 0.2, 0.36, 0.02], "kind": "panel", "on": ["Front wall"]}, {"role": "iwan", "name": "Back iwan", "box": [0.4, 0.1, 0.18, 0.2, 0.36, 0.02], "kind": "panel", "on": ["Back wall"]}, {"role": "iwan", "name": "Left iwan", "box": [0.18, 0.1, 0.4, 0.02, 0.36, 0.2], "kind": "panel", "on": ["Left wall"]}, {"role": "iwan", "name": "Right iwan", "box": [0.8, 0.1, 0.4, 0.02, 0.36, 0.2], "kind": "panel", "on": ["Right wall"]}, {"role": "roof", "name": "Roof", "box": [0.2, 0.5, 0.2, 0.6, 0.02, 0.6], "kind": "panel", "on": ["Front wall", "Back wall", "Left wall", "Right wall"]}, {"role": "drum", "name": "Drum", "box": [0.38, 0.52, 0.38, 0.24, 0.1, 0.24], "kind": "panel", "on": ["Roof"]}, {"role": "dome", "name": "Dome", "box": [0.32, 0.62, 0.32, 0.36, 0.26, 0.36], "kind": "panel", "on": ["Drum"]}, {"role": "finial", "name": "Finial", "box": [0.49, 0.88, 0.49, 0.02, 0.12, 0.02], "kind": "member", "on": ["Dome"]}, {"role": "chhatri", "name": "Chhatri 1", "box": [0.22, 0.52, 0.22, 0.08, 0.1, 0.08], "kind": "panel", "on": ["Roof"]}, {"role": "chhatri", "name": "Chhatri 2", "box": [0.7, 0.52, 0.22, 0.08, 0.1, 0.08], "kind": "panel", "on": ["Roof"]}, {"role": "chhatri", "name": "Chhatri 3", "box": [0.22, 0.52, 0.7, 0.08, 0.1, 0.08], "kind": "panel", "on": ["Roof"]}, {"role": "chhatri", "name": "Chhatri 4", "box": [0.7, 0.52, 0.7, 0.08, 0.1, 0.08], "kind": "panel", "on": ["Roof"]}], "notes": ["Onion dome on a drum over the square hall, four arched iwans and four corner minarets on the plinth."], "stock": "cardboard-corrugated-sheet", "sheet": "cardboard-corrugated-sheet"}, {"key": "colosseum", "synonyms": ["coliseum", "roman amphitheater"], "version": 1, "trust": "candidate", "title": "Colosseum", "size": {"width": 30, "height": 12, "depth": 24}, "defining": ["pier", "arcade", "arena"], "parts": [{"role": "arena", "name": "Arena floor", "box": [0.1, 0, 0.1, 0.8, 0.03, 0.8], "kind": "panel"}, {"role": "pier", "name": "Pier 1", "box": [0.93, 0, 0.47, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 2", "box": [0.895, 0, 0.646, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 3", "box": [0.7953, 0, 0.7953, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 4", "box": [0.646, 0, 0.895, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 5", "box": [0.47, 0, 0.93, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 6", "box": [0.294, 0, 0.895, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 7", "box": [0.1447, 0, 0.7953, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 8", "box": [0.045, 0, 0.646, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 9", "box": [0.01, 0, 0.47, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 10", "box": [0.045, 0, 0.294, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 11", "box": [0.1447, 0, 0.1447, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 12", "box": [0.294, 0, 0.045, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 13", "box": [0.47, 0, 0.01, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 14", "box": [0.646, 0, 0.045, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 15", "box": [0.7953, 0, 0.1447, 0.06, 1, 0.06], "kind": "member"}, {"role": "pier", "name": "Pier 16", "box": [0.895, 0, 0.294, 0.06, 1, 0.06], "kind": "member"}, {"role": "arcade", "name": "Arcade 1-1", "box": [0.895, 0.31, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 1", "Pier 2"]}, {"role": "arcade", "name": "Arcade 1-2", "box": [0.7953, 0.31, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 2", "Pier 3"]}, {"role": "arcade", "name": "Arcade 1-3", "box": [0.646, 0.31, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 3", "Pier 4"]}, {"role": "arcade", "name": "Arcade 1-4", "box": [0.47, 0.31, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 4", "Pier 5"]}, {"role": "arcade", "name": "Arcade 1-5", "box": [0.294, 0.31, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 5", "Pier 6"]}, {"role": "arcade", "name": "Arcade 1-6", "box": [0.1447, 0.31, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 6", "Pier 7"]}, {"role": "arcade", "name": "Arcade 1-7", "box": [0.045, 0.31, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 7", "Pier 8"]}, {"role": "arcade", "name": "Arcade 1-8", "box": [0.01, 0.31, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 8", "Pier 9"]}, {"role": "arcade", "name": "Arcade 1-9", "box": [0.01, 0.31, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 9", "Pier 10"]}, {"role": "arcade", "name": "Arcade 1-10", "box": [0.045, 0.31, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 10", "Pier 11"]}, {"role": "arcade", "name": "Arcade 1-11", "box": [0.1447, 0.31, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 11", "Pier 12"]}, {"role": "arcade", "name": "Arcade 1-12", "box": [0.294, 0.31, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 12", "Pier 13"]}, {"role": "arcade", "name": "Arcade 1-13", "box": [0.47, 0.31, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 13", "Pier 14"]}, {"role": "arcade", "name": "Arcade 1-14", "box": [0.646, 0.31, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 14", "Pier 15"]}, {"role": "arcade", "name": "Arcade 1-15", "box": [0.7953, 0.31, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 15", "Pier 16"]}, {"role": "arcade", "name": "Arcade 1-16", "box": [0.895, 0.31, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 16", "Pier 1"]}, {"role": "arcade", "name": "Arcade 2-1", "box": [0.895, 0.63, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 1", "Pier 2"]}, {"role": "arcade", "name": "Arcade 2-2", "box": [0.7953, 0.63, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 2", "Pier 3"]}, {"role": "arcade", "name": "Arcade 2-3", "box": [0.646, 0.63, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 3", "Pier 4"]}, {"role": "arcade", "name": "Arcade 2-4", "box": [0.47, 0.63, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 4", "Pier 5"]}, {"role": "arcade", "name": "Arcade 2-5", "box": [0.294, 0.63, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 5", "Pier 6"]}, {"role": "arcade", "name": "Arcade 2-6", "box": [0.1447, 0.63, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 6", "Pier 7"]}, {"role": "arcade", "name": "Arcade 2-7", "box": [0.045, 0.63, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 7", "Pier 8"]}, {"role": "arcade", "name": "Arcade 2-8", "box": [0.01, 0.63, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 8", "Pier 9"]}, {"role": "arcade", "name": "Arcade 2-9", "box": [0.01, 0.63, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 9", "Pier 10"]}, {"role": "arcade", "name": "Arcade 2-10", "box": [0.045, 0.63, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 10", "Pier 11"]}, {"role": "arcade", "name": "Arcade 2-11", "box": [0.1447, 0.63, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 11", "Pier 12"]}, {"role": "arcade", "name": "Arcade 2-12", "box": [0.294, 0.63, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 12", "Pier 13"]}, {"role": "arcade", "name": "Arcade 2-13", "box": [0.47, 0.63, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 13", "Pier 14"]}, {"role": "arcade", "name": "Arcade 2-14", "box": [0.646, 0.63, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 14", "Pier 15"]}, {"role": "arcade", "name": "Arcade 2-15", "box": [0.7953, 0.63, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 15", "Pier 16"]}, {"role": "arcade", "name": "Arcade 2-16", "box": [0.895, 0.63, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 16", "Pier 1"]}, {"role": "arcade", "name": "Arcade 3-1", "box": [0.895, 0.95, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 1", "Pier 2"]}, {"role": "arcade", "name": "Arcade 3-2", "box": [0.7953, 0.95, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 2", "Pier 3"]}, {"role": "arcade", "name": "Arcade 3-3", "box": [0.646, 0.95, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 3", "Pier 4"]}, {"role": "arcade", "name": "Arcade 3-4", "box": [0.47, 0.95, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 4", "Pier 5"]}, {"role": "arcade", "name": "Arcade 3-5", "box": [0.294, 0.95, 0.895, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 5", "Pier 6"]}, {"role": "arcade", "name": "Arcade 3-6", "box": [0.1447, 0.95, 0.7953, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 6", "Pier 7"]}, {"role": "arcade", "name": "Arcade 3-7", "box": [0.045, 0.95, 0.646, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 7", "Pier 8"]}, {"role": "arcade", "name": "Arcade 3-8", "box": [0.01, 0.95, 0.47, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 8", "Pier 9"]}, {"role": "arcade", "name": "Arcade 3-9", "box": [0.01, 0.95, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 9", "Pier 10"]}, {"role": "arcade", "name": "Arcade 3-10", "box": [0.045, 0.95, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 10", "Pier 11"]}, {"role": "arcade", "name": "Arcade 3-11", "box": [0.1447, 0.95, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 11", "Pier 12"]}, {"role": "arcade", "name": "Arcade 3-12", "box": [0.294, 0.95, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 12", "Pier 13"]}, {"role": "arcade", "name": "Arcade 3-13", "box": [0.47, 0.95, 0.01, 0.236, 0.05, 0.095], "kind": "panel", "on": ["Pier 13", "Pier 14"]}, {"role": "arcade", "name": "Arcade 3-14", "box": [0.646, 0.95, 0.045, 0.2092, 0.05, 0.1597], "kind": "panel", "on": ["Pier 14", "Pier 15"]}, {"role": "arcade", "name": "Arcade 3-15", "box": [0.7953, 0.95, 0.1447, 0.1597, 0.05, 0.2092], "kind": "panel", "on": ["Pier 15", "Pier 16"]}, {"role": "arcade", "name": "Arcade 3-16", "box": [0.895, 0.95, 0.294, 0.095, 0.05, 0.236], "kind": "panel", "on": ["Pier 16", "Pier 1"]}], "notes": ["An elliptical ring of piers with three tiers of arcades around an open arena."], "stock": "cardboard-corrugated-sheet", "sheet": "cardboard-corrugated-sheet"}, {"key": "murphy-bed", "synonyms": ["wall bed", "fold down bed"], "version": 1, "trust": "candidate", "title": "Murphy bed", "size": {"width": 66, "height": 86, "depth": 18}, "defining": ["cabinet", "bed", "pivot", "leg"], "parts": [{"role": "base", "name": "Plinth", "box": [0.03, 0, 0.05, 0.94, 0.04, 0.9], "kind": "panel"}, {"role": "cabinet", "name": "Left side", "box": [0, 0, 0, 0.03, 1, 1], "kind": "panel"}, {"role": "cabinet", "name": "Right side", "box": [0.97, 0, 0, 0.03, 1, 1], "kind": "panel"}, {"role": "cabinet", "name": "Top", "box": [0, 0.97, 0, 1, 0.03, 1], "kind": "panel", "on": ["Left side", "Right side"]}, {"role": "cabinet", "name": "Back", "box": [0.03, 0.04, 0, 0.94, 0.93, 0.04], "kind": "panel", "on": ["Left side", "Right side"]}, {"role": "pivot", "name": "Fold bracket", "box": [0.03, 0.04, 0.4, 0.03, 0.06, 0.2], "kind": "hardware", "on": ["Left side"]}, {"role": "bed", "name": "Bed frame left rail", "box": [0.03, 0.04, 0.3, 0.03, 0.9, 0.6], "kind": "member", "on": ["Fold bracket"]}, {"role": "bed", "name": "Bed frame right rail", "box": [0.94, 0.04, 0.3, 0.03, 0.9, 0.6], "kind": "member", "on": ["Right side"]}, {"role": "bed", "name": "Bed face", "box": [0.03, 0.04, 0.9, 0.94, 0.9, 0.06], "kind": "panel", "on": ["Bed frame left rail", "Bed frame right rail"]}, {"role": "leg", "name": "Fold-out leg", "box": [0.06, 0.9, 0.6, 0.88, 0.04, 0.3], "kind": "member", "on": ["Bed frame left rail", "Bed frame right rail"]}], "notes": ["The queen bed frame pivots down out of the wall cabinet on its fold brackets; the leg folds out to carry the foot.", "Lag the cabinet to two wall studs before the bed is mounted."], "stock": "lumber-2x6-8", "sheet": "plywood-3-4-4x8", "moving": [{"part": "Bed face", "motion": "pivot"}]}, {"key": "mudroom-locker", "synonyms": ["entry locker", "locker"], "version": 1, "trust": "candidate", "title": "Mudroom locker", "size": {"width": 54, "height": 72, "depth": 16}, "defining": ["side", "bench", "shelf", "hook"], "parts": [{"role": "side", "name": "Side", "box": [0, 0, 0, 0.02, 1, 1], "kind": "panel", "repeat": "between"}, {"role": "back", "name": "Back", "box": [0, 0.08, 0, 1, 0.9, 0.03], "kind": "panel", "on": ["Side"]}, {"role": "top", "name": "Top", "box": [0, 0.98, 0, 1, 0.02, 1], "kind": "panel", "on": ["Side"]}, {"role": "bench", "name": "Bench seat", "box": [0, 0.25, 0, 1, 0.02, 1], "kind": "panel", "on": ["Side"], "repeat": "each"}, {"role": "shelf", "name": "Top shelf", "box": [0, 0.8, 0, 1, 0.02, 1], "kind": "panel", "on": ["Side"], "repeat": "each"}, {"role": "kick", "name": "Kick", "box": [0, 0, 0.92, 1, 0.08, 0.08], "kind": "panel", "on": ["Side"], "repeat": "each"}, {"role": "hook", "name": "Coat hook", "box": [0.4, 0.62, 0.03, 0.2, 0.06, 0.15], "kind": "hardware", "on": ["Back"], "repeat": "each"}], "notes": ["Tall open locker bays with a bench seat, a top shelf and a coat hook in each; anchor the top to a wall stud."], "count": {"word": "bays", "default": 3, "unit": {"width": 18}}, "stock": "plywood-3-4-4x8", "sheet": "plywood-3-4-4x8"}, {"key": "floating-desk", "synonyms": ["wall desk", "wall mounted desk"], "version": 1, "trust": "candidate", "title": "Floating desk", "size": {"width": 48, "height": 30, "depth": 20}, "defining": ["cleat", "top", "arm"], "parts": [{"role": "cleat", "name": "Wall cleat", "box": [0, 0.9, 0, 1, 0.05, 0.05], "kind": "member"}, {"role": "arm", "name": "Left support arm", "box": [0.1, 0.9, 0.05, 0.04, 0.05, 0.85], "kind": "member", "on": ["Wall cleat"]}, {"role": "arm", "name": "Right support arm", "box": [0.86, 0.9, 0.05, 0.04, 0.05, 0.85], "kind": "member", "on": ["Wall cleat"]}, {"role": "top", "name": "Desktop", "box": [0, 0.95, 0, 1, 0.05, 1], "kind": "panel", "on": ["Wall cleat", "Left support arm", "Right support arm"]}], "notes": ["The top cantilevers off a wall cleat lagged into studs at desk height; no legs."], "wall": true, "stock": "lumber-2x4-8", "sheet": "plywood-3-4-4x8"}, {"key": "under-stairs-shelf", "synonyms": ["under stairs shelf", "under-stair shelf", "under stair shelf"], "version": 1, "trust": "candidate", "title": "Under-stairs shelves", "size": {"width": 48, "height": 72, "depth": 12}, "defining": ["upright", "slope", "shelf"], "parts": [{"role": "upright", "name": "Upright 1", "box": [0, 0, 0, 0.04, 1, 1], "kind": "panel"}, {"role": "upright", "name": "Upright 2", "box": [0.32, 0, 0, 0.04, 0.75, 1], "kind": "panel"}, {"role": "upright", "name": "Upright 3", "box": [0.64, 0, 0, 0.04, 0.5, 1], "kind": "panel"}, {"role": "upright", "name": "Upright 4", "box": [0.96, 0, 0, 0.04, 0.25, 1], "kind": "panel"}, {"role": "slope", "name": "Sloped top 1", "box": [0.04, 0.72, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 1", "Upright 2"]}, {"role": "shelf", "name": "Shelf 1-1", "box": [0.04, 0, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 1", "Upright 2"]}, {"role": "shelf", "name": "Shelf 1-2", "box": [0.04, 0.375, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 1", "Upright 2"]}, {"role": "slope", "name": "Sloped top 2", "box": [0.36, 0.47, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 2", "Upright 3"]}, {"role": "shelf", "name": "Shelf 2-1", "box": [0.36, 0, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 2", "Upright 3"]}, {"role": "shelf", "name": "Shelf 2-2", "box": [0.36, 0.25, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 2", "Upright 3"]}, {"role": "slope", "name": "Sloped top 3", "box": [0.68, 0.22, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 3", "Upright 4"]}, {"role": "shelf", "name": "Shelf 3-1", "box": [0.68, 0, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 3", "Upright 4"]}, {"role": "shelf", "name": "Shelf 3-2", "box": [0.68, 0.125, 0, 0.28, 0.03, 1], "kind": "panel", "on": ["Upright 3", "Upright 4"]}], "notes": ["Uprights step down with the stair slope; scribe each top to the stringer."], "stock": "plywood-3-4-4x8", "sheet": "plywood-3-4-4x8"}, {"key": "sandbox", "synonyms": ["sand box"], "version": 1, "trust": "candidate", "title": "Sandbox", "size": {"width": 48, "height": 10, "depth": 48}, "defining": ["wall", "seat"], "parts": [{"role": "wall", "name": "Back wall", "box": [0, 0, 0, 1, 1, 0.03], "kind": "panel"}, {"role": "wall", "name": "Front wall", "box": [0, 0, 0.97, 1, 1, 0.03], "kind": "panel"}, {"role": "wall", "name": "Left wall", "box": [0, 0, 0.03, 0.03, 1, 0.94], "kind": "panel"}, {"role": "wall", "name": "Right wall", "box": [0.97, 0, 0.03, 0.03, 1, 0.94], "kind": "panel"}, {"role": "seat", "name": "Corner seat 1", "box": [0, 0.85, 0, 0.2, 0.15, 0.2], "kind": "panel", "on": ["Back wall"]}, {"role": "seat", "name": "Corner seat 2", "box": [0.8, 0.85, 0, 0.2, 0.15, 0.2], "kind": "panel", "on": ["Back wall"]}, {"role": "seat", "name": "Corner seat 3", "box": [0, 0.85, 0.8, 0.2, 0.15, 0.2], "kind": "panel", "on": ["Front wall"]}, {"role": "seat", "name": "Corner seat 4", "box": [0.8, 0.85, 0.8, 0.2, 0.15, 0.2], "kind": "panel", "on": ["Front wall"]}], "notes": ["No floor: set it in the ground on a level bed and lay landscape fabric under the sand so it drains."], "modifiers": ["seat"], "outdoor": true, "stock": "lumber-2x6-8", "sheet": "lumber-2x6-8"}, {"key": "water-wheel", "synonyms": ["waterwheel"], "version": 1, "trust": "trusted", "title": "Water Wheel", "size": {"width": 18, "height": 30, "depth": 24}, "feet": false, "outdoor": true, "wall": false, "defining": ["wheel", "axle", "paddle"], "parts": [{"role": "base", "name": "left base", "box": [0, 0, 0.1, 0.12, 0.06, 0.8], "kind": "member", "on": []}, {"role": "base", "name": "right base", "box": [0.88, 0, 0.1, 0.12, 0.06, 0.8], "kind": "member", "on": []}, {"role": "post", "name": "left post", "box": [0.02, 0.06, 0.42, 0.08, 0.6, 0.16], "kind": "member", "on": ["left base"]}, {"role": "post", "name": "right post", "box": [0.9, 0.06, 0.42, 0.08, 0.6, 0.16], "kind": "member", "on": ["right base"]}, {"role": "axle", "name": "axle", "box": [0, 0.6, 0.46, 1, 0.06, 0.08], "kind": "hardware", "on": ["left post", "right post"]}, {"role": "wheel", "name": "wheel", "box": [0.45, 0.07, 0.04, 0.04, 0.92, 0.92], "kind": "panel", "shape": "ring", "bore": 3, "on": ["axle"]}, {"role": "wheel", "name": "hub", "box": [0.4, 0.55, 0.42, 0.2, 0.16, 0.16], "kind": "panel", "shape": "disc", "bore": 1, "on": ["axle"]}, {"role": "paddle", "name": "Paddle", "box": [0.4, 0.05, 0.05, 0.2, 0.1, 0.05], "kind": "member", "on": ["wheel"]}], "moving": [{"part": "wheel", "motion": "spin"}, {"part": "hub", "motion": "spin"}, {"part": "Paddle", "motion": "spin"}], "notes": ["Rim cut from exterior plywood, joined to the hub by crossed spokes", "Four paddles stand on the rim", "The hardwood dowel axle turns in holes drilled through the posts", "Each post stands on its own base"], "learned": true}, {"key": "abacus", "synonyms": ["counting frame"], "version": 1, "trust": "trusted", "title": "Abacus", "size": {"width": 16, "height": 10, "depth": 3.5}, "craftSize": {"width": 3.5, "height": 1.5, "depth": 1.5}, "feet": false, "outdoor": false, "wall": false, "defining": ["rail", "post", "axle"], "count": {"word": "rods", "default": 9}, "parts": [{"role": "rail", "name": "bottom rail", "box": [0, 0, 0, 1, 0.12, 1], "kind": "member"}, {"role": "post", "name": "left post", "box": [0, 0.12, 0, 0.1, 0.76, 1], "kind": "member", "on": ["bottom rail"]}, {"role": "post", "name": "right post", "box": [0.9, 0.12, 0, 0.1, 0.76, 1], "kind": "member", "on": ["bottom rail"]}, {"role": "rail", "name": "top rail", "box": [0, 0.88, 0, 1, 0.12, 1], "kind": "member", "on": ["left post", "right post"]}, {"role": "axle", "name": "rod", "box": [0.4, 0.12, 0.4, 0.2, 0.76, 0.2], "kind": "hardware", "on": ["bottom rail", "top rail"], "repeat": "each", "catalogId": "dowel-1-4-36", "shape": "cylinder"}, {"role": "bead", "name": "bead", "box": [0.25, 0.14, 0.25, 0.5, 0.1, 0.5], "kind": "member", "on": ["rod"], "repeat": "each", "stock": "dowel-1-36", "shape": "bead", "bore": 0.3125, "per": 5}], "moving": [{"part": "bead", "motion": "slide"}], "notes": ["Frame cut from 2x4 lumber", "Rods are 1/4 in hardwood dowels set in holes drilled through the top and bottom rails", "Beads are slices of 1 in dowel, drilled to slide freely on each rod"], "learned": true}, {"key": "cribbage-board", "synonyms": ["cribbage board", "crib board"], "version": 1, "trust": "candidate", "title": "Cribbage Board", "size": {"width": 15, "height": 1.5, "depth": 4}, "feet": false, "outdoor": false, "wall": false, "defining": ["deck"], "parts": [{"role": "deck", "name": "Board", "box": [0, 0, 0, 1, 0.5, 1], "kind": "panel"}, {"role": "peg", "name": "Peg1", "box": [0.04, 0.5, 0.18, 0.017, 0.5, 0.06], "kind": "hardware", "on": ["Board"], "shape": "cylinder"}, {"role": "peg", "name": "Peg2", "box": [0.08, 0.5, 0.18, 0.017, 0.5, 0.06], "kind": "hardware", "on": ["Board"], "shape": "cylinder"}, {"role": "peg", "name": "Peg3", "box": [0.04, 0.5, 0.72, 0.017, 0.5, 0.06], "kind": "hardware", "on": ["Board"], "shape": "cylinder"}, {"role": "peg", "name": "Peg4", "box": [0.08, 0.5, 0.72, 0.017, 0.5, 0.06], "kind": "hardware", "on": ["Board"], "shape": "cylinder"}], "moving": [], "notes": ["Solid hardwood plank drilled with two parallel tracks of holes (typically 60 holes per track in pairs) plus starter and finish holes", "Four short cylindrical pegs (two per player) are placed in the holes to track scores up to 121", "Holes are spaced about 0.5 in apart along each track; tracks run the length of the board", "Often finished with oil or varnish; some include a small end compartment or recessed tray for storing the pegs"], "learned": true, "held": "Flagged by the learned-recipe checks: Peg1 1: no catalogue item (hardware); Peg2 1: no catalogue item (hardware); Peg3 1: no catalogue item (hardware)"}, {"key": "knife-block-maple", "synonyms": [], "version": 1, "trust": "candidate", "title": "Maple Knife Block", "size": {"width": 9, "height": 10, "depth": 4.5}, "feet": false, "outdoor": false, "wall": false, "defining": ["deck", "post"], "count": {"word": "slots", "default": 6}, "parts": [{"role": "deck", "name": "Base", "box": [0, 0, 0, 1, 0.06, 1], "kind": "panel"}, {"role": "post", "name": "Left side", "box": [0, 0.06, 0, 0.05, 0.94, 1], "kind": "panel", "on": ["Base"]}, {"role": "post", "name": "Right side", "box": [0.95, 0.06, 0, 0.05, 0.94, 1], "kind": "panel", "on": ["Base"]}, {"role": "panel", "name": "Back panel", "box": [0.05, 0.06, 0.93, 0.9, 0.94, 0.06999999999999995], "kind": "panel", "on": ["Base"]}, {"role": "panel", "name": "Front panel", "box": [0.05, 0.06, 0, 0.9, 0.94, 0.05], "kind": "panel", "on": ["Base"]}, {"role": "panel", "name": "Slot divider", "box": [0.18, 0.06, 0.05, 0.03, 0.88, 0.88], "kind": "panel", "on": ["Base"], "repeat": "between"}], "moving": [], "notes": ["Constructed from solid maple boards", "Open top with vertical slots formed by spaced dividers", "Holds knives upright by the blade"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"}, {"key": "raised-dog-feeder-stand", "synonyms": [], "version": 1, "trust": "candidate", "title": "Raised Dog Feeder Stand", "size": {"width": 24, "height": 14, "depth": 12}, "feet": true, "outdoor": false, "wall": false, "defining": ["post", "deck"], "parts": [{"role": "post", "name": "Leg fl", "box": [0.02, 0, 0.03, 0.07, 0.93, 0.12], "kind": "member"}, {"role": "post", "name": "Leg fr", "box": [0.91, 0, 0.03, 0.07, 0.93, 0.12], "kind": "member"}, {"role": "post", "name": "Leg bl", "box": [0.02, 0, 0.85, 0.07, 0.93, 0.12], "kind": "member"}, {"role": "post", "name": "Leg br", "box": [0.91, 0, 0.85, 0.07, 0.93, 0.12], "kind": "member"}, {"role": "rail", "name": "Apron front", "box": [0.09, 0.82, 0.03, 0.82, 0.08, 0.08], "kind": "member", "on": ["Leg fl", "Leg fr"]}, {"role": "rail", "name": "Apron back", "box": [0.09, 0.82, 0.89, 0.82, 0.08, 0.08], "kind": "member", "on": ["Leg bl", "Leg br"]}, {"role": "rail", "name": "Apron left", "box": [0.02, 0.82, 0.15, 0.07, 0.08, 0.7], "kind": "member", "on": ["Leg fl", "Leg bl"]}, {"role": "rail", "name": "Apron right", "box": [0.91, 0.82, 0.15, 0.07, 0.08, 0.7], "kind": "member", "on": ["Leg fr", "Leg br"]}, {"role": "deck", "name": "Top", "box": [0, 0.93, 0, 1, 0.06999999999999995, 1], "kind": "panel", "on": ["Leg fl", "Leg fr", "Leg bl", "Leg br", "Apron front", "Apron back", "Apron left", "Apron right"]}], "moving": [], "notes": ["Top deck has two circular cutouts that hold removable food and water bowls", "Four-legged open frame elevates bowls for comfortable feeding height", "Typical size suited to medium dogs"], "learned": true}, {"key": "birdhouse-shaped-like-church", "synonyms": [], "version": 1, "trust": "candidate", "title": "Church Birdhouse", "size": {"width": 8, "height": 16, "depth": 8}, "feet": false, "outdoor": true, "wall": true, "defining": [], "parts": [{"role": "deck", "name": "Floor", "box": [0.1, 0, 0.1, 0.8, 0.05, 0.8], "kind": "panel"}, {"role": "wall", "name": "Front", "box": [0.1, 0.05, 0.1, 0.8, 0.45, 0.05], "kind": "panel", "on": ["Floor"]}, {"role": "wall", "name": "Back", "box": [0.1, 0.05, 0.85, 0.8, 0.45, 0.05], "kind": "panel", "on": ["Floor"]}, {"role": "wall", "name": "Left", "box": [0.1, 0.05, 0.1, 0.05, 0.45, 0.8], "kind": "panel", "on": ["Floor"]}, {"role": "wall", "name": "Right", "box": [0.85, 0.05, 0.1, 0.05, 0.45, 0.8], "kind": "panel", "on": ["Floor"]}, {"role": "roof", "name": "Roof left", "box": [0.05, 0.48, 0.05, 0.45, 0.12, 0.9], "kind": "panel", "on": ["Front", "Back", "Left"]}, {"role": "roof", "name": "Roof right", "box": [0.5, 0.48, 0.05, 0.45, 0.12, 0.9], "kind": "panel", "on": ["Front", "Back", "Right"]}, {"role": "tower", "name": "Steeple", "box": [0.35, 0.55, 0.35, 0.3, 0.28, 0.3], "kind": "member", "on": ["Roof left", "Roof right"]}, {"role": "roof", "name": "Steeple cap", "box": [0.3, 0.8, 0.3, 0.4, 0.12, 0.4], "kind": "panel", "on": ["Steeple"]}, {"role": "post", "name": "Cross stem", "box": [0.47, 0.9, 0.47, 0.06, 0.08, 0.06], "kind": "member", "on": ["Steeple cap"]}, {"role": "post", "name": "Cross arm", "box": [0.38, 0.94, 0.47, 0.24, 0.04, 0.06], "kind": "member", "on": ["Cross stem"]}, {"role": "rail", "name": "Perch", "box": [0.35, 0.22, 0.02, 0.3, 0.04, 0.1], "kind": "member", "on": ["Front"], "shape": "cylinder"}], "moving": [], "notes": ["1.5-inch round entrance hole centered on Front about 6 inches above Floor", "Gable roof over the square body with steeple and simple cross", "Drainage holes in Floor and side vents near roof", "For wrens, chickadees or similar cavity nesters", "Hang on wall, fence or post outdoors"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it; a part has only a fallback step"}, {"key": "beehive-box", "synonyms": ["hive-body", "brood-box", "hive-super"], "version": 1, "trust": "candidate", "title": "Cedar Langstroth Beehive Box", "size": {"width": 16.25, "height": 9.625, "depth": 19.875}, "feet": false, "outdoor": true, "wall": false, "defining": ["panel"], "parts": [{"role": "panel", "name": "Left side", "box": [0, 0, 0, 0.046, 1, 1], "kind": "panel"}, {"role": "panel", "name": "Right side", "box": [0.954, 0, 0, 0.046, 1, 1], "kind": "panel"}, {"role": "panel", "name": "Front end", "box": [0.046, 0, 0, 0.908, 1, 0.038], "kind": "panel"}, {"role": "panel", "name": "Back end", "box": [0.046, 0, 0.962, 0.908, 1, 0.038], "kind": "panel"}, {"role": "rail", "name": "Front frame rest", "box": [0.046, 0.935, 0.038, 0.908, 0.06499999999999995, 0.019], "kind": "member", "on": ["Front end"]}, {"role": "rail", "name": "Back frame rest", "box": [0.046, 0.935, 0.943, 0.908, 0.06499999999999995, 0.019], "kind": "member", "on": ["Back end"]}], "moving": [], "notes": ["Western red cedar boards ~3/4 in thick, left unfinished or lightly painted outside only", "Open top and bottom for stacking on a bottom board and under a cover or another box", "Front and back ends sit between the long sides; corners joined with box joints or nails/screws", "Frame rests are top rabbets or cleats that support standard Langstroth frames by their end lugs", "Deep brood-box proportions; medium/shallow supers use the same footprint with reduced height"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it; fitted wording \"footprint\" on a freestanding build"}, {"key": "router-table", "synonyms": ["router bench"], "version": 1, "trust": "candidate", "title": "Router Table", "size": {"width": 36, "height": 36, "depth": 24}, "feet": true, "outdoor": false, "wall": false, "defining": ["deck", "rail"], "parts": [{"role": "post", "name": "Front left leg", "box": [0.02, 0, 0.02, 0.06, 0.94, 0.06], "kind": "member"}, {"role": "post", "name": "Front right leg", "box": [0.92, 0, 0.02, 0.06, 0.94, 0.06], "kind": "member"}, {"role": "post", "name": "Back left leg", "box": [0.02, 0, 0.92, 0.06, 0.94, 0.06], "kind": "member"}, {"role": "post", "name": "Back right leg", "box": [0.92, 0, 0.92, 0.06, 0.94, 0.06], "kind": "member"}, {"role": "rail", "name": "Front apron", "box": [0.08, 0.82, 0.02, 0.84, 0.12, 0.05], "kind": "member", "on": ["Front left leg", "Front right leg"]}, {"role": "rail", "name": "Back apron", "box": [0.08, 0.82, 0.93, 0.84, 0.12, 0.05], "kind": "member", "on": ["Back left leg", "Back right leg"]}, {"role": "rail", "name": "Left apron", "box": [0.02, 0.82, 0.08, 0.05, 0.12, 0.84], "kind": "member", "on": ["Front left leg", "Back left leg"]}, {"role": "rail", "name": "Right apron", "box": [0.93, 0.82, 0.08, 0.05, 0.12, 0.84], "kind": "member", "on": ["Front right leg", "Back right leg"]}, {"role": "deck", "name": "Table top", "box": [0, 0.94, 0, 1, 0.04, 1], "kind": "panel", "on": ["Front left leg", "Front right leg", "Back left leg", "Back right leg", "Front apron", "Back apron", "Left apron", "Right apron"]}, {"role": "panel", "name": "Insert plate", "box": [0.35, 0.945, 0.35, 0.3, 0.03, 0.3], "kind": "cover", "on": ["Table top"]}, {"role": "rail", "name": "Fence", "box": [0.05, 0.98, 0.42, 0.9, 0.020000000000000018, 0.06], "kind": "member", "on": ["Table top"]}], "moving": [], "notes": ["Open-stand woodworking table with flush center insert for a router mounted below the top", "Fence sits across the top and is typically clamped or tracked for adjustment", "Aprons stiffen the leg frame just under the top"], "learned": true, "held": "Flagged by the learned-recipe checks: Left apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft); Right apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft)"}, {"key": "sawbuck", "synonyms": ["log buck", "sawing buck"], "version": 1, "trust": "candidate", "title": "2x4 Sawbuck", "size": {"width": 36, "height": 32, "depth": 24}, "feet": true, "outdoor": true, "wall": false, "defining": [], "parts": [{"role": "post", "name": "Left leg A", "box": [0.05, 0, 0.05, 0.06, 1, 0.9], "kind": "member"}, {"role": "post", "name": "Left leg B", "box": [0.11, 0, 0.05, 0.06, 1, 0.9], "kind": "member"}, {"role": "post", "name": "Right leg A", "box": [0.83, 0, 0.05, 0.06, 1, 0.9], "kind": "member"}, {"role": "post", "name": "Right leg B", "box": [0.89, 0, 0.05, 0.06, 1, 0.9], "kind": "member"}, {"role": "rail", "name": "Left cross rail", "box": [0.05, 0.35, 0.15, 0.12, 0.08, 0.7], "kind": "member", "on": ["Left leg A", "Left leg B"]}, {"role": "rail", "name": "Right cross rail", "box": [0.83, 0.35, 0.15, 0.12, 0.08, 0.7], "kind": "member", "on": ["Right leg A", "Right leg B"]}, {"role": "rail", "name": "Front long rail", "box": [0.05, 0.1, 0.1, 0.9, 0.08, 0.06], "kind": "member", "on": ["Left leg A", "Left leg B", "Right leg A", "Right leg B"]}, {"role": "rail", "name": "Back long rail", "box": [0.05, 0.1, 0.84, 0.9, 0.08, 0.06], "kind": "member", "on": ["Left leg A", "Left leg B", "Right leg A", "Right leg B"]}], "moving": [], "notes": ["Built from standard 2x4 lumber", "Pairs of legs crossed and bolted into X-frames", "Log rests in the upper crotches of the X-frames"], "learned": true, "held": "Flagged by the learned-recipe checks: Left leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Left leg B: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Right leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft)"}, {"key": "compost-tumbler-frame", "synonyms": ["compost tumbler stand"], "version": 1, "trust": "candidate", "title": "Compost Tumbler Frame", "size": {"width": 48, "height": 42, "depth": 30}, "feet": true, "outdoor": true, "wall": false, "defining": ["post", "rail", "axle"], "parts": [{"role": "post", "name": "Left front post", "box": [0.04, 0, 0.08, 0.06, 0.85, 0.06], "kind": "member"}, {"role": "post", "name": "Left rear post", "box": [0.04, 0, 0.86, 0.06, 0.85, 0.06], "kind": "member"}, {"role": "post", "name": "Right front post", "box": [0.9, 0, 0.08, 0.06, 0.85, 0.06], "kind": "member"}, {"role": "post", "name": "Right rear post", "box": [0.9, 0, 0.86, 0.06, 0.85, 0.06], "kind": "member"}, {"role": "rail", "name": "Left top rail", "box": [0.04, 0.8, 0.08, 0.06, 0.08, 0.84], "kind": "member", "on": ["Left front post", "Left rear post"]}, {"role": "rail", "name": "Right top rail", "box": [0.9, 0.8, 0.08, 0.06, 0.08, 0.84], "kind": "member", "on": ["Right front post", "Right rear post"]}, {"role": "rail", "name": "Front base", "box": [0.04, 0.02, 0.08, 0.92, 0.05, 0.06], "kind": "member", "on": ["Left front post", "Right front post"]}, {"role": "rail", "name": "Rear base", "box": [0.04, 0.02, 0.86, 0.92, 0.05, 0.06], "kind": "member", "on": ["Left rear post", "Right rear post"]}, {"role": "axle", "name": "Axle", "box": [0.04, 0.82, 0.42, 0.92, 0.05, 0.16], "kind": "member", "on": ["Left top rail", "Right top rail"], "shape": "cylinder"}], "moving": [], "notes": ["Axle spans and rests directly on Left top rail and Right top rail", "Supports a spinning compost drum above ground clearance", "Outdoor garden frame of wood or steel"], "learned": true}, {"key": "cutting-board", "synonyms": ["chopping-board"], "version": 1, "trust": "candidate", "title": "Cutting Board", "size": {"width": 18, "height": 1, "depth": 12}, "feet": false, "outdoor": false, "wall": false, "defining": ["deck"], "parts": [{"role": "deck", "name": "Board", "box": [0, 0, 0, 1, 1, 1], "kind": "panel"}], "moving": [], "notes": ["Flat rectangular hardwood slab used as a food prep surface"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy Food-safe mineral oil: no part is cut from it"}, {"key": "wall-clock-frame", "synonyms": [], "version": 1, "trust": "candidate", "title": "12-Inch Wall Clock Frame", "size": {"width": 12, "height": 12, "depth": 1.5}, "feet": false, "outdoor": false, "wall": true, "defining": ["frame"], "parts": [{"role": "frame", "name": "Rim", "box": [0, 0, 0, 1, 1, 1], "kind": "member", "shape": "ring"}, {"role": "face", "name": "Dial", "box": [0.08, 0.08, 0.15, 0.84, 0.84, 0.2], "kind": "panel", "on": ["Rim"], "shape": "disc"}, {"role": "cover", "name": "Crystal", "box": [0.06, 0.06, 0.55, 0.88, 0.88, 0.15], "kind": "cover", "on": ["Rim"], "shape": "disc"}, {"role": "hardware", "name": "Hanger", "box": [0.45, 0.92, 0.7, 0.1, 0.06, 0.2], "kind": "hardware", "on": ["Rim"]}], "moving": [], "notes": ["Circular wooden or metal rim sized for a standard 12-inch dial", "Thin depth typical of a wall-mounted clock case", "Hanger centered at top rear for nail or hook"], "learned": true, "held": "Flagged by the learned-recipe checks: Hanger 1: no catalogue item (hardware); Buy 1/4\" plywood 4x8 (backer): no part is cut from it; Buy Hanger: no part is cut from it"}, {"key": "toy-train-track-riser", "synonyms": [], "version": 1, "trust": "candidate", "title": "Toy Train Track Riser", "size": {"width": 5, "height": 4, "depth": 3}, "feet": true, "outdoor": false, "wall": false, "defining": [], "parts": [{"role": "deck", "name": "Base", "box": [0.05, 0, 0.05, 0.9, 0.08, 0.9], "kind": "panel"}, {"role": "post", "name": "Front left leg", "box": [0.12, 0.08, 0.12, 0.12, 0.72, 0.12], "kind": "member", "on": ["Base"]}, {"role": "post", "name": "Front right leg", "box": [0.76, 0.08, 0.12, 0.12, 0.72, 0.12], "kind": "member", "on": ["Base"]}, {"role": "post", "name": "Rear left leg", "box": [0.12, 0.08, 0.76, 0.12, 0.72, 0.12], "kind": "member", "on": ["Base"]}, {"role": "post", "name": "Rear right leg", "box": [0.76, 0.08, 0.76, 0.12, 0.72, 0.12], "kind": "member", "on": ["Base"]}, {"role": "rail", "name": "Front brace", "box": [0.24, 0.35, 0.15, 0.52, 0.08, 0.08], "kind": "member", "on": ["Front left leg", "Front right leg"]}, {"role": "rail", "name": "Rear brace", "box": [0.24, 0.35, 0.77, 0.52, 0.08, 0.08], "kind": "member", "on": ["Rear left leg", "Rear right leg"]}, {"role": "deck", "name": "Top platform", "box": [0.08, 0.8, 0.08, 0.84, 0.12, 0.84], "kind": "panel", "on": ["Front left leg", "Front right leg", "Rear left leg", "Rear right leg"]}, {"role": "rail", "name": "Track guide left", "box": [0.18, 0.92, 0.25, 0.08, 0.06, 0.5], "kind": "member", "on": ["Top platform"]}, {"role": "rail", "name": "Track guide right", "box": [0.74, 0.92, 0.25, 0.08, 0.06, 0.5], "kind": "member", "on": ["Top platform"]}], "moving": [], "notes": ["Open trestle-style support for elevating wooden or plastic toy train track", "Top platform holds a short straight track section", "Typical molded plastic or plywood construction"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"}, {"key": "window-box", "synonyms": ["flower-box", "planter-box"], "version": 1, "trust": "candidate", "title": "30-Inch Cedar Window Box", "size": {"width": 30, "height": 8, "depth": 9}, "feet": false, "outdoor": true, "wall": true, "defining": ["panel"], "parts": [{"role": "panel", "name": "Bottom", "box": [0.03, 0, 0.03, 0.94, 0.125, 0.94], "kind": "panel"}, {"role": "panel", "name": "Front", "box": [0, 0.125, 0, 1, 0.875, 0.11], "kind": "panel", "on": ["Bottom"]}, {"role": "panel", "name": "Back", "box": [0, 0.125, 0.89, 1, 0.875, 0.10999999999999999], "kind": "panel", "on": ["Bottom"]}, {"role": "panel", "name": "Left end", "box": [0, 0.125, 0.11, 0.03, 0.875, 0.78], "kind": "panel", "on": ["Bottom"]}, {"role": "panel", "name": "Right end", "box": [0.97, 0.125, 0.11, 0.03, 0.875, 0.78], "kind": "panel", "on": ["Bottom"]}], "moving": [], "notes": ["Built from 1-inch cedar boards", "Open top planter for mounting beneath a window", "Typical overall length 30 inches"], "learned": true, "held": "Flagged by the learned-recipe checks: Buy Landscape fabric liner, 3 ft × 50 ft roll: no part is cut from it; a part has only a fallback step; every part has the role \"panel\""}, {"key": "barn-birdhouse", "synonyms": ["barn-style birdhouse", "nest box"], "version": 1, "trust": "candidate", "title": "Barn Birdhouse", "size": {"width": 10, "height": 14, "depth": 8}, "feet": false, "outdoor": true, "wall": true, "defining": [], "parts": [{"role": "deck", "name": "Floor", "box": [0.08, 0, 0.08, 0.84, 0.05, 0.84], "kind": "panel"}, {"role": "panel", "name": "Front", "box": [0.08, 0.05, 0.08, 0.84, 0.55, 0.06], "kind": "panel", "on": ["Floor"]}, {"role": "panel", "name": "Back", "box": [0.08, 0.05, 0.86, 0.84, 0.55, 0.06], "kind": "panel", "on": ["Floor"]}, {"role": "panel", "name": "Left", "box": [0.08, 0.05, 0.08, 0.06, 0.5, 0.84], "kind": "panel", "on": ["Floor"]}, {"role": "panel", "name": "Right", "box": [0.86, 0.05, 0.08, 0.06, 0.5, 0.84], "kind": "panel", "on": ["Floor"]}, {"role": "roof", "name": "Left roof", "box": [0, 0.55, 0, 0.55, 0.32, 1], "kind": "panel", "on": ["Left", "Front", "Back"]}, {"role": "roof", "name": "Right roof", "box": [0.45, 0.55, 0, 0.55, 0.32, 1], "kind": "panel", "on": ["Right", "Front", "Back"]}, {"role": "tower", "name": "Cupola", "box": [0.37, 0.82, 0.35, 0.26, 0.12, 0.3], "kind": "member", "on": ["Left roof", "Right roof"]}, {"role": "roof", "name": "Cupola roof", "box": [0.34, 0.94, 0.32, 0.32, 0.06, 0.36], "kind": "cover", "on": ["Cupola"]}, {"role": "rail", "name": "Perch", "box": [0.42, 0.28, 0.02, 0.16, 0.04, 0.06], "kind": "member", "on": ["Front"], "shape": "cylinder"}], "moving": [], "notes": ["Gable roof meets at center peak for classic barn profile with slight overhang", "1.25-inch round entrance hole centered in Front above the perch", "Cupola adds barn character; often louvered or solid", "Typically painted barn-red with white trim and corner boards", "Wall-mounted via back panel or hung from cupola; floor clear interior roughly 5 by 5 inches", "No feet; outdoor use only"], "learned": true, "held": "Flagged by the learned-recipe checks: a part has only a fallback step"}, {"key": "knife-block", "synonyms": ["knife block", "knife holder", "cutlery block"], "version": 1, "trust": "candidate", "title": "Maple Knife Block", "size": {"width": 9, "height": 8.5, "depth": 4.5}, "feet": false, "outdoor": false, "wall": false, "defining": [], "count": {"word": "slots", "default": 6}, "parts": [{"role": "deck", "name": "Base", "box": [0, 0, 0, 1, 0.09, 1], "kind": "panel"}, {"role": "panel", "name": "Back", "box": [0, 0.09, 0.82, 1, 0.91, 0.18], "kind": "panel", "on": ["Base"]}, {"role": "panel", "name": "Left side", "box": [0, 0.09, 0, 0.09, 0.91, 0.82], "kind": "panel", "on": ["Base"]}, {"role": "panel", "name": "Right side", "box": [0.91, 0.09, 0, 0.08999999999999997, 0.91, 0.82], "kind": "panel", "on": ["Base"]}, {"role": "rail", "name": "Front rail", "box": [0.09, 0.09, 0, 0.82, 0.22, 0.1], "kind": "member", "on": ["Base"]}, {"role": "post", "name": "Divider", "box": [0.12, 0.09, 0.12, 0.06, 0.82, 0.7], "kind": "member", "on": ["Base"], "repeat": "between"}], "moving": [], "notes": ["Built from hard maple boards", "Vertical dividers form narrow slots that hold knife blades safely", "Open top allows knives to be inserted and removed", "Sits stably on a countertop"], "learned": true}, {"key": "adirondack-footrest", "synonyms": [], "version": 1, "trust": "candidate", "title": "Adirondack Footrest", "size": {"width": 20, "height": 14, "depth": 18}, "feet": true, "outdoor": true, "wall": false, "defining": ["post", "rail", "slat"], "parts": [{"role": "post", "name": "Front left leg", "box": [0.05, 0, 0.05, 0.1, 0.75, 0.1], "kind": "member"}, {"role": "post", "name": "Front right leg", "box": [0.85, 0, 0.05, 0.1, 0.75, 0.1], "kind": "member"}, {"role": "post", "name": "Rear left leg", "box": [0.05, 0, 0.85, 0.1, 0.75, 0.1], "kind": "member"}, {"role": "post", "name": "Rear right leg", "box": [0.85, 0, 0.85, 0.1, 0.75, 0.1], "kind": "member"}, {"role": "rail", "name": "Left side rail", "box": [0.05, 0.75, 0.1, 0.1, 0.1, 0.8], "kind": "member", "on": ["Front left leg", "Rear left leg"]}, {"role": "rail", "name": "Right side rail", "box": [0.85, 0.75, 0.1, 0.1, 0.1, 0.8], "kind": "member", "on": ["Front right leg", "Rear right leg"]}, {"role": "rail", "name": "Front rail", "box": [0.1, 0.75, 0.05, 0.8, 0.1, 0.1], "kind": "member", "on": ["Front left leg", "Front right leg"]}, {"role": "rail", "name": "Rear rail", "box": [0.1, 0.75, 0.85, 0.8, 0.1, 0.1], "kind": "member", "on": ["Rear left leg", "Rear right leg"]}, {"role": "rail", "name": "Left stretcher", "box": [0.05, 0.25, 0.15, 0.1, 0.08, 0.7], "kind": "member", "on": ["Front left leg", "Rear left leg"]}, {"role": "rail", "name": "Right stretcher", "box": [0.85, 0.25, 0.15, 0.1, 0.08, 0.7], "kind": "member", "on": ["Front right leg", "Rear right leg"]}, {"role": "slat", "name": "Top slat 1", "box": [0.1, 0.85, 0.15, 0.8, 0.1, 0.08], "kind": "panel", "on": ["Left side rail", "Right side rail"]}, {"role": "slat", "name": "Top slat 2", "box": [0.1, 0.85, 0.3, 0.8, 0.1, 0.08], "kind": "panel", "on": ["Left side rail", "Right side rail"]}, {"role": "slat", "name": "Top slat 3", "box": [0.1, 0.85, 0.45, 0.8, 0.1, 0.08], "kind": "panel", "on": ["Left side rail", "Right side rail"]}, {"role": "slat", "name": "Top slat 4", "box": [0.1, 0.85, 0.6, 0.8, 0.1, 0.08], "kind": "panel", "on": ["Left side rail", "Right side rail"]}, {"role": "slat", "name": "Top slat 5", "box": [0.1, 0.85, 0.75, 0.8, 0.1, 0.08], "kind": "panel", "on": ["Left side rail", "Right side rail"]}], "moving": [], "notes": ["Classic low outdoor wooden footrest paired with Adirondack chairs", "Four legs with side rails, end rails and lower stretchers form the frame", "Five spaced top slats rest on the side rails for a drained seating surface"], "learned": true}, {"key": "wall-mounted-mail-organizer", "synonyms": [], "version": 1, "trust": "candidate", "title": "Wall-Mounted Mail Organizer", "size": {"width": 12, "height": 14, "depth": 3.5}, "feet": false, "outdoor": false, "wall": true, "defining": [], "count": {"word": "slots", "default": 3}, "parts": [{"role": "panel", "name": "Backboard", "box": [0, 0, 0.86, 1, 1, 0.14], "kind": "panel"}, {"role": "post", "name": "Left side", "box": [0, 0, 0, 0.07, 1, 0.86], "kind": "member", "on": ["Backboard"]}, {"role": "post", "name": "Right side", "box": [0.93, 0, 0, 0.06999999999999995, 1, 0.86], "kind": "member", "on": ["Backboard"]}, {"role": "rail", "name": "Bottom shelf", "box": [0.07, 0, 0, 0.86, 0.05, 0.86], "kind": "member", "on": ["Backboard", "Left side", "Right side"]}, {"role": "rail", "name": "Lower divider", "box": [0.07, 0.32, 0, 0.86, 0.05, 0.86], "kind": "member", "on": ["Backboard", "Left side", "Right side"]}, {"role": "rail", "name": "Upper divider", "box": [0.07, 0.64, 0, 0.86, 0.05, 0.86], "kind": "member", "on": ["Backboard", "Left side", "Right side"]}, {"role": "rail", "name": "Top rail", "box": [0.07, 0.95, 0, 0.86, 0.05, 0.86], "kind": "member", "on": ["Backboard", "Left side", "Right side"]}], "moving": [], "notes": ["Open-front horizontal slots hold letters and flat mail", "Mounts flush to wall by the backboard"], "learned": true, "held": "Flagged by the learned-recipe checks: a part has only a fallback step"}, {"key": "rain-barrel-stand", "synonyms": ["rain barrel platform"], "version": 1, "trust": "candidate", "title": "Rain Barrel Stand", "size": {"width": 32, "height": 18, "depth": 32}, "feet": true, "outdoor": true, "wall": false, "defining": ["post", "rail", "deck"], "parts": [{"role": "post", "name": "Front left post", "box": [0.05, 0, 0.05, 0.1, 1, 0.1], "kind": "member"}, {"role": "post", "name": "Front right post", "box": [0.85, 0, 0.05, 0.1, 1, 0.1], "kind": "member"}, {"role": "post", "name": "Rear left post", "box": [0.05, 0, 0.85, 0.1, 1, 0.1], "kind": "member"}, {"role": "post", "name": "Rear right post", "box": [0.85, 0, 0.85, 0.1, 1, 0.1], "kind": "member"}, {"role": "rail", "name": "Bottom front rail", "box": [0.15, 0.15, 0.05, 0.7, 0.08, 0.1], "kind": "member", "on": ["Front left post", "Front right post"]}, {"role": "rail", "name": "Bottom rear rail", "box": [0.15, 0.15, 0.85, 0.7, 0.08, 0.1], "kind": "member", "on": ["Rear left post", "Rear right post"]}, {"role": "rail", "name": "Bottom left rail", "box": [0.05, 0.15, 0.15, 0.1, 0.08, 0.7], "kind": "member", "on": ["Front left post", "Rear left post"]}, {"role": "rail", "name": "Bottom right rail", "box": [0.85, 0.15, 0.15, 0.1, 0.08, 0.7], "kind": "member", "on": ["Front right post", "Rear right post"]}, {"role": "rail", "name": "Top front rail", "box": [0.15, 0.85, 0.05, 0.7, 0.1, 0.1], "kind": "member", "on": ["Front left post", "Front right post"]}, {"role": "rail", "name": "Top rear rail", "box": [0.15, 0.85, 0.85, 0.7, 0.1, 0.1], "kind": "member", "on": ["Rear left post", "Rear right post"]}, {"role": "rail", "name": "Top left rail", "box": [0.05, 0.85, 0.15, 0.1, 0.1, 0.7], "kind": "member", "on": ["Front left post", "Rear left post"]}, {"role": "rail", "name": "Top right rail", "box": [0.85, 0.85, 0.15, 0.1, 0.1, 0.7], "kind": "member", "on": ["Front right post", "Rear right post"]}, {"role": "deck", "name": "Front deck board", "box": [0.15, 0.95, 0.15, 0.7, 0.05, 0.15], "kind": "member", "on": ["Top front rail", "Top left rail", "Top right rail"]}, {"role": "deck", "name": "Middle deck board", "box": [0.15, 0.95, 0.425, 0.7, 0.05, 0.15], "kind": "member", "on": ["Top left rail", "Top right rail"]}, {"role": "deck", "name": "Rear deck board", "box": [0.15, 0.95, 0.7, 0.7, 0.05, 0.15], "kind": "member", "on": ["Top rear rail", "Top left rail", "Top right rail"]}], "moving": [], "notes": ["Constructed from pressure-treated lumber for outdoor use", "Posts are cut from 4x4 stock", "Rails and deck boards from 2x4 stock", "Height allows space under barrel spigot for watering can", "Platform supports standard 50-gallon rain barrel"], "learned": true, "held": "Flagged by the learned-recipe checks: note names 4x4 but no part is cut from it"}, {"key": "miter-saw-station", "synonyms": ["miter saw bench", "chop saw station"], "version": 1, "trust": "candidate", "title": "Miter Saw Station", "size": {"width": 96, "height": 36, "depth": 30}, "feet": true, "outdoor": false, "wall": false, "defining": ["deck", "rail"], "count": {"word": "bays", "default": 1}, "parts": [{"role": "post", "name": "Lf leg", "box": [0.02, 0, 0.02, 0.03, 0.88, 0.03], "kind": "member"}, {"role": "post", "name": "Rf leg", "box": [0.95, 0, 0.02, 0.03, 0.88, 0.03], "kind": "member"}, {"role": "post", "name": "Lb leg", "box": [0.02, 0, 0.92, 0.03, 0.88, 0.03], "kind": "member"}, {"role": "post", "name": "Rb leg", "box": [0.95, 0, 0.92, 0.03, 0.88, 0.03], "kind": "member"}, {"role": "rail", "name": "Front lower rail", "box": [0.05, 0.08, 0.02, 0.9, 0.04, 0.03], "kind": "member", "on": ["Lf leg", "Rf leg"]}, {"role": "rail", "name": "Back lower rail", "box": [0.05, 0.08, 0.92, 0.9, 0.04, 0.03], "kind": "member", "on": ["Lb leg", "Rb leg"]}, {"role": "rail", "name": "Left lower rail", "box": [0.02, 0.08, 0.05, 0.03, 0.04, 0.87], "kind": "member", "on": ["Lf leg", "Lb leg"]}, {"role": "rail", "name": "Right lower rail", "box": [0.95, 0.08, 0.05, 0.03, 0.04, 0.87], "kind": "member", "on": ["Rf leg", "Rb leg"]}, {"role": "deck", "name": "Bottom shelf", "box": [0.05, 0.12, 0.05, 0.9, 0.02, 0.87], "kind": "panel", "on": ["Front lower rail", "Back lower rail", "Left lower rail", "Right lower rail"]}, {"role": "rail", "name": "Front upper rail", "box": [0.05, 0.84, 0.02, 0.9, 0.04, 0.03], "kind": "member", "on": ["Lf leg", "Rf leg"]}, {"role": "rail", "name": "Back upper rail", "box": [0.05, 0.84, 0.92, 0.9, 0.04, 0.03], "kind": "member", "on": ["Lb leg", "Rb leg"]}, {"role": "rail", "name": "Left upper rail", "box": [0.02, 0.84, 0.05, 0.03, 0.04, 0.87], "kind": "member", "on": ["Lf leg", "Lb leg"]}, {"role": "rail", "name": "Right upper rail", "box": [0.95, 0.84, 0.05, 0.03, 0.04, 0.87], "kind": "member", "on": ["Rf leg", "Rb leg"]}, {"role": "deck", "name": "Left wing", "box": [0.05, 0.88, 0.05, 0.28, 0.04, 0.85], "kind": "panel", "on": ["Front upper rail", "Back upper rail", "Left upper rail"]}, {"role": "deck", "name": "Saw platform", "box": [0.35, 0.88, 0.05, 0.3, 0.04, 0.85], "kind": "panel", "on": ["Front upper rail", "Back upper rail"]}, {"role": "deck", "name": "Right wing", "box": [0.67, 0.88, 0.05, 0.28, 0.04, 0.85], "kind": "panel", "on": ["Front upper rail", "Back upper rail", "Right upper rail"]}, {"role": "rail", "name": "Fence", "box": [0.05, 0.92, 0.88, 0.9, 0.07999999999999996, 0.05], "kind": "member", "on": ["Left wing", "Saw platform", "Right wing", "Back upper rail"]}], "moving": [], "notes": ["Left and right wings sit flush with the miter saw table surface", "Saw bolts to the center platform so its fence aligns with the continuous station fence", "Lower shelf provides storage for cutoffs and accessories", "Frame typically 2x4 lumber with plywood decks and fence"], "learned": true}, {"key": "sundial", "synonyms": ["sun clock", "garden sundial"], "version": 1, "trust": "candidate", "title": "Garden Pedestal Sundial", "size": {"width": 20, "height": 42, "depth": 20}, "feet": false, "outdoor": true, "wall": false, "defining": ["gnomon"], "parts": [{"role": "plinth", "name": "Plinth", "box": [0.15, 0, 0.15, 0.7, 0.07, 0.7], "kind": "member"}, {"role": "post", "name": "Pedestal", "box": [0.375, 0.07, 0.375, 0.25, 0.72, 0.25], "kind": "member", "on": ["Plinth"]}, {"role": "deck", "name": "Dial plate", "box": [0.1, 0.79, 0.1, 0.8, 0.025, 0.8], "kind": "panel", "on": ["Pedestal"]}, {"role": "gnomon", "name": "Gnomon", "box": [0.48, 0.815, 0.25, 0.04, 0.18, 0.45], "kind": "member", "on": ["Dial plate"]}], "moving": [], "notes": ["Horizontal dial with fixed triangular gnomon; style edge slopes at local latitude angle", "Plinth is low square stone or cast base roughly 14 in across", "Pedestal is a 5 in square or turned column", "Dial plate is a round or square metal/stone disk with engraved hour lines", "Gnomon is a thin right-triangle plate fixed along the noon line, pointing true north"], "learned": true, "held": "Flagged by the learned-recipe checks: Plinth: 2.94×14.00 is wider than one 2×4 Stud (8 ft); Pedestal: 5.00×5.00 is wider than one 2×4 Stud (8 ft); Buy 2 2×4 Stud (8 ft) for 303\" of strips"}]}
+{
+ "schema": 1,
+ "recipes": [
+  {
+   "key": "ferris-wheel",
+   "synonyms": [
+    "ferris"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Ferris wheel",
+   "size": {
+    "width": 18,
+    "height": 19,
+    "depth": 8
+   },
+   "defining": [
+    "wheel",
+    "axle",
+    "a-frame",
+    "gondola"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.03,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "a-frame",
+     "name": "Left front leg",
+     "box": [
+      0.4,
+      0.03,
+      0,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Left back leg",
+     "box": [
+      0.4,
+      0.03,
+      0.9,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Right front leg",
+     "box": [
+      0.56,
+      0.03,
+      0,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "a-frame",
+     "name": "Right back leg",
+     "box": [
+      0.56,
+      0.03,
+      0.9,
+      0.04,
+      0.5,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.44,
+      0.5,
+      0,
+      0.12,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Left back leg",
+      "Right front leg",
+      "Right back leg"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "Front rim",
+     "box": [
+      0.03,
+      0.06,
+      0.25,
+      0.94,
+      0.92,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "Back rim",
+     "box": [
+      0.03,
+      0.06,
+      0.71,
+      0.94,
+      0.92,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "spoke",
+     "name": "Front spoke",
+     "box": [
+      0.48,
+      0.06,
+      0.21,
+      0.04,
+      0.92,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Front rim"
+     ]
+    },
+    {
+     "role": "spoke",
+     "name": "Back spoke",
+     "box": [
+      0.48,
+      0.06,
+      0.75,
+      0.04,
+      0.92,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 1",
+     "box": [
+      0.45,
+      0.88,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 2",
+     "box": [
+      0.03,
+      0.45,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 3",
+     "box": [
+      0.88,
+      0.45,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    },
+    {
+     "role": "gondola",
+     "name": "Gondola 4",
+     "box": [
+      0.45,
+      0.02,
+      0.29,
+      0.09,
+      0.07,
+      0.42
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rim",
+      "Back rim"
+     ]
+    }
+   ],
+   "notes": [
+    "The wheel stands upright on its axle between two A-frames and turns."
+   ],
+   "stock": "popsicle-standard",
+   "sheet": "popsicle-standard",
+   "moving": [
+    {
+     "part": "Front rim",
+     "motion": "spin"
+    }
+   ]
+  },
+  {
+   "key": "glider",
+   "synonyms": [
+    "balsa glider",
+    "glider plane"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Balsa glider",
+   "size": {
+    "width": 16,
+    "height": 2.5,
+    "depth": 12
+   },
+   "defining": [
+    "fuselage",
+    "wing",
+    "tail",
+    "fin"
+   ],
+   "parts": [
+    {
+     "role": "fuselage",
+     "name": "Fuselage",
+     "box": [
+      0.47,
+      0,
+      0,
+      0.06,
+      0.3,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "wing",
+     "name": "Wing",
+     "box": [
+      0,
+      0.3,
+      0.25,
+      1,
+      0.1,
+      0.25
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tailplane",
+     "box": [
+      0.32,
+      0.3,
+      0.86,
+      0.36,
+      0.08,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "fin",
+     "name": "Fin",
+     "box": [
+      0.485,
+      0.38,
+      0.86,
+      0.03,
+      0.6,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Tailplane"
+     ]
+    },
+    {
+     "role": "nose",
+     "name": "Nose weight",
+     "box": [
+      0.46,
+      0.05,
+      0,
+      0.08,
+      0.2,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    }
+   ],
+   "notes": [
+    "Glue only; thin balsa splits on screws.",
+    "Sand the wing's leading edge round for lift."
+   ],
+   "stock": "popsicle-jumbo",
+   "sheet": "plywood-1-4-4x8"
+  },
+  {
+   "key": "toy-airplane",
+   "synonyms": [
+    "airplane",
+    "plane"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Toy airplane",
+   "size": {
+    "width": 14,
+    "height": 7,
+    "depth": 14
+   },
+   "defining": [
+    "fuselage",
+    "wing",
+    "tail",
+    "wheel",
+    "axle",
+    "propeller"
+   ],
+   "parts": [
+    {
+     "role": "wheel",
+     "name": "Left wheel",
+     "box": [
+      0.2,
+      0,
+      0.22,
+      0.05,
+      0.16,
+      0.12
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wheel",
+     "name": "Right wheel",
+     "box": [
+      0.75,
+      0,
+      0.22,
+      0.05,
+      0.16,
+      0.12
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.25,
+      0.06,
+      0.25,
+      0.5,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left wheel",
+      "Right wheel"
+     ]
+    },
+    {
+     "role": "fuselage",
+     "name": "Fuselage",
+     "box": [
+      0.42,
+      0.1,
+      0.06,
+      0.16,
+      0.3,
+      0.94
+     ],
+     "kind": "member",
+     "on": [
+      "Axle"
+     ]
+    },
+    {
+     "role": "wing",
+     "name": "Wing",
+     "box": [
+      0,
+      0.25,
+      0.25,
+      1,
+      0.07,
+      0.22
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tailplane",
+     "box": [
+      0.3,
+      0.4,
+      0.86,
+      0.4,
+      0.05,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "fin",
+     "name": "Fin",
+     "box": [
+      0.485,
+      0.45,
+      0.86,
+      0.03,
+      0.4,
+      0.14
+     ],
+     "kind": "panel",
+     "on": [
+      "Tailplane"
+     ]
+    },
+    {
+     "role": "propeller",
+     "name": "Prop shaft",
+     "box": [
+      0.49,
+      0.23,
+      0,
+      0.02,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Fuselage"
+     ]
+    },
+    {
+     "role": "propeller",
+     "name": "Propeller",
+     "box": [
+      0.3,
+      0.235,
+      0,
+      0.4,
+      0.03,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Prop shaft"
+     ]
+    }
+   ],
+   "notes": [
+    "The propeller spins on a dowel shaft; the wheels turn on a through axle."
+   ],
+   "modifiers": [
+    "propeller"
+   ],
+   "stock": "lumber-1x4-8",
+   "sheet": "lumber-1x4-8",
+   "moving": [
+    {
+     "part": "Propeller",
+     "motion": "spin"
+    },
+    {
+     "part": "Left wheel",
+     "motion": "spin"
+    }
+   ]
+  },
+  {
+   "key": "reindeer",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Reindeer",
+   "size": {
+    "width": 36,
+    "height": 40,
+    "depth": 10
+   },
+   "defining": [
+    "leg",
+    "body",
+    "head",
+    "antler"
+   ],
+   "parts": [
+    {
+     "role": "leg",
+     "name": "Front left leg",
+     "box": [
+      0.7,
+      0,
+      0.1,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Front right leg",
+     "box": [
+      0.7,
+      0,
+      0.7,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Back left leg",
+     "box": [
+      0.15,
+      0,
+      0.1,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "leg",
+     "name": "Back right leg",
+     "box": [
+      0.15,
+      0,
+      0.7,
+      0.08,
+      0.45,
+      0.2
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "body",
+     "name": "Body",
+     "box": [
+      0.12,
+      0.45,
+      0.1,
+      0.7,
+      0.2,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "neck",
+     "name": "Neck",
+     "box": [
+      0.72,
+      0.65,
+      0.3,
+      0.1,
+      0.15,
+      0.4
+     ],
+     "kind": "member",
+     "on": [
+      "Body"
+     ]
+    },
+    {
+     "role": "head",
+     "name": "Head",
+     "box": [
+      0.72,
+      0.8,
+      0.3,
+      0.26,
+      0.1,
+      0.4
+     ],
+     "kind": "member",
+     "on": [
+      "Neck"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Left antler",
+     "box": [
+      0.74,
+      0.9,
+      0.3,
+      0.03,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Head"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Right antler",
+     "box": [
+      0.74,
+      0.9,
+      0.65,
+      0.03,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Head"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Left tine",
+     "box": [
+      0.62,
+      0.95,
+      0.3,
+      0.12,
+      0.03,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Left antler"
+     ]
+    },
+    {
+     "role": "antler",
+     "name": "Right tine",
+     "box": [
+      0.62,
+      0.95,
+      0.65,
+      0.12,
+      0.03,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Right antler"
+     ]
+    },
+    {
+     "role": "tail",
+     "name": "Tail",
+     "box": [
+      0.06,
+      0.58,
+      0.45,
+      0.06,
+      0.05,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Body"
+     ]
+    }
+   ],
+   "notes": [
+    "Antlers branch from the head; screw each joint with two 2½″ screws."
+   ],
+   "stock": "lumber-2x4-8",
+   "sheet": "lumber-2x4-8"
+  },
+  {
+   "key": "marble-run",
+   "synonyms": [
+    "marble maze"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Marble run",
+   "size": {
+    "width": 24,
+    "height": 30,
+    "depth": 8
+   },
+   "defining": [
+    "ramp",
+    "drop",
+    "catch",
+    "backboard"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.04,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "backboard",
+     "name": "Back board",
+     "box": [
+      0,
+      0.04,
+      0,
+      1,
+      0.96,
+      0.15
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 1",
+     "box": [
+      0.05,
+      0.8,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 1 rail",
+     "box": [
+      0.05,
+      0.83,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 1"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 2",
+     "box": [
+      0.2,
+      0.6,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 2 rail",
+     "box": [
+      0.2,
+      0.63,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 2"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 3",
+     "box": [
+      0.05,
+      0.4,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 3 rail",
+     "box": [
+      0.05,
+      0.43,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 3"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 4",
+     "box": [
+      0.2,
+      0.2,
+      0.15,
+      0.75,
+      0.03,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "ramp",
+     "name": "Ramp 4 rail",
+     "box": [
+      0.2,
+      0.23,
+      0.72,
+      0.75,
+      0.04,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 4"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 1",
+     "box": [
+      0.8,
+      0.63,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 2",
+     "box": [
+      0.05,
+      0.43,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "drop",
+     "name": "Drop 3",
+     "box": [
+      0.8,
+      0.23,
+      0.15,
+      0.15,
+      0.17,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back board"
+     ]
+    },
+    {
+     "role": "start",
+     "name": "Start cup",
+     "box": [
+      0.05,
+      0.83,
+      0.15,
+      0.15,
+      0.06,
+      0.3
+     ],
+     "kind": "panel",
+     "on": [
+      "Ramp 1"
+     ]
+    },
+    {
+     "role": "catch",
+     "name": "Catch tray",
+     "box": [
+      0.7,
+      0.04,
+      0.15,
+      0.3,
+      0.06,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    }
+   ],
+   "notes": [
+    "Tilt each ramp about 5° down toward its drop; the marble zig-zags to the catch tray."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet",
+   "moving": []
+  },
+  {
+   "key": "tipi",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Kids tipi",
+   "size": {
+    "width": 48,
+    "height": 66,
+    "depth": 48
+   },
+   "defining": [
+    "pole",
+    "cover"
+   ],
+   "parts": [
+    {
+     "role": "pole",
+     "name": "Pole 1",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 2",
+     "box": [
+      0.9,
+      0,
+      0.05,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 3",
+     "box": [
+      0.05,
+      0,
+      0.9,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pole",
+     "name": "Pole 4",
+     "box": [
+      0.9,
+      0,
+      0.9,
+      0.05,
+      1,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "tie",
+     "name": "Back tie",
+     "box": [
+      0,
+      0.92,
+      0.05,
+      1,
+      0.04,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Pole 1",
+      "Pole 2"
+     ]
+    },
+    {
+     "role": "tie",
+     "name": "Front tie",
+     "box": [
+      0,
+      0.92,
+      0.9,
+      1,
+      0.04,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Pole 3",
+      "Pole 4"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Canvas cover 1",
+     "box": [
+      0.05,
+      0.02,
+      0.1,
+      0.9,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 1",
+      "Pole 2"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Canvas cover 2",
+     "box": [
+      0.1,
+      0.02,
+      0.1,
+      0.01,
+      0.9,
+      0.8
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 1",
+      "Pole 3"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Canvas cover 3",
+     "box": [
+      0.89,
+      0.02,
+      0.1,
+      0.01,
+      0.9,
+      0.8
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 2",
+      "Pole 4"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Canvas cover 4",
+     "box": [
+      0.05,
+      0.02,
+      0.89,
+      0.3,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 3"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Canvas cover 5",
+     "box": [
+      0.65,
+      0.02,
+      0.89,
+      0.3,
+      0.9,
+      0.01
+     ],
+     "kind": "cover",
+     "on": [
+      "Pole 4"
+     ]
+    }
+   ],
+   "notes": [
+    "A kid-size play tipi: lash the poles at the top and drape the fabric cover, with a door gap at the front."
+   ],
+   "stock": "dowel-1-1-4-36",
+   "sheet": "other"
+  },
+  {
+   "key": "treasure-chest",
+   "synonyms": [
+    "pirate chest"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Treasure chest",
+   "size": {
+    "width": 10,
+    "height": 7,
+    "depth": 6
+   },
+   "defining": [
+    "wall",
+    "lid",
+    "hinge"
+   ],
+   "parts": [
+    {
+     "role": "bottom",
+     "name": "Bottom",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.08,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Front wall",
+     "box": [
+      0,
+      0.08,
+      0.92,
+      1,
+      0.62,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Back wall",
+     "box": [
+      0,
+      0.08,
+      0,
+      1,
+      0.62,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Left wall",
+     "box": [
+      0,
+      0.08,
+      0.08,
+      0.08,
+      0.62,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Right wall",
+     "box": [
+      0.92,
+      0.08,
+      0.08,
+      0.08,
+      0.62,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "lid",
+     "name": "Lid",
+     "box": [
+      0,
+      0.7,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall",
+      "Back wall",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Hinge",
+     "box": [
+      0.2,
+      0.64,
+      0,
+      0.12,
+      0.12,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "latch",
+     "name": "Latch",
+     "box": [
+      0.45,
+      0.6,
+      0.98,
+      0.1,
+      0.15,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front wall"
+     ]
+    }
+   ],
+   "notes": [
+    "A craft-size chest; the lid swings up on a hinge at the back."
+   ],
+   "stock": "popsicle-standard",
+   "sheet": "popsicle-standard",
+   "moving": [
+    {
+     "part": "Lid",
+     "motion": "hinge"
+    }
+   ]
+  },
+  {
+   "key": "compost-bin",
+   "synonyms": [
+    "compost bay",
+    "compost bins"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Compost bin",
+   "size": {
+    "width": 36,
+    "height": 36,
+    "depth": 36
+   },
+   "defining": [
+    "post",
+    "slat",
+    "divider"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Back post",
+     "box": [
+      0,
+      0,
+      0,
+      0.035,
+      1,
+      0.1
+     ],
+     "kind": "member",
+     "repeat": "between",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Front post",
+     "box": [
+      0,
+      0,
+      0.9,
+      0.035,
+      1,
+      0.1
+     ],
+     "kind": "member",
+     "repeat": "between",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "slat",
+     "name": "Back slats",
+     "box": [
+      0,
+      0.04,
+      0,
+      1,
+      0.96,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Back post"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "divider",
+     "name": "Bay wall",
+     "box": [
+      0,
+      0.04,
+      0.1,
+      0.02,
+      0.96,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Back post",
+      "Front post"
+     ],
+     "repeat": "between"
+    },
+    {
+     "role": "slat",
+     "name": "Front slats",
+     "box": [
+      0,
+      0.04,
+      0.97,
+      1,
+      0.5,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Front post"
+     ],
+     "repeat": "each"
+    }
+   ],
+   "notes": [
+    "Open slatted bays share their posts; no floor or roof so the pile drains and breathes.",
+    "Front slats lift out to turn the pile.",
+    "Set the posts in the ground 12″ deep."
+   ],
+   "outdoor": true,
+   "count": {
+    "word": "bays",
+    "default": 1,
+    "unit": {
+     "width": 36
+    }
+   },
+   "stock": "lumber-2x6-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "deck-stairs",
+   "synonyms": [
+    "deck steps",
+    "porch steps",
+    "porch stairs",
+    "outdoor stairs"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Deck stairs",
+   "size": {
+    "width": 36,
+    "height": 22.5,
+    "depth": 31.5
+   },
+   "defining": [
+    "stringer",
+    "tread",
+    "riser"
+   ],
+   "parts": [
+    {
+     "role": "stringer",
+     "name": "Left stringer",
+     "box": [
+      0,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "stringer",
+     "name": "Center stringer",
+     "box": [
+      0.48,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "stringer",
+     "name": "Right stringer",
+     "box": [
+      0.96,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "tread",
+     "name": "Tread",
+     "box": [
+      0,
+      0.85,
+      0,
+      1,
+      0.15,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left stringer",
+      "Center stringer",
+      "Right stringer"
+     ],
+     "repeat": "stair"
+    },
+    {
+     "role": "riser",
+     "name": "Riser",
+     "box": [
+      0,
+      0,
+      0.95,
+      1,
+      0.85,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Left stringer",
+      "Center stringer",
+      "Right stringer"
+     ],
+     "repeat": "stair"
+    }
+   ],
+   "notes": [
+    "Cut the stringers to a sawtooth: 7½″ rise and 10½″ run per step; set the stringer feet on pier blocks and bolt the top to the deck rim."
+   ],
+   "outdoor": true,
+   "count": {
+    "word": "steps",
+    "default": 3,
+    "unit": {
+     "height": 7.5,
+     "depth": 10.5
+    }
+   },
+   "stock": "lumber-2x12-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "pergola",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Pergola",
+   "size": {
+    "width": 120,
+    "height": 96,
+    "depth": 120
+   },
+   "defining": [
+    "post",
+    "beam",
+    "rafter"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Post 1",
+     "box": [
+      0.08,
+      0,
+      0.08,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 2",
+     "box": [
+      0.89,
+      0,
+      0.08,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 3",
+     "box": [
+      0.08,
+      0,
+      0.89,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Post 4",
+     "box": [
+      0.89,
+      0,
+      0.89,
+      0.03,
+      0.9,
+      0.03
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "beam",
+     "name": "Front beam",
+     "box": [
+      0,
+      0.9,
+      0.08,
+      1,
+      0.06,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Post 1",
+      "Post 2"
+     ],
+     "stock": "lumber-2x8-8"
+    },
+    {
+     "role": "beam",
+     "name": "Back beam",
+     "box": [
+      0,
+      0.9,
+      0.89,
+      1,
+      0.06,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Post 3",
+      "Post 4"
+     ],
+     "stock": "lumber-2x8-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 1",
+     "box": [
+      0.04,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 2",
+     "box": [
+      0.17,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 3",
+     "box": [
+      0.3,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 4",
+     "box": [
+      0.43,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 5",
+     "box": [
+      0.56,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 6",
+     "box": [
+      0.69,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 7",
+     "box": [
+      0.82,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    },
+    {
+     "role": "rafter",
+     "name": "Rafter 8",
+     "box": [
+      0.95,
+      0.96,
+      0,
+      0.015,
+      0.04,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "Front beam",
+      "Back beam"
+     ],
+     "stock": "lumber-2x6-8"
+    }
+   ],
+   "notes": [
+    "4×4 posts set in concrete footings, doubled beams, rafters on top."
+   ],
+   "feet": true,
+   "outdoor": true,
+   "stock": "lumber-4x4-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "taj-mahal",
+   "synonyms": [
+    "taj"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Taj Mahal",
+   "size": {
+    "width": 24,
+    "height": 20,
+    "depth": 24
+   },
+   "defining": [
+    "plinth",
+    "minaret",
+    "dome",
+    "drum",
+    "iwan"
+   ],
+   "parts": [
+    {
+     "role": "plinth",
+     "name": "Plinth",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.08,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 1",
+     "box": [
+      0.02,
+      0.08,
+      0.02,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 1 cap",
+     "box": [
+      0.01,
+      0.8,
+      0.01,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 1"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 2",
+     "box": [
+      0.92,
+      0.08,
+      0.02,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 2 cap",
+     "box": [
+      0.91,
+      0.8,
+      0.01,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 2"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 3",
+     "box": [
+      0.02,
+      0.08,
+      0.92,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 3 cap",
+     "box": [
+      0.01,
+      0.8,
+      0.91,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 3"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 4",
+     "box": [
+      0.92,
+      0.08,
+      0.92,
+      0.06,
+      0.72,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "minaret",
+     "name": "Minaret 4 cap",
+     "box": [
+      0.91,
+      0.8,
+      0.91,
+      0.08,
+      0.05,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Minaret 4"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Front wall",
+     "box": [
+      0.2,
+      0.08,
+      0.78,
+      0.6,
+      0.42,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Back wall",
+     "box": [
+      0.2,
+      0.08,
+      0.2,
+      0.6,
+      0.42,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Left wall",
+     "box": [
+      0.2,
+      0.08,
+      0.22,
+      0.02,
+      0.42,
+      0.56
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "hall",
+     "name": "Right wall",
+     "box": [
+      0.78,
+      0.08,
+      0.22,
+      0.02,
+      0.42,
+      0.56
+     ],
+     "kind": "panel",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Front iwan",
+     "box": [
+      0.4,
+      0.1,
+      0.8,
+      0.2,
+      0.36,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Back iwan",
+     "box": [
+      0.4,
+      0.1,
+      0.18,
+      0.2,
+      0.36,
+      0.02
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Left iwan",
+     "box": [
+      0.18,
+      0.1,
+      0.4,
+      0.02,
+      0.36,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Left wall"
+     ]
+    },
+    {
+     "role": "iwan",
+     "name": "Right iwan",
+     "box": [
+      0.8,
+      0.1,
+      0.4,
+      0.02,
+      0.36,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Right wall"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Roof",
+     "box": [
+      0.2,
+      0.5,
+      0.2,
+      0.6,
+      0.02,
+      0.6
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall",
+      "Back wall",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "drum",
+     "name": "Drum",
+     "box": [
+      0.38,
+      0.52,
+      0.38,
+      0.24,
+      0.1,
+      0.24
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "dome",
+     "name": "Dome",
+     "box": [
+      0.32,
+      0.62,
+      0.32,
+      0.36,
+      0.26,
+      0.36
+     ],
+     "kind": "panel",
+     "on": [
+      "Drum"
+     ]
+    },
+    {
+     "role": "finial",
+     "name": "Finial",
+     "box": [
+      0.49,
+      0.88,
+      0.49,
+      0.02,
+      0.12,
+      0.02
+     ],
+     "kind": "member",
+     "on": [
+      "Dome"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 1",
+     "box": [
+      0.22,
+      0.52,
+      0.22,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 2",
+     "box": [
+      0.7,
+      0.52,
+      0.22,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 3",
+     "box": [
+      0.22,
+      0.52,
+      0.7,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    },
+    {
+     "role": "chhatri",
+     "name": "Chhatri 4",
+     "box": [
+      0.7,
+      0.52,
+      0.7,
+      0.08,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Roof"
+     ]
+    }
+   ],
+   "notes": [
+    "Onion dome on a drum over the square hall, four arched iwans and four corner minarets on the plinth."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet"
+  },
+  {
+   "key": "colosseum",
+   "synonyms": [
+    "coliseum",
+    "roman amphitheater"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Colosseum",
+   "size": {
+    "width": 30,
+    "height": 12,
+    "depth": 24
+   },
+   "defining": [
+    "pier",
+    "arcade",
+    "arena"
+   ],
+   "parts": [
+    {
+     "role": "arena",
+     "name": "Arena floor",
+     "box": [
+      0.1,
+      0,
+      0.1,
+      0.8,
+      0.03,
+      0.8
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 1",
+     "box": [
+      0.93,
+      0,
+      0.47,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 2",
+     "box": [
+      0.895,
+      0,
+      0.646,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 3",
+     "box": [
+      0.7953,
+      0,
+      0.7953,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 4",
+     "box": [
+      0.646,
+      0,
+      0.895,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 5",
+     "box": [
+      0.47,
+      0,
+      0.93,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 6",
+     "box": [
+      0.294,
+      0,
+      0.895,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 7",
+     "box": [
+      0.1447,
+      0,
+      0.7953,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 8",
+     "box": [
+      0.045,
+      0,
+      0.646,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 9",
+     "box": [
+      0.01,
+      0,
+      0.47,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 10",
+     "box": [
+      0.045,
+      0,
+      0.294,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 11",
+     "box": [
+      0.1447,
+      0,
+      0.1447,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 12",
+     "box": [
+      0.294,
+      0,
+      0.045,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 13",
+     "box": [
+      0.47,
+      0,
+      0.01,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 14",
+     "box": [
+      0.646,
+      0,
+      0.045,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 15",
+     "box": [
+      0.7953,
+      0,
+      0.1447,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "pier",
+     "name": "Pier 16",
+     "box": [
+      0.895,
+      0,
+      0.294,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-1",
+     "box": [
+      0.895,
+      0.31,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-2",
+     "box": [
+      0.7953,
+      0.31,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-3",
+     "box": [
+      0.646,
+      0.31,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-4",
+     "box": [
+      0.47,
+      0.31,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-5",
+     "box": [
+      0.294,
+      0.31,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-6",
+     "box": [
+      0.1447,
+      0.31,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-7",
+     "box": [
+      0.045,
+      0.31,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-8",
+     "box": [
+      0.01,
+      0.31,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-9",
+     "box": [
+      0.01,
+      0.31,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-10",
+     "box": [
+      0.045,
+      0.31,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-11",
+     "box": [
+      0.1447,
+      0.31,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-12",
+     "box": [
+      0.294,
+      0.31,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-13",
+     "box": [
+      0.47,
+      0.31,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-14",
+     "box": [
+      0.646,
+      0.31,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-15",
+     "box": [
+      0.7953,
+      0.31,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 1-16",
+     "box": [
+      0.895,
+      0.31,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-1",
+     "box": [
+      0.895,
+      0.63,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-2",
+     "box": [
+      0.7953,
+      0.63,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-3",
+     "box": [
+      0.646,
+      0.63,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-4",
+     "box": [
+      0.47,
+      0.63,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-5",
+     "box": [
+      0.294,
+      0.63,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-6",
+     "box": [
+      0.1447,
+      0.63,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-7",
+     "box": [
+      0.045,
+      0.63,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-8",
+     "box": [
+      0.01,
+      0.63,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-9",
+     "box": [
+      0.01,
+      0.63,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-10",
+     "box": [
+      0.045,
+      0.63,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-11",
+     "box": [
+      0.1447,
+      0.63,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-12",
+     "box": [
+      0.294,
+      0.63,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-13",
+     "box": [
+      0.47,
+      0.63,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-14",
+     "box": [
+      0.646,
+      0.63,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-15",
+     "box": [
+      0.7953,
+      0.63,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 2-16",
+     "box": [
+      0.895,
+      0.63,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-1",
+     "box": [
+      0.895,
+      0.95,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 1",
+      "Pier 2"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-2",
+     "box": [
+      0.7953,
+      0.95,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 2",
+      "Pier 3"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-3",
+     "box": [
+      0.646,
+      0.95,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 3",
+      "Pier 4"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-4",
+     "box": [
+      0.47,
+      0.95,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 4",
+      "Pier 5"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-5",
+     "box": [
+      0.294,
+      0.95,
+      0.895,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 5",
+      "Pier 6"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-6",
+     "box": [
+      0.1447,
+      0.95,
+      0.7953,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 6",
+      "Pier 7"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-7",
+     "box": [
+      0.045,
+      0.95,
+      0.646,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 7",
+      "Pier 8"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-8",
+     "box": [
+      0.01,
+      0.95,
+      0.47,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 8",
+      "Pier 9"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-9",
+     "box": [
+      0.01,
+      0.95,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 9",
+      "Pier 10"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-10",
+     "box": [
+      0.045,
+      0.95,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 10",
+      "Pier 11"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-11",
+     "box": [
+      0.1447,
+      0.95,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 11",
+      "Pier 12"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-12",
+     "box": [
+      0.294,
+      0.95,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 12",
+      "Pier 13"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-13",
+     "box": [
+      0.47,
+      0.95,
+      0.01,
+      0.236,
+      0.05,
+      0.095
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 13",
+      "Pier 14"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-14",
+     "box": [
+      0.646,
+      0.95,
+      0.045,
+      0.2092,
+      0.05,
+      0.1597
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 14",
+      "Pier 15"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-15",
+     "box": [
+      0.7953,
+      0.95,
+      0.1447,
+      0.1597,
+      0.05,
+      0.2092
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 15",
+      "Pier 16"
+     ]
+    },
+    {
+     "role": "arcade",
+     "name": "Arcade 3-16",
+     "box": [
+      0.895,
+      0.95,
+      0.294,
+      0.095,
+      0.05,
+      0.236
+     ],
+     "kind": "panel",
+     "on": [
+      "Pier 16",
+      "Pier 1"
+     ]
+    }
+   ],
+   "notes": [
+    "An elliptical ring of piers with three tiers of arcades around an open arena."
+   ],
+   "stock": "cardboard-corrugated-sheet",
+   "sheet": "cardboard-corrugated-sheet"
+  },
+  {
+   "key": "murphy-bed",
+   "synonyms": [
+    "wall bed",
+    "fold down bed"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Murphy bed",
+   "size": {
+    "width": 66,
+    "height": 86,
+    "depth": 18
+   },
+   "defining": [
+    "cabinet",
+    "bed",
+    "pivot",
+    "leg"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "Plinth",
+     "box": [
+      0.03,
+      0,
+      0.05,
+      0.94,
+      0.04,
+      0.9
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.03,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Right side",
+     "box": [
+      0.97,
+      0,
+      0,
+      0.03,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "cabinet",
+     "name": "Top",
+     "box": [
+      0,
+      0.97,
+      0,
+      1,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "cabinet",
+     "name": "Back",
+     "box": [
+      0.03,
+      0.04,
+      0,
+      0.94,
+      0.93,
+      0.04
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "pivot",
+     "name": "Fold bracket",
+     "box": [
+      0.03,
+      0.04,
+      0.4,
+      0.03,
+      0.06,
+      0.2
+     ],
+     "kind": "hardware",
+     "on": [
+      "Left side"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed frame left rail",
+     "box": [
+      0.03,
+      0.04,
+      0.3,
+      0.03,
+      0.9,
+      0.6
+     ],
+     "kind": "member",
+     "on": [
+      "Fold bracket"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed frame right rail",
+     "box": [
+      0.94,
+      0.04,
+      0.3,
+      0.03,
+      0.9,
+      0.6
+     ],
+     "kind": "member",
+     "on": [
+      "Right side"
+     ]
+    },
+    {
+     "role": "bed",
+     "name": "Bed face",
+     "box": [
+      0.03,
+      0.04,
+      0.9,
+      0.94,
+      0.9,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Bed frame left rail",
+      "Bed frame right rail"
+     ]
+    },
+    {
+     "role": "leg",
+     "name": "Fold-out leg",
+     "box": [
+      0.06,
+      0.9,
+      0.6,
+      0.88,
+      0.04,
+      0.3
+     ],
+     "kind": "member",
+     "on": [
+      "Bed frame left rail",
+      "Bed frame right rail"
+     ]
+    }
+   ],
+   "notes": [
+    "The queen bed frame pivots down out of the wall cabinet on its fold brackets; the leg folds out to carry the foot.",
+    "Lag the cabinet to two wall studs before the bed is mounted."
+   ],
+   "stock": "lumber-2x6-8",
+   "sheet": "plywood-3-4-4x8",
+   "moving": [
+    {
+     "part": "Bed face",
+     "motion": "pivot"
+    }
+   ]
+  },
+  {
+   "key": "mudroom-locker",
+   "synonyms": [
+    "entry locker",
+    "locker"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Mudroom locker",
+   "size": {
+    "width": 54,
+    "height": 72,
+    "depth": 16
+   },
+   "defining": [
+    "side",
+    "bench",
+    "shelf",
+    "hook"
+   ],
+   "parts": [
+    {
+     "role": "side",
+     "name": "Side",
+     "box": [
+      0,
+      0,
+      0,
+      0.02,
+      1,
+      1
+     ],
+     "kind": "panel",
+     "repeat": "between"
+    },
+    {
+     "role": "back",
+     "name": "Back",
+     "box": [
+      0,
+      0.08,
+      0,
+      1,
+      0.9,
+      0.03
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ]
+    },
+    {
+     "role": "top",
+     "name": "Top",
+     "box": [
+      0,
+      0.98,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ]
+    },
+    {
+     "role": "bench",
+     "name": "Bench seat",
+     "box": [
+      0,
+      0.25,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "shelf",
+     "name": "Top shelf",
+     "box": [
+      0,
+      0.8,
+      0,
+      1,
+      0.02,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "kick",
+     "name": "Kick",
+     "box": [
+      0,
+      0,
+      0.92,
+      1,
+      0.08,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Side"
+     ],
+     "repeat": "each"
+    },
+    {
+     "role": "hook",
+     "name": "Coat hook",
+     "box": [
+      0.4,
+      0.62,
+      0.03,
+      0.2,
+      0.06,
+      0.15
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back"
+     ],
+     "repeat": "each"
+    }
+   ],
+   "notes": [
+    "Tall open locker bays with a bench seat, a top shelf and a coat hook in each; anchor the top to a wall stud."
+   ],
+   "count": {
+    "word": "bays",
+    "default": 3,
+    "unit": {
+     "width": 18
+    }
+   },
+   "stock": "plywood-3-4-4x8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "floating-desk",
+   "synonyms": [
+    "wall desk",
+    "wall mounted desk"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Floating desk",
+   "size": {
+    "width": 48,
+    "height": 30,
+    "depth": 20
+   },
+   "defining": [
+    "cleat",
+    "top",
+    "arm"
+   ],
+   "parts": [
+    {
+     "role": "cleat",
+     "name": "Wall cleat",
+     "box": [
+      0,
+      0.9,
+      0,
+      1,
+      0.05,
+      0.05
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "arm",
+     "name": "Left support arm",
+     "box": [
+      0.1,
+      0.9,
+      0.05,
+      0.04,
+      0.05,
+      0.85
+     ],
+     "kind": "member",
+     "on": [
+      "Wall cleat"
+     ]
+    },
+    {
+     "role": "arm",
+     "name": "Right support arm",
+     "box": [
+      0.86,
+      0.9,
+      0.05,
+      0.04,
+      0.05,
+      0.85
+     ],
+     "kind": "member",
+     "on": [
+      "Wall cleat"
+     ]
+    },
+    {
+     "role": "top",
+     "name": "Desktop",
+     "box": [
+      0,
+      0.95,
+      0,
+      1,
+      0.05,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Wall cleat",
+      "Left support arm",
+      "Right support arm"
+     ]
+    }
+   ],
+   "notes": [
+    "The top cantilevers off a wall cleat lagged into studs at desk height; no legs."
+   ],
+   "wall": true,
+   "stock": "lumber-2x4-8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "under-stairs-shelf",
+   "synonyms": [
+    "under stairs shelf",
+    "under-stair shelf",
+    "under stair shelf"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Under-stairs shelves",
+   "size": {
+    "width": 48,
+    "height": 72,
+    "depth": 12
+   },
+   "defining": [
+    "upright",
+    "slope",
+    "shelf"
+   ],
+   "parts": [
+    {
+     "role": "upright",
+     "name": "Upright 1",
+     "box": [
+      0,
+      0,
+      0,
+      0.04,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 2",
+     "box": [
+      0.32,
+      0,
+      0,
+      0.04,
+      0.75,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 3",
+     "box": [
+      0.64,
+      0,
+      0,
+      0.04,
+      0.5,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Upright 4",
+     "box": [
+      0.96,
+      0,
+      0,
+      0.04,
+      0.25,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 1",
+     "box": [
+      0.04,
+      0.72,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 1-1",
+     "box": [
+      0.04,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 1-2",
+     "box": [
+      0.04,
+      0.375,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 1",
+      "Upright 2"
+     ]
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 2",
+     "box": [
+      0.36,
+      0.47,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 2-1",
+     "box": [
+      0.36,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 2-2",
+     "box": [
+      0.36,
+      0.25,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 2",
+      "Upright 3"
+     ]
+    },
+    {
+     "role": "slope",
+     "name": "Sloped top 3",
+     "box": [
+      0.68,
+      0.22,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 3-1",
+     "box": [
+      0.68,
+      0,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Shelf 3-2",
+     "box": [
+      0.68,
+      0.125,
+      0,
+      0.28,
+      0.03,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Upright 3",
+      "Upright 4"
+     ]
+    }
+   ],
+   "notes": [
+    "Uprights step down with the stair slope; scribe each top to the stringer."
+   ],
+   "stock": "plywood-3-4-4x8",
+   "sheet": "plywood-3-4-4x8"
+  },
+  {
+   "key": "sandbox",
+   "synonyms": [
+    "sand box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Sandbox",
+   "size": {
+    "width": 48,
+    "height": 10,
+    "depth": 48
+   },
+   "defining": [
+    "wall",
+    "seat"
+   ],
+   "parts": [
+    {
+     "role": "wall",
+     "name": "Back wall",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0.03
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Front wall",
+     "box": [
+      0,
+      0,
+      0.97,
+      1,
+      1,
+      0.03
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Left wall",
+     "box": [
+      0,
+      0,
+      0.03,
+      0.03,
+      1,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Right wall",
+     "box": [
+      0.97,
+      0,
+      0.03,
+      0.03,
+      1,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 1",
+     "box": [
+      0,
+      0.85,
+      0,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 2",
+     "box": [
+      0.8,
+      0.85,
+      0,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 3",
+     "box": [
+      0,
+      0.85,
+      0.8,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    },
+    {
+     "role": "seat",
+     "name": "Corner seat 4",
+     "box": [
+      0.8,
+      0.85,
+      0.8,
+      0.2,
+      0.15,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall"
+     ]
+    }
+   ],
+   "notes": [
+    "No floor: set it in the ground on a level bed and lay landscape fabric under the sand so it drains."
+   ],
+   "modifiers": [
+    "seat"
+   ],
+   "outdoor": true,
+   "stock": "lumber-2x6-8",
+   "sheet": "lumber-2x6-8"
+  },
+  {
+   "key": "water-wheel",
+   "synonyms": [
+    "waterwheel"
+   ],
+   "version": 1,
+   "trust": "trusted",
+   "title": "Water Wheel",
+   "size": {
+    "width": 18,
+    "height": 30,
+    "depth": 24
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "wheel",
+    "axle",
+    "paddle"
+   ],
+   "parts": [
+    {
+     "role": "base",
+     "name": "left base",
+     "box": [
+      0,
+      0,
+      0.1,
+      0.12,
+      0.06,
+      0.8
+     ],
+     "kind": "member",
+     "on": []
+    },
+    {
+     "role": "base",
+     "name": "right base",
+     "box": [
+      0.88,
+      0,
+      0.1,
+      0.12,
+      0.06,
+      0.8
+     ],
+     "kind": "member",
+     "on": []
+    },
+    {
+     "role": "post",
+     "name": "left post",
+     "box": [
+      0.02,
+      0.06,
+      0.42,
+      0.08,
+      0.6,
+      0.16
+     ],
+     "kind": "member",
+     "on": [
+      "left base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "right post",
+     "box": [
+      0.9,
+      0.06,
+      0.42,
+      0.08,
+      0.6,
+      0.16
+     ],
+     "kind": "member",
+     "on": [
+      "right base"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "axle",
+     "box": [
+      0,
+      0.6,
+      0.46,
+      1,
+      0.06,
+      0.08
+     ],
+     "kind": "hardware",
+     "on": [
+      "left post",
+      "right post"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "wheel",
+     "box": [
+      0.45,
+      0.07,
+      0.04,
+      0.04,
+      0.92,
+      0.92
+     ],
+     "kind": "panel",
+     "shape": "ring",
+     "bore": 3,
+     "on": [
+      "axle"
+     ]
+    },
+    {
+     "role": "wheel",
+     "name": "hub",
+     "box": [
+      0.4,
+      0.55,
+      0.42,
+      0.2,
+      0.16,
+      0.16
+     ],
+     "kind": "panel",
+     "shape": "disc",
+     "bore": 1,
+     "on": [
+      "axle"
+     ]
+    },
+    {
+     "role": "paddle",
+     "name": "Paddle",
+     "box": [
+      0.4,
+      0.05,
+      0.05,
+      0.2,
+      0.1,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "wheel"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "wheel",
+     "motion": "spin"
+    },
+    {
+     "part": "hub",
+     "motion": "spin"
+    },
+    {
+     "part": "Paddle",
+     "motion": "spin"
+    }
+   ],
+   "notes": [
+    "Rim cut from exterior plywood, joined to the hub by crossed spokes",
+    "Four paddles stand on the rim",
+    "The hardwood dowel axle turns in holes drilled through the posts",
+    "Each post stands on its own base"
+   ],
+   "learned": true
+  },
+  {
+   "key": "abacus",
+   "synonyms": [
+    "counting frame"
+   ],
+   "version": 1,
+   "trust": "trusted",
+   "title": "Abacus",
+   "size": {
+    "width": 16,
+    "height": 10,
+    "depth": 3.5
+   },
+   "craftSize": {
+    "width": 3.5,
+    "height": 1.5,
+    "depth": 1.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "rail",
+    "post",
+    "axle"
+   ],
+   "count": {
+    "word": "rods",
+    "default": 9
+   },
+   "parts": [
+    {
+     "role": "rail",
+     "name": "bottom rail",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "left post",
+     "box": [
+      0,
+      0.12,
+      0,
+      0.1,
+      0.76,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "bottom rail"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "right post",
+     "box": [
+      0.9,
+      0.12,
+      0,
+      0.1,
+      0.76,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "bottom rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "top rail",
+     "box": [
+      0,
+      0.88,
+      0,
+      1,
+      0.12,
+      1
+     ],
+     "kind": "member",
+     "on": [
+      "left post",
+      "right post"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "rod",
+     "box": [
+      0.4,
+      0.12,
+      0.4,
+      0.2,
+      0.76,
+      0.2
+     ],
+     "kind": "hardware",
+     "on": [
+      "bottom rail",
+      "top rail"
+     ],
+     "repeat": "each",
+     "catalogId": "dowel-1-4-36",
+     "shape": "cylinder"
+    },
+    {
+     "role": "bead",
+     "name": "bead",
+     "box": [
+      0.25,
+      0.14,
+      0.25,
+      0.5,
+      0.1,
+      0.5
+     ],
+     "kind": "member",
+     "on": [
+      "rod"
+     ],
+     "repeat": "each",
+     "stock": "dowel-1-36",
+     "shape": "bead",
+     "bore": 0.3125,
+     "per": 5
+    }
+   ],
+   "moving": [
+    {
+     "part": "bead",
+     "motion": "slide"
+    }
+   ],
+   "notes": [
+    "Frame cut from 2x4 lumber",
+    "Rods are 1/4 in hardwood dowels set in holes drilled through the top and bottom rails",
+    "Beads are slices of 1 in dowel, drilled to slide freely on each rod"
+   ],
+   "learned": true
+  },
+  {
+   "key": "cribbage-board",
+   "synonyms": [
+    "cribbage board",
+    "crib board"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cribbage Board",
+   "size": {
+    "width": 15,
+    "height": 1.5,
+    "depth": 4
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Board",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.5,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "peg",
+     "name": "Peg1",
+     "box": [
+      0.04,
+      0.5,
+      0.18,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg2",
+     "box": [
+      0.08,
+      0.5,
+      0.18,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg3",
+     "box": [
+      0.04,
+      0.5,
+      0.72,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "peg",
+     "name": "Peg4",
+     "box": [
+      0.08,
+      0.5,
+      0.72,
+      0.017,
+      0.5,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Board"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Solid hardwood plank drilled with two parallel tracks of holes (typically 60 holes per track in pairs) plus starter and finish holes",
+    "Four short cylindrical pegs (two per player) are placed in the holes to track scores up to 121",
+    "Holes are spaced about 0.5 in apart along each track; tracks run the length of the board",
+    "Often finished with oil or varnish; some include a small end compartment or recessed tray for storing the pegs"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Peg1 1: no catalogue item (hardware); Peg2 1: no catalogue item (hardware); Peg3 1: no catalogue item (hardware)"
+  },
+  {
+   "key": "knife-block-maple",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Maple Knife Block",
+   "size": {
+    "width": 9,
+    "height": 10,
+    "depth": 4.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "post"
+   ],
+   "count": {
+    "word": "slots",
+    "default": 6
+   },
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.06,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Left side",
+     "box": [
+      0,
+      0.06,
+      0,
+      0.05,
+      0.94,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Right side",
+     "box": [
+      0.95,
+      0.06,
+      0,
+      0.05,
+      0.94,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back panel",
+     "box": [
+      0.05,
+      0.06,
+      0.93,
+      0.9,
+      0.94,
+      0.06999999999999995
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Front panel",
+     "box": [
+      0.05,
+      0.06,
+      0,
+      0.9,
+      0.94,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Slot divider",
+     "box": [
+      0.18,
+      0.06,
+      0.05,
+      0.03,
+      0.88,
+      0.88
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ],
+     "repeat": "between"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Constructed from solid maple boards",
+    "Open top with vertical slots formed by spaced dividers",
+    "Holds knives upright by the blade"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
+  },
+  {
+   "key": "raised-dog-feeder-stand",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Raised Dog Feeder Stand",
+   "size": {
+    "width": 24,
+    "height": 14,
+    "depth": 12
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "post",
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Leg fl",
+     "box": [
+      0.02,
+      0,
+      0.03,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg fr",
+     "box": [
+      0.91,
+      0,
+      0.03,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg bl",
+     "box": [
+      0.02,
+      0,
+      0.85,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg br",
+     "box": [
+      0.91,
+      0,
+      0.85,
+      0.07,
+      0.93,
+      0.12
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Apron front",
+     "box": [
+      0.09,
+      0.82,
+      0.03,
+      0.82,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fl",
+      "Leg fr"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron back",
+     "box": [
+      0.09,
+      0.82,
+      0.89,
+      0.82,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Leg bl",
+      "Leg br"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron left",
+     "box": [
+      0.02,
+      0.82,
+      0.15,
+      0.07,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fl",
+      "Leg bl"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Apron right",
+     "box": [
+      0.91,
+      0.82,
+      0.15,
+      0.07,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Leg fr",
+      "Leg br"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top",
+     "box": [
+      0,
+      0.93,
+      0,
+      1,
+      0.06999999999999995,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Leg fl",
+      "Leg fr",
+      "Leg bl",
+      "Leg br",
+      "Apron front",
+      "Apron back",
+      "Apron left",
+      "Apron right"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Top deck has two circular cutouts that hold removable food and water bowls",
+    "Four-legged open frame elevates bowls for comfortable feeding height",
+    "Typical size suited to medium dogs"
+   ],
+   "learned": true
+  },
+  {
+   "key": "birdhouse-shaped-like-church",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Church Birdhouse",
+   "size": {
+    "width": 8,
+    "height": 16,
+    "depth": 8
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Floor",
+     "box": [
+      0.1,
+      0,
+      0.1,
+      0.8,
+      0.05,
+      0.8
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "wall",
+     "name": "Front",
+     "box": [
+      0.1,
+      0.05,
+      0.1,
+      0.8,
+      0.45,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Back",
+     "box": [
+      0.1,
+      0.05,
+      0.85,
+      0.8,
+      0.45,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Left",
+     "box": [
+      0.1,
+      0.05,
+      0.1,
+      0.05,
+      0.45,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Right",
+     "box": [
+      0.85,
+      0.05,
+      0.1,
+      0.05,
+      0.45,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Roof left",
+     "box": [
+      0.05,
+      0.48,
+      0.05,
+      0.45,
+      0.12,
+      0.9
+     ],
+     "kind": "panel",
+     "on": [
+      "Front",
+      "Back",
+      "Left"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Roof right",
+     "box": [
+      0.5,
+      0.48,
+      0.05,
+      0.45,
+      0.12,
+      0.9
+     ],
+     "kind": "panel",
+     "on": [
+      "Front",
+      "Back",
+      "Right"
+     ]
+    },
+    {
+     "role": "tower",
+     "name": "Steeple",
+     "box": [
+      0.35,
+      0.55,
+      0.35,
+      0.3,
+      0.28,
+      0.3
+     ],
+     "kind": "member",
+     "on": [
+      "Roof left",
+      "Roof right"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Steeple cap",
+     "box": [
+      0.3,
+      0.8,
+      0.3,
+      0.4,
+      0.12,
+      0.4
+     ],
+     "kind": "panel",
+     "on": [
+      "Steeple"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Cross stem",
+     "box": [
+      0.47,
+      0.9,
+      0.47,
+      0.06,
+      0.08,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Steeple cap"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Cross arm",
+     "box": [
+      0.38,
+      0.94,
+      0.47,
+      0.24,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Cross stem"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Perch",
+     "box": [
+      0.35,
+      0.22,
+      0.02,
+      0.3,
+      0.04,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Front"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "1.5-inch round entrance hole centered on Front about 6 inches above Floor",
+    "Gable roof over the square body with steeple and simple cross",
+    "Drainage holes in Floor and side vents near roof",
+    "For wrens, chickadees or similar cavity nesters",
+    "Hang on wall, fence or post outdoors"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it; a part has only a fallback step"
+  },
+  {
+   "key": "beehive-box",
+   "synonyms": [
+    "hive-body",
+    "brood-box",
+    "hive-super"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cedar Langstroth Beehive Box",
+   "size": {
+    "width": 16.25,
+    "height": 9.625,
+    "depth": 19.875
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "panel"
+   ],
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.046,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Right side",
+     "box": [
+      0.954,
+      0,
+      0,
+      0.046,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Front end",
+     "box": [
+      0.046,
+      0,
+      0,
+      0.908,
+      1,
+      0.038
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Back end",
+     "box": [
+      0.046,
+      0,
+      0.962,
+      0.908,
+      1,
+      0.038
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "rail",
+     "name": "Front frame rest",
+     "box": [
+      0.046,
+      0.935,
+      0.038,
+      0.908,
+      0.06499999999999995,
+      0.019
+     ],
+     "kind": "member",
+     "on": [
+      "Front end"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back frame rest",
+     "box": [
+      0.046,
+      0.935,
+      0.943,
+      0.908,
+      0.06499999999999995,
+      0.019
+     ],
+     "kind": "member",
+     "on": [
+      "Back end"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Western red cedar boards ~3/4 in thick, left unfinished or lightly painted outside only",
+    "Open top and bottom for stacking on a bottom board and under a cover or another box",
+    "Front and back ends sit between the long sides; corners joined with box joints or nails/screws",
+    "Frame rests are top rabbets or cleats that support standard Langstroth frames by their end lugs",
+    "Deep brood-box proportions; medium/shallow supers use the same footprint with reduced height"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it; fitted wording \"footprint\" on a freestanding build"
+  },
+  {
+   "key": "router-table",
+   "synonyms": [
+    "router bench"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Router Table",
+   "size": {
+    "width": 36,
+    "height": 36,
+    "depth": 24
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "rail"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.92,
+      0,
+      0.02,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back left leg",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back right leg",
+     "box": [
+      0.92,
+      0,
+      0.92,
+      0.06,
+      0.94,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front apron",
+     "box": [
+      0.08,
+      0.82,
+      0.02,
+      0.84,
+      0.12,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back apron",
+     "box": [
+      0.08,
+      0.82,
+      0.93,
+      0.84,
+      0.12,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left apron",
+     "box": [
+      0.02,
+      0.82,
+      0.08,
+      0.05,
+      0.12,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Back left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right apron",
+     "box": [
+      0.93,
+      0.82,
+      0.08,
+      0.05,
+      0.12,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Table top",
+     "box": [
+      0,
+      0.94,
+      0,
+      1,
+      0.04,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Back left leg",
+      "Back right leg",
+      "Front apron",
+      "Back apron",
+      "Left apron",
+      "Right apron"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Insert plate",
+     "box": [
+      0.35,
+      0.945,
+      0.35,
+      0.3,
+      0.03,
+      0.3
+     ],
+     "kind": "cover",
+     "on": [
+      "Table top"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Fence",
+     "box": [
+      0.05,
+      0.98,
+      0.42,
+      0.9,
+      0.020000000000000018,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Table top"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open-stand woodworking table with flush center insert for a router mounted below the top",
+    "Fence sits across the top and is typically clamped or tracked for adjustment",
+    "Aprons stiffen the leg frame just under the top"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft); Right apron: 1.80×4.32 is wider than one 2×4 Stud (8 ft)"
+  },
+  {
+   "key": "sawbuck",
+   "synonyms": [
+    "log buck",
+    "sawing buck"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "2x4 Sawbuck",
+   "size": {
+    "width": 36,
+    "height": 32,
+    "depth": 24
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left leg A",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left leg B",
+     "box": [
+      0.11,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right leg A",
+     "box": [
+      0.83,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right leg B",
+     "box": [
+      0.89,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.9
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left cross rail",
+     "box": [
+      0.05,
+      0.35,
+      0.15,
+      0.12,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right cross rail",
+     "box": [
+      0.83,
+      0.35,
+      0.15,
+      0.12,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Right leg A",
+      "Right leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front long rail",
+     "box": [
+      0.05,
+      0.1,
+      0.1,
+      0.9,
+      0.08,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B",
+      "Right leg A",
+      "Right leg B"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back long rail",
+     "box": [
+      0.05,
+      0.1,
+      0.84,
+      0.9,
+      0.08,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left leg A",
+      "Left leg B",
+      "Right leg A",
+      "Right leg B"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from standard 2x4 lumber",
+    "Pairs of legs crossed and bolted into X-frames",
+    "Log rests in the upper crotches of the X-frames"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Left leg B: 2.16×21.60 is wider than one 2×4 Stud (8 ft); Right leg A: 2.16×21.60 is wider than one 2×4 Stud (8 ft)"
+  },
+  {
+   "key": "compost-tumbler-frame",
+   "synonyms": [
+    "compost tumbler stand"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Compost Tumbler Frame",
+   "size": {
+    "width": 48,
+    "height": 42,
+    "depth": 30
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail",
+    "axle"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left front post",
+     "box": [
+      0.04,
+      0,
+      0.08,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left rear post",
+     "box": [
+      0.04,
+      0,
+      0.86,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right front post",
+     "box": [
+      0.9,
+      0,
+      0.08,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right rear post",
+     "box": [
+      0.9,
+      0,
+      0.86,
+      0.06,
+      0.85,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left top rail",
+     "box": [
+      0.04,
+      0.8,
+      0.08,
+      0.06,
+      0.08,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Left rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right top rail",
+     "box": [
+      0.9,
+      0.8,
+      0.08,
+      0.06,
+      0.08,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Right front post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front base",
+     "box": [
+      0.04,
+      0.02,
+      0.08,
+      0.92,
+      0.05,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Right front post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear base",
+     "box": [
+      0.04,
+      0.02,
+      0.86,
+      0.92,
+      0.05,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left rear post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "axle",
+     "name": "Axle",
+     "box": [
+      0.04,
+      0.82,
+      0.42,
+      0.92,
+      0.05,
+      0.16
+     ],
+     "kind": "member",
+     "on": [
+      "Left top rail",
+      "Right top rail"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Axle spans and rests directly on Left top rail and Right top rail",
+    "Supports a spinning compost drum above ground clearance",
+    "Outdoor garden frame of wood or steel"
+   ],
+   "learned": true
+  },
+  {
+   "key": "cutting-board",
+   "synonyms": [
+    "chopping-board"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cutting Board",
+   "size": {
+    "width": 18,
+    "height": 1,
+    "depth": 12
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Board",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+     ],
+     "kind": "panel"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Flat rectangular hardwood slab used as a food prep surface"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy Food-safe mineral oil: no part is cut from it"
+  },
+  {
+   "key": "wall-clock-frame",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "12-Inch Wall Clock Frame",
+   "size": {
+    "width": 12,
+    "height": 12,
+    "depth": 1.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [
+    "frame"
+   ],
+   "parts": [
+    {
+     "role": "frame",
+     "name": "Rim",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+     ],
+     "kind": "member",
+     "shape": "ring"
+    },
+    {
+     "role": "face",
+     "name": "Dial",
+     "box": [
+      0.08,
+      0.08,
+      0.15,
+      0.84,
+      0.84,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "cover",
+     "name": "Crystal",
+     "box": [
+      0.06,
+      0.06,
+      0.55,
+      0.88,
+      0.88,
+      0.15
+     ],
+     "kind": "cover",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "hardware",
+     "name": "Hanger",
+     "box": [
+      0.45,
+      0.92,
+      0.7,
+      0.1,
+      0.06,
+      0.2
+     ],
+     "kind": "hardware",
+     "on": [
+      "Rim"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Circular wooden or metal rim sized for a standard 12-inch dial",
+    "Thin depth typical of a wall-mounted clock case",
+    "Hanger centered at top rear for nail or hook"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Hanger 1: no catalogue item (hardware); Buy 1/4\" plywood 4x8 (backer): no part is cut from it; Buy Hanger: no part is cut from it"
+  },
+  {
+   "key": "toy-train-track-riser",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Toy Train Track Riser",
+   "size": {
+    "width": 5,
+    "height": 4,
+    "depth": 3
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.9,
+      0.08,
+      0.9
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.12,
+      0.08,
+      0.12,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.76,
+      0.08,
+      0.12,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Rear left leg",
+     "box": [
+      0.12,
+      0.08,
+      0.76,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Rear right leg",
+     "box": [
+      0.76,
+      0.08,
+      0.76,
+      0.12,
+      0.72,
+      0.12
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front brace",
+     "box": [
+      0.24,
+      0.35,
+      0.15,
+      0.52,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear brace",
+     "box": [
+      0.24,
+      0.35,
+      0.77,
+      0.52,
+      0.08,
+      0.08
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top platform",
+     "box": [
+      0.08,
+      0.8,
+      0.08,
+      0.84,
+      0.12,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left leg",
+      "Front right leg",
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Track guide left",
+     "box": [
+      0.18,
+      0.92,
+      0.25,
+      0.08,
+      0.06,
+      0.5
+     ],
+     "kind": "member",
+     "on": [
+      "Top platform"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Track guide right",
+     "box": [
+      0.74,
+      0.92,
+      0.25,
+      0.08,
+      0.06,
+      0.5
+     ],
+     "kind": "member",
+     "on": [
+      "Top platform"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open trestle-style support for elevating wooden or plastic toy train track",
+    "Top platform holds a short straight track section",
+    "Typical molded plastic or plywood construction"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy 1/4\" plywood 4x8 (backer): no part is cut from it"
+  },
+  {
+   "key": "window-box",
+   "synonyms": [
+    "flower-box",
+    "planter-box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "30-Inch Cedar Window Box",
+   "size": {
+    "width": 30,
+    "height": 8,
+    "depth": 9
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [
+    "panel"
+   ],
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Bottom",
+     "box": [
+      0.03,
+      0,
+      0.03,
+      0.94,
+      0.125,
+      0.94
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Front",
+     "box": [
+      0,
+      0.125,
+      0,
+      1,
+      0.875,
+      0.11
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0,
+      0.125,
+      0.89,
+      1,
+      0.875,
+      0.10999999999999999
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left end",
+     "box": [
+      0,
+      0.125,
+      0.11,
+      0.03,
+      0.875,
+      0.78
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right end",
+     "box": [
+      0.97,
+      0.125,
+      0.11,
+      0.03,
+      0.875,
+      0.78
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from 1-inch cedar boards",
+    "Open top planter for mounting beneath a window",
+    "Typical overall length 30 inches"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Buy Landscape fabric liner, 3 ft × 50 ft roll: no part is cut from it; a part has only a fallback step; every part has the role \"panel\""
+  },
+  {
+   "key": "barn-birdhouse",
+   "synonyms": [
+    "barn-style birdhouse",
+    "nest box"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Barn Birdhouse",
+   "size": {
+    "width": 10,
+    "height": 14,
+    "depth": 8
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Floor",
+     "box": [
+      0.08,
+      0,
+      0.08,
+      0.84,
+      0.05,
+      0.84
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Front",
+     "box": [
+      0.08,
+      0.05,
+      0.08,
+      0.84,
+      0.55,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0.08,
+      0.05,
+      0.86,
+      0.84,
+      0.55,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left",
+     "box": [
+      0.08,
+      0.05,
+      0.08,
+      0.06,
+      0.5,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right",
+     "box": [
+      0.86,
+      0.05,
+      0.08,
+      0.06,
+      0.5,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Floor"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Left roof",
+     "box": [
+      0,
+      0.55,
+      0,
+      0.55,
+      0.32,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left",
+      "Front",
+      "Back"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Right roof",
+     "box": [
+      0.45,
+      0.55,
+      0,
+      0.55,
+      0.32,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Right",
+      "Front",
+      "Back"
+     ]
+    },
+    {
+     "role": "tower",
+     "name": "Cupola",
+     "box": [
+      0.37,
+      0.82,
+      0.35,
+      0.26,
+      0.12,
+      0.3
+     ],
+     "kind": "member",
+     "on": [
+      "Left roof",
+      "Right roof"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Cupola roof",
+     "box": [
+      0.34,
+      0.94,
+      0.32,
+      0.32,
+      0.06,
+      0.36
+     ],
+     "kind": "cover",
+     "on": [
+      "Cupola"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Perch",
+     "box": [
+      0.42,
+      0.28,
+      0.02,
+      0.16,
+      0.04,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Front"
+     ],
+     "shape": "cylinder"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Gable roof meets at center peak for classic barn profile with slight overhang",
+    "1.25-inch round entrance hole centered in Front above the perch",
+    "Cupola adds barn character; often louvered or solid",
+    "Typically painted barn-red with white trim and corner boards",
+    "Wall-mounted via back panel or hung from cupola; floor clear interior roughly 5 by 5 inches",
+    "No feet; outdoor use only"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
+  },
+  {
+   "key": "knife-block",
+   "synonyms": [
+    "knife block",
+    "knife holder",
+    "cutlery block"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Maple Knife Block",
+   "size": {
+    "width": 9,
+    "height": 8.5,
+    "depth": 4.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "count": {
+    "word": "slots",
+    "default": 6
+   },
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.09,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0,
+      0.09,
+      0.82,
+      1,
+      0.91,
+      0.18
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Left side",
+     "box": [
+      0,
+      0.09,
+      0,
+      0.09,
+      0.91,
+      0.82
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Right side",
+     "box": [
+      0.91,
+      0.09,
+      0,
+      0.08999999999999997,
+      0.91,
+      0.82
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front rail",
+     "box": [
+      0.09,
+      0.09,
+      0,
+      0.82,
+      0.22,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Divider",
+     "box": [
+      0.12,
+      0.09,
+      0.12,
+      0.06,
+      0.82,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Base"
+     ],
+     "repeat": "between"
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Built from hard maple boards",
+    "Vertical dividers form narrow slots that hold knife blades safely",
+    "Open top allows knives to be inserted and removed",
+    "Sits stably on a countertop"
+   ],
+   "learned": true
+  },
+  {
+   "key": "adirondack-footrest",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Adirondack Footrest",
+   "size": {
+    "width": 20,
+    "height": 14,
+    "depth": 18
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail",
+    "slat"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.85,
+      0,
+      0.05,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear left leg",
+     "box": [
+      0.05,
+      0,
+      0.85,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear right leg",
+     "box": [
+      0.85,
+      0,
+      0.85,
+      0.1,
+      0.75,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Left side rail",
+     "box": [
+      0.05,
+      0.75,
+      0.1,
+      0.1,
+      0.1,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Rear left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right side rail",
+     "box": [
+      0.85,
+      0.75,
+      0.1,
+      0.1,
+      0.1,
+      0.8
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front rail",
+     "box": [
+      0.1,
+      0.75,
+      0.05,
+      0.8,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear rail",
+     "box": [
+      0.1,
+      0.75,
+      0.85,
+      0.8,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left stretcher",
+     "box": [
+      0.05,
+      0.25,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Rear left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right stretcher",
+     "box": [
+      0.85,
+      0.25,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Rear right leg"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 1",
+     "box": [
+      0.1,
+      0.85,
+      0.15,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 2",
+     "box": [
+      0.1,
+      0.85,
+      0.3,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 3",
+     "box": [
+      0.1,
+      0.85,
+      0.45,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 4",
+     "box": [
+      0.1,
+      0.85,
+      0.6,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    },
+    {
+     "role": "slat",
+     "name": "Top slat 5",
+     "box": [
+      0.1,
+      0.85,
+      0.75,
+      0.8,
+      0.1,
+      0.08
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side rail",
+      "Right side rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Classic low outdoor wooden footrest paired with Adirondack chairs",
+    "Four legs with side rails, end rails and lower stretchers form the frame",
+    "Five spaced top slats rest on the side rails for a drained seating surface"
+   ],
+   "learned": true
+  },
+  {
+   "key": "wall-mounted-mail-organizer",
+   "synonyms": [],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Wall-Mounted Mail Organizer",
+   "size": {
+    "width": 12,
+    "height": 14,
+    "depth": 3.5
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [],
+   "count": {
+    "word": "slots",
+    "default": 3
+   },
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Backboard",
+     "box": [
+      0,
+      0,
+      0.86,
+      1,
+      1,
+      0.14
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "post",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.07,
+      1,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Right side",
+     "box": [
+      0.93,
+      0,
+      0,
+      0.06999999999999995,
+      1,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Bottom shelf",
+     "box": [
+      0.07,
+      0,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lower divider",
+     "box": [
+      0.07,
+      0.32,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Upper divider",
+     "box": [
+      0.07,
+      0.64,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top rail",
+     "box": [
+      0.07,
+      0.95,
+      0,
+      0.86,
+      0.05,
+      0.86
+     ],
+     "kind": "member",
+     "on": [
+      "Backboard",
+      "Left side",
+      "Right side"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open-front horizontal slots hold letters and flat mail",
+    "Mounts flush to wall by the backboard"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
+  },
+  {
+   "key": "rain-barrel-stand",
+   "synonyms": [
+    "rain barrel platform"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Rain Barrel Stand",
+   "size": {
+    "width": 32,
+    "height": 18,
+    "depth": 32
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "rail",
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left post",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right post",
+     "box": [
+      0.85,
+      0,
+      0.05,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear left post",
+     "box": [
+      0.05,
+      0,
+      0.85,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rear right post",
+     "box": [
+      0.85,
+      0,
+      0.85,
+      0.1,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Bottom front rail",
+     "box": [
+      0.15,
+      0.15,
+      0.05,
+      0.7,
+      0.08,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Front right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Bottom rear rail",
+     "box": [
+      0.15,
+      0.15,
+      0.85,
+      0.7,
+      0.08,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left post",
+      "Rear right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Bottom left rail",
+     "box": [
+      0.05,
+      0.15,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Rear left post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Bottom right rail",
+     "box": [
+      0.85,
+      0.15,
+      0.15,
+      0.1,
+      0.08,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Rear right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top front rail",
+     "box": [
+      0.15,
+      0.85,
+      0.05,
+      0.7,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Front right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top rear rail",
+     "box": [
+      0.15,
+      0.85,
+      0.85,
+      0.7,
+      0.1,
+      0.1
+     ],
+     "kind": "member",
+     "on": [
+      "Rear left post",
+      "Rear right post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top left rail",
+     "box": [
+      0.05,
+      0.85,
+      0.15,
+      0.1,
+      0.1,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Rear left post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top right rail",
+     "box": [
+      0.85,
+      0.85,
+      0.15,
+      0.1,
+      0.1,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Rear right post"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Front deck board",
+     "box": [
+      0.15,
+      0.95,
+      0.15,
+      0.7,
+      0.05,
+      0.15
+     ],
+     "kind": "member",
+     "on": [
+      "Top front rail",
+      "Top left rail",
+      "Top right rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Middle deck board",
+     "box": [
+      0.15,
+      0.95,
+      0.425,
+      0.7,
+      0.05,
+      0.15
+     ],
+     "kind": "member",
+     "on": [
+      "Top left rail",
+      "Top right rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Rear deck board",
+     "box": [
+      0.15,
+      0.95,
+      0.7,
+      0.7,
+      0.05,
+      0.15
+     ],
+     "kind": "member",
+     "on": [
+      "Top rear rail",
+      "Top left rail",
+      "Top right rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Constructed from pressure-treated lumber for outdoor use",
+    "Posts are cut from 4x4 stock",
+    "Rails and deck boards from 2x4 stock",
+    "Height allows space under barrel spigot for watering can",
+    "Platform supports standard 50-gallon rain barrel"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: note names 4x4 but no part is cut from it"
+  },
+  {
+   "key": "miter-saw-station",
+   "synonyms": [
+    "miter saw bench",
+    "chop saw station"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Miter Saw Station",
+   "size": {
+    "width": 96,
+    "height": 36,
+    "depth": 30
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck",
+    "rail"
+   ],
+   "count": {
+    "word": "bays",
+    "default": 1
+   },
+   "parts": [
+    {
+     "role": "post",
+     "name": "Lf leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rf leg",
+     "box": [
+      0.95,
+      0,
+      0.02,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Lb leg",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Rb leg",
+     "box": [
+      0.95,
+      0,
+      0.92,
+      0.03,
+      0.88,
+      0.03
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front lower rail",
+     "box": [
+      0.05,
+      0.08,
+      0.02,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Rf leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back lower rail",
+     "box": [
+      0.05,
+      0.08,
+      0.92,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lb leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left lower rail",
+     "box": [
+      0.02,
+      0.08,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Lb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right lower rail",
+     "box": [
+      0.95,
+      0.08,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Rf leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Bottom shelf",
+     "box": [
+      0.05,
+      0.12,
+      0.05,
+      0.9,
+      0.02,
+      0.87
+     ],
+     "kind": "panel",
+     "on": [
+      "Front lower rail",
+      "Back lower rail",
+      "Left lower rail",
+      "Right lower rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front upper rail",
+     "box": [
+      0.05,
+      0.84,
+      0.02,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Rf leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Back upper rail",
+     "box": [
+      0.05,
+      0.84,
+      0.92,
+      0.9,
+      0.04,
+      0.03
+     ],
+     "kind": "member",
+     "on": [
+      "Lb leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left upper rail",
+     "box": [
+      0.02,
+      0.84,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Lf leg",
+      "Lb leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right upper rail",
+     "box": [
+      0.95,
+      0.84,
+      0.05,
+      0.03,
+      0.04,
+      0.87
+     ],
+     "kind": "member",
+     "on": [
+      "Rf leg",
+      "Rb leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Left wing",
+     "box": [
+      0.05,
+      0.88,
+      0.05,
+      0.28,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail",
+      "Left upper rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Saw platform",
+     "box": [
+      0.35,
+      0.88,
+      0.05,
+      0.3,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Right wing",
+     "box": [
+      0.67,
+      0.88,
+      0.05,
+      0.28,
+      0.04,
+      0.85
+     ],
+     "kind": "panel",
+     "on": [
+      "Front upper rail",
+      "Back upper rail",
+      "Right upper rail"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Fence",
+     "box": [
+      0.05,
+      0.92,
+      0.88,
+      0.9,
+      0.07999999999999996,
+      0.05
+     ],
+     "kind": "member",
+     "on": [
+      "Left wing",
+      "Saw platform",
+      "Right wing",
+      "Back upper rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Left and right wings sit flush with the miter saw table surface",
+    "Saw bolts to the center platform so its fence aligns with the continuous station fence",
+    "Lower shelf provides storage for cutoffs and accessories",
+    "Frame typically 2x4 lumber with plywood decks and fence"
+   ],
+   "learned": true
+  },
+  {
+   "key": "sundial",
+   "synonyms": [
+    "sun clock",
+    "garden sundial"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Garden Pedestal Sundial",
+   "size": {
+    "width": 20,
+    "height": 42,
+    "depth": 20
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "gnomon"
+   ],
+   "parts": [
+    {
+     "role": "plinth",
+     "name": "Plinth",
+     "box": [
+      0.15,
+      0,
+      0.15,
+      0.7,
+      0.07,
+      0.7
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Pedestal",
+     "box": [
+      0.375,
+      0.07,
+      0.375,
+      0.25,
+      0.72,
+      0.25
+     ],
+     "kind": "member",
+     "on": [
+      "Plinth"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Dial plate",
+     "box": [
+      0.1,
+      0.79,
+      0.1,
+      0.8,
+      0.025,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Pedestal"
+     ]
+    },
+    {
+     "role": "gnomon",
+     "name": "Gnomon",
+     "box": [
+      0.48,
+      0.815,
+      0.25,
+      0.04,
+      0.18,
+      0.45
+     ],
+     "kind": "member",
+     "on": [
+      "Dial plate"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Horizontal dial with fixed triangular gnomon; style edge slopes at local latitude angle",
+    "Plinth is low square stone or cast base roughly 14 in across",
+    "Pedestal is a 5 in square or turned column",
+    "Dial plate is a round or square metal/stone disk with engraved hour lines",
+    "Gnomon is a thin right-triangle plate fixed along the noon line, pointing true north"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Plinth: 2.94×14.00 is wider than one 2×4 Stud (8 ft); Pedestal: 5.00×5.00 is wider than one 2×4 Stud (8 ft); Buy 2 2×4 Stud (8 ft) for 303\" of strips"
+  }
+ ]
+}
