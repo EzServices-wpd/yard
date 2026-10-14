@@ -8,6 +8,7 @@
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
 import { leafDoor } from "./face";
+import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
 import { panelWorldCorners } from "./geometry";
 import { partLetters } from "./pdfDraw";
@@ -621,7 +622,8 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     const who = same.length > 1 ? `each ${ctx.letters.get(d.id) ? `${ctx.letters.get(d.id)} ` : ""}door` : nameOf(ctx, d);
     let s = `Hinge centers ${f(inset)} down from the top and ${f(inset)} up from the bottom of ${who} (${f(h - inset * 2)} apart)`;
     if (n >= 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
-    s += `, on the hinge edge`;
+    const sides = new Set(same.map(doorHingesLeft));
+    s += sides.size === 1 ? `, on the hinge edge (the ${doorHingesLeft(d) ? "left" : "right"} edge)` : `, on each door's hinge edge`;
     const lo = c.min.y + inset;
     const hi = c.max.y - inset;
     s += ctx.floor ? ` — on the cabinet side that is ${f(lo)} and ${f(hi)} up from the floor` : "";
@@ -645,7 +647,15 @@ function pullTalk(ctx: Ctx, fronts: Panel[], label: string, out: StepPlacement) 
       return `${Math.round((q.max.x - q.min.x) * 16)}x${Math.round((q.max.y - q.min.y) * 16)}` === key;
     }).length;
     const who = n > 1 ? `each ${f(w)} × ${f(h)} ${label}` : `the ${f(w)} × ${f(h)} ${label}`;
-    out.sentences.push(`Pull centered on ${who}: ${f(w / 2)} from each side and ${f(h / 2)} down from the top edge — mark the center with crossed diagonals.`);
+    // A door's pull sits on the edge opposite its hinges, where the model draws it.
+    if (label === "door") {
+      const peers = fronts.filter((o) => { const q = ctx.box.get(o.id)!; return `${Math.round((q.max.x - q.min.x) * 16)}x${Math.round((q.max.y - q.min.y) * 16)}` === key; });
+      const sides = new Set(peers.map(doorHingesLeft));
+      out.sentences.push(sides.size > 1
+        ? `Pull on the edge opposite the hinges of ${who}: centered 1 1/8" in from that edge and ${f(h / 2)} down from the top edge.`
+        : `Pull on the ${doorHingesLeft(p) ? "right" : "left"} edge of ${who}, opposite the hinges: centered 1 1/8" in from that edge and ${f(h / 2)} down from the top edge.`);
+    }
+    else out.sentences.push(`Pull centered on ${who}: ${f(w / 2)} from each side and ${f(h / 2)} down from the top edge — mark the center with crossed diagonals.`);
   }
 }
 

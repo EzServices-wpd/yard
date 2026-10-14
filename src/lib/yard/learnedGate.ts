@@ -11,6 +11,8 @@ import { buildPlan, cutStepCount, dedupeBuy, duplicateBuyLines, overlongCuts } f
 import { isOutdoorPrompt } from "./outdoor";
 import type { BuildPlan, Panel } from "./types";
 import { generateFromPrompt } from "./promptMain";
+import { supportsOf } from "./supportGraph";
+import { SHALLOW_SHELF_MIN } from "./fittedShared";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
 // Consumables (oil, fabric liner, finish) are bought, never cut: no part comes from them, by design.
@@ -58,6 +60,9 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   }
   fail.push(...definingFailures(recipe, built.project, plan));
   fail.push(...hingeDrift(plan));
+  fail.push(...mountParentFailures(built.project, plan));
+  fail.push(...wallHangFailures(built.project, plan));
+  fail.push(...shallowShelfFailures(built.project));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
   fail.push(...bearingFailures(recipe, panels), ...glueUpFailures(recipe, panels));
@@ -266,4 +271,35 @@ export function hingeDrift(plan: Pick<BuildPlan, "bom" | "instructions">): strin
   for (const k of steps) if (buy.size && !buy.has(k)) out.push(`the steps hang ${k} hinges but Buy sells ${[...buy].join(" and ")} hinges`);
   for (const k of buy) if (steps.size && !steps.has(k)) out.push(`Buy sells ${k} hinges but the steps hang ${[...steps].join(" and ")} hinges`);
   return out;
+}
+
+/** A part set into another (rabbet/dado) is mounted on that host in the support graph and never gets a nearest-part fallback step. */
+export function mountParentFailures(project: { panels: Panel[] }, plan: Pick<BuildPlan, "instructions">): string[] {
+  const out: string[] = [];
+  const supports = supportsOf(project as never);
+  for (const p of project.panels) {
+    const host = p.joints?.find((j) => j.kind === "rabbet" || j.kind === "dado")?.with;
+    if (!host) continue;
+    const on = supports.get(p.id)?.on ?? [];
+    if (!on.includes(host)) out.push(`${p.name}: set into ${project.panels.find((q) => q.id === host)?.name ?? "its host"} but the support graph mounts it elsewhere`);
+    if (plan.instructions.some((s) => /not yet in a step/i.test(`${s.tips ?? ""}`) && (s.partsUsed ?? []).includes(p.name))) out.push(`${p.name}: has a nearest-part fallback step`);
+  }
+  return out;
+}
+
+/** A wall hang buys one fastener kind for the studs, and the steps name that same kind (no lag + structural for one job). */
+export function wallHangFailures(project: { assumptions?: { installMode?: string } }, plan: Pick<BuildPlan, "bom" | "instructions">): string[] {
+  if (project.assumptions?.installMode !== "wall") return [];
+  const buy = plan.bom.filter((b) => /structural screw|lag screw|tapcon/i.test(b.name));
+  if (buy.length > 1) return [`the wall hang buys ${buy.map((b) => b.name).join(" and ")} for one job`];
+  const text = plan.instructions.map((s) => s.description).join(" ");
+  if (/\blag\b/i.test(text) && buy.some((b) => /structural/i.test(b.name)) && !buy.some((b) => /lag/i.test(b.name))) return ["the steps say lag but Buy sells structural screws"];
+  if (/structural screw/i.test(text) && buy.some((b) => /lag/i.test(b.name)) && !buy.some((b) => /structural/i.test(b.name))) return ["the steps say structural screws but Buy sells lags"];
+  return [];
+}
+
+/** A shallow wall cabinet's shelves hold something: they never shrink under SHALLOW_SHELF_MIN from the hinge set-back. */
+export function shallowShelfFailures(project: { panels: Panel[]; assumptions?: { installMode?: string } }): string[] {
+  if (project.assumptions?.installMode !== "wall" || !project.panels.some((p) => p.type === "door")) return [];
+  return project.panels.filter((p) => p.type === "shelf" && p.size.depth + 1e-6 < SHALLOW_SHELF_MIN).map((p) => `${p.name}: ${Math.round(p.size.depth * 8) / 8}" deep on a shallow wall cabinet (under ${SHALLOW_SHELF_MIN}")`);
 }

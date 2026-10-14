@@ -9,6 +9,7 @@
  */
 import { panelWorldCorners } from "./geometry";
 import type { Panel, YardInstance, YardProject } from "./types";
+import { doorHingesLeft } from "./operateFaces";
 
 export type How = "floor" | "rests" | "side" | "hinges" | "front" | "slides";
 export type SupportInfo = { key: string; name: string; how: How; on: string[] };
@@ -46,7 +47,9 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         .slice(0, n)
         .map((q) => q.id);
     if (p.type === "door") {
-      out.set(p.id, { key: p.id, name: p.name, how: "hinges", on: near(panels.filter(vertical), 1) });
+      const edge = doorHingesLeft(p) ? A.min[0] : A.max[0];
+      const side = panels.filter(vertical).sort((x, y) => Math.abs((boxes.get(x.id)!.min[0] + boxes.get(x.id)!.max[0]) / 2 - edge) - Math.abs((boxes.get(y.id)!.min[0] + boxes.get(y.id)!.max[0]) / 2 - edge));
+      out.set(p.id, { key: p.id, name: p.name, how: "hinges", on: side.slice(0, 1).map((q) => q.id) });
       continue;
     }
     if (isDrawerFront(p)) {
@@ -314,6 +317,11 @@ function acyclicRoles(out: Map<string, SupportInfo>, groups: Map<string, YardIns
 export function supportsOf(project: YardProject): Map<string, SupportInfo> {
   if (!project.panels.length) return roleSupports(project.instances);
   const out = panelSupports(project.panels);
+  // A part set into another (a mirror in the door's rabbet) is mounted on that part, never the nearest one.
+  for (const p of project.panels) {
+    const host = p.joints?.find((j) => j.kind === "rabbet" || j.kind === "dado")?.with;
+    if (host && host !== p.id && out.has(host)) out.set(p.id, { key: p.id, name: p.name, how: "side", on: [host] });
+  }
   // A moving part rides on its pin or axle: the pin carries it, so the pin goes on first.
   const pins = project.panels.filter((p) => p.turns && /^dowel-/.test(p.materialId));
   const meets = (a: Panel, b: Panel) => {

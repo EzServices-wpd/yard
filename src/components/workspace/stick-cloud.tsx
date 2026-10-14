@@ -6,7 +6,7 @@ import { Edges } from "@react-three/drei";
 import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
-import { isHingedLidPanel } from "@/lib/yard/operateFaces";
+import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
@@ -51,11 +51,14 @@ export function PanelMesh({
   const item = getCatalogItem(partLook.catalogId) ?? getCatalogItem(panel.materialId);
   const look = stockLook(item);
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
+  // A mirror set into a door rides on that door: it shows on the door's face and swings with it.
+  const hostDoor = useYard((s) => (panel.joints?.length ? s.project.panels.find((q) => q.type === "door" && panel.joints!.some((j) => j.with === q.id)) : undefined));
+  const mirror = panel.type === "mirror";
   // Step view: this step's parts keep their real wood tone with a warm glow and orange edges;
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
-  const opacity = ghost ? 0.16 : glass ? 0.42 : 1;
-  const color = placeholder ? "#9a9a9a" : ghost ? "#8a7c68" : partLook.color(!!look.map);
+  const opacity = ghost ? 0.16 : glass && !mirror ? 0.42 : 1;
+  const color = placeholder ? "#9a9a9a" : ghost ? "#8a7c68" : mirror ? "#d3dce2" : partLook.color(!!look.map);
   const glow = inStep ? 0.22 : selected ? 0.14 : 0;
   const edgeColor = inStep ? "#e0782f" : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
@@ -65,7 +68,7 @@ export function PanelMesh({
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
-  const hiddenInStep = hasStep && !inStep && (isDoor || isDrawer || isLid || !!leaf);
+  const hiddenInStep = hasStep && !inStep && (isDoor || !!hostDoor || isDrawer || isLid || !!leaf);
 
   const activeStep = useYard((s) => s.activeStep);
   const plan = useYard((s) => s.plan);
@@ -75,8 +78,9 @@ export function PanelMesh({
   // when you ask ("Open doors") or in the step that hangs them, so the hinge side reads.
   const faceStep = activeStep != null && /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle);
   const allowSwing = facesOpen ? activeStep == null || faceStep : faceStep && inStep;
-  const open = allowSwing && !panel.yaw && (isDoor || isDrawer || isLid || !!leaf) && (!hasStep || inStep);
-  const isLeft =
+  const open = allowSwing && !panel.yaw && (isDoor || !!hostDoor || isDrawer || isLid || !!leaf) && (!hasStep || inStep);
+  // One hinge side for the model, the steps and the pull (operateFaces.doorHingesLeft).
+  const isLeft = isDoor || hostDoor ? doorHingesLeft(hostDoor ?? panel) :
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
 
   const cx = panel.position.x + w / 2;
@@ -95,13 +99,14 @@ export function PanelMesh({
     groupPos = [leaf.hingeX * explode, cy, leaf.hingeZ * explode];
     groupRot = [0, swing, 0];
     meshPos = [panel.position.x + w / 2 - leaf.hingeX, 0, panel.position.z + d / 2 - leaf.hingeZ];
-  } else if (isDoor && open) {
-    const hingeX = isLeft ? panel.position.x : panel.position.x + w;
-    const hingeZ = panel.position.z + d / 2;
+  } else if ((isDoor || hostDoor) && open) {
+    const from = hostDoor ?? panel;
+    const hingeX = isLeft ? from.position.x : from.position.x + from.size.width;
+    const hingeZ = from.position.z + from.size.depth / 2;
     const swing = ((isLeft ? -1 : 1) * 72 * Math.PI) / 180;
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
-    meshPos = [isLeft ? w / 2 : -w / 2, 0, 0];
+    meshPos = [cx - hingeX, 0, cz - hingeZ];
   } else if (isDrawer && open) {
     const pull = Math.max(8, Math.min(d * 0.75, 16));
     groupPos = [cx * explode, cy, (cz + pull) * explode];
@@ -274,6 +279,8 @@ export function PanelMesh({
             emissive={glow ? "#ff8a3d" : "#000000"}
             emissiveIntensity={glow}
             depthWrite={opacity > 0.5}
+            polygonOffset={mirror}
+            polygonOffsetFactor={mirror ? -2 : 0}
           />
           {/* Thin dark outline on every panel so neighbouring parts read as separate pieces. */}
           {!glass && (

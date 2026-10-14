@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { generateFromPrompt, shadowsBuiltIn } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { buildInfo } from "./buildInfo.ts";
-import { hingeDrift } from "./learnedGate.ts";
+import { hingeDrift, mountParentFailures, wallHangFailures, shallowShelfFailures } from "./learnedGate.ts";
+import { classSizeWarning, factsFromProject } from "./measureTabs.ts";
 import { addCandidate } from "../ai/recipeBot.ts";
 import { RECIPES } from "./recipes.ts";
 import { shopWordsChipTalk, glossaryForPlan } from "./voiceHonesty.ts";
@@ -40,4 +41,27 @@ it("glossary and part names come from the build's own parts", () => {
   assert.ok(!glossaryForPlan(`${p.prompt} ${p.name}`, SHOP_GLOSSARY, parts).some((e) => /kick/i.test(e.term)));
   assert.ok(!/\b(?:both|each) [A-Z]{1,2} (?:left|right) \w+s\b/.test(text), text.match(/\b(?:both|each) [A-Z]{1,2} (?:left|right) \w+s\b/)?.[0]);
   assert.ok(/kick strip/i.test(shopWordsChipTalk("kitchen base cabinet", "Kick strip kick")));
+});
+
+it("a part set into a rabbet mounts on its host, not a nearest-part fallback", () => {
+  const { p, plan, text } = build("medicine cabinet");
+  assert.deepEqual(mountParentFailures(p, plan), []);
+  assert.ok(!/not yet in a step/i.test(plan.instructions.map((s) => s.tips ?? "").join(" ")));
+  assert.ok(/set the mirror in it/i.test(text));
+  assert.ok(p.panels.some((q) => q.type === "mirror" && q.joints?.some((j) => j.kind === "rabbet")));
+});
+
+it("shallow wall-cabinet shelves hold something, and Measure skips the bookshelf hint", () => {
+  const { p } = build("medicine cabinet");
+  assert.deepEqual(shallowShelfFailures(p), []);
+  for (const s of p.panels.filter((q) => q.type === "shelf")) assert.ok(s.size.depth >= 2.5, String(s.size.depth));
+  assert.equal(classSizeWarning(factsFromProject(p), 16, 4), null);
+});
+
+it("the pull sits opposite the hinge edge, and the wall hang buys one fastener", () => {
+  const { p, plan, text } = build("medicine cabinet");
+  assert.ok(/Pull on the right edge.*opposite the hinges/i.test(text));
+  assert.deepEqual(wallHangFailures(p, plan), []);
+  assert.equal(plan.bom.filter((b) => /structural screw|lag screw/i.test(b.name)).length, 1);
+  assert.ok(!/\blag a\b/i.test(text));
 });

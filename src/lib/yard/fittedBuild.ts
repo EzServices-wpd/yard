@@ -344,7 +344,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const name = `Medicine cabinet ${W}" × ${H}" × ${D}"`;
     const studNote = backReachesTwoStuds(innerW)
       ? "Hang the carcase on studs through the back."
-      : `The back is ${innerW}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Lag the corner that hits a stud and use rated wall anchors at the others — not four corner screws into studs.`;
+      : `The back is ${innerW}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Drive structural screws into the stud you can reach and use rated wall anchors at the others — not four corner screws into studs.`;
     return {
       id: createId("proj"),
       name,
@@ -356,7 +356,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
-        `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close. The mirror sits flush in a rabbet in the door's outer face.`,
+        `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. ${face.shelfDepth + backT >= box - 0.01 ? "Shelves run to the front edge, clear of the hinges." : `Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close.`} The mirror sits flush in a rabbet in the door's outer face.`,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },

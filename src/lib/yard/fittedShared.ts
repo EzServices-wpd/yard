@@ -35,12 +35,17 @@ export function cabinetStem(lower: string): string {
  * nothing adds a slab past the label.
  * Shelves stop short of the hinge arm.
  */
+/** Shelves shallower than this hold nothing: a shallow wall cabinet runs them to the door. */
+export const SHALLOW_SHELF_MIN = 2.5;
+
 export function shallowWallCabinetFace(typedDepth: number, backT = P, mirror = false) {
   const doorT = P;
   const outer = typedDepth;
   const mirrorT = mirror ? DOOR_MIRROR_T : 0;
   const doorZ = Math.max(0, outer - doorT);
-  const shelfStop = Math.max(backT + 0.5, doorZ - HINGE_ARM_CLEAR_IN);
+  // On a shallow box the hinge set-back would leave a sliver shelf: the shelves run to the door instead
+  // (the hinges sit 3" from the top and bottom, clear of the shelves).
+  const shelfStop = doorZ - backT - HINGE_ARM_CLEAR_IN < SHALLOW_SHELF_MIN ? doorZ : Math.max(backT + 0.5, doorZ - HINGE_ARM_CLEAR_IN);
   return {
     doorT,
     doorZ,

@@ -14,6 +14,14 @@ export type OperateFaceKinds = {
  * Hinged-lid Operate panel — universal chest/trunk/box lid, not noun-only.
  * Lift-off lids are named "Lift-off lid" (no Operate swing / no /^Lid\b/ match).
  */
+/** The edge a door hangs from: its name says, else the side of center it sits on (a centered single door hangs left).
+ * The model, the support graph, the steps and the pull all read this one answer. */
+export function doorHingesLeft(panel: Pick<Panel, "name" | "position" | "size">): boolean {
+  if (/left/i.test(panel.name)) return true;
+  if (/right/i.test(panel.name)) return false;
+  return panel.position.x + panel.size.width / 2 < 0.5;
+}
+
 export function isHingedLidPanel(panel: Panel): boolean {
   return panel.type === "top" && /^Lid\b/i.test(panel.name);
 }

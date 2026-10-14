@@ -1306,7 +1306,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. Stop the shelves ${HINGE_ARM_CLEAR_IN}" short of the door so the concealed hinge arm can close. Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. ${(shelves[0]?.size.depth ?? 0) + (backs[0]?.size.depth ?? 0) >= (uprights[0]?.size.depth ?? D) - 0.01 ? "The shelves run to the front edge; the door closes flat in front of them." : `Stop the shelves ${HINGE_ARM_CLEAR_IN}" short of the door so the concealed hinge arm can close.`} Do not glue the shelves; pins let you move them later.`,
         tips: "A medicine bottle is taller than a spice tin — leave the middle gap honest.",
         partsUsed: names(shelves),
       },
@@ -1325,7 +1325,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           if (backReachesTwoStuds(backW)) {
             return `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws, one near each corner. Close the door and check the reveal.`;
           }
-          return `The back is ${round(backW)}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Lag a 3" structural screw into the stud you can reach, and use rated wall anchors at the other corners. Do not drive four corner screws and call them studs. Close the door and check the reveal.`;
+          return `The back is ${round(backW)}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Drive 3" structural screws through the back into the stud you can reach, and use rated wall anchors at the other corners. Do not drive four corner screws and call them studs. Close the door and check the reveal.`;
         })(),
         tips: "Guidance only — confirm the wall. A loaded medicine cabinet will rip off drywall alone. Confirm the hang height so the mirror is at your eye line.",
         partsUsed: names(backs),

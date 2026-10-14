@@ -213,7 +213,8 @@ export function classSizeWarning(facts: MeasureFacts, width: number, depth: numb
       fix: "Use 16\" wide",
     };
   }
-  const shelf = facts.program === "bookcase" || (facts.shelves ?? 0) > 0;
+  // A doored wall cabinet is shallow on purpose (a medicine cabinet): no bookshelf hint.
+  const shelf = (facts.program === "bookcase" || (facts.shelves ?? 0) > 0) && !(facts.installMode === "wall" && facts.doors);
   if (shelf && !seat && Number.isFinite(depth) && depth > 0 && depth < 8) {
     return {
       id: "shallow-shelf",

@@ -261,6 +261,14 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   for (const part of parts) {
     const info = supports.get(part.key);
     const at = placed().get(part.key);
+    // A step that names this part and lists its real mounting parent places it (the mirror in the door's
+    // rabbet): no fallback step, never fastened to the nearest part.
+    const hosts = project.panels.filter((p) => info?.on.includes(p.id)).map((p) => p.name);
+    const mount = at == null && hosts.length ? out.findIndex((s) => isBuild(s) && hosts.some((h) => (s.partsUsed ?? []).includes(h)) && new RegExp(`\\b${escapeRe(part.name)}\\b`, "i").test(s.description)) : -1;
+    if (mount >= 0) {
+      out[mount] = { ...out[mount], partsUsed: [...(out[mount].partsUsed ?? []), part.name] };
+      continue;
+    }
     if (at == null) {
       // Insert right after the parts it rests on, and before any part that rests on it.
       const where = placed();

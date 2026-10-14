@@ -32,7 +32,8 @@ test("16x24x4 medicine cabinet: the solved layout matches the shallow rule", () 
   near(mirror.position.z + mirror.size.depth, door.position.z + door.size.depth); // mirror flush with the door face
   near(mirror.position.z + mirror.size.depth, 4); // nothing past the typed depth
   for (const p of project.panels) assert.ok(p.position.z + p.size.depth <= 4 + 0.01, `${p.name} stands past 4"`);
-  assert.ok(shelf.position.z + shelf.size.depth <= door.position.z - 0.5);
+  assert.ok(shelf.position.z + shelf.size.depth <= door.position.z + 0.01, "shelf stays behind the closed door");
+  assert.ok(shelf.size.depth >= 2.5 - 0.01, "a shallow wall shelf still holds a bottle");
   assert.doesNotMatch(project.notes?.[0] ?? "", /stand proud/);
   assert.equal(back.size.width, 14.5);
   const steps = uniqueSteps(project);
