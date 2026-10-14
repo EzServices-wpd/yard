@@ -15,9 +15,11 @@ for (const m of ledger.matchAll(/^- [^\n]*· ([^·\n]+?) — (TRUSTED|FLAGGED)\b
 }
 for (const r of store.recipes) {
   const v = verdicts.get(r.key);
-  if (!v || r.trust === v) continue;
+  // A FLAGGED verdict holds the recipe (off Ideas, Unverified when typed); TRUSTED unholds it.
+  if (!v || (r.trust === v && (v === "trusted" ? !r.held : !!r.held))) continue;
   r.trust = v;
   if (v === "trusted") delete r.held;
+  else r.held = "Critic FLAGGED";
   console.log(`${r.key}: ${v}`);
 }
 writeFileSync(file, JSON.stringify(store, null, 1) + "\n");

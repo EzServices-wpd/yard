@@ -8,6 +8,7 @@ import { buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
 import { buildPlan } from "./report";
+import { generateFromPrompt } from "./promptMain";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
 // Consumables (oil, fabric liner, finish) are bought, never cut: no part comes from them, by design.
@@ -20,6 +21,14 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   const fail = validateRecipe(recipe, built, prompt);
   const { panels } = built.project;
   const plan = buildPlan(built.project);
+  // A stand holds what it names: a rain barrel stand's opening between the posts clears a 23" (50-gallon) barrel.
+  if (/\bbarrel\b/i.test(recipe.title) && /\bstand\b/i.test(recipe.title)) {
+    const posts = panels.filter((p) => /\bpost\b/i.test(p.name));
+    const gap = posts.length >= 2 ? Math.max(...posts.map((p) => p.position.x)) - Math.min(...posts.map((p) => p.position.x + p.size.width)) : 0;
+    if (gap < 23) fail.push(`the opening between the posts is ${Math.round(gap * 8) / 8}", under a 23" barrel`);
+  }
+  // A learned recipe never replaces a built-in shape: the engine already builds this noun itself.
+  if (recipe.learned && generateFromPrompt(prompt).id !== built.project.id) fail.push(`the engine builds "${prompt}" itself; a learned recipe never replaces a built-in shape`);
   // The header is the model: each side of the overall size matches the parts' extent (pegs standing proud excepted).
   const o = built.project.overall;
   if (o) for (const [a, k] of [["x", "width"], ["y", "height"], ["z", "depth"]] as const) {
@@ -120,7 +129,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   // A counted hole array ("60 holes per track") needs that many drilled holes, not just a peg's.
   const holeCount = Math.max(0, ...[...noteText.matchAll(/(\d+)\s+holes?\b/g)].map((m) => Number(m[1])));
   if (holeCount > panels.filter(isDowel).length + recipe.parts.filter((p) => p.bore).length + panels.reduce((n, p) => n + (p.polygon?.holes?.length ?? 0), 0)) fail.push(`a note names ${holeCount} holes the model does not drill`);
-  if (/\bslots?\b/.test(noteText) && !recipe.parts.some((p) => p.repeat === "between") && !/\bslot\b/i.test(all)) fail.push("a note names slots but no part forms them");
+  if (/\bslots?\b/.test(noteText) && !recipe.parts.some((p) => p.repeat === "between") && recipe.parts.filter((p) => /\b(?:divider|shelf)\b/i.test(`${p.role} ${p.name}`)).length < 2 && !/\bslot\b/i.test(all)) fail.push("a note names slots but no part forms them");
   // (b) Dividers repeated between the sides stand on edge: their thin side runs along the repeat (x).
   for (const part of recipe.parts.filter((q) => q.repeat === "between" && q.kind !== "member")) {
     for (const p of panels.filter((q) => q.name.replace(/ \d+$/, "") === part.name)) if (p.size.width > minT(p) + 0.01) { fail.push(`${part.name} lies flat: a divider repeated between the sides must stand on edge`); break; }

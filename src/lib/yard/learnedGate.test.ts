@@ -385,3 +385,13 @@ it("the header is the model: the saved sundial's overall size is its parts' exte
   assert.deepEqual([o.width, o.depth, o.height], [16, 16, 37.75]);
   for (const r of RECIPES.recipes) assert.ok(!learnedRecipeFailures(r).some((f) => /^header /.test(f)), r.key);
 });
+
+it("a learned recipe never replaces a built-in shape: the fitted medicine cabinet stays the engine's, a router table stays learned", async () => {
+  const { generateFromPrompt, builtInShape } = await import("./promptMain.ts");
+  const mc = generateFromPrompt("medicine cabinet");
+  assert.ok(builtInShape("medicine cabinet", mc, "medicine cabinet"));
+  assert.ok(!builtInShape("router table", { ...generateFromPrompt("table 40 x 30 x 40"), name: "Table" }, "router table"));
+  const r = { key: "medicine-cabinet", synonyms: [], version: 1, trust: "candidate", learned: true, title: "Medicine Cabinet", size: { width: 16, height: 24, depth: 4 }, defining: ["door"], notes: [],
+    parts: [{ role: "side", name: "Left side", box: [0, 0, 0, 0.05, 1, 1], kind: "panel" }, { role: "side", name: "Right side", box: [0.95, 0, 0, 0.05, 1, 1], kind: "panel" }, { role: "door", name: "Door", box: [0, 0, 0.9, 1, 1, 0.1], kind: "panel", on: ["Left side"] }] } as unknown as Recipe;
+  assert.ok(learnedRecipeFailures(r).some((f) => /never replaces a built-in shape/.test(f)));
+});

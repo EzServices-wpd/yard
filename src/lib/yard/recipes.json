@@ -4907,7 +4907,8 @@
     "Four-legged open frame elevates bowls for comfortable feeding height",
     "Typical size suited to medium dogs"
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "birdhouse-shaped-like-church",
@@ -5776,7 +5777,8 @@
     "Supports a spinning compost drum above ground clearance",
     "Outdoor garden frame of wood or steel"
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "cutting-board",
@@ -6528,7 +6530,8 @@
     "Open top allows knives to be inserted and removed",
     "Sits stably on a countertop"
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "adirondack-footrest",
@@ -6796,13 +6799,14 @@
     "Four legs with side rails, end rails and lower stretchers form the frame",
     "Five spaced top slats rest on the side rails for a drained seating surface"
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "wall-mounted-mail-organizer",
    "synonyms": [],
    "version": 1,
-   "trust": "candidate",
+   "trust": "trusted",
    "title": "Wall-Mounted Mail Organizer",
    "size": {
     "width": 12,
@@ -6941,8 +6945,7 @@
     "Open-front horizontal slots hold letters and flat mail",
     "Mounts flush to wall by the backboard"
    ],
-   "learned": true,
-   "held": "Flagged by the learned-recipe checks: a part has only a fallback step"
+   "learned": true
   },
   {
    "key": "rain-barrel-stand",
@@ -6950,12 +6953,12 @@
     "rain barrel platform"
    ],
    "version": 1,
-   "trust": "candidate",
+   "trust": "trusted",
    "title": "Rain Barrel Stand",
    "size": {
-    "width": 32,
+    "width": 34,
     "height": 18,
-    "depth": 32
+    "depth": 34
    },
    "feet": true,
    "outdoor": true,
@@ -7214,10 +7217,10 @@
     "Posts are cut from 4x4 stock",
     "Rails and deck boards from 2x4 stock",
     "Height allows space under barrel spigot for watering can",
-    "Platform supports standard 50-gallon rain barrel"
+    "Platform supports standard 50-gallon rain barrel",
+    "The space between the posts clears a 23\" (50-gallon) barrel with room to set it down."
    ],
-   "learned": true,
-   "held": "Flagged by the learned-recipe checks: note names 4x4 but no part is cut from it"
+   "learned": true
   },
   {
    "key": "miter-saw-station",
@@ -7532,7 +7535,8 @@
     "Lower shelf provides storage for cutoffs and accessories",
     "Frame typically 2x4 lumber with plywood decks and fence"
    ],
-   "learned": true
+   "learned": true,
+   "held": "Critic FLAGGED"
   },
   {
    "key": "sundial",

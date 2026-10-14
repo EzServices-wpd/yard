@@ -39,9 +39,10 @@ export const POPULAR_CAP = 12;
 export function popularIdeas(counts: Record<string, number> = (COUNTS as { counts: Record<string, number> }).counts, recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
   const rank = new Map(recipes.map((r, i) => [r.key, i]));
   const seen = new Set<string>();
-  const fresh = new Set(newIdeas(recipes).map((d) => d.id));
+  // Popular is Critic-TRUSTED recipes only; untrusted ones may only appear under the labelled New (Unverified).
+  const trusted = new Set(recipes.filter((r) => r.trust === "trusted" && !r.held).map((r) => `recipe-${r.key}`));
   return recipeIdeas(recipes)
-    .filter((d) => !fresh.has(d.id))
+    .filter((d) => trusted.has(d.id))
     .map((d) => ({ d, key: d.id.slice(7) }))
     .sort((a, b) => (counts[b.key] ?? 0) - (counts[a.key] ?? 0) || (rank.get(a.key) ?? 0) - (rank.get(b.key) ?? 0))
     .filter(({ key }) => { const noun = key.split("-").slice(-1)[0]; if (seen.has(noun)) return false; seen.add(noun); return true; })
@@ -51,7 +52,8 @@ export function popularIdeas(counts: Record<string, number> = (COUNTS as { count
 
 /** New (Unverified): learned recipes that pass every gate check but no Critic grade has trusted yet, newest first. */
 export function newIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
-  const fresh = new Set(recipes.filter((r) => r.learned && r.trust !== "trusted").map((r) => `recipe-${r.key}`));
+  // Never a held or Critic-failed (FLAGGED, held) recipe.
+  const fresh = new Set(recipes.filter((r) => r.learned && r.trust !== "trusted" && !r.held).map((r) => `recipe-${r.key}`));
   return recipeIdeas(recipes).filter((d) => fresh.has(d.id)).reverse().slice(0, POPULAR_CAP);
 }
 
