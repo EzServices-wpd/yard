@@ -207,3 +207,9 @@ test("loosened filter: harmless numbers and words pass, real PII still drops", (
   for (const ok of ["6 place settings", "table for 6 place settings", "36 72 12 16", "10000 btu cabinet", "shelf 24 36 48 60", "12 pl shelf"]) assert.equal(safePrompt(ok), ok, ok);
   for (const bad of ["call 555-1234", "212.555.0199 desk", "2125550199 shelf", "+44 20 7946 0958 bench", "12 Elm Place bench", "planter 90210"]) assert.equal(safePrompt(bad), null, bad);
 });
+
+test("a bare w or k after a 5-digit number is not a unit: the ZIP is never stored", async () => {
+  for (const bad of ["planter 10001 w", "planter 10001 W", "bench 90210 k", "shelf 10001 wide"]) assert.equal(safePrompt(bad), null, bad);
+  assert.equal(safePrompt("10000 btu cabinet"), "10000 btu cabinet");
+  assert.equal(await recordFromPrompt("planter 10001 w"), null);
+});
