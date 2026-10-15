@@ -394,8 +394,13 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
       btn?.addEventListener("pointerleave", () => { anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")]; });
     });
   }, [off, ref]);
+  // Set once on first view; the turn-in keyframes only exist after this (nothing runs at load).
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!off && !seen) setSeen(true);
+  }, [off, seen]);
   return (
-    <div ref={ref} data-offscreen={off || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
+    <div ref={ref} data-offscreen={off || undefined} data-in={seen || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
       {children}
     </div>
   );

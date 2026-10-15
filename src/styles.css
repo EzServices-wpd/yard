@@ -440,10 +440,11 @@
 /* Living home samples: one staggered turn-in the first time the grid is on screen, then still
    (a single orchestrated moment, not a loop). Transform/opacity only; still under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .yard-alive-grid { perspective: 900px; }
-  .yard-alive-grid .yard-alive { animation: yard-alive 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1 both; transform-origin: 50% 80%; }
-  .yard-alive-grid > :nth-child(2) .yard-alive { animation-delay: 0.12s; }
-  .yard-alive-grid > :nth-child(3) .yard-alive { animation-delay: 0.24s; }
+  /* No keyframes (and no animationstart/3D layer work) until the grid is first on screen. */
+  .yard-alive-grid[data-in] { perspective: 900px; }
+  .yard-alive-grid[data-in] .yard-alive { animation: yard-alive 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1 both; transform-origin: 50% 80%; }
+  .yard-alive-grid[data-in] > :nth-child(2) .yard-alive { animation-delay: 0.12s; }
+  .yard-alive-grid[data-in] > :nth-child(3) .yard-alive { animation-delay: 0.24s; }
 }
 @keyframes yard-alive {
   from { transform: rotateY(-28deg) translateY(14px) scale(0.94); opacity: 0.35; }
