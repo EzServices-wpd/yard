@@ -135,3 +135,41 @@ test("R8 search spans prompt and result key, Trusted first; trustedPopular drops
   assert.deepEqual(searchLog(rows, "bench").map((r) => r.key), ["2", "1"]);
   assert.deepEqual(trustedPopular(rows).map((r) => r.key), ["3", "2"]);
 });
+
+test("F36: snapshot reads are memoised and a rebuild happens at most once per 10 min across instances", async () => {
+  const r = fakeRedisWithStrings();
+  const t = Date.parse("2026-10-15T12:00:00Z");
+  const a = new IdeaStore(r.pipe), b = new IdeaStore(r.pipe), c = new IdeaStore(r.pipe);
+  await a.record({ key: "k1", prompt: "bookshelf", size: "", resultKey: "builtin:bookshelf", status: "Trusted" }, new Date(t));
+  const before = r.calls;
+  // 300 hits in the window, spread over three cold instances (any query string: the handler never reads it).
+  for (let i = 0; i < 300; i++) await [a, b, c][i % 3].served(new Date(t + i * 1000));
+  assert.equal(a.rebuilds + b.rebuilds + c.rebuilds, 1, "one rebuild");
+  assert.ok(r.calls - before <= 3 * 1 + 3, `store calls ${r.calls - before}`);
+  const s1 = await b.served(new Date(t + 299_000));
+  assert.deepEqual(s1.rows.map((x) => x.prompt), ["bookshelf"]);
+  // After the window a new rebuild is allowed, still only one.
+  r.expire();
+  for (let i = 0; i < 30; i++) await [a, b, c][i % 3].served(new Date(t + 601_000 + i * 1000));
+  assert.equal(a.rebuilds + b.rebuilds + c.rebuilds, 2);
+  assert.equal((await new IdeaStore(null).served()).live, false);
+});
+
+/** fakeRedis plus GET/SET (NX, EX) for the snapshot cache and lock. */
+function fakeRedisWithStrings() {
+  const base = fakeRedis();
+  const str = new Map<string, string>();
+  let calls = 0;
+  const pipe: Pipe = async (list) => {
+    calls++;
+    const out: unknown[] = [];
+    for (const cmd of list) {
+      const [c, k, v, ...rest] = cmd;
+      if (c === "GET") out.push(str.get(String(k)) ?? null);
+      else if (c === "SET") { if (rest.includes("NX") && str.has(String(k))) out.push(null); else { str.set(String(k), String(v)); out.push("OK"); } }
+      else out.push(...((await base.pipe([cmd])) ?? []));
+    }
+    return out;
+  };
+  return { pipe, get calls() { return calls; }, expire: () => { str.delete("ideas:snap:lock"); } };
+}

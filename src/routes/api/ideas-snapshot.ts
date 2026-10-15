@@ -6,9 +6,11 @@ import { EMPTY_SNAPSHOT } from "@/lib/yard/ideaLog";
 export const Route = createFileRoute("/api/ideas-snapshot")({
   server: {
     handlers: {
+      // F36: the request (query string included) is never read: every URL gets the same memoised body,
+      // and a store rebuild happens at most once per 10 min across all instances (store lock).
       GET: async () => {
         let snap = EMPTY_SNAPSHOT;
-        try { snap = await ideaStore().snapshot(); } catch { /* empty */ }
+        try { snap = await ideaStore().served(); } catch { /* empty */ }
         return Response.json(snap, { headers: { "Cache-Control": "public, max-age=60, s-maxage=600, stale-while-revalidate=3600" } });
       },
     },

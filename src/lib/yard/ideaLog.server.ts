@@ -12,8 +12,9 @@ export const BUDGET = 450_000;
 export const WRITE_CMDS = 6; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK
 export const READ_CMDS = 5;
 const COALESCE_MS = 10_000;
+export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
-const K = { budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent" };
+const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent" };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
@@ -87,6 +88,38 @@ export class IdeaStore {
       stats.dropped++;
       return "dropped";
     }
+  }
+
+  private memo: { at: number; snap: IdeasSnapshot } | null = null;
+  rebuilds = 0;
+
+  /**
+   * F36: what the endpoint serves. Per instance it is memoised for 10 min; across instances the built snapshot
+   * lives in the store and a rebuild needs the store lock (SET NX EX 600), so at most one rebuild per 10 min
+   * whatever the traffic or query string. A cold instance costs one GET (+1 SET NX when stale).
+   */
+  async served(now = new Date()): Promise<IdeasSnapshot> {
+    const t = now.getTime();
+    if (this.memo && t - this.memo.at < SNAPSHOT_MS) return this.memo.snap;
+    if (!this.pipe) return (this.memo = { at: t, snap: { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: false } }).snap;
+    let snap: IdeasSnapshot | null = null;
+    try {
+      if (!this.budget.allows(3, now)) throw new Error("budget");
+      const [got, lock, used] = (await this.pipe([["GET", K.snap], ["SET", K.lock, "1", "NX", "EX", SNAPSHOT_MS / 1000], ["INCRBY", K.budget(month(now)), 3]])) ?? [];
+      this.budget.saw(Number(used));
+      const stored = typeof got === "string" ? (JSON.parse(got) as IdeasSnapshot) : null;
+      if (lock === "OK" || !stored) {
+        if (lock === "OK") {
+          this.rebuilds++;
+          snap = await this.snapshot(now);
+          await this.pipe([["SET", K.snap, JSON.stringify(snap), "EX", (SNAPSHOT_MS / 1000) * 6]]);
+        } else snap = { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
+      } else snap = stored;
+    } catch {
+      snap = this.memo?.snap ?? { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
+    }
+    this.memo = { at: t, snap };
+    return snap;
   }
 
   /** The snapshot the CDN caches (R8, R12). Failed and unsafe rows never leave the store. Never throws. */
