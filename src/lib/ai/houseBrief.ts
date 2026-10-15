@@ -1,3 +1,4 @@
+import { xaiFetch } from "./xai.server";
 /**
  * Free-text house prompt → FittedSpec.
  * Few-shots every known-good walk build so the model stays on the cut-list path.
@@ -10,23 +11,16 @@ async function chat(
   messages: { role: "system" | "user"; content: string }[],
   maxTokens = 900,
 ) {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
 
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
+  const call = await xaiFetch("chat/completions", {
       model: "grok-4.5",
       messages,
       max_tokens: maxTokens,
       temperature: 0.2,
       response_format: { type: "json_object" },
-    }),
-  });
+    });
+  if (!call.ok) return { ok: false as const, error: call.error };
+  const res = call.res;
   if (!res.ok) return { ok: false as const, error: `xAI API error ${res.status}` };
   const payload = (await res.json()) as { choices: { message: { content: string } }[] };
   return { ok: true as const, text: payload.choices[0]?.message.content ?? "" };

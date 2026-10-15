@@ -422,7 +422,12 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
     // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
     if (learn) {
-      const lookup = timedLookup((feedback) => lookupRecipe({ data: { prompt, feedback } }));
+      let lookupId: string | undefined;
+      const lookup = timedLookup(async (feedback) => {
+        const r = await lookupRecipe({ data: { prompt, feedback } });
+        if (r.ok && "lookupId" in r) lookupId = r.lookupId as string;
+        return r;
+      });
       // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
       const engine = () => roughBlock(prompt, next);
       // Two tries at 75s each, one bound on the whole lookup so the bench never waits on it.
@@ -436,7 +441,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
       }
       if (out.recipe) {
         // Propose it for the committed store; quiet when the bot has no token.
-        void proposeRecipeFn({ data: { recipeJson: JSON.stringify(out.recipe) } })
+        if (lookupId) void proposeRecipeFn({ data: { lookupId } })
           .then((r) => console.info(`[recipe-bot] ${r.status}`))
           .catch((e) => console.warn(`[recipe-bot] call failed: ${(e as Error).message}`));
         generate(prompt, namedStock, undefined, { fresh: true });

@@ -7,6 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
 import { learnedRecipeFailures } from "@/lib/yard/learnedGate";
 import { shadowsBuiltIn } from "@/lib/yard/promptMain";
+import { cacheGet } from "./dailyCap.server";
 
 const REPO = process.env.YARD_RECIPE_REPO ?? "EzServices-wpd/yard";
 const BRANCH = "yard-recipe-bot";
@@ -107,11 +108,14 @@ export async function proposeRecipe(raw: unknown): Promise<{ ok: boolean; status
 }
 
 export const proposeRecipeFn = createServerFn({ method: "POST" })
-  .validator((input: { recipeJson: string }) => input)
+  .validator((input: { lookupId: string }) => ({ lookupId: String(input?.lookupId ?? "").slice(0, 64) }))
   .handler(async ({ data }) => {
     // One log line per proposal (never the token), so the runtime logs say why a PR did or didn't open.
     try {
-      const out = await proposeRecipe(JSON.parse(data.recipeJson));
+      // Only a recipe this server's own lookup returned, held by id; client JSON is never accepted.
+      const held = data.lookupId ? await cacheGet<string>(`yard-lookup:${data.lookupId}`) : undefined;
+      if (!held) return { ok: false, status: "unknown lookup" };
+      const out = await proposeRecipe(JSON.parse(held));
       console.info(`[recipe-bot] ${out.status}${out.pr ? ` pr=${out.pr}` : ""}`);
       return out;
     } catch (e) {

@@ -136,19 +136,57 @@ function publicImageUrl(raw: string): string | null {
   return url.toString().slice(0, 800);
 }
 
+/** Private, loopback, link-local, CGNAT, unique-local and IPv4-mapped forms of those: never fetched. */
+export function isPrivateIp(raw: string): boolean {
+  let ip = raw.toLowerCase().replace(/^\[|\]$/g, "");
+  const mapped = ip.match(/^(?:0*:)*:?ffff:(\d+\.\d+\.\d+\.\d+)$/) ?? ip.match(/^::(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) ip = mapped[1];
+  else if (/^(?:0*:)*:?ffff:[0-9a-f]{1,4}:[0-9a-f]{1,4}$/.test(ip)) {
+    const [hi, lo] = ip.split(":").slice(-2).map((h) => parseInt(h, 16));
+    ip = `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+  }
+  const v4 = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  if (!ip.includes(":")) return false;
+  return ip === "::" || ip === "::1" || /^f[cd]/.test(ip) || /^fe[89ab]/.test(ip) || /^::/.test(ip);
+}
+
+/** Every address the host resolves to is public. ponytail: a rebinding DNS can still swap between check and fetch; pin the address if that matters. */
+async function publicHost(host: string): Promise<boolean> {
+  if (isPrivateIp(host)) return false;
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(host.replace(/^\[|\]$/g, ""), { all: true });
+    return addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
+  } catch {
+    return false;
+  }
+}
+
 /** Same-origin copy of a listing photo so the bench can draw it. */
 export const proxyStockImage = createServerFn({ method: "POST" })
   .validator((input: { url: string }) => ({ url: String(input?.url ?? "").trim() }))
   .handler(async ({ data }): Promise<{ ok: true; dataUrl: string } | { ok: false }> => {
-    const url = publicImageUrl(data.url);
-    if (!url) return { ok: false };
+    let url = publicImageUrl(data.url);
     try {
-      const res = await fetch(url, {
-        headers: { Accept: "image/*", "User-Agent": "Yard/1.0 (shop planner)" },
-        signal: AbortSignal.timeout(8000),
-        redirect: "follow",
-      });
-      if (!res.ok) return { ok: false };
+      // Redirects by hand: every hop is re-checked, so a public URL cannot bounce into the private network.
+      let res: Response | null = null;
+      for (let hop = 0; hop < 4 && url; hop++) {
+        if (!(await publicHost(new URL(url).hostname))) return { ok: false };
+        res = await fetch(url, {
+          headers: { Accept: "image/*", "User-Agent": "Yard/1.0 (shop planner)" },
+          signal: AbortSignal.timeout(8000),
+          redirect: "manual",
+        });
+        if (res.status < 300 || res.status >= 400) break;
+        const next = res.headers.get("location");
+        url = next ? publicImageUrl(new URL(next, url).toString()) : null;
+        res = null;
+      }
+      if (!res || !res.ok) return { ok: false };
       const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
       if (type !== "image/jpeg" && type !== "image/png" && type !== "image/webp" && type !== "image/gif") {
         return { ok: false };

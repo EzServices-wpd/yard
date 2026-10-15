@@ -1,5 +1,6 @@
+import { xaiFetch } from "./xai.server";
+import { cacheSet } from "./dailyCap.server";
 import { createServerFn } from "@tanstack/react-start";
-import { underDailyCap } from "./dailyCap.server";
 import { FORGE_CATALOG } from "@/lib/yard/catalog";
 import { isFormOp, isFormStroke, subjectFromPrompt, type FormOp, type FormRecipe, type FormStroke } from "@/lib/yard/form";
 import { parseModelJson } from "@/lib/yard/parseJson";
@@ -35,9 +36,6 @@ async function chat(
   maxTokens = 700,
   opts?: { json?: boolean; effort?: "low" | "medium" | "high" },
 ) {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
-  if (!underDailyCap()) return { ok: false as const, error: "That's today's free AI lookups for this visitor. Built-in shapes and saved recipes still work; lookups reset tomorrow." };
 
   const body: Record<string, unknown> = {
     model: "grok-4.5",
@@ -50,14 +48,9 @@ async function chat(
     body.response_format = { type: "json_object" };
   }
 
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const call = await xaiFetch("chat/completions", body);
+  if (!call.ok) return { ok: false as const, error: call.error };
+  const res = call.res;
   if (!res.ok) return { ok: false as const, error: `xAI API error ${res.status}` };
   const payload = (await res.json()) as { choices: { message: { content: string } }[] };
   return { ok: true as const, text: payload.choices[0]?.message.content ?? "" };
@@ -192,7 +185,12 @@ export const lookupRecipe = createServerFn({ method: "POST" })
     // "missing fields". Give the reply room for a full part list. Medium effort (default is high): cornhole and
     // dog feeder replies ran past the 155s bound on high.
     const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 8000, { json: true, effort: "medium" });
-    return result.ok ? { ok: true as const, recipeJson: JSON.stringify(parseModelJson(result.text)) } : { ok: false as const, error: result.error };
+    if (!result.ok) return { ok: false as const, error: result.error };
+    const recipeJson = JSON.stringify(parseModelJson(result.text));
+    // The recipe bot proposes only this server-held copy, by id; it never takes recipe JSON from the client.
+    const lookupId = crypto.randomUUID();
+    await cacheSet(`yard-lookup:${lookupId}`, recipeJson, 3600);
+    return { ok: true as const, recipeJson, lookupId };
   });
 
 export { writeInstructions } from "./writeInstructions";
@@ -200,8 +198,6 @@ export { writeInstructions } from "./writeInstructions";
 export const renderProject = createServerFn({ method: "POST" })
   .validator((input: { name: string; prompt: string; brief: string; scene?: string }) => input)
   .handler(async ({ data }) => {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) return { ok: false as const, error: "Rendering is not available in this environment" };
     const scene = (data.scene ?? "").trim();
     const imagine = [
       `Photoreal photograph of the finished piece: ${data.name}.`,
@@ -211,20 +207,15 @@ export const renderProject = createServerFn({ method: "POST" })
         : "Setting: a real room that fits the piece — bathroom alcove if it is a vanity, workshop bench if it is a model, living room if it is furniture. Natural window light.",
       "Built of the actual material named. Square, clean joinery, no text, no watermarks, no exploded diagram. Looks like a finished thing someone just built.",
     ].join(" ");
-    const res = await fetch("https://api.x.ai/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    const call = await xaiFetch("images/generations", {
         model: "grok-imagine-image-quality",
         prompt: imagine,
         n: 1,
         resolution: "1k",
         response_format: "url",
-      }),
-    });
+      });
+  if (!call.ok) return { ok: false as const, error: call.error };
+  const res = call.res;
     if (!res.ok) {
       const err = await res.text().catch(() => "");
       return { ok: false as const, error: `Render failed (${res.status})${err ? `: ${err.slice(0, 160)}` : ""}` };

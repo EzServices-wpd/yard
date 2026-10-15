@@ -1,3 +1,4 @@
+import { xaiFetch } from "./xai.server";
 /**
  * Librarian pass. One call when a printed plan already cleared the local gate.
  * Decides whether the end product was intended, is sound, and is a new idea.
@@ -46,16 +47,8 @@ export type IdeaReview =
     };
 
 async function chat(system: string, user: string) {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
 
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
+  const call = await xaiFetch("chat/completions", {
       model: "grok-4.5",
       temperature: 0.2,
       max_tokens: 480,
@@ -64,8 +57,9 @@ async function chat(system: string, user: string) {
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-    }),
-  });
+    });
+  if (!call.ok) return { ok: false as const, error: call.error };
+  const res = call.res;
   if (!res.ok) return { ok: false as const, error: `xAI API error ${res.status}` };
   const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   return { ok: true as const, text: payload.choices?.[0]?.message?.content ?? "" };

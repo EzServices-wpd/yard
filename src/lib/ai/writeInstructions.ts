@@ -1,3 +1,4 @@
+import { xaiFetch } from "./xai.server";
 /**
  * Full "Add more instructions" enrich path.
  * Split out of grok.ts so the large-file push stays reliable.
@@ -10,8 +11,6 @@ async function chat(
   maxTokens = 700,
   opts?: { json?: boolean },
 ) {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false as const, error: "AI is not available in this environment" };
 
   const body: Record<string, unknown> = {
     model: "grok-4.5",
@@ -23,14 +22,9 @@ async function chat(
     body.response_format = { type: "json_object" };
   }
 
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const call = await xaiFetch("chat/completions", body);
+  if (!call.ok) return { ok: false as const, error: call.error };
+  const res = call.res;
   if (!res.ok) return { ok: false as const, error: `xAI API error ${res.status}` };
   const payload = (await res.json()) as { choices: { message: { content: string } }[] };
   return { ok: true as const, text: payload.choices[0]?.message.content ?? "" };
