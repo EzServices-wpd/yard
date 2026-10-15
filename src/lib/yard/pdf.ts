@@ -10,6 +10,8 @@ import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
 import { planStepParts, stepKindOf } from "./stepParts";
 import { affiliateActive, affiliateConfig, affiliateDisclosure, outboundHref } from "./outbound";
 import { stepPlacements } from "./placement";
+import { buyListCart } from "./amazonCart";
+import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
@@ -372,6 +374,20 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   y += 4;
   if (plan.totals.estCostUsd) y += textBlock(`About ${usd(plan.totals.estCostUsd)} all-in, pricing each item at its cheapest same-size listing for the amount you need, any store.`, L, y, W, 9, "normal", KIT.muted) + 8;
   if (affOn) y += textBlock(affiliateDisclosure(aff), L, y, W, 8.5, "italic", KIT.muted) + 8;
+  // Buy-list QR: scan to open the same one-click Amazon "Buy this list" cart as the site
+  // (tagged through the same affiliate config). Drawn locally; only when the list has Amazon rows.
+  const cart = buyListCart(plan.bom, aff);
+  if (cart.href) {
+    const qs = 84;
+    if (room() < qs + 16) newPage("Before you start");
+    drawQr(doc, cart.href, L, y, qs);
+    doc.link(L, y, qs, qs, { url: cart.href });
+    font(9.5, "bold");
+    doc.text("Scan to buy this list", L + qs + 12, y + 30);
+    font(8.5, "normal", KIT.muted);
+    doc.text(`Opens an Amazon cart with ${cart.lines.length} of the items above.${cart.perRow.length ? " Get the rest locally." : ""}`, L + qs + 12, y + 44);
+    y += qs + 10;
+  }
   if (room() < 110) newPage("Before you start");
   subTitle("Tools");
   const cols = Math.min(tools.length, 8);

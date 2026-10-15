@@ -13,6 +13,7 @@ import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { AssemblyStep, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
+import { buildOrder } from "@/components/workspace/build-order";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -467,21 +468,19 @@ function useAssemble(ready: boolean): number {
 function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
     if (!ready || !steps?.length) return null;
-    const at = new Map<string, number>();
-    let n = 0;
-    for (const st of steps) {
-      const ids = stepInstanceIds(project, st).filter((id) => !at.has(id));
-      if (!ids.length) continue;
-      for (const id of ids) at.set(id, n);
-      n++;
-    }
+    const { at, n } = buildOrder(project, steps);
     return n >= 2 ? { at, n } : null;
   }, [project, steps, ready]);
   const [shown, setShown] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
+  // Late-start guard: the reveal only plays if the plan lands within 600ms of the model; a model
+  // already on screen is never hidden again to replay (that read as a flicker).
+  const readyAt = useRef<{ id: string; t: number } | null>(null);
+  if (ready && readyAt.current?.id !== project.id) readyAt.current = { id: project.id, t: performance.now() };
   useEffect(() => {
     if (!order || stepping || played.current === project.id) return;
     played.current = project.id;
+    if (!readyAt.current || readyAt.current.id !== project.id || performance.now() - readyAt.current.t > 600) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const per = Math.max(140, Math.min(380, 2000 / order.n));
     setShown(0);
