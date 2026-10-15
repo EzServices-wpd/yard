@@ -334,6 +334,14 @@ export function buildCornerUnit(spec: FittedSpec, prompt: string): YardProject {
         : `Assumed ${N} shel${N === 1 ? "f" : "ves"} (from the height) — type a count like "five shelves" to lock it.`,
     );
   }
+  if (!c.wallHung) {
+    // A wall panel wider and taller than a 4×8 sheet allows cannot come from one sheet: say so before the cut list does.
+    const fitsSheet = (w: number) => Math.min(w, H) <= 48 && Math.max(w, H) <= 96;
+    const wide = [["A", a], ["B", b]].filter(([, w]) => !fitsSheet(w as number));
+    for (const [k, w] of wide) {
+      notes.push(`Wall panel ${k} is ${fmt(w as number)}" × ${fmt(H)}", bigger than one 4×8 sheet, so it is cut as two pieces and butt-joined with glue and screws from the back at the "Join sheet splices" step. Put the seam over a stud.`);
+    }
+  }
   notes.push("Walls are rarely a perfect 90°. Dry-fit one shelf in the corner first and shave the edge that touches if it rocks.");
   const spokenDeg = prompt.match(/\b(\d{2,3})\s*(?:°|deg(?:ree)?s?)\b/i);
   if (spokenDeg && /\b(?:book\s*shel(?:f|ves)|bookcases?|shel(?:f|ves|ving))\b/i.test(prompt)) {

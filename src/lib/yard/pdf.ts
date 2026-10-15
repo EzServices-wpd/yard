@@ -1,3 +1,4 @@
+import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
@@ -565,7 +566,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
 
   // ═════════════════════════ BUILD STEPS
-  const placed = new Set<string>();
   const tallBuild = projectAspect(project) < 1.3;
   const stepParts = planStepParts(project, plan.instructions, letters);
   // Same placement records as the step words — arrows on the pictures read the same numbers.
@@ -597,26 +597,13 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const tones = new Map<string, Tone>();
     const hotIds: string[] = [];
     let refIds: string[] = [];
+    // One tone rule for the drawer, print preview and PDF (planStepPicture.stepTones).
+    const pic = kind === "cut" ? null : stepTones(project, plan, si, letters);
+    if (pic) for (const [id, t] of pic.tones) tones.set(id, t);
     if (kind === "build") {
-      let hot = sp.fresh;
-      if (!sp.said && !hot.length) {
-        // Words name nothing new: light the parts the title names, if any.
-        const t = clean(s.title).toLowerCase();
-        hot = ids.filter((id) => {
-          const p = project.panels.find((q) => q.id === id);
-          if (!p) return false;
-          const fam = cutListName(p.name, p.type).toLowerCase();
-          return t.includes(fam) || t.includes(p.name.toLowerCase());
-        });
-      }
-      const drawn = sp.said ? new Set([...placed, ...sp.fresh, ...sp.onto]) : new Set([...placed, ...ids]);
-      for (const id of drawn) tones.set(id, "ghost");
-      for (const id of hot) tones.set(id, "hot");
-      if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
-      hotIds.push(...hot);
+      for (const [id, t] of tones) if (t === "hot") hotIds.push(id);
       // Grey "to" bubbles only when the step adds something onto them.
-      if (hot.length) refIds = sp.onto;
-      drawn.forEach((id) => placed.add(id));
+      if (hotIds.length) refIds = sp.onto;
     }
     // Callout row: part letters with counts.
     const counts = new Map<string, number>();
@@ -685,7 +672,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     if (kind === "cut") {
       drawPartsPlate(doc, project, cutLines, letters, { x: frame.x + 10, y: frame.y + 8, w: frame.w - 20, h: frame.h - 14 }, craft, true);
     } else if (kind === "prep") {
-      renderProject(doc, project, frame, { tones: allTones("built"), dims: true, assumedAxes: sizing.assumed, pad: 26 });
+      renderProject(doc, project, frame, { tones, dims: true, assumedAxes: sizing.assumed, pad: 26 });
     } else {
       renderProject(doc, project, frame, { tones, fitIds: allIds, letters, pad: 26, measures: placements[si]?.arrows });
     }

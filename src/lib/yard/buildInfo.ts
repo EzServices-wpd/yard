@@ -14,7 +14,15 @@ export const FLAGGED_BUILT_INS: { test: RegExp; why: string }[] = [
 export type BuildInfo = { source: "Built-in shape" | "Saved recipe" | "New lookup" | "Placeholder"; trust: "Trusted" | "Unverified"; passed: string[]; failed: string[] };
 
 /** Where the bench build came from and how far to trust it. Reads local data only: no AI, no network. */
-export function buildInfo(project: Pick<YardProject, "prompt" | "typedPrompt" | "notes" | "displayOnly">): BuildInfo {
+export function buildInfo(project: Pick<YardProject, "prompt" | "typedPrompt" | "notes" | "displayOnly"> & Partial<Pick<YardProject, "supportOffer">>): BuildInfo {
+  const info = baseInfo(project);
+  // A span warning that is still up means the build is not done: never show Trusted beside it.
+  const spanOpen = project.supportOffer?.kind === "span" && project.supportOffer.needed && !project.supportOffer.included;
+  if (spanOpen && info.trust === "Trusted") return { ...info, trust: "Unverified", failed: [...info.failed, "A shelf spans too far: press Add support"] };
+  return info;
+}
+
+function baseInfo(project: Pick<YardProject, "prompt" | "typedPrompt" | "notes" | "displayOnly">): BuildInfo {
   const prompt = project.typedPrompt || project.prompt;
   if (project.displayOnly) return { source: "Placeholder", trust: "Unverified", passed: [], failed: ["Not learned yet"] };
   const recipe = findRecipe(prompt);

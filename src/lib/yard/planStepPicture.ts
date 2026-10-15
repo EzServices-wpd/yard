@@ -10,7 +10,38 @@ import { drawPartsPlate } from "./pdf";
 import { KIT, clean } from "./pdfKit";
 import { cutListName } from "./shopPlural";
 import { SvgDoc, type SvgDocStats } from "./svgDoc";
-import type { BuildPlan, YardProject } from "./types";
+import type { AssemblyStep, BuildPlan, Panel, YardProject } from "./types";
+import { getCatalogItem } from "./catalog";
+import { stockT } from "./face";
+
+const longest = (p: Panel) => Math.max(p.size.width, p.size.height, p.size.depth);
+const thinnest = (p: Panel) => (p.blank ? p.blank.thicknessIn : Math.min(p.size.width, p.size.height, p.size.depth));
+
+/**
+ * A bench step (splice, glue-up, sheet join) works on named members before they go on the build:
+ * light exactly those, never the whole model and never nothing.
+ */
+export function benchStepHot(project: YardProject, s: AssemblyStep): string[] {
+  const t = clean(s.title).toLowerCase();
+  const panels = project.panels;
+  if (/^splice the long members\b/.test(t)) {
+    return panels.filter((p) => { const len = getCatalogItem(p.materialId)?.dims.length; return /^lumber-/.test(p.materialId) && !!len && longest(p) > len + 0.01; }).map((p) => p.id);
+  }
+  if (/^glue up the thick parts\b/.test(t)) {
+    return panels.filter((p) => /^(?:plywood|lumber)-/.test(p.materialId) && thinnest(p) > stockT(p.materialId) + 0.05).map((p) => p.id);
+  }
+  if (/^join sheet splices\b/.test(t)) {
+    return panels.filter((p) => { const d = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b); return /^plywood-/.test(p.materialId) && (d[1] > 48.01 || d[2] > 120.01); }).map((p) => p.id);
+  }
+  return [];
+}
+
+/** "Level it" works on what stands on the floor: light the feet, posts and legs, not every part. */
+export function levelStepHot(project: YardProject, s: AssemblyStep, ids: string[]): string[] {
+  if (!/^level it\b/i.test(clean(s.title))) return [];
+  const want = new Set(ids);
+  return project.panels.filter((p) => want.has(p.id) && p.position.y < 0.5).map((p) => p.id);
+}
 
 function asPdf(doc: SvgDoc): jsPDF {
   return doc as unknown as jsPDF;
@@ -58,10 +89,13 @@ export function stepTones(
     return { kind, tones: new Map(), cutLines };
   }
   if (kind === "prep") {
-    return { kind, tones: allTones(project, "built"), cutLines: [] };
+    const tones = allTones(project, "built");
+    for (const id of [...benchStepHot(project, s), ...levelStepHot(project, s, allIds(project))]) tones.set(id, "hot");
+    return { kind, tones, cutLines: [] };
   }
   const tones = new Map<string, Tone>();
-  let hot = sp.fresh;
+  const level = levelStepHot(project, s, sp.ids);
+  let hot = level.length ? level : sp.fresh;
   if (!sp.said && !hot.length) {
     const t = clean(s.title).toLowerCase();
     hot = sp.ids.filter((id) => {

@@ -334,6 +334,52 @@ export function faceSolids(solids: Solid[]): Solid[] {
   );
 }
 
+
+type P2 = { x: number; y: number };
+const area2 = (q: P2[]) => q.reduce((a, p, k) => { const e = q[(k + 1) % q.length]; return a + p.x * e.y - e.x * p.y; }, 0);
+/** Clip convex polygon `subj` by convex polygon `clip` (Sutherland–Hodgman). */
+function clipConvex(subj: P2[], clip: P2[]): P2[] {
+  const c = area2(clip) < 0 ? [...clip].reverse() : clip;
+  let out = subj;
+  for (let k = 0; k < c.length && out.length; k++) {
+    const a = c[k], b = c[(k + 1) % c.length];
+    const side = (p: P2) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    const inp = out;
+    out = [];
+    for (let m = 0; m < inp.length; m++) {
+      const p = inp[m], q = inp[(m + 1) % inp.length];
+      const sp = side(p), sq = side(q);
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }); }
+    }
+  }
+  return out;
+}
+/** Depth (toward the viewer) of a face's plane under screen point s. */
+function planeDepth(f: Face, s: P2): number {
+  const a = s.x / COS30, b = s.y / SIN30;
+  // iso(B) = s with B.y = 0.
+  const B: V3 = { x: (a + b) / 2, y: 0, z: (b - a) / 2 };
+  const nv = dot(f.n, VIEW);
+  const t = (dot(f.n, f.pts[0]) - dot(f.n, B)) / nv;
+  return dot(B, VIEW) + t;
+}
+/**
+ * Exact order of two flat face plates: where their drawings overlap, the nearer plane paints last.
+ * 1 = a is behind, -1 = b is behind, 0 = their drawings do not overlap (no constraint).
+ */
+export function faceOrder(a: Solid, b: Solid): number {
+  const fa = a.faces[0], fb = b.faces[0];
+  const qa = fa.pts.map(iso), qb = fb.pts.map(iso);
+  const sa = area2(qa) < 0 ? [...qa].reverse() : qa;
+  const hit = clipConvex(sa, qb);
+  if (hit.length < 3 || Math.abs(area2(hit)) < 1e-6) return 0;
+  const c = { x: hit.reduce((t, p) => t + p.x, 0) / hit.length, y: hit.reduce((t, p) => t + p.y, 0) / hit.length };
+  const da = planeDepth(fa, c), db = planeDepth(fb, c);
+  if (Math.abs(da - db) < 1e-6) return 0;
+  return da < db ? 1 : -1;
+}
+
 /** Painter order: far first. A is behind B when separated along an axis toward the viewer. */
 export function paintOrder(solids: Solid[]): Solid[] {
   const n = solids.length;
@@ -343,7 +389,13 @@ export function paintOrder(solids: Solid[]): Solid[] {
   const behind = (a: Solid, b: Solid) =>
     a.max.x <= b.min.x + eps || a.max.y <= b.min.y + eps || a.max.z <= b.min.z + eps;
   const indeg = new Array(n).fill(0);
+  // Edges proved by a separating axis on the real shapes are hard; box and centre guesses are soft.
+  const hardIn = new Array(n).fill(0);
+  // Box separation along an axis is firmer than an interpenetration or centre-depth guess.
+  const boxIn = new Array(n).fill(0);
+  const firm: boolean[][] = solids.map(() => []);
   const out: number[][] = solids.map(() => []);
+  const hard: boolean[][] = solids.map(() => []);
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const A = boxes[i];
@@ -351,11 +403,23 @@ export function paintOrder(solids: Solid[]): Solid[] {
       if (A.x1 <= B.x0 || B.x1 <= A.x0 || A.y1 <= B.y0 || B.y1 <= A.y0) continue;
       if (apartOnScreen(solids[i], solids[j])) continue;
       const pi = solids[i].of ?? solids[i], pj = solids[j].of ?? solids[j];
-      const sat = pi !== pj ? satOrder(pi, pj) || satOrder(solids[i], solids[j]) : satOrder(solids[i], solids[j]);
+      if (solids[i].of && solids[j].of && !solids[i].stick && !solids[j].stick && solids[i].faces.length === 1 && solids[j].faces.length === 1) {
+        // Two flat face plates: the exact depth where they overlap decides; no overlap, no constraint.
+        const fo = pi === pj ? 0 : faceOrder(solids[i], solids[j]);
+        if (fo) {
+          const [f, g] = fo > 0 ? [i, j] : [j, i];
+          out[f].push(g); hard[f].push(true); firm[f].push(false); indeg[g]++; hardIn[g]++;
+        }
+        continue;
+      }
+      const sat = pi !== pj ? satOrder(solids[i], solids[j]) || satOrder(pi, pj) : satOrder(solids[i], solids[j]);
       if (sat) {
         const [f, g] = sat > 0 ? [i, j] : [j, i];
         out[f].push(g);
+        hard[f].push(true);
+        firm[f].push(false);
         indeg[g]++;
+        hardIn[g]++;
         continue;
       }
       const ij = behind(solids[i], solids[j]);
@@ -375,10 +439,15 @@ export function paintOrder(solids: Solid[]): Solid[] {
       }
       const second = first === i ? j : i;
       out[first].push(second);
+      hard[first].push(false);
+      const boxed = ij !== ji;
+      firm[first].push(boxed);
+      if (boxed) boxIn[second]++;
       indeg[second]++;
     }
   }
   const depth = solids.map((s) => dot(s.center, VIEW));
+  const nearest = solids.map((s) => Math.max(...ptsOf(s).map((p) => dot(p, VIEW))));
   const done = new Array(n).fill(false);
   const order: Solid[] = [];
   for (let k = 0; k < n; k++) {
@@ -388,12 +457,14 @@ export function paintOrder(solids: Solid[]): Solid[] {
       if (pick < 0 || depth[i] < depth[pick]) pick = i;
     }
     if (pick < 0) {
-      // Cycle: break it where the fewest constraints are broken (then farthest).
-      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || indeg[i] < indeg[pick] || (indeg[i] === indeg[pick] && depth[i] < depth[pick]))) pick = i;
+      // Cycle (parts that pass through each other): paint first the plate whose nearest corner is farthest away;
+      // a guessed (soft) edge still breaks before a proved one.
+      const worse = (i: number, p: number) => hardIn[i] !== hardIn[p] && (hardIn[i] === 0 || hardIn[p] === 0) ? hardIn[i] < hardIn[p] : nearest[i] < nearest[p];
+      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || worse(i, pick))) pick = i;
     }
     done[pick] = true;
     order.push(solids[pick]);
-    for (const j of out[pick]) indeg[j]--;
+    out[pick].forEach((j, k) => { indeg[j]--; if (hard[pick][k]) hardIn[j]--; if (firm[pick][k]) boxIn[j]--; });
   }
   return order;
 }
