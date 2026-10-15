@@ -1244,6 +1244,8 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
+/** What the bench says when no lookup can run: never an error, always a way forward. */
+export const TRY_SAMPLE = "Yard can't look this one up right now. Try a sample from Ideas: built-in shapes and saved recipes always build.";
 export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 145_000, totalMs = 155_000): Lookup {
   let start = 0;
   return async (_prompt, feedback) => {
@@ -1255,7 +1257,8 @@ export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean
     let id: ReturnType<typeof setTimeout> | undefined;
     const timer = new Promise<never>((_, reject) => (id = setTimeout(() => reject(new Error("timeout")), ms)));
     const r = await Promise.race([call(feedback), timer]).finally(() => clearTimeout(id));
-    if (!r.ok) throw new Error(/not available/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
+    // No key, the visitor's daily cap, or an xAI error: no second call; the page offers samples instead.
+    if (!r.ok) throw new Error(/not available|free AI lookups|xAI API error/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
     return r.recipeJson ? JSON.parse(r.recipeJson) : null;
   };
 }

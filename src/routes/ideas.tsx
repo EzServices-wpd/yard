@@ -9,6 +9,8 @@ import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } fr
 type Row = Idea & { kept?: boolean };
 
 export const Route = createFileRoute("/ideas")({
+  // Same HTML for every visitor: the CDN serves it for an hour and refreshes in the background.
+  headers: () => ({ "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400" }),
   head: () => ({
     meta: [
       { title: "Ideas · Yard" },

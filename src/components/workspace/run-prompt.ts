@@ -4,7 +4,7 @@ import { recipePrompt } from "@/lib/yard/recipeIdeas";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
-import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup } from "@/lib/yard/recipeBuild";
+import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
@@ -435,7 +435,7 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
         () => ({ project: block(["the lookup ran out of time"]), recipe: null, rough: true }) as const,
       );
       if (!out.recipe && !out.rough) {
-        useYard.getState().setProject(block(out.unavailable ? ["no AI here"] : []));
+        useYard.getState().setProject(out.unavailable ? { ...roughBlock(prompt, next), notes: [TRY_SAMPLE] } : block([]));
         makePlan();
         return;
       }

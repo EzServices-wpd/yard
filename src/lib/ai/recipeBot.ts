@@ -7,7 +7,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
 import { learnedRecipeFailures } from "@/lib/yard/learnedGate";
 import { shadowsBuiltIn } from "@/lib/yard/promptMain";
-import { cacheGet } from "./dailyCap.server";
+import { cacheGet, cacheSet } from "./dailyCap.server";
+import { designKey } from "@/lib/yard/designKey";
 
 const REPO = process.env.YARD_RECIPE_REPO ?? "EzServices-wpd/yard";
 const BRANCH = "yard-recipe-bot";
@@ -115,7 +116,10 @@ export const proposeRecipeFn = createServerFn({ method: "POST" })
       // Only a recipe this server's own lookup returned, held by id; client JSON is never accepted.
       const held = data.lookupId ? await cacheGet<string>(`yard-lookup:${data.lookupId}`) : undefined;
       if (!held) return { ok: false, status: "unknown lookup" };
-      const out = await proposeRecipe(JSON.parse(held));
+      const { prompt, recipeJson } = JSON.parse(held) as { prompt: string; recipeJson: string };
+      // It passed on the page: the next visitor typing the same design gets it with no AI call (30 days).
+      await cacheSet(`yard-design:${designKey(prompt)}`, recipeJson, 30 * 86_400);
+      const out = await proposeRecipe(JSON.parse(recipeJson));
       console.info(`[recipe-bot] ${out.status}${out.pr ? ` pr=${out.pr}` : ""}`);
       return out;
     } catch (e) {
