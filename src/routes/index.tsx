@@ -1,8 +1,9 @@
 import { Fragment } from "react";
 import { MakingNow } from "@/components/ideas/MakingNow";
 import { useOffscreen } from "@/hooks/use-offscreen";
+import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
@@ -369,6 +370,30 @@ function LandingPage() {
 /** Home sample models turn in once when the grid first comes on screen (held paused until then). */
 function ShowcaseGrid({ children }: { children: ReactNode }) {
   const [ref, off] = useOffscreen<HTMLDivElement>("-10% 0px", true);
+  // Doors and lids: open once after the turn-in (first time on screen), ease open on hover.
+  // Paused with the grid (off screen or hidden tab); reduced motion keeps them shut and still.
+  const anims = useRef<Animation[]>([]);
+  const played = useRef(false);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (off) {
+      anims.current.forEach((a) => a.playState === "running" && a.pause());
+      return;
+    }
+    anims.current.forEach((a) => a.playState === "paused" && a.play());
+    if (played.current) return;
+    played.current = true;
+    const cards = [...root.querySelectorAll<HTMLElement>("[data-yard-showcase]")];
+    cards.forEach((card, i) => {
+      const leaves = leavesIn(card);
+      if (!leaves.length) return;
+      anims.current.push(...swing(leaves, "once", 1500 + i * 120));
+      const btn = card.closest("button");
+      btn?.addEventListener("pointerenter", () => { anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "open")]; });
+      btn?.addEventListener("pointerleave", () => { anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")]; });
+    });
+  }, [off, ref]);
   return (
     <div ref={ref} data-offscreen={off || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
       {children}
