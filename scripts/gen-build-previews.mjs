@@ -8,15 +8,18 @@ const { generateFromPrompt } = await jiti.import("../src/lib/yard/promptMain.ts"
 const { buildPlan } = await jiti.import("../src/lib/yard/report.ts");
 const { buildOrder } = await jiti.import("../src/components/workspace/build-order.ts");
 const SAMPLES = [
-  { id: "linen", match: "closet|linen|cabinet|pantry|wardrobe|armoire|cupboard", prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep" },
-  { id: "bookcase", match: "book|shelf|shelv|case|cubby|storage|console|media|tv|dresser|nightstand|vanity|chest", prompt: "bookcase 36 wide 72 tall 12 deep" },
-  { id: "desk", match: "desk|table|bench|stool|workbench|stand|counter|island", prompt: "desk 60 x 30 x 29 with 24 inch knee space" },
+  { id: "coop", match: "\\b(coop|hen ?house|hutch|rabbit|chicken|duck|bird ?house|dog ?house|kennel)", prompt: "chicken coop" },
+  { id: "linen", match: "closet|linen|cabinet|pantry|wardrobe|armoire|cupboard|locker", prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep" },
+  { id: "desk", match: "\\bdesk|workbench|vanity|dresser|nightstand|chest of drawers", prompt: "desk 60 x 30 x 29 with 24 inch knee space" },
+  { id: "table", match: "\\btable|island|counter|stand\\b|picnic", prompt: "dining table 60 x 36 x 30" },
+  { id: "bench", match: "\\bbench|stool|seat|step", prompt: "entry bench 48 wide 18 tall 16 deep" },
+  { id: "bookcase", match: "book|shel(f|v)|case|cubby|storage|console|media|\\btv\\b|rack", prompt: "bookcase 36 wide 72 tall 12 deep" },
 ];
 const out = [];
 for (const s of SAMPLES) {
   const project = generateFromPrompt(s.prompt);
   const plan = buildPlan(project);
-  const { at, n } = buildOrder(project, plan.instructions);
+  const { at, n } = buildOrder(project, plan);
   const rects = [];
   for (const p of project.panels) rects.push([p.position.x, p.position.y, p.size.width, p.size.height, at.get(p.id) ?? n]);
   for (const i of project.instances) {

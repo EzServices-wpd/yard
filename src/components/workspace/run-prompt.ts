@@ -1,6 +1,7 @@
 import { findRecipe, RECIPES } from "@/lib/yard/recipes";
 import { recipePrompt } from "@/lib/yard/recipeIdeas";
 "use client";
+import { noteBuildingPrompt } from "@/components/workspace/building-prompt";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
@@ -320,6 +321,7 @@ function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
 const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
 
 export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number } = {}) {
+  noteBuildingPrompt(raw);
   // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
   const bounded = boundPrompt(raw);
   const prompt = bounded.prompt;
