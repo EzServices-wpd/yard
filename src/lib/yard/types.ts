@@ -172,6 +172,8 @@ export type Panel = {
   polygon?: { plane: "xz" | "xy" | "zy"; pts: [number, number][]; /** Round through-holes (drilled), same local frame as pts. */ holes?: { x: number; y: number; r: number }[] };
   /** Turns or rides on a pin (wheel, lid, arm): its joints take no screws, it is bored 1/16" over its pin. */
   turns?: boolean;
+  /** Hangs on hinges from another part (a lid, a roof, a door): it takes no screws, and a step hangs it. */
+  hinged?: { to: string; edge: "top" | "bottom" | "left" | "right" | "back" | "front"; hinges: number; latch?: string };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */

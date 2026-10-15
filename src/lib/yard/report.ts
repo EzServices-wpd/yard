@@ -1444,18 +1444,23 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
     });
   }
-  const butts = notes.match(/\b(two|four) 2" butt hinges\b/);
+  const butts = notes.match(/\b(two|four) 2" (galvanized )?butt hinges\b/);
   if (butts && !/butt hinge/i.test(have)) {
     const n = butts[1] === "four" ? 4 : 2;
     extra.push({
-      name: '2" butt hinges',
+      name: butts[2] ? '2" galvanized butt hinges' : '2" butt hinges',
       quantity: n,
       unit: "each",
       catalogId: "butt-hinge-2",
-      searchQuery: "2 inch butt hinge",
-      estimatedCost: 3 * n,
+      searchQuery: butts[2] ? "2 inch galvanized butt hinge exterior" : "2 inch butt hinge",
+      estimatedCost: (butts[2] ? 3.98 : 3) * n,
       notes: n === 4 ? "Two along the roof's back edge and two on the pop door, as the notes say." : "Two along the back edge, as the notes say.",
     });
+  }
+  const roll = notes.match(/\b(\d+) roll of mineral-surfaced roll roofing\b/);
+  if (roll && !/roll roofing/i.test(have)) {
+    extra.push({ name: "Mineral-surfaced roll roofing, 36 in × 33 ft", quantity: Number(roll[1]), unit: "roll", searchQuery: "mineral surfaced roll roofing 36 in", estimatedCost: 39.98 * Number(roll[1]), notes: "Over the roof sheet, lapped over every edge." });
+    extra.push({ name: "Galvanized roofing nails, 7/8 in, 1 lb", quantity: 1, unit: "box", searchQuery: "7/8 inch galvanized roofing nails 1 lb", estimatedCost: 5.98, notes: "Fix the roll roofing to the roof sheet." });
   }
   const barrel = notes.match(/\b(\d+) 3" barrel bolts?\b/);
   if (barrel && !/barrel bolt/i.test(have)) {

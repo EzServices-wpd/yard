@@ -9,7 +9,7 @@ import { inchFrac } from "./inchText";
 import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { typedExtents } from "./honesty";
 import { PET_ANIMAL, SMALL_PET } from "./fallbackPrimitive";
-import type { Panel, YardProject } from "./types";
+import type { AssemblyStep, Panel, YardProject } from "./types";
 
 const r8 = (n: number) => Math.round(n * 8) / 8;
 const PLY = "plywood-3-4-4x8";
@@ -157,76 +157,144 @@ export function buildScratchingPost(prompt: string): YardProject {
 }
 
 /**
- * Raised enclosure: four 2×2 corner legs from the ground to the roof, a solid floor up off the ground, solid
- * back and sides, a solid roof hinged along the back, and an open front closed with wire mesh between two rails.
+ * Raised enclosure class (hutch, coop, cage). Outdoor ones (anything bigger than a small indoor pet's cage):
+ * four ground-contact pressure-treated 4×4 legs; a pressure-treated 2×4 floor frame (rim on all four sides and
+ * a middle joist) screwed between the legs, the floor sheet resting ON it and notched around the legs; exterior
+ * plywood back, sides and roof; the roof hinged along the back edge (no screws through it) under roll roofing;
+ * a front of hardware cloth between two rails. Indoor small-pet cages keep 2×2 legs and an indoor sheet.
+ * A coop adds what hens need: a pop door hung on hinges from a stile, a nest box raised off the floor and a
+ * flat 2×4 roost above it on two cleats.
  */
+export const ENCLOSURE_NOTE = "Raised enclosure class:";
 export function buildPetEnclosure(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
   const species = namedLumberFromPrompt(prompt);
   const mat = species ? CATALOG_LUMBER_BIND : PLY;
   const tiny = /hamster|gerbil|guinea|ferret|chinchilla|\brats?\b|mice|tortoise/.test(lower);
   const fowl = /chicken|\bhens?\b|duck|quail|coop/.test(lower);
-  const [dw, dh, dd, dleg] = tiny ? [36, 30, 18, 12] : fowl ? [48, 48, 30, 18] : [48, 40, 24, 16];
+  const outdoor = !tiny;
+  const [dw, dh, dd, dleg] = tiny ? [36, 30, 18, 12] : fowl ? [48, 72, 36, 18] : [48, 40, 24, 16];
   const typed = typedExtents(prompt);
   const tw = size?.width ?? typed?.width ?? typedAlong(lower, "wide|long|across");
   const th = size?.height ?? typed?.height ?? typedAlong(lower, "tall|high");
   const td = size?.depth ?? typed?.depth ?? typedAlong(lower, "deep");
-  const W = r8(Math.max(18, tw ?? dw));
-  const H = r8(Math.max(18, th ?? dh));
-  const D = r8(Math.max(12, td ?? dd));
-  const leg = r8(Math.max(4, Math.min(dleg * (H / dh), H - 2 * T - 10)));
-  const L = 1.5;
+  const W = r8(Math.max(outdoor ? 24 : 18, tw ?? dw));
+  const H = r8(Math.max(outdoor ? 30 : 18, th ?? dh));
+  const D = r8(Math.max(outdoor ? 18 : 12, td ?? dd));
+  const leg = r8(Math.max(outdoor ? 8 : 4, Math.min(dleg * (H / dh), H - 2 * T - 10)));
+  const L = outdoor ? 3.5 : 1.5;
+  const legMat = outdoor ? "lumber-4x4-8" : "lumber-2x2-8";
   const inH = r8(H - 2 * T - leg);
-  const panels: Panel[] = [];
-  for (const [n, x, z] of [[1, 0, 0], [2, W - L, 0], [3, 0, D - L], [4, W - L, D - L]] as const) {
-    panels.push(panel({ type: "upright", name: `Leg ${n}`, position: { x: r8(x), y: 0, z: r8(z) }, size: { width: L, height: r8(H - T), depth: L }, materialId: "lumber-2x2-8", cutNote: `2×2 from the ground to the roof; the sides, back and floor screw to it.` }));
-  }
-  const notch = panels.map((l) => ({ with: l.id, kind: "notch" as const }));
-  panels.push(
-    panel({ type: "bottom", name: "Floor", joints: notch, position: { x: 0, y: leg, z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Notch each corner 1 ½\" × 1 ½\" around the legs; the sides, back and front rail stand on it." }),
-    panel({ type: "side", name: "Left side", position: { x: 0, y: r8(leg + T), z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
-    panel({ type: "side", name: "Right side", position: { x: r8(W - T), y: r8(leg + T), z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
-    panel({ type: "back", name: "Back", position: { x: L, y: r8(leg + T), z: r8(D - T) }, size: { width: r8(W - 2 * L), height: inH, depth: T }, materialId: mat }),
-    panel({ type: "rail", name: "Front bottom rail", position: { x: L, y: r8(leg + T), z: 0 }, size: { width: r8(W - 2 * L), height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the bedding in and carries the bottom of the mesh." }),
-    panel({ type: "rail", name: "Front top rail", position: { x: L, y: r8(H - T - 2.5), z: 0 }, size: { width: r8(W - 2 * L), height: 2.5, depth: T }, materialId: mat }),
-    panel({ type: "top", name: "Roof", position: { x: 0, y: r8(H - T), z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Hinged along the back edge so it lifts for feeding and cleaning." }),
-  );
-  const meshH = r8(inH - 3.5 - 2.5);
-  // Real-structure class (coop): chickens need a way in, somewhere to lay and somewhere to sleep. A pop door
-  // in the front, a nest box on the floor in the back corner, and a flat 2×4 roost on cleats, higher than the nest.
-  const coop = fowl && inH >= 22 && W >= 30 && D >= 20;
   const y0 = r8(leg + T);
-  const doorW = 12;
-  const meshW = r8(W - 2 * L - (coop ? doorW + 1.5 : 0));
-  const nest = 12;
-  const roostY = r8(y0 + Math.min(20, inH - 8));
-  const roostZ = 4;
-  if (coop) {
+  const panels: Panel[] = [];
+  const legs: Panel[] = [];
+  for (const [n, x, z] of [[1, 0, 0], [2, W - L, 0], [3, 0, D - L], [4, W - L, D - L]] as const) {
+    legs.push(panel({ type: "upright", name: `Leg ${n}`, position: { x: r8(x), y: 0, z: r8(z) }, size: { width: L, height: r8(H - T), depth: L }, materialId: legMat, cutNote: outdoor ? "Ground-contact pressure-treated 4×4 from the ground to the roof; the floor frame screws between the legs." : "2×2 from the base to the roof; the sides, back and floor screw to it." }));
+  }
+  panels.push(...legs);
+  if (outdoor) {
+    // Floor frame: 2×4 on edge, its top at the floor's underside. Front and back rims run between the legs;
+    // the side rims and the middle joist run between those.
+    const fy = r8(leg - 3.5);
     panels.push(
-      panel({ type: "rail", name: "Door stile", position: { x: r8(L + doorW), y: r8(y0 + 3.5), z: 0 }, size: { width: 1.5, height: meshH, depth: T }, materialId: mat, cutNote: "Stands between the front rails; the pop door hinges on it and the mesh staples to it." }),
-      panel({ type: "side", name: "Pop door", position: { x: L, y: r8(y0 + 3.5), z: 0 }, size: { width: doorW, height: meshH, depth: T }, materialId: mat, cutNote: "Hinged on the stile; a barrel bolt keeps raccoons out at night." }),
-      panel({ type: "side", name: "Nest box side", position: { x: r8(W - T - nest - T), y: y0, z: r8(D - T - nest) }, size: { width: T, height: nest, depth: nest }, materialId: mat, cutNote: "Stands on the floor; with the right side and back it makes a 12\" cube nest." }),
-      panel({ type: "top", name: "Nest box top", position: { x: r8(W - T - nest - T), y: r8(y0 + nest), z: r8(D - T - nest) }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side and the right side; keeps hens from roosting in the nest." }),
-      panel({ type: "side", name: "Nest box lip", position: { x: r8(W - T - nest), y: y0, z: r8(D - T - nest) }, size: { width: nest, height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the nesting straw in." }),
-      panel({ type: "rail", name: "Roost cleat right", position: { x: r8(W - T - 1.5), y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the roost rests on it." }),
-      panel({ type: "rail", name: "Roost cleat left", position: { x: T, y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the left side; the roost rests on it." }),
-      panel({ type: "rail", name: "Roost", position: { x: r8(T + 0.25), y: roostY, z: roostZ }, size: { width: r8(W - 2 * T - 0.5), height: 1.5, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "A 2×4 laid flat, 3 1/2\" face up, so hens cover their toes in winter. Higher than the nest box." }),
+      panel({ type: "rail", name: "Floor rim front", position: { x: L, y: fy, z: 0 }, size: { width: r8(W - 2 * L), height: 3.5, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge, screwed to both front legs." }),
+      panel({ type: "rail", name: "Floor rim back", position: { x: L, y: fy, z: r8(D - 1.5) }, size: { width: r8(W - 2 * L), height: 3.5, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge, screwed to both back legs." }),
+      panel({ type: "rail", name: "Floor rim left", position: { x: 0, y: fy, z: L }, size: { width: 1.5, height: 3.5, depth: r8(D - 2 * L) }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge between the left legs." }),
+      panel({ type: "rail", name: "Floor rim right", position: { x: r8(W - 1.5), y: fy, z: L }, size: { width: 1.5, height: 3.5, depth: r8(D - 2 * L) }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge between the right legs." }),
+      panel({ type: "rail", name: "Floor joist", position: { x: r8(W / 2 - 0.75), y: fy, z: 1.5 }, size: { width: 1.5, height: 3.5, depth: r8(D - 3) }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge across the middle, front rim to back rim, so no floor span is over 24\"." }),
     );
   }
+  const notch = legs.map((l) => ({ with: l.id, kind: "notch" as const }));
+  const back = panel({ type: "back", name: "Back", position: { x: L, y: y0, z: r8(D - T) }, size: { width: r8(W - 2 * L), height: inH, depth: T }, materialId: mat });
+  const stileX = r8(L + 12);
+  const stile = panel({ type: "rail", name: "Door stile", position: { x: stileX, y: r8(y0 + 3.5), z: 0 }, size: { width: 1.5, height: r8(inH - 3.5 - 2.5), depth: T }, materialId: mat, cutNote: "Stands between the front rails; the pop door hangs on it and the mesh staples to it." });
+  const coop = fowl && inH >= 40 && W >= 36 && D >= 24;
+  panels.push(
+    panel({ type: "bottom", name: "Floor", joints: notch, position: { x: 0, y: leg, z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: `Notch each corner ${inchFrac(L)}" × ${inchFrac(L)}" around the legs; it rests on the floor frame and the sides, back and front rail stand on it.` }),
+    panel({ type: "side", name: "Left side", position: { x: 0, y: y0, z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
+    panel({ type: "side", name: "Right side", position: { x: r8(W - T), y: y0, z: L }, size: { width: T, height: inH, depth: r8(D - 2 * L) }, materialId: mat }),
+    back,
+    panel({ type: "rail", name: "Front bottom rail", position: { x: L, y: y0, z: 0 }, size: { width: r8(W - 2 * L), height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the bedding in and carries the bottom of the mesh." }),
+    panel({ type: "rail", name: "Front top rail", position: { x: L, y: r8(H - T - 2.5), z: 0 }, size: { width: r8(W - 2 * L), height: 2.5, depth: T }, materialId: mat }),
+  );
+  const roof = panel({ type: "top", name: "Roof", position: { x: 0, y: r8(H - T), z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Hinged to the top edge of the back so it lifts for feeding and cleaning; never screwed down." });
+  roof.hinged = { to: back.id, edge: "back", hinges: 2 };
+  const meshH = r8(inH - 3.5 - 2.5);
+  const nest = 12;
+  const nestY = r8(y0 + 24);
+  const roostY = r8(Math.min(nestY + nest + T + 6, H - T - 2.5 - 10));
+  const roostZ = 4;
+  if (coop) {
+    const door = panel({ type: "side", name: "Pop door", position: { x: r8(L + 0.0625), y: r8(y0 + 3.5 + 0.0625), z: 0 }, size: { width: r8(12 - 0.125), height: r8(Math.min(16, meshH) - 0.125), depth: T }, materialId: mat, cutNote: "Hung on two hinges from the stile with a 1/16\" gap all round; a barrel bolt keeps raccoons out at night." });
+    door.hinged = { to: stile.id, edge: "right", hinges: 2, latch: "barrel bolt" };
+    const nx = r8(W - T - nest - T);
+    const nz = r8(D - T - nest);
+    panels.push(
+      stile,
+      door,
+      panel({ type: "rail", name: "Nest cleat side", position: { x: r8(W - T - 1.5), y: r8(nestY - 3), z: nz }, size: { width: 1.5, height: 3, depth: nest }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the nest bottom rests on it." }),
+      panel({ type: "rail", name: "Nest cleat back", position: { x: nx, y: r8(nestY - 3), z: r8(D - T - 1.5) }, size: { width: r8(nest + T - 1.5), height: 3, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the back; the nest bottom rests on it." }),
+      panel({ type: "bottom", name: "Nest box bottom", position: { x: nx, y: nestY, z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the two nest cleats, 24\" up off the coop floor." }),
+      panel({ type: "side", name: "Nest box side", position: { x: nx, y: r8(nestY + T), z: nz }, size: { width: T, height: nest, depth: r8(nest - T) }, materialId: mat, cutNote: "Stands on the nest bottom; with the right side and back it makes a 12\" nest." }),
+      panel({ type: "side", name: "Nest box lip", position: { x: r8(nx + T), y: r8(nestY + T), z: r8(nz) }, size: { width: nest, height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the nesting straw in." }),
+      panel({ type: "top", name: "Nest box top", position: { x: nx, y: r8(nestY + T + nest), z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side; keeps hens from roosting on the nest." }),
+      panel({ type: "rail", name: "Roost cleat left", position: { x: T, y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the left side; one end of the roost rests on it." }),
+      panel({ type: "rail", name: "Roost cleat right", position: { x: r8(W - T - 1.5), y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the other end of the roost rests on it." }),
+      panel({ type: "rail", name: "Roost", position: { x: r8(T + 0.25), y: roostY, z: roostZ }, size: { width: r8(W - 2 * T - 0.5), height: 1.5, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "A 2×4 laid flat, 3 1/2\" face up, so hens cover their toes in winter. Higher than the nest box, at the front, away from it." }),
+    );
+  }
+  panels.push(roof);
+  const meshW = r8(W - 2 * L - (coop ? 12 + 1.5 : 0));
   const who = tiny ? (lower.match(/hamster|gerbil|guinea pig|ferret|chinchilla|rat|mice|tortoise/)?.[0] ?? "small animal") : fowl ? "chicken" : /rabbit|bunn/.test(lower) ? "rabbit" : whoFor(lower);
   const head = lower.match(/hutch|cage|coop|enclosure|house|home|cabinet|cupboard|crate|condo/)?.[0] ?? "hutch";
   const name = `${who[0].toUpperCase()}${who.slice(1)} ${head}`;
+  const hinges = coop ? "four" : "two";
   const notes = [
-    `${name}: a raised enclosure on four 2×2 legs with the floor ${inchFrac(leg)}" off the ground; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
+    `${ENCLOSURE_NOTE} ${outdoor ? "outdoor" : "indoor"}${coop ? " coop" : ""}.`,
+    `${name}: a raised enclosure on four ${outdoor ? "ground-contact pressure-treated 4×4" : "2×2"} legs with the floor ${inchFrac(leg)}" off the ground${outdoor ? " on a pressure-treated 2×4 floor frame (rim on all four sides and a middle joist)" : ""}; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
     `Front: staple ½" galvanized hardware cloth, ${inchFrac(meshW)}" × ${inchFrac(meshH)}", across the opening between the rails, into the legs and the side edges, with the cut edges folded under so they stay smooth.`,
-    coop
-      ? `Hinge the roof along the back edge, and the pop door on its stile, with four 2" butt hinges in all; the roof lifts for feeding and cleaning. Close the pop door with 1 3" barrel bolt at night. Drill a few ½" vent holes high in each side and staple hardware cloth over them.`
-      : `Hinge the roof along the back edge with two 2" butt hinges so it lifts for feeding and cleaning. Drill a few ½" vent holes high in each side.`,
-    ...(coop ? [`Inside: a ${nest}" nest box in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 8))} hens fit on the roost at 8" each.`] : []),
-    species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails; each 1 ½" square leg is two ripped strips glued face to face.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
+    `Hinge the roof to the top edge of the back${coop ? ", and the pop door to its stile," : ""} with ${hinges} 2" galvanized butt hinges in all; the roof lifts for feeding and cleaning and takes no screws.${coop ? " Close the pop door with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
+    ...(outdoor ? [`Cover the roof with 1 roll of mineral-surfaced roll roofing, lapped over the edges and fixed with galvanized roofing nails.`] : []),
+    ...(coop ? [`Inside: a ${nest}" nest box raised 24" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
+    species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails.` : outdoor ? `¾" exterior plywood for the floor, roof, back, sides and rails; pressure-treated 4×4 legs and a 2×4 floor frame.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
   ];
   if (tw == null) notes.push(`Assumed ${inchFrac(W)}" wide — type a width to lock it.`);
   if (th == null) notes.push(`Assumed ${inchFrac(H)}" tall — type a height to lock it.`);
   if (td == null) notes.push(`Assumed ${inchFrac(D)}" deep — type a depth to lock it.`);
   return project(prompt, name, panels, mat, notes);
+}
+
+/** Steps for the raised-enclosure class, from its parts: each part goes in after what it fastens to. */
+export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
+  const note = (project.notes ?? []).find((n) => n.startsWith(ENCLOSURE_NOTE));
+  if (!note) return null;
+  const outdoor = /outdoor/.test(note);
+  const names = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).map((p) => p.name);
+  const has = (re: RegExp) => names(re).length > 0;
+  const o = project.overall;
+  const fix = outdoor ? "#8 × 1 1/4\" exterior screws" : "#8 × 1 1/4\" screws";
+  const steps: Omit<AssemblyStep, "step">[] = [
+    { title: "Confirm the footprint — do not cut yet", description: `${project.name}. ${inchFrac(o.width)}" wide × ${inchFrac(o.depth)}" deep × ${inchFrac(o.height)}" high. Freestanding on four legs. ${outdoor ? "Pick a level, well-drained spot; the legs stand on the ground." : "Set it on a level floor."}`, partsUsed: ["*"] },
+    { title: "Cut every part to its mark", description: "Square every cut. Cut the floor's corner notches before it goes on. Sand the edges the animals touch.", partsUsed: ["*"] },
+    outdoor
+      ? { title: "Stand the legs and screw the floor frame between them", description: `Stand the 4 legs at the corners. Screw the front and back rims to the legs with 3 screws at each end, then fit the two side rims and the middle joist between the rims, all tops level at the floor's underside. ${fix} at every frame joint.`, partsUsed: [...names(/^Leg /), ...names(/^Floor (rim|joist)/)] }
+      : { title: "Stand the 4 legs", description: "Stand the 4 legs at the corners, square to each other.", partsUsed: names(/^Leg /) },
+    { title: outdoor ? "Lay the floor on the frame" : "Fit the floor between the legs", description: `Set the floor${outdoor ? " on the rims and the joist" : ""}, its notched corners around the legs. Screw it down${outdoor ? " into the frame every 8\"" : " to each leg"} with ${fix}.`, partsUsed: ["Floor"] },
+    { title: "Stand the sides and the back on the floor", description: `Stand the left and right sides and the back on the floor, screwed to the legs and down through the floor, with ${fix}.`, partsUsed: [...names(/^(Left|Right) side$/), "Back"] },
+  ];
+  const cleats = names(/cleat/);
+  if (cleats.length) steps.push({ title: "Screw the cleats to the sides and back", description: `Screw the ${cleats.map((c) => c.toLowerCase()).join(", ")} to the inside faces, tops level at their marks, with ${fix}. Nothing rests on them yet.`, partsUsed: cleats });
+  if (has(/^Nest box/)) steps.push({ title: "Build the raised nest box on its cleats", description: `Set the nest bottom on the two nest cleats, 24" up off the floor. Stand the nest side on it, screw the lip across the front, and set the top on the side and the right wall. ${fix}.`, partsUsed: names(/^Nest box/) });
+  if (has(/^Roost$/)) steps.push({ title: "Set the roost on both cleats", description: `Lay the 2×4 roost flat, 3 1/2" face up, with one end on each roost cleat. Screw down through it into each cleat with ${fix}.`, partsUsed: ["Roost"] });
+  steps.push({ title: has(/^Door stile$/) ? "Fit the front rails and the door stile" : "Fit the front rails", description: `Screw the front bottom rail and the front top rail between the front legs${has(/^Door stile$/) ? ", then the door stile between the two rails" : ""}, with ${fix}.`, partsUsed: [...names(/^Front (bottom|top) rail$/), ...names(/^Door stile$/)] });
+  steps.push({ title: "Staple the hardware cloth and drill the vents", description: `Staple ½" galvanized hardware cloth across the front opening between the rails${has(/^Door stile$/) ? " and the stile" : ""}, every 2", the cut edges folded under. Drill a few ½" vent holes high in each side and staple a patch of hardware cloth over them inside.`, partsUsed: [] });
+  for (const p of project.panels.filter((x) => x.hinged)) {
+    const to = project.panels.find((x) => x.id === p.hinged!.to)?.name.toLowerCase() ?? "its frame";
+    steps.push({
+      title: `Hang the ${p.name.toLowerCase()} on ${p.hinged!.hinges} hinges`,
+      description: `Set the ${p.name.toLowerCase()} in place and screw ${p.hinged!.hinges} 2" galvanized butt hinges along its ${p.hinged!.edge} edge to the ${to}. No screws go through the ${p.name.toLowerCase()} into anything else, so it opens.${p.hinged!.latch ? ` Fit the ${p.hinged!.latch} on its free edge so it locks shut.` : ""}${/^Roof$/.test(p.name) && outdoor ? " Then cover the roof with the roll roofing, lapped over the edges, fixed with galvanized roofing nails." : ""}`,
+      partsUsed: [p.name],
+    });
+  }
+  return steps.map((s, i) => ({ ...s, step: i + 1 }));
 }
