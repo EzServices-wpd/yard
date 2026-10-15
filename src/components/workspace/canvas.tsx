@@ -10,7 +10,7 @@ import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/gho
 import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
-import type { AssemblyStep, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
+import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
@@ -267,7 +267,7 @@ export function WorkspaceCanvas() {
           detail={detail}
           joinMethod={project.joinMethod}
           useShadows={useShadows}
-          steps={plan?.instructions}
+          plan={plan}
           stepping={activeStep != null}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
@@ -465,12 +465,12 @@ function useAssemble(ready: boolean): number {
  * no new geometry, so it costs nothing per frame. ~2s total; skipped under reduced motion,
  * when a step is open, or when the plan has no steps that name parts.
  */
-function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, ready: boolean, stepping: boolean): Set<string> | null {
+function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
-    if (!ready || !steps?.length) return null;
-    const { at, n } = buildOrder(project, steps);
-    return n >= 2 ? { at, n } : null;
-  }, [project, steps, ready]);
+    if (!ready || !plan?.instructions.length) return null;
+    const { at, n, stale } = buildOrder(project, plan);
+    return n >= 2 && !stale ? { at, n } : null;
+  }, [project, plan, ready]);
   const [shown, setShown] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
   // Late-start guard: the reveal only plays if the plan lands within 600ms of the model; a model
@@ -482,18 +482,29 @@ function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, 
     played.current = project.id;
     if (!readyAt.current || readyAt.current.id !== project.id || performance.now() - readyAt.current.t > 600 || document.hidden) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const per = Math.max(140, Math.min(380, 2000 / order.n));
+    const per = Math.max(220, Math.min(420, 2600 / order.n));
+    // The bench host carries the current beat (data-yard-reveal="k/n" + that beat's part names) so
+    // the order can be checked from outside the WebGL canvas.
+    const host = document.querySelector("[data-bench-host]");
+    const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
+    const mark = (k: number) => {
+      if (!host) return;
+      host.setAttribute("data-yard-reveal", k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
+      host.setAttribute("data-yard-reveal-parts", k >= order.n ? "" : [...order.at].filter(([, g]) => g === k).map(([pid]) => names.get(pid) ?? pid).join(", "));
+    };
     setShown(0);
+    mark(0);
     let k = 0;
     const id = window.setInterval(() => {
       k++;
+      mark(k);
       if (k >= order.n) {
         window.clearInterval(id);
         setShown(Infinity);
       } else setShown(k);
     }, per);
     return () => { window.clearInterval(id); setShown(Infinity); };
-  }, [order, stepping, project.id]);
+  }, [order, stepping, project.id, project.panels, project.instances]);
   if (!order || shown === Infinity || stepping) return null;
   const vis = new Set<string>();
   for (const [id, i] of order.at) if (i <= shown) vis.add(id);
@@ -501,9 +512,9 @@ function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, 
 }
 
 function BenchScene({
-  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows, steps, stepping = false,
+  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows, plan, stepping = false,
 }: {
-  steps?: AssemblyStep[];
+  plan?: BuildPlan | null;
   stepping?: boolean;
   project: YardProject;
   explode: boolean;
@@ -527,7 +538,7 @@ function BenchScene({
 }) {
   const assemble = useAssemble(project.panels.length > 0 && !pending);
   const explodeScale = explode ? 1.35 : assemble;
-  const reveal = useStepReveal(project, steps, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;

@@ -1,8 +1,9 @@
 import { getCatalogItem } from "./catalog";
-import { createId } from "@/lib/utils";
 import { isHingedLidChest } from "./family";
 import { isBoundingDrawerPanel } from "./shopPlural";
-import type { AssemblyStep, Panel, PanelType, YardProject } from "./types";
+import type { AssemblyStep, Panel, YardProject } from "./types";
+import { clonePanel, frameFace, leafDoor, makePanel, shakerPanels, withLeafGlueUp, type Box } from "./hingedLeaf";
+export { leafDoor, withLeafGlueUp };
 
 /**
  * A face is a cut, not a sticker.
@@ -12,14 +13,13 @@ import type { AssemblyStep, Panel, PanelType, YardProject } from "./types";
  * The prompt carries the choice so the next generate rebuilds the same piece.
  */
 
-const STILE = 2.25;
 const GAP = 0.125;
-/** A captured panel reaches 5/16" into its 3/8" groove. */
-const CAP = 0.3125;
 const MOLD_H = 3.5;
 const MOLD_T = 0.75;
 
 const r8 = (n: number) => Math.round(n * 8) / 8;
+
+// Door and chest-front style (flat or Shaker), frame-and-panel leaves and their glue-up live in hingedLeaf.ts.
 
 export type HeadboardFace = "plain" | "slats" | "framed";
 export type FrontFace = "flat" | "shaker";
@@ -221,135 +221,6 @@ export function pieceControls(project: YardProject): {
   };
 }
 
-function clonePanel(p: Panel): Panel {
-  return {
-    ...p,
-    position: { ...p.position },
-    size: { ...p.size },
-    joints: p.joints?.map((j) => ({ ...j })),
-    cutouts: p.cutouts?.map((c) => ({ ...c })),
-    leaf: p.leaf ? { ...p.leaf } : undefined,
-    blank: p.blank ? { ...p.blank } : undefined,
-    polygon: p.polygon ? { ...p.polygon, pts: p.polygon.pts.map((pt) => [...pt] as [number, number]) } : undefined,
-  };
-}
-
-function makePanel(
-  type: PanelType,
-  name: string,
-  x: number,
-  y: number,
-  z: number,
-  w: number,
-  h: number,
-  d: number,
-  materialId: string,
-  extra: Partial<Panel> = {},
-): Panel {
-  return {
-    id: createId(type.slice(0, 2)),
-    type,
-    name,
-    // Positions stay exact: a 1/16" reveal must survive; cut sizes read on the 1/8" grid.
-    position: { x, y, z },
-    size: { width: r8(w), height: r8(h), depth: r8(d) },
-    materialId,
-    ...extra,
-  };
-}
-
-function faceOk(w: number, h: number, t: number): boolean {
-  const thin = Math.min(w, h, t);
-  return Math.abs(t - thin) < 0.05 && t <= 1.75 && t >= 0.5 && w >= 8 && h >= 8 && w > STILE * 2 + 2 && h > STILE * 2 + 2;
-}
-
-function hingeOf(p: Panel, doors: Panel[]): "left" | "right" {
-  if (/left/i.test(p.name) && !/right/i.test(p.name)) return "left";
-  if (/right/i.test(p.name)) return "right";
-  if (doors.length === 1) return "left";
-  return p.position.x + p.size.width / 2 < 0 ? "left" : "right";
-}
-
-/** Stiles and rails full thickness, panel half thickness, back edges flush. */
-function frameFace(
-  p: Panel,
-  names: { stile: string; rail: string; panel: string },
-  hinge: "left" | "right" | null,
-): Panel[] {
-  const x = p.position.x;
-  const y = p.position.y;
-  const z = p.position.z;
-  const w = p.size.width;
-  const h = p.size.height;
-  const t = p.size.depth;
-  const mat = p.materialId;
-  const panelT = r8(Math.min(0.375, t / 2));
-  const innerW = r8(w - STILE * 2);
-  const innerH = r8(h - STILE * 2);
-  const pw = r8(innerW - GAP * 2);
-  const ph = r8(innerH - GAP * 2);
-  if (pw < 1.5 || ph < 1.5 || panelT < 0.25) return [p];
-
-  const leafId = p.id;
-  const hingeX = hinge === "right" ? x + w : x;
-  const hingeZ = z + t / 2;
-  const leaf = (role: "hinge" | "pull" | "part") =>
-    hinge
-      ? { id: leafId, hinge, hingeX, hingeZ, role }
-      : undefined;
-
-  const leftRole = hinge === "right" ? "pull" : hinge === "left" ? "hinge" : "part";
-  const rightRole = hinge === "left" ? "pull" : hinge === "right" ? "hinge" : "part";
-  const stileType = (role: "hinge" | "pull" | "part"): PanelType => (role === "hinge" ? "door" : "rail");
-
-  const parts: Panel[] = [
-    makePanel(stileType(leftRole), names.stile, x, y, z, STILE, h, t, mat, {
-      leaf: leaf(leftRole),
-      cutNote: '2 1/4" wide.',
-    }),
-    makePanel(stileType(rightRole), names.stile, x + w - STILE, y, z, STILE, h, t, mat, {
-      leaf: leaf(rightRole),
-      cutNote: '2 1/4" wide.',
-    }),
-    makePanel("rail", names.rail, x + STILE, y, z, innerW, STILE, t, mat, {
-      leaf: leaf("part"),
-      cutNote: '2 1/4" wide.',
-    }),
-    makePanel("rail", names.rail, x + STILE, y + h - STILE, z, innerW, STILE, t, mat, {
-      leaf: leaf("part"),
-      cutNote: '2 1/4" wide.',
-    }),
-    // The panel is 1/4" plywood captured in a 1/4" × 3/8" groove in the stiles and rails, 1/16" shy of the
-    // groove bottom all round: never glued or screwed, so it floats.
-    makePanel("rail", names.panel, x + STILE - CAP, y + STILE - CAP, z + (t - 0.25) / 2, r8(innerW + CAP * 2), r8(innerH + CAP * 2), 0.25, "plywood-1-4-4x8", {
-      leaf: leaf("part"),
-      cutNote: 'Sits in a 1/4" groove, 3/8" deep, in the stiles and rails. No glue or screws on the panel.',
-    }),
-  ];
-  return parts;
-}
-
-function shakerPanels(panels: Panel[]): { panels: Panel[]; changed: boolean } {
-  const doors = panels.filter((p) => p.type === "door" && faceOk(p.size.width, p.size.height, p.size.depth) && !/shaker/i.test(p.name));
-  const fronts = panels.filter(
-    (p) => p.type === "rail" && p.name.trim().toLowerCase() === "front" && faceOk(p.size.width, p.size.height, p.size.depth),
-  );
-  if (!doors.length && !fronts.length) return { panels, changed: false };
-  const drop = new Set<Panel>([...doors, ...fronts]);
-  const next = panels.filter((p) => !drop.has(p));
-  for (const door of doors) {
-    next.push(
-      ...frameFace(door, { stile: "Shaker stile", rail: "Shaker rail", panel: "Shaker panel" }, hingeOf(door, doors)),
-    );
-  }
-  for (const front of fronts) {
-    next.push(...frameFace(front, { stile: "Shaker stile", rail: "Shaker rail", panel: "Shaker panel" }, null));
-  }
-  return { panels: next, changed: true };
-}
-
-type Box = { x: number; y: number; z: number; w: number; h: number; t: number; mat: string };
-
 function headboardBox(panels: Panel[]): { box: Box; slabs: Panel[] } | null {
   const slabs = panels.filter((p) => /headboard/i.test(p.name) && !/^headboard (post|rail|slat|panel)$/i.test(p.name));
   if (!slabs.length) return null;
@@ -505,35 +376,6 @@ export function applySpokenFace(project: YardProject, prompt: string, phase?: "b
     ? { ...project.overall, depth: r8(project.overall.depth + depthBump) }
     : project.overall;
   return { ...project, panels, notes, overall };
-}
-
-/** The assembled door of a frame-and-panel leaf: the box around every part sharing its leaf id. */
-export function leafDoor(panels: Panel[], p: Panel): Panel {
-  const parts = panels.filter((q) => q.leaf?.id === p.leaf?.id);
-  const lo = (a: "x" | "y" | "z") => Math.min(...parts.map((q) => q.position[a]));
-  const hi = (a: "x" | "y" | "z", k: "width" | "height" | "depth") => Math.max(...parts.map((q) => q.position[a] + q.size[k]));
-  const position = { x: lo("x"), y: lo("y"), z: lo("z") };
-  return { ...p, position, size: { width: hi("x", "width") - position.x, height: hi("y", "height") - position.y, depth: hi("z", "depth") - position.z } };
-}
-
-/** Frame-and-panel doors are glued up as one door before the step that hangs them. */
-export function withLeafGlueUp(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
-  const members = project.panels.filter((p) => p.leaf);
-  if (!members.length) return steps;
-  const names = new Set(members.map((p) => p.name));
-  const at = steps.findIndex((s) => s.partsUsed?.some((n) => names.has(n)));
-  if (at < 0) return steps;
-  const leaves = new Set(members.map((p) => p.leaf!.id)).size;
-  const kinds = [...names];
-  const step: AssemblyStep = {
-    step: 0,
-    title: `Glue up the ${leaves} frame-and-panel door${leaves === 1 ? "" : "s"}`,
-    description: `Each door is two stiles, two rails and a panel (${kinds.join(", ")}). Cut a 1/4" groove 3/8" deep along the inside edge of every stile and rail, centred on the thickness. Dry-fit, then glue only the stile-to-rail joints with the 1/4" plywood panel floating in the groove, never glued or screwed. Clamp each door flat and check it is square by measuring both diagonals. Let the glue cure before hanging.`,
-    partsUsed: kinds,
-  };
-  // The hanging step places the whole leaf: its stiles, rails and panel go up as one door.
-  const hang = { ...steps[at], partsUsed: [...new Set([...(steps[at].partsUsed ?? []), ...kinds])] };
-  return [...steps.slice(0, at), step, hang, ...steps.slice(at + 1)].map((s, i) => ({ ...s, step: i + 1 }));
 }
 
 /** Parts with drilled holes (dowel rods, axles) get a drilling step before the first part goes on. */
