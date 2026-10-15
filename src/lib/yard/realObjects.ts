@@ -295,24 +295,28 @@ function buildStand(prompt: string, size?: { width: number; height: number; dept
   const lower = prompt.toLowerCase();
   const W = size?.width ?? axis(lower, "wide|width|long|length") ?? 48;
   const H = Math.max(60, size?.height ?? axis(lower, "tall|high|height") ?? 72);
-  const D = size?.depth ?? axis(lower, "deep|depth") ?? 24;
+  // D is the whole stand front to back, awning included (what the title, step 1 and the model all say);
+  // the posts stand on a frame 6" shallower so the awning overhangs the front for shade.
+  const D = Math.max(18, size?.depth ?? axis(lower, "deep|depth") ?? 30);
+  const F = D - 6;
   const C = 36.25;
   const id = "lumber-2x4-8";
   const ply = "plywood-3-4-4x8";
   const panels: Panel[] = [];
   for (const [end, x] of [["left", 0], ["right", W - 1.5]] as const)
-    for (const [side, z] of [["back", 0], ["front", D - 3.5]] as const) panels.push(panel("upright", `Post ${side} ${end}`, x, 0, z, 1.5, H, 3.5, id));
-  for (const [side, z] of [["back", 0], ["front", D - 1.5]] as const) panels.push(panel("rail", `Counter apron ${side}`, 1.5, C - 3.5, z, W - 3, 3.5, 1.5, id));
-  for (const [end, x] of [["left", 1.5], ["right", W - 3]] as const) panels.push(panel("rail", `Counter apron ${end}`, x, C - 3.5, 1.5, 1.5, 3.5, D - 3, id));
-  panels.push(panel("top", "Counter", 1.5, C, 0, W - 3, 0.75, D, ply));
-  panels.push(panel("side", "Front skirt", 0, 3, D, W, C - 3, 0.5, "plywood-1-2-4x8"));
-  for (const [side, z] of [["back", 0], ["front", D - 1.5]] as const) panels.push(panel("rail", `Top rail ${side}`, 1.5, H - 3.5, z, W - 3, 3.5, 1.5, id));
-  panels.push(panel("side", "Sign board", 1.5, H - 11.25, D, W - 3, 9.25, 0.75, "lumber-1x10-8"));
-  panels.push(panel("top", "Awning", -2, H, -2, W + 4, 0.5, D + 8, "plywood-1-2-4x8"));
+    for (const [side, z] of [["back", 0], ["front", F - 3.5]] as const) panels.push(panel("upright", `Post ${side} ${end}`, x, 0, z, 1.5, H, 3.5, id));
+  for (const [side, z] of [["back", 0], ["front", F - 1.5]] as const) panels.push(panel("rail", `Counter apron ${side}`, 1.5, C - 3.5, z, W - 3, 3.5, 1.5, id));
+  for (const [end, x] of [["left", 1.5], ["right", W - 3]] as const) panels.push(panel("rail", `Counter apron ${end}`, x, C - 3.5, 1.5, 1.5, 3.5, F - 3, id));
+  panels.push(panel("top", "Counter", 1.5, C, 0, W - 3, 0.75, F, ply));
+  panels.push(panel("side", "Front skirt", 0, 3, F, W, C - 3, 0.5, "plywood-1-2-4x8"));
+  for (const [side, z] of [["back", 0], ["front", F - 1.5]] as const) panels.push(panel("rail", `Top rail ${side}`, 1.5, H - 3.5, z, W - 3, 3.5, 1.5, id));
+  panels.push(panel("side", "Sign board", 1.5, H - 11.25, F, W - 3, 9.25, 0.75, "lumber-1x10-8"));
+  panels.push(panel("top", "Awning", 0, H, 0, W, 0.5, D, "plywood-1-2-4x8"));
   const title = `${(lower.match(/\b(lemonade|snack|bake sale|farm|vendor|market|sales?)\s+(?:stand|booth)/)?.[1] ?? "lemonade").replace(/^\w/, (c) => c.toUpperCase())} stand`;
-  const name = `${title} ${ft(W)} × ${ft(H)}`;
+  // Title dims are footprint W × D (the depth the header and step 1 stamp), never W × H.
+  const name = `${title} ${ft(W)} × ${ft(D)}`;
   const notes = [
-    `${name}: four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a ${inchFrac(W - 3)}" × ${inchFrac(D)}" counter at 37", a comfortable serving height.`,
+    `${name}: four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a ${inchFrac(W - 3)}" × ${inchFrac(F)}" counter at 37", a comfortable serving height.`,
     `A 1/2" plywood skirt screws to the front posts below the counter; top rails tie the posts at the roof and carry a 1/2" plywood awning that overhangs 6" in front for shade.`,
     `The 1×10 sign board screws to the front top rail just under the awning. Paint the name on it before hanging. Exterior screws and paint if it lives outdoors.`,
   ];
