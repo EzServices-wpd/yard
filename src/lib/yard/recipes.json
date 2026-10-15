@@ -7648,6 +7648,173 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Plinth: 2.94×14.00 is wider than one 2×4 Stud (8 ft); Pedestal: 5.00×5.00 is wider than one 2×4 Stud (8 ft); Buy 2 2×4 Stud (8 ft) for 303\" of strips"
+  },
+  {
+   "key": "laptop-stand",
+   "synonyms": [
+    "laptop riser"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Laptop Stand",
+   "size": {
+    "width": 11,
+    "height": 6,
+    "depth": 9
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "deck"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left front leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.06,
+      0.9,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right front leg",
+     "box": [
+      0.92,
+      0,
+      0.02,
+      0.06,
+      0.9,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left rear leg",
+     "box": [
+      0.02,
+      0,
+      0.92,
+      0.06,
+      0.9,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right rear leg",
+     "box": [
+      0.92,
+      0,
+      0.92,
+      0.06,
+      0.9,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front rail",
+     "box": [
+      0.08,
+      0.8,
+      0.02,
+      0.84,
+      0.1,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Right front leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear rail",
+     "box": [
+      0.08,
+      0.8,
+      0.92,
+      0.84,
+      0.1,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "Left rear leg",
+      "Right rear leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left rail",
+     "box": [
+      0.02,
+      0.8,
+      0.08,
+      0.06,
+      0.1,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Left rear leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right rail",
+     "box": [
+      0.92,
+      0.8,
+      0.08,
+      0.06,
+      0.1,
+      0.84
+     ],
+     "kind": "member",
+     "on": [
+      "Right front leg",
+      "Right rear leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top platform",
+     "box": [
+      0.02,
+      0.9,
+      0.02,
+      0.96,
+      0.09999999999999998,
+      0.96
+     ],
+     "kind": "panel",
+     "on": [
+      "Front rail",
+      "Rear rail",
+      "Left rail",
+      "Right rail"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Elevates laptop for ergonomics and underside airflow",
+    "Four legs stand on floor with connecting rails under open deck"
+   ],
+   "learned": true
   }
  ]
 }
