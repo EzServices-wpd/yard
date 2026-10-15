@@ -48,7 +48,11 @@ function partsOf(project: YardProject): Part[] {
 
 const SIDE = /^(?:left|right|front|back|top|bottom|upper|lower|inner|outer|middle|center|centre)$/;
 
+const INSERTED_TIP = "This part was on the model and not yet in a step.";
+
 function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean {
+  // A step that declares it uses no parts (stapling mesh, drilling vents) places none: nothing is fastened in it.
+  if (Array.isArray(step.partsUsed) && step.partsUsed.length === 0 && step.tips !== INSERTED_TIP) return false;
   const used = (step.partsUsed ?? []).map((s) => s.toLowerCase()).filter((s) => s !== "*" && s !== "all");
   // A step that lists the model's own part names places exactly those parts ("Fasten the 6 right end slats"
   // does not place a left end slat; "Fasten the Shelf backstop" does not place a shelf).
@@ -172,6 +176,8 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   // Nothing under 3/4" but a back takes a screw: a thin divider or face (under 1/2", or planed thinner than its stock) is glued in place.
   const t = panel ? Math.min(panel.size.width, panel.size.height, panel.size.depth) : 1;
   if (panel && !/\bback\b/i.test(part.name) && info?.how !== "floor" && (t < 0.5 || (t < 0.7 && t < panelStockThickness(panel) - 0.05))) return `Glue the ${part.name} to ${onto} and clamp it until it sets. It is too thin for a screw.`;
+  // Engine rule (F7): a hinged part is hung, never screwed, whatever the support graph guessed.
+  if (panel?.hinged) return `Hang the ${part.name} on its hinges on ${onto}. No screws go through it, so it opens.`;
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
@@ -229,7 +235,7 @@ export function placementIndex(project: YardProject, steps: AssemblyStep[]): Map
   return placed;
 }
 
-const INSERTED = "This part was on the model and not yet in a step.";
+const INSERTED = INSERTED_TIP;
 const LIFTED = "It goes on once every part under it is in place.";
 
 export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {

@@ -25,7 +25,7 @@ describe("an animal word before a furniture head builds the animal's enclosure",
     assert.match(notes, /hardware cloth/);
     assert.ok(plan.bom.some((b) => /^Cedar/.test(b.name)));
     assert.ok(plan.bom.some((b) => /hardware cloth/i.test(b.name)));
-    assert.ok(plan.bom.some((b) => /butt hinges/i.test(b.name)));
+    assert.ok(plan.bom.some((b) => /butt hinges|T-hinges/i.test(b.name)));
     assert.ok(!plan.bom.some((b) => /concealed|pulls|shelf pins/i.test(b.name)));
   });
   it("guinea pig cage, chicken coop and a typed rabbit hutch are enclosures at their size", () => {

@@ -1444,16 +1444,42 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
     });
   }
-  const butts = notes.match(/\btwo 2" butt hinges\b/);
+  // Heavy lids (an outdoor roof under roofing) hang on T-hinges with a stay; frame joints take structural screws.
+  const tees = notes.match(/\b(two|three|four) 3–4" galvanized T-hinges\b/);
+  if (tees && !/t-hinge/i.test(have)) {
+    const n = { two: 2, three: 3, four: 4 }[tees[1] as "two" | "three" | "four"];
+    extra.push({ name: '4" galvanized T-hinges', quantity: n, unit: "each", searchQuery: "4 inch galvanized t hinge", estimatedCost: Math.round(6.48 * n * 100) / 100, notes: "Along the roof's back edge; strap on the roof, leaf on the back. Estimate." });
+  }
+  if (/\bfit a lid stay\b/i.test(notes) && !/lid stay/i.test(have)) {
+    extra.push({ name: "Lid stay (soft-close or folding)", quantity: 1, unit: "each", searchQuery: "lid support stay hinge", estimatedCost: 8.98, notes: "Holds the roof open and stops it slamming. Estimate." });
+  }
+  const butts = notes.match(/\b(two|four) 2" (galvanized )?butt hinges\b/);
   if (butts && !/butt hinge/i.test(have)) {
+    const n = butts[1] === "four" ? 4 : 2;
     extra.push({
-      name: '2" butt hinges',
-      quantity: 2,
+      name: butts[2] ? '2" galvanized butt hinges' : '2" butt hinges',
+      quantity: n,
       unit: "each",
       catalogId: "butt-hinge-2",
-      searchQuery: "2 inch butt hinge",
-      estimatedCost: 6,
-      notes: "Two along the back edge, as the notes say.",
+      searchQuery: butts[2] ? "2 inch galvanized butt hinge exterior" : "2 inch butt hinge",
+      estimatedCost: (butts[2] ? 3.98 : 3) * n,
+      notes: n === 4 ? "Two along the roof's back edge and two on the pop door, as the notes say." : "Two along the back edge, as the notes say.",
+    });
+  }
+  const roll = notes.match(/\b(\d+) roll of mineral-surfaced roll roofing\b/);
+  if (roll && !/roll roofing/i.test(have)) {
+    extra.push({ name: "Mineral-surfaced roll roofing, 36 in × 33 ft", quantity: Number(roll[1]), unit: "roll", searchQuery: "mineral surfaced roll roofing 36 in", estimatedCost: 39.98 * Number(roll[1]), notes: "Over the roof sheet, lapped over every edge." });
+    extra.push({ name: "Galvanized roofing nails, 7/8 in, 1 lb", quantity: 1, unit: "box", searchQuery: "7/8 inch galvanized roofing nails 1 lb", estimatedCost: 5.98, notes: "Fix the roll roofing to the roof sheet." });
+  }
+  const barrel = notes.match(/\b(\d+) 3" barrel bolts?\b/);
+  if (barrel && !/barrel bolt/i.test(have)) {
+    extra.push({
+      name: '3" galvanized barrel bolt',
+      quantity: Number(barrel[1]),
+      unit: "each",
+      searchQuery: "3 inch galvanized barrel bolt",
+      estimatedCost: 5.98 * Number(barrel[1]),
+      notes: "Locks the pop door at night; a raccoon opens a hook-and-eye.",
     });
   }
   const railBolts = notes.match(/(\d+) 3\/8" × 5 1\/2" bed-rail bolts/);

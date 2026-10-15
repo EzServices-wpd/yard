@@ -46,6 +46,11 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         .sort((x, y) => dist(A, boxes.get(x.id)!) - dist(A, boxes.get(y.id)!))
         .slice(0, n)
         .map((q) => q.id);
+    // Engine rule (F7): a hinged part hangs on what its hinges name; it never takes a screw into anything.
+    if (p.hinged && panels.some((q) => q.id === p.hinged!.to)) {
+      out.set(p.id, { key: p.id, name: p.name, how: "hinges", on: [p.hinged.to] });
+      continue;
+    }
     if (p.type === "door") {
       const edge = doorHingesLeft(p) ? A.min[0] : A.max[0];
       const side = panels.filter(vertical).sort((x, y) => Math.abs((boxes.get(x.id)!.min[0] + boxes.get(x.id)!.max[0]) / 2 - edge) - Math.abs((boxes.get(y.id)!.min[0] + boxes.get(y.id)!.max[0]) / 2 - edge));
