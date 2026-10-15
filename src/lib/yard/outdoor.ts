@@ -118,6 +118,11 @@ function exteriorTalk(t: string | undefined): string | undefined {
 const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
   "lumber-2x4-8": { name: "2×4 pressure-treated (8 ft)", price: 4.88, query: "2x4x8 pressure treated lumber", title: "2x4x8 #2 Prime ground contact pressure-treated pine" },
   "lumber-2x6-8": { name: "2×6 pressure-treated (8 ft)", price: 5.98, query: "2x6x8 pressure treated lumber", href: "https://www.homedepot.com/p/2-in-x-6-in-x-8-ft-2-Pressure-Treated-Lumber-2310254/329737526", title: "2x6x8 #2 pressure-treated lumber" },
+  // 1× trim (rails, stiles, battens) comes treated too, so no indoor board is left in an outdoor build. Estimates.
+  "lumber-1x2-8": { name: "1×2 pressure-treated (8 ft)", price: 2.98, query: "1x2x8 pressure treated furring", title: "1x2x8 pressure-treated furring strip (estimate)" },
+  "lumber-1x3-8": { name: "1×3 pressure-treated (8 ft)", price: 3.48, query: "1x3x8 pressure treated board", title: "1x3x8 pressure-treated board (estimate)" },
+  "lumber-1x4-8": { name: "1×4 pressure-treated (8 ft)", price: 4.37, query: "1x4x8 pressure treated board", title: "1x4x8 pressure-treated board (estimate)" },
+  "lumber-1x6-8": { name: "1×6 pressure-treated (8 ft)", price: 6.48, query: "1x6x8 pressure treated board", title: "1x6x8 pressure-treated board (estimate)" },
   "lumber-4x4-8": { name: "4×4 pressure-treated (8 ft), ground contact", price: 12.98, query: "4x4x8 pressure treated ground contact", title: "4x4x8 #2 ground-contact pressure-treated pine (estimate)" },
   "plywood-3-4-4x8": { name: "3/4\" exterior plywood 4×8 (pressure-treated / CDX)", price: 64.98, query: "3/4 pressure treated plywood 4x8", title: "23/32 in. x 4 ft. x 8 ft. pressure-treated plywood (estimate)" },
   "lumber-2x8-8": { name: "2×8 pressure-treated (8 ft)", price: 12.88, query: "2x8x8 pressure treated lumber", title: "2x8x8 #2 Prime ground contact pressure-treated pine" },

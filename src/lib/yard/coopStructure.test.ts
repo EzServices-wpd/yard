@@ -60,6 +60,8 @@ describe("chicken coop real structure", () => {
     assert.ok(!plan.bom.some((b) => /^3\/4" Plywood 4×8$/.test(b.name)));
     assert.ok(plan.bom.some((b) => /roll roofing/.test(b.name)));
     assert.ok(!plan.bom.some((b) => /glide/i.test(b.name)));
+    // Every cut-list stock is the treated or exterior version, rails and stile included.
+    for (const c of plan.cutList) assert.match(c.material, /pressure-treated|exterior/, `${c.name}: ${c.material}`);
   });
   it("every Buy line is priced and sums to the total", () => {
     assert.ok(plan.bom.every((b) => b.estimatedCost != null), "unpriced Buy line");
