@@ -253,6 +253,7 @@ export function spanFindings(project: YardProject): SpanFinding[] {
     // A plate lying on the floor is carried along its whole length.
     if (panel.position.y < 0.3) continue;
     const load = loadOf(project, panel);
+    if (panel.outline === "right-triangle" && hasNosing(project.panels, panel)) continue;
     const span = clearSpan(panel, project.panels);
     const thick = sectionOf(panel, project.panels);
     const allow = allowSpanIn(thick, load);
@@ -387,6 +388,30 @@ function supportShelf(panels: Panel[], panel: Panel, project: YardProject, boxes
   pushPanel(panels, "rail", `Support apron under ${panel.name}`, piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, apron.stock);
 }
 
+/** A triangle shelf's free edge is its hypotenuse: a nosing on edge under it carries the books. */
+const hasNosing = (panels: Panel[], panel: Panel) => panels.some((q) => q.name === `Support nosing under ${panel.name}`);
+
+/**
+ * Triangle corner shelf: a 1x3 nosing on edge just inside the front (hypotenuse), ends cut to meet both walls,
+ * plus a mid cleat on each wall under the shelf. Every piece meets the shelf and a wall panel; nothing dangles.
+ */
+function supportTriangle(panels: Panel[], panel: Panel, materialOf: (n: string) => string) {
+  const { x: x0, y, z: z0 } = panel.position;
+  const { width: w, depth: d } = panel.size;
+  const L = Math.hypot(w, d);
+  const T = 0.75, H = 2.5, inset = T / 2 + 0.125;
+  const k = 1 - (inset * L) / (w * d);
+  if (k <= 0.5) return;
+  // Square-cut ends: shorten so both back corners stop at the wall faces (no cut into the wall panels).
+  const len = k * L - T * (d / w + w / d) / 2 - 0.125;
+  const cx = x0 + (k * w) / 2, cz = z0 + (k * d) / 2;
+  panels.push({ id: createId("ra"), type: "rail", name: `Support nosing under ${panel.name}`, position: { x: cx - len / 2, y: y - H, z: cz - T / 2 }, size: { width: len, height: H, depth: T }, yaw: Math.atan2(d, w), materialId: materialOf("1x3") });
+  // Mid wall cleats: one along each wall, centred on the shelf's wall edge, tucked under it.
+  const cleat = 1.5;
+  pushPanel(panels, "rail", `Support cleat A under ${panel.name}`, x0 + w * 0.25, y - cleat, z0, w * 0.4, cleat, T, materialOf("1x2"));
+  pushPanel(panels, "rail", `Support cleat B under ${panel.name}`, x0, y - cleat, z0 + T + d * 0.25, T, cleat, d * 0.4, materialOf("1x2"));
+}
+
 export function withSupports(project: YardProject): YardProject {
   const before = spanFindings(project);
   if (!before.length) {
@@ -400,7 +425,8 @@ export function withSupports(project: YardProject): YardProject {
   const targets = new Set(before.map((f) => f.panelId));
   for (const panel of [...panels]) {
     if (!targets.has(panel.id)) continue;
-    if (loadOf(project, panel) === "person") supportPerson(panels, panel, boxes);
+    if (panel.outline === "right-triangle") supportTriangle(panels, panel, (n) => `lumber-${n}-8`);
+    else if (loadOf(project, panel) === "person") supportPerson(panels, panel, boxes);
     else supportShelf(panels, panel, project, boxes);
   }
   const added = panels.length - project.panels.length;

@@ -514,6 +514,18 @@ export function cornerSteps(project: YardProject): AssemblyStep[] {
       partsUsed: shelves.map((p) => p.name),
     });
   }
+  // Added support (span check): nosing on edge under each long front edge, mid cleats on both walls.
+  const supports = panels.filter((p) => /^Support (nosing|cleat)/.test(p.name));
+  if (supports.length) {
+    const noses = supports.filter((p) => /nosing/.test(p.name));
+    steps.push({
+      step: n++,
+      title: `Fit the shelf supports under ${noses.length} long shel${noses.length === 1 ? "f" : "ves"}`,
+      description: `Under each of those shelves, screw a 1×2 cleat to each wall panel, tight under the shelf and centred along its wall edge (2 #8 × 1¼" screws through the panel into each cleat). Then glue a 1×3 nosing on edge just behind the shelf's long front edge, ends cut square to meet the wall panels, and drive #8 × 1¼" screws down through the shelf into it every 8". The nosing stops the front edge sagging under books.`,
+      tips: "Set each nosing flush with the front edge so it reads as a lip, not a gap.",
+      partsUsed: supports.map((p) => p.name),
+    });
+  }
   steps.push({
     step: n++,
     title: "Load it and check",
