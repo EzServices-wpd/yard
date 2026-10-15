@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { MakingNow } from "@/components/ideas/MakingNow";
+import { useOffscreen } from "@/hooks/use-offscreen";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
@@ -144,7 +145,7 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24">
-        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl overflow-x-clip flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
           <svg className="yard-grain" viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden>
             <g fill="none" stroke="currentColor" strokeWidth="1.2">
               {Array.from({ length: 14 }, (_, i) => (
@@ -287,7 +288,7 @@ function LandingPage() {
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
           <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <ShowcaseGrid>
             {PIECES.map((h) => (
               <button
                 key={h.id}
@@ -301,7 +302,7 @@ function LandingPage() {
                       role="img"
                       aria-label={`Yard drawing of the ${h.label} ${h.size}`}
                       data-yard-showcase={h.id}
-                      className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                      className="yard-alive h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
@@ -321,7 +322,7 @@ function LandingPage() {
                 </div>
               </button>
             ))}
-          </div>
+          </ShowcaseGrid>
         </section>
 
         <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
@@ -361,6 +362,21 @@ function LandingPage() {
         ) : null}
       </main>
       <SiteFooter active="home" />
+    </div>
+  );
+}
+
+/** Home sample models turn in once when the grid first comes on screen (held paused until then). */
+function ShowcaseGrid({ children }: { children: ReactNode }) {
+  const [ref, off] = useOffscreen<HTMLDivElement>("-10% 0px", true);
+  // Set once on first view; the turn-in keyframes only exist after this (nothing runs at load).
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!off && !seen) setSeen(true);
+  }, [off, seen]);
+  return (
+    <div ref={ref} data-offscreen={off || undefined} data-in={seen || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
+      {children}
     </div>
   );
 }

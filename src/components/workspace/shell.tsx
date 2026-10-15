@@ -79,6 +79,13 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
   const orbited = useYard((s) => s.orbited);
+  // A fresh lamp (new nearby preview) per build; it stays mounted briefly after to crossfade out.
+  const [lampKey, setLampKey] = useState(0);
+  const [wasPending, setWasPending] = useState(pending);
+  if (pending !== wasPending) {
+    setWasPending(pending);
+    if (pending) setLampKey((k) => k + 1);
+  }
   const [orbitHint, setOrbitHint] = useState(false);
   useEffect(() => {
     try {
@@ -390,7 +397,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
-          {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
+          <LavaLamp key={lampKey} show={pending} prompt={initialPrompt ?? project.prompt} caption={grokBusy ? "Fitting the opening" : "Building"} />
           {showOffer && (
             <div
               data-bench-overlay="offer"

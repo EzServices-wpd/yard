@@ -436,3 +436,28 @@
   .yard-making-list { animation: none; flex-wrap: wrap; white-space: normal; }
   .yard-making-list li[aria-hidden] { display: none; }
 }
+
+/* Living home samples: one staggered turn-in the first time the grid is on screen, then still
+   (a single orchestrated moment, not a loop). Transform/opacity only; still under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  /* No keyframes (and no animationstart/3D layer work) until the grid is first on screen. */
+  .yard-alive-grid[data-in] { perspective: 900px; }
+  .yard-alive-grid[data-in] .yard-alive { animation: yard-alive 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1 both; transform-origin: 50% 80%; }
+  .yard-alive-grid[data-in] > :nth-child(2) .yard-alive { animation-delay: 0.12s; }
+  .yard-alive-grid[data-in] > :nth-child(3) .yard-alive { animation-delay: 0.24s; }
+}
+@keyframes yard-alive {
+  from { transform: rotateY(-28deg) translateY(14px) scale(0.94); opacity: 0.35; }
+  to { transform: none; opacity: 1; }
+}
+[data-offscreen] .yard-alive, [data-offscreen] .yard-making-list, [data-offscreen] .yp { animation-play-state: paused; }
+
+/* Building overlay: real parts of a nearby known build drop in by step (transform/opacity only). */
+@media (prefers-reduced-motion: no-preference) {
+  .yard-assemble-real .yp { transform-box: fill-box; transform-origin: center; animation: yp-in var(--cycle, 3s) cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: var(--d, 0s); opacity: 0; }
+}
+@keyframes yp-in {
+  0% { opacity: 0; transform: translateY(-30%) scale(0.92); }
+  14%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
