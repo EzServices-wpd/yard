@@ -145,7 +145,7 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24">
-        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl overflow-x-clip flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
           <svg className="yard-grain" viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden>
             <g fill="none" stroke="currentColor" strokeWidth="1.2">
               {Array.from({ length: 14 }, (_, i) => (

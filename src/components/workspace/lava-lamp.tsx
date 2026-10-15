@@ -45,7 +45,7 @@ export function LavaLamp({ caption, show = true, prompt }: { caption?: string; s
     >
       <div className="flex flex-col items-center gap-4">
         <svg
-          className="yard-assemble-real h-40 w-40 text-fg"
+          className="yard-assemble-real h-52 w-52 sm:h-64 sm:w-64 text-fg"
           viewBox={`${-pad} ${-pad} ${pv.w + 2 * pad} ${pv.h + 2 * pad}`}
           style={{ ["--cycle" as string]: `${cycle}s` }}
           aria-hidden
