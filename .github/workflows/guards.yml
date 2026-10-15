@@ -89,6 +89,9 @@ jobs:
       - name: Learned recipes pass support, cut list vs Buy and wording (blocks recipe-bot auto-merge)
         run: npx tsx scripts/learned-recipe-check.ts
 
+      - name: Invariants I1-I14 + eval scoreboard (no xAI)
+        run: npx tsx --test scripts/invariants.test.ts
+
       - name: Unit tests (TypeScript, via tsx)
         if: always()
         run: npx tsx scripts/run-unit-tests.ts

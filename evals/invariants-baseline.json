@@ -1,0 +1,241 @@
+{
+ "note": "Known invariant violations at the start of the ratchet (2026-10-15). A key not listed here fails CI. A listed key that no longer fires also fails (STALE): delete it in the fix's commit, which is the red-before/green-after record that closes the class.",
+ "known": {
+  "I11|30 inch range hood": {
+   "class": "F9",
+   "msg": "template leak: closet wording"
+  },
+  "I11|barn birdhouse": {
+   "class": "F9",
+   "msg": "template leak: glides with no feet"
+  },
+  "I11|bathroom medicine cabinet 16 wide 24 high 4 deep": {
+   "class": "F9",
+   "msg": "template leak: closet wording"
+  },
+  "I11|birdhouse shaped like church": {
+   "class": "F9",
+   "msg": "template leak: glides with no feet"
+  },
+  "I11|floating desk": {
+   "class": "F9",
+   "msg": "template leak: 'shelf into cleat'"
+  },
+  "I11|floating shelves 36 wide 10 deep": {
+   "class": "F9",
+   "msg": "template leak: 'shelf into cleat'"
+  },
+  "I11|kitchen island 60x36x36": {
+   "class": "F9",
+   "msg": "template leak: closet wording"
+  },
+  "I11|picnic table": {
+   "class": "F9",
+   "msg": "template leak: 'shelf into cleat'"
+  },
+  "I11|wall mounted ironing board cabinet 48 high 16 wide 6 deep": {
+   "class": "F9",
+   "msg": "template leak: closet wording"
+  },
+  "I11|window box": {
+   "class": "F9",
+   "msg": "template leak: glides with no feet"
+  },
+  "I13|barn birdhouse": {
+   "class": "F21",
+   "msg": "Floor is interior plywood on the ground outdoors"
+  },
+  "I13|birdhouse shaped like church": {
+   "class": "F21",
+   "msg": "Floor is interior plywood on the ground outdoors"
+  },
+  "I13|raised garden bed 48 wide 96 long": {
+   "class": "F21",
+   "msg": "Left side is interior plywood on the ground outdoors"
+  },
+  "I13|sandbox": {
+   "class": "F21",
+   "msg": "Left side is interior plywood on the ground outdoors"
+  },
+  "I14|pergola": {
+   "class": "F11",
+   "msg": "Back beam is placed before Post 3, which it rests on"
+  },
+  "I14|pergola 10 by 12": {
+   "class": "F11",
+   "msg": "Back beam is placed before Post 3, which it rests on"
+  },
+  "I1|beehive box": {
+   "class": "F1",
+   "msg": "Left side reaches neither the floor nor a wall"
+  },
+  "I1|deck stairs": {
+   "class": "F1",
+   "msg": "Tread 1 reaches neither the floor nor a wall"
+  },
+  "I1|ferris wheel": {
+   "class": "F1",
+   "msg": "Axle reaches neither the floor nor a wall"
+  },
+  "I1|knife block": {
+   "class": "F1",
+   "msg": "Base reaches neither the floor nor a wall"
+  },
+  "I1|miter saw station": {
+   "class": "F1",
+   "msg": "Left wing reaches neither the floor nor a wall"
+  },
+  "I1|murphy bed": {
+   "class": "F1",
+   "msg": "Plinth reaches neither the floor nor a wall"
+  },
+  "I1|picture frame from bamboo skewers": {
+   "class": "F1",
+   "msg": "Acrylic reaches neither the floor nor a wall"
+  },
+  "I1|taj mahal": {
+   "class": "F1",
+   "msg": "Plinth reaches neither the floor nor a wall"
+  },
+  "I1|toy train track riser": {
+   "class": "F1",
+   "msg": "Base reaches neither the floor nor a wall"
+  },
+  "I1|water wheel": {
+   "class": "F1",
+   "msg": "Paddle 2 reaches neither the floor nor a wall"
+  },
+  "I3|Andersen 100 Series 36 by 48 double hung window, frame the rough opening": {
+   "class": "F3",
+   "msg": "cut list has 14 pieces, model 15"
+  },
+  "I3|bathroom medicine cabinet 16 wide 24 high 4 deep": {
+   "class": "F3",
+   "msg": "cut list has 8 pieces, model 9"
+  },
+  "I3|coat rack 36 wide 12 high 4 deep": {
+   "class": "F3",
+   "msg": "cut list has 2 pieces, model 8"
+  },
+  "I3|coat rack with bench 48 wide": {
+   "class": "F3",
+   "msg": "cut list has 12 pieces, model 20"
+  },
+  "I3|laundry fold-down 48 wide 36 high 6 deep": {
+   "class": "F3",
+   "msg": "cut list has 9 pieces, model 10"
+  },
+  "I3|laundry folding table 48 wide 36 high 24 deep": {
+   "class": "F3",
+   "msg": "cut list has 9 pieces, model 13"
+  },
+  "I6|Andersen 100 Series 36 by 48 double hung window, frame the rough opening": {
+   "class": "F12",
+   "msg": "step 10 \"Foam, then interior\" lights every part"
+  },
+  "I6|L-shaped corner desk 60 by 48 30 tall": {
+   "class": "F12",
+   "msg": "step 7 \"Fasten and finish\" lights every part"
+  },
+  "I6|linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep": {
+   "class": "F12",
+   "msg": "step 8 \"Shim, then lag into studs\" lights every part"
+  },
+  "I7|L-shaped corner desk 60 by 48 30 tall": {
+   "class": "F1",
+   "msg": "Desk top A spans 60\" (limit 33\")"
+  },
+  "I7|TV console 70 wide 30 tall 16 deep": {
+   "class": "F1",
+   "msg": "Bottom spans 69\" (limit 33\")"
+  },
+  "I7|coat rack with bench 48 wide": {
+   "class": "F1",
+   "msg": "Hat shelf spans 45\" (limit 33\")"
+  },
+  "I7|corner bookshelf 25 wide 54.5 tall 39 deep": {
+   "class": "F1",
+   "msg": "Triangle shelf 2 spans 38\" (limit 33\")"
+  },
+  "I7|corner bookshelf 51 wide 41 tall 34.5 deep": {
+   "class": "F1",
+   "msg": "Triangle shelf 2 spans 50\" (limit 33\")"
+  },
+  "I7|corner bookshelf 60 wide 84 tall": {
+   "class": "F1",
+   "msg": "Triangle shelf 2 spans 59\" (limit 33\")"
+  },
+  "I7|dresser 60 wide": {
+   "class": "F1",
+   "msg": "Top spans 59\" (limit 33\")"
+  },
+  "I7|kitchen island 60x36x36": {
+   "class": "F1",
+   "msg": "Bottom shelf spans 59\" (limit 33\")"
+  },
+  "I8|bunk bed 82 long 44 wide": {
+   "class": "F2",
+   "msg": "typed 44 wide, model 82"
+  },
+  "I8|raised garden bed 48 wide 96 long": {
+   "class": "F2",
+   "msg": "typed 48 wide, model 96"
+  },
+  "I9|30 inch range hood": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|L-shaped corner desk 60 by 48 30 tall": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|barn birdhouse": {
+   "class": "F7",
+   "msg": "steps or notes use glides; Buy has none"
+  },
+  "I9|birdhouse shaped like church": {
+   "class": "F7",
+   "msg": "steps or notes use glides; Buy has none"
+  },
+  "I9|bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|catapult from popsicle sticks": {
+   "class": "F7",
+   "msg": "steps or notes use hinges; Buy has none"
+  },
+  "I9|floating shelves 36 wide 10 deep": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|over the toilet cabinet 27 wide 68 high 9 deep": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|spice rack 18 wide 24 high 4 deep": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|wall clock frame": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|wall mounted mail organizer": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|wall shelf for jars 24 wide": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|window box": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  },
+  "I9|wine rack 24 wide 36 high 12 deep": {
+   "class": "F7",
+   "msg": "steps or notes use wall anchors; Buy has none"
+  }
+ }
+}
