@@ -20,7 +20,7 @@ const PII: RegExp[] = [
   /\b\d{3}[\s.-]\d{4}\b/g, // 7-digit phone
   /\bp\.?\s?o\.?\s+box\s+\d+/gi, // PO box
   /\b\d{1,6}\s+(?:[a-z0-9]+\s+){0,3}(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|court|ct|way|place|pl|terrace|circle|cir|highway|hwy)\b\.?/gi, // street address
-  /\b\d{5}(?:-\d{4})\b/g, // ZIP+4
+  /(?<![\d.\/-])\b\d{5}(?:-\d{4})?\b(?![\d.\/])/g, // standalone ZIP or ZIP+4 (F33)
 ];
 
 /** Strips addresses, emails, phones, URLs and handles. Returns null when anything was stripped (the prompt is dropped, R10). */
@@ -38,14 +38,14 @@ export function normalisePrompt(raw: string): string {
 const FOLD: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", $: "s", "!": "i" };
 const fold = (s: string) => s.toLowerCase().replace(/[013457@$!]/g, (c) => FOLD[c] ?? c).replace(/(.)\1{2,}/g, "$1$1");
 // Stems matched at word start; kept short and blunt on purpose. Woodworking words that contain them are allowed below.
-const BAD = ["fuck", "shit", "cunt", "bitch", "whore", "slut", "nigg", "fag", "retard", "rape", "nazi", "kike", "spic", "chink", "tranny", "dick", "cock", "pussy", "porn", "penis", "vagina", "dildo", "kill", "suicide", "bomb", "gun rack for killing"];
-const ALLOW = ["cocktail", "cockpit", "spice", "spicer", "dickens", "skill", "kiln", "bombe", "shitake"];
+const BAD = ["fuck", "shit", "cunt", "bitch", "whore", "slut", "nigger", "nigga", "fag", "retard", "retarded", "rape", "nazi", "kike", "spic", "chink", "tranny", "dick", "cock", "pussy", "porn", "penis", "vagina", "dildo", "kill", "suicide", "bomb", "gun rack for killing"];
 
 export function isOffensive(text: string): boolean {
   // "f.u.c.k" / "f u c k": runs of single letters are joined into one word too.
   const raw = fold(text).split(/[^a-z]+/).filter(Boolean);
   const words = [...raw, ...fold(text).split(/\s{2,}|(?<=[a-z]{2})\s|\s(?=[a-z]{2})/).map((g) => g.replace(/[^a-z]/g, "")).filter(Boolean)];
-  return words.some((w) => !ALLOW.some((a) => w.startsWith(a)) && BAD.some((b) => !b.includes(" ") && w.startsWith(b)));
+  // F33: whole words only ("cockatoo", "dickens" pass), plus simple inflections of a stem.
+  return words.some((w) => BAD.some((b) => !b.includes(" ") && new RegExp(`^${b}(?:s|es|ed|er|ers|ing|y)?$`).test(w)));
 }
 
 /** What may be stored and shown: sanitised text, or null (never stored, never shown). */

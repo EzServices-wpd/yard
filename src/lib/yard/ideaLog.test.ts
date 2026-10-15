@@ -38,6 +38,19 @@ test("R10 strips emails, phones, addresses, URLs and handles (drops the prompt)"
     assert.equal(stripPii(ok), ok, ok);
 });
 
+test("F33 standalone 5-digit numbers (ZIP codes) are dropped; sizes and 4-digit years are kept", () => {
+  for (const bad of ["planter 90210", "90210 planter", "bench for 10001-1234", "shelf in zip 02139"]) assert.equal(safePrompt(bad), null, bad);
+  for (const ok of ["planter 24 x 12 x 10", "bookshelf 1950s style", "desk 2026", "shelf 36 1/2 wide", "box 12.5 x 10"]) assert.equal(safePrompt(ok), ok, ok);
+});
+
+test("F33 offensive filter matches whole words: cockatoo, Dickens, Scunthorpe, skill, cocktail pass", () => {
+  for (const ok of ["cockatoo perch", "Dickens bookshelf", "Scunthorpe bench", "skill saw table", "cocktail cabinet", "spice rack", "kiln shelf", "shitake log rack", "bass guitar stand", "sussex chicken coop"]) {
+    assert.equal(isOffensive(ok), false, ok);
+    assert.equal(safePrompt(ok), ok, ok);
+  }
+  for (const bad of ["shits box", "fucking shelf", "cocks rack"]) assert.ok(isOffensive(bad), bad);
+});
+
 test("R11 offensive filter folds leetspeak and keeps woodworking words", () => {
   for (const bad of ["fuck shelf", "sh1t box", "f.u.c.k bench", "N4zi stand", "b!tch rack"]) assert.ok(isOffensive(bad) || safePrompt(bad) === null, bad);
   for (const ok of ["cocktail cabinet", "spice rack", "skill saw bench", "cockpit desk", "kiln shelf"]) assert.equal(isOffensive(ok), false, ok);
