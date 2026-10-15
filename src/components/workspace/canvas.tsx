@@ -484,8 +484,14 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
   useEffect(() => {
     if (!order || stepping || played.current === project.id) return;
     played.current = project.id;
-    if (!readyAt.current || readyAt.current.id !== project.id || performance.now() - readyAt.current.t > 600 || document.hidden) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const host0 = document.querySelector("[data-bench-host]");
+    const skip = (why: string) => host0?.setAttribute("data-yard-reveal", `skip:${why}`);
+    // Late start: fine while the Building overlay is still up or fading over the bench (the model
+    // has not been seen yet); otherwise only within 600ms of the model landing.
+    const overlayUp = !!document.querySelector(".yard-lamp");
+    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 600)) return skip("late");
+    if (document.hidden) return skip("hidden");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return skip("reduced-motion");
     const per = Math.max(220, Math.min(420, 2600 / order.n));
     // The bench host carries the current beat (data-yard-reveal="k/n" + that beat's part names) so
     // the order can be checked from outside the WebGL canvas.
@@ -501,7 +507,8 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     // stretches the beats that follow (time-based, not frame counts).
     setShown(-1);
     mark(-1);
-    const t0 = performance.now() + LAMP_FADE_MS;
+    // Beat 1 lands as the overlay finishes fading (it began fading when the model became ready).
+    const t0 = Math.max(performance.now(), readyAt.current.t + LAMP_FADE_MS);
     let k = -1;
     let timer = 0;
     const tick = () => {
