@@ -112,6 +112,9 @@ export function stepTones(
   if (!hot.length) hot = sp.ids.filter((id) => tones.has(id));
   for (const id of hot) tones.set(id, "hot");
   if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
+  // F12 cutaway (any build): a thin panel nearer the camera that covers a hot part's centre is cut away,
+  // so a part inside a box (a roost, a nest, a shelf behind a side) is seen, not hidden behind the wall.
+  for (const id of cutaway(project, hot, [...tones.keys()])) tones.delete(id);
   return { kind, tones, cutLines: [], measures: placements[stepIndex]?.arrows };
 }
 
@@ -202,4 +205,46 @@ export function pictureFramed(
     stats.maxX <= frame.x + frame.w + margin &&
     stats.maxY <= frame.y + frame.h + margin;
   return { ok: inside && fill >= minFill && stats.ops >= 2, fill, ops: stats.ops };
+}
+
+/** Iso camera looks down (1,1,1): screen = ((x−z)·cos30, −y + (x+z)·sin30); larger x+y+z is nearer. */
+const C30 = Math.cos(Math.PI / 6), S30 = 0.5;
+type P2 = { x: number; y: number };
+const scr = (x: number, y: number, z: number): P2 => ({ x: (x - z) * C30, y: -y + (x + z) * S30 });
+function corners(p: Panel): { pts: P2[]; c: P2; depth: number } {
+  const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+  const pts: P2[] = [];
+  for (const a of [0, w]) for (const b of [0, h]) for (const e of [0, d]) pts.push(scr(x + a, y + b, z + e));
+  return { pts, c: scr(x + w / 2, y + h / 2, z + d / 2), depth: x + w / 2 + y + h / 2 + z + d / 2 };
+}
+function hull(pts: P2[]): P2[] {
+  const s = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: P2, a: P2, b: P2) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lo: P2[] = [], up: P2[] = [];
+  for (const p of s) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of [...s].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
+}
+function insideHull(h: P2[], q: P2): boolean {
+  if (h.length < 3) return false;
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length];
+    if ((b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x) < -1e-6) return false;
+  }
+  return true;
+}
+export function cutaway(project: YardProject, hot: string[], drawn: string[]): string[] {
+  const hotSet = new Set(hot);
+  const hp = project.panels.filter((p) => hotSet.has(p.id) && !p.polygon);
+  if (!hp.length) return [];
+  const out: string[] = [];
+  for (const q of project.panels) {
+    if (hotSet.has(q.id) || !drawn.includes(q.id) || q.polygon) continue;
+    if (Math.min(q.size.width, q.size.height, q.size.depth) > 1) continue; // only sheet walls and roofs, never legs or frames
+    const Q = corners(q);
+    const H = hull(Q.pts);
+    if (hp.every((p) => { const P = corners(p); return !(Q.depth > P.depth + 0.5 && insideHull(H, P.c)); })) continue;
+    out.push(q.id);
+  }
+  return out;
 }

@@ -191,6 +191,7 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   for (const [n, x, z] of [[1, 0, 0], [2, W - L, 0], [3, 0, D - L], [4, W - L, D - L]] as const) {
     legs.push(panel({ type: "upright", name: `Leg ${n}`, position: { x: r8(x), y: 0, z: r8(z) }, size: { width: L, height: r8(H - T), depth: L }, materialId: legMat, cutNote: outdoor ? "Ground-contact pressure-treated 4×4 from the ground to the roof; the floor frame screws between the legs." : "2×2 from the base to the roof; the sides, back and floor screw to it." }));
   }
+  if (outdoor) for (const l of legs) l.structural = true;
   panels.push(...legs);
   if (outdoor) {
     // Floor frame: 2×4 on edge, its top at the floor's underside. Front and back rims run between the legs;
@@ -203,6 +204,7 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
       panel({ type: "rail", name: "Floor rim right", position: { x: r8(W - 1.5), y: fy, z: L }, size: { width: 1.5, height: 3.5, depth: r8(D - 2 * L) }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge between the right legs." }),
       panel({ type: "rail", name: "Floor joist", position: { x: r8(W / 2 - 0.75), y: fy, z: 1.5 }, size: { width: 1.5, height: 3.5, depth: r8(D - 3) }, materialId: "lumber-2x4-8", cutNote: "Pressure-treated 2×4 on edge across the middle, front rim to back rim, so no floor span is over 24\"." }),
     );
+    for (const q of panels) if (/^Floor (rim|joist)/.test(q.name)) q.structural = true;
   }
   const notch = legs.map((l) => ({ with: l.id, kind: "notch" as const }));
   const back = panel({ type: "back", name: "Back", position: { x: L, y: y0, z: r8(D - T) }, size: { width: r8(W - 2 * L), height: inH, depth: T }, materialId: mat });
@@ -221,8 +223,9 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   roof.hinged = { to: back.id, edge: "back", hinges: 2 };
   const meshH = r8(inH - 3.5 - 2.5);
   const nest = 12;
-  const nestY = r8(y0 + 24);
-  const roostY = r8(Math.min(nestY + nest + T + 6, H - T - 2.5 - 10));
+  // Nest 18–20" off the floor; roost 24–30" and higher than the nest (Penn State / heavy-bird range).
+  const nestY = r8(y0 + 18);
+  const roostY = r8(Math.max(y0 + 24, Math.min(y0 + 27, H - T - 2.5 - 10)));
   const roostZ = 4;
   if (coop) {
     const door = panel({ type: "side", name: "Pop door", position: { x: r8(L + 0.0625), y: r8(y0 + 3.5 + 0.0625), z: 0 }, size: { width: r8(12 - 0.125), height: r8(Math.min(16, meshH) - 0.125), depth: T }, materialId: mat, cutNote: "Hung on two hinges from the stile with a 1/16\" gap all round; a barrel bolt keeps raccoons out at night." });
@@ -248,14 +251,17 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   const who = tiny ? (lower.match(/hamster|gerbil|guinea pig|ferret|chinchilla|rat|mice|tortoise/)?.[0] ?? "small animal") : fowl ? "chicken" : /rabbit|bunn/.test(lower) ? "rabbit" : whoFor(lower);
   const head = lower.match(/hutch|cage|coop|enclosure|house|home|cabinet|cupboard|crate|condo/)?.[0] ?? "hutch";
   const name = `${who[0].toUpperCase()}${who.slice(1)} ${head}`;
-  const hinges = coop ? "four" : "two";
+  const hinges = outdoor ? (coop ? "four" : "two") : (coop ? "four" : "two");
   const notes = [
     `${ENCLOSURE_NOTE} ${outdoor ? "outdoor" : "indoor"}${coop ? " coop" : ""}.`,
     `${name}: a raised enclosure on four ${outdoor ? "ground-contact pressure-treated 4×4" : "2×2"} legs with the floor ${inchFrac(leg)}" off the ground${outdoor ? " on a pressure-treated 2×4 floor frame (rim on all four sides and a middle joist)" : ""}; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
+    ...(outdoor ? [`Floor frame joints take 3" structural screws, three at each rim-to-leg joint.`] : []),
     `Front: staple ½" galvanized hardware cloth, ${inchFrac(meshW)}" × ${inchFrac(meshH)}", across the opening between the rails, into the legs and the side edges, with the cut edges folded under so they stay smooth.`,
-    `Hinge the roof to the top edge of the back${coop ? ", and the pop door to its stile," : ""} with ${hinges} 2" galvanized butt hinges in all; the roof lifts for feeding and cleaning and takes no screws.${coop ? " Close the pop door with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
+    outdoor
+      ? `Hinge the roof to the top edge of the back with two 3–4" galvanized T-hinges and fit a lid stay (or a short chain) so it stays open and closes gently; the only screws in the roof are the hinge screws.${coop ? " Hang the pop door on its stile with two 2\" galvanized butt hinges and close it with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`
+      : `Hinge the roof to the top edge of the back${coop ? ", and the pop door to its stile," : ""} with ${hinges} 2" butt hinges in all; the roof lifts for feeding and cleaning and takes no screws.${coop ? " Close the pop door with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
     ...(outdoor ? [`Cover the roof with 1 roll of mineral-surfaced roll roofing, lapped over the edges and fixed with galvanized roofing nails.`] : []),
-    ...(coop ? [`Inside: a ${nest}" nest box raised 24" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
+    ...(coop ? [`Inside: a ${nest}" nest box raised 18" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
     species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails.` : outdoor ? `¾" exterior plywood for the floor, roof, back, sides and rails; pressure-treated 4×4 legs and a 2×4 floor frame.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
   ];
   if (tw == null) notes.push(`Assumed ${inchFrac(W)}" wide — type a width to lock it.`);
@@ -272,19 +278,20 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
   const names = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).map((p) => p.name);
   const has = (re: RegExp) => names(re).length > 0;
   const o = project.overall;
-  const fix = outdoor ? "#8 × 1 1/4\" exterior screws" : "#8 × 1 1/4\" screws";
+  const fix = outdoor ? "#8 × 2 1/2\" exterior screws" : "#8 × 1 1/4\" screws";
+  const frameFix = outdoor ? '3" exterior structural screws (or 3/8" × 4" galvanized carriage bolts with a nut and washer)' : fix;
   const steps: Omit<AssemblyStep, "step">[] = [
     { title: "Confirm the footprint — do not cut yet", description: `${project.name}. ${inchFrac(o.width)}" wide × ${inchFrac(o.depth)}" deep × ${inchFrac(o.height)}" high. Freestanding on four legs. ${outdoor ? "Pick a level, well-drained spot; the legs stand on the ground." : "Set it on a level floor."}`, partsUsed: ["*"] },
     { title: "Cut every part to its mark", description: "Square every cut. Cut the floor's corner notches before it goes on. Sand the edges the animals touch.", partsUsed: ["*"] },
     outdoor
-      ? { title: "Stand the legs and screw the floor frame between them", description: `Stand the 4 legs at the corners. Screw the front and back rims to the legs with 3 screws at each end, then fit the two side rims and the middle joist between the rims, all tops level at the floor's underside. ${fix} at every frame joint.`, partsUsed: [...names(/^Leg /), ...names(/^Floor (rim|joist)/)] }
+      ? { title: "Stand the legs and screw the floor frame between them", description: `Stand the 4 legs at the corners. Fasten the front and back rims to the legs with three ${frameFix} at each end, then fit the two side rims and the middle joist between the rims, all tops level at the floor's underside. Use ${frameFix} at every frame joint. No #8 screws in the frame: they are too short through a 1 1/2" rim into a 4×4.`, partsUsed: [...names(/^Leg /), ...names(/^Floor (rim|joist)/)] }
       : { title: "Stand the 4 legs", description: "Stand the 4 legs at the corners, square to each other.", partsUsed: names(/^Leg /) },
     { title: outdoor ? "Lay the floor on the frame" : "Fit the floor between the legs", description: `Set the floor${outdoor ? " on the rims and the joist" : ""}, its notched corners around the legs. Screw it down${outdoor ? " into the frame every 8\"" : " to each leg"} with ${fix}.`, partsUsed: ["Floor"] },
     { title: "Stand the sides and the back on the floor", description: `Stand the left and right sides and the back on the floor, screwed to the legs and down through the floor, with ${fix}.`, partsUsed: [...names(/^(Left|Right) side$/), "Back"] },
   ];
   const cleats = names(/cleat/);
   if (cleats.length) steps.push({ title: "Screw the cleats to the sides and back", description: `Screw the ${cleats.map((c) => c.toLowerCase()).join(", ")} to the inside faces, tops level at their marks, with ${fix}. Nothing rests on them yet.`, partsUsed: cleats });
-  if (has(/^Nest box/)) steps.push({ title: "Build the raised nest box on its cleats", description: `Set the nest bottom on the two nest cleats, 24" up off the floor. Stand the nest side on it, screw the lip across the front, and set the top on the side and the right wall. ${fix}.`, partsUsed: names(/^Nest box/) });
+  if (has(/^Nest box/)) steps.push({ title: "Build the raised nest box on its cleats", description: `Set the nest bottom on the two nest cleats, 18" up off the floor. Stand the nest side on it, screw the lip across the front, and set the top on the side and the right wall. ${fix}.`, partsUsed: names(/^Nest box/) });
   if (has(/^Roost$/)) steps.push({ title: "Set the roost on both cleats", description: `Lay the 2×4 roost flat, 3 1/2" face up, with one end on each roost cleat. Screw down through it into each cleat with ${fix}.`, partsUsed: ["Roost"] });
   steps.push({ title: has(/^Door stile$/) ? "Fit the front rails and the door stile" : "Fit the front rails", description: `Screw the front bottom rail and the front top rail between the front legs${has(/^Door stile$/) ? ", then the door stile between the two rails" : ""}, with ${fix}.`, partsUsed: [...names(/^Front (bottom|top) rail$/), ...names(/^Door stile$/)] });
   steps.push({ title: "Staple the hardware cloth and drill the vents", description: `Staple ½" galvanized hardware cloth across the front opening between the rails${has(/^Door stile$/) ? " and the stile" : ""}, every 2", the cut edges folded under. Drill a few ½" vent holes high in each side and staple a patch of hardware cloth over them inside.`, partsUsed: [] });
@@ -292,7 +299,9 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
     const to = project.panels.find((x) => x.id === p.hinged!.to)?.name.toLowerCase() ?? "its frame";
     steps.push({
       title: `Hang the ${p.name.toLowerCase()} on ${p.hinged!.hinges} hinges`,
-      description: `Set the ${p.name.toLowerCase()} in place and screw ${p.hinged!.hinges} 2" galvanized butt hinges along its ${p.hinged!.edge} edge to the ${to}. No screws go through the ${p.name.toLowerCase()} into anything else, so it opens.${p.hinged!.latch ? ` Fit the ${p.hinged!.latch} on its free edge so it locks shut.` : ""}${/^Roof$/.test(p.name) && outdoor ? " Then cover the roof with the roll roofing, lapped over the edges, fixed with galvanized roofing nails." : ""}`,
+      description: /^Roof$/.test(p.name) && outdoor
+        ? `Set the roof in place and screw two 3–4" galvanized T-hinges along its back edge to the back. Fit a lid stay (or a short chain) so the roof can\'t slam shut. No screws go through the roof into anything else, so it opens. Then cover the roof with the roll roofing, lapped over the edges, fixed with galvanized roofing nails.`
+        : `Set the ${p.name.toLowerCase()} in place and screw ${p.hinged!.hinges} 2" galvanized butt hinges along its ${p.hinged!.edge} edge to the ${to}. No screws go through the ${p.name.toLowerCase()} into anything else, so it opens.${p.hinged!.latch ? ` Fit the ${p.hinged!.latch} on its free edge so it locks shut.` : ""}`,
       partsUsed: [p.name],
     });
   }

@@ -60,7 +60,7 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       if (g < -tol && !declared && g < -0.8) continue;
       // A moving joint is a clearance fit on its pin, never screwed shut.
       // A frame-and-panel door is glued up on its own, its panel floating in a groove: no screws inside the leaf.
-      if (!!parts[i].turns !== !!parts[j].turns || (parts[i].turns && /^dowel-/.test(parts[i].materialId + parts[j].materialId)) || (parts[i].leaf && parts[i].leaf?.id === parts[j].leaf?.id) || noScrew(parts[i], parts[j]) || parts[i].hinged || parts[j].hinged) continue;
+      if (!!parts[i].turns !== !!parts[j].turns || (parts[i].turns && /^dowel-/.test(parts[i].materialId + parts[j].materialId)) || (parts[i].leaf && parts[i].leaf?.id === parts[j].leaf?.id) || noScrew(parts[i], parts[j]) || parts[i].hinged || parts[j].hinged || (parts[i].structural && parts[j].structural)) continue;
       const [l1, l2] = others.sort((x, y) => y - x);
       // Boards laid side by side (or stacked) in one plane, touching along their full length, are not
       // fastened to each other — each one fastens to what it rests on. Ends and short edges still join.

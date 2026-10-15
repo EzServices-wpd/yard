@@ -173,6 +173,8 @@ export type Panel = {
   /** Turns or rides on a pin (wheel, lid, arm): its joints take no screws, it is bored 1/16" over its pin. */
   turns?: boolean;
   /** Hangs on hinges from another part (a lid, a roof, a door): it takes no screws, and a step hangs it. */
+  /** Frame member joined with structural screws or bolts (counted on Buy from the notes, not as #8 screws). */
+  structural?: boolean;
   hinged?: { to: string; edge: "top" | "bottom" | "left" | "right" | "back" | "front"; hinges: number; latch?: string };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;

@@ -1444,6 +1444,15 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
     });
   }
+  // Heavy lids (an outdoor roof under roofing) hang on T-hinges with a stay; frame joints take structural screws.
+  const tees = notes.match(/\b(two|three|four) 3–4" galvanized T-hinges\b/);
+  if (tees && !/t-hinge/i.test(have)) {
+    const n = { two: 2, three: 3, four: 4 }[tees[1] as "two" | "three" | "four"];
+    extra.push({ name: '4" galvanized T-hinges', quantity: n, unit: "each", searchQuery: "4 inch galvanized t hinge", estimatedCost: Math.round(6.48 * n * 100) / 100, notes: "Along the roof's back edge; strap on the roof, leaf on the back. Estimate." });
+  }
+  if (/\bfit a lid stay\b/i.test(notes) && !/lid stay/i.test(have)) {
+    extra.push({ name: "Lid stay (soft-close or folding)", quantity: 1, unit: "each", searchQuery: "lid support stay hinge", estimatedCost: 8.98, notes: "Holds the roof open and stops it slamming. Estimate." });
+  }
   const butts = notes.match(/\b(two|four) 2" (galvanized )?butt hinges\b/);
   if (butts && !/butt hinge/i.test(have)) {
     const n = butts[1] === "four" ? 4 : 2;
