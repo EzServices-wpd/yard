@@ -43,6 +43,8 @@ import { holdWalkKey } from "@/components/workspace/walk-rig";
 export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: string; shareToken?: string }) {
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
+  // The span/spine offer: dismissible per build; on a phone it lives in the Edit sheet, never over the model.
+  const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -215,6 +217,30 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         }
       : null;
 
+  const showOffer = !!project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && offerDismissed !== project.id;
+  const offerButtons = (
+    <>
+      <button
+        type="button"
+        className="shrink-0 rounded-sm bg-accent px-2 py-1 font-medium text-accent-fg"
+        onClick={() => {
+          if (project.supportOffer?.kind === "span") {
+            commit(withSupports(project));
+            makePlan();
+            return;
+          }
+          generate(project.prompt, project.primaryMaterialId, undefined, { includeSpine: true });
+          makePlan();
+          revealBench();
+        }}
+      >
+        {project.supportOffer?.kind === "span" ? "Add support" : "Add spine"}
+      </button>
+      <button type="button" aria-label="Dismiss" data-yard-offer-dismiss="1" className="shrink-0 rounded-sm px-1.5 py-1 text-muted hover:text-fg" onClick={() => setOfferDismissed(project.id)}>
+        ✕
+      </button>
+    </>
+  );
   return (
     <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-2 sm:h-14 sm:px-4">
@@ -365,30 +391,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
           {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
-          {project.supportOffer?.needed && !project.supportOffer.included && !activeStep && !pending && (
+          {showOffer && (
             <div
               data-bench-overlay="offer"
-              className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg ${
+              className={`absolute left-1/2 z-20 flex max-w-md -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-xs text-fg shadow-lg max-md:hidden ${
                 grokBusy ? "top-14" : "top-4"
               }`}
             >
-              <span className="min-w-0 leading-snug">{project.supportOffer.reason}</span>
-              <button
-                type="button"
-                className="shrink-0 rounded-sm bg-accent px-2 py-1 font-medium text-accent-fg"
-                onClick={() => {
-                  if (project.supportOffer?.kind === "span") {
-                    commit(withSupports(project));
-                    makePlan();
-                    return;
-                  }
-                  generate(project.prompt, project.primaryMaterialId, undefined, { includeSpine: true });
-                  makePlan();
-                  revealBench();
-                }}
-              >
-                {project.supportOffer?.kind === "span" ? "Add support" : "Add spine"}
-              </button>
+              <span className="min-w-0 leading-snug">{project.supportOffer!.reason}</span>
+              {offerButtons}
             </div>
           )}
           {activeStep != null && steps.length > 0 && (
@@ -505,7 +516,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <DockFrame className="pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <DockFrame className="yard-glass pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -537,6 +548,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
                   bare
                 />
+              )}
+              {showOffer && (
+                <div data-bench-overlay="offer-sheet" className="flex items-center gap-2 border-b border-border/60 px-3 py-2 text-xs text-fg md:hidden">
+                  <span className="line-clamp-3 min-w-0 flex-1 leading-snug">{project.supportOffer!.reason}</span>
+                  {offerButtons}
+                </div>
               )}
               {!pending && workMode !== "walk" && !project.displayOnly && <RefineBox />}
               {!pending && workMode !== "walk" && <BuildInfoPanel />}
