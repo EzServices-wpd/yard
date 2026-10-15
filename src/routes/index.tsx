@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { MakingNow } from "@/components/ideas/MakingNow";
+import { useOffscreen } from "@/hooks/use-offscreen";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
@@ -287,7 +288,7 @@ function LandingPage() {
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
           <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <ShowcaseGrid>
             {PIECES.map((h) => (
               <button
                 key={h.id}
@@ -301,7 +302,7 @@ function LandingPage() {
                       role="img"
                       aria-label={`Yard drawing of the ${h.label} ${h.size}`}
                       data-yard-showcase={h.id}
-                      className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                      className="yard-alive h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
@@ -321,7 +322,7 @@ function LandingPage() {
                 </div>
               </button>
             ))}
-          </div>
+          </ShowcaseGrid>
         </section>
 
         <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
@@ -361,6 +362,16 @@ function LandingPage() {
         ) : null}
       </main>
       <SiteFooter active="home" />
+    </div>
+  );
+}
+
+/** Home sample models idle (slow turn and bob); the motion pauses while the grid is off screen. */
+function ShowcaseGrid({ children }: { children: ReactNode }) {
+  const [ref, off] = useOffscreen<HTMLDivElement>("100px");
+  return (
+    <div ref={ref} data-offscreen={off || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
+      {children}
     </div>
   );
 }

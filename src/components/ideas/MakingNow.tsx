@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { safePrompt, type SnapshotRow } from "@/lib/yard/ideaLog";
 import { loadSnapshot } from "@/lib/yard/ideaLogClient";
+import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
  * "People are making right now" (R10–R12). Loads the CDN snapshot at idle, no engine import.
@@ -10,6 +11,7 @@ import { loadSnapshot } from "@/lib/yard/ideaLogClient";
  */
 export function MakingNow() {
   const [rows, setRows] = useState<SnapshotRow[]>([]);
+  const [ref, off] = useOffscreen<HTMLDivElement>();
   useEffect(() => {
     let live = true;
     const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt).slice(0, 12)));
@@ -20,7 +22,7 @@ export function MakingNow() {
     };
   }, []);
   return (
-    <div className="yard-making-now mx-auto mt-8 h-9 max-w-3xl overflow-hidden text-sm text-ink-muted" data-yard-making-now aria-live="off">
+    <div ref={ref} data-offscreen={off || undefined} className="yard-making-now mx-auto mt-8 h-9 max-w-3xl overflow-hidden text-sm text-ink-muted" data-yard-making-now aria-live="off">
       {rows.length ? (
         <div className="flex items-center gap-3 whitespace-nowrap">
           <span className="shrink-0 font-medium text-ink">People are making right now:</span>

@@ -10,7 +10,7 @@ import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/gho
 import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
-import type { DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
+import type { AssemblyStep, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
@@ -266,6 +266,8 @@ export function WorkspaceCanvas() {
           detail={detail}
           joinMethod={project.joinMethod}
           useShadows={useShadows}
+          steps={plan?.instructions}
+          stepping={activeStep != null}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls
@@ -456,9 +458,54 @@ function useAssemble(ready: boolean): number {
   return k;
 }
 
+/**
+ * Build animation: once a fresh build lands, its real parts appear step by step in plan order
+ * (first step that lists a part places it; unlisted parts land with the last step). Visibility only,
+ * no new geometry, so it costs nothing per frame. ~2s total; skipped under reduced motion,
+ * when a step is open, or when the plan has no steps that name parts.
+ */
+function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, ready: boolean, stepping: boolean): Set<string> | null {
+  const order = useMemo(() => {
+    if (!ready || !steps?.length) return null;
+    const at = new Map<string, number>();
+    let n = 0;
+    for (const st of steps) {
+      const ids = stepInstanceIds(project, st).filter((id) => !at.has(id));
+      if (!ids.length) continue;
+      for (const id of ids) at.set(id, n);
+      n++;
+    }
+    return n >= 2 ? { at, n } : null;
+  }, [project, steps, ready]);
+  const [shown, setShown] = useState<number>(Infinity);
+  const played = useRef<string | null>(null);
+  useEffect(() => {
+    if (!order || stepping || played.current === project.id) return;
+    played.current = project.id;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const per = Math.max(140, Math.min(380, 2000 / order.n));
+    setShown(0);
+    let k = 0;
+    const id = window.setInterval(() => {
+      k++;
+      if (k >= order.n) {
+        window.clearInterval(id);
+        setShown(Infinity);
+      } else setShown(k);
+    }, per);
+    return () => { window.clearInterval(id); setShown(Infinity); };
+  }, [order, stepping, project.id]);
+  if (!order || shown === Infinity || stepping) return null;
+  const vis = new Set<string>();
+  for (const [id, i] of order.at) if (i <= shown) vis.add(id);
+  return vis;
+}
+
 function BenchScene({
-  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows,
+  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows, steps, stepping = false,
 }: {
+  steps?: AssemblyStep[];
+  stepping?: boolean;
   project: YardProject;
   explode: boolean;
   facesOpen: boolean;
@@ -481,6 +528,7 @@ function BenchScene({
 }) {
   const assemble = useAssemble(project.panels.length > 0 && !pending);
   const explodeScale = explode ? 1.35 : assemble;
+  const reveal = useStepReveal(project, steps, project.panels.length + project.instances.length > 0 && !pending, stepping);
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;
@@ -492,6 +540,7 @@ function BenchScene({
       : detail === "full"
         ? project.instances.filter((i) => !isSkinRole(i.role))
         : project.instances;
+  const shownMembers = useMemo(() => (reveal ? members.filter((i) => reveal.has(i.id)) : members), [members, reveal]);
   const showPinHoles = useMemo(
     () => project.panels.some((p) => p.type === "shelf"),
     [project.panels],
@@ -504,7 +553,7 @@ function BenchScene({
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
         <StickCloud
-          instances={members}
+          instances={shownMembers}
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
@@ -520,7 +569,7 @@ function BenchScene({
       )}
       {!pending &&
         project.panels
-          .filter((panel) => detail !== "frame" || panel.type !== "deck")
+          .filter((panel) => (detail !== "frame" || panel.type !== "deck") && (!reveal || reveal.has(panel.id)))
           .map((panel) => (
             <PanelMesh
               key={panel.id}
@@ -535,7 +584,7 @@ function BenchScene({
               showPinHoles={showPinHoles}
             />
           ))}
-      {!pending && project.panels.length > 0 && (
+      {!pending && !reveal && project.panels.length > 0 && (
         <CarcaseJoins panels={project.panels} explode={explodeScale} />
       )}
       {workMode === "free" && (
