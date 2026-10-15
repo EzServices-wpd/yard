@@ -59,6 +59,10 @@ function wallHung(project: YardProject): boolean {
   return project.assumptions?.installMode === "wall";
 }
 
+/** Ground-contact pressure-treated legs (a coop, a hutch) stand on the ground as they are: no glides. */
+function groundContactLegs(project: YardProject): boolean {
+  return (project.notes ?? []).some((n) => /ground-contact pressure-treated/i.test(n));
+}
 /** Set in the ground or hung from posts there: concrete, pier blocks, ground anchors. Nothing stands on feet. */
 function fixedInGround(project: YardProject): boolean {
   return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bpavers?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
@@ -73,7 +77,7 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
     soil ? n.replace(/\s*Drainage holes optional\.?/i, "").replace(/\s*Guidance only — set level outdoors\.?$/i, " Guidance only — set it level.") : n,
   );
   notes = notes.filter((n) => n.trim());
-  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) || (!wallHung(project) && !footTalk(project).feet) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
+  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) || groundContactLegs(project) || (!wallHung(project) && !footTalk(project).feet) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
   if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
@@ -114,6 +118,13 @@ function exteriorTalk(t: string | undefined): string | undefined {
 const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
   "lumber-2x4-8": { name: "2×4 pressure-treated (8 ft)", price: 4.88, query: "2x4x8 pressure treated lumber", title: "2x4x8 #2 Prime ground contact pressure-treated pine" },
   "lumber-2x6-8": { name: "2×6 pressure-treated (8 ft)", price: 5.98, query: "2x6x8 pressure treated lumber", href: "https://www.homedepot.com/p/2-in-x-6-in-x-8-ft-2-Pressure-Treated-Lumber-2310254/329737526", title: "2x6x8 #2 pressure-treated lumber" },
+  // 1× trim (rails, stiles, battens) comes treated too, so no indoor board is left in an outdoor build. Estimates.
+  "lumber-1x2-8": { name: "1×2 pressure-treated (8 ft)", price: 2.98, query: "1x2x8 pressure treated furring", title: "1x2x8 pressure-treated furring strip (estimate)" },
+  "lumber-1x3-8": { name: "1×3 pressure-treated (8 ft)", price: 3.48, query: "1x3x8 pressure treated board", title: "1x3x8 pressure-treated board (estimate)" },
+  "lumber-1x4-8": { name: "1×4 pressure-treated (8 ft)", price: 4.37, query: "1x4x8 pressure treated board", title: "1x4x8 pressure-treated board (estimate)" },
+  "lumber-1x6-8": { name: "1×6 pressure-treated (8 ft)", price: 6.48, query: "1x6x8 pressure treated board", title: "1x6x8 pressure-treated board (estimate)" },
+  "lumber-4x4-8": { name: "4×4 pressure-treated (8 ft), ground contact", price: 12.98, query: "4x4x8 pressure treated ground contact", title: "4x4x8 #2 ground-contact pressure-treated pine (estimate)" },
+  "plywood-3-4-4x8": { name: "3/4\" exterior plywood 4×8 (pressure-treated / CDX)", price: 64.98, query: "3/4 pressure treated plywood 4x8", title: "23/32 in. x 4 ft. x 8 ft. pressure-treated plywood (estimate)" },
   "lumber-2x8-8": { name: "2×8 pressure-treated (8 ft)", price: 12.88, query: "2x8x8 pressure treated lumber", title: "2x8x8 #2 Prime ground contact pressure-treated pine" },
 };
 
@@ -211,7 +222,9 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
       estimatedCost: 18.98,
       notes: `Three coats on every face. Flood ${feet.where} and every other cut end until they stop soaking it in.`,
     });
-    if (!wall && feet.feet) {
+    // Ground-contact pressure-treated legs stand on the ground as they are: no furniture glides under a coop or hutch.
+    const groundContact = groundContactLegs(project);
+    if (!wall && feet.feet && !groundContact) {
       const packs = Math.max(1, Math.ceil(feet.count / 8));
       bom.push({
         name: "Outdoor furniture glides (nylon, nail-in)",
@@ -240,13 +253,13 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     }
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
-      title: wall || !feet.feet ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
+      title: wall || !feet.feet || groundContact ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
       description:
         `Sand to 180 grit and wipe off the dust. Seal the end grain first: brush finish onto ${feet.where} and every other cut end, ` +
         "let it soak in, and add coats until the end grain stops drinking — end grain wicks water up into the wood. " +
         "Then brush three coats of exterior finish (spar urethane or exterior oil) on every face, inside and out, with a light sand between coats." +
         // Glides only when the Buy list has them: real feet, never a base or skid.
-        (wall || !feet.feet ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
+        (wall || !feet.feet || groundContact ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
       tips: bom.some((b) => b.catalogId === "outdoor-screws")
         ? "Titebond III and exterior-coated or stainless screws are on the Buy list for every joint. Refresh the finish each spring."
         : "Titebond III is on the Buy list for every joint. Refresh the finish each spring.",

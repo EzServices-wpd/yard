@@ -213,9 +213,16 @@ export function cutListName(name: string, type?: string): string {
   if (type === "top") {
     if (/^seat$/i.test(name.trim())) return "Seat";
     if (/^lid$/i.test(name.trim())) return "Lid";
+    if (/^roof$/i.test(name.trim())) return "Roof"; // enclosure class: roof ≠ nest top (F12)
+    if (/nest/i.test(name)) return "Nest box top";
     return "Top";
   }
-  if (type === "bottom") return /boot tray/i.test(name) ? "Boot tray" : "Bottom";
+  if (type === "bottom") {
+    if (/boot tray/i.test(name)) return "Boot tray";
+    if (/nest/i.test(name)) return "Nest box bottom";
+    if (/^floor$/i.test(name.trim())) return "Floor";
+    return "Bottom";
+  }
   if (type === "back") return "Back";
   if (type === "door") return "Door";
   if (type === "rail") {
