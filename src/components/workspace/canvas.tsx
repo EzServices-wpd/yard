@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -14,6 +14,7 @@ import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
+import { LAMP_FADE_MS } from "@/components/workspace/lava-lamp";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -240,7 +241,10 @@ export function WorkspaceCanvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
+        {/* The HDR preset loads async and suspends; its own boundary keeps that from suspending (hiding) the whole workspace (F43). */}
+        <Suspense fallback={null}>
+          <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
+        </Suspense>
         <StudioLights project={project} useShadows={useShadows} />
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
@@ -489,21 +493,29 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
     const mark = (k: number) => {
       if (!host) return;
-      host.setAttribute("data-yard-reveal", k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
-      host.setAttribute("data-yard-reveal-parts", k >= order.n ? "" : [...order.at].filter(([, g]) => g === k).map(([pid]) => names.get(pid) ?? pid).join(", "));
+      host.setAttribute("data-yard-reveal", k < 0 ? `wait/${order.n}` : k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
+      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : [...order.at].filter(([, g]) => g === k).map(([pid]) => names.get(pid) ?? pid).join(", "));
     };
-    setShown(0);
-    mark(0);
-    let k = 0;
-    const id = window.setInterval(() => {
+    // Hold the bench empty while the Building overlay fades (LAMP_FADE_MS), then one beat per `per`
+    // ms on a wall-clock schedule: beat k is due at t0 + k·per, so a slow frame never bunches or
+    // stretches the beats that follow (time-based, not frame counts).
+    setShown(-1);
+    mark(-1);
+    const t0 = performance.now() + LAMP_FADE_MS;
+    let k = -1;
+    let timer = 0;
+    const tick = () => {
       k++;
       mark(k);
       if (k >= order.n) {
-        window.clearInterval(id);
         setShown(Infinity);
-      } else setShown(k);
-    }, per);
-    return () => { window.clearInterval(id); setShown(Infinity); };
+        return;
+      }
+      setShown(k);
+      timer = window.setTimeout(tick, Math.max(0, t0 + (k + 1) * per - performance.now()));
+    };
+    timer = window.setTimeout(tick, Math.max(0, t0 - performance.now()));
+    return () => { window.clearTimeout(timer); setShown(Infinity); };
   }, [order, stepping, project.id, project.panels, project.instances]);
   if (!order || shown === Infinity || stepping) return null;
   const vis = new Set<string>();

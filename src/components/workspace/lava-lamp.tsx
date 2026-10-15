@@ -3,21 +3,23 @@
 import { useEffect, useState } from "react";
 import { useOffscreen } from "@/hooks/use-offscreen";
 import { buildingPrompt } from "@/components/workspace/building-prompt";
+import { previewIdFor } from "@/components/workspace/build-preview-match";
 import previews from "@/components/workspace/build-previews.json";
 
-type Preview = { id: string; match: string; w: number; h: number; steps: number; parts: [number, number, number, number, number][] };
+type Preview = { id: string; w: number; h: number; steps: number; parts: [number, number, number, number, number][] };
 const PREVIEWS = previews as Preview[];
+/** How long the overlay takes to fade out over the landed model; the bench reveal starts after it. */
+export const LAMP_FADE_MS = 450;
 
 /** The known build of the same type as what was asked; null (a neutral frame) when nothing matches. */
 export function previewFor(prompt?: string): Preview | null {
-  const p = (prompt ?? "").toLowerCase();
-  return PREVIEWS.find((v) => new RegExp(v.match).test(p)) ?? null;
+  const id = previewIdFor(prompt);
+  return id ? (PREVIEWS.find((v) => v.id === id) ?? null) : null;
 }
 
 /** No matching type: four plain members frame up into a box (no stand-in furniture). */
 const NEUTRAL: Preview = {
   id: "neutral",
-  match: "",
   w: 52,
   h: 52,
   steps: 3,
@@ -34,7 +36,7 @@ export function LavaLamp({ caption, show = true, prompt }: { caption?: string; s
   const [mounted, setMounted] = useState(show);
   useEffect(() => {
     if (show) return setMounted(true);
-    const t = window.setTimeout(() => setMounted(false), 450);
+    const t = window.setTimeout(() => setMounted(false), LAMP_FADE_MS);
     return () => window.clearTimeout(t);
   }, [show]);
   const [pv] = useState(() => previewFor(buildingPrompt() || prompt) ?? NEUTRAL);
@@ -47,7 +49,8 @@ export function LavaLamp({ caption, show = true, prompt }: { caption?: string; s
     <div
       ref={ref}
       data-offscreen={off || undefined}
-      className={`yard-lamp pointer-events-none absolute inset-0 z-20 grid place-items-center bg-bg/40 transition-opacity duration-[450ms] ease-out ${show ? "opacity-100" : "opacity-0"}`}
+      className={`yard-lamp pointer-events-none absolute inset-0 z-20 grid place-items-center bg-bg/40 transition-opacity ease-out ${show ? "opacity-100" : "opacity-0"}`}
+      style={{ transitionDuration: `${LAMP_FADE_MS}ms` }}
       role="status"
       aria-live="polite"
       aria-label={caption ?? "Building"}
