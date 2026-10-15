@@ -1390,12 +1390,20 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   if (/carriage bolt/i.test(notes) && !/carriage bolt/i.test(have)) {
     const posts = Math.max(1, project.panels.filter((panel) => /handrail post/i.test(panel.name)).length);
     const counted = notes.match(/(\d+) 3\/8" carriage bolts/i);
+    const quantity = counted ? Number(counted[1]) : posts * 2;
+    // Bolt class: length = the two 1 1/2" members it clamps + washer + nut + a few threads; galvanized for outdoors.
+    // Each set is bolt + nut + washer. Price: Home Depot Everbilt 3/8"-16 galvanized carriage bolt $1.97 (4", checked
+    // 2026-10-15), +$0.20 for 4 1/2", plus nut and flat washer ~$0.45 = $2.62 a set.
+    const long = /held to both legs/.test(notes);
+    const size = long ? '3/8" × 4-1/2"' : '3/8" × 4"';
+    const each = long ? 2.62 : 2.42;
     extra.push({
-      name: '3/8" carriage bolts',
-      quantity: counted ? Number(counted[1]) : posts * 2,
+      name: `${size} galvanized carriage bolts, each with a nut and washer`,
+      quantity,
       unit: "each",
-      searchQuery: "3/8 inch carriage bolts",
-      notes: counted ? "Where the notes place them, through each joint." : "Two per handrail post, through the back post.",
+      searchQuery: `3/8 inch x ${long ? "4-1/2" : "4"} inch galvanized carriage bolt`,
+      estimatedCost: Math.round(each * quantity * 100) / 100,
+      notes: (counted ? "Where the notes place them, through each joint." : "Two per handrail post, through the back post.") + " A flat washer under each nut.",
     });
   }
   if (/non-slip pad/i.test(notes) && !/non-slip/i.test(have)) {
