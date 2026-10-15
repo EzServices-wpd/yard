@@ -76,13 +76,18 @@ function LandingPage() {
   useEffect(() => {
     let live = true;
     // The engine loads after first paint so the headline stays instant.
-    void import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => {
-      for (const piece of PIECES) {
-        if (!live) return;
+    // F28: one showcase per idle slice, so no single long task blocks the main thread.
+    const idle = (f: () => void) => ("requestIdleCallback" in window ? window.requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 50));
+    idle(() => void import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => {
+      const next = (i: number) => {
+        if (!live || i >= PIECES.length) return;
+        const piece = PIECES[i];
         const show = showcaseFor(piece.prompt);
         setShows((prev) => ({ ...prev, [piece.id]: show }));
-      }
-    });
+        idle(() => next(i + 1));
+      };
+      next(0);
+    }));
     return () => {
       live = false;
     };
@@ -92,7 +97,13 @@ function LandingPage() {
   const disclosure = affiliateDisclosure();
   // The engine's stock merge loads after first paint, so the home page never waits on the engine bundle.
   const [mergeStock, setMergeStock] = useState<typeof PromptWithHomeStock | null>(null);
-  useEffect(() => { void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock)); }, []);
+  // F28: load it on first input, never in the mount effect (that import ran a ~1 s long task inside the TBT window).
+  useEffect(() => {
+    const evs = ["pointerdown", "keydown", "focusin", "touchstart"] as const;
+    const load = () => { evs.forEach((e) => window.removeEventListener(e, load, true)); void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock)); };
+    evs.forEach((e) => window.addEventListener(e, load, { capture: true, passive: true }));
+    return () => evs.forEach((e) => window.removeEventListener(e, load, true));
+  }, []);
   const promptWithHomeStock: typeof PromptWithHomeStock = (t, a) => (mergeStock ? mergeStock(t, a) : a ? `${t.trim()} ${a}`.replace(/\s+/g, " ").trim() : t.trim());
 
   function withStock(text: string) {
