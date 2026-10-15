@@ -427,3 +427,12 @@
   .yard-word { animation: none; opacity: 1; transform: none; }
   .yard-paper, .yard-paper:hover { transition: none; transform: none; }
 }
+
+/* Endless Ideas banner (004 R12): transform-only, paused on hover/focus, static for reduced motion. */
+.yard-making-list { animation: yard-making 60s linear infinite; will-change: transform; }
+.yard-making-track:hover .yard-making-list, .yard-making-track:focus-within .yard-making-list { animation-play-state: paused; }
+@keyframes yard-making { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .yard-making-list { animation: none; flex-wrap: wrap; white-space: normal; }
+  .yard-making-list li[aria-hidden] { display: none; }
+}
