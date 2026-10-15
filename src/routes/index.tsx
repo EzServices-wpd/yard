@@ -13,6 +13,8 @@ import type { Showcase } from "@/lib/yard/homeShowcase";
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
+  loader: async () => ({ shows: await homeShows() }),
   validateSearch: (s: Record<string, unknown>): { q?: string } => (typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
   component: LandingPage,
 });
@@ -61,6 +63,12 @@ const PIECES = [
   },
 ] as const;
 
+let showsMemo: Promise<Record<string, Showcase>> | undefined;
+function homeShows(): Promise<Record<string, Showcase>> {
+  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => Object.fromEntries(PIECES.map((piece) => [piece.id, showcaseFor(piece.prompt)])));
+  return showsMemo;
+}
+
 const CHIP =
   "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
 
@@ -72,37 +80,26 @@ function LandingPage() {
   }, [navigate]);
   const [prompt, setPrompt] = useState(Route.useSearch().q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
-  const [shows, setShows] = useState<Record<string, Showcase | undefined>>({});
-  useEffect(() => {
-    let live = true;
-    // The engine loads after first paint so the headline stays instant.
-    // F28: one showcase per idle slice, so no single long task blocks the main thread.
-    const idle = (f: () => void) => ("requestIdleCallback" in window ? window.requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 50));
-    idle(() => void import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => {
-      const next = (i: number) => {
-        if (!live || i >= PIECES.length) return;
-        const piece = PIECES[i];
-        const show = showcaseFor(piece.prompt);
-        setShows((prev) => ({ ...prev, [piece.id]: show }));
-        idle(() => next(i + 1));
-      };
-      next(0);
-    }));
-    return () => {
-      live = false;
-    };
-  }, []);
+  // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
+  const { shows } = Route.useLoaderData() as { shows: Record<string, Showcase | undefined> };
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
   // The engine's stock merge loads after first paint, so the home page never waits on the engine bundle.
   const [mergeStock, setMergeStock] = useState<typeof PromptWithHomeStock | null>(null);
-  // F28: load it on first input, never in the mount effect (that import ran a ~1 s long task inside the TBT window).
+  // F29: preload the stock merge when the browser is idle (and at the latest on first input), so a tap is never spent loading it.
   useEffect(() => {
-    const evs = ["pointerdown", "keydown", "focusin", "touchstart"] as const;
-    const load = () => { evs.forEach((e) => window.removeEventListener(e, load, true)); void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock)); };
+    let done = false;
+    const evs = ["pointerdown", "keydown"] as const;
+    const load = () => {
+      if (done) return;
+      done = true;
+      evs.forEach((e) => window.removeEventListener(e, load, true));
+      void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock));
+    };
     evs.forEach((e) => window.addEventListener(e, load, { capture: true, passive: true }));
-    return () => evs.forEach((e) => window.removeEventListener(e, load, true));
+    const id = "requestIdleCallback" in window ? window.requestIdleCallback(load, { timeout: 4000 }) : setTimeout(load, 2000);
+    return () => { evs.forEach((e) => window.removeEventListener(e, load, true)); if ("cancelIdleCallback" in window) window.cancelIdleCallback(id as number); else clearTimeout(id as number); };
   }, []);
   const promptWithHomeStock: typeof PromptWithHomeStock = (t, a) => (mergeStock ? mergeStock(t, a) : a ? `${t.trim()} ${a}`.replace(/\s+/g, " ").trim() : t.trim());
 
