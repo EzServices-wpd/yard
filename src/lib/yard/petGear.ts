@@ -4,6 +4,7 @@
  * high end, at the typed height. A scratching post is a doubled base with an upright post.
  * Panel positions are the min corner; x runs along the build, y is up, z is across.
  */
+import { LEAF_GAP, hang, hangStep, hingeSpec, hingeWords } from "./hingedLeaf";
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies";
@@ -220,7 +221,7 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
     panel({ type: "rail", name: "Front top rail", position: { x: L, y: r8(H - T - 2.5), z: 0 }, size: { width: r8(W - 2 * L), height: 2.5, depth: T }, materialId: mat }),
   );
   const roof = panel({ type: "top", name: "Roof", position: { x: 0, y: r8(H - T), z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Hinged to the top edge of the back so it lifts for feeding and cleaning; never screwed down." });
-  roof.hinged = { to: back.id, edge: "back", hinges: 2 };
+  const roofSpec = hang(roof, back, "back", { outdoor });
   const meshH = r8(inH - 3.5 - 2.5);
   const nest = 12;
   // Roost 24–30" (Penn State / heavy-bird range), the highest perch. A full 12" nest box sits under it:
@@ -234,8 +235,8 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   const nestH = r8(Math.max(8, Math.min(12, roostY - 0.5 - (nestY + 2 * T))));
   const roostZ = 4;
   if (coop) {
-    const door = panel({ type: "side", name: "Pop door", position: { x: r8(L + 0.0625), y: r8(y0 + 3.5 + 0.0625), z: 0 }, size: { width: r8(12 - 0.125), height: r8(Math.min(16, meshH) - 0.125), depth: T }, materialId: mat, cutNote: "Hung on two hinges from the stile with a 1/16\" gap all round; a barrel bolt keeps raccoons out at night." });
-    door.hinged = { to: stile.id, edge: "right", hinges: 2, latch: "barrel bolt" };
+    const door = panel({ type: "side", name: "Pop door", position: { x: r8(L + LEAF_GAP.reveal), y: r8(y0 + 3.5 + LEAF_GAP.reveal), z: 0 }, size: { width: r8(12 - 2 * LEAF_GAP.reveal), height: r8(Math.min(16, meshH) - 2 * LEAF_GAP.reveal), depth: T }, materialId: mat, cutNote: "Hung on two hinges from the stile with a 1/16\" gap all round; a barrel bolt keeps raccoons out at night." });
+    hang(door, stile, "right", { outdoor, latch: "barrel bolt" });
     const nx = r8(W - T - nest - T);
     const nz = r8(D - T - nest);
     panels.push(
@@ -257,15 +258,12 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   const who = tiny ? (lower.match(/hamster|gerbil|guinea pig|ferret|chinchilla|rat|mice|tortoise/)?.[0] ?? "small animal") : fowl ? "chicken" : /rabbit|bunn/.test(lower) ? "rabbit" : whoFor(lower);
   const head = lower.match(/hutch|cage|coop|enclosure|house|home|cabinet|cupboard|crate|condo/)?.[0] ?? "hutch";
   const name = `${who[0].toUpperCase()}${who.slice(1)} ${head}`;
-  const hinges = outdoor ? (coop ? "four" : "two") : (coop ? "four" : "two");
   const notes = [
     `${ENCLOSURE_NOTE} ${outdoor ? "outdoor" : "indoor"}${coop ? " coop" : ""}.`,
     `${name}: a raised enclosure on four ${outdoor ? "ground-contact pressure-treated 4×4" : "2×2"} legs with the floor ${inchFrac(leg)}" off the ground${outdoor ? " on a pressure-treated 2×4 floor frame (rim on all four sides and a middle joist)" : ""}; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
     ...(outdoor ? [`Floor frame joints take 3" structural screws, three at each rim-to-leg joint.`] : []),
     `Front: staple ½" galvanized hardware cloth, ${inchFrac(meshW)}" × ${inchFrac(meshH)}", across the opening between the rails, into the legs and the side edges, with the cut edges folded under so they stay smooth.`,
-    outdoor
-      ? `Hinge the roof to the top edge of the back with two 3–4" galvanized T-hinges and fit a lid stay (or a short chain) so it stays open and closes gently; the only screws in the roof are the hinge screws.${coop ? " Hang the pop door on its stile with two 2\" galvanized butt hinges and close it with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`
-      : `Hinge the roof to the top edge of the back${coop ? ", and the pop door to its stile," : ""} with ${hinges} 2" butt hinges in all; the roof lifts for feeding and cleaning and takes no screws.${coop ? " Close the pop door with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
+    `Hinge the roof to the top edge of the back with ${hingeWords(roofSpec)}${roofSpec.stay ? " and fit a lid stay (or a short chain) so it stays open and closes gently" : ""}; the only screws in the roof are the hinge screws.${coop ? ` Hang the pop door on its stile with ${hingeWords(hingeSpec({ role: "door", w: 12, h: 16, t: T, outdoor }))} and close it with 1 3" barrel bolt at night.` : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
     ...(outdoor ? [`Cover the roof with 1 roll of mineral-surfaced roll roofing, lapped over the edges and fixed with galvanized roofing nails.`] : []),
     ...(coop ? [`Inside: a ${nest}" nest box raised ${inchFrac(nestUp)}" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
     species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails.` : outdoor ? `¾" exterior plywood for the floor, roof, back, sides and rails; pressure-treated 4×4 legs and a 2×4 floor frame.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
@@ -302,14 +300,8 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
   steps.push({ title: has(/^Door stile$/) ? "Fit the front rails and the door stile" : "Fit the front rails", description: `Screw the front bottom rail and the front top rail between the front legs${has(/^Door stile$/) ? ", then the door stile between the two rails" : ""}, with ${fix}.`, partsUsed: [...names(/^Front (bottom|top) rail$/), ...names(/^Door stile$/)] });
   steps.push({ title: "Staple the hardware cloth and drill the vents", description: `Staple ½" galvanized hardware cloth across the front opening between the rails${has(/^Door stile$/) ? " and the stile" : ""}, every 2", the cut edges folded under. Drill a few ½" vent holes high in each side and staple a patch of hardware cloth over them inside.`, partsUsed: [] });
   for (const p of project.panels.filter((x) => x.hinged)) {
-    const to = project.panels.find((x) => x.id === p.hinged!.to)?.name.toLowerCase() ?? "its frame";
-    steps.push({
-      title: `Hang the ${p.name.toLowerCase()} on ${p.hinged!.hinges} hinges`,
-      description: /^Roof$/.test(p.name) && outdoor
-        ? `Set the roof in place and screw two 3–4" galvanized T-hinges along its back edge to the back. Fit a lid stay (or a short chain) so the roof can\'t slam shut. No screws go through the roof into anything else, so it opens. Then cover the roof with the roll roofing, lapped over the edges, fixed with galvanized roofing nails.`
-        : `Set the ${p.name.toLowerCase()} in place and screw ${p.hinged!.hinges} 2" galvanized butt hinges along its ${p.hinged!.edge} edge to the ${to}. No screws go through the ${p.name.toLowerCase()} into anything else, so it opens.${p.hinged!.latch ? ` Fit the ${p.hinged!.latch} on its free edge so it locks shut.` : ""}`,
-      partsUsed: [p.name],
-    });
+    const roofing = /^Roof$/.test(p.name) && outdoor ? " Then cover the roof with the roll roofing, lapped over the edges, fixed with galvanized roofing nails." : "";
+    steps.push(hangStep(project, p, roofing));
   }
   return steps.map((s, i) => ({ ...s, step: i + 1 }));
 }
