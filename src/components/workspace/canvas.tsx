@@ -480,7 +480,7 @@ function useStepReveal(project: YardProject, steps: AssemblyStep[] | undefined, 
   useEffect(() => {
     if (!order || stepping || played.current === project.id) return;
     played.current = project.id;
-    if (!readyAt.current || readyAt.current.id !== project.id || performance.now() - readyAt.current.t > 600) return;
+    if (!readyAt.current || readyAt.current.id !== project.id || performance.now() - readyAt.current.t > 600 || document.hidden) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const per = Math.max(140, Math.min(380, 2000 / order.n));
     setShown(0);

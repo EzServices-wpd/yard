@@ -1,15 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 
-/** True while the element is fully off screen, so CSS motion can pause (animation-play-state) and cost nothing. */
-export function useOffscreen<T extends Element>(rootMargin = "0px") {
+/**
+ * True while the element is off screen or the tab is hidden, so CSS motion can pause
+ * (animation-play-state) and cost nothing.
+ */
+export function useOffscreen<T extends Element>(rootMargin = "0px", startOff = false) {
   const ref = useRef<T | null>(null);
-  const [off, setOff] = useState(false);
+  const [outside, setOutside] = useState(startOff);
+  const [hidden, setHidden] = useState(false);
   useEffect(() => {
+    const onVis = () => setHidden(document.hidden);
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => setOff(!e.isIntersecting), { rootMargin });
-    io.observe(el);
-    return () => io.disconnect();
+    let io: IntersectionObserver | undefined;
+    if (el && typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(([e]) => setOutside(!e.isIntersecting), { rootMargin });
+      io.observe(el);
+    }
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      io?.disconnect();
+    };
   }, [rootMargin]);
-  return [ref, off] as const;
+  return [ref, outside || hidden] as const;
 }

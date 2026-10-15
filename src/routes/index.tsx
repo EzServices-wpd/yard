@@ -366,9 +366,9 @@ function LandingPage() {
   );
 }
 
-/** Home sample models idle (slow turn and bob); the motion pauses while the grid is off screen. */
+/** Home sample models turn in once when the grid first comes on screen (held paused until then). */
 function ShowcaseGrid({ children }: { children: ReactNode }) {
-  const [ref, off] = useOffscreen<HTMLDivElement>("100px");
+  const [ref, off] = useOffscreen<HTMLDivElement>("-10% 0px", true);
   return (
     <div ref={ref} data-offscreen={off || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
       {children}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useOffscreen } from "@/hooks/use-offscreen";
 import previews from "@/components/workspace/build-previews.json";
 
 type Preview = { id: string; match: string; w: number; h: number; steps: number; parts: [number, number, number, number, number][] };
@@ -26,12 +27,15 @@ export function LavaLamp({ caption, show = true, prompt }: { caption?: string; s
     return () => window.clearTimeout(t);
   }, [show]);
   const [pv] = useState(() => previewFor(prompt));
+  const [ref, off] = useOffscreen<HTMLDivElement>();
   if (!mounted) return null;
   const pad = Math.max(pv.w, pv.h) * 0.08;
   const per = Math.min(0.55, 2.2 / pv.steps);
   const cycle = per * pv.steps + 1.4;
   return (
     <div
+      ref={ref}
+      data-offscreen={off || undefined}
       className={`yard-lamp pointer-events-none absolute inset-0 z-20 grid place-items-center bg-bg/40 transition-opacity duration-[450ms] ease-out ${show ? "opacity-100" : "opacity-0"}`}
       role="status"
       aria-live="polite"
