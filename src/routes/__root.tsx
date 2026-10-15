@@ -26,7 +26,19 @@ function VercelAnalytics() {
 }
 
 export const Route = createRootRoute({
-  head: () => ({
+  // Only the root matched: the 404 page, which gets its own single title and description.
+  head: ({ matches }) => (matches.length === 1 ? {
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Page not found · Yard" },
+      { name: "description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
+      { property: "og:title", content: "Page not found · Yard" },
+      { name: "twitter:title", content: "Page not found · Yard" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }, { rel: "icon", href: "/favicon.ico", sizes: "any" }, { rel: "stylesheet", href: appCss }],
+  } : {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },

@@ -5,8 +5,6 @@ import { SiteChrome } from "@/components/site/chrome";
 export function NotFound() {
   return (
     <SiteChrome>
-      <title>Page not found · Yard</title>
-      <meta name="description" content="That page isn't here. Type what you want to build, or browse Ideas." />
       <main className="mx-auto max-w-xl px-4 pb-20 pt-14 text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">404</p>
         <h1 className="mt-3 font-display text-4xl tracking-tight text-ink">That page isn't here</h1>
