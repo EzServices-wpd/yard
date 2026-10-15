@@ -48,6 +48,7 @@ export const Route = createRootRoute({
         content: "Think it up. Yard works it out. One model. Every cut, part and step.",
       },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
+      { name: "fo-verify", content: "f9285177-d9e6-455d-926e-ec1f01732cec" },
       { name: "theme-color", content: "#12100e" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: APP_NAME },
