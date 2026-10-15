@@ -199,7 +199,7 @@ function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInf
   if (info.how === "floor") return wallMounted(project) ? /\bwall\b|\bstuds?\b|anchor/.test(text) : /floor|stand|footprint|on the marks|bench/.test(text);
   if (info.how === "hinges") return /hinge/.test(text);
   if (info.how === "front") return /drawer box|drawer/.test(text) && /screw|glue/.test(text);
-  if (!/glue|screw|dowel|biscuit|pocket|cement|pin|nail|tape|tab/.test(text)) return false;
+  if (!/glue|screw|bolt|dowel|biscuit|pocket|cement|pin|nail|tape|tab/.test(text)) return false;
   // The support's family word ("leg front") or its assembly word ("leg", "body", "floor").
   const words = project.panels.length
     ? info.on.flatMap((id) => {
