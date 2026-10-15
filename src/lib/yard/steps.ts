@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { hangDoorsStep } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
@@ -1284,14 +1285,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 4,
-        title:
-          doors.length > 1
-            ? `Hang ${doors.length} doors — 2 concealed hinges each`
-            : "Hang the door — 2 concealed hinges",
-        description:
-          doors.length > 1
-            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on each door. Open and close each door — gaps even.`
-            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on the door. Open and close — gaps even.`,
+        ...hangDoorsStep(doors, cutLine),
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
         partsUsed: names(doors),
       },
@@ -1352,8 +1346,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
+        ...hangDoorsStep(doors, cutLine, {
+          overlay: `The door's outer face is the ${round(D)}" you typed — it does not add a slab past that.`,
+          extra: "Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges.",
+          pulls: false,
+        }),
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
@@ -2494,8 +2491,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (doors.length) {
     steps.push({
       step: n++,
-      title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"} — 2 hinges each`,
-      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even. Screw one bar pull centered on each door. Open and close each door — gaps even, pulls solid, soft-close if you bought it.`,
+      ...hangDoorsStep(doors, cutLine, { overlay: "Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even." }),
       partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors]),
     });
   }

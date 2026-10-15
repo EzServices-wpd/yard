@@ -2,6 +2,7 @@
  * One picture path for every plan step: the same renderProject / parts-plate drawing the PDF uses,
  * recorded into SVG for the plan drawer and print preview. No JPEG photos, no IsoPlate crop.
  */
+import { leafSvgAttrs } from "./hingedLeaf";
 import type { jsPDF } from "jspdf";
 import { planStepParts } from "./stepParts";
 import { stepPlacements } from "./placement";
@@ -188,6 +189,8 @@ export function planOverviewSvg(project: YardProject, w = 480, h = 300): StepPic
     tones: allTones(project, "built"),
     dims: true,
     pad: 30,
+    // Operate hooks: every part is a <g data-part>, doors and lids also carry data-role and data-hinge-axis.
+    partGroup: leafSvgAttrs(project),
   });
   return { svg: doc.toSvg(KIT.paper), stats: doc.stats, kind: "overview" };
 }
