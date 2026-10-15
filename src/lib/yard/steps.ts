@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
@@ -1284,21 +1285,21 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 4,
-        title:
-          doors.length > 1
-            ? `Hang ${doors.length} doors — 2 concealed hinges each`
-            : "Hang the door — 2 concealed hinges",
-        description:
-          doors.length > 1
-            ? `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on each door. Open and close each door — gaps even.`
-            : `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. Overlay the main box (the door sits on the face, not inside the opening). Screw one bar pull centered on the door. Open and close — gaps even.`,
+        ...hangDoorsStep(doors, cutLine),
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet.",
         partsUsed: names(doors),
       },
       {
         step: 5,
-        title: "Piano-hinge the fold-down board and the support leg",
-        description: `${board ? cutLine(board) + "." : "Fold-down board."} ${leg ? cutLine(leg) + "." : ""} Screw a piano hinge (a long continuous hinge) along the bottom edge of the board, into the front of the bottom panel, so the board stores upright and folds down out of the cabinet. A second short hinge on the support leg, onto the underside of the board, so the leg kicks out to the floor when the board is down.`,
+        ...hangLeafStep({
+          name: ironing ? "ironing board" : "fold-down board",
+          lead: [board ? `${cutLine(board)}.` : "", leg ? `${cutLine(leg)}.` : ""].filter(Boolean).join(" ") || undefined,
+          spec: { kind: "piano", count: 1, stay: false },
+          edge: "bottom",
+          to: "front of the bottom panel, so it stores upright and folds down out of the cabinet",
+          gap: false,
+          extra: "A second short hinge on the support leg, onto the underside of the board, so the leg kicks out to the floor when the board is down.",
+        }),
         tips: ironing
           ? "Open the door first. The board must clear the door. Staple or clip the ironing-board cover on before you hang it if that is easier on the bench."
           : "Open the door first. The board must clear the door. The support leg carries lean load — do not skip it.",
@@ -1352,8 +1353,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Hang the door — 2 concealed hinges",
-        description: `${door ? cutLine(door) + "." : "Door."} Two concealed hinges (cup hinges that mount inside the door and carcase so you do not see them from the front), 3–4" from top and bottom. The door's outer face is the ${round(D)}" you typed — it does not add a slab past that. Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges. Open and close — gaps even.`,
+        ...hangDoorsStep(doors, cutLine, {
+          overlay: `The door's outer face is the ${round(D)}" you typed — it does not add a slab past that.`,
+          extra: "Rout a 1/8\" rabbet into the door's outer face, 1\" in from each edge, and set the mirror in it with mirror adhesive so it sits flush with the door face. Screw one bar pull on the door edge opposite the hinges.",
+          pulls: false,
+        }),
         tips: "Adjust the screws until the gap is even. A door that will not close is not hung yet. Let the mirror adhesive skin before you hang the cabinet.",
         partsUsed: names(doors),
       },
@@ -2003,8 +2007,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 5,
-        title: "Hang the door and latch it",
-        description: `${door ? cutLine(door) + "." : "Door."} Two 3" utility hinges on the left side of the door, into the left upright. A barrel bolt on the right, shooting into the right upright. The door sits above the floor and leaves a ${gapTalk} air gap at the top.`,
+        ...hangLeafStep({
+          name: "door",
+          lead: door ? `${cutLine(door)}.` : undefined,
+          spec: hingeSpec({ role: "door", w: door?.size.width ?? 12, h: door?.size.height ?? 12, t: door?.size.depth ?? 0.75, crate: true }),
+          edge: "left",
+          to: "left upright",
+          extra: `The bolt shoots into the right upright. The door sits above the floor and leaves a ${gapTalk} air gap at the top.`,
+        }),
         tips: "A crate without a latch is just a box. Test that the bolt catches before you call it done.",
         partsUsed: names(doors),
       },
@@ -2226,15 +2236,21 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           step: 4,
-          title: "Piano-hinge the lid along the back edge",
-          description: `${lidPanel.map(cutLine).join("; ") || "Lid."} A piano hinge is a long continuous hinge (one long knuckle strip, not two butt hinges). Screw one leaf into the back edge of the Lid and the other into the top edge of the main box back (or the back rail). The lid should open up and back. Orientation: lid opens up and back — hinge along the back edge. Predrill so the ply does not split.`,
-          tips: "Cut or buy a piano hinge about as long as the chest is wide. Keep the hinge barrel just proud of the back edge so the lid clears when it opens.",
+          ...hangLeafStep({
+            name: "lid",
+            lead: `${lidPanel.map(cutLine).join("; ") || "Lid."}`,
+            spec: { ...hingeSpec({ role: "lid", w: W, h: 0.75, t: D }), stay: false },
+            edge: "back",
+            to: "top edge of the main box back (or the back rail), so the lid opens up and back. Predrill so the ply does not split",
+            gap: false,
+          }),
+          tips: "Keep the hinge barrel just proud of the back edge so the lid clears when it opens.",
           partsUsed: names([...lidPanel, ...backs]),
         },
         {
           step: 5,
           title: "Add a lid stay — open/close test",
-          description: "Screw on a lid stay / lid support so the lid cannot slam shut on fingers. Open and close the lid a few times — it should lift smoothly on the piano hinge and hold or slow on the stay.",
+          description: `${hangLeafStep({ name: "lid", spec: { ...hingeSpec({ role: "lid", w: W, h: 0.75, t: D }), count: 1 }, edge: "back", to: "main box" }).description.match(/Fit a lid stay[^.]*\./)?.[0] ?? "Fit a lid stay."} Open and close the lid a few times — it should lift smoothly on its hinge and hold or slow on the stay.`,
           tips: "Toy-chest and blanket-chest lid stays are sold as lid support / lid stay kits. Guidance only — confirm the hardware before you cut.",
           partsUsed: names(lidPanel),
         },
@@ -2494,8 +2510,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (doors.length) {
     steps.push({
       step: n++,
-      title: `Hang ${doors.length} door${doors.length === 1 ? "" : "s"} — 2 hinges each`,
-      description: `${doors.map(cutLine).join("; ")}. Two concealed hinges per door (${doors.length * 2} hinges total), 3–4" from top and bottom. Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even. Screw one bar pull centered on each door. Open and close each door — gaps even, pulls solid, soft-close if you bought it.`,
+      ...hangDoorsStep(doors, cutLine, { overlay: "Overlay the carcase (the door sits on top of the face, not inside the opening). Soft-close if you bought them. Adjust the screws until the gap is even." }),
       partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors]),
     });
   }

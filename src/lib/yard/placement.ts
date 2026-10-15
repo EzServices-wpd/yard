@@ -7,6 +7,7 @@
  * side, and hardware spots (hinges, pulls, slides, brackets). The same records feed the step
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
+import { doorHingeCount } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
@@ -606,6 +607,7 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
   const m = text.match(/(\d+)\s+(?:concealed\s+|soft-close\s+|butt\s+|piano\s+)?hinges?\s+(?:each|per\s+(?:door|lid))/i) ?? text.match(/(?:each|per)\s+(?:door|lid)[^.]*?(\d+)\s+(?:concealed\s+)?hinges?/i);
   const n = m ? parseInt(m[1], 10) : 2;
   if (/piano/i.test(text)) return;
+  const concealed = /concealed/i.test(text);
   out.hardware.push("hinge");
   const seen = new Set<string>();
   for (const d of doors) {
@@ -623,7 +625,10 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     });
     const who = same.length > 1 ? `each ${ctx.letters.get(d.id) ? `${ctx.letters.get(d.id)} ` : ""}door` : nameOf(ctx, d);
     let s = `Hinge centers ${f(inset)} down from the top and ${f(inset)} up from the bottom of ${who} (${f(h - inset * 2)} apart)`;
-    if (n >= 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
+    // Concealed doors take the count the hinged-leaf module bought for their height; the others space evenly.
+    const k = concealed ? doorHingeCount({ size: { width: c.max.x - c.min.x, height: h, depth: c.max.z - c.min.z } }) : n;
+    if (k === 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
+    else if (k > 3) s += `, with ${k - 2} more evenly between at ${Array.from({ length: k - 2 }, (_, i) => f(Math.round((inset + ((h - 2 * inset) * (i + 1)) / (k - 1)) * 8) / 8)).join(" and ")} up from the door's bottom edge`;
     const sides = new Set(same.map(doorHingesLeft));
     s += sides.size === 1 ? `, on the hinge edge (the ${doorHingesLeft(d) ? "left" : "right"} edge)` : `, on each door's hinge edge`;
     const lo = c.min.y + inset;
@@ -895,7 +900,7 @@ function dropStale(desc: string, pl: StepPlacement): string {
     d = d.replace(/\s*Marked heights?:[^.]*\.(?:\s*\d[^.]*\.)*/g, "");
     d = d.replace(/\s*\((?:shelf )?top face ~[^)]*\)/g, "");
   }
-  if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom/g, "");
+  if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom(?:, the others evenly spaced between)?/g, "");
   return d.replace(/\s{2,}/g, " ").trim();
 }
 
