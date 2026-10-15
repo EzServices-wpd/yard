@@ -78,7 +78,8 @@ export function benchView(project: Pick<YardProject, "fitted" | "kind" | "flat">
     !!project.fitted?.unit?.corner || odd === "l-footprint" || odd === "corner-diagonal" || odd === "angled-corner" || odd === "outside-corner";
   const w = box.maxX - box.minX, h = box.maxY - box.minY, d = box.maxZ - box.minZ;
   if (project.flat && !project.flat.lifted) return { azimuthDeg: 30, elevationDeg: 52 };
-  if (corner) return { azimuthDeg: 45, elevationDeg: 22 };
+  // Off the diagonal and from above: looking square at the open front, an L of wall panels reads as one flat box.
+  if (corner) return { azimuthDeg: 22, elevationDeg: 32 };
   if (project.kind === "eiffel") return { azimuthDeg: 38, elevationDeg: 12 };
   // Low wide things (tables, chests, benches) read best from higher up; tall units from lower.
   const low = h < Math.max(w, d) * 0.9;

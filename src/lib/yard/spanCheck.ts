@@ -357,7 +357,7 @@ function supportPerson(panels: Panel[], panel: Panel, boxes: Box[]) {
 }
 
 /** An apron under the edge deepens the shelf. It does not stand up through the bay. */
-function supportShelf(panels: Panel[], panel: Panel, project: YardProject, boxes: Box[]) {
+function supportShelf(panels: Panel[], panel: Panel, project: YardProject, boxes: Box[], allow = Infinity) {
   const longX = panel.size.width >= panel.size.depth;
   const span = longX ? panel.size.width : panel.size.depth;
   const load = loadOf(project, panel);
@@ -365,7 +365,20 @@ function supportShelf(panels: Panel[], panel: Panel, project: YardProject, boxes
   const gap = panel.position.y - base;
   const need = base > 0 ? BAY : 1;
   const apron = APRONS.find((a) => a.depth <= gap - need && allowBeam(a.depth, load) >= span);
-  if (!apron) return;
+  if (!apron) {
+    // No room for an apron: a centre upright from the plate (or floor) below, stacking floor to top across every long shelf.
+    const T = Math.min(0.75, panel.size.height);
+    const n = Math.max(2, Math.ceil(span / allow));
+    for (let i = 1; i < n; i++) {
+      const at = (span * i) / n - T / 2;
+      const u = longX
+        ? { x: panel.position.x + at, z: panel.position.z, w: T, d: panel.size.depth }
+        : { x: panel.position.x, z: panel.position.z + at, w: panel.size.width, d: T };
+      if (gap < 1 || hitsUse(u.x, base, u.z, u.w, gap, u.d, boxes)) return;
+      pushPanel(panels, "divider", `Support upright ${i} under ${panel.name}`, u.x, base, u.z, u.w, gap, u.d, panel.materialId);
+    }
+    return;
+  }
   const y = panel.position.y - apron.depth;
   const piece = longX
     ? {
@@ -425,9 +438,10 @@ export function withSupports(project: YardProject): YardProject {
   const targets = new Set(before.map((f) => f.panelId));
   for (const panel of [...panels]) {
     if (!targets.has(panel.id)) continue;
+    const allow = before.find((f) => f.panelId === panel.id)!.allow;
     if (panel.outline === "right-triangle") supportTriangle(panels, panel, (n) => `lumber-${n}-8`);
     else if (loadOf(project, panel) === "person") supportPerson(panels, panel, boxes);
-    else supportShelf(panels, panel, project, boxes);
+    else supportShelf(panels, panel, project, boxes, allow);
   }
   const added = panels.length - project.panels.length;
   const next: YardProject = {
