@@ -58,11 +58,14 @@ test("R11 offensive filter folds leetspeak and keeps woodworking words", () => {
 
 test("R4 1,000 repeats (concurrent) are one row with count 1000, within 10 s coalescing", async () => {
   const r = fakeRedis();
-  const s = new IdeaStore(r.pipe);
+  const held: Promise<unknown>[] = [];
+  const s = new IdeaStore(r.pipe, undefined, (p) => held.push(p), async () => {});
   const rec = { key: logKey("bookshelf", "builtin:bookshelf", "36×12×72"), prompt: "bookshelf", size: "36×12×72", resultKey: "builtin:bookshelf", status: "Trusted" as const };
   const t0 = Date.parse("2026-10-15T12:00:00Z");
   await Promise.all(Array.from({ length: 1000 }, (_, i) => s.record(rec, new Date(t0 + i * 25))));
-  await s.record(rec, new Date(t0 + 60_000)); // flush the coalesced repeats
+  await Promise.all(held);
+  await s.record(rec, new Date(t0 + 60_000));
+  await Promise.all(held);
   assert.equal(r.h.get("ideas:meta")!.size, 1);
   assert.equal(r.z.get("ideas:top")!.get(rec.key), 1001);
   assert.ok(r.calls < 10, `coalesced into few writes (got ${r.calls})`);
@@ -173,3 +176,40 @@ function fakeRedisWithStrings() {
   };
   return { pipe, get calls() { return calls; }, expire: () => { str.delete("ideas:snap:lock"); } };
 }
+
+test("F34: a burst's held count is written when its 10 s window ends, with no trailing request", async () => {
+  const r = fakeRedis();
+  const held: Promise<unknown>[] = [];
+  let fire: () => void = () => {};
+  const s = new IdeaStore(r.pipe, undefined, (p) => held.push(p), () => new Promise<void>((res) => { fire = res; }));
+  const rec = { key: "burst", prompt: "critic probe bench", size: "", resultKey: "builtin:bench", status: "Trusted" as const };
+  const t = Date.parse("2026-10-15T12:00:00Z");
+  for (let i = 0; i < 50; i++) await s.record(rec, new Date(t + i * 100));
+  assert.equal(held.length, 1, "one flush scheduled per window");
+  assert.equal(r.z.get("ideas:top")!.get("burst"), 1, "only the first write so far");
+  fire(); // the window ends
+  await Promise.all(held);
+  assert.equal(r.z.get("ideas:top")!.get("burst"), 50);
+  // A later request after the window does not double count.
+  await s.record(rec, new Date(t + 30_000));
+  await Promise.all(held);
+  assert.equal(r.z.get("ideas:top")!.get("burst"), 51);
+});
+
+test("F35: an unknown noun gets an unknown:<noun> key, never builtin:", async () => {
+  const z = await recordFromPrompt("zorbleflap");
+  assert.match(z!.resultKey, /^unknown:/);
+  assert.equal(z!.status, "Unverified");
+  assert.match((await recordFromPrompt("bookshelf 36 wide 72 tall"))!.resultKey, /^builtin:/);
+});
+
+test("loosened filter: harmless numbers and words pass, real PII still drops", () => {
+  for (const ok of ["6 place settings", "table for 6 place settings", "36 72 12 16", "10000 btu cabinet", "shelf 24 36 48 60", "12 pl shelf"]) assert.equal(safePrompt(ok), ok, ok);
+  for (const bad of ["call 555-1234", "212.555.0199 desk", "2125550199 shelf", "+44 20 7946 0958 bench", "12 Elm Place bench", "planter 90210"]) assert.equal(safePrompt(bad), null, bad);
+});
+
+test("a bare w or k after a 5-digit number is not a unit: the ZIP is never stored", async () => {
+  for (const bad of ["planter 10001 w", "planter 10001 W", "bench 90210 k", "shelf 10001 wide"]) assert.equal(safePrompt(bad), null, bad);
+  assert.equal(safePrompt("10000 btu cabinet"), "10000 btu cabinet");
+  assert.equal(await recordFromPrompt("planter 10001 w"), null);
+});

@@ -16,11 +16,14 @@ const PII: RegExp[] = [
   /\b(?:https?:\/\/|www\.)\S+/gi, // URL
   /\b[\w-]+\.(?:com|net|org|io|co|wiki|app|dev|me|us|uk)\b\S*/gi, // bare domain
   /(?<!\w)@\w{2,}/g, // handle
-  /\+?\d[\d\s().-]{8,}\d/g, // phone (≥ 10 digits incl. separators)
-  /\b\d{3}[\s.-]\d{4}\b/g, // 7-digit phone
+  // Phones look like phones: (212) 555-0199, 212-555-0199, 555-0199, +1 212 555 0199, 2125550199. Bare size lists ("36 72 12 16") pass.
+  /(?:\+\d{1,3}[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]\d{4}\b/g,
+  /\+\d[\d\s().-]{9,16}\d/g,
+  /\b\d{3}[.-]\d{4}\b/g,
+  /\b\d{10,11}\b/g,
   /\bp\.?\s?o\.?\s+box\s+\d+/gi, // PO box
-  /\b\d{1,6}\s+(?:[a-z0-9]+\s+){0,3}(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|court|ct|way|place|pl|terrace|circle|cir|highway|hwy)\b\.?/gi, // street address
-  /(?<![\d.\/-])\b\d{5}(?:-\d{4})?\b(?![\d.\/])/g, // standalone ZIP or ZIP+4 (F33)
+  /\b\d{1,6}\s+(?:[a-z]+\s+){1,3}(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|court|ct|way|place|pl|terrace|circle|cir|highway|hwy)\b\.?(?!\s*(?:settings?|mats?|cards?|holders?)\b)/gi, // street address: a name word before the suffix
+  /(?<![\d.\/-])\b\d{5}(?:-\d{4})?\b(?![\d.\/])(?!\s*(?:btu|lbs?|watts?|mah|rpm|gal|ml|mm|psi)\b)/gi, // standalone ZIP or ZIP+4 (F33)
 ];
 
 /** Strips addresses, emails, phones, URLs and handles. Returns null when anything was stripped (the prompt is dropped, R10). */
