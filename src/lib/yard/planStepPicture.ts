@@ -72,12 +72,14 @@ export function stepTones(
   const steps = plan.instructions;
   const stepParts = planStepParts(project, steps, letters);
   const placements = stepPlacements(project, steps, plan.cutList, plan.partsKind === "whole");
+  const owner = stepOwners(project, steps, stepParts);
   const placed = new Set<string>();
   for (let i = 0; i < stepIndex; i++) {
     const sp = stepParts[i];
     if (sp.kind !== "build") continue;
     const drawn = sp.said ? [...placed, ...sp.fresh, ...sp.onto] : [...placed, ...sp.ids];
     drawn.forEach((id) => placed.add(id));
+    for (const [id, at] of owner) if (at === i) placed.add(id);
   }
   const s = steps[stepIndex];
   const sp = stepParts[stepIndex];
@@ -95,7 +97,10 @@ export function stepTones(
   }
   const tones = new Map<string, Tone>();
   const level = levelStepHot(project, s, sp.ids);
-  let hot = level.length ? level : sp.fresh;
+  // F12: a step lights only the parts it adds. A step whose part list names model parts owns those it adds
+  // first; a part merely mentioned in a "Where" line (or a later neighbour) is not lit here.
+  const owned = [...owner].filter(([, at]) => at === stepIndex).map(([id]) => id);
+  let hot = level.length ? level : explicitParts(project, s) ? owned : sp.fresh;
   if (!sp.said && !hot.length) {
     const t = clean(s.title).toLowerCase();
     hot = sp.ids.filter((id) => {
@@ -247,4 +252,31 @@ export function cutaway(project: YardProject, hot: string[], drawn: string[]): s
     out.push(q.id);
   }
   return out;
+}
+
+/** The step's part list when it names only real model parts (not "*", not empty). */
+function explicitParts(project: YardProject, s: AssemblyStep): Set<string> | null {
+  const used = s.partsUsed ?? [];
+  if (!used.length || used.some((u) => u === "*" || u === "all")) return null;
+  const byName = new Map(project.panels.map((p) => [p.name.toLowerCase(), p.id]));
+  const ids = used.map((u) => byName.get(u.toLowerCase()));
+  return ids.every(Boolean) ? new Set(ids as string[]) : null;
+}
+
+/**
+ * F12 owner of each part: the step that adds it. The placement pass's step counts when that step's own
+ * part list includes the part (or the step has no explicit list); otherwise the first step that lists it.
+ */
+export function stepOwners(project: YardProject, steps: AssemblyStep[], stepParts: ReturnType<typeof planStepParts>): Map<string, number> {
+  const owner = new Map<string, number>();
+  const lists = steps.map((s) => explicitParts(project, s));
+  stepParts.forEach((sp, i) => {
+    if (sp.kind !== "build") return;
+    for (const id of sp.fresh) if (!owner.has(id) && (!lists[i] || lists[i]!.has(id))) owner.set(id, i);
+  });
+  lists.forEach((l, i) => {
+    if (!l || stepParts[i]?.kind !== "build") return;
+    for (const id of l) if (!owner.has(id)) owner.set(id, i);
+  });
+  return owner;
 }
