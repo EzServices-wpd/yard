@@ -31,4 +31,6 @@ test("vercel.json sends nosniff, a strict referrer policy, frame-ancestors 'self
   assert.equal(get("Referrer-Policy"), "strict-origin-when-cross-origin");
   assert.match(get("Content-Security-Policy"), /frame-ancestors 'self'/);
   assert.match(get("Content-Security-Policy-Report-Only"), /default-src 'self'/);
+  assert.match(get("Permissions-Policy"), /camera=\(\)/);
+  assert.match(get("Strict-Transport-Security"), /includeSubDomains/);
 });
