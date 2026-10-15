@@ -207,6 +207,8 @@ export function WorkspaceCanvas() {
   return (
     <div
       className="absolute inset-0"
+      role="img"
+      aria-label={`3D model of ${project.name}, ${project.panels.length} parts. Drag to turn, pinch or scroll to zoom.`}
       data-yard-orbit="drag-turn pinch-zoom"
       // One finger turns the model and two fingers zoom it; the page itself never scrolls under the bench.
       style={{ touchAction: "none", overscrollBehavior: "contain" }}

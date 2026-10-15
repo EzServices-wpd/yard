@@ -9,6 +9,16 @@ import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } fr
 type Row = Idea & { kept?: boolean };
 
 export const Route = createFileRoute("/ideas")({
+  head: () => ({
+    meta: [
+      { title: "Ideas · Yard" },
+      { name: "description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
+      { property: "og:title", content: "Ideas · Yard" },
+      { property: "og:description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
+      { property: "og:url", content: "https://yard.wiki/ideas" },
+    ],
+    links: [{ rel: "canonical", href: "https://yard.wiki/ideas" }],
+  }),
   validateSearch: (s: Record<string, unknown>): { q?: string } =>
     typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 80) } : {},
   component: IdeasPage,

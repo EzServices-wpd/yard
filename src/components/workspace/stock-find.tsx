@@ -132,7 +132,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
           {hit?.image && offer?.category !== "lumber" ? (
             <img
               src={hit.image}
-              alt=""
+              alt={`Product photo: ${ready.name}`}
               className="h-14 w-14 shrink-0 rounded-md border border-border object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -151,7 +151,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
           {hit.image ? (
             <img
               src={hit.image}
-              alt=""
+              alt={`Product photo: ${hit.title}`}
               className="h-14 w-14 shrink-0 rounded-md border border-border object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = "none";

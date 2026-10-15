@@ -11,6 +11,7 @@ export const Route = createFileRoute("/privacy")({
         name: "description",
         content: "How Yard uses cookies, analytics, and affiliate referral tracking.",
       },
+      { property: "og:description", content: "How Yard uses cookies, analytics, and affiliate referral tracking." },
       { property: "og:title", content: "Privacy · Yard" },
       { property: "og:url", content: `https://${host}/privacy` },
     ],

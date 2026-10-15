@@ -11,6 +11,7 @@ export const Route = createFileRoute("/about")({
         name: "description",
         content: "Built for the corner the room forgot. Yard turns that gap into a cut list, a buy list, and a plan you can build.",
       },
+      { property: "og:description", content: "Built for the corner the room forgot. Yard turns that gap into a cut list, a buy list, and a plan you can build." },
       { property: "og:title", content: "About · Yard" },
       { property: "og:url", content: `https://${host}/about` },
     ],

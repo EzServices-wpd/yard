@@ -1,5 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceApp } from "@/components/workspace/shell";
+import { decodeShare } from "@/lib/yard/shareBuild";
+
+/** "Bunk bed 82×44 · Yard" from a shared prompt: the words before the sizes, then width × height. */
+export function buildTitle(prompt: string): string {
+  const noun = prompt.replace(/^house:\s*/i, "").split(/[,\d]/)[0].trim().replace(/\s+(with|in|from)$/i, "");
+  const n = (re: RegExp) => prompt.match(re)?.[1];
+  const by = prompt.match(/(\d+(?:\.\d+)?)\s*(?:"|in|inches)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)/i);
+  const w = by?.[1] ?? n(/(\d+(?:\.\d+)?)\s*(?:"|in|inches)?\s*(?:wide|long)/i);
+  const h = by?.[2] ?? n(/(\d+(?:\.\d+)?)\s*(?:"|in|inches)?\s*(?:tall|high)/i);
+  const name = noun ? noun[0].toUpperCase() + noun.slice(1) : "Build";
+  return `${name}${w && h ? ` ${w}×${h}` : w ? ` ${w}` : ""} · Yard`;
+}
 
 export type WorkspaceSearch = {
   q?: string;
@@ -13,6 +25,13 @@ export const Route = createFileRoute("/workspace")({
     if (typeof s.q === "string" && s.q.trim()) out.q = s.q;
     if (typeof s.y === "string" && s.y.trim()) out.y = s.y;
     return out;
+  },
+  head: ({ match }) => {
+    const { q, y } = (match.search ?? {}) as WorkspaceSearch;
+    const prompt = (y ? decodeShare(y)?.prompt : q) ?? "";
+    const title = prompt ? buildTitle(prompt) : "Workspace · Yard";
+    const desc = prompt ? `${title.replace(/ · Yard$/, "")}: the 3D model, cut list, Buy list and step-by-step plan on Yard.` : "Type a build and get a 3D model, cut list, Buy list and plan.";
+    return { meta: [{ title }, { name: "description", content: desc }, { property: "og:title", content: title }, { property: "og:description", content: desc }, { name: "twitter:title", content: title }, { name: "twitter:description", content: desc }] };
   },
   component: WorkspacePage,
 });

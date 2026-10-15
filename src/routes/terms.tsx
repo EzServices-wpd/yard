@@ -12,6 +12,7 @@ export const Route = createFileRoute("/terms")({
         name: "description",
         content: "The terms for using Yard.",
       },
+      { property: "og:description", content: "The terms for using Yard." },
       { property: "og:title", content: "Terms · Yard" },
       { property: "og:url", content: `https://${host}/terms` },
     ],
