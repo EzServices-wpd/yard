@@ -92,6 +92,9 @@ jobs:
       - name: Invariants I1-I14 + eval scoreboard (no xAI)
         run: npx tsx --test scripts/invariants.test.ts
 
+      - name: Weekend canaries (Big Ben, Eiffel Tower, Brooklyn Bridge, trebuchet, submarine, water wheel)
+        run: npx tsx --test scripts/weekend-canaries.test.ts
+
       - name: Unit tests (TypeScript, via tsx)
         if: always()
         run: npx tsx scripts/run-unit-tests.ts

@@ -1,6 +1,7 @@
 /**
  * buildFitted — FittedSpec → YardProject (main carcase assembly).
  */
+import { doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
 import { boardFace, mattressDeck } from "./fittedParse";
@@ -275,7 +276,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
     panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, innerW, P, D - backT));
     panels.push(panel("top", "Top", x0 + P, H - P, backT, innerW, P, D - backT));
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, D - P, W - 0.16, H - 0.16, P));
+    { const [leaf] = doorLeaves({ x: x0, w: W, count: 1 }); const rise = doorRise(0, H); panels.push(panel("door", "Door", leaf.x, rise.y, D - P, leaf.w, rise.h, P)); }
     panels.push(panel("deck", "Ironing board", x0 + P + (innerW - boardW) / 2, P, D - P * 2, boardW, boardLen, P));
     panels.push(
       panel(
@@ -337,7 +338,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       const y = P + (innerH * i) / (shelfN + 1);
       panels.push(panel("shelf", `Shelf ${i}`, x0 + P, y, backT, innerW, P, face.shelfDepth));
     }
-    const door = panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT);
+    const [leaf] = doorLeaves({ x: x0, w: W, count: 1 });
+    const rise = doorRise(0, H);
+    const door = panel("door", "Door", leaf.x, rise.y, face.doorZ, leaf.w, rise.h, face.doorT);
     panels.push(door);
     // Set in a rabbet in the door face: flush, inside the door's edges.
     panels.push({ ...panel("mirror", "Mirror", x0 + 1.1, 1.1, face.mirrorZ, W - 2.2, H - 2.2, face.mirrorT), joints: [{ with: door.id, kind: "rabbet" }] });
@@ -2064,8 +2067,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     }
     panels.push(panel("bottom", "Floor", x0 + P, 0, P, innerW, P, cD - P));
     panels.push(panel("top", "Top", x0 + P, cH - P, P, innerW, P, cD - P));
-    const doorW = innerW - 0.12;
-    const door = panel("door", "Door", x0 + P + 0.06, P, cD - P, doorW, doorH, P);
+    const [leaf] = doorLeaves({ x: x0 + P, w: innerW, count: 1 });
+    const doorW = leaf.w;
+    const door = panel("door", "Door", leaf.x, P, cD - P, doorW, doorH, P);
     const holes: { x: number; y: number; r: number }[] = [];
     const cols = Math.max(2, Math.round(doorW / 6));
     const rows = Math.max(3, Math.round(doorH / 6));
@@ -2876,31 +2880,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const doorY = hutchLowerDoors ? 0 : (u.upperStart ?? 0);
     const doorH = hutchLowerDoors ? u.upperStart! : (H - doorY);
     const typedDoors = typedDoorCount(prompt);
-    if (typedDoors != null) {
-      const bayW = W / typedDoors;
-      for (let i = 0; i < typedDoors; i++) {
-        const label =
-          typedDoors === 1
-            ? "Door"
-            : typedDoors === 2
-              ? i === 0
-                ? "Left door"
-                : "Right door"
-              : `Door ${i + 1}`;
-        panels.push(panel("door", label, x0 + i * bayW + 0.1, doorY, D - P, bayW - 0.2, doorH, P));
-      }
-    } else if (bayN >= 2) {
-      const bayW = W / bayN;
-      for (let i = 0; i < bayN; i++) {
-        panels.push(
-          panel("door", `Bay ${i + 1} door`, x0 + i * bayW + 0.1, doorY, D - P, bayW - 0.2, doorH, P),
-        );
-      }
-    } else if (W > 28) {
-      panels.push(panel("door", "Left door", x0 + 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
-      panels.push(panel("door", "Right door", 0.1, doorY, D - P, W / 2 - 0.2, doorH, P));
-    } else {
-      panels.push(panel("door", "Door", x0 + 0.1, doorY, D - P, W - 0.2, doorH, P));
+    // One layout for every count: typed, one per bay, a pair over a wide box, or a single door.
+    const count = typedDoors ?? (bayN >= 2 ? bayN : W > 28 ? 2 : 1);
+    for (const [i, leaf] of doorLeaves({ x: x0, w: W, count }).entries()) {
+      const name = typedDoors == null && bayN >= 2 ? `Bay ${i + 1} door` : leaf.name;
+      panels.push(panel("door", name, leaf.x, doorY, D - P, leaf.w, doorH, P));
     }
   }
 
