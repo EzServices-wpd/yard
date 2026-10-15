@@ -58,15 +58,35 @@ export class Budget {
 }
 
 export class IdeaStore {
-  private pending = new Map<string, { rec: LogRecord; n: number; last: number }>();
-  constructor(private pipe: Pipe | null, readonly budget = new Budget()) {}
+  private pending = new Map<string, { rec: LogRecord; n: number; last: number; timer?: boolean }>();
+  /**
+   * F34: `hold` keeps the function alive until a held burst is written (Vercel waitUntil in prod);
+   * `wait` is the timer (injectable for tests).
+   */
+  constructor(
+    private pipe: Pipe | null,
+    readonly budget = new Budget(),
+    private hold: (p: Promise<unknown>) => void = defaultHold,
+    private wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  ) {}
   get live() { return !!this.pipe; }
 
   /** R4/R7: one pipelined write; repeats of a key within 10 s on this instance fold into one increment. Never throws. */
   async record(rec: LogRecord, now = new Date()): Promise<"written" | "coalesced" | "off" | "over-budget" | "dropped"> {
     if (!this.pipe) return "off";
     const p = this.pending.get(rec.key);
-    if (p && now.getTime() - p.last < COALESCE_MS) { p.n++; if (STATUS_RANK[rec.status] > STATUS_RANK[p.rec.status]) p.rec = rec; stats.coalesced++; return "coalesced"; }
+    if (p && now.getTime() - p.last < COALESCE_MS) {
+      p.n++;
+      if (STATUS_RANK[rec.status] > STATUS_RANK[p.rec.status]) p.rec = rec;
+      stats.coalesced++;
+      // F34: the held count is written when its window ends, even if no request follows.
+      if (!p.timer) {
+        p.timer = true;
+        const end = p.last + COALESCE_MS;
+        this.hold(this.wait(Math.max(0, end - now.getTime())).then(() => this.flush(rec.key, new Date(end))));
+      }
+      return "coalesced";
+    }
     const n = (p?.n ?? 0) + 1;
     if (!this.budget.allows(WRITE_CMDS, now)) { stats.overBudget++; return "over-budget"; }
     this.pending.set(rec.key, { rec, n: 0, last: now.getTime() });
@@ -88,6 +108,23 @@ export class IdeaStore {
       stats.dropped++;
       return "dropped";
     }
+  }
+
+  /** F34: write a key's held repeats (if any) as one increment. Never throws. */
+  async flush(key: string, now = new Date()): Promise<void> {
+    const p = this.pending.get(key);
+    if (!p || !this.pipe) return;
+    p.timer = false;
+    const n = p.n;
+    if (!n) return;
+    if (!this.budget.allows(3, now)) { stats.overBudget++; return; }
+    p.n = 0;
+    p.last = now.getTime();
+    try {
+      const out = await this.pipe([["INCRBY", K.budget(month(now)), 3], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key]]);
+      this.budget.saw(Number(out?.[0]));
+      stats.written++;
+    } catch { stats.dropped++; }
   }
 
   private memo: { at: number; snap: IdeasSnapshot } | null = null;
@@ -183,9 +220,16 @@ export async function recordFromPrompt(raw: string, clientFailed = false): Promi
     const r = (n: number) => Math.round(n);
     size = `${r(p.overall.width)}×${r(p.overall.depth)}×${r(p.overall.height)}`;
     const base = p.name.replace(/[\d'"″′×x./\s]+$/g, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    resultKey = `${info.source === "Built-in shape" ? "builtin" : info.source === "Placeholder" || unknown ? "unknown" : "recipe"}:${base || "thing"}`;
+    // F35: an unknown noun is checked first, so it never gets a builtin: key.
+    resultKey = `${unknown || info.source === "Placeholder" ? "unknown" : info.source === "Built-in shape" ? "builtin" : "recipe"}:${base || "thing"}`;
   } catch { /* engine threw: Failed */ }
   return { key: logKey(prompt, resultKey, size), prompt, size, resultKey, status };
+}
+
+/** Vercel's waitUntil when present; otherwise the promise just runs (local, tests). */
+function defaultHold(p: Promise<unknown>): void {
+  const safe = p.catch(() => {});
+  void import("@vercel/functions").then((m) => m.waitUntil(safe)).catch(() => {});
 }
 
 let shared: IdeaStore | null = null;
