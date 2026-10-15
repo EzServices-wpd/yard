@@ -1,4 +1,5 @@
-import { POCKET_SHORT } from "./pocket";
+/** Same words as pocket.ts POCKET_SHORT; inlined so the home page does not load the engine. */
+const POCKET_SHORT = "pocket vanity";
 
 export type DreamGroup = "house" | "weekend";
 

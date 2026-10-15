@@ -1,4 +1,4 @@
-import { POCKET_SHORT } from "./pocket";
+const POCKET_SHORT = "pocket vanity"; // pocket.ts POCKET_SHORT, inlined: Ideas never loads the engine for one string
 
 export type IdeaGroup = "house" | "weekend";
 

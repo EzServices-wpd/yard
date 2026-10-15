@@ -4,14 +4,18 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
-import { DREAMS } from "@/lib/yard/prompt";
-import { promptWithHomeStock } from "@/lib/yard/promptHelpers";
+import { DREAMS } from "@/lib/yard/promptDreams";
+import type { promptWithHomeStock as PromptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
+import { PLANS, TAGLINE } from "@/lib/yard/plans";
 import type { Showcase } from "@/lib/yard/homeShowcase";
 
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
+  loader: async () => ({ shows: await homeShows() }),
+  validateSearch: (s: Record<string, unknown>): { q?: string } => (typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
   component: LandingPage,
 });
 
@@ -59,6 +63,12 @@ const PIECES = [
   },
 ] as const;
 
+let showsMemo: Promise<Record<string, Showcase>> | undefined;
+function homeShows(): Promise<Record<string, Showcase>> {
+  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => Object.fromEntries(PIECES.map((piece) => [piece.id, showcaseFor(piece.prompt)])));
+  return showsMemo;
+}
+
 const CHIP =
   "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
 
@@ -68,26 +78,30 @@ function LandingPage() {
     const y = new URLSearchParams(window.location.search).get("y");
     if (y) void navigate({ to: "/workspace", search: { y } });
   }, [navigate]);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(Route.useSearch().q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
-  const [shows, setShows] = useState<Record<string, Showcase | undefined>>({});
-  useEffect(() => {
-    let live = true;
-    // The engine loads after first paint so the headline stays instant.
-    void import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => {
-      for (const piece of PIECES) {
-        if (!live) return;
-        const show = showcaseFor(piece.prompt);
-        setShows((prev) => ({ ...prev, [piece.id]: show }));
-      }
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
+  // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
+  const { shows } = Route.useLoaderData() as { shows: Record<string, Showcase | undefined> };
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
+  // The engine's stock merge loads after first paint, so the home page never waits on the engine bundle.
+  const [mergeStock, setMergeStock] = useState<typeof PromptWithHomeStock | null>(null);
+  // F29: preload the stock merge when the browser is idle (and at the latest on first input), so a tap is never spent loading it.
+  useEffect(() => {
+    let done = false;
+    const evs = ["pointerdown", "keydown"] as const;
+    const load = () => {
+      if (done) return;
+      done = true;
+      evs.forEach((e) => window.removeEventListener(e, load, true));
+      void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock));
+    };
+    evs.forEach((e) => window.addEventListener(e, load, { capture: true, passive: true }));
+    const id = "requestIdleCallback" in window ? window.requestIdleCallback(load, { timeout: 4000 }) : setTimeout(load, 2000);
+    return () => { evs.forEach((e) => window.removeEventListener(e, load, true)); if ("cancelIdleCallback" in window) window.cancelIdleCallback(id as number); else clearTimeout(id as number); };
+  }, []);
+  const promptWithHomeStock: typeof PromptWithHomeStock = (t, a) => (mergeStock ? mergeStock(t, a) : a ? `${t.trim()} ${a}`.replace(/\s+/g, " ").trim() : t.trim());
 
   function withStock(text: string) {
     return promptWithHomeStock(text, stock?.append);
@@ -156,6 +170,7 @@ function LandingPage() {
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
             One model. Every cut, part and step.
           </p>
+          <p className="mt-1 text-sm italic text-ink-muted">{TAGLINE}</p>
 
           <form
             className="mt-9 w-full max-w-2xl"
@@ -307,6 +322,13 @@ function LandingPage() {
             ))}
           </div>
         </section>
+
+        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
+          Free plans:{" "}
+          {PLANS.map((p, i) => (
+            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
+          ))}
+        </nav>
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
           <Feature

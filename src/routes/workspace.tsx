@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceApp } from "@/components/workspace/shell";
-import { decodeShare } from "@/lib/yard/shareBuild";
+/** The share token's prompt only (base64url JSON, same as shareBuild.encodeShare). Inline so the route tree never loads the engine. */
+function sharedPrompt(token: string): string | undefined {
+  try {
+    const bin = atob(token.replace(/-/g, "+").replace(/_/g, "/"));
+    const p = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))) as { prompt?: unknown };
+    return typeof p.prompt === "string" ? p.prompt : undefined;
+  } catch { return undefined; }
+}
 
 /** "Bunk bed 82×44 · Yard" from a shared prompt: the words before the sizes, then width × height. */
 export function buildTitle(prompt: string): string {
@@ -28,7 +35,7 @@ export const Route = createFileRoute("/workspace")({
   },
   head: ({ match }) => {
     const { q, y } = (match.search ?? {}) as WorkspaceSearch;
-    const prompt = (y ? decodeShare(y)?.prompt : q) ?? "";
+    const prompt = (y ? sharedPrompt(y) : q) ?? "";
     const title = prompt ? buildTitle(prompt) : "Workspace · Yard";
     const desc = prompt ? `${title.replace(/ · Yard$/, "")}: the 3D model, cut list, Buy list and step-by-step plan on Yard.` : "Type a build and get a 3D model, cut list, Buy list and plan.";
     return { meta: [{ title }, { name: "description", content: desc }, { property: "og:title", content: title }, { property: "og:description", content: desc }, { name: "twitter:title", content: title }, { name: "twitter:description", content: desc }] };

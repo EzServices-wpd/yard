@@ -1172,22 +1172,20 @@
     "id": "lemonade-stand",
     "prompt": "lemonade stand",
     "bucket": "unknown-fallback",
-    "name": "Lemonade stand 4' × 6'",
+    "name": "Lemonade stand 4' × 2' 6\"",
     "kind": "custom",
     "material": "lumber-2x4-8",
     "overall": {
       "width": 48,
       "height": 72.5,
-      "depth": 24
+      "depth": 30
     },
-    "panels": 18,
+    "panels": 16,
     "instances": 0,
     "uniqueParts": [
       "Awning",
       "Center support 1",
       "Center support 2",
-      "Center support 3",
-      "Center support 4",
       "Counter",
       "Counter apron back",
       "Counter apron front",
@@ -1203,7 +1201,7 @@
       "Top rail front"
     ],
     "notesHead": [
-      "Lemonade stand 4' × 6': four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a 45\" × 24\" counter at 37\", a comfortable serving height.",
+      "Lemonade stand 4' × 2' 6\": four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a 45\" × 24\" counter at 37\", a comfortable serving height.",
       "A 1/2\" plywood skirt screws to the front posts below the counter; top rails tie the posts at the roof and carry a 1/2\" plywood awning that overhangs 6\" in front for shade."
     ],
     "signals": {
