@@ -141,6 +141,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
   if (!project.panels.length && !project.instances.length) return plan;
   let bom = [...plan.bom];
   let instructions = [...plan.instructions];
+  let cutList = [...plan.cutList];
   const lastIsCheck = (s?: AssemblyStep) => !!s && /level|plumb|sit-test|check|hang it|test/i.test(s.title);
   const insertStep = (step: Omit<AssemblyStep, "step">) => {
     const at = lastIsCheck(instructions[instructions.length - 1]) ? instructions.length - 1 : instructions.length;
@@ -225,7 +226,18 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     // Notes that call for pressure-treated lumber get it priced on Buy, not kiln-dried framing stock.
     // A typed species (cedar, redwood…) is what gets bought; PT only replaces plain framing stock.
     const species = /\b(?:cedar|redwood|cypress|teak|oak|ipe|acacia|mahogany|douglas fir|walnut|maple|cherry|pine)\b/i;
-    if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
+    if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
+      bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
+      // F21/I9: the cut list and the steps name the same PT stock Buy prices, never the kiln-dried catalogue name.
+      for (const b of bom) {
+        const pt = b.catalogId ? PT_LUMBER[b.catalogId] : undefined;
+        const was = b.catalogId ? getCatalogItem(b.catalogId)?.name : undefined;
+        if (!pt || !was || pt.name !== b.name) continue;
+        cutList = cutList.map((c) => (c.material === was ? { ...c, material: pt.name } : c));
+        const swap = (t: string | undefined) => t?.split(was).join(pt.name);
+        instructions = instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) }));
+      }
+    }
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
       title: wall || !feet.feet ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
@@ -245,13 +257,14 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
   // The plan total is the sum of the Buy lines: carry the swap's cost into it.
   const sum = (rows: BomLine[]) => rows.reduce((t, b) => t + (b.estimatedCost ?? 0), 0);
   const delta = sum(bom) - sum(plan.bom);
-  if (Math.abs(delta) < 0.005) return { ...plan, bom, instructions };
+  if (Math.abs(delta) < 0.005) return { ...plan, bom, instructions, cutList };
   const cost = Math.round((plan.totals.estCostUsd + delta) * 100) / 100;
   const money = (n: number) => `~$${n >= 100 ? n.toFixed(0) : n.toFixed(2)}`;
   return {
     ...plan,
     bom,
     instructions,
+    cutList,
     totals: { ...plan.totals, estCostUsd: cost },
     feasibility: { ...plan.feasibility, summary: plan.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, () => money(cost)) },
   };
