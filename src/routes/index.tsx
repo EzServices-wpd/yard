@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
@@ -128,13 +129,29 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24">
-        <section className="yard-hero-in mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+          <svg className="yard-grain" viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden>
+            <g fill="none" stroke="currentColor" strokeWidth="1.2">
+              {Array.from({ length: 14 }, (_, i) => (
+                <path key={i} d={`M-20 ${30 + i * 40} C 180 ${10 + i * 40 + (i % 3) * 14}, 380 ${60 + i * 40 - (i % 4) * 12}, 560 ${28 + i * 40} S 760 ${50 + i * 40}, 840 ${34 + i * 40}`} />
+              ))}
+            </g>
+          </svg>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             The plan the lumber aisle should have printed
           </p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
-            <span className="block">Think it up.</span>
-            <span className="block">Yard works it out.</span>
+            {/* Words rise in once; the full line stays in the accessible name and the layout never shifts. */}
+            {[["Think", "it", "up."], ["Yard", "works", "it", "out."]].map((line, li) => (
+              <span key={li} className="block">
+                {line.map((w, wi) => (
+                  <Fragment key={w + wi}>
+                    {wi > 0 && " "}
+                    <span className="yard-word" style={{ ["--i" as string]: li * 3 + wi }}>{w}</span>
+                  </Fragment>
+                ))}
+              </span>
+            ))}
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
             One model. Every cut, part and step.

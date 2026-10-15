@@ -436,6 +436,26 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   );
 }
 
+/** A finished build flies together once: parts start exploded and ease home (~0.7s). Still under reduced motion. */
+function useAssemble(ready: boolean): number {
+  const [k, setK] = useState(1);
+  const done = useRef(false);
+  useEffect(() => {
+    if (!ready || done.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    done.current = true;
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const u = Math.min(1, (t - t0) / 700);
+      setK(1 + 0.8 * (1 - u) ** 3);
+      if (u < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); setK(1); };
+  }, [ready]);
+  return k;
+}
+
 function BenchScene({
   project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows,
 }: {
@@ -459,7 +479,8 @@ function BenchScene({
   joinMethod?: YardProject["joinMethod"];
   useShadows: boolean;
 }) {
-  const explodeScale = explode ? 1.35 : 1;
+  const assemble = useAssemble(project.panels.length > 0 && !pending);
+  const explodeScale = explode ? 1.35 : assemble;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;

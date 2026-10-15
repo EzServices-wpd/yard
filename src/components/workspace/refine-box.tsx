@@ -40,7 +40,7 @@ export function RefineBox() {
           placeholder="make it 6 inches taller · add a drawer · use plywood"
           autoComplete="off"
           enterKeyHint="done"
-          className="h-8 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+          className="yard-glass h-8 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
         />
         <button type="submit" className="h-8 shrink-0 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg">Apply</button>
       </form>

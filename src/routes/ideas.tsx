@@ -162,7 +162,7 @@ function IdeaCard({ idea, onOpen }: { idea: Row; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="group flex flex-col rounded-xl border border-rule bg-paper p-4 text-left transition-[border-color,background-color] duration-150 hover:border-ink/35 hover:bg-surface/40"
+      className="yard-paper group flex flex-col rounded-xl border border-rule bg-paper p-4 text-left hover:border-ink/35"
     >
       {idea.stock ? (
         <span className="font-display text-sm italic leading-none text-ink-muted">{idea.stock}</span>

@@ -12,7 +12,7 @@ describe("home 'Made on Yard' cards are live Yard output", () => {
     assert.match(home, /showcaseFor\(piece\.prompt\)/);
   });
   it("keeps the headline and subline", () => {
-    assert.match(home, />Think it up\.<\/span>\s*<span className="block">Yard works it out\.</);
+    assert.match(home, /\["Think", "it", "up\."\], \["Yard", "works", "it", "out\."\]/);
     assert.match(home, /One model\. Every cut, part and step\./);
   });
   it("size copy is honest about doors standing proud", () => {
