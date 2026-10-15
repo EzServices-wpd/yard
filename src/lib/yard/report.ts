@@ -1444,16 +1444,28 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
     });
   }
-  const butts = notes.match(/\btwo 2" butt hinges\b/);
+  const butts = notes.match(/\b(two|four) 2" butt hinges\b/);
   if (butts && !/butt hinge/i.test(have)) {
+    const n = butts[1] === "four" ? 4 : 2;
     extra.push({
       name: '2" butt hinges',
-      quantity: 2,
+      quantity: n,
       unit: "each",
       catalogId: "butt-hinge-2",
       searchQuery: "2 inch butt hinge",
-      estimatedCost: 6,
-      notes: "Two along the back edge, as the notes say.",
+      estimatedCost: 3 * n,
+      notes: n === 4 ? "Two along the roof's back edge and two on the pop door, as the notes say." : "Two along the back edge, as the notes say.",
+    });
+  }
+  const barrel = notes.match(/\b(\d+) 3" barrel bolts?\b/);
+  if (barrel && !/barrel bolt/i.test(have)) {
+    extra.push({
+      name: '3" galvanized barrel bolt',
+      quantity: Number(barrel[1]),
+      unit: "each",
+      searchQuery: "3 inch galvanized barrel bolt",
+      estimatedCost: 5.98 * Number(barrel[1]),
+      notes: "Locks the pop door at night; a raccoon opens a hook-and-eye.",
     });
   }
   const railBolts = notes.match(/(\d+) 3\/8" × 5 1\/2" bed-rail bolts/);

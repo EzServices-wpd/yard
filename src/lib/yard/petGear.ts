@@ -191,15 +191,38 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
     panel({ type: "rail", name: "Front top rail", position: { x: L, y: r8(H - T - 2.5), z: 0 }, size: { width: r8(W - 2 * L), height: 2.5, depth: T }, materialId: mat }),
     panel({ type: "top", name: "Roof", position: { x: 0, y: r8(H - T), z: 0 }, size: { width: W, height: T, depth: D }, materialId: mat, cutNote: "Hinged along the back edge so it lifts for feeding and cleaning." }),
   );
-  const meshW = r8(W - 2 * L);
   const meshH = r8(inH - 3.5 - 2.5);
+  // Real-structure class (coop): chickens need a way in, somewhere to lay and somewhere to sleep. A pop door
+  // in the front, a nest box on the floor in the back corner, and a flat 2×4 roost on cleats, higher than the nest.
+  const coop = fowl && inH >= 22 && W >= 30 && D >= 20;
+  const y0 = r8(leg + T);
+  const doorW = 12;
+  const meshW = r8(W - 2 * L - (coop ? doorW + 1.5 : 0));
+  const nest = 12;
+  const roostY = r8(y0 + Math.min(20, inH - 8));
+  const roostZ = 4;
+  if (coop) {
+    panels.push(
+      panel({ type: "rail", name: "Door stile", position: { x: r8(L + doorW), y: r8(y0 + 3.5), z: 0 }, size: { width: 1.5, height: meshH, depth: T }, materialId: mat, cutNote: "Stands between the front rails; the pop door hinges on it and the mesh staples to it." }),
+      panel({ type: "side", name: "Pop door", position: { x: L, y: r8(y0 + 3.5), z: 0 }, size: { width: doorW, height: meshH, depth: T }, materialId: mat, cutNote: "Hinged on the stile; a barrel bolt keeps raccoons out at night." }),
+      panel({ type: "side", name: "Nest box side", position: { x: r8(W - T - nest - T), y: y0, z: r8(D - T - nest) }, size: { width: T, height: nest, depth: nest }, materialId: mat, cutNote: "Stands on the floor; with the right side and back it makes a 12\" cube nest." }),
+      panel({ type: "top", name: "Nest box top", position: { x: r8(W - T - nest - T), y: r8(y0 + nest), z: r8(D - T - nest) }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side and the right side; keeps hens from roosting in the nest." }),
+      panel({ type: "side", name: "Nest box lip", position: { x: r8(W - T - nest), y: y0, z: r8(D - T - nest) }, size: { width: nest, height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the nesting straw in." }),
+      panel({ type: "rail", name: "Roost cleat right", position: { x: r8(W - T - 1.5), y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the roost rests on it." }),
+      panel({ type: "rail", name: "Roost cleat left", position: { x: T, y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the left side; the roost rests on it." }),
+      panel({ type: "rail", name: "Roost", position: { x: r8(T + 0.25), y: roostY, z: roostZ }, size: { width: r8(W - 2 * T - 0.5), height: 1.5, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "A 2×4 laid flat, 3 1/2\" face up, so hens cover their toes in winter. Higher than the nest box." }),
+    );
+  }
   const who = tiny ? (lower.match(/hamster|gerbil|guinea pig|ferret|chinchilla|rat|mice|tortoise/)?.[0] ?? "small animal") : fowl ? "chicken" : /rabbit|bunn/.test(lower) ? "rabbit" : whoFor(lower);
   const head = lower.match(/hutch|cage|coop|enclosure|house|home|cabinet|cupboard|crate|condo/)?.[0] ?? "hutch";
   const name = `${who[0].toUpperCase()}${who.slice(1)} ${head}`;
   const notes = [
     `${name}: a raised enclosure on four 2×2 legs with the floor ${inchFrac(leg)}" off the ground; solid floor, back, sides and roof, and a wire-mesh front. Inside ${inchFrac(r8(W - 2 * T))}" wide × ${inchFrac(inH)}" tall × ${inchFrac(r8(D - 2 * T))}" deep.`,
     `Front: staple ½" galvanized hardware cloth, ${inchFrac(meshW)}" × ${inchFrac(meshH)}", across the opening between the rails, into the legs and the side edges, with the cut edges folded under so they stay smooth.`,
-    `Hinge the roof along the back edge with two 2" butt hinges so it lifts for feeding and cleaning. Drill a few ½" vent holes high in each side.`,
+    coop
+      ? `Hinge the roof along the back edge, and the pop door on its stile, with four 2" butt hinges in all; the roof lifts for feeding and cleaning. Close the pop door with 1 3" barrel bolt at night. Drill a few ½" vent holes high in each side and staple hardware cloth over them.`
+      : `Hinge the roof along the back edge with two 2" butt hinges so it lifts for feeding and cleaning. Drill a few ½" vent holes high in each side.`,
+    ...(coop ? [`Inside: a ${nest}" nest box in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 8))} hens fit on the roost at 8" each.`] : []),
     species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails; each 1 ½" square leg is two ripped strips glued face to face.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
   ];
   if (tw == null) notes.push(`Assumed ${inchFrac(W)}" wide — type a width to lock it.`);
