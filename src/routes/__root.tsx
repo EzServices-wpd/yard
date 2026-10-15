@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { NotFound } from "@/components/site/not-found";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Yard";
@@ -12,18 +12,7 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
-/** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
-function VercelAnalytics() {
-  useEffect(() => {
-    if (!/yard\.wiki$/.test(location.hostname) || document.querySelector("script[data-yard-va]")) return;
-    const s = document.createElement("script");
-    s.defer = true;
-    s.dataset.yardVa = "1";
-    s.src = "/_vercel/insights/script.js";
-    document.head.appendChild(s);
-  }, []);
-  return null;
-}
+
 
 export const Route = createRootRoute({
   // Only the root matched: the 404 page, which gets its own single title and description.
@@ -95,7 +84,7 @@ export const Route = createRootRoute({
           <Outlet />
         </AuthProvider>
         <Scripts />
-        <VercelAnalytics />
+        <Analytics />
       </body>
     </html>
   ),
