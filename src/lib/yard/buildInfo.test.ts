@@ -32,3 +32,10 @@ describe("How this was built", () => {
     assert.equal(urls.length, 0);
   });
 });
+
+it("a Critic-flagged built-in (picnic table) is Unverified until regraded", () => {
+  const i = buildInfo({ prompt: "picnic table", notes: [] } as never);
+  assert.equal(i.source, "Built-in shape");
+  assert.equal(i.trust, "Unverified");
+  assert.ok(i.failed.some((f) => /regrade/.test(f)));
+});
