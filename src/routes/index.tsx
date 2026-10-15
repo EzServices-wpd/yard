@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { MakingNow } from "@/components/ideas/MakingNow";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
@@ -329,6 +330,8 @@ function LandingPage() {
             <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
           ))}
         </nav>
+
+        <MakingNow />
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
           <Feature

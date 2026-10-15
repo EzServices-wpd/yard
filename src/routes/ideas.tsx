@@ -4,6 +4,9 @@ import { ArrowRight } from "lucide-react";
 import { SiteChrome } from "@/components/site/chrome";
 import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
 import { isoFaces, newIdeas, popularIdeas, type RecipeIdea } from "@/lib/yard/recipeIdeas";
+import { LogCard } from "@/components/ideas/LogCards";
+import { EMPTY_SNAPSHOT, searchLog, trustedPopular, type IdeasSnapshot } from "@/lib/yard/ideaLog";
+import { loadSnapshot } from "@/lib/yard/ideaLogClient";
 import { IDEAS_CHANGED, ideaSearchScore, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 
 type Row = Idea & { kept?: boolean };
@@ -63,6 +66,15 @@ function IdeasPage() {
   }, [q, rows]);
 
   const recipes = useMemo(() => popularIdeas(), []);
+  // Endless Ideas (004): the CDN snapshot of the log; one search over it, Popular from Trusted only.
+  const [snap, setSnap] = useState<IdeasSnapshot>(EMPTY_SNAPSHOT);
+  useEffect(() => {
+    let live = true;
+    void loadSnapshot().then((s) => live && setSnap(s));
+    return () => { live = false; };
+  }, []);
+  const logHits = useMemo(() => (q ? searchLog(snap.rows, q).slice(0, 30) : []), [q, snap]);
+  const logPopular = useMemo(() => trustedPopular(snap.popular), [snap]);
   const fresh = useMemo(() => newIdeas(), []);
 
   function go(text: string) {
@@ -101,7 +113,7 @@ function IdeasPage() {
         </form>
         {q ? (
           <p className="mt-3 text-xs text-ink-muted">
-            {visible.length === 0 ? "Nothing matches." : visible.length === 1 ? "1 idea. Enter builds it." : `${visible.length} ideas. Enter builds the first.`}
+            {visible.length === 0 ? (logHits.length ? `${logHits.length} from what people built.` : "Nothing matches.") : visible.length === 1 ? "1 idea. Enter builds it." : `${visible.length} ideas. Enter builds the first.`}
           </p>
         ) : learned.length > 0 ? (
           <p className="mt-3 text-xs text-ink-muted">
@@ -133,6 +145,27 @@ function IdeasPage() {
             );
           })
         )}
+        {q && logHits.length > 0 ? (
+          <section className="mt-12" data-yard-log-search>
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">What people built</h2>
+            <p className="mt-1 text-sm text-ink-muted">Trusted builds passed review. Unverified ones did not yet: check every part before you cut.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {logHits.map((r) => (
+                <LogCard key={r.key} row={r} onOpen={() => go(r.prompt)} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {!q && logPopular.length > 0 ? (
+          <section className="mt-12" data-yard-log-popular>
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">Popular with visitors (Trusted)</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {logPopular.map((r) => (
+                <LogCard key={r.key} row={r} onOpen={() => go(r.prompt)} />
+              ))}
+            </div>
+          </section>
+        ) : null}
         {!q && fresh.length > 0 ? (
           <section className="mt-12">
             <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">New (Unverified)</h2>

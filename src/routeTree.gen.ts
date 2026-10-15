@@ -16,6 +16,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
+import { Route as ApiIdeasSnapshotRouteImport } from './routes/api/ideas-snapshot'
 import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as GallerySlugRouteImport } from './routes/gallery/$slug'
 import { Route as PlansSlugRouteImport } from './routes/plans/$slug'
@@ -56,6 +58,16 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIdeasLogRoute = ApiIdeasLogRouteImport.update({
+  id: '/api/ideas-log',
+  path: '/api/ideas-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIdeasSnapshotRoute = ApiIdeasSnapshotRouteImport.update({
+  id: '/api/ideas-snapshot',
+  path: '/api/ideas-snapshot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GalleryIndexRoute = GalleryIndexRouteImport.update({
   id: '/gallery/',
   path: '/gallery/',
@@ -85,6 +97,8 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
@@ -98,6 +112,8 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery': typeof GalleryIndexRoute
@@ -112,6 +128,8 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
   '/gallery/$slug': typeof GallerySlugRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
@@ -127,6 +145,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
     | '/gallery/$slug'
     | '/plans/$slug'
     | '/gallery/'
@@ -140,6 +160,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
     | '/gallery/$slug'
     | '/plans/$slug'
     | '/gallery'
@@ -153,6 +175,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
     | '/gallery/$slug'
     | '/plans/$slug'
     | '/gallery/'
@@ -167,6 +191,8 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  ApiIdeasLogRoute: typeof ApiIdeasLogRoute
+  ApiIdeasSnapshotRoute: typeof ApiIdeasSnapshotRoute
   GallerySlugRoute: typeof GallerySlugRoute
   PlansSlugRoute: typeof PlansSlugRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
@@ -224,6 +250,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ideas-log': {
+      id: '/api/ideas-log'
+      path: '/api/ideas-log'
+      fullPath: '/api/ideas-log'
+      preLoaderRoute: typeof ApiIdeasLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ideas-snapshot': {
+      id: '/api/ideas-snapshot'
+      path: '/api/ideas-snapshot'
+      fullPath: '/api/ideas-snapshot'
+      preLoaderRoute: typeof ApiIdeasSnapshotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gallery/': {
       id: '/gallery/'
       path: '/gallery'
@@ -263,6 +303,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
+  ApiIdeasLogRoute: ApiIdeasLogRoute,
+  ApiIdeasSnapshotRoute: ApiIdeasSnapshotRoute,
   GallerySlugRoute: GallerySlugRoute,
   PlansSlugRoute: PlansSlugRoute,
   GalleryIndexRoute: GalleryIndexRoute,

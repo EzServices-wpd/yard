@@ -22,6 +22,7 @@ import { fitPocketAsk } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
 import { fieldInch, inchFrac, parseInch } from "./inchText";
+import { logIdea } from "./ideaLogClient";
 
 /** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
 const LAMP_HOLD_MS = 4000;
@@ -360,6 +361,8 @@ export const useYard = create<YardState>((set, get) => ({
     if (srcPocket) flags.showHull = true;
     if (srcFitted?.opening.kind === "alcove") flags.showHull = true;
     get().commit(next);
+    // Endless Ideas (004): anonymous, at idle, server decides status; restocks are not new ideas.
+    if (!opts?.restock) logIdea(used);
     const angled = angleMeasureFromProject(next);
     set({
       ...flags,
