@@ -1,3 +1,4 @@
+import { boundPrompt } from "./promptLimits";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
@@ -379,7 +380,7 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
-  args[0] = normalizeUserPrompt(said);
+  args[0] = normalizeUserPrompt(boundPrompt(said).prompt);
   const prompt = args[0];
   let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
   // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it

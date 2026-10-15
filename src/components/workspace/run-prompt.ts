@@ -4,6 +4,7 @@ import { recipePrompt } from "@/lib/yard/recipeIdeas";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
+import { boundPrompt } from "@/lib/yard/promptLimits";
 import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
@@ -319,7 +320,9 @@ function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
 const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
 
 export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number } = {}) {
-  const prompt = raw.trim();
+  // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
+  const bounded = boundPrompt(raw);
+  const prompt = bounded.prompt;
   const { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn } = { ...AI, ...opts.ai };
   if (!prompt) return;
 
@@ -336,6 +339,10 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   // The bar builds exactly what the engine builds from the typed words: generateFromPrompt reads the
   // fitted brief itself when the prompt is a carcase, so a pre-parsed brief would only steal real classes.
   generate(prompt, undefined, undefined, { fresh: opts.fresh });
+  if (bounded.note) {
+    const p = useYard.getState().project;
+    useYard.getState().setProject({ ...p, notes: [bounded.note, ...p.notes] });
+  }
 
   const next = useYard.getState().project;
   // A noun the engine does not own goes to the learner, from every entry point (bar, ?q=, share link, idea):
