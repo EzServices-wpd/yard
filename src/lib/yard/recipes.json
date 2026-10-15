@@ -7815,6 +7815,148 @@
     "Four legs stand on floor with connecting rails under open deck"
    ],
    "learned": true
+  },
+  {
+   "key": "sawhorse",
+   "synonyms": [
+    "a-frame sawhorse",
+    "saw horse"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "A-Frame Sawhorse",
+   "size": {
+    "width": 36,
+    "height": 30,
+    "depth": 24
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "rail",
+    "post"
+   ],
+   "parts": [
+    {
+     "role": "rail",
+     "name": "Top beam",
+     "box": [
+      0,
+      0.95,
+      0.427,
+      1,
+      0.05,
+      0.146
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Left rear leg",
+      "Right front leg",
+      "Right rear leg"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Left front leg",
+     "box": [
+      0.02,
+      0,
+      0.02,
+      0.042,
+      0.95,
+      0.146
+     ],
+     "kind": "member",
+     "lean": "apex"
+    },
+    {
+     "role": "post",
+     "name": "Left rear leg",
+     "box": [
+      0.02,
+      0,
+      0.834,
+      0.042,
+      0.95,
+      0.146
+     ],
+     "kind": "member",
+     "lean": "apex"
+    },
+    {
+     "role": "post",
+     "name": "Right front leg",
+     "box": [
+      0.938,
+      0,
+      0.02,
+      0.042,
+      0.95,
+      0.146
+     ],
+     "kind": "member",
+     "lean": "apex"
+    },
+    {
+     "role": "post",
+     "name": "Right rear leg",
+     "box": [
+      0.938,
+      0,
+      0.834,
+      0.042,
+      0.95,
+      0.146
+     ],
+     "kind": "member",
+     "lean": "apex"
+    },
+    {
+     "role": "rail",
+     "name": "Left brace",
+     "box": [
+      0.02,
+      0.35,
+      0.166,
+      0.042,
+      0.05,
+      0.668
+     ],
+     "kind": "member",
+     "on": [
+      "Left front leg",
+      "Left rear leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right brace",
+     "box": [
+      0.938,
+      0.35,
+      0.166,
+      0.042,
+      0.05,
+      0.668
+     ],
+     "kind": "member",
+     "on": [
+      "Right front leg",
+      "Right rear leg"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Typical jobsite A-frame sawhorse from 2x4 lumber",
+    "Top beam rests on two splayed A-frames",
+    "Each end has a horizontal brace between its front and rear legs",
+    "Leg and rail cross-sections match dressed 1.5 by 3.5 inch 2x4 stock"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left front leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft); Left rear leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft); Right front leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft)"
   }
  ]
 }
