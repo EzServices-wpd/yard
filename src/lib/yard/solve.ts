@@ -239,13 +239,22 @@ function notchAround(board: Panel, post: Panel): boolean {
   const P0 = worldBox(post);
   const t = INTERFERENCE_TOL;
   if (!(P0.y0 < B.y0 - t && P0.y1 > B.y1 + t)) return false; // post must pass through
-  if (!(P0.x0 >= B.x0 - t && P0.x1 <= B.x1 + t && P0.z0 >= B.z0 - t && P0.z1 <= B.z1 + t)) return false;
+  // The post sits in the board's outline on an edge, or (F38) straddles one of its corners: a board that spans
+  // to the walls past a leg is notched around it, never cut short of the wall.
+  const O = { x0: Math.max(P0.x0, B.x0), x1: Math.min(P0.x1, B.x1), z0: Math.max(P0.z0, B.z0), z1: Math.min(P0.z1, B.z1) };
+  if (!(O.x1 - O.x0 > t && O.z1 - O.z0 > t)) return false;
+  const inside = P0.x0 >= B.x0 - t && P0.x1 <= B.x1 + t && P0.z0 >= B.z0 - t && P0.z1 <= B.z1 + t;
   const onEdge = Math.abs(P0.x0 - B.x0) < t || Math.abs(P0.x1 - B.x1) < t || Math.abs(P0.z0 - B.z0) < t || Math.abs(P0.z1 - B.z1) < t;
-  if (!onEdge) return false;
+  const atX = Math.abs(O.x0 - B.x0) < t || Math.abs(O.x1 - B.x1) < t;
+  const atZ = Math.abs(O.z0 - B.z0) < t || Math.abs(O.z1 - B.z1) < t;
+  const corner = !inside && atX && atZ && (O.x1 - O.x0) < (B.x1 - B.x0) / 2 && (O.z1 - O.z0) < (B.z1 - B.z0) / 2;
+  if (!(inside && onEdge) && !corner) return false;
   board.joints = [...(board.joints ?? []), { with: post.id, kind: "notch" }];
   post.joints = [...(post.joints ?? []), { with: board.id, kind: "notch" }];
-  const note = `Notch the corners ${fmt16(P0.x1 - P0.x0)}" × ${fmt16(P0.z1 - P0.z0)}" so the board fits around the legs.`;
-  if (!board.cutNote?.includes("Notch the corners")) board.cutNote = board.cutNote ? `${board.cutNote} ${note}` : note;
+  const note = inside
+    ? `Notch the corners ${fmt16(P0.x1 - P0.x0)}" × ${fmt16(P0.z1 - P0.z0)}" so the board fits around the legs.`
+    : `Notch the corner ${fmt16(O.x1 - O.x0)}" × ${fmt16(O.z1 - O.z0)}" so the board fits around the leg and reaches the walls.`;
+  if (!/Notch the corners?/.test(board.cutNote ?? "")) board.cutNote = board.cutNote ? `${board.cutNote} ${note}` : note;
   return true;
 }
 

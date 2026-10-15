@@ -21,11 +21,11 @@ describe("chicken coop real structure", () => {
     assert.equal(plan.bom.find((b) => /butt hinge/.test(b.name))?.quantity, 2);
     assert.ok(plan.bom.some((b) => /barrel bolt/.test(b.name) && (b.estimatedCost ?? 0) > 0));
   });
-  it("has a 12in nest box raised 18-20in and a flat 2x4 roost 24-30in up on cleats, higher than the nest floor", () => {
+  it("has a full 12in nest box raised 14-20in and a flat 2x4 roost 24-30in up on cleats, higher than the nest", () => {
     const floor = named(/^Floor$/)[0];
     const bottom = named(/^Nest box bottom$/)[0];
     const up = (y: number) => y - (floor.position.y + floor.size.height);
-    assert.ok(up(bottom.position.y) >= 18 && up(bottom.position.y) <= 20, `nest ${up(bottom.position.y)}in up`);
+    assert.ok(up(bottom.position.y) >= 14 && up(bottom.position.y) <= 20, `nest ${up(bottom.position.y)}in up`);
     const top = named(/^Nest box top$/)[0];
     const roost = named(/^Roost$/)[0];
     assert.ok(top && named(/^Nest box (side|lip|bottom)$/).length === 3);
@@ -36,6 +36,23 @@ describe("chicken coop real structure", () => {
     assert.ok(named(/^Nest box side$/)[0].size.height >= 8, "nest at least 8in tall");
     assert.equal(named(/^Roost cleat/).length, 2);
     for (const c of named(/^Roost cleat/)) assert.ok(Math.abs(c.position.y + c.size.height - roost.position.y) < 0.01, `${c.name} carries the roost`);
+  });
+  it("F38/F39 engine rule: nest parts span to the walls, notch around the leg, sit on their cleats, and leave a 10in opening", () => {
+    const right = named(/^Right side$/)[0], back = named(/^Back$/)[0];
+    const leg = p.panels.filter((x) => /^Leg /.test(x.name)).sort((a, b) => b.position.x + b.position.z - (a.position.x + a.position.z))[0];
+    for (const n of ["Nest box bottom", "Nest box top"]) {
+      const q = named(new RegExp(`^${n}$`))[0];
+      assert.ok(Math.abs(q.position.x + q.size.width - right.position.x) < 0.01, `${n} reaches the right wall`);
+      assert.ok(Math.abs(q.position.z + q.size.depth - back.position.z) < 0.01, `${n} reaches the back`);
+      assert.ok((q.joints ?? []).some((j) => j.with === leg.id && j.kind === "notch"), `${n} is notched around the back-right leg`);
+      assert.match(q.cutNote ?? "", /Notch the corner/);
+    }
+    const bottom = named(/^Nest box bottom$/)[0];
+    for (const c of named(/^Nest cleat/)) assert.ok(Math.abs(c.position.y + c.size.height - bottom.position.y) < 0.01, `${c.name} carries the nest bottom`);
+    const side = named(/^Nest box side$/)[0], lip = named(/^Nest box lip$/)[0];
+    assert.equal(side.size.height, 12, "full 12in box");
+    assert.ok(side.size.height - lip.size.height >= 10, "10in opening above the lip");
+    assert.ok(plan.cutList.some((c) => /Nest box bottom/.test(c.name) && Math.abs(Math.max(c.lengthIn, c.widthIn) - 12.75) < 0.01), "nest bottom cut 12 3/4in");
   });
   it("hardware cloth covers the front mesh and vents, priced on Buy", () => {
     assert.ok(plan.bom.some((b) => /hardware cloth/.test(b.name) && (b.estimatedCost ?? 0) > 0));

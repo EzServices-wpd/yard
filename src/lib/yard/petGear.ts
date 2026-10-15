@@ -223,9 +223,12 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   roof.hinged = { to: back.id, edge: "back", hinges: 2 };
   const meshH = r8(inH - 3.5 - 2.5);
   const nest = 12;
-  // Nest 18–20" off the floor; roost 24–30" and higher than the nest (Penn State / heavy-bird range).
-  const nestY = r8(y0 + 18);
+  // Roost 24–30" (Penn State / heavy-bird range), the highest perch. A full 12" nest box sits under it:
+  // its bottom 14–20" up, its top at least 1/2" below the roost's underside (F39).
   const roostY = r8(Math.max(y0 + 24, Math.min(y0 + 30, H - T - 2.5 - 10)));
+  const nestUp = r8(Math.max(14, Math.min(20, roostY - y0 - 0.5 - 2 * T - nest)));
+  const nestY = r8(y0 + nestUp);
+  const lip = 2; // a 2" lip keeps the straw in and leaves a 10" opening on a 12" box
   // The roost is the highest perch: the nest top sits at least 1/2" below the roost's underside, so hens
   // sleep on the roost, not on the nest. The nest is 12" wide and deep and up to 12" tall (at least 8").
   const nestH = r8(Math.max(8, Math.min(12, roostY - 0.5 - (nestY + 2 * T))));
@@ -240,9 +243,9 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
       door,
       panel({ type: "rail", name: "Nest cleat side", position: { x: r8(W - T - 1.5), y: r8(nestY - 3), z: nz }, size: { width: 1.5, height: 3, depth: nest }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the nest bottom rests on it." }),
       panel({ type: "rail", name: "Nest cleat back", position: { x: nx, y: r8(nestY - 3), z: r8(D - T - 1.5) }, size: { width: r8(nest + T - 1.5), height: 3, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the back; the nest bottom rests on it." }),
-      panel({ type: "bottom", name: "Nest box bottom", position: { x: nx, y: nestY, z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the two nest cleats, 18\" up off the coop floor." }),
+      panel({ type: "bottom", name: "Nest box bottom", position: { x: nx, y: nestY, z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: `Rests on the two nest cleats, ${inchFrac(nestUp)}" up off the coop floor, reaching the right wall and notched around the back-right leg.` }),
       panel({ type: "side", name: "Nest box side", position: { x: nx, y: r8(nestY + T), z: nz }, size: { width: T, height: nestH, depth: r8(nest - T) }, materialId: mat, cutNote: `Stands on the nest bottom; with the right side and back it makes a ${nest}" × ${nest}" nest, ${inchFrac(nestH)}" tall.` }),
-      panel({ type: "side", name: "Nest box lip", position: { x: r8(nx + T), y: r8(nestY + T), z: r8(nz) }, size: { width: nest, height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the nesting straw in." }),
+      panel({ type: "side", name: "Nest box lip", position: { x: r8(nx + T), y: r8(nestY + T), z: r8(nz) }, size: { width: nest, height: lip, depth: T }, materialId: mat, cutNote: `Holds the nesting straw in; ${inchFrac(r8(nestH - lip))}" of opening stays clear above it.` }),
       panel({ type: "top", name: "Nest box top", position: { x: nx, y: r8(nestY + T + nestH), z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side, below the roost, so hens roost on the roost and not on the nest." }),
       panel({ type: "rail", name: "Roost cleat left", position: { x: T, y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the left side; one end of the roost rests on it." }),
       panel({ type: "rail", name: "Roost cleat right", position: { x: r8(W - T - 1.5), y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the other end of the roost rests on it." }),
@@ -264,7 +267,7 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
       ? `Hinge the roof to the top edge of the back with two 3–4" galvanized T-hinges and fit a lid stay (or a short chain) so it stays open and closes gently; the only screws in the roof are the hinge screws.${coop ? " Hang the pop door on its stile with two 2\" galvanized butt hinges and close it with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`
       : `Hinge the roof to the top edge of the back${coop ? ", and the pop door to its stile," : ""} with ${hinges} 2" butt hinges in all; the roof lifts for feeding and cleaning and takes no screws.${coop ? " Close the pop door with 1 3\" barrel bolt at night." : ""} Drill a few ½" vent holes high in each side and staple hardware cloth over them.`,
     ...(outdoor ? [`Cover the roof with 1 roll of mineral-surfaced roll roofing, lapped over the edges and fixed with galvanized roofing nails.`] : []),
-    ...(coop ? [`Inside: a ${nest}" nest box raised 18" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
+    ...(coop ? [`Inside: a ${nest}" nest box raised ${inchFrac(nestUp)}" off the floor in the back right corner (one is enough for up to 4 hens) and a flat 2×4 roost at the front, ${inchFrac(r8(roostY - y0))}" above the floor on two cleats, higher than the nest so hens sleep on the roost, not in the nest. About ${Math.max(1, Math.floor((W - 2 * T) / 10))} hens fit on the roost at 10" each.`] : []),
     species ? `${species.display} boards edge-glued for the floor, roof, back, sides and rails.` : outdoor ? `¾" exterior plywood for the floor, roof, back, sides and rails; pressure-treated 4×4 legs and a 2×4 floor frame.` : `¾" plywood for the floor, roof, back, sides and rails; the legs are 2×2.`,
   ];
   if (tw == null) notes.push(`Assumed ${inchFrac(W)}" wide — type a width to lock it.`);
@@ -294,7 +297,7 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
   ];
   const cleats = names(/cleat/);
   if (cleats.length) steps.push({ title: "Screw the cleats to the sides and back", description: `Screw the ${cleats.map((c) => c.toLowerCase()).join(", ")} to the inside faces, tops level at their marks, with ${fix}. Nothing rests on them yet.`, partsUsed: cleats });
-  if (has(/^Nest box/)) steps.push({ title: "Build the raised nest box on its cleats", description: `Set the nest bottom on the two nest cleats, 18" up off the floor. Stand the nest side on it, screw the lip across the front, and set the top on the side and the right wall. ${fix}.`, partsUsed: names(/^Nest box/) });
+  if (has(/^Nest box/)) steps.push({ title: "Build the raised nest box on its cleats", description: `Set the nest bottom on the two nest cleats, ${inchFrac(r8(nestBottomUp(project)))}" up off the floor, its notched corner around the back-right leg. Stand the nest side on it, screw the lip across the front, and set the top on the side and the right wall. ${fix}.`, partsUsed: names(/^Nest box/) });
   if (has(/^Roost$/)) steps.push({ title: "Set the roost on both cleats", description: `Lay the 2×4 roost flat, 3 1/2" face up, with one end on each roost cleat. Screw down through it into each cleat with ${fix}.`, partsUsed: ["Roost"] });
   steps.push({ title: has(/^Door stile$/) ? "Fit the front rails and the door stile" : "Fit the front rails", description: `Screw the front bottom rail and the front top rail between the front legs${has(/^Door stile$/) ? ", then the door stile between the two rails" : ""}, with ${fix}.`, partsUsed: [...names(/^Front (bottom|top) rail$/), ...names(/^Door stile$/)] });
   steps.push({ title: "Staple the hardware cloth and drill the vents", description: `Staple ½" galvanized hardware cloth across the front opening between the rails${has(/^Door stile$/) ? " and the stile" : ""}, every 2", the cut edges folded under. Drill a few ½" vent holes high in each side and staple a patch of hardware cloth over them inside.`, partsUsed: [] });
@@ -309,4 +312,11 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
     });
   }
   return steps.map((s, i) => ({ ...s, step: i + 1 }));
+}
+
+/** Height of the nest bottom above the coop floor, read from the model. */
+function nestBottomUp(project: YardProject): number {
+  const b = project.panels.find((p) => p.name === "Nest box bottom");
+  const f = project.panels.find((p) => p.name === "Floor");
+  return b && f ? b.position.y - (f.position.y + f.size.height) : 0;
 }
