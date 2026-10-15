@@ -12,6 +12,19 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
+/** Google Fonts load after first paint (display=swap), so text paints at once in the fallback face. */
+const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap";
+function LateFonts() {
+  useEffect(() => {
+    if (document.querySelector(`link[rel="stylesheet"][href="${FONTS_CSS}"]`)) return;
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = FONTS_CSS;
+    document.head.appendChild(l);
+  }, []);
+  return null;
+}
+
 /** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
 function VercelAnalytics() {
   useEffect(() => {
@@ -70,10 +83,7 @@ export const Route = createRootRoute({
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap",
-      },
+      { rel: "preload", as: "style", href: FONTS_CSS },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/icon-32.png" },
@@ -97,6 +107,7 @@ export const Route = createRootRoute({
         </AuthProvider>
         <Scripts />
         <VercelAnalytics />
+        <LateFonts />
       </body>
     </html>
   ),

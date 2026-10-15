@@ -405,7 +405,7 @@
 @keyframes ya-in { 0% { transform: var(--ya); opacity: 0.2; } 55%, 85% { transform: none; opacity: 1; } 100% { transform: var(--ya); opacity: 0.2; } }
 
 /* Hero headline: words rise in once. */
-.yard-word { display: inline-block; opacity: 0; transform: translateY(0.35em); animation: yard-word 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i) * 90ms + 80ms); }
+.yard-word { display: inline-block; opacity: 0.02; transform: translateY(0.35em); animation: yard-word 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i) * 90ms + 80ms); }
 @keyframes yard-word { to { opacity: 1; transform: none; } }
 
 /* Faint wood-grain line field drifting behind the hero. */

@@ -4,14 +4,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
-import { DREAMS } from "@/lib/yard/prompt";
-import { promptWithHomeStock } from "@/lib/yard/promptHelpers";
+import { DREAMS } from "@/lib/yard/promptDreams";
+import type { promptWithHomeStock as PromptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
+import { PLANS, TAGLINE } from "@/lib/yard/plans";
 import type { Showcase } from "@/lib/yard/homeShowcase";
 
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>): { q?: string } => (typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
   component: LandingPage,
 });
 
@@ -68,7 +70,7 @@ function LandingPage() {
     const y = new URLSearchParams(window.location.search).get("y");
     if (y) void navigate({ to: "/workspace", search: { y } });
   }, [navigate]);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(Route.useSearch().q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
   const [shows, setShows] = useState<Record<string, Showcase | undefined>>({});
   useEffect(() => {
@@ -88,6 +90,10 @@ function LandingPage() {
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
+  // The engine's stock merge loads after first paint, so the home page never waits on the engine bundle.
+  const [mergeStock, setMergeStock] = useState<typeof PromptWithHomeStock | null>(null);
+  useEffect(() => { void import("@/lib/yard/promptHelpers").then((m) => setMergeStock(() => m.promptWithHomeStock)); }, []);
+  const promptWithHomeStock: typeof PromptWithHomeStock = (t, a) => (mergeStock ? mergeStock(t, a) : a ? `${t.trim()} ${a}`.replace(/\s+/g, " ").trim() : t.trim());
 
   function withStock(text: string) {
     return promptWithHomeStock(text, stock?.append);
@@ -156,6 +162,7 @@ function LandingPage() {
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
             One model. Every cut, part and step.
           </p>
+          <p className="mt-1 text-sm italic text-ink-muted">{TAGLINE}</p>
 
           <form
             className="mt-9 w-full max-w-2xl"
@@ -307,6 +314,13 @@ function LandingPage() {
             ))}
           </div>
         </section>
+
+        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
+          Free plans:{" "}
+          {PLANS.map((p, i) => (
+            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
+          ))}
+        </nav>
 
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
           <Feature
