@@ -5,6 +5,7 @@ import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stoolRiseRunTalk, stoolStepCount } from "./climb";
 import { inchFrac } from "./inchText";
+import { faceScrewInches } from "./shopJoin";
 import { templatePanelSteps, templateSteps } from "./formTemplates";
 import {
   climbRiseRun,
@@ -566,6 +567,45 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       tips: "Anchor before you load it — a leaning shelf tips forward if pulled.",
       partsUsed: names(posts),
     });
+    return out;
+  }
+
+  // A-frame picnic table: build each A-frame flat and bolt it, stand the frames, brace them, then the top and seats.
+  // Supports always go on before what rests on them; a slanted leg never stands loose.
+  const aLegs = panels.filter((p) => /^Leg\b/.test(p.name) && p.polygon);
+  const seatSupports = panels.filter((p) => /^Seat support\b/.test(p.name));
+  const topCleats = panels.filter((p) => /^Top cleat\b/.test(p.name));
+  if (!project.fitted && aLegs.length >= 4 && seatSupports.length >= 2 && topCleats.length === seatSupports.length) {
+    const out: AssemblyStep[] = [];
+    let k = 1;
+    const ends = topCleats.map((c) => c.name.replace(/^Top cleat\s*/, ""));
+    const center = panels.filter((p) => /^Center brace\b/.test(p.name));
+    const diag = panels.filter((p) => /^Diagonal brace\b/.test(p.name));
+    const tops = panels.filter((p) => /^Tabletop board\b/.test(p.name));
+    const seats = panels.filter((p) => /seat board\b/i.test(p.name));
+    const screw = `#8 x ${inchFrac(faceScrewInches(1.5))}" screws, the same screws on the Buy list`;
+    const supTop = round(seatSupports[0].position.y + seatSupports[0].size.height);
+    const cleatTop = round(topCleats[0].position.y + topCleats[0].size.height);
+    out.push({ step: k++, title: "Confirm the footprint before the first cut", description: `${project.name}. ${round(W)}" wide × ${round(D)}" long × ${round(H)}" high. Mark the footprint on the ground and check it is square. ${partsOnThisListPhrase(project)}.`, tips: "Pick a level spot; the frames sit on it.", partsUsed: ["*"] });
+    out.push({ step: k++, title: sheetCutTitle(panels, item), description: sheetCutDescription(panels, item, aLegs[0]?.cutNote ? `Legs: ${aLegs[0].cutNote.replace(/^Cut [\d /]+" long with /, "")}` : ""), tips: tool.tip, partsUsed: names(panels) });
+    for (const e of ends) {
+      const legs = aLegs.filter((p) => p.name.startsWith(`Leg ${e} `));
+      const cleat = topCleats.find((p) => p.name === `Top cleat ${e}`)!;
+      const sup = seatSupports.find((p) => p.name === `Seat support ${e}`)!;
+      out.push({
+        step: k++,
+        title: `Build the ${e} A-frame`,
+        description: `Lay the two ${e} legs flat, feet splayed and tops meeting under the top. Clamp the ${cleat.name} across the leg tops, its top edge ${cleatTop}" up when the frame stands, and the ${sup.name} across both legs with its top edge ${supTop}" up, centred. Square the frame, drill 3/8" holes and bolt it: two 3/8" carriage bolts through each leg at the seat support and one through each leg at the top cleat, the same bolts on the Buy list.`,
+        tips: "Build the frames on a flat surface so all of them match; mark which face goes in.",
+        partsUsed: names([...legs, cleat, sup]),
+      });
+    }
+    // The diagonal braces carry the center brace's middle, so they go in first; the center brace then rests on them.
+    if (diag.length) out.push({ step: k++, title: "Stand the frames and fit the diagonal braces", description: `Stand the A-frames on their feet at their marks. Set each diagonal brace on the centre line, its lower end flat against the seat support and its upper end level with the underside of the top cleats, where the center brace will sit. Fasten the lower end to the seat support with ${screw}.`, tips: "Have a helper hold each frame plumb until the braces are in.", partsUsed: names(diag) });
+    if (center.length) out.push({ step: k++, title: diag.length ? "Fit the center brace" : "Stand the frames and fit the center brace", description: `${diag.length ? "" : "Stand the A-frames on their feet at their marks. "}Set the center brace on edge between the top cleats, on the centre line and flush with their top edges${diag.length ? ", resting on the diagonal braces" : ""}. Fasten through each cleat into the brace ends${diag.length ? " and up through each diagonal brace into it" : ""} with ${screw}. Check the frames read plumb before you drive the last screw.`, tips: "The braces stop the table racking.", partsUsed: names(center) });
+    out.push({ step: k++, title: `Screw the ${tops.length} tabletop boards to the top cleats`, description: `Lay the tabletop boards across the top cleats, ¼" gaps, ends flush, overhang equal at both ends. Fasten each board to every cleat (and the center brace under the middle board) with 2 ${screw.replace(/, the same/, " per crossing, the same")}.`, tips: "Use a ¼\" spacer so the gaps stay even and rain drains.", partsUsed: names(tops) });
+    out.push({ step: k++, title: `Screw the ${seats.length} seat boards to the seat supports`, description: `Lay the seat boards across the seat supports on both sides, ¼" gaps, ends flush. Fasten each board to every seat support with 2 ${screw.replace(/, the same/, " per crossing, the same")}.`, tips: "Ease the top edges with sandpaper so nobody catches a splinter.", partsUsed: names(seats) });
+    out.push({ step: k++, title: "Level it", description: "Set it where it lives. Shim a foot if the ground is out — do not twist the frames.", tips: "Re-tighten the carriage bolts after a week outdoors.", partsUsed: names(aLegs) });
     return out;
   }
 

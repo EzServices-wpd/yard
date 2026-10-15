@@ -761,7 +761,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     (/nightstand/i.test(project.name) ||
       /nightstand/.test((project.prompt ?? "").toLowerCase()) ||
       (/bedside/.test((project.prompt ?? "").toLowerCase()) && !isBedsideShelf((project.prompt ?? "").toLowerCase())));
-  const hasCleats = project.panels.some((p) => /cleat/i.test(p.name));
+  // Wall cleats make a floating build; a freestanding frame's top cleat (picnic table) does not.
+  const hasCleats = project.assumptions?.installMode !== "freestanding" && project.panels.some((p) => /cleat/i.test(p.name));
   const hasBrackets = project.panels.some((p) => /bracket/i.test(p.name));
   const oddKind = project.fitted?.unit?.odd?.kind;
   const floating =
@@ -801,7 +802,10 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
     !wantsRackAffordance(project.prompt ?? "") && !wantsFixedGlueShelves(project);
   const pinned = (p: Panel) => pinShelves && p.type === "shelf" && shelfSpansUprights(p, project.panels);
-  const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b));
+  // Joints the notes bolt (an A-frame's cleat and seat support through its legs) take carriage bolts, not screws.
+  const boltedToLegs = (project.notes ?? []).some((n) => /held to both legs with \d+ 3\/8" carriage bolts/.test(n));
+  const bolted = (a: Panel, b: Panel) => boltedToLegs && [[a, b], [b, a]].some(([x, y]) => /^Leg\b/.test(x.name) && /^(?:Top cleat|Seat support)\b/.test(y.name));
+  const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b) || bolted(a, b));
   BUY_JOINTS.set(project, buyJoints);
   const modelScrews = screwTalk(buyJoints);
   // A build with no screwed joint (pegs glued in holes) buys no screws.

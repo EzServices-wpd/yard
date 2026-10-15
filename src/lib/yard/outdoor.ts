@@ -110,6 +110,27 @@ function exteriorTalk(t: string | undefined): string | undefined {
     .replace(/A felt pad under each foot saves the floor\.?/g, "A glide under each foot keeps the end grain off wet ground.");
 }
 
+/** Pressure-treated #2 lumber, Home Depot shelf prices checked 2026-10-15 (search links where no single product page fits). */
+const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
+  "lumber-2x4-8": { name: "2×4 pressure-treated (8 ft)", price: 4.88, query: "2x4x8 pressure treated lumber", title: "2x4x8 #2 Prime ground contact pressure-treated pine" },
+  "lumber-2x6-8": { name: "2×6 pressure-treated (8 ft)", price: 5.98, query: "2x6x8 pressure treated lumber", href: "https://www.homedepot.com/p/2-in-x-6-in-x-8-ft-2-Pressure-Treated-Lumber-2310254/329737526", title: "2x6x8 #2 pressure-treated lumber" },
+  "lumber-2x8-8": { name: "2×8 pressure-treated (8 ft)", price: 12.88, query: "2x8x8 pressure treated lumber", title: "2x8x8 #2 Prime ground contact pressure-treated pine" },
+};
+
+function pressureTreated(b: BomLine): BomLine {
+  const pt = b.catalogId ? PT_LUMBER[b.catalogId] : undefined;
+  if (!pt) return b;
+  const lineTotal = Math.round(pt.price * b.quantity * 100) / 100;
+  return {
+    ...b,
+    name: pt.name,
+    searchQuery: pt.query,
+    estimatedCost: lineTotal,
+    notes: `${b.notes ?? ""} Pressure-treated for outdoors (ground-contact rated); let it dry a few weeks before you finish it.`.trim(),
+    offers: [{ retailer: "homedepot", label: "Home Depot", title: pt.title, href: pt.href ?? `https://www.homedepot.com/s/${encodeURIComponent(pt.query)}`, packQty: 1, packPrice: pt.price, unitPrice: pt.price, packsNeeded: b.quantity, lineTotal, best: true, checkedAt: "2026-10-15" }],
+  } as BomLine;
+}
+
 /** Plan pass: Buy swaps indoor glue and screws for exterior ones, adds finish + glides; steps seal end grain. */
 export function withOutdoorPackage(project: YardProject, plan: BuildPlan): BuildPlan {
   // A primitive stand-in (a feeder built as an open box) answers to the words the person typed.
@@ -201,6 +222,10 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
         notes: `One under each foot (${feet.count}) so the end grain sits off wet ground.`,
       });
     }
+    // Notes that call for pressure-treated lumber get it priced on Buy, not kiln-dried framing stock.
+    // A typed species (cedar, redwood…) is what gets bought; PT only replaces plain framing stock.
+    const species = /\b(?:cedar|redwood|cypress|teak|oak|ipe|acacia|mahogany|douglas fir|walnut|maple|cherry|pine)\b/i;
+    if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
       title: wall || !feet.feet ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
