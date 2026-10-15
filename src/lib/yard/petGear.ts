@@ -225,7 +225,10 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
   const nest = 12;
   // Nest 18–20" off the floor; roost 24–30" and higher than the nest (Penn State / heavy-bird range).
   const nestY = r8(y0 + 18);
-  const roostY = r8(Math.max(y0 + 24, Math.min(y0 + 27, H - T - 2.5 - 10)));
+  const roostY = r8(Math.max(y0 + 24, Math.min(y0 + 30, H - T - 2.5 - 10)));
+  // The roost is the highest perch: the nest top sits at least 1/2" below the roost's underside, so hens
+  // sleep on the roost, not on the nest. The nest is 12" wide and deep and up to 12" tall (at least 8").
+  const nestH = r8(Math.max(8, Math.min(12, roostY - 0.5 - (nestY + 2 * T))));
   const roostZ = 4;
   if (coop) {
     const door = panel({ type: "side", name: "Pop door", position: { x: r8(L + 0.0625), y: r8(y0 + 3.5 + 0.0625), z: 0 }, size: { width: r8(12 - 0.125), height: r8(Math.min(16, meshH) - 0.125), depth: T }, materialId: mat, cutNote: "Hung on two hinges from the stile with a 1/16\" gap all round; a barrel bolt keeps raccoons out at night." });
@@ -237,10 +240,10 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
       door,
       panel({ type: "rail", name: "Nest cleat side", position: { x: r8(W - T - 1.5), y: r8(nestY - 3), z: nz }, size: { width: 1.5, height: 3, depth: nest }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the nest bottom rests on it." }),
       panel({ type: "rail", name: "Nest cleat back", position: { x: nx, y: r8(nestY - 3), z: r8(D - T - 1.5) }, size: { width: r8(nest + T - 1.5), height: 3, depth: 1.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the back; the nest bottom rests on it." }),
-      panel({ type: "bottom", name: "Nest box bottom", position: { x: nx, y: nestY, z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the two nest cleats, 24\" up off the coop floor." }),
-      panel({ type: "side", name: "Nest box side", position: { x: nx, y: r8(nestY + T), z: nz }, size: { width: T, height: nest, depth: r8(nest - T) }, materialId: mat, cutNote: "Stands on the nest bottom; with the right side and back it makes a 12\" nest." }),
+      panel({ type: "bottom", name: "Nest box bottom", position: { x: nx, y: nestY, z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the two nest cleats, 18\" up off the coop floor." }),
+      panel({ type: "side", name: "Nest box side", position: { x: nx, y: r8(nestY + T), z: nz }, size: { width: T, height: nestH, depth: r8(nest - T) }, materialId: mat, cutNote: `Stands on the nest bottom; with the right side and back it makes a ${nest}" × ${nest}" nest, ${inchFrac(nestH)}" tall.` }),
       panel({ type: "side", name: "Nest box lip", position: { x: r8(nx + T), y: r8(nestY + T), z: r8(nz) }, size: { width: nest, height: 3.5, depth: T }, materialId: mat, cutNote: "Holds the nesting straw in." }),
-      panel({ type: "top", name: "Nest box top", position: { x: nx, y: r8(nestY + T + nest), z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side; keeps hens from roosting on the nest." }),
+      panel({ type: "top", name: "Nest box top", position: { x: nx, y: r8(nestY + T + nestH), z: nz }, size: { width: r8(nest + T), height: T, depth: nest }, materialId: mat, cutNote: "Rests on the nest side, below the roost, so hens roost on the roost and not on the nest." }),
       panel({ type: "rail", name: "Roost cleat left", position: { x: T, y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the left side; one end of the roost rests on it." }),
       panel({ type: "rail", name: "Roost cleat right", position: { x: r8(W - T - 1.5), y: r8(roostY - 3), z: roostZ }, size: { width: 1.5, height: 3, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "Screwed to the right side; the other end of the roost rests on it." }),
       panel({ type: "rail", name: "Roost", position: { x: r8(T + 0.25), y: roostY, z: roostZ }, size: { width: r8(W - 2 * T - 0.5), height: 1.5, depth: 3.5 }, materialId: "lumber-2x4-8", cutNote: "A 2×4 laid flat, 3 1/2\" face up, so hens cover their toes in winter. Higher than the nest box, at the front, away from it." }),

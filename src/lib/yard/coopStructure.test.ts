@@ -32,6 +32,8 @@ describe("chicken coop real structure", () => {
     assert.ok(roost && roost.materialId === "lumber-2x4-8" && roost.size.depth === 3.5 && roost.size.height === 1.5);
     assert.ok(up(roost.position.y) >= 24 && up(roost.position.y) <= 30, `roost ${up(roost.position.y)}in up`);
     assert.ok(roost.position.y > bottom.position.y + 3, "roost above the nest floor");
+    assert.ok(roost.position.y >= top.position.y + top.size.height + 0.5, "roost above the nest top (hens never roost on the nest)");
+    assert.ok(named(/^Nest box side$/)[0].size.height >= 8, "nest at least 8in tall");
     assert.equal(named(/^Roost cleat/).length, 2);
     for (const c of named(/^Roost cleat/)) assert.ok(Math.abs(c.position.y + c.size.height - roost.position.y) < 0.01, `${c.name} carries the roost`);
   });
