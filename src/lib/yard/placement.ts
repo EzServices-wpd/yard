@@ -246,7 +246,9 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   for (const t of [...tops].sort((a, b) => a - b)) if (!uniq.some((u) => Math.abs(u - t) < 1 / 32)) uniq.push(t);
   const floorTalk = (t: number) => (ref && ctx.floor ? ` (${f(t)} from the floor)` : "");
   const L = ctx.letters.get(first.id);
-  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "");
+  // A group of left and right parts is named by what they share ("seat boards"), never by the first one's side.
+  const sides = new Set(group.map((p) => p.name.match(/^(left|right|front|back|near|far)\b/i)?.[1]?.toLowerCase() ?? ""));
+  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "").replace(sides.size > 1 ? /^(?:left|right|front|back|near|far) /i : /^$/, "");
   const supTop = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
   const supBottom = sups.length ? Math.min(...sups.map((id) => ctx.box.get(id)!.min.y)) : null;
   if (group.length === 1 || uniq.length === 1) {

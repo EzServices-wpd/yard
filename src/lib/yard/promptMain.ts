@@ -355,6 +355,9 @@ const OUTDOOR_STOCK: [RegExp, string][] = [
 function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardProject {
   const lower = prompt.toLowerCase();
   if (!SEAT_OR_TABLE.test(lower) || !(OUTDOOR_SEAT_CLASS.test(lower) || isOutdoorPrompt(lower))) return project;
+  // An outdoor frame build (picnic table, deck) already chose exterior stock per member: never re-pick it by name
+  // (a "Top cleat" is not a top slat, and a table has no arms).
+  if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n))) return project;
   const pick = (label: string) => OUTDOOR_STOCK.find(([re]) => re.test(label))?.[1];
   let changed = false;
   const instances = (project.instances ?? []).map((i) => {

@@ -625,10 +625,12 @@
       "height": 29,
       "depth": 72
     },
-    "panels": 28,
+    "panels": 30,
     "instances": 0,
     "uniqueParts": [
       "Center brace",
+      "Diagonal brace far",
+      "Diagonal brace near",
       "Left seat board 1",
       "Left seat board 2",
       "Left seat board 3",
