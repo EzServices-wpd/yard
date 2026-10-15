@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* F28: metric-matched fallbacks (Arial/Arimo, Times/Tinos) so the late Google Fonts swap moves nothing (CLS 0). */
+@font-face { font-family: "Figtree Fallback"; src: local("Arial"), local("Arimo"), local("Helvetica"); size-adjust: 100.97%; ascent-override: 94.09%; descent-override: 24.76%; line-gap-override: 0%; }
+@font-face { font-family: "Newsreader Fallback"; src: local("Times New Roman"), local("Tinos"), local("Times"); size-adjust: 106.17%; ascent-override: 69.23%; descent-override: 24.96%; line-gap-override: 0%; }
 
 @theme {
   --color-bg: #12100e;
@@ -17,8 +20,8 @@
   --color-ink: #1a1612;
   --color-ink-muted: #6b6358;
   --color-rule: #d8d0c2;
-  --font-display: "Newsreader", "Times New Roman", serif;
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader", "Newsreader Fallback", "Times New Roman", serif;
+  --font-sans: "Figtree", "Figtree Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -405,7 +408,7 @@
 @keyframes ya-in { 0% { transform: var(--ya); opacity: 0.2; } 55%, 85% { transform: none; opacity: 1; } 100% { transform: var(--ya); opacity: 0.2; } }
 
 /* Hero headline: words rise in once. */
-.yard-word { display: inline-block; opacity: 0; transform: translateY(0.35em); animation: yard-word 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i) * 90ms + 80ms); }
+.yard-word { display: inline-block; opacity: 0.02; transform: translateY(0.35em); animation: yard-word 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i) * 90ms + 80ms); }
 @keyframes yard-word { to { opacity: 1; transform: none; } }
 
 /* Faint wood-grain line field drifting behind the hero. */
