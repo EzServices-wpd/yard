@@ -486,6 +486,8 @@ export type RenderOpts = {
   /** Axes the stranger never typed — their dimension labels say "assumed". */
   assumedAxes?: Partial<Record<"width" | "height" | "depth", boolean>>;
   pad?: number;
+  /** SVG only: wrap each drawn piece of a part in a <g> with these attributes (Operate hooks). */
+  partGroup?: (id: string) => Record<string, string> | null;
   /** Placement arrows (reference → part), labelled in fractions — from the same geometry as the step words. */
   measures?: { a: V3; b: V3; label: string; ea?: V3; eb?: V3 }[];
 };
@@ -565,7 +567,14 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   doc.setLineCap("round");
   const anchors = new Map<string, { x: number; y: number }>();
   const ink = new Map<string, { x: number; y: number }[]>();
+  const grouped = doc as unknown as { beginGroup?: (a: Record<string, string>) => void; endGroup?: () => void };
   for (const sol of paintOrder(faceSolids(solids))) {
+    const g = opts.partGroup && grouped.beginGroup ? opts.partGroup(sol.id) : null;
+    if (g) grouped.beginGroup!(g);
+    drawSolid(sol);
+    if (g) grouped.endGroup!();
+  }
+  function drawSolid(sol: ReturnType<typeof faceSolids>[number]) {
     const tone = opts.tones.get(sol.id) ?? "built";
     const c = toneColors(tone);
     if (sol.stick) {
@@ -579,7 +588,7 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       doc.setLineWidth(w);
       doc.line(a.x, a.y, b.x, b.y);
       anchors.set(sol.id, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-      continue;
+      return;
     }
     const vis = sol.faces
       .filter((f) => dot(f.n, VIEW) > 1e-4)

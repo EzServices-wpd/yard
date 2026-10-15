@@ -78,6 +78,14 @@ export class SvgDoc {
     }`;
   }
 
+  /** Open a <g> with these attributes (escaped); close it with endGroup. */
+  beginGroup(attrs: Record<string, string>) {
+    const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    this.parts.push(`<g ${Object.entries(attrs).map(([k, v]) => `${k}="${esc(v)}"`).join(" ")}>`);
+  }
+  endGroup() {
+    this.parts.push("</g>");
+  }
   setLineJoin(j: "round" | "bevel" | "miter") {
     this.join = j;
   }

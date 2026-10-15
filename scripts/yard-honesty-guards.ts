@@ -1744,7 +1744,7 @@ if (!laundryFoldPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
 if (laundryFoldPlan.bom.some((b) => /ironing board cover/i.test(b.name))) {
   failHonesty("laundry fold-down sold ironing cover", laundryFoldPlan.bom.map((b) => b.name));
 }
-if (!laundryFoldPlan.instructions.some((s) => /piano-hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
+if (!laundryFoldPlan.instructions.some((s) => /piano[- ]hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
   failHonesty("laundry fold-down steps missing hinge", laundryFoldPlan.instructions.map((s) => s.title));
 }
 if (!inspectHonesty(laundryFold, laundryFoldPlan).ok) {
@@ -3500,7 +3500,7 @@ console.log("SOFT-TRUST OK", {
   if (!chestPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 toy chest Piano hinge BOM", chestPlan.bom.map((b) => b.name));
   }
-  if (!chestPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!chestPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 toy chest piano-hinge step",
       chestPlan.instructions.map((s) => s.title).join(" | "),
@@ -3528,7 +3528,7 @@ console.log("SOFT-TRUST OK", {
   if (!cedarPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 cedar Piano hinge BOM", cedarPlan.bom.map((b) => b.name));
   }
-  if (!cedarPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!cedarPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 cedar piano-hinge step",
       cedarPlan.instructions.map((s) => s.title).join(" | "),
