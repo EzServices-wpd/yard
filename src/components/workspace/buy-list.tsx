@@ -7,6 +7,7 @@ import { buyListCart } from "@/lib/yard/amazonCart";
 import { tagNote } from "@/lib/yard/listings";
 import { outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET } from "@/lib/yard/outbound";
 import type { BuildPlan } from "@/lib/yard/types";
+import { ALSO_AT_DISCLOSURE, ALSO_AT_REL, alsoAtLinks, alsoAtTemplates } from "@/components/workspace/also-at";
 
 /**
  * The Buy list — the only place store and affiliate links render on the site
@@ -17,7 +18,12 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
   const inCart = new Map(cart.lines.map((l) => [l.rowIndex, l]));
   const local = cart.perRow.filter((r) => r.local);
   const other = cart.perRow.filter((r) => !r.local);
-  const disclosure = tagNote();
+  const also = useMemo(() => {
+    const t = alsoAtTemplates();
+    return plan.bom.map((b) => alsoAtLinks(b, t));
+  }, [plan.bom]);
+  // Any "also at" link carries a commission, so the disclosure shows whenever one renders.
+  const disclosure = tagNote() || (also.some((l) => l.length) ? ALSO_AT_DISCLOSURE : "");
   const itemCount = cart.lines.length;
 
   if (!plan.bom.length) return null;
@@ -131,6 +137,27 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
                   ))}
                 </ul>
               ) : null}
+              {also[i].length > 0 && (
+                <p className="mt-1 text-xs text-muted" data-yard-also-at-row="1">
+                  Also at:{" "}
+                  {also[i].map((l, k) => (
+                    <span key={l.store}>
+                      {k > 0 && " · "}
+                      <a
+                        href={l.href}
+                        target={OUTBOUND_TARGET}
+                        rel={ALSO_AT_REL}
+                        className="underline-offset-2 hover:text-fg hover:underline"
+                        data-yard-shop={l.store}
+                        data-yard-affiliate="1"
+                        data-yard-also-at="1"
+                      >
+                        {l.label}
+                      </a>
+                    </span>
+                  ))}
+                </p>
+              )}
             </li>
           );
         })}
