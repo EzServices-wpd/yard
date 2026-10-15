@@ -57,7 +57,7 @@ test("names the install page from host slug", () => {
 test("renders the manifest with the per-app name", () => {
   const manifest = JSON.parse(renderWebManifest("yard.grok.me"));
   assert.equal(manifest.name, "Yard");
-  assert.equal(manifest.icons[0].src, "/__grok/icon-180.png");
+  assert.equal(manifest.icons[0].src, "/icon-192.png");
 });
 
 test("vite config keeps nitro serverDir wiring", () => {
