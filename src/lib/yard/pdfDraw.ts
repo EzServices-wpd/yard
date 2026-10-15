@@ -131,9 +131,51 @@ function bounds(pts: V3[]) {
   return { min, max };
 }
 
+/** A facet with its normal pointing away from `inside`. */
+function facet(pts: V3[], inside: V3): Face {
+  let n = norm(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])));
+  if (dot(n, sub(centroid(pts), inside)) < 0) n = { x: -n.x, y: -n.y, z: -n.z };
+  return { pts, n };
+}
+
+/** Cone (open, apex up) or dome (half sphere on its base) filling the part's box, as the 3D view draws them. */
+function curvedFaces(p: Panel): Face[] {
+  const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+  const c = { x: x + w / 2, y, z: z + d / 2 }, n = 24;
+  const at = (t: number, k: number) => ({ x: c.x + (w / 2) * k * Math.cos(t), y: 0, z: c.z + (d / 2) * k * Math.sin(t) });
+  const faces: Face[] = [];
+  if (p.form === "cone") {
+    const apex = { x: c.x, y: y + h, z: c.z }, mid = { x: c.x, y: y + h / 3, z: c.z };
+    for (let i = 0; i < n; i++) {
+      const a = at((i / n) * 2 * Math.PI, 1), b = at(((i + 1) / n) * 2 * Math.PI, 1);
+      faces.push(facet([{ ...a, y }, { ...b, y }, apex], mid));
+    }
+    return faces;
+  }
+  const rings = 6, inside = { x: c.x, y, z: c.z };
+  for (let j = 0; j < rings; j++) {
+    const p0 = (j / rings) * (Math.PI / 2), p1 = ((j + 1) / rings) * (Math.PI / 2);
+    for (let i = 0; i < n; i++) {
+      const t0 = (i / n) * 2 * Math.PI, t1 = ((i + 1) / n) * 2 * Math.PI;
+      const q = (t: number, ph: number) => ({ ...at(t, Math.cos(ph)), y: y + h * Math.sin(ph) });
+      const pts = j === rings - 1 ? [q(t0, p0), q(t1, p0), q(t0, p1)] : [q(t0, p0), q(t1, p0), q(t1, p1), q(t0, p1)];
+      faces.push(facet(pts, inside));
+    }
+  }
+  return faces;
+}
+
 function panelSolid(project: YardProject, p: Panel): Solid {
   let faces: Face[];
-  if (p.polygon) {
+  if (p.strut) {
+    // A round rod from a to b (offsets from the part's corner): drawn as the rod, not its box.
+    const o = p.position, { a, b, r } = p.strut;
+    const A = { x: o.x + a[0], y: o.y + a[1], z: o.z + a[2] }, B = { x: o.x + b[0], y: o.y + b[1], z: o.z + b[2] };
+    return { id: p.id, faces: [], ...bounds([A, B]), center: centroid([A, B]), stick: { a: A, b: B, w: 2 * r } };
+  }
+  if (p.form === "cone" || p.form === "dome") {
+    faces = curvedFaces(p);
+  } else if (p.polygon) {
     const [r0, r1] = polygonRings(p);
     faces = prism(r0, r1);
   } else if (p.outline) {
@@ -243,8 +285,11 @@ function interpenetrationFirst(a: Solid, b: Solid): boolean {
  * 1: a paints first (b sits on the viewer's side of a separating plane), -1: b first, 0: no plane or edge-on.
  * ponytail: face normals only; edge×edge axes or a per-face z-buffer if a pair still sorts wrong.
  */
+/** A part's points: its faces, or a rod's two ends. */
+const ptsOf = (s: Solid): V3[] => (s.stick ? [s.stick.a, s.stick.b] : s.faces.flatMap((f) => f.pts));
+
 export function satOrder(a: Solid, b: Solid): number {
-  const pa = a.faces.flatMap((f) => f.pts), pb = b.faces.flatMap((f) => f.pts);
+  const pa = ptsOf(a), pb = ptsOf(b);
   let best = 0, gap = -1e-3;
   for (const n of [...a.faces, ...b.faces].map((f) => f.n)) {
     const v = dot(n, VIEW);
@@ -263,7 +308,7 @@ export function satOrder(a: Solid, b: Solid): number {
 
 /** True when the two parts' drawings cannot overlap: some projected face edge separates them on screen. */
 function apartOnScreen(a: Solid, b: Solid): boolean {
-  const pa = a.faces.flatMap((f) => f.pts).map(iso), pb = b.faces.flatMap((f) => f.pts).map(iso);
+  const pa = ptsOf(a).map(iso), pb = ptsOf(b).map(iso);
   for (const f of [...a.faces, ...b.faces]) {
     const q = f.pts.map(iso);
     for (let k = 0; k < q.length; k++) {
