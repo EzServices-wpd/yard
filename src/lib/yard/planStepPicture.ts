@@ -74,6 +74,9 @@ export function stepTones(
   const drawn = sp.said ? new Set([...placed, ...sp.fresh, ...sp.onto]) : new Set([...placed, ...sp.ids]);
   for (const id of drawn) tones.set(id, "ghost");
   for (const id of hot) tones.set(id, "hot");
+  // A step that adds nothing new still works on its parts (fastening, squaring): highlight those, never grey everything.
+  if (!hot.length) hot = sp.ids.filter((id) => tones.has(id));
+  for (const id of hot) tones.set(id, "hot");
   if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
   return { kind, tones, cutLines: [], measures: placements[stepIndex]?.arrows };
 }

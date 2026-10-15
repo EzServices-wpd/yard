@@ -101,6 +101,7 @@ export function familyWord(name: string): string {
     .toLowerCase()
     .replace(/\(.*?\)/g, " ")
     .replace(/\d+/g, " ")
+    .replace(/\b[a-z]\b/g, " ") // "Post front left A": the A/B ply letter is not the family
     .split(/\s+/)
     .filter((w) => w && w !== "step");
   if (!words.length) return name.toLowerCase();

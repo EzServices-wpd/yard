@@ -23,6 +23,8 @@ type Solid = {
   max: V3;
   center: V3;
   stick?: { a: V3; b: V3; w: number };
+  /** Face plates: the whole part they came from (its shape decides the order against other parts). */
+  of?: Solid;
 };
 
 const COS30 = Math.cos(Math.PI / 6);
@@ -236,10 +238,61 @@ function interpenetrationFirst(a: Solid, b: Solid): boolean {
   return dot(a.center, VIEW) <= dot(b.center, VIEW);
 }
 
+/**
+ * Separating-axis test on the real convex part shapes (face normals of both), not their boxes.
+ * 1: a paints first (b sits on the viewer's side of a separating plane), -1: b first, 0: no plane or edge-on.
+ * ponytail: face normals only; edge×edge axes or a per-face z-buffer if a pair still sorts wrong.
+ */
+export function satOrder(a: Solid, b: Solid): number {
+  const pa = a.faces.flatMap((f) => f.pts), pb = b.faces.flatMap((f) => f.pts);
+  let best = 0, gap = -1e-3;
+  for (const n of [...a.faces, ...b.faces].map((f) => f.n)) {
+    const v = dot(n, VIEW);
+    if (Math.abs(v) < 1e-4) continue;
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+    for (const p of pa) { const d = dot(p, n); a0 = Math.min(a0, d); a1 = Math.max(a1, d); }
+    for (const p of pb) { const d = dot(p, n); b0 = Math.min(b0, d); b1 = Math.max(b1, d); }
+    const g = Math.max(b0 - a1, a0 - b1);
+    if (g <= gap) continue;
+    gap = g;
+    // b beyond a along n, and n points toward the viewer: a is behind.
+    best = (b0 - a1 >= a0 - b1) === v > 0 ? 1 : -1;
+  }
+  return best;
+}
+
+/** True when the two parts' drawings cannot overlap: some projected face edge separates them on screen. */
+function apartOnScreen(a: Solid, b: Solid): boolean {
+  const pa = a.faces.flatMap((f) => f.pts).map(iso), pb = b.faces.flatMap((f) => f.pts).map(iso);
+  for (const f of [...a.faces, ...b.faces]) {
+    const q = f.pts.map(iso);
+    for (let k = 0; k < q.length; k++) {
+      const e = q[(k + 1) % q.length];
+      const nx = q[k].y - e.y, ny = e.x - q[k].x;
+      if (Math.hypot(nx, ny) < 1e-9) continue;
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const p of pa) { const d = p.x * nx + p.y * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }
+      for (const p of pb) { const d = p.x * nx + p.y * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); }
+      if (a1 <= b0 + 1e-6 || b1 <= a0 + 1e-6) return true;
+    }
+  }
+  return false;
+}
+
+/** Each front-facing face as its own plate, so the painter orders faces, not whole parts (slanted legs no longer cycle). */
+export function faceSolids(solids: Solid[]): Solid[] {
+  return solids.flatMap((sol) =>
+    sol.stick ? [sol] : sol.faces.filter((f) => dot(f.n, VIEW) > 1e-4).map((f) => {
+      const xs = f.pts.map((p) => p.x), ys = f.pts.map((p) => p.y), zs = f.pts.map((p) => p.z);
+      return { id: sol.id, of: sol, faces: [f], min: { x: Math.min(...xs), y: Math.min(...ys), z: Math.min(...zs) }, max: { x: Math.max(...xs), y: Math.max(...ys), z: Math.max(...zs) }, center: centroid(f.pts) };
+    }),
+  );
+}
+
 /** Painter order: far first. A is behind B when separated along an axis toward the viewer. */
-function paintOrder(solids: Solid[]): Solid[] {
+export function paintOrder(solids: Solid[]): Solid[] {
   const n = solids.length;
-  if (n > 260) return [...solids].sort((a, b) => dot(a.center, VIEW) - dot(b.center, VIEW));
+  if (n > 1500) return [...solids].sort((a, b) => dot(a.center, VIEW) - dot(b.center, VIEW));
   const boxes = solids.map(screenBox);
   const eps = 1e-3;
   const behind = (a: Solid, b: Solid) =>
@@ -251,6 +304,15 @@ function paintOrder(solids: Solid[]): Solid[] {
       const A = boxes[i];
       const B = boxes[j];
       if (A.x1 <= B.x0 || B.x1 <= A.x0 || A.y1 <= B.y0 || B.y1 <= A.y0) continue;
+      if (apartOnScreen(solids[i], solids[j])) continue;
+      const pi = solids[i].of ?? solids[i], pj = solids[j].of ?? solids[j];
+      const sat = pi !== pj ? satOrder(pi, pj) || satOrder(solids[i], solids[j]) : satOrder(solids[i], solids[j]);
+      if (sat) {
+        const [f, g] = sat > 0 ? [i, j] : [j, i];
+        out[f].push(g);
+        indeg[g]++;
+        continue;
+      }
       const ij = behind(solids[i], solids[j]);
       const ji = behind(solids[j], solids[i]);
       let first: number | null = null;
@@ -281,8 +343,8 @@ function paintOrder(solids: Solid[]): Solid[] {
       if (pick < 0 || depth[i] < depth[pick]) pick = i;
     }
     if (pick < 0) {
-      // Cycle: break it at the farthest remaining solid.
-      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || depth[i] < depth[pick])) pick = i;
+      // Cycle: break it where the fewest constraints are broken (then farthest).
+      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || indeg[i] < indeg[pick] || (indeg[i] === indeg[pick] && depth[i] < depth[pick]))) pick = i;
     }
     done[pick] = true;
     order.push(solids[pick]);
@@ -386,7 +448,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   doc.setLineJoin("round");
   doc.setLineCap("round");
   const anchors = new Map<string, { x: number; y: number }>();
-  for (const sol of paintOrder(solids)) {
+  const ink = new Map<string, { x: number; y: number }[]>();
+  for (const sol of paintOrder(faceSolids(solids))) {
     const tone = opts.tones.get(sol.id) ?? "built";
     const c = toneColors(tone);
     if (sol.stick) {
@@ -414,11 +477,10 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
       poly(doc, pts, "FD");
     }
-    if (screenPts.length) {
-      const sx = screenPts.reduce((a, p) => a + p.x, 0) / screenPts.length;
-      const sy = screenPts.reduce((a, p) => a + p.y, 0) / screenPts.length;
-      anchors.set(sol.id, { x: sx, y: sy });
-    }
+    ink.set(sol.id, [...(ink.get(sol.id) ?? []), ...screenPts]);
+  }
+  for (const [id, pts] of ink) {
+    if (pts.length) anchors.set(id, { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
   }
 
   if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes);
