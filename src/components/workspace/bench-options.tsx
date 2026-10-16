@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yard/operateFaces";
@@ -12,7 +12,7 @@ import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import type { WorkMode } from "@/lib/yard/types";
 
-/** The one toggle on the bar. Shows the chosen material under "Options" so nobody misses it. */
+/** The one toggle on the bar: "Material: ¾″ plywood ▾" (Jakob's: a familiar label, not "Options"). */
 export function BenchOptionsToggle({
   open,
   onToggle,
@@ -33,16 +33,15 @@ export function BenchOptionsToggle({
       aria-expanded={open}
       aria-controls={panelId}
       aria-haspopup="true"
-      aria-label={`Options. Material: ${label}`}
+      aria-label={`Material: ${label}. Change material, size and view`}
       data-yard-options-toggle
-      className={`inline-flex h-11 max-w-[7.5rem] shrink-0 items-center gap-1.5 rounded-full border px-3 text-left sm:max-w-[15rem] ${
+      className={`inline-flex h-11 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-left sm:max-w-[18rem] ${
         open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
       }`}
     >
-      <SlidersHorizontal className="hidden size-4 shrink-0 text-muted sm:block" aria-hidden />
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="text-xs font-medium sm:text-sm">Options</span>
-        <span className={`truncate text-[10px] sm:text-[11px] ${wire ? "text-accent" : "text-muted"}`} data-yard-stock-label>
+      <span className="min-w-0 truncate text-sm">
+        <span className="text-muted">Material: </span>
+        <span className={wire ? "text-accent" : "text-fg"} data-yard-stock-label>
           {label}
         </span>
       </span>
