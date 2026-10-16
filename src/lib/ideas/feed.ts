@@ -54,12 +54,14 @@ export function buildTypeOf(prompt: string): string {
 export type RecipeLike = { id: string; label: string; prompt: string; size: string; blurb: string; box?: { width: number; height: number; depth: number } };
 
 /** Card titles in Yard's voice where the curated label is a brand (the prompt keeps the unit it names). */
-export const TITLE_FIX: Record<string, string> = { window: "Double-hung window" };
+export const TITLE_FIX: Record<string, string> = { window: "Frame a window opening" };
+/** What the build is for, after the size (the window card's build is the framing, not the window). */
+export const NOTE_FIX: Record<string, string> = { window: "for a 36 × 48 double-hung" };
 
 function fromIdea(d: Idea): IdeaCard {
   return {
     slug: d.id, buildType: typeFor(d.id, d.prompt), title: TITLE_FIX[d.id] ?? d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
-    recipeKey: null, dims: null, size: displaySize(d.size, drawingFor(d.id)?.dims), status: "checked", blurb: d.blurb, stock: d.stock, section: d.section, drawing: drawingFor(d.id),
+    recipeKey: null, dims: null, size: displaySize(d.size, drawingFor(d.id)?.dims), status: "checked", blurb: d.blurb, stock: NOTE_FIX[d.id] ?? d.stock, section: d.section, drawing: drawingFor(d.id),
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {

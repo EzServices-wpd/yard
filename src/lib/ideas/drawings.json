@@ -56,9 +56,9 @@
   "parts": 32,
   "bytes": 9545,
   "dims": {
-   "width": 48.88,
-   "height": 104,
-   "depth": 35.5
+   "width": 38,
+   "height": 102,
+   "depth": 17.75
   },
   "model": "/ideas/models/pocket.1ba04a0c.json"
  },
@@ -84,20 +84,20 @@
   "dims": {
    "width": 80,
    "height": 120,
-   "depth": 24
+   "depth": 24.75
   },
   "model": "/ideas/models/closet80.e0dd295d.json"
  },
  "window": {
-  "v": "7044726e",
+  "v": "982c940a",
   "w": 480,
   "h": 360,
   "parts": 15,
-  "bytes": 5429,
+  "bytes": 6239,
   "dims": {
-   "width": 46,
-   "height": 98,
-   "depth": 7.5
+   "width": 42,
+   "height": 96,
+   "depth": 3.5
   },
   "model": "/ideas/models/window.0f073d5e.json"
  },
@@ -110,7 +110,7 @@
   "dims": {
    "width": 60,
    "height": 29,
-   "depth": 30
+   "depth": 30.75
   },
   "model": "/ideas/models/desk.4757f2d5.json"
  },
@@ -291,7 +291,7 @@
   "bytes": 4093,
   "dims": {
    "width": 24,
-   "height": 18,
+   "height": 19.25,
    "depth": 4
   },
   "model": "/ideas/models/jarshelf.63f47ab9.json"
@@ -331,7 +331,7 @@
   "dims": {
    "width": 36,
    "height": 12,
-   "depth": 4
+   "depth": 4.25
   },
   "model": "/ideas/models/coat.68a0a38d.json"
  },
@@ -343,7 +343,7 @@
   "bytes": 4045,
   "dims": {
    "width": 18,
-   "height": 24,
+   "height": 25.25,
    "depth": 4
   },
   "model": "/ideas/models/spice.3a77ee51.json"
@@ -383,7 +383,7 @@
   "dims": {
    "width": 16,
    "height": 48,
-   "depth": 6
+   "depth": 6.75
   },
   "model": "/ideas/models/ironing.1ee66cb3.json"
  },
@@ -435,7 +435,7 @@
   "dims": {
    "width": 24,
    "height": 34.5,
-   "depth": 24
+   "depth": 24.75
   },
   "model": "/ideas/models/basecab.4f214a01.json"
  },
@@ -461,7 +461,7 @@
   "dims": {
    "width": 24,
    "height": 84,
-   "depth": 16
+   "depth": 16.75
   },
   "model": "/ideas/models/pantry.df37f6df.json"
  },
@@ -474,7 +474,7 @@
   "dims": {
    "width": 60,
    "height": 36,
-   "depth": 18
+   "depth": 18.75
   },
   "model": "/ideas/models/dresser.63cd2257.json"
  },
@@ -487,7 +487,7 @@
   "dims": {
    "width": 18,
    "height": 24,
-   "depth": 16
+   "depth": 16.75
   },
   "model": "/ideas/models/nightstand.8726241e.json"
  },
@@ -530,11 +530,11 @@
   }
  },
  "catapult": {
-  "v": "34763669",
+  "v": "544dfd29",
   "w": 480,
   "h": 360,
   "parts": 25,
-  "bytes": 3515,
+  "bytes": 1931,
   "dims": {
    "width": 8.69,
    "height": 4.63,
@@ -673,7 +673,7 @@
   "bytes": 3637,
   "dims": {
    "width": 12,
-   "height": 14.25,
+   "height": 14.19,
    "depth": 3.75
   },
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.b3db8562.json"
@@ -685,9 +685,9 @@
   "parts": 13,
   "bytes": 9619,
   "dims": {
-   "width": 18,
-   "height": 31.25,
-   "depth": 24.63
+   "width": 24.56,
+   "height": 31.13,
+   "depth": 18
   },
   "model": "/ideas/models/recipe-water-wheel.d95b8793.json"
  },
@@ -724,8 +724,8 @@
   "parts": 9,
   "bytes": 4111,
   "dims": {
-   "width": 11.5,
-   "height": 6.38,
+   "width": 11.38,
+   "height": 6.31,
    "depth": 8.88
   },
   "model": "/ideas/models/recipe-laptop-stand.10283a50.json"
@@ -751,7 +751,7 @@
   "bytes": 4328,
   "dims": {
    "width": 10,
-   "height": 3.5,
+   "height": 3.44,
    "depth": 5.5
   },
   "model": "/ideas/models/recipe-jewelry-box.c46b31b4.json"
@@ -765,7 +765,7 @@
   "dims": {
    "width": 10,
    "height": 10.63,
-   "depth": 7.75
+   "depth": 7.69
   },
   "model": "/ideas/models/recipe-bird-feeder.505e3e44.json"
  },
@@ -790,8 +790,8 @@
   "bytes": 7835,
   "dims": {
    "width": 48,
-   "height": 19.25,
-   "depth": 20.13
+   "height": 19.19,
+   "depth": 20
   },
   "model": "/ideas/models/recipe-outdoor-storage-bench.af2e3d41.json"
  },
@@ -804,7 +804,7 @@
   "dims": {
    "width": 5.5,
    "height": 10,
-   "depth": 5
+   "depth": 4.88
   },
   "model": "/ideas/models/recipe-guitar-hanger.b5eaf7a0.json"
  },

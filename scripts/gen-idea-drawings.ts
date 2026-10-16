@@ -14,6 +14,7 @@ import { newIdeas, popularIdeas } from "../src/lib/yard/recipeIdeas";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
+import { drawnDims } from "../src/lib/ideas/size";
 
 export const DRAW_W = 480, DRAW_H = 360;
 /** Raw bytes per wood drawing; past it coordinates are rounded harder (big models). */
@@ -62,11 +63,83 @@ export function quarterTurn(project: YardProject): YardProject | null {
   return { ...project, panels };
 }
 /** Per-card drawing fixes (Critic, PR 60 regrade): a turned view, or extra margin for a sprawling model. */
-const VIEW: Record<string, { turn?: boolean; zoom?: number; stroke?: number }> = {
+const VIEW: Record<string, { turn?: boolean; zoom?: number; stroke?: number; ghostUnit?: boolean; custom?: (p: YardProject) => string }> = {
   "recipe-water-wheel": { turn: true },
-  // 25 whole sticks drawn as 7.9-unit strokes merged into a lattice; at 0.75 the frame, arm and cup read.
-  catapult: { zoom: 0.92, stroke: 0.75 },
+  // The plan overview draws 25 whole sticks as a lattice (two sawhorses and a raft, PR 62 regrade):
+  // this card gets a drawing of the same model's parts arranged as a catapult reads (base, A-frame, arm, cup).
+  catapult: { custom: catapultSvg },
+  // The build is the framing: the window unit shows as a faint outline (two sashes, meeting rail), not a slab.
+  window: { ghostUnit: true },
 };
+
+/** The window unit (glass_panel) split into upper and lower sash boxes, each with an inset pane, ids marked for ghosting. */
+const GHOST = "ghost-";
+function sashes(project: YardProject): YardProject {
+  const panels = project.panels.flatMap((p) => {
+    if (p.type !== "glass_panel") return [p];
+    const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+    const half = h / 2, sd = Math.min(1.5, d / 2), inset = Math.min(2, w / 8);
+    const box = (id: string, bx: number, by: number, bz: number, bw: number, bh: number, bd: number) => ({ ...p, id: `${GHOST}${id}`, position: { x: bx, y: by, z: bz }, size: { width: bw, height: bh, depth: bd } });
+    return [
+      box(`${p.id}-lower`, x, y, z + d - sd, w, half, sd),
+      box(`${p.id}-upper`, x, y + half, z, w, half, sd),
+      box(`${p.id}-lower-pane`, x + inset, y + inset, z + d - sd / 2, w - 2 * inset, half - 1.5 * inset, 0.05),
+      box(`${p.id}-upper-pane`, x + inset, y + half + inset / 2, z + sd / 2, w - 2 * inset, half - 1.5 * inset, 0.05),
+    ];
+  });
+  return { ...project, panels };
+}
+/** Ghost groups: no fill, a faint grey line. */
+function ghosted(svg: string) {
+  return svg.replace(/<g data-part="ghost-[^"]*">[\s\S]*?<\/g>/g, (g) =>
+    g.replace(/fill="rgb\([^)]*\)"/g, 'fill="none"').replace(/stroke="rgb\([^)]*\)"/g, 'stroke="rgb(160,150,138)"').replace(/stroke-width="[\d.]+"/g, 'stroke-width="0.5"'),
+  );
+}
+
+/**
+ * The catapult card: the popsicle-stick catapult as a builder sketches it, sized from the model's
+ * overall box (8.7 × 4.6 × 4.5): a two-rail base with cross sticks, an A-frame each side with an axle
+ * across the top, the throwing arm resting on the axle, and a cup at its raised end. Sticks are the
+ * same two-tone strokes the plan overview gives stick builds, drawn back to front.
+ */
+function catapultSvg(p: YardProject): string {
+  const L = p.overall.width, H = p.overall.height, D = p.overall.depth;
+  const hx = L / 2, hz = D / 2 - 0.3;
+  type P3 = [number, number, number];
+  const sticks: [P3, P3][] = [
+    [[-hx, 0.15, -hz], [hx, 0.15, -hz]], [[-hx, 0.15, hz], [hx, 0.15, hz]],
+    [[-hx + 0.4, 0.4, -hz - 0.3], [-hx + 0.4, 0.4, hz + 0.3]], [[0.6, 0.4, -hz - 0.3], [0.6, 0.4, hz + 0.3]], [[hx - 0.4, 0.4, -hz - 0.3], [hx - 0.4, 0.4, hz + 0.3]],
+  ];
+  const ax = 0.6, ay = H * 0.72;
+  for (const z of [-hz, hz]) sticks.push([[ax - 1.7, 0.5, z], [ax, ay + 0.4, z]], [[ax + 1.7, 0.5, z], [ax, ay + 0.4, z]]);
+  sticks.push([[ax, ay, -hz - 0.4], [ax, ay, hz + 0.4]]); // axle
+  // Arm: rests on the axle; its raised front end holds the cup.
+  const tip: P3 = [-hx + 1.0, H - 0.15, 0];
+  const bx = hx - 0.6, t = (ax - tip[0]) / (bx - tip[0]);
+  const by = Math.max(0.6, tip[1] + (ay + 0.3 - tip[1]) / t);
+  const back: P3 = [bx, by, 0];
+  sticks.push([back, tip]);
+  // Cabinet view: the side profile (base, A-frame triangle, rising arm) true, depth receding up-right.
+  const proj = ([x, y, z]: P3) => [x + z * 0.42, -y - z * 0.3] as const;
+  const cupR = 0.9;
+  const all: (readonly [number, number])[] = sticks.flat().map(proj);
+  const tp = proj(tip);
+  all.push([tp[0] - cupR * 1.4, tp[1] - cupR * 1.2], [tp[0] + cupR * 1.4, tp[1] + cupR]);
+  const xs = all.map((q) => q[0]), ys = all.map((q) => q[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const k = Math.min((DRAW_W - 80) / (maxX - minX), (DRAW_H - 70) / (maxY - minY));
+  const ox = (DRAW_W - (maxX - minX) * k) / 2 - minX * k, oy = (DRAW_H - (maxY - minY) * k) / 2 - minY * k;
+  const f = (n: number) => n.toFixed(1);
+  const xy = (q: P3) => { const [a, b] = proj(q); return [ox + a * k, oy + b * k]; };
+  const depthOf = ([a, b]: [P3, P3]) => (a[2] + b[2]) / 2 + (a[1] + b[1]) * 0.001;
+  const order = [...sticks].sort((u, v) => depthOf(v) - depthOf(u));
+  const line = ([a, b]: [P3, P3], cls: string) => { const [x1, y1] = xy(a), [x2, y2] = xy(b); return `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="${cls}"/>`; };
+  const sw = Math.max(4, k * 0.38);
+  const [cx, cy] = xy(tip);
+  const r = cupR * k;
+  const cup = `<path d="M ${f(cx - r)} ${f(cy - r * 0.35)} A ${f(r)} ${f(r * 0.9)} 0 0 0 ${f(cx + r)} ${f(cy - r * 0.35)} Z" class="cup"/><ellipse cx="${f(cx)}" cy="${f(cy - r * 0.35)}" rx="${f(r)}" ry="${f(r * 0.32)}" class="cupt"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${DRAW_W} ${DRAW_H}"><style>.o{fill:none;stroke:rgb(120,96,66);stroke-width:${f(sw + 1.4)};stroke-linecap:round}.w{fill:none;stroke:rgb(228,206,168);stroke-width:${f(sw)};stroke-linecap:round}.cup{fill:rgb(217,197,161);stroke:rgb(120,96,66);stroke-width:1.4}.cupt{fill:rgb(186,169,139);stroke:rgb(120,96,66);stroke-width:1.2}</style><rect x="0" y="0" width="${DRAW_W}" height="${DRAW_H}" rx="6" ry="6" fill="rgb(247,244,238)" stroke="none" />${order.map((st) => line(st, "o") + line(st, "w")).join("")}${cup}</svg>`;
+}
 /** Thinner stick strokes (craft builds drawn as lines): every stroke-width in the drawing's classes scales. */
 function thinner(svg: string, k: number) {
   return svg.replace(/stroke-width:([\d.]+)/g, (_, w) => `stroke-width:${Number((Number(w) * k).toFixed(2))}`);
@@ -96,14 +169,18 @@ for (const c of cards) {
   const view = VIEW[c.slug] ?? {};
   const built = generateFromPrompt(c.prompt);
   const project = (view.turn && quarterTurn(built)) || built;
-  let svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 1);
-  if (svg.length > BUDGET) svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 0);
+  const drawn = view.ghostUnit ? sashes(project) : project;
+  const raw = planOverviewSvg(drawn, DRAW_W, DRAW_H).svg;
+  const post = (x: string) => (view.ghostUnit ? ghosted(x) : x);
+  let svg = view.custom ? view.custom(project) : tidy(post(raw), 1);
+  if (!view.custom && svg.length > BUDGET) svg = tidy(post(raw), 0);
   if (view.stroke) svg = thinner(svg, view.stroke);
   if (view.zoom) svg = zoomed(svg, view.zoom);
   const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
   const parts = built.panels.length + built.instances.length;
-  const o = project.overall;
+  // The size the card claims must be the size the drawing shows: its own labels, else the model's box.
+  const o = (!view.custom && drawnDims(raw)) || project.overall;
   manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r2(o.width), height: r2(o.height), depth: r2(o.depth) } };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
