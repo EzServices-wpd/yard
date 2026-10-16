@@ -1,3 +1,4 @@
+import { pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceApp } from "@/components/workspace/shell";
 /** The share token's prompt only (base64url JSON, same as shareBuild.encodeShare). Inline so the route tree never loads the engine. */
@@ -23,7 +24,7 @@ export function buildTitle(prompt: string): string {
 export type WorkspaceSearch = {
   q?: string;
   y?: string;
-};
+} & TestFlags;
 
 export const Route = createFileRoute("/workspace")({
   ssr: false,
@@ -31,7 +32,8 @@ export const Route = createFileRoute("/workspace")({
     const out: WorkspaceSearch = {};
     if (typeof s.q === "string" && s.q.trim()) out.q = s.q;
     if (typeof s.y === "string" && s.y.trim()) out.y = s.y;
-    return out;
+    // Test flags (offline/local/test=1) stay on the URL: run-prompt reads offline/local to skip AI calls.
+    return { ...out, ...pickTestFlags(s) };
   },
   head: ({ match }) => {
     const { q, y } = (match.search ?? {}) as WorkspaceSearch;

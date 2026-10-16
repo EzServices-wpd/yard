@@ -49,3 +49,19 @@ test("search: top match first; no match leaves the Build row as the only action"
   assert.equal(searchCards(pool, "zzqx").length, 0);
   assert.ok(searchCards(pool, "ironing").length > 0, "near-variants still reachable by search");
 });
+
+test("test flags ride from Ideas onto the build URL (offline runs never call the AI)", async () => {
+  const { pickTestFlags } = await import("../src/lib/ideas/testFlags");
+  assert.deepEqual(pickTestFlags("?q=desk&offline=1&test=1&x=2"), { offline: 1, test: 1 });
+  assert.deepEqual(pickTestFlags({ local: "1", offline: "0" }), { local: 1 });
+  assert.deepEqual(pickTestFlags('?offline=%221%22'), { offline: 1 });
+  assert.deepEqual(pickTestFlags(""), {});
+});
+
+test("no brand name as a card title; the hero has a baked live model", async () => {
+  const { heroCard, HERO_FALLBACK } = await import("../src/lib/ideas/feed");
+  assert.ok(!cards.some((c) => /andersen|pella|marvin|ikea|kreg/i.test(c.title)), "brand in a title");
+  const hero = heroCard(feed);
+  assert.equal(hero?.slug, HERO_FALLBACK);
+  assert.ok(hero?.drawing?.model && fs.existsSync(path.join("public", hero.drawing.model)));
+});
