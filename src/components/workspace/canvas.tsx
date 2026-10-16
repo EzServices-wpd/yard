@@ -524,10 +524,16 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     const units = byBeat ? order.beatEnds.length : total;
     const stagger = staggerFor(units);
     // The outline phase runs while the lamp fades (no wait for the fade to finish).
-    const t0 = Math.max(performance.now() - 16, readyAt.current.t);
-    const end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+    let t0 = Math.max(performance.now() - 16, readyAt.current.t);
+    let end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+    // The wood stepping never runs under a lamp that is still up (not yet fading): the bench is
+    // ready when the build settles, but the page's lamp can hold on a beat longer (a first ?q= build
+    // waits for the whole prompt run). A short beat-mode reveal used to finish entirely under it.
+    const lampUp = () => !!document.querySelector(".yard-lamp[data-yard-building]");
     let raf = 0;
     let shownCount = -1;
+    let held = false;
+    let shownU = 0;
     const finish = (skipped: boolean) => {
       cancelAnimationFrame(raf);
       setWood(Infinity);
@@ -546,9 +552,21 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     host?.setAttribute("data-yard-reveal-mode", byBeat ? "beat" : "part");
     const tick = () => {
       const now = performance.now();
-      if (now >= end) return finish(false);
-      const u = now < t0 + WIRE_MS ? 0 : Math.min(units, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      if (lampUp()) {
+        t0 = now;
+        end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+        held = true;
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      if (held) { held = false; setReveal({ t0, end }); }
+      const due = now < t0 + WIRE_MS ? 0 : Math.min(units, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      // One step per painted frame at most: the first wood frame of a big model can stall ~1 s, and a
+      // clock-only reveal then jumped from the first beat straight to done (Brooklyn "skipped").
+      const u = Math.min(due, shownU + 1);
+      if (now >= end && shownU >= units) return finish(false);
       const k = byBeat ? (u ? order.beatEnds[u - 1] : 0) : u;
+      shownU = u;
       if (k !== shownCount) {
         shownCount = k;
         setWood(k);
