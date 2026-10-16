@@ -454,6 +454,8 @@ export type CutLine = {
   notes?: string;
   label?: string;
   whole?: boolean;
+  /** The 3D model part ids this row covers (Panel.id / instance id, the same as planOverviewSvg's data-part). */
+  partIds?: string[];
 };
 
 export type ShopOffer = {
