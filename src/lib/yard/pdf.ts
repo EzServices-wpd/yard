@@ -1,3 +1,4 @@
+import { isUnitItem } from "./unitItems";
 import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
@@ -1228,6 +1229,8 @@ export function headerTitle(project: YardProject): string {
   const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
   const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
+  // C3: a purchased item's size is the unit table's real piece, never an assumption.
+  if (isUnitItem(project)) guess.length = 0;
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
   return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...headerFeatures(project)].join(" · ");
 }

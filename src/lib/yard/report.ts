@@ -1,4 +1,5 @@
 import { unitSizeById } from "./unitSizes";
+import { isUnitItem } from "./unitItems";
 import { isNoLidPrompt } from "./cueRules";
 import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
@@ -58,6 +59,8 @@ function partFamily(name: string, type?: string) {
 
 function effortLabel(project: YardProject, pieces: number): string {
   if (project.kind === "opening") return "1/2-day";
+  // C3: a few bought pieces linked, stacked or threaded is a short sit-down job, never a "weekend".
+  if (isUnitItem(project)) return "under an hour";
   // Fitted/house: bands on honest wood piece count (same as Confirm/chip /
   // plan.totals.pieces via closetCuts) — never raw panels.length. Bounding
   // type=drawer envelopes under-count exploded sides/back/bottom kits.
@@ -1155,7 +1158,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
+  if (!isUnitItem(project) && !project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -1441,6 +1444,8 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       if (i >= 0) bins[i] -= c + 0.125; else bins.push(L - c - 0.125);
     }
     sticksById.set(id, bins.length);
+    // C3/F10: full-length parts are used whole: no cut, no kerf (the step says the same).
+    if (cuts.every((c) => Math.abs(c - L) <= 1 / 64)) { dowelNotes.set(id, `${cuts.length} whole ${inchFrac(L)}" dowel${cuts.length === 1 ? "" : "s"}, used as bought, nothing to cut.`); continue; }
     dowelNotes.set(id, `${cuts.length} part${cuts.length === 1 ? "" : "s"} cut from ${bins.length} × ${inchFrac(L)}" dowel${bins.length === 1 ? "" : "s"}, 1/8" kerf.`);
   }
   for (const [id, n] of sticksById) {
@@ -1591,7 +1596,9 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
-  return cutStepFromList({ ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } });
+  // C3: whole purchased pieces have no cut list to restate as a cut step.
+  const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
+  return isUnitItem(project) ? fin : cutStepFromList(fin);
 }
 
 /**

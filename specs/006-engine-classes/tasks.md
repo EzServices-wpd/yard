@@ -1,6 +1,6 @@
 # Tasks
-- [ ] T1 C3: unit-item pipeline skips cut/fit/rating/assumed; Buy agrees; wire clips; clip loops; chain note; jumbo row
-- [ ] T2 C3: I20 + whole-class test + evals/sweeps/c3-purchased.md (20 prompts)
+- [x] T1 C3: unit-item pipeline skips cut/fit/rating/assumed; Buy agrees; wire clips; clip loops; chain note; jumbo row
+- [x] T2 C3: I20 + whole-class test + evals/sweeps/c3-purchased.md (20 prompts)
 - [ ] T3 C2: size-phrase parser stripped before noun match; axes win
 - [ ] T4 C2: I21 + whole-class test + evals/sweeps/c2-size-phrases.md (20 prompts)
 - [ ] T5 C1: head-noun/purpose resolver + form library (landmarks keep geometry)
