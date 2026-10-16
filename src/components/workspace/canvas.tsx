@@ -473,6 +473,9 @@ function useAssemble(ready: boolean): number {
  * camera move, a 150 ms fade on the finished frame. Visibility and material only, no new geometry.
  * Returns the set of parts already in wood (others draw as outlines), or null when nothing plays.
  */
+/** Above this many parts the reveal steps by build beat. */
+const BEAT_MODE_PARTS = 120;
+
 function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
     if (!ready || !plan?.instructions.length) return null;
@@ -481,7 +484,19 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     // Parts in step order (stable within a step: the model's own order).
     const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
     ids.sort((x, y) => at.get(x)! - at.get(y)!);
-    return { at, n, ids };
+    // Cut pieces each mesh stands for (a 5-layer hub is one mesh, five cut pieces), from the plan's own
+    // cut rows (partIds), so "k of N" counts what the plan counts. A mesh no row names counts once.
+    const weight = new Map<string, number>();
+    for (const row of plan.cutList) {
+      const own = (row.partIds ?? []).filter((id) => at.has(id));
+      if (own.length && row.quantity > own.length) for (const id of own) weight.set(id, Math.max(weight.get(id) ?? 1, row.quantity / own.length));
+    }
+    const cum = [0];
+    for (const id of ids) cum.push(cum[cum.length - 1] + (weight.get(id) ?? 1));
+    // Beat ends: index just past the last part of each beat (for big models that step by beat).
+    const beatEnds: number[] = [];
+    ids.forEach((id, i) => { if (i === ids.length - 1 || at.get(ids[i + 1]) !== at.get(id)) beatEnds.push(i + 1); });
+    return { at, n, ids, cum, beatEnds };
   }, [project, plan, ready]);
   const [wood, setWood] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
@@ -501,17 +516,23 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
       return skip("reduced-motion");
     }
     const total = order.ids.length;
-    const stagger = staggerFor(total);
+    const count = (k: number) => Math.round(order.cum[Math.min(k, total)]);
+    const pieces = count(total);
+    // Big models (hundreds of parts) step by build beat, not by part: a handful of renders keeps the
+    // 2.4 s cap on any device instead of one re-render of every part per frame.
+    const byBeat = total > BEAT_MODE_PARTS;
+    const units = byBeat ? order.beatEnds.length : total;
+    const stagger = staggerFor(units);
     // The outline phase runs while the lamp fades (no wait for the fade to finish).
     const t0 = Math.max(performance.now() - 16, readyAt.current.t);
-    const end = t0 + WIRE_MS + total * stagger + CALLOUT_MS;
+    const end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
     let raf = 0;
     let shownCount = -1;
     const finish = (skipped: boolean) => {
       cancelAnimationFrame(raf);
       setWood(Infinity);
-      setReveal({ active: false, wood: total, skipped });
-      host?.setAttribute("data-yard-reveal", `done/${total}`);
+      setReveal({ active: false, wood: pieces, skipped });
+      host?.setAttribute("data-yard-reveal", `done/${pieces}`);
       host?.setAttribute("data-yard-reveal-ms", String(Math.round(performance.now() - t0)));
       onRevealSkip(null);
       window.removeEventListener("keydown", onKey);
@@ -520,17 +541,19 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     window.addEventListener("keydown", onKey);
     onRevealSkip(() => finish(true));
     setWood(0);
-    setReveal({ active: true, n: total, wood: 0, t0, end, skipped: false });
-    host?.setAttribute("data-yard-reveal", `wire/${total}`);
+    setReveal({ active: true, n: pieces, wood: 0, t0, end, skipped: false });
+    host?.setAttribute("data-yard-reveal", `wire/${pieces}`);
+    host?.setAttribute("data-yard-reveal-mode", byBeat ? "beat" : "part");
     const tick = () => {
       const now = performance.now();
       if (now >= end) return finish(false);
-      const k = now < t0 + WIRE_MS ? 0 : Math.min(total, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      const u = now < t0 + WIRE_MS ? 0 : Math.min(units, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      const k = byBeat ? (u ? order.beatEnds[u - 1] : 0) : u;
       if (k !== shownCount) {
         shownCount = k;
         setWood(k);
-        setReveal({ wood: k });
-        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${total}` : `${k}/${total}`);
+        setReveal({ wood: count(k) });
+        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${pieces}` : `${count(k)}/${pieces}`);
       }
       raf = requestAnimationFrame(tick);
     };
