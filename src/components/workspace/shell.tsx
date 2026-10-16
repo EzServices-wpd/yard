@@ -519,7 +519,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
 
           {/* One dock: tools, the step, and the size. The model stays clear above it. */}
-          {pieceCount > 0 && (
+          {/* CLS 0: the card mounts once the build has settled (the overlay carries the status meanwhile), so it never grows in place. */}
+          {pieceCount > 0 && !pending && (
           <div
             className={`pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 sm:bottom-4 ${
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
