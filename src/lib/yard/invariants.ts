@@ -10,6 +10,7 @@ import { placementIndex } from "./placeEveryPart";
 import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
+import { unitSizeById } from "./unitSizes";
 import { isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
@@ -17,13 +18,13 @@ import { unownedParts } from "./ownEveryPart";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I18" | "I19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I18: "F12", I19: "F12",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I18", "I19"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -165,11 +166,37 @@ function i14(p: YardProject, plan: BuildPlan): Violation[] {
   return out;
 }
 
+/**
+ * I17: no part is sized from packaging. A piece with a curated single-item size (unitSizes.ts) uses exactly
+ * that size, and no placed piece is longer than one item or wider than twice its section (a box, not a clip).
+ */
+function i17(p: YardProject): Violation[] {
+  const out: Violation[] = [];
+  const ids = new Set([p.primaryMaterialId, ...p.instances.map((i) => i.catalogId), ...p.panels.map((x) => x.materialId)].filter(Boolean) as string[]);
+  for (const id of ids) {
+    const u = unitSizeById(id);
+    const item = getCatalogItem(id);
+    if (!u || !item) continue;
+    for (const [k, want] of Object.entries(u.dims)) {
+      const got = (item.dims as Record<string, number | undefined>)[k];
+      if (got != null && Math.abs(got - (want as number)) > 1e-6) out.push(v("I17", `${u.name} is sized ${k} ${got}" from a listing, not one item's ${want}"`));
+    }
+    const across = Math.max(u.dims.width ?? 0, u.dims.diameter ?? 0, u.dims.thickness ?? 0);
+    for (const inst of p.instances.filter((i) => i.catalogId === id)) {
+      if ((inst.cutLength ?? 0) > (u.dims.length ?? Infinity) + 1e-6) out.push(v("I17", `${u.name} cut ${inst.cutLength}" long, longer than one ${u.dims.length}" piece`));
+      const sec = (inst as { section?: { width?: number; height?: number } }).section;
+      const big = Math.max(sec?.width ?? 0, sec?.height ?? 0);
+      if (across > 0 && big > across * 2 + 1e-6 && big > 0.25) out.push(v("I17", `${u.name} drawn ${big}" across, a pack's size, not one piece's`));
+    }
+  }
+  return [...new Map(out.map((x) => [x.msg, x])).values()];
+}
+
 /** Every per-build invariant on one prompt's build. */
 export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan = buildPlan(project)): Violation[] {
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
-    ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan),
+    ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan),
   ];
 }

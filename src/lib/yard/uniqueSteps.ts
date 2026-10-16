@@ -1,3 +1,4 @@
+import { unitItemSteps } from "./unitItems";
 import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
 import { jobFurnitureSteps } from "./jobFurniture";
@@ -10,6 +11,9 @@ import { isBoughtHardwareName } from "./boughtHardware";
 import { SCREWS_PER_HOOK } from "./hookCount";
 
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
+  // F47: unit items (one clip, a clip chain, a washer stack, a bead bracelet) keep their own steps.
+  const unit = unitItemSteps(project);
+  if (unit) return unit;
   const raw = enclosureSteps(project) ?? classAnatomySteps(project) ?? ((project.notes ?? []).some((n) => /no craft stock was named/.test(n))
     ? jobFurnitureSteps(project)
     : project.fitted?.program === "table" ? uniqueTableSteps(project) : uniqueDefault(project));

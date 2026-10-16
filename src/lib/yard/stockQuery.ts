@@ -3,6 +3,7 @@
  * A 2×4 scrap is the real dressed section at the length you have.
  * A bottle or anything else is the size you measured — never a guessed SKU.
  */
+import { isPackagingDims, isPackagingText, unitSizeById, unitSizeFor } from "./unitSizes";
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { modeledProduct, pieceFromEnvelope, productEnvelope } from "./productModel";
@@ -347,11 +348,15 @@ export function withStoreHit(item: CatalogItem, hit: StockListing | null | undef
   const price = hit.priceUsd != null && hit.priceUsd > 0 ? ` $${hit.priceUsd.toFixed(2)}` : "";
   const where = hit.merchant ? `One listing: ${hit.merchant}${price}. Not every store.` : "";
   const keepName = item.tags?.includes("spec") || !hit.merchant;
-  const fromTitle = item.tags?.includes("spec") || !hit.merchant ? {} : measuresFromQuery(hit.title);
-  const dims = { ...item.dims };
-  if (fromTitle.length) dims.length = fromTitle.length;
-  if (fromTitle.diameter) dims.diameter = fromTitle.diameter;
-  if (fromTitle.width && !fromTitle.diameter) dims.width = fromTitle.width;
+  // One item's real size only: a curated piece size wins over any listing, and inches in a title that
+  // describes a box, bag or pack (or that is far bigger than one piece) never size the part.
+  const unit = unitSizeById(item.id) ?? (item.id.startsWith("piece-") ? unitSizeFor(item.name) : null);
+  const titled = item.tags?.includes("spec") || !hit.merchant || isPackagingText(hit.title) ? {} : measuresFromQuery(hit.title);
+  const fromTitle = unit && isPackagingDims(unit, { length: titled.length, width: titled.width, diameter: titled.diameter }) ? {} : titled;
+  const dims = unit ? { ...unit.dims } : { ...item.dims };
+  if (!unit && fromTitle.length) dims.length = fromTitle.length;
+  if (!unit && fromTitle.diameter) dims.diameter = fromTitle.diameter;
+  if (!unit && fromTitle.width && !fromTitle.diameter) dims.width = fromTitle.width;
   const photo = hit.image
     ? hit.merchant
       ? "The picture is that listing."

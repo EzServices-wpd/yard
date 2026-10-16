@@ -1,3 +1,4 @@
+import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
@@ -385,6 +386,13 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const said = args[0] ?? "";
   args[0] = normalizeUserPrompt(boundPrompt(said).prompt);
   const prompt = args[0];
+  // F47: a unit item is built at its real size; the furniture passes below (lumber members, 1/16" snapping) never touch it.
+  // The bench may carry the last build's stock forward; only a different stock (a switch) skips this.
+  const unitAsk = unitItemAsk(prompt);
+  if (unitAsk && (!args[1] || args[1] === unitAsk.unit.catalogId || !hasExplicitStock(prompt)) && !args[2] && !args[3]?.sizeOverride && !args[3]?.fittedOverride) {
+    const unitItem = buildUnitItem(prompt);
+    if (unitItem) return said !== prompt ? { ...unitItem, typedPrompt: said } : unitItem;
+  }
   let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
   // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it
   // as a stick figure keeps the cutout from its typed sheet, and says so.
@@ -1252,6 +1260,11 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
+  // F47: one curated craft item (or a chain, stack or bracelet of them) builds at its real size from the unit table.
+  if (!formOverride && !opts.fittedOverride && !opts.sizeOverride && !materialOverride) {
+    const unitItem = buildUnitItem(prompt);
+    if (unitItem) return unitItem;
+  }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
   // at the typed height. A craft or toy stock pick stays on its craft path.
   {

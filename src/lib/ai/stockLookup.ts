@@ -109,7 +109,10 @@ export const lookupStockProduct = createServerFn({ method: "POST" })
     const hitCache = cache.get(key);
     if (hitCache && hitCache.until > Date.now()) return { ok: true, hit: hitCache.hit };
 
-    const found = await listing(query);
+    // Ask for one item, not the box: pack, count and bulk words are dropped from the search, and the
+    // caller never takes a size from a listing title that describes packaging (stockQuery.withStoreHit).
+    const single = query.replace(/\b(?:box|boxes|pack|packs|package|bag|bulk|case|carton|\d+\s*(?:ct|pk|pcs|count|pieces))\b(?:\s+of)?/gi, " ").replace(/\s+/g, " ").trim() || query;
+    const found = await listing(single);
     let hit = found === "quiet" ? null : found;
     if (!hit?.image) {
       const photo = await referencePhoto(query);
