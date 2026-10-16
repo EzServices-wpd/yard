@@ -53,3 +53,19 @@ export function displaySize(curated: string | undefined | null, d: Dims | null |
   if (sizeMatches(curated, d)) return curated!;
   return `${inch(d.width)} × ${inch(d.height)} × ${inch(d.depth)}`;
 }
+
+/** Sizes the drawing itself prints (its dimension labels), in inches: width, depth, height (a round top: dia, height). */
+export function drawnDims(rawSvg: string): Dims | null {
+  const labels = [...rawSvg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1].replace(/&quot;/g, '"'));
+  const num = (t: string) => {
+    const m = t.match(/(\d+(?:\.\d+)?)?(?:\s*(\d+)\/(\d+))?\s*(["'])/);
+    if (!m || (!m[1] && !m[2])) return NaN;
+    const n = Number(m[1] ?? 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+    return m[4] === "'" ? n * 12 : n;
+  };
+  const ns = labels.map(num).filter((n) => Number.isFinite(n));
+  if (ns.length === 3) return { width: ns[0], depth: ns[1], height: ns[2] };
+  if (ns.length === 2 && /dia/.test(labels[0])) return { width: ns[0], depth: ns[0], height: ns[1] };
+  return null;
+}
+

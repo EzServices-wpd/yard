@@ -524,11 +524,4 @@
   .idea-ink .idea-wood, .idea-ink .idea-pencil { transition: none; }
 }
 
-/* Ideas tap morph (src/lib/ideas/morph.ts): the group moves by transform only (our animation), the
-   snapshots crossfade (opacity); ≤300 ms. The page itself crossfades quickly underneath. */
-::view-transition-group(idea-morph) { animation: none; transform-origin: 0 0; }
-::view-transition-old(idea-morph), ::view-transition-new(idea-morph) { width: 100%; height: 100%; object-fit: contain; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
-html[data-morph] ::view-transition-old(root), html[data-morph] ::view-transition-new(root) { animation-duration: 200ms; }
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-}
+
