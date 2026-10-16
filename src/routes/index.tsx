@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { MakingNow } from "@/components/ideas/MakingNow";
 import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
@@ -18,7 +19,10 @@ const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 export const Route = createFileRoute("/")({
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
   loader: async () => ({ shows: await homeShows() }),
-  validateSearch: (s: Record<string, unknown>): { q?: string } => (typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
+  validateSearch: (s: Record<string, unknown>): { q?: string } & TestFlags => ({
+    ...(typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
+    ...pickTestFlags(s),
+  }),
   component: LandingPage,
 });
 
@@ -79,9 +83,10 @@ function LandingPage() {
   const navigate = useNavigate();
   useEffect(() => {
     const y = new URLSearchParams(window.location.search).get("y");
-    if (y) void navigate({ to: "/workspace", search: { y } });
+    if (y) void navigate({ to: "/workspace", search: { y, ...currentTestFlags() } });
   }, [navigate]);
-  const [prompt, setPrompt] = useState(Route.useSearch().q ?? "");
+  const search = Route.useSearch();
+  const [prompt, setPrompt] = useState(search.q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
   // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
   const { shows } = Route.useLoaderData() as { shows: Record<string, Showcase | undefined> };
@@ -113,14 +118,14 @@ function LandingPage() {
   function go(text: string) {
     const q = withStock(text);
     if (!q) return;
-    void navigate({ to: "/workspace", search: { q } });
+    void navigate({ to: "/workspace", search: { q, ...currentTestFlags() } });
   }
 
   /** Weekend chips and photo cards already name their stock, so they open as written. */
   function open(text: string) {
     const q = text.trim();
     if (!q) return;
-    void navigate({ to: "/workspace", search: { q } });
+    void navigate({ to: "/workspace", search: { q, ...currentTestFlags() } });
   }
 
   function pickStock(id: StockId) {
@@ -138,7 +143,7 @@ function LandingPage() {
             <Link to="/ideas" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
               Ideas
             </Link>
-            <Link to="/workspace" className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+            <Link to="/workspace" search={pickTestFlags(search)} className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
               Bench
             </Link>
           </nav>

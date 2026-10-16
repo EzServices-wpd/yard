@@ -62,10 +62,15 @@ export function quarterTurn(project: YardProject): YardProject | null {
   return { ...project, panels };
 }
 /** Per-card drawing fixes (Critic, PR 60 regrade): a turned view, or extra margin for a sprawling model. */
-const VIEW: Record<string, { turn?: boolean; zoom?: number }> = {
+const VIEW: Record<string, { turn?: boolean; zoom?: number; stroke?: number }> = {
   "recipe-water-wheel": { turn: true },
-  catapult: { zoom: 0.8 },
+  // 25 whole sticks drawn as 7.9-unit strokes merged into a lattice; at 0.75 the frame, arm and cup read.
+  catapult: { zoom: 0.92, stroke: 0.75 },
 };
+/** Thinner stick strokes (craft builds drawn as lines): every stroke-width in the drawing's classes scales. */
+function thinner(svg: string, k: number) {
+  return svg.replace(/stroke-width:([\d.]+)/g, (_, w) => `stroke-width:${Number((Number(w) * k).toFixed(2))}`);
+}
 function zoomed(svg: string, k: number) {
   const cx = DRAW_W / 2, cy = DRAW_H / 2;
   return svg.replace(/(<rect x="0" y="0" width="\d+" height="\d+"[^>]*\/>)/, `$1<g transform="translate(${cx * (1 - k)} ${cy * (1 - k)}) scale(${k})">`).replace(/<\/svg>$/, "</g></svg>");
@@ -79,7 +84,7 @@ const seen = new Set<string>();
 /** Hero models: panel boxes only (no engine on /ideas), for builds light enough to turn live on a phone. */
 export const HERO_MAX_PARTS = 150;
 const MODELS = path.join("public", "ideas", "models");
-const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; model?: string }> = {};
+const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; dims: { width: number; height: number; depth: number }; model?: string }> = {};
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.rmSync(MODELS, { recursive: true, force: true });
@@ -93,11 +98,13 @@ for (const c of cards) {
   const project = (view.turn && quarterTurn(built)) || built;
   let svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 1);
   if (svg.length > BUDGET) svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 0);
+  if (view.stroke) svg = thinner(svg, view.stroke);
   if (view.zoom) svg = zoomed(svg, view.zoom);
   const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
   const parts = built.panels.length + built.instances.length;
-  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length };
+  const o = project.overall;
+  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r2(o.width), height: r2(o.height), depth: r2(o.depth) } };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
       overall: built.overall,

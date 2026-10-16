@@ -6,8 +6,9 @@
 import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
 import { ideaSearchScore, ideaStem } from "@/lib/yard/ideaLibrary";
 import DRAWINGS from "./drawings.json";
+import { displaySize, type Dims } from "./size";
 
-export type DrawingRef = { src: string; model?: string; w: number; h: number; parts: number; v: string };
+export type DrawingRef = { src: string; model?: string; w: number; h: number; parts: number; v: string; dims?: Dims };
 export type IdeaCard = {
   slug: string;
   buildType: string;
@@ -33,12 +34,12 @@ export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: 
 /** Cards a section shows before "Show all". */
 export const SECTION_SHOW = 8;
 
-type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string }>;
+type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string; dims?: Dims }>;
 export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manifest): DrawingRef | null {
   const m = manifest[slug];
   if (!m) return null;
   const base = `/ideas/drawings/${slug}.${m.v}`;
-  return { src: `${base}.svg`, ...(m.model ? { model: m.model } : {}), w: m.w, h: m.h, parts: m.parts, v: m.v };
+  return { src: `${base}.svg`, ...(m.model ? { model: m.model } : {}), w: m.w, h: m.h, parts: m.parts, v: m.v, ...(m.dims ? { dims: m.dims } : {}) };
 }
 
 /** One build type per card: the prompt stem without sizes or filler ("bookshelf 36x12x72" → "bookshelf"). */
@@ -54,13 +55,13 @@ export const TITLE_FIX: Record<string, string> = { window: "Double-hung window" 
 function fromIdea(d: Idea): IdeaCard {
   return {
     slug: d.id, buildType: buildTypeOf(d.prompt), title: TITLE_FIX[d.id] ?? d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
-    recipeKey: null, dims: null, size: d.size, status: "checked", blurb: d.blurb, stock: d.stock, section: d.section, drawing: drawingFor(d.id),
+    recipeKey: null, dims: null, size: displaySize(d.size, drawingFor(d.id)?.dims), status: "checked", blurb: d.blurb, stock: d.stock, section: d.section, drawing: drawingFor(d.id),
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
   return {
     slug: r.id, buildType: buildTypeOf(r.prompt), title: r.label, count, lastSeen: null, examplePrompt: r.prompt,
-    recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, size: r.size, status, blurb: r.blurb, section, drawing: drawingFor(r.id),
+    recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, size: displaySize(r.size, drawingFor(r.id)?.dims), status, blurb: r.blurb, section, drawing: drawingFor(r.id),
   };
 }
 
