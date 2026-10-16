@@ -28,8 +28,8 @@ export function DecisionLine({ className = "" }: { className?: string }) {
     const was = seen;
     seen = { price, tick: t };
     if (!was || t === was.tick) return;
+    // Every Refine gets its answer, even "+$0" (2" taller can still fit the same sheets).
     const d = Math.round(price - was.price);
-    if (!d) return;
     setDelta({ d, key: t });
     const id = window.setTimeout(() => setDelta(null), 2400);
     return () => window.clearTimeout(id);
@@ -43,7 +43,7 @@ export function DecisionLine({ className = "" }: { className?: string }) {
       </span>
       {delta && (
         <span key={delta.key} data-yard-decision-delta={delta.d} className="yard-delta rounded-full bg-elevated px-1.5 text-[12px] text-fg">
-          {delta.d > 0 ? "+" : "−"}${Math.abs(delta.d)}
+          {delta.d >= 0 ? "+" : "−"}${Math.abs(delta.d)}
         </span>
       )}
     </p>
