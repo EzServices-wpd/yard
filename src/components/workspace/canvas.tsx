@@ -1,7 +1,8 @@
 "use client";
 
+import { useCutFocus } from "@/components/workspace/cut-focus";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
@@ -15,6 +16,7 @@ import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
 import { LAMP_FADE_MS } from "@/components/workspace/lava-lamp";
+import { CALLOUT_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -251,6 +253,7 @@ export function WorkspaceCanvas() {
           <planeGeometry args={[6000, 6000]} />
           <meshStandardMaterial color="#231d17" roughness={0.95} metalness={0} />
         </mesh>
+        <RevealCamera />
         <BenchScene
           project={project}
           explode={explode}
@@ -464,80 +467,134 @@ function useAssemble(ready: boolean): number {
 }
 
 /**
- * Build animation: once a fresh build lands, its real parts appear step by step in plan order
- * (first step that lists a part places it; unlisted parts land with the last step). Visibility only,
- * no new geometry, so it costs nothing per frame. ~2s total; skipped under reduced motion,
- * when a step is open, or when the plan has no steps that name parts.
+ * Build reveal, "blueprint to wood" (UX plan item 1). Once a fresh build lands, every part shows as
+ * a faint outline (0–400 ms), then each part turns to wood in step order (60–90 ms apart, compressed
+ * past 24 parts), and the camera eases into the 3/4 view over the last 600 ms. The whole thing is
+ * capped at 2.4 s. A tap, click or Esc jumps to the finished frame. Reduced motion: no stagger, no
+ * camera move, a 150 ms fade on the finished frame. Visibility and material only, no new geometry.
+ * Returns the set of parts already in wood (others draw as outlines), or null when nothing plays.
  */
 function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
     if (!ready || !plan?.instructions.length) return null;
     const { at, n, stale } = buildOrder(project, plan);
-    return n >= 2 && !stale ? { at, n } : null;
+    if (n < 2 || stale) return null;
+    // Parts in step order (stable within a step: the model's own order).
+    const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
+    ids.sort((x, y) => at.get(x)! - at.get(y)!);
+    return { at, n, ids };
   }, [project, plan, ready]);
-  const [shown, setShown] = useState<number>(Infinity);
+  const [wood, setWood] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
-  // Late-start guard: the reveal only plays if the plan lands within 600ms of the model; a model
-  // already on screen is never hidden again to replay (that read as a flicker).
   const readyAt = useRef<{ id: string; t: number } | null>(null);
   if (ready && readyAt.current?.id !== project.id) readyAt.current = { id: project.id, t: performance.now() };
   useEffect(() => {
     if (!order || stepping || played.current === project.id) return;
     played.current = project.id;
-    const host0 = document.querySelector("[data-bench-host]");
-    const skip = (why: string) => host0?.setAttribute("data-yard-reveal", `skip:${why}`);
-    // Late start: fine while the Building overlay is still up or fading over the bench (the model
-    // has not been seen yet); otherwise only within 600ms of the model landing.
-    const overlayUp = !!document.querySelector(".yard-lamp");
-    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 600)) return skip("late");
-    if (document.hidden) return skip("hidden");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return skip("reduced-motion");
-    const per = Math.max(220, Math.min(420, 2600 / order.n));
-    // The bench host carries the current beat (data-yard-reveal="k/n" + that beat's part names) so
-    // the order can be checked from outside the WebGL canvas.
     const host = document.querySelector("[data-bench-host]");
-    const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
-    const mark = (k: number) => {
-      if (!host) return;
-      host.setAttribute("data-yard-reveal", k < 0 ? `wait/${order.n}` : k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
-      const label = (g: number) => {
-        const c = new Map<string, number>();
-        for (const [pid, gg] of order.at) if (gg === g) { const nm = names.get(pid) ?? pid; c.set(nm, (c.get(nm) ?? 0) + 1); }
-        return [...c].map(([nm, x]) => (x > 1 ? `${nm} ×${x}` : nm)).join(", ");
-      };
-      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : label(k));
-    };
-    // Hold the bench empty while the Building overlay fades (LAMP_FADE_MS), then one beat per `per`
-    // ms on a wall-clock schedule: beat k is due at t0 + k·per, so a slow frame never bunches or
-    // stretches the beats that follow (time-based, not frame counts).
-    setShown(-1);
-    mark(-1);
-    // Beat 1 lands as the overlay finishes fading (it began fading when the model became ready).
+    const skip = (why: string) => host?.setAttribute("data-yard-reveal", `skip:${why}`);
+    const overlayUp = !!document.querySelector(".yard-lamp");
+    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 2500)) return skip("late");
+    if (document.hidden) return skip("hidden");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      host?.querySelector("canvas")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
+      return skip("reduced-motion");
+    }
+    const total = order.ids.length;
+    const stagger = staggerFor(total);
     const t0 = Math.max(performance.now(), readyAt.current.t + LAMP_FADE_MS);
-    let k = -1;
-    let timer = 0;
-    // F44: each beat is scheduled from when the previous one actually fired. After a slow frame it
-    // may claw back a little toward the plan (t0 + k·per) but never closer than 0.6·per to the beat
-    // before, so a stall never fires two beats back to back.
-    const tick = () => {
-      k++;
-      mark(k);
-      if (k >= order.n) {
-        setShown(Infinity);
-        return;
-      }
-      setShown(k);
-      const fired = performance.now();
-      const due = Math.max(fired + 0.6 * per, Math.min(t0 + (k + 1) * per, fired + per));
-      timer = window.setTimeout(tick, due - fired);
+    const end = t0 + WIRE_MS + total * stagger + CALLOUT_MS;
+    let raf = 0;
+    let shownCount = -1;
+    const finish = (skipped: boolean) => {
+      cancelAnimationFrame(raf);
+      setWood(Infinity);
+      setReveal({ active: false, wood: total, skipped });
+      host?.setAttribute("data-yard-reveal", `done/${total}`);
+      host?.setAttribute("data-yard-reveal-ms", String(Math.round(performance.now() - t0)));
+      onRevealSkip(null);
+      window.removeEventListener("keydown", onKey);
     };
-    timer = window.setTimeout(tick, Math.max(0, t0 - performance.now()));
-    return () => { window.clearTimeout(timer); setShown(Infinity); };
-  }, [order, stepping, project.id, project.panels, project.instances]);
-  if (!order || shown === Infinity || stepping) return null;
-  const vis = new Set<string>();
-  for (const [id, i] of order.at) if (i <= shown) vis.add(id);
-  return vis;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") finish(true); };
+    window.addEventListener("keydown", onKey);
+    onRevealSkip(() => finish(true));
+    setWood(0);
+    setReveal({ active: true, n: total, wood: 0, t0, end, skipped: false });
+    host?.setAttribute("data-yard-reveal", `wire/${total}`);
+    const tick = () => {
+      const now = performance.now();
+      if (now >= end) return finish(false);
+      const k = now < t0 + WIRE_MS ? 0 : Math.min(total, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      if (k !== shownCount) {
+        shownCount = k;
+        setWood(k);
+        setReveal({ wood: k });
+        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${total}` : `${k}/${total}`);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey); onRevealSkip(null); setWood(Infinity); setReveal({ active: false }); };
+  }, [order, stepping, project.id]);
+  // Outline first: a fresh model waits as outlines (never as wood) while its plan is still being
+  // worked out, so the reveal can always start without hiding wood that was already on screen.
+  const [, bump] = useState(0);
+  const fresh = ready && !stepping && played.current !== project.id && readyAt.current?.id === project.id;
+  const waitLeft = fresh && !order && !reducedMotion() ? 2500 - (performance.now() - readyAt.current!.t) : 0;
+  useEffect(() => {
+    if (waitLeft <= 0) return;
+    const t = window.setTimeout(() => bump((x) => x + 1), waitLeft + 20);
+    return () => window.clearTimeout(t);
+  }, [waitLeft > 0, project.id]);
+  if (waitLeft > 0) return new Set();
+  if (!order || wood === Infinity || stepping) return null;
+  return new Set(order.ids.slice(0, wood));
+}
+
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * The reveal's camera glide: the view starts a little wide and turned, then eases into the framed
+ * 3/4 view over the reveal's last 600 ms (cubic-bezier .2,.7,.2,1). Orbits the controls' target,
+ * so the CameraRig's framing is the end pose. Idle when no reveal is running.
+ */
+function RevealCamera() {
+  const { camera, controls } = useThree();
+  const pose = useRef<{ t0: number; end: number; from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  useFrame(() => {
+    const r = revealState();
+    const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+    if (!r.active) {
+      if (pose.current) {
+        camera.position.copy(pose.current.to);
+        orbit?.update?.();
+        pose.current = null;
+      }
+      return;
+    }
+    const target = orbit?.target ?? new THREE.Vector3();
+    if (!pose.current || pose.current.t0 !== r.t0) {
+      const to = camera.position.clone();
+      const rel = to.clone().sub(target).applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.18).multiplyScalar(1.08);
+      pose.current = { t0: r.t0, end: r.end, from: target.clone().add(rel), to, target: target.clone() };
+    }
+    const p = pose.current;
+    const u = easeCam(Math.min(1, Math.max(0, (performance.now() - (p.end - 600)) / 600)));
+    const rel0 = p.from.clone().sub(p.target);
+    const rel1 = p.to.clone().sub(p.target);
+    // Slerp-ish: interpolate the angle around Y and the distance separately so the glide arcs.
+    const a0 = Math.atan2(rel0.x, rel0.z), a1 = Math.atan2(rel1.x, rel1.z);
+    let da = a1 - a0;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    const a = a0 + da * u;
+    const flat0 = Math.hypot(rel0.x, rel0.z), flat1 = Math.hypot(rel1.x, rel1.z);
+    const flat = flat0 + (flat1 - flat0) * u;
+    const y = rel0.y + (rel1.y - rel0.y) * u;
+    camera.position.set(p.target.x + Math.sin(a) * flat, p.target.y + y, p.target.z + Math.cos(a) * flat);
+    camera.lookAt(p.target);
+  });
+  return null;
 }
 
 function BenchScene({
@@ -585,6 +642,9 @@ function BenchScene({
     [project.panels],
   );
 
+  // Cut-list focus (partIds): outline the parts the plan points at, once the reveal is done.
+  const cutFocus = useCutFocus();
+  const focusOn = !reveal && cutFocus.size > 0;
   return (
     <group>
       {showHull && <GhostLines strokes={hull} color={HULL} />}
@@ -596,7 +656,7 @@ function BenchScene({
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
-          stepIds={stepIds}
+          stepIds={focusOn ? [...cutFocus] : stepIds}
           placedIds={placedIds}
           lockedIds={lockedIds}
           dragPos={dragPos}
@@ -608,15 +668,15 @@ function BenchScene({
       )}
       {!pending &&
         project.panels
-          .filter((panel) => (detail !== "frame" || panel.type !== "deck") && (!reveal || reveal.has(panel.id)))
+          .filter((panel) => detail !== "frame" || panel.type !== "deck")
           .map((panel) => (
             <PanelMesh
               key={panel.id}
               panel={panel}
               explode={explodeScale}
               selected={panel.id === selectedId}
-              inStep={stepIds.length ? stepIds.includes(panel.id) : false}
-              hasStep={stepIds.length > 0}
+              inStep={reveal ? false : focusOn ? cutFocus.has(panel.id) : stepIds.length ? stepIds.includes(panel.id) : false}
+              hasStep={reveal ? !reveal.has(panel.id) : focusOn ? false : stepIds.length > 0}
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
               facesOpen={facesOpen}
