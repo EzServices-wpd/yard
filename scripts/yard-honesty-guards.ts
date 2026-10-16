@@ -7872,7 +7872,7 @@ console.log("STRANGER PLAN OK", {
   const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
   // The box stands on its bottom first; the thin back goes on last, along every edge, once the box is square.
   const back = vanPlan.instructions.findIndex((s) => /back of the box/i.test(s.title));
-  if (stand < 0 || lt(sp[stand].fresh) !== "BE") failHonesty("pdf vanity stand step must light only B, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (stand < 0 || lt(sp[stand].fresh) !== "BD") failHonesty("pdf vanity stand step must light only B, D (bottom + uprights; doors re-letter to E once they carry the 1/16\" reveal)", stand >= 0 ? lt(sp[stand].fresh) : "missing");
   if (back <= stand || lt(sp[back].fresh) !== "A") failHonesty("pdf vanity back step lights A after the box stands", back >= 0 ? sp[back] : "missing");
   const seen = new Set<string>();
   for (const st of sp) for (const id of st.fresh) {

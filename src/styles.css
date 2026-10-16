@@ -441,16 +441,32 @@
    (a single orchestrated moment, not a loop). Transform/opacity only; still under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
   /* No keyframes (and no animationstart/3D layer work) until the grid is first on screen. */
-  .yard-alive-grid[data-in] { perspective: 900px; }
-  .yard-alive-grid[data-in] .yard-alive { animation: yard-alive 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1 both; transform-origin: 50% 80%; }
-  .yard-alive-grid[data-in] > :nth-child(2) .yard-alive { animation-delay: 0.12s; }
-  .yard-alive-grid[data-in] > :nth-child(3) .yard-alive { animation-delay: 0.24s; }
+  .yard-alive-grid[data-in] { perspective: 1100px; }
+  /* Entrance: each card rises and tips up into place, its drawing turning in a beat behind it. */
+  .yard-alive-grid[data-in] > * { animation: yard-card-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  .yard-alive-grid[data-in] .yard-alive { animation: yard-alive 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.12s backwards; transform-origin: 50% 85%; }
+  .yard-alive-grid[data-in] > :nth-child(2) { animation-delay: 0.11s; }
+  .yard-alive-grid[data-in] > :nth-child(2) .yard-alive { animation-delay: 0.23s; }
+  .yard-alive-grid[data-in] > :nth-child(3) { animation-delay: 0.22s; }
+  .yard-alive-grid[data-in] > :nth-child(3) .yard-alive { animation-delay: 0.34s; }
+  /* Hover: lift and tilt toward the cursor (--tx/--ty set on pointermove), drawing eases forward. */
+  .yard-card { transform: translateY(var(--lift, 0)) rotateX(var(--ty, 0deg)) rotateY(var(--tx, 0deg)); transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); transform-style: preserve-3d; will-change: auto; }
+  .yard-card[data-hover] { --lift: -6px; transition-duration: 0.18s; }
+  .yard-card[data-hover] .yard-alive { transform: translateZ(18px) scale(1.03); }
+  .yard-card .yard-alive { transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+  /* Touch: no hover states; a quick press-in on tap instead (the doors already swing once on entry). */
+  @media (hover: none) { .yard-card:active { transform: scale(0.985); transition-duration: 0.12s; } }
 }
-@keyframes yard-alive {
-  from { transform: rotateY(-28deg) translateY(14px) scale(0.94); opacity: 0.35; }
+@keyframes yard-card-in {
+  from { transform: translateY(36px) rotateX(16deg) scale(0.96); opacity: 0; }
+  60% { opacity: 1; }
   to { transform: none; opacity: 1; }
 }
-[data-offscreen] .yard-alive, [data-offscreen] .yard-making-list, [data-offscreen] .yp { animation-play-state: paused; }
+@keyframes yard-alive {
+  from { transform: rotateY(-30deg) translateY(10px) scale(0.92); opacity: 0.2; }
+  to { transform: none; opacity: 1; }
+}
+.yard-alive-grid[data-in][data-offscreen] .yard-alive, .yard-alive-grid[data-in][data-offscreen] > *, [data-offscreen] .yard-making-list, [data-offscreen] .yp { animation-play-state: paused; }
 
 /* Building overlay: real parts of a nearby known build drop in by step (transform/opacity only). */
 @media (prefers-reduced-motion: no-preference) {
