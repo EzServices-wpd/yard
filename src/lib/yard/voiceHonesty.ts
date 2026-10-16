@@ -68,7 +68,7 @@ export function speciesSubstituteNote(prompt: string, stockLabel: string): strin
   const sp = namedLumberFromPrompt(prompt);
   if (!sp) return null;
   if (!/ply|plywood|sheet/i.test(stockLabel)) return null;
-  return `Prompt names ${sp.display} — densify uses ${stockLabel} as the structural substitute (not a silent drop). Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
+  return `You named ${sp.display}; this builds from ${stockLabel} instead. Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
 }
 
 /** Prefer plain stranger words in step/PDF/glossary body — never carcase/toekick. */

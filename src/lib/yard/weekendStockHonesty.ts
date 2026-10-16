@@ -996,7 +996,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (project.instances.length && !riseRunTalk) {
         issues.push({
           guard: "anatomy",
-          message: "Climb step must use rise/run (weight-bearing human step) language; densify from named stock; kid stands on the tread.",
+          message: "Climb step must use rise/run (weight-bearing human step) language; kid stands on the tread.",
         });
       }
       const nSteps = Math.max(1, climbStepCount(prompt));
@@ -1129,7 +1129,7 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
         return { ...i, cutLength: Math.max(0.25, Math.round(L * 16) / 16) };
       });
       if (cut) for (let k = notes.length - 1; k >= 0; k--) if (/Do not cut\.?$/.test(notes[k])) notes.splice(k, 1);
-      if (cut) notes.push(`${cut} short members are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
+      if (cut) notes.push(`${cut} short pieces are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
     }
   }
 

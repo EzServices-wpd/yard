@@ -1,42 +1,6 @@
 {
  "note": "Known invariant violations at the start of the ratchet (2026-10-15). A key not listed here fails CI. A listed key that no longer fires also fails (STALE): delete it in the fix's commit, which is the red-before/green-after record that closes the class.",
  "known": {
-  "I11|30 inch range hood": {
-   "class": "F9",
-   "msg": "template leak: closet wording"
-  },
-  "I11|barn birdhouse": {
-   "class": "F9",
-   "msg": "template leak: glides with no feet"
-  },
-  "I11|bathroom medicine cabinet 16 wide 24 high 4 deep": {
-   "class": "F9",
-   "msg": "template leak: closet wording"
-  },
-  "I11|birdhouse shaped like church": {
-   "class": "F9",
-   "msg": "template leak: glides with no feet"
-  },
-  "I11|floating desk": {
-   "class": "F9",
-   "msg": "template leak: 'shelf into cleat'"
-  },
-  "I11|floating shelves 36 wide 10 deep": {
-   "class": "F9",
-   "msg": "template leak: 'shelf into cleat'"
-  },
-  "I11|kitchen island 60x36x36": {
-   "class": "F9",
-   "msg": "template leak: closet wording"
-  },
-  "I11|wall mounted ironing board cabinet 48 high 16 wide 6 deep": {
-   "class": "F9",
-   "msg": "template leak: closet wording"
-  },
-  "I11|window box": {
-   "class": "F9",
-   "msg": "template leak: glides with no feet"
-  },
   "I13|barn birdhouse": {
    "class": "F21",
    "msg": "Floor is interior plywood on the ground outdoors"
@@ -176,62 +140,6 @@
   "I8|raised garden bed 48 wide 96 long": {
    "class": "F2",
    "msg": "typed 48 wide, model 96"
-  },
-  "I9|30 inch range hood": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|L-shaped corner desk 60 by 48 30 tall": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|barn birdhouse": {
-   "class": "F7",
-   "msg": "steps or notes use glides; Buy has none"
-  },
-  "I9|birdhouse shaped like church": {
-   "class": "F7",
-   "msg": "steps or notes use glides; Buy has none"
-  },
-  "I9|bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|catapult from popsicle sticks": {
-   "class": "F7",
-   "msg": "steps or notes use hinges; Buy has none"
-  },
-  "I9|floating shelves 36 wide 10 deep": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|over the toilet cabinet 27 wide 68 high 9 deep": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|spice rack 18 wide 24 high 4 deep": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|wall clock frame": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|wall mounted mail organizer": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|wall shelf for jars 24 wide": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|window box": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
-  },
-  "I9|wine rack 24 wide 36 high 12 deep": {
-   "class": "F7",
-   "msg": "steps or notes use wall anchors; Buy has none"
   }
  }
 }

@@ -247,7 +247,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Ironing board wall mount for a ${boardLen}" board — clear wall mount, not a Yard House wire skeleton and not a key/coat portal. ¾" plywood.`,
+        `${name}. Ironing board wall mount for a ${boardLen}" board — clear wall mount. ¾" plywood.`,
         `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Keep clear swing so the board clears the wall and door swing when folded down.`,
         `Clear swing: the ${boardLen}" board hinges down clear of the wall — lag the mount rail into studs. Guidance only.`,
       ],
@@ -303,7 +303,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         `${name}. Wall-mounted cabinet with a fold-down ironing board inside — not a floor box. ¾" plywood.`,
         `The ${boardLen}" × ${boardW}" board stores upright and hinges down on a piano hinge (a long continuous hinge along the bottom edge). A ${legLen}" support leg folds out to the floor.`,
-        "Hang the carcase on studs through the back. Concealed hinges on the door. Not a closet and not a freestanding rectangle on the floor.",
+        "Hang the carcase on studs through the back. Concealed hinges on the door.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -358,7 +358,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside — not a floor vanity and not a closet. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
+        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
         `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. ${face.shelfDepth + backT >= box - 0.01 ? "Shelves run to the front edge, clear of the hinges." : `Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close.`} The mirror sits flush in a rabbet in the door's outer face.`,
       ],
       historic: false,
@@ -710,7 +710,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const notes = [
       `${label} spanning a ${portalW}" × ${portalH}" door portal above the swing — clear swing below. ¾" plywood.`,
       `Mount height from the opening: ${mountFromOpening}" up from the finished floor (above the swing arc). Keep clear swing below so the door clears under the shelf.`,
-      `Span the full ${portalW}" portal width. Hit studs through the cleat. Guidance only — portal span shelf, not a shelving niche.`,
+      `Span the full ${portalW}" portal width. Hit studs through the cleat. Guidance only.`,
     ];
     return {
       id: createId("proj"),
@@ -755,7 +755,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  // Towel rail in a door portal — clear swing; not a shelving niche / linen closet.
+  // Towel rail in a door portal — clear swing.
   // When hooks/pegs are also typed, densify BOTH towel rail + hooks (universal towel+hook class).
   if (isTowelPortalRail(prompt.toLowerCase())) {
     const towelLower = prompt.toLowerCase();
@@ -779,12 +779,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? [
           `Towel + hook rail in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on the towel rail. Clear swing. ¾" plywood.`,
           `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
-          `Screw ${hooks} hooks into the rail, about 6" on center. Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+          `Screw ${hooks} hooks into the rail, about 6" on center. Span the full ${portalW}" portal width. Hit studs. Guidance only.`,
         ]
       : [
           `Towel rail in a ${portalW}" × ${portalH}" door portal — clear swing. ¾" plywood.`,
           `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the towels.`,
-          `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+          `Span the full ${portalW}" portal width. Hit studs. Guidance only.`,
         ];
     const title = withHooks
       ? `Towel + hook rail ${portalW}" portal · ${hooks} hooks`
@@ -869,7 +869,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const notes = [
       `Shoe cubbies in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs / ${cubbyN} bays (~${bayW}" wide), clear swing. ¾" plywood.`,
       `Mount height from the opening: ${mountFromOpening}" up from the finished floor (bottom of the cubby box). Keep clear swing so the door clears the footwear.`,
-      `Glue and screw each cubby divider into the shoe shelves and back. Hit studs. Guidance only — portal cubbies, not a shelving niche.`,
+      `Glue and screw each cubby divider into the shoe shelves and back. Hit studs. Guidance only.`,
     ];
     return {
       id: createId("proj"),
@@ -914,7 +914,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     };
   }
 
-  // Shoe rail in a door portal — pairs on a rail, clear swing; not a shelving niche.
+  // Shoe rail in a door portal — pairs on a rail, clear swing.
   // Pegs are cut plywood (one per pair) so steps never invent hardware missing from the cut list.
   if (isShoePortalRail(prompt.toLowerCase())) {
     const shoeLower = prompt.toLowerCase();
@@ -944,7 +944,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const notes = [
       `Shoe rail in a ${portalW}" × ${portalH}" door portal — ${pairs} pairs on ${pairs} × ${pegLen}" plywood pegs. ¾" plywood.`,
       `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the footwear.`,
-      `Screw each shoe peg into the rail about 8–9" on center. Hit studs. Guidance only — portal not a shelving niche.`,
+      `Screw each shoe peg into the rail about 8–9" on center. Hit studs. Guidance only.`,
     ];
     return {
       id: createId("proj"),
@@ -1024,7 +1024,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         `${name}. Dual affordance: ${cubbyN} cubbies (~${bayW}" bays) and a full-width coat rod — not Coat rod–only. Fitted depth ${D}". ¾" plywood.`,
         `Full-width coat rod spans the ${W}" opening at ${rodY}" up. Glue and screw each cubby divider into the shelves and back.`,
-        `Four cubbies densify with dividers. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
+        `Dividers split it into four cubbies. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D },
@@ -1200,7 +1200,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
     panels.push(panel("back", "Back", x0 + P, 0, 0, innerW, H, backT));
-    panels.push(panel("bottom", bootTray ? "Boot tray" : bookBin ? "Book bin" : "Shoe shelf", x0 + P, 0, backT, innerW, P, D - backT));
+    // The bottom shelf is a shoe shelf only on an entry / shoe bench; a window seat's is a plain bottom shelf.
+    const lowShelf = /\b(?:shoes?|boots?|entry|entryway|mudroom|hall(?:way)?)\b/i.test(prompt) ? "Shoe shelf" : "Bottom shelf";
+    panels.push(panel("bottom", bootTray ? "Boot tray" : bookBin ? "Book bin" : lowShelf, x0 + P, 0, backT, innerW, P, D - backT));
     panels.push(panel("top", "Seat", x0 + P, H - P, backT, innerW, P, D - backT));
     panels.push(
       panel("rail", "Front apron", x0 + P, H - P - apronH, D - P, innerW, apronH, P),
@@ -1239,9 +1241,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         bootTray
-          ? `${name}. Boot tray bench with a recessed boot tray under the seat and ${cubbyN} bays — tray densify + sit-load, not Boot bench without tray. ¾" plywood.`
+          ? `${name}. Boot tray bench with a recessed boot tray under the seat and ${cubbyN} bays — the tray and dividers carry the sitting load. ¾" plywood.`
           : bookBin
-          ? `${name}. Book bin bench with an open book bin under the seat and ${cubbyN} bays — bin densify + sit-load, not a naked Bench. ¾" plywood.`
+          ? `${name}. Book bin bench with an open book bin under the seat and ${cubbyN} bays — the bin and dividers carry the sitting load. ¾" plywood.`
           : wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
           : sitTitle === "Window seat"
@@ -1251,7 +1253,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `The boot tray, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, boot tray, and back.`
           : bookBin
           ? `The book bin, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, book bin, and back.`
-          : `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, shoe shelf, and back.`,
+          : `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, ${lowShelf.toLowerCase()}, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
           : sitTitle === "Window seat"
@@ -1325,7 +1327,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Pegboard wall panel fitted to a ${W}" × ${H}" opening — panel anatomy, not a Yard House wire skeleton. ¾" pegboard / plywood panel.`,
+        `${name}. Pegboard wall panel fitted to a ${W}" × ${H}" opening — panel anatomy. ¾" pegboard / plywood panel.`,
         "Clear wall mount: lag into studs through the panel (or French cleat). Guidance only — confirm the opening.",
       ],
       historic: false,
@@ -1372,8 +1374,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Laundry sorter with ${bins} real bins (~${bayW}" wide each) — not a Storage unit and not open-bay-only shelves. ¾" plywood.`,
-        `Glue and screw each bin divider into the top, bottom, and back. Three-bin laundry sorter densifies Bin 1–${bins}.`,
+        `${name}. Laundry sorter with ${bins} real bins (~${bayW}" wide each). ¾" plywood.`,
+        `Glue and screw each bin divider into the top, bottom, and back. The dividers split it into Bin 1–${bins}.`,
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -1409,7 +1411,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Drying rack with ${rungs} rungs — not a Storage unit. ¾" plywood / lumber standards.`,
+        `${name}. Drying rack with ${rungs} rungs. ¾" plywood / lumber standards.`,
         `Rungs hold laundry at the typed depth (${D}"). Lag or freestand the standards. Guidance only.`,
       ],
       historic: false,
@@ -1446,7 +1448,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Lumber rack with ${arms} arms — not a Storage unit. ¾" plywood / lumber standards.`,
+        `${name}. Lumber rack with ${arms} arms. ¾" plywood / lumber standards.`,
         `Arms hold stock at the typed depth (${D}"). Lag the standards into studs. Guidance only.`,
       ],
       historic: false,
@@ -1541,7 +1543,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Key and mail shelf with ${hooks} hooks below the shelf — not a Storage unit, not a Picture ledge, not a portal steal. ¾" plywood.`,
+        `${name}. Key and mail shelf with ${hooks} hooks below the shelf. ¾" plywood.`,
         `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Clear wall mount — lag into studs through the rail.`,
         `Screw ${hooks} hooks into the rail below the mail shelf, about 6" on center. Hit studs. Guidance only.`,
       ],
@@ -1606,9 +1608,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: stockId,
       notes: [
-        `${name}. Wall-mounted coat hook board with ${hooks} hooks — clear wall mount, not a Coat rack / Tool rail / portal steal. Board densify.`,
+        `${name}. Wall-mounted coat hook board with ${hooks} hooks — clear wall mount.`,
         `Mount height from the wall: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the board.`,
-        `Screw ${hooks} coat hooks into the board, about 6" on center. Hit studs. Guidance only — coat hook board, not a Bridge / Tool / portal.`,
+        `Screw ${hooks} coat hooks into the board, about 6" on center. Hit studs. Guidance only.`,
         ...(H > boardH + 0.4
           ? [`You typed ${Math.round(H * 10) / 10}" tall. A hook board is a plate, so this one is ${boardH}" tall — not a cabinet that height.`]
           : []),
@@ -1730,12 +1732,12 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         ? [
             `${label} spanning a ${portalW}" × ${portalH}" door portal full width — clear swing. ¾" plywood / rod.`,
             `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the coats.`,
-            `Span the full ${portalW}" portal width. Hit studs. Guidance only — portal span, not a shelving niche.`,
+            `Span the full ${portalW}" portal width. Hit studs. Guidance only.`,
           ]
         : [
           `${label} in a ${portalW}" × ${portalH}" door portal — ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
           `Mount height from the opening: ${mountFromOpening}" up from the finished floor. Keep clear swing so the door clears the ${hangNoun}.`,
-          `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — portal rail, not a shelving niche.`,
+          `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only.`,
         ]
       : toolRail
         ? [
@@ -1746,10 +1748,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               : `Tool rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
             `Mount height from the opening: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the rail.`,
             leashRail
-              ? `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — leash rail, not a Bridge / Tool / key portal steal.`
+              ? `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only.`
               : pegRail
-              ? `Screw ${hooks} pegs into the rail, about 6" on center. Hit studs. Guidance only — peg rail, not a Bridge / Tool / key / leash steal.`
-              : `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only — tool rail, not a Bridge / coat portal.`,
+              ? `Screw ${hooks} pegs into the rail, about 6" on center. Hit studs. Guidance only.`
+              : `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only.`,
           ]
         : [
           standing
@@ -1758,7 +1760,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           wantHatShelf
             ? `${hooks} pegs stand about 3" past the hat shelf, each with a stop so a coat doesn't slide off. Screw them into the rail, about 6" on center. Hit studs.`
             : `Screw ${hooks} coat hooks into the rail, about 6" on center. Hit studs.`,
-          "Guidance only — not a cubby. No leftover shelves. Size follows what you typed.",
+          "Guidance only. No leftover shelves. Size follows what you typed.",
         ];
     return {
       id: createId("proj"),
@@ -1846,8 +1848,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       notes: [
         `${name}. Wall-mounted plywood canopy, open on the bottom, over the cooktop. ¾" plywood.`,
         chimneyH >= 4
-          ? `A ${canopyH}" canopy with a ${chimneyH}" chimney against the wall. Open bottom. Not a closet.`
-          : "Open-bottom canopy. Not a closet box.",
+          ? `A ${canopyH}" canopy with a ${chimneyH}" chimney against the wall. Open bottom.`
+          : "Open-bottom canopy.",
         "Hang on studs above the range. A metal liner and a vent fan are optional and not on this list.",
       ],
       historic: false,
@@ -1921,7 +1923,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
                 ? "dual lids"
                 : "multi-lid";
         chestAssumed.push(
-          `Assumed one lid — typed ${asked} isn't separate geometry yet. This densify stays a single lid panel.`,
+          `Assumed one lid — typed ${asked} isn't separate geometry yet. It is built as a single lid panel.`,
         );
       }
       const chestSizeTalk =
@@ -1958,18 +1960,18 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           if (liftOff) {
             return [
               toy
-                ? `${name}. Lift-off-lid toy chest — floor main box with a removable lid (no piano hinge), not a Yard House wire skeleton and not Storage. ¾" plywood.`
-                : `${name}. Lift-off-lid chest — floor main box with a removable lid (no piano hinge), not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+                ? `${name}. Lift-off-lid toy chest — floor main box with a removable lid (no piano hinge). ¾" plywood.`
+                : `${name}. Lift-off-lid chest — floor main box with a removable lid (no piano hinge). ¾" plywood.`,
               `Lift-off lid ${W}" × ${D}". ${chestSizeTalk} The lid sits on the main box and lifts straight off — not hinged along the back edge. No piano hinge or lid stay.`,
               ...chestAssumed,
               ...(sub ? [sub] : []),
-              "Guidance only — lift the lid off and set it back on. Not an Operate swing lid.",
+              "Guidance only — lift the lid off and set it back on.",
             ];
           }
           return [
             toy
-              ? `${name}. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`
-              : `${name}. Hinged-lid chest — floor main box with a real lid on a piano hinge along the back edge, not a Yard House wire skeleton and not Storage. ¾" plywood.`,
+              ? `${name}. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge. ¾" plywood.`
+              : `${name}. Hinged-lid chest — floor main box with a real lid on a piano hinge along the back edge. ¾" plywood.`,
             `Lid ${W}" × ${D}". ${chestSizeTalk} Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid cannot slam.`,
             ...chestAssumed,
             ...(sub ? [sub] : []),
@@ -2150,7 +2152,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`,
-        "Bottom shelf and one middle shelf are glued in. Not a closet. Not a dining table.",
+        "Bottom shelf and one middle shelf are glued in.",
         "Guidance only — level it on the floor. Confirm the real kitchen.",
       ],
       historic: false,
@@ -2279,7 +2281,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. One ${W}" × ${Df}" shelf on ${bracketN} plywood bracket${bracketN === 1 ? "" : "s"} — not a Wall cleat, not a tall Shelf backstop, not a multi Wall shelves stack. ¾" plywood.`,
+        `${name}. One ${W}" × ${Df}" shelf on ${bracketN} plywood bracket${bracketN === 1 ? "" : "s"}. ¾" plywood.`,
         `Lag each bracket into studs; sit the shelf on the brackets and screw down. Guidance only — confirm the wall type.`,
         "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
         ...assumed,
@@ -2891,7 +2893,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   const alcove = spec.opening.kind === "alcove" || spec.opening.kind === "pocket";
   const notes = [
-    `${spec.name}. ${alcove ? "Fitted to the opening." : "Freestanding carcase — still square, still a cut list."}`,
+    `${spec.name}. ${alcove ? "Fitted to the opening." : "Stands on its own on the floor."}`,
     `Unit ${u.width}" W × ${u.depth}" D × ${u.height}" H. ¾" plywood. Front reads straight.`,
     hasKnee
       ? deskMediaBehind
@@ -2940,10 +2942,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               })()
           : isPrinterStand(prompt.toLowerCase())
             ? shelves === 1
-              ? `Printer stand with exactly one lower shelf under the top — not a Storage unit. Honor typed W×D×H.`
+              ? `Printer stand with exactly one lower shelf under the top. Honor typed W×D×H.`
               : shelves
-                ? `Printer stand with ${shelves} shelf line${shelves === 1 ? "" : "s"} — not a Storage unit.`
-                : `Printer stand carcase — not a Storage unit. Shelf only when typed.`
+                ? `Printer stand with ${shelves} shelf line${shelves === 1 ? "" : "s"}.`
+                : `Printer stand carcase. Shelf only when typed.`
           : shelves
             ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",

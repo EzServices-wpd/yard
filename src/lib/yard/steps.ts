@@ -385,7 +385,7 @@ function uniqueFlatSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: s++,
       title: n >= 2 ? `Glue the ${n} weight-bearing climb steps` : "Glue the weight-bearing climb step",
-      description: `Build ${stepTalk}. Legs and treads only — weight-bearing human steps, not a vehicle incline. ${n >= 2 ? whoClimb + " on the top tread. " : whoClimb + " on the tread. "}${hold}`,
+      description: `Build ${stepTalk}. Legs and treads only — weight-bearing human steps. ${n >= 2 ? whoClimb + " on the top tread. " : whoClimb + " on the tread. "}${hold}`,
       tips: whoTip,
       partsUsed: ["leg", "rail"],
     });
@@ -765,7 +765,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 2,
         title: "Dry-fit the shelf above the swing",
-        description: `${shelf ? cutLine(shelf) : "Over-door shelf"} on the ${rail ? rail.name : "cleat"}. Dry-fit spanning the ${Math.round(project.opening?.width ?? W)}" door portal above the swing. This is a portal span shelf, not a shelving niche.`,
+        description: `${shelf ? cutLine(shelf) : "Over-door shelf"} on the ${rail ? rail.name : "cleat"}. Dry-fit spanning the ${Math.round(project.opening?.width ?? W)}" door portal above the swing.`,
         tips: "Portal envelope is the opening — keep clear swing below.",
         partsUsed: names(panels),
       },
@@ -810,14 +810,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       const cutStep = {
         step: 1,
         title: withHooks ? "Cut the towel + hook rail" : "Cut the towel rail",
-        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.${withHooks ? ` · ${hooks} hooks densify on the rail.` : ""}`,
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} Label the waste face. Portal span ${Math.round(project.opening?.width ?? W)}" — keep clear swing. PDF states mount height from the opening.${withHooks ? ` ${hooks} hooks go on the rail.` : ""}`,
         tips: "Mount height from the opening — keep clear swing.",
         partsUsed: names(panels),
       };
       const dryStep = {
         step: 2,
         title: "Dry-fit the rail in the portal",
-        description: `${rail ? cutLine(rail) : towelCut}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`,
+        description: `${rail ? cutLine(rail) : towelCut}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal.`,
         tips: "Portal envelope is the opening — keep clear swing.",
         partsUsed: names(panels),
       };
@@ -835,7 +835,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           {
             step: 3,
             title: `Screw ${hooks} hooks`,
-            description: `Mark ${hooks} holes on the towel rail, about 6" on center, 1½" up from the bottom edge. Screw ${hooks} hooks into the rail — towels hang on the rail, coats/keys on the hooks. BOTH towel rail + hooks densify.`,
+            description: `Mark ${hooks} holes on the towel rail, about 6" on center, 1½" up from the bottom edge. Screw ${hooks} hooks into the rail — towels hang on the rail, coats/keys on the hooks.`,
             tips: "A cheap hook pack is the whole hardware kit besides screws.",
             partsUsed: names(panels),
           },
@@ -861,14 +861,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             step: 4,
             title: "Clear wall mount — PDF states mount height",
             description: keyMail
-              ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks below the mail shelf — not a Storage unit / Picture ledge / portal steal.`
+              ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks below the mail shelf.`
               : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "")
-                ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / Tool / key steal.`
+                ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks.`
               : pegRail
-                ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} pegs — not a Bridge / Tool / key / leash steal.`
+                ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} pegs.`
                 : coatHookBoard
-                ? `Clear wall mount: set the coat hook board spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the board into studs. Screw ${hooks} coat hooks — not a Coat rack / Tool / portal steal.`
-                : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks — not a Bridge / coat portal.`,
+                ? `Clear wall mount: set the coat hook board spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the board into studs. Screw ${hooks} coat hooks.`
+                : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks.`,
             tips: "PDF states mount height. Clear wall mount — hit studs.",
             partsUsed: names(backs.length ? backs : panels),
           }
@@ -899,9 +899,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 2,
         title: shoe ? "Dry-fit the rail in the portal" : portal && !shelf ? "Dry-fit the rail in the portal" : "Glue the hat shelf on the rail",
         description: shoe
-          ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche. Leave shoe pegs off until the rail is marked.`
+          ? `${rail ? cutLine(rail) : "Shoe rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. Leave shoe pegs off until the rail is marked.`
           : portal && !shelf
-            ? `${rail ? cutLine(rail) : hookRailLabel || "Peg rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal. This is a portal rail, not a shelving niche.`
+            ? `${rail ? cutLine(rail) : hookRailLabel || "Peg rail"}. Dry-fit in the ${Math.round(project.opening?.width ?? W)}" door portal.`
           : `${shelf ? cutLine(shelf) : "Hat shelf"}. Glue and #8 × 1¼" screws through the shelf into the top edge of the ${rail?.name ?? "peg rail"}. Front edge flush. This is a wall rack, not a box.`,
         tips: shoe ? "Portal envelope is the opening — peg length is the typed depth; keep clear swing." : portal && !shelf ? "Portal envelope is the opening — keep clear swing." : "Predrill so the ply does not split. Wipe squeeze-out.",
         partsUsed: names(panels.filter((p) => !isBoughtHardwareName(p.name))),
@@ -919,7 +919,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         tips: shoe
           ? "Count the Shoe peg pieces on the cut list — one per pair."
           : pegRail
-            ? "Honor the typed peg count — not a Tool-rail 6-hook leak."
+            ? "Honor the typed peg count."
             : "A cheap hook pack is the whole hardware kit besides screws.",
         partsUsed: names(panels),
       },
@@ -973,7 +973,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Cut the weight-bearing climb step",
-        description: `${tool.how} ${sheetCuts.join(" ")} One climb step at ${riseRun}. Weight-bearing human step — not a vehicle incline.`,
+        description: `${tool.how} ${sheetCuts.join(" ")} One climb step at ${riseRun}. Weight-bearing human step.`,
         tips: tool.tip,
         partsUsed: names(panels),
       },
@@ -1220,7 +1220,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 1,
         title: "Cut the mount rail, cleat, and board",
-        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${cleat ? cutLine(cleat) + "." : ""} ${board ? cutLine(board) + "." : ""} Label the waste face. Ironing board wall mount for a ${boardLen}" board — clear wall mount, not a Yard House wire skeleton and not a key/coat portal. PDF states mount height from the wall.`,
+        description: `${tool.how} ${sheetCuts.join(" ")} ${rail ? cutLine(rail) + "." : ""} ${cleat ? cutLine(cleat) + "." : ""} ${board ? cutLine(board) + "." : ""} Label the waste face. Ironing board wall mount for a ${boardLen}" board — clear wall mount. PDF states mount height from the wall.`,
         tips: "PDF states mount height from the wall. Keep clear swing.",
         partsUsed: names(panels),
       },
@@ -1550,9 +1550,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const seats = panels.filter((p) => /seat/i.test(p.name) || p.type === "top");
     const shoe = panels.filter((p) => /shoe|boot tray/i.test(p.name) || p.type === "bottom");
     const trayBay = shoe.some((p) => /boot tray/i.test(p.name));
-    const bayName = trayBay ? "Boot tray" : "Shoe shelf";
+    const bayName = trayBay ? "Boot tray" : shoe.find((p) => p.type === "bottom")?.name.replace(/ \d+$/, "") ?? "Shoe shelf";
     const aprons = panels.filter((p) => /apron/i.test(p.name) || (p.type === "rail" && !/hanging/i.test(p.name)));
     const cubbies = panels.filter((p) => /cubby/i.test(p.name));
+    // Only parts this bench has are named: an open-frame bench has no shoe shelf or cubby dividers to cut or set.
+    const bayThen = shoe.length ? `${bayName.toLowerCase()}, then ` : "";
     return [
       {
         step: 1,
@@ -1564,14 +1566,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 2,
         title: sheetCutTitle(panels, item),
-        description: sheetCutDescription(panels, item, `— especially Seat, ${bayName}, Front apron, and each Cubby divider.`),
+        description: sheetCutDescription(panels, item, `— especially ${[seats.length ? "Seat" : "", shoe.length ? bayName : "", aprons.some((p) => /front apron/i.test(p.name)) ? "Front apron" : "", cubbies.length ? "each Cubby divider" : ""].filter(Boolean).join(", ") || "every part"}.`),
         tips: tool.tip,
         partsUsed: names(panels),
       },
       {
         step: 3,
         title: "Stand the main box",
-        description: `${uprights.map(cutLine).join("; ")}. ${backs.map(cutLine).join("; ")}. ${shoe.map(cutLine).join("; ") || `${bayName}.`}. ${seats.map(cutLine).join("; ") || "Seat."}. ${stockJoinVerb(project) === "Screw" ? `Glue and #8 × 1¼" screws: back into both uprights, then ${bayName.toLowerCase()}, then seat. Predrill near the ends so the ply does not split.` : stockJoinVerb(project) === "Set" ? `Set the joints the stock uses: back into both uprights, then ${bayName.toLowerCase()}, then seat.` : `Tape or glue the corners: back into both uprights, then ${bayName.toLowerCase()}, then seat.`}`,
+        description: `${[uprights, backs, shoe, seats].map((g) => g.map(cutLine).join("; ")).filter(Boolean).join(". ")}. ${stockJoinVerb(project) === "Screw" ? `Glue and #8 × 1¼" screws: back into both uprights, then ${bayThen}seat. Predrill near the ends so the ply does not split.` : stockJoinVerb(project) === "Set" ? `Set the joints the stock uses: back into both uprights, then ${bayThen}seat.` : `Tape or glue the corners: back into both uprights, then ${bayThen}seat.`}`,
         tips: "Check both diagonals before the glue skins. The seat must land flush with the tops of the uprights.",
         partsUsed: names([...uprights, ...backs, ...shoe, ...seats]),
       },
@@ -1833,7 +1835,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 1,
           title: "Confirm the wall span — do not cut yet",
-          description: `${project.name}. 1 shelf board and ${brackets.length} bracket${brackets.length === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. Bracket-mounted — not a Wall cleat and not a tall Shelf backstop. This is not a box — there are no uprights.`,
+          description: `${project.name}. 1 shelf board and ${brackets.length} bracket${brackets.length === 1 ? "" : "s"}. Mark studs across the ${round(W)}" span. Bracket-mounted. This is not a box — there are no uprights.`,
           tips: "If a number on this plan disagrees with the cut list, trust the cut list.",
           partsUsed: ["*"],
         },
@@ -1919,7 +1921,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         step: 1,
         title: "Confirm the hang — do not cut yet",
         description: `${project.name}. Wall-mounted plywood hood ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high, open on the bottom over the cooktop. Mark the center of the range and the height you want the bottom of the canopy. ${partsOnThisListPhrase(project)}.`,
-        tips: "This is a wood canopy over the cooktop, not a closet. If a number disagrees with the cut list, trust the cut list.",
+        tips: "This is a wood canopy over the cooktop. If a number disagrees with the cut list, trust the cut list.",
         partsUsed: ["*"],
       },
       {
@@ -2845,7 +2847,7 @@ function uniqueEiffelSteps(project: YardProject): AssemblyStep[] {
     { key: "deck1", title: "Close the first deck", why: "This ring is the break in the picture: four legs become one shaft. Square it before you go up." },
     { key: "shaft", title: "Raise the shaft", why: "Above the first deck the four piers have merged. Keep going up the center." },
     { key: "belts", title: "Add the belts", why: "Horizontal rings at the upper platforms." },
-    { key: "web", title: "Lace the face lattice", why: "This is the texture in the render — Warren faces and pier web." },
+    { key: "web", title: "Lace the face lattice", why: "This is the texture in the render — the zigzag bracing on each face and between the piers." },
     { key: "lantern", title: "Cap the lantern", why: "The little cage at the tip." },
   ];
 
@@ -3060,22 +3062,22 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
     if (detectWeekendMech(p) === "pot-hold" || wantsPotHold(p)) {
       // Figurine hold: figure envelope (2×2 base × 3 tall) — never pot-diameter bleed.
       if (isFigurineHold(p)) {
-        return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)} — densify keeps the figure envelope (not pot diameter).`;
+        return ` Upright figurine stand that holds a real ${figureHoldEnvelopeTalk(p)}.`;
       }
       if (isHoseReelHold(p)) {
-        return ` Upright hose reel stand — ${reelEnvelopeTalk(p)}; densify keeps the stand around the reel (not orbit-chrome, not a Storage carcase).`;
+        return ` Upright hose reel stand — ${reelEnvelopeTalk(p)}; the stand fits the reel.`;
       }
       if (isUmbrellaHold(p)) {
-        return ` Upright umbrella stand — ${umbrellaEnvelopeTalk(p)}; densify keeps the stand around the umbrellas (not orbit-chrome, not a Storage carcase).`;
+        return ` Upright umbrella stand — ${umbrellaEnvelopeTalk(p)}; the stand fits the umbrellas.`;
       }
       if (isMonitorHold(p)) {
-        return ` Upright monitor stand — ${monitorEnvelopeTalk(p)}; densify keeps the stand under the monitor at the typed rise (not orbit-chrome, not a Storage carcase).`;
+        return ` Upright monitor stand — ${monitorEnvelopeTalk(p)}; the stand fits the monitor at the typed rise.`;
       }
       if (isFloorLampHold(p)) {
-        return ` Upright floor lamp stand — ${lampEnvelopeTalk(p)}; densify keeps the stand around the upright lamp base (not a plant/pot stand, not orbit-chrome).`;
+        return ` Upright floor lamp stand — ${lampEnvelopeTalk(p)}; the stand fits the upright lamp base.`;
       }
       if (isHamperHold(p)) {
-        return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)} — densify keeps the stand around the basket envelope (not a Storage carcase of basket size).`;
+        return ` Upright hamper stand that holds a real ${basketEnvelopeTalk(p)}.`;
       }
       const dia = potHoldDiameterIn(p);
       const potH = potHoldHeightIn(p);
@@ -3085,7 +3087,7 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
           : dia != null
             ? `${dia}" pot`
             : "typed pot";
-      return ` Upright plant stand for a real ${potTalk} — densify keeps the whole stand at the named stock.`;
+      return ` Upright plant stand for a real ${potTalk}.`;
     }
     if (detectWeekendMech(p) === "media-hold" && wantsMediaTipHold(p)) {
       const tipTalk = mediaTipTalk(p);
@@ -3102,12 +3104,12 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
         /adult\s+stands|adult\s+tread/.test(p.toLowerCase());
       const who = adult ? "adult stands" : "kid stands";
       return n >= 2
-        ? ` ${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; densify from named stock; not a vehicle incline.`
-        : ` Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`;
+        ? ` ${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread.`
+        : ` Weight-bearing climb step at ${riseRun} — ${who} on the tread.`;
     }
     const pl = p.toLowerCase();
     if (isPorchSwingFrame(pl)) {
-      return ` Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`;
+      return ` Porch swing frame for a hanging seat with clear swing room at the typed frame size.`;
     }
     if (isAdirondackChair(pl)) {
       const seatHay = pl.replace(/\b\d\s*[x×]\s*\d+\b/g, " ");
@@ -3332,8 +3334,8 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
               ? "Adult stands"
               : "Kid stands";
             return n >= 2
-              ? `${n} weight-bearing human steps (each ${riseRun}). ${who} on the top tread. Densify from named stock. Not a vehicle incline.`
-              : `One weight-bearing step at ${riseRun}. ${who} on the tread. Densify from named stock. Not a vehicle incline.`;
+              ? `${n} weight-bearing human steps (each ${riseRun}). ${who} on the top tread.`
+              : `One weight-bearing step at ${riseRun}. ${who} on the tread.`;
           })(),
         },
         { role: "brace", title: "Brace the step frame", why: "Braces keep the tread from racking." },
@@ -3484,7 +3486,7 @@ function roleScript(project: YardProject): { role: string; title: string; why: s
       { role: "base", title: "Plant the abutments", why: "Each end sits on the ground." },
       { role: "support", title: "Set the bottom chords", why: "Lower chords carry the span." },
       { role: "leg", title: "Raise the verticals", why: "Verticals define the bays." },
-      { role: "brace", title: "Lace the Warren diagonals", why: "Zigzag diagonals are the truss." },
+      { role: "brace", title: "Glue in the zigzag diagonals", why: "Zigzag diagonals are the truss." },
       { role: "rail", title: "Close the top chords and deck rails", why: "Top chords finish the truss." },
       { role: "deck", word: "road member", title: "Lay the road deck — cross-ties, then runners", why: "The road you walk: same stock as the truss, on the deck rails." },
       { role: "splice", title: "Lap the long splices", why: "Overlap and glue both faces." },
