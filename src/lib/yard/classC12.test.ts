@@ -56,7 +56,7 @@ test("C12: a stale href or searchQuery is caught, then re-pointed for every stor
   // A product page is a fixed item, not a search.
   assert.equal(storeSearchTerm("https://www.amazon.com/dp/B09NNZB6M9"), null);
   assert.equal(buyQuery('1/4" plywood 4x8 (backer)'), '1/4" plywood 4x8');
-  assert.equal(buyQuery("1×4 Board (8 ft)"), "1×4 Board 8 ft");
+  assert.equal(buyQuery("1×4 Board (8 ft)"), "1x4 Board 8 ft");
 });
 
 test("C11: whole-item PDF cut lists never say \"as you cut it\"", () => {
