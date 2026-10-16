@@ -406,14 +406,14 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
         `Scale: ${H.toFixed(0)}" overall. Profile from published stations (125·72·41·17·11·4 m faces on a 324 m tower).`,
         `Four piers to the first platform, then a single shaft. Base arches fill the lower third — that is the signature, not decoration.`,
         `${ts.length - 1} stories · bay ≈ ${dens.bay.toFixed(1)}" (driven by ${opts.item.name} @ ${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
-        `Primary join: ${joinPrimary}. Warren lacing is the face above the first deck — a bare frame will rack.`,
+        `Primary join: ${joinPrimary}. Cross-bracing fills each face above the first deck — a bare frame will rack.`,
         `Slenderness H/B ≈ ${slenderness.toFixed(1)}. Arches + first deck take the splay.`,
       ]
     : [
         `Scale: ${H.toFixed(0)}" overall. Mild mast taper — not an Eiffel station profile.`,
-        `Four corner chords + Warren / X face lace densified at ${opts.item.name} bay ≈ ${dens.bay.toFixed(1)}" (${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
+        `Four corner posts with cross-bracing on each face, about ${dens.bay.toFixed(1)}" apart, from ${opts.item.name} (${stock.toFixed(1)}" × ${thick.toFixed(2)}").`,
         `${ts.length - 1} stories · hoops on the stock pitch. Primary join: ${joinPrimary}.`,
-        `Slenderness H/B ≈ ${slenderness.toFixed(1)}. A bare frame will rack — keep the face lace.`,
+        `Slenderness H/B ≈ ${slenderness.toFixed(1)}. A bare frame will rack — keep the cross-bracing.`,
       ];
 
   return {
@@ -426,10 +426,9 @@ export function buildLatticeTowerGraph(opts: LatticeTowerOptions): StructureGrap
     assumptions,
     notes: [
       name,
-      `${nodes.length} nodes · ${edges.length} members before stock cuts`,
       eiffel
         ? "Piers and arches first. First deck next. Shaft lacing last. The frame will fail without it."
-        : "Corner chords first. Story hoops next. Face lace last — densified at the named stock.",
+        : "Corner posts first. Rings next. Cross-bracing on each face last.",
     ],
     structureClass: eiffel ? "eiffel" : "lattice_tower",
   };

@@ -181,7 +181,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
-        return `Lay the ${part.name} flat on the bench, square to the marks: the base the next parts fasten to. The finished piece mounts to the wall, into studs or wall anchors where no stud lands, in the hang step.`;
+        return `Lay the ${part.name} flat on the bench, square to the marks: the base the next parts fasten to. The finished piece mounts to the wall, screwed into studs, in the hang step.`;
       }
       return `Set the ${part.name} on the floor, square to the marks. It is the base the next parts fasten to.`;
     case "hinges":
@@ -559,7 +559,7 @@ function splitByLayer(
         const list = listNames(ps.map((p) => p.name));
         if (how === "floor") {
           return wallMounted(project)
-            ? `Lay the ${list} flat on the bench, square to the marks: the base the rest fastens to. The finished piece mounts to the wall, into studs or wall anchors, in the hang step.`
+            ? `Lay the ${list} flat on the bench, square to the marks: the base the rest fastens to. The finished piece mounts to the wall, screwed into studs, in the hang step.`
             : `Stand the ${list} on the floor, square to the marks.`;
         }
         if (how === "rests") return `Set the ${list} on ${talk}.`;

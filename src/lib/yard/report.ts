@@ -1,3 +1,4 @@
+import { withSaidHardware } from "./hardwareSaid";
 import { storeTermsFromBuy } from "./listings";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
@@ -839,8 +840,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : `${joinScrews} screws — 4 per shelf (2 through each wall panel) plus ${cornerWallPanelScrews} joining Wall panel A to Wall panel B.`
         : floating
         ? hasBrackets
-          ? `${joinScrews} screws shelf into brackets (no carcase joints).`
-          : `${joinScrews} screws shelf into cleat (no carcase joints).`
+          ? `${joinScrews} screws through the shelf into the brackets.`
+          : `${joinScrews} screws through the shelf into the cleat.`
         : modelScrews.screws >= 4
           ? modelScrews.note
           : `${joinScrews} screws for the few joints in the model.`,
@@ -1616,7 +1617,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
-  const plan = { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] };
+  const plan = withSaidHardware(project, { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] });
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));

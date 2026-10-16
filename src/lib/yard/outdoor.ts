@@ -68,6 +68,14 @@ function fixedInGround(project: YardProject): boolean {
   return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bpavers?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
 }
 
+/**
+ * I9: one answer for "does it stand on glides", read by the note and by Buy. Feet that stand on the ground outdoors
+ * get glides; a hung, fixed-in-ground or ground-contact build gets none, and its note never mentions them.
+ */
+export function takesGlides(project: YardProject): boolean {
+  return !wallHung(project) && !fixedInGround(project) && !groundContactLegs(project) && footTalk(project).feet;
+}
+
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
 export function withOutdoorNotes(project: YardProject, prompt = project.prompt): YardProject {
   const outdoor = outdoorWood(project, prompt);
@@ -77,7 +85,7 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
     soil ? n.replace(/\s*Drainage holes optional\.?/i, "").replace(/\s*Guidance only — set level outdoors\.?$/i, " Guidance only — set it level.") : n,
   );
   notes = notes.filter((n) => n.trim());
-  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) || groundContactLegs(project) || (!wallHung(project) && !footTalk(project).feet) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
+  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(takesGlides(project) ? OUTDOOR_NOTE : OUTDOOR_FIXED_NOTE);
   if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
@@ -88,7 +96,7 @@ const isPlainScrewRow = (b: BomLine) =>
   (b.catalogId === "screws-8" || /\bwood screws?\b|#\s?\d+\s*[x×]\s*[\d-\/]+"?\s*(?:wood\s+)?screws?/i.test(b.name)) &&
   !/structural|grk|lag|tapcon|masonry|exterior|stainless|deck screw/i.test(b.name);
 
-function footTalk(project: YardProject): { where: string; count: number; feet: boolean } {
+export function footTalk(project: YardProject): { where: string; count: number; feet: boolean } {
   if (wallHung(project)) return { where: "the bottom edges and both ends of every board", count: 0, feet: false };
   const legs = project.panels.filter((panel) => /\bleg\b/i.test(panel.name));
   if (legs.length >= 1) {
@@ -223,8 +231,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
       notes: `Three coats on every face. Flood ${feet.where} and every other cut end until they stop soaking it in.`,
     });
     // Ground-contact pressure-treated legs stand on the ground as they are: no furniture glides under a coop or hutch.
-    const groundContact = groundContactLegs(project);
-    if (!wall && feet.feet && !groundContact) {
+    if (takesGlides(project)) {
       const packs = Math.max(1, Math.ceil(feet.count / 8));
       bom.push({
         name: "Outdoor furniture glides (nylon, nail-in)",
@@ -253,13 +260,13 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     }
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
-      title: wall || !feet.feet || groundContact ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
+      title: !takesGlides(project) ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
       description:
         `Sand to 180 grit and wipe off the dust. Seal the end grain first: brush finish onto ${feet.where} and every other cut end, ` +
         "let it soak in, and add coats until the end grain stops drinking — end grain wicks water up into the wood. " +
         "Then brush three coats of exterior finish (spar urethane or exterior oil) on every face, inside and out, with a light sand between coats." +
         // Glides only when the Buy list has them: real feet, never a base or skid.
-        (wall || !feet.feet || groundContact ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
+        (!takesGlides(project) ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
       tips: bom.some((b) => b.catalogId === "outdoor-screws")
         ? "Titebond III and exterior-coated or stainless screws are on the Buy list for every joint. Refresh the finish each spring."
         : "Titebond III is on the Buy list for every joint. Refresh the finish each spring.",

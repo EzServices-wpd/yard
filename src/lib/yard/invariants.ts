@@ -1,3 +1,4 @@
+import { hardwareSaidNotBought } from "./hardwareSaid";
 import { storeTermDrift } from "./listings";
 import { genericFormMark, routesToLearner } from "./formOwnership";
 import { ignoredTypedWords } from "./promptMain";
@@ -20,7 +21,7 @@ import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
-import { isOutdoorPrompt } from "./outdoor";
+import { footTalk, isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
@@ -124,13 +125,9 @@ function i8(p: YardProject, prompt: string): Violation[] {
   return out;
 }
 
-const HARDWARE = ["hinge", "pull", "knob", "carriage bolt", "lag screw", "latch", "wall anchor", "caster", "drawer slide", "glide", "coat hook"];
-/** I9: hardware the notes or steps tell you to use is on Buy. */
+/** I9: hardware the notes or steps tell you to use is on Buy (one vocabulary with the Buy pass, hardwareSaid.ts). */
 function i9(p: YardProject, plan: BuildPlan): Violation[] {
-  const said = `${(p.notes ?? []).join(" ")} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
-  const buy = plan.bom.map((b) => `${b.name} ${b.searchQuery ?? ""}`.toLowerCase()).join(" | ");
-  return HARDWARE.filter((h) => new RegExp(`\\b${h}s?\\b`).test(said) && !new RegExp(`\\b${h}`).test(buy) && !new RegExp(`no ${h}s?\\b|without (?:a )?${h}`).test(said))
-    .map((h) => v("I9", `steps or notes use ${h}s; Buy has none`));
+  return hardwareSaidNotBought(p, plan).map((h) => v("I9", `steps or notes use ${h}s; Buy has none`));
 }
 
 const LEAKS: [RegExp, string][] = [
@@ -140,12 +137,32 @@ const LEAKS: [RegExp, string][] = [
   [/screws shelf into cleat/, "'shelf into cleat'"],
   [/\bundefined\b|\bNaN\b/, "undefined/NaN"],
 ];
+/**
+ * I11 (jargon and template leftovers): engine words, controls hints, debug counts and negations aimed at another
+ * template never reach the person ("WASD", "still square, still a cut list", "214 joints · 307 members", "densified",
+ * "not a Bridge / Tool steal", "Not a closet", "carcase", a "Shoe shelf" on a build that holds no shoes).
+ */
+export const JARGON: [RegExp, string][] = [
+  [/\bWASD\b|mouse look/i, "controls hint"],
+  [/still square, still a cut list/i, "'still square, still a cut list'"],
+  [/\b\d+ joints? ·|· \d+ joints?\b|\b\d+ (?:short |long )?members?\b|\b\d+ nodes?\b|\bclusters?\b|\bmembers? after weld\b/i, "engine counts"],
+  [/\bdensif/i, "'densify'"],
+  [/\bsteal\b|shelving niche|\bnot an? (?:closet|dining table|cubby(?! wall)|Operate|Bridge|floor vanity|freestanding rectangle)\b/i, "negation aimed at another template"],
+  [/\bcarcases?\b/i, "'carcase'"],
+  [/\bWarren\b|\bface lace\b/i, "truss jargon"],
+];
+const SHOE_OK = /\b(?:shoes?|shoelaces?|boots?|coat|entry(?:way)?|mudroom|hall(?:way)?|closet|wardrobe|organizer|cubb(?:y|ies)|rack)\b/i;
+
 /** I11: no template text from another build. */
 function i11(p: YardProject, plan: BuildPlan): Violation[] {
   const text = [...(p.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`)].join("\n");
   const out = LEAKS.filter(([re]) => re.test(text)).map(([, what]) => v("I11", `template leak: ${what}`));
   if (/\bcloset\b/i.test(text) && !/closet/i.test(`${p.prompt} ${p.name}`)) out.push(v("I11", "template leak: closet wording"));
-  if (/\bglides?\b/i.test(text) && (p.assumptions?.installMode === "wall" || !p.panels.some((q) => q.position.y < 0.5))) out.push(v("I11", "template leak: glides with no feet"));
+  for (const [re, what] of JARGON) if (re.test(text)) out.push(v("I11", `jargon: ${what}`));
+  // A typed-option hint ('Say "with a shoe shelf"') offers words; it is not a leftover part.
+  if (/\bshoes?\b/i.test(text.replace(/"with [^"]*"/g, "")) && !SHOE_OK.test(`${p.prompt ?? ""} ${p.name}`)) out.push(v("I11", "template leak: shoe wording"));
+  // Feet are the same feet Buy reads (outdoor.ts footTalk): legs, ground-standing sides, or sticks that reach the floor.
+  if (/\bglides?\b/i.test(text) && (p.assumptions?.installMode === "wall" || !(footTalk(p).feet || p.panels.some((q) => q.position.y < 0.5)))) out.push(v("I11", "template leak: glides with no feet"));
   return out;
 }
 

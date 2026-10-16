@@ -43,7 +43,7 @@ export const FORGE_CATALOG: CatalogItem[] = [
     roughness: 0.35,
     metalness: 0.2,
     searchQuery: "",
-    notes: "Placeholder skeleton only. Open Stock and pick a real material to densify the form.",
+    notes: "Placeholder skeleton only. Open Stock and pick a real material to build the form.",
   },
   {
     id: "popsicle-jumbo",
