@@ -25,14 +25,15 @@ import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
+import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -274,7 +275,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan),
   ];
 }
 
@@ -299,3 +300,32 @@ function i19(p: YardProject, plan: BuildPlan): Violation[] {
 
 /** Recipes as the prompts that build them (the learned-recipe set). */
 export const recipeKeys = () => RECIPES.recipes.map((r) => r.key);
+
+/**
+ * C10 (price consistency): same inputs, same total on every path. Picking the join the build already uses keeps the
+ * Buy lines and the total; a picked join's fastener lines are priced by the same listing pass as every other Buy line;
+ * the plan total is the Buy line sum.
+ */
+function c10(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || !plan.bom.length) return [];
+  const out: Violation[] = [];
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const sum = r2(plan.bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0));
+  if (Math.abs(sum - plan.totals.estCostUsd) > 0.011) out.push(v("C10", `total $${plan.totals.estCostUsd} is not the Buy line sum $${sum}`));
+  if (p.shopJoin) return out;
+  if (plan.bom.some((b) => /wood screw/i.test(b.name))) {
+    const again = buildPlan({ ...p, shopJoin: "screw", joinMethod: "screw" });
+    if (again.totals.estCostUsd !== plan.totals.estCostUsd) out.push(v("C10", `picking the default screw join reprices $${plan.totals.estCostUsd} → $${again.totals.estCostUsd}`));
+  }
+  if (p.panels.length) {
+    for (const join of ["glue", "dowel", "biscuit", "pocket"] as const) {
+      for (const line of applyShopJoin({ ...p, shopJoin: join }, plan).bom.filter((b) => !plan.bom.some((a) => a.name === b.name))) {
+        const priced = listedPrice({ ...line, offers: undefined });
+        if (priced.estimatedCost != null && line.estimatedCost != null && Math.abs(priced.estimatedCost - line.estimatedCost) > 0.011) {
+          out.push(v("C10", `${join} join line "${line.name}" priced $${line.estimatedCost}, listings say $${priced.estimatedCost}`));
+        }
+      }
+    }
+  }
+  return out;
+}

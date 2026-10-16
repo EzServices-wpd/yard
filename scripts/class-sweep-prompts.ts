@@ -1,5 +1,16 @@
 /** Spec 006: the 20-prompt sweep per class (also the whole-class test corpus). */
 export const SWEEPS = {
+  c10: {
+    title: "price consistency",
+    inv: "C10",
+    file: "c10-price-consistency.md",
+    prompts: [
+      "linen closet 31.5 wide 78 tall 16 deep", "linen closet", "bookcase 36 wide 72 tall 12 deep", "bookshelf", "4 foot bookshelf",
+      "media console 60 wide 24 tall 18 deep", "tv stand", "pantry cabinet 24 wide 84 tall 16 deep", "wall cabinet 30 wide 30 tall 12 deep", "nightstand",
+      "dresser 36 wide 34 tall 18 deep", "shoe rack", "desk 48 wide 30 tall 24 deep", "workbench", "coat bench",
+      "toy box", "garage shelving 48 wide 72 tall 18 deep", "closet 72 wide 96 tall 24 deep", "floating shelf 36 wide", "storage cubby 3x3",
+    ],
+  },
   c3: {
     title: "purchased whole items",
     inv: "I20",
