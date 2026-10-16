@@ -539,7 +539,15 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
   }, [order, stepping, project.id]);
   // The model never waits: with no build order yet, it shows in wood at once (and that build skips
   // its reveal later, rather than hiding wood that is already on screen).
-  if (ready && !order && played.current !== project.id) woodShown.current = project.id;
+  // Only a model that actually painted in wood counts (a frame later, not one transient render where
+  // the plan was a beat behind): the reveal then plays the same at every width and timing.
+  const lateCandidate = ready && !order && played.current !== project.id;
+  useEffect(() => {
+    if (!lateCandidate) return;
+    const id = project.id;
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
+    return () => cancelAnimationFrame(raf);
+  }, [lateCandidate, project.id]);
   if (!order || wood === Infinity || stepping) return null;
   return new Set(order.ids.slice(0, wood));
 }

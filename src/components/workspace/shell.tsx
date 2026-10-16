@@ -543,7 +543,23 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <DockFrame className="yard-glass pointer-events-auto w-[min(35rem,100%)] overflow-y-auto overscroll-contain max-sm:max-h-[40dvh] rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <div className="relative w-[min(35rem,100%)]">
+            {/* Price reason: rides above the card (out of flow), so it never makes a card taller and never
+                shifts it (CLS 0). Opacity/transform only; present only when there is a reason. */}
+            {workMode !== "walk" && priceWhy && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center">
+                <p
+                  data-yard-price-why={pending ? "0" : "1"}
+                  title={priceWhy.text}
+                  className="yard-price-why yard-glass pointer-events-auto max-w-full truncate rounded-full border border-border/70 bg-surface/90 px-3 py-1 text-[12px] tabular-nums text-muted"
+                  style={{ opacity: pending ? 0 : 1, transform: pending ? "translateY(4px)" : "none" }}
+                  aria-hidden={pending}
+                >
+                  {priceWhy.text}
+                </p>
+              </div>
+            )}
+            <DockFrame className="yard-glass pointer-events-auto w-full overflow-y-auto overscroll-contain max-sm:max-h-[40dvh] rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -586,11 +602,6 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </p>
                   <DecisionLine />
                 </div>
-              )}
-              {workMode !== "walk" && (
-                <p data-yard-price-why={priceWhy && !pending ? "1" : "0"} title={priceWhy?.text} className="h-[18px] truncate px-3.5 text-[12px] leading-[18px] tabular-nums text-muted">
-                  {priceWhy && !pending ? priceWhy.text : ""}
-                </p>
               )}
               {workMode !== "walk" && (
                 project.displayOnly ? null : (
@@ -765,6 +776,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               </div>
               </div>
             </DockFrame>
+            </div>
           </div>
           )}
         </div>
