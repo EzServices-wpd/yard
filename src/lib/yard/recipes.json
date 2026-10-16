@@ -8299,6 +8299,145 @@
     "Shallow depth suits placement beside or under a window sill"
    ],
    "learned": true
+  },
+  {
+   "key": "clock",
+   "synonyms": [
+    "wall clock",
+    "timepiece"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Wall Clock",
+   "size": {
+    "width": 12,
+    "height": 12,
+    "depth": 2
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [
+    "dial",
+    "hand"
+   ],
+   "parts": [
+    {
+     "role": "rim",
+     "name": "Rim",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0.35
+     ],
+     "kind": "member",
+     "shape": "ring"
+    },
+    {
+     "role": "dial",
+     "name": "Dial",
+     "box": [
+      0.04,
+      0.04,
+      0.08,
+      0.92,
+      0.92,
+      0.2
+     ],
+     "kind": "panel",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    },
+    {
+     "role": "axle",
+     "name": "Center pin",
+     "box": [
+      0.47,
+      0.47,
+      0.05,
+      0.06,
+      0.06,
+      0.4
+     ],
+     "kind": "hardware",
+     "on": [
+      "Dial"
+     ],
+     "shape": "cylinder"
+    },
+    {
+     "role": "hand",
+     "name": "Hour hand",
+     "box": [
+      0.42,
+      0.48,
+      0.28,
+      0.16,
+      0.32,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Dial",
+      "Center pin"
+     ]
+    },
+    {
+     "role": "hand",
+     "name": "Minute hand",
+     "box": [
+      0.47,
+      0.18,
+      0.32,
+      0.06,
+      0.52,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Dial",
+      "Center pin"
+     ]
+    },
+    {
+     "role": "cover",
+     "name": "Crystal",
+     "box": [
+      0.06,
+      0.06,
+      0.25,
+      0.88,
+      0.88,
+      0.08
+     ],
+     "kind": "cover",
+     "on": [
+      "Rim"
+     ],
+     "shape": "disc"
+    }
+   ],
+   "moving": [
+    {
+     "part": "Hour hand",
+     "motion": "spin"
+    },
+    {
+     "part": "Minute hand",
+     "motion": "spin"
+    }
+   ],
+   "notes": [
+    "Circular analog wall clock",
+    "Dial seated against inner edge of rim",
+    "Hands pivot on center pin"
+   ],
+   "learned": true
   }
  ]
 }
