@@ -119,3 +119,10 @@ test("the invariant: live and fallback feeds pass; every shape field present; it
 test("types.json is current with the engine (re-run scripts/gen-idea-types.ts)", () => {
   assert.deepEqual(TYPES, ideaTypes());
 });
+
+test("home 'Making now' drops chained 'Then:' prompts (same isChained as the feed)", async () => {
+  const { isChained } = await import("../src/lib/ideas/liveFeed");
+  assert.ok(isChained("birdhouse. Then: 3/8 dowel"));
+  const fs = await import("fs");
+  assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
+});
