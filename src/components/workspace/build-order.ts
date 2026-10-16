@@ -6,7 +6,7 @@ import type { BuildPlan, YardProject } from "@/lib/yard/types";
 /**
  * Which build group places each part (UI animation only), from the same per-step part owners the
  * step pictures use (F12, PR #19): one group per build step, in step order.
- * Parts no step owns land with the last group. n = number of groups.
+ * Parts no step owns go in with their twin. n = number of groups, ending at the last one that places a part.
  */
 export function buildOrder(project: YardProject, plan: Pick<BuildPlan, "instructions" | "cutList">): { at: Map<string, number>; n: number; stale: boolean } {
   const steps = plan.instructions;
@@ -38,5 +38,7 @@ export function buildOrder(project: YardProject, plan: Pick<BuildPlan, "instruct
   }
   const lastPlacing = at.size ? Math.max(...at.values()) : Math.max(0, n - 1);
   for (const id of names.keys()) if (!at.has(id)) at.set(id, twinBeat.get(base(names.get(id)!)) ?? lastPlacing);
-  return { at, n, stale };
+  // F45: end the reveal at the last beat that places a part (trailing finish/check steps place nothing).
+  const last = at.size ? Math.max(...at.values()) + 1 : n;
+  return { at, n: Math.min(n, last), stale };
 }
