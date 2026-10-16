@@ -215,6 +215,13 @@ function i20(p: YardProject, plan: BuildPlan, prompt = ""): Violation[] {
   const meta = `${plan.feasibility.summary}\n${plan.feasibility.issues.map((i) => i.message).join("\n")}`;
   if (/Opening is tight|weekend/i.test(meta)) out.push(v("I20", "purchased item carries furniture fit/rating text"));
   if (/\bmms\b|from the pack/i.test(steps)) out.push(v("I20", "purchased item text leak (mms / from the pack)"));
+  // Spec 008: whole bought pieces never sit in the cut list, no cut row has a blank (0) size, and no text says "mm".
+  const whole = plan.cutList.find((c) => !c.whole && !!unitSizeById(c.id.split("|")[0]) && !/kerf|cut from/i.test(plan.bom.find((b) => b.name === c.material)?.notes ?? ""));
+  if (whole) out.push(v("I20", `whole bought piece listed as a cut: "${whole.name}"`));
+  const blank = plan.cutList.find((c) => !(c.lengthIn > 0) || !(c.widthIn > 0) || !(c.thicknessIn > 0));
+  if (blank) out.push(v("I20", `cut-list row with a blank size: "${blank.name}"`));
+  const text = [...(p.notes ?? []), p.name, ...plan.instructions.map((s) => `${s.title} ${s.description}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`), ...plan.cutList.map((c) => `${c.name} ${c.notes ?? ""}`)].join("\n");
+  if (/\d\s*mm\b/.test(text)) out.push(v("I20", "purchased item text uses mm (inches only)"));
   const bad = plan.bom.find((b) => /\bcut from\b|kerf/i.test(b.notes ?? ""));
   if (bad && /Nothing to cut/i.test(steps)) out.push(v("I20", `Buy says "${bad.notes}" but the steps say nothing to cut`));
   return out;
@@ -236,7 +243,13 @@ function i21(p: YardProject, prompt: string): Violation[] {
  */
 function i24(p: YardProject, prompt: string): Violation[] {
   // Library-form titles only; fitted builders keep trade titles (Planter box, Coat bench) that other code keys on.
-  if (!prompt || !p.name || p.fitted || isUnitItem(p) || resolvePurpose(prompt) || genericFormMark(p) || !namedFormOwnsHead(prompt)) return [];
+  // Spec 008: a bought-item build keeps the typed item noun too ("zip tie" → "Zip tie").
+  if (prompt && p.name && isUnitItem(p)) {
+    const ask = unitItemAsk(prompt);
+    const typed = ask ? (prompt.toLowerCase().match(ask.unit.match)?.[0] ?? "").trim().split(/\s+/).pop()?.replace(/(?<!s)s$/, "") : null;
+    return typed && !p.name.toLowerCase().replace(/\s+/g, "").includes(typed) ? [v("I24", `title "${p.name}" drops the typed item noun "${typed}"`)] : [];
+  }
+  if (!prompt || !p.name || p.fitted || resolvePurpose(prompt) || genericFormMark(p) || !namedFormOwnsHead(prompt)) return [];
   const head = typedHeadNoun(prompt);
   return head && !p.name.toLowerCase().includes(head) ? [v("I24", `title "${p.name}" drops the typed head noun "${head}"`)] : [];
 }

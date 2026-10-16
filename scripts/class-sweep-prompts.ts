@@ -45,6 +45,17 @@ export const SWEEPS = {
       "marble", "nail", "cork", "clothes pin", "drinking straw",
     ],
   },
+  b8: {
+    title: "bought-item path: no cut rows, inches only, round sizes, typed title",
+    inv: "I20",
+    file: "b8-bought-path.md",
+    prompts: [
+      "zip tie", "marbles", "pipe cleaner", "pony bead", "cotton ball",
+      "bottle cap", "button", "washer", "wine cork", "3/8 dowel",
+      "paper clip", "paper clip chain 12 inches long", "pony bead bracelet", "washer tower", "toothpick",
+      "cotton swab", "jumbo craft stick", "straw", "clothes pin", "rubber band",
+    ],
+  },
   l1: {
     title: "live path: engine forms never reach the learner",
     inv: "I23",
