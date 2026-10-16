@@ -1382,29 +1382,35 @@
     "id": "bird-feeder",
     "prompt": "bird feeder",
     "bucket": "unknown-fallback",
-    "name": "Bird Feeder 10\" × 10\" × 8\"",
-    "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "name": "Bird feeder",
+    "kind": "custom",
+    "material": "lumber-1x6-8",
     "overall": {
       "width": 10,
-      "height": 10,
-      "depth": 8
+      "height": 10.625,
+      "depth": 7.75
     },
-    "panels": 5,
+    "panels": 11,
     "instances": 0,
     "uniqueParts": [
-      "Back",
-      "Bottom",
-      "Front",
-      "Left side",
-      "Right side"
+      "Back pane",
+      "Back roof",
+      "Back tray lip",
+      "Front pane",
+      "Front roof",
+      "Front tray lip",
+      "Left gable",
+      "Right gable",
+      "Screw eye 1",
+      "Screw eye 2",
+      "Seed tray"
     ],
     "notesHead": [
-      "Yard built a bird feeder as a simple open box sized for it. Change any size in Measure.",
-      "Bird Feeder 10\" × 10\" × 8\". ¾\" plywood."
+      "Bird feeder: built from its defining parts (tray, rim, gable, pane, roof, hanger).",
+      "A hopper feeder: seed sits in the hopper between two clear panes and spills out of a 1/2\" gap at the bottom onto the tray."
     ],
     "signals": {
-      "mentionsYardBuilt": true,
+      "mentionsYardBuilt": false,
       "craftStock": false,
       "hasKnee24": false,
       "partBudgetOk": true

@@ -1617,7 +1617,20 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
-  const plan = withSaidHardware(project, { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] });
+  // C13/C14: casters and screw eyes are bought as the real items (a typed "rolling", a hung feeder or birdhouse).
+  const named = (name: string, n: number): BuildPlan["bom"] => {
+    if (name === "Caster") return [{ name: '2" locking swivel casters', quantity: n, unit: "each", searchQuery: '2" locking swivel casters', estimatedCost: Math.round(n * 4.49 * 100) / 100, notes: 'One under each corner, the locking pair at the front. Screw each plate on with four #10 × 3/4" pan-head screws.' }];
+    if (name === "Screw eye") return [
+      { name: "Zinc screw eyes, 1 1/4\"", quantity: n, unit: "each", searchQuery: "Zinc screw eyes, 1 1/4\"", estimatedCost: Math.round(n * 0.98 * 100) / 100, notes: "Twisted into pilot holes in the top; the chain hooks through them." },
+      { name: "Galvanized hanging chain, 3 ft", quantity: 1, unit: "each", searchQuery: "Galvanized hanging chain, 3 ft", estimatedCost: 5.98, notes: "From the screw eyes to a branch or hook." },
+    ];
+    if (name === "Lid hinge") return [
+      { name: '3" stainless butt hinges', quantity: n, unit: "each", searchQuery: '3" stainless butt hinges', estimatedCost: Math.round(n * 5.98 * 100) / 100, notes: "Along the back edge of the lid, into the back boards; stainless so they never rust outdoors." },
+      { name: "Lid stay / lid support", quantity: 1, unit: "each", searchQuery: "Lid stay / lid support", estimatedCost: 9.98, notes: "Holds the lid open and keeps it from slamming." },
+    ];
+    return [];
+  };
+  const plan = withSaidHardware(project, { ...plan0, bom: [...plan0.bom, ...[...hw].flatMap(([name, n]) => named(name, n)), ...[...hw].filter(([name]) => !named(name, 1).length).map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] });
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));
@@ -1677,6 +1690,8 @@ function smallestSheetStock(plan: BuildPlan): BuildPlan {
     const item = b.catalogId ? getCatalogItem(b.catalogId) : undefined;
     // Only a full 4×8 (or larger) sheet steps down; cut-to-size goods (glazing, mats) are already small.
     if (!item || item.formFactor !== "sheet" || b.quantity !== 1 || (item.dims.length ?? 0) * (item.dims.width ?? 0) < 96 * 48) return b;
+    // An exterior sheet never steps down to an interior panel: the smaller panels are interior plywood.
+    if (/\bexterior\b|pressure-treated/i.test(b.name)) return b;
     const parts = plan.cutList.filter((c) => c.id.split("|")[0] === item.id);
     if (!parts.length) return b;
     const rects: [number, number][] = parts.flatMap((c) =>

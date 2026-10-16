@@ -155,4 +155,26 @@ export const SWEEPS = {
       "model ship", "viking longship", "sailing ship", "Golden Gate Bridge 36 inches long", "Big Ben",
     ],
   },
+  c13: {
+    title: "typed modifier or purpose survives (no generic form)",
+    inv: "C13",
+    file: "c13-typed-modifier.md",
+    prompts: [
+      "standing desk converter", "sit stand desk converter", "desk converter 32 inches wide", "guitar hanger", "guitar wall hanger",
+      "guitar wall mount", "outdoor storage bench", "outdoor storage bench 60 inches wide", "raised garden bed", "cedar raised garden bed 4x8",
+      "raised garden bed 48 wide 96 long", "raised vegetable bed", "rolling bookshelf", "rolling cart", "kitchen island on casters",
+      "rolling storage cart", "mobile workbench", "rolling toy chest", "dresser on casters", "rolling shoe rack",
+    ],
+  },
+  c14: {
+    title: "named small objects are their real forms, engine-owned",
+    inv: "C14",
+    file: "c14-small-forms.md",
+    prompts: [
+      "bird feeder", "wooden bird feeder", "hopper bird feeder", "bird feeder 12 inches wide", "cedar bird feeder",
+      "hanging bird feeder", "jewelry box", "jewellery box", "wooden jewelry box", "jewelry box 12 inches wide",
+      "small jewelry box", "walnut jewelry box", "jewelry chest", "hanging birdhouse", "wall mounted birdhouse",
+      "wall-mounted birdhouse", "hanging birdhouse for wrens", "cedar hanging birdhouse", "wall mount birdhouse", "jewelry box with dividers",
+    ],
+  },
 } as const;

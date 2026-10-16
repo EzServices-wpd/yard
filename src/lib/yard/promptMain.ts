@@ -12,6 +12,7 @@ import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
+import { bedCourses, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
@@ -416,7 +417,14 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
     const unitItem = buildUnitItem(prompt);
     if (unitItem) return said !== prompt ? { ...unitItem, typedPrompt: said } : unitItem;
   }
-  let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
+  // C13: a typed mobility word ("rolling", "on casters") is a modifier, not part of the noun: build the noun, then
+  // put it on casters. A build that cannot take casters (a toy, a landmark, something hung) is built as typed.
+  const roll = !args[1] && !args[2] && !args[3] && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
+  if (roll) {
+    const base = generateSeeded(roll.base);
+    if (takesCasters(base)) return withCasters(base, prompt);
+  }
+  let typedBuild = withMount(hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt)), prompt);
   // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it
   // as a stick figure keeps the cutout from its typed sheet, and says so.
   if (args[1] && typedBuild.kind === "figure" && !(typedBuild.panels ?? []).length && hasExplicitStock(prompt)) {
@@ -574,16 +582,20 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
 
 export const UNVERIFIED = "Unverified: Yard learned this build but it has not passed review yet. Check every part before you cut.";
 
+const CRAFT_STICK_OWNED = new Set(["bird-feeder", "jewelry-box"]);
+
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
-  const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  const found = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  // A craft-stick model ("craft stick bird feeder") is the engine's stick build, never the full-size wood recipe.
+  const recipe = found && /\b(?:craft|popsicle|lolly)\s*sticks?\b/i.test(args[0]) && CRAFT_STICK_OWNED.has(found.key) ? null : found;
   // A learned recipe never replaces a built-in shape: when the engine itself builds the noun (a fitted
   // medicine cabinet, a locked family), the engine's build wins and the recipe is ignored.
   const engine = recipe?.learned ? engineCore(...args) : null;
   if (engine && builtInShape(args[0], engine, recipe!.key.replace(/-/g, " "))) return engine;
   if (recipe) {
-    const p = withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
+    const p = bedCourses(withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]), args[0]);
     // A held recipe never builds silently: it says plainly that review is still pending.
     return recipe.held ? { ...p, notes: [UNVERIFIED, ...p.notes] } : p;
   }
