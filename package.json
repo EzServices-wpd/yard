@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test 'scripts/**/*.test.mjs'",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "rank-errors": "tsx scripts/rank-errors.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
