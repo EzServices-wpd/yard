@@ -1,0 +1,422 @@
+{
+ "corner": {
+  "v": "3f6e4278",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3233
+ },
+ "corner-small": {
+  "v": "80f8309b",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3211
+ },
+ "slope": {
+  "v": "b2366794",
+  "w": 480,
+  "h": 360,
+  "parts": 11,
+  "bytes": 4774
+ },
+ "ldesk": {
+  "v": "e55a92ad",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3831
+ },
+ "pocket": {
+  "v": "b25426b2",
+  "w": 480,
+  "h": 360,
+  "parts": 32,
+  "bytes": 9545
+ },
+ "linen": {
+  "v": "42f80edf",
+  "w": 480,
+  "h": 360,
+  "parts": 11,
+  "bytes": 4564
+ },
+ "closet80": {
+  "v": "f49dc91b",
+  "w": 480,
+  "h": 360,
+  "parts": 16,
+  "bytes": 5713
+ },
+ "window": {
+  "v": "7044726e",
+  "w": 480,
+  "h": 360,
+  "parts": 15,
+  "bytes": 5429
+ },
+ "desk": {
+  "v": "9f8cece9",
+  "w": 480,
+  "h": 360,
+  "parts": 22,
+  "bytes": 7124
+ },
+ "island": {
+  "v": "6891a8e0",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3587
+ },
+ "radiator": {
+  "v": "ea998341",
+  "w": 480,
+  "h": 360,
+  "parts": 14,
+  "bytes": 5253
+ },
+ "bench": {
+  "v": "82c81b40",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3808
+ },
+ "coatbench": {
+  "v": "b399f286",
+  "w": 480,
+  "h": 360,
+  "parts": 20,
+  "bytes": 6656
+ },
+ "headboard": {
+  "v": "7ea04d7e",
+  "w": 480,
+  "h": 360,
+  "parts": 1,
+  "bytes": 2191
+ },
+ "bunk": {
+  "v": "66791da8",
+  "w": 480,
+  "h": 360,
+  "parts": 50,
+  "bytes": 13860
+ },
+ "laundry": {
+  "v": "e4dedb9f",
+  "w": 480,
+  "h": 360,
+  "parts": 13,
+  "bytes": 4994
+ },
+ "windowseat": {
+  "v": "a7c6880d",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4103
+ },
+ "sofatable": {
+  "v": "0f23826d",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4084
+ },
+ "daybed": {
+  "v": "1a5a4451",
+  "w": 480,
+  "h": 360,
+  "parts": 12,
+  "bytes": 4791
+ },
+ "round": {
+  "v": "4a99df2a",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 7093
+ },
+ "coffee": {
+  "v": "ae7d9e17",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 7111
+ },
+ "shelves": {
+  "v": "8046fb2c",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4122
+ },
+ "jarshelf": {
+  "v": "20ad59fe",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4093
+ },
+ "wallcab": {
+  "v": "04d443cb",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3861
+ },
+ "uppercab": {
+  "v": "554e5305",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3874
+ },
+ "coat": {
+  "v": "04001119",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3837
+ },
+ "spice": {
+  "v": "0238b16f",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4045
+ },
+ "wine": {
+  "v": "64cf3410",
+  "w": 480,
+  "h": 360,
+  "parts": 19,
+  "bytes": 54693
+ },
+ "medicine": {
+  "v": "5b21c914",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4022
+ },
+ "ironing": {
+  "v": "d1b269db",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3828
+ },
+ "laundryfold": {
+  "v": "fa6e5ab8",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4303
+ },
+ "hood": {
+  "v": "3894bd32",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4336
+ },
+ "tv": {
+  "v": "4e1607c0",
+  "w": 480,
+  "h": 360,
+  "parts": 14,
+  "bytes": 5230
+ },
+ "basecab": {
+  "v": "9df3ba63",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3830
+ },
+ "shoerack": {
+  "v": "b5d9497b",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3845
+ },
+ "pantry": {
+  "v": "df02c576",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4246
+ },
+ "dresser": {
+  "v": "8b1f786f",
+  "w": 480,
+  "h": 360,
+  "parts": 11,
+  "bytes": 4498
+ },
+ "nightstand": {
+  "v": "54603de2",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3831
+ },
+ "overtoilet": {
+  "v": "5e614dca",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3601
+ },
+ "crate": {
+  "v": "d42138a1",
+  "w": 480,
+  "h": 360,
+  "parts": 19,
+  "bytes": 6371
+ },
+ "eiffel": {
+  "v": "5709df4b",
+  "w": 480,
+  "h": 360,
+  "parts": 784,
+  "bytes": 86370
+ },
+ "catapult": {
+  "v": "014423f1",
+  "w": 480,
+  "h": 360,
+  "parts": 25,
+  "bytes": 3432
+ },
+ "dogfig": {
+  "v": "c6879b72",
+  "w": 480,
+  "h": 360,
+  "parts": 253,
+  "bytes": 31732
+ },
+ "jumbotower": {
+  "v": "42f7c9f8",
+  "w": 480,
+  "h": 360,
+  "parts": 700,
+  "bytes": 76998
+ },
+ "ladder": {
+  "v": "8eb70eb1",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 1366
+ },
+ "arch": {
+  "v": "3a2a5c5d",
+  "w": 480,
+  "h": 360,
+  "parts": 18,
+  "bytes": 2596
+ },
+ "bridge": {
+  "v": "d5debfb7",
+  "w": 480,
+  "h": 360,
+  "parts": 269,
+  "bytes": 33704
+ },
+ "bambooframe": {
+  "v": "f3b48644",
+  "w": 480,
+  "h": 360,
+  "parts": 40,
+  "bytes": 5712
+ },
+ "recipe-wall-mounted-mail-organizer": {
+  "v": "adeaa77f",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3637
+ },
+ "recipe-water-wheel": {
+  "v": "351acec0",
+  "w": 480,
+  "h": 360,
+  "parts": 13,
+  "bytes": 9553
+ },
+ "recipe-abacus": {
+  "v": "96123fec",
+  "w": 480,
+  "h": 360,
+  "parts": 58,
+  "bytes": 78611
+ },
+ "recipe-under-stairs-shelf": {
+  "v": "80eafc88",
+  "w": 480,
+  "h": 360,
+  "parts": 13,
+  "bytes": 5070
+ },
+ "recipe-laptop-stand": {
+  "v": "63007874",
+  "w": 480,
+  "h": 360,
+  "parts": 9,
+  "bytes": 4111
+ },
+ "recipe-utility-cart": {
+  "v": "642df52e",
+  "w": 480,
+  "h": 360,
+  "parts": 11,
+  "bytes": 4581
+ },
+ "recipe-jewelry-box": {
+  "v": "f737246c",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4328
+ },
+ "recipe-bird-feeder": {
+  "v": "2202fcb9",
+  "w": 480,
+  "h": 360,
+  "parts": 11,
+  "bytes": 4576
+ },
+ "recipe-raised-garden-bed": {
+  "v": "3b4e4f38",
+  "w": 480,
+  "h": 360,
+  "parts": 16,
+  "bytes": 5749
+ },
+ "recipe-outdoor-storage-bench": {
+  "v": "285d9daf",
+  "w": 480,
+  "h": 360,
+  "parts": 25,
+  "bytes": 7835
+ },
+ "recipe-guitar-hanger": {
+  "v": "41dfec46",
+  "w": 480,
+  "h": 360,
+  "parts": 4,
+  "bytes": 7163
+ },
+ "recipe-standing-desk-converter": {
+  "v": "121610c5",
+  "w": 480,
+  "h": 360,
+  "parts": 8,
+  "bytes": 3844
+ }
+}

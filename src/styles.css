@@ -512,3 +512,14 @@
 /* Price reason pill: fades up once the build settles; still under reduced motion. */
 .yard-price-why { transition: opacity 200ms ease-out, transform 200ms cubic-bezier(.2,.7,.2,1); }
 @media (prefers-reduced-motion: reduce) { .yard-price-why { transition: none; } }
+
+/* Ideas drawings: pencil lines ink into wood as a card scrolls in (opacity + transform only). */
+.idea-ink .idea-wood { opacity: 1; transform: none; transition: opacity 700ms ease-out, transform 700ms cubic-bezier(.2,.7,.2,1); }
+.idea-ink .idea-pencil { opacity: 1; filter: grayscale(1) contrast(1.6) brightness(1.18); mix-blend-mode: multiply; transition: opacity 700ms ease-out 250ms; }
+.ideas-live .idea-ink:not(.inked) .idea-wood { opacity: 0; transform: translateY(3px) scale(0.985); }
+.ideas-live .idea-ink.inked .idea-pencil { opacity: 0; }
+.ideas-live .idea-ink.instant .idea-wood, .ideas-live .idea-ink.instant .idea-pencil { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ideas-live .idea-ink:not(.inked) .idea-wood { opacity: 1; transform: none; }
+  .idea-ink .idea-wood, .idea-ink .idea-pencil { transition: none; }
+}
