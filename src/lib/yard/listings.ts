@@ -1365,11 +1365,13 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
 
 /**
  * The search phrase for a Buy row: its display name. A worded aside ("(backer)", "(waterproof, exterior)") is dropped;
- * a measured one keeps its words ("1×4 Board (8 ft)" → "1×4 Board 8 ft"). Spaces collapsed.
+ * a measured one keeps its words ("1×4 Board (8 ft)" → "1x4 Board 8 ft"). "×" is typed as a plain x. Spaces collapsed.
  */
 export function buyQuery(name: string): string {
   return name
     .replace(/\s*\(([^)]*)\)/g, (_m, inner: string) => (/\d/.test(inner) ? ` ${inner}` : ""))
+    // Stores search a plain x ("1x6"), the same size the row says as "1×6".
+    .replace(/×/g, "x")
     .replace(/\s+/g, " ")
     .trim();
 }
