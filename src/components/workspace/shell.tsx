@@ -521,8 +521,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
 
           {/* One dock: tools, the step, and the size. The model stays clear above it. */}
-          {/* CLS 0: the card mounts once the build has settled (the overlay carries the status meanwhile), so it never grows in place. */}
-          {pieceCount > 0 && !pending && (
+          {/* LCP + CLS 0: the card's text (name, Refine input) paints at first render, even while the build runs;
+              only the tray waits for the build, so the card never grows in place. Motion is gated on the reveal, content never. */}
+          {(pieceCount > 0 || (pending && Boolean(initialPrompt?.trim()))) && (
           <div
             className={`pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 sm:bottom-4 ${
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
@@ -561,13 +562,13 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               )}
               {/* Item 2: the result card. Row 1 says what it is and what it costs, row 2 is the one
                   decision (Refine or open the plan), everything else waits behind "More". */}
-              {!pending && workMode !== "walk" && pieceCount > 0 && (
+              {workMode !== "walk" && (
                 <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
-                  <p className="min-w-0 truncate font-display text-[15px] text-fg">{project.name || headerTitle(project)}</p>
+                  <p className="min-w-0 truncate font-display text-[15px] text-fg">{pending && initialPrompt?.trim() && !pieceCount ? initialPrompt.trim() : project.name || headerTitle(project)}</p>
                   <DecisionLine />
                 </div>
               )}
-              {!pending && workMode !== "walk" && pieceCount > 0 && (
+              {workMode !== "walk" && (
                 project.displayOnly ? null : (
                   <RefineBox
                     showChips={trayOpen}
@@ -576,8 +577,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                         <button
                           type="button"
                           onClick={() => { makePlan(); setPlanOpen(true); }}
+                          disabled={pending}
                           data-yard-open-plan="1"
-                          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated sm:flex-none"
+                          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated disabled:opacity-50 sm:flex-none"
                         >
                           Open the plan <ChevronRight className="size-4" aria-hidden />
                         </button>
@@ -596,7 +598,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   />
                 )
               )}
-              <div id="yard-tray" hidden={!pending && workMode !== "walk" && pieceCount > 0 && !trayOpen} className={trayOpen ? "yard-tray" : ""}>
+              <div id="yard-tray" hidden={pending || (workMode !== "walk" && pieceCount > 0 && !trayOpen)} className={trayOpen ? "yard-tray" : ""}>
               {steps.length > 0 && !pending && (
                 <div
                   data-bench-overlay="step-pill"
