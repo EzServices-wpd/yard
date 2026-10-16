@@ -404,7 +404,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
       <PromptBar
         onBuilt={() => {
-          setPlanOpen(false);
+          // An open plan stays open across a new submit: it holds the last plan until the new build
+          // (and any house brief) lands, then swaps in place. Closing it here was the 0.33 s close.
           setSide(null);
         }}
         onStock={() => setSide("catalog")}

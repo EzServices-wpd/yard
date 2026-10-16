@@ -27,16 +27,18 @@ export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const setPlan = useYard((s) => s.setPlan);
   const grokBusy = useYard((s) => s.grokBusy);
   const grokError = useYard((s) => s.grokError);
+  const building = useYard((s) => s.building);
 
   // A landing brief (or any rebuild) clears the plan for a beat: keep the drawer open on the last plan,
   // and make the new one at the next frame, instead of closing under the reader.
   const lastPlan = useRef(plan);
   if (plan) lastPlan.current = plan;
   useEffect(() => {
-    if (!open || plan) return;
+    // Wait out the rebuild (and any house brief), so the new plan is made once, for the new build.
+    if (!open || plan || building || grokBusy) return;
     const id = requestAnimationFrame(() => { if (!useYard.getState().plan) useYard.getState().makePlan(); });
     return () => cancelAnimationFrame(id);
-  }, [open, plan]);
+  }, [open, plan, building, grokBusy]);
   const shown = plan ?? lastPlan.current;
   if (!open || !shown) return null;
 
