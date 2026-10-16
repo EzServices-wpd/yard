@@ -11,4 +11,16 @@ export const SWEEPS = {
       "craft stick", "popsicle stick", "jumbo craft stick", "toothpick", "washer tower 4 inches tall",
     ],
   },
+  c2: {
+    title: "size phrases",
+    inv: "I21",
+    file: "c2-size-phrases.md",
+    prompts: [
+      "about knee high bench", "about waist high console", "as wide as a twin bed bench", "half a sheet of plywood shelf",
+      "a full sheet of plywood table", "shelf that fits under a 30 inch window", "small 6 foot shelf", "stand for a 65 inch TV",
+      "counter height stool", "bar height stool", "bar height table", "waist high workbench", "as wide as a queen bed bench",
+      "as wide as a king bed headboard", "5 foot cabinet", "4 foot bookshelf", "chest high cabinet", "knee high coffee table",
+      "media console for a 75 inch TV", "half sheet of plywood desk",
+    ],
+  },
 } as const;
