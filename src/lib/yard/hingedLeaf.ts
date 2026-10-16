@@ -55,8 +55,8 @@ export function leafWeightLb(p: Pick<Panel, "size">): number {
  * with a stay once the lid passes 10 lb (2 up to 48" wide, 3 to 72", 4 above), else galvanized butts.
  */
 export function hingeSpec(leaf: { role: LeafRole; w: number; h: number; t: number; outdoor?: boolean; crate?: boolean; count?: number }): HingeSpec {
-  // Doors: 2 up to 40" tall, 3 to 60", 4 above. Lids hinge along their width: 2 up to 48", 3 to 72", 4 above.
-  const byLength = leaf.role === "door" ? (leaf.h <= 40 ? 2 : leaf.h <= 60 ? 3 : 4) : leaf.w <= 48 ? 2 : leaf.w <= 72 ? 3 : 4;
+  // Doors: 2 up to 40" tall, 3 to 60", 4 to 80", 5 above (hinge makers' 2 m band). Lids hinge along their width: 2 up to 48", 3 to 72", 4 above.
+  const byLength = leaf.role === "door" ? (leaf.h <= 40 ? 2 : leaf.h <= 60 ? 3 : leaf.h <= 80 ? 4 : 5) : leaf.w <= 48 ? 2 : leaf.w <= 72 ? 3 : 4;
   if (leaf.role === "door") {
     if (leaf.crate) return { kind: "utility", count: 2, stay: false, latch: "barrel bolt" };
     if (leaf.outdoor) return { kind: "butt-galv", count: leaf.count ?? 2, stay: false, latch: "barrel bolt" };
@@ -159,7 +159,7 @@ export function hingedBuy(project: YardProject, bom: Bom, ctx: { crate: boolean;
         catalogId: HW.concealed.catalogId,
         searchQuery: HW.concealed.searchQuery,
         estimatedCost: Math.round(HW.concealed.each * 2 * pairs * 100) / 100,
-        notes: `${plural(n, "hinge")} for ${plural(doors.length, "door")} (${plural(pairs, "pair")}): 2 on a door up to 40" tall, 3 up to 60", 4 above. Hang each door with a 1/16" gap all round.`,
+        notes: `${plural(n, "hinge")} for ${plural(doors.length, "door")} (${plural(pairs, "pair")}): 2 on a door up to 40" tall, 3 up to 60", 4 up to 80", 5 above. Hang each door with a 1/16" gap all round.`,
       });
       const pulls = doors.length + project.panels.filter((panel) => /drawer front/i.test(panel.name)).length;
       extra.push({
@@ -289,7 +289,7 @@ export function hangDoorsStep(doors: Panel[], cutLine: (p: Panel) => string, opt
   const total = counts.reduce((a, b) => a + b, 0);
   const same = counts.every((c) => c === counts[0]);
   const each = counts[0] ?? 2;
-  const words = ["zero", "one", "Two", "Three", "Four"];
+  const words = ["zero", "one", "Two", "Three", "Four", "Five"];
   const title = doors.length > 1
     ? `Hang ${doors.length} doors — ${same ? `${each} concealed hinges each` : `${total} concealed hinges`}`
     : `Hang the door — ${each} concealed hinges`;

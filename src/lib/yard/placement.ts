@@ -631,9 +631,11 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     else if (k > 3) s += `, with ${k - 2} more evenly between at ${Array.from({ length: k - 2 }, (_, i) => f(Math.round((inset + ((h - 2 * inset) * (i + 1)) / (k - 1)) * 8) / 8)).join(" and ")} up from the door's bottom edge`;
     const sides = new Set(same.map(doorHingesLeft));
     s += sides.size === 1 ? `, on the hinge edge (the ${doorHingesLeft(d) ? "left" : "right"} edge)` : `, on each door's hinge edge`;
-    const lo = c.min.y + inset;
-    const hi = c.max.y - inset;
-    s += ctx.floor ? ` — on the cabinet side that is ${f(lo)} and ${f(hi)} up from the floor` : "";
+    // F9: every hinge gets its cabinet-side height, not just the top and bottom ones.
+    const count = Math.max(2, k);
+    const ups = Array.from({ length: count }, (_, i) => Math.round((c.min.y + inset + ((h - 2 * inset) * i) / (count - 1)) * 8) / 8);
+    const list = ups.length > 2 ? `${ups.slice(0, -1).map(f).join(", ")} and ${f(ups[ups.length - 1])}` : `${f(ups[0])} and ${f(ups[1])}`;
+    s += ctx.floor ? ` — on the cabinet side that is ${list} up from the floor` : "";
     out.sentences.push(`${s}.`);
   }
 }

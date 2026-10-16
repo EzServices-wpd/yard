@@ -2884,7 +2884,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const count = typedDoors ?? (bayN >= 2 ? bayN : W > 28 ? 2 : 1);
     for (const [i, leaf] of doorLeaves({ x: x0, w: W, count }).entries()) {
       const name = typedDoors == null && bayN >= 2 ? `Bay ${i + 1} door` : leaf.name;
-      panels.push(panel("door", name, leaf.x, doorY, D - P, leaf.w, doorH, P));
+      const rise = doorRise(doorY, doorH);
+      panels.push(panel("door", name, leaf.x, rise.y, D - P, leaf.w, rise.h, P));
     }
   }
 
