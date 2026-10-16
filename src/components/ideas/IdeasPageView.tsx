@@ -20,7 +20,8 @@ export function ideasFeed(): IdeasFeed {
  * is always there), then one section per kind of build, 8 cards each with "Show all". On a phone each
  * section is one swipeable row, so the page is about 3 screens instead of 13.
  */
-export function IdeasPageView({ incoming, learned, onBuild, feed = ideasFeed() }: { incoming: string; learned: LearnedIdea[]; onBuild: (q: string) => void; feed?: IdeasFeed }) {
+type Build = (q: string, from?: HTMLElement | null) => void;
+export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed() }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed }) {
   const [query, setQuery] = useState(incoming);
   useEffect(() => setQuery(incoming), [incoming]);
   const q = query.trim();
@@ -77,21 +78,21 @@ export function IdeasPageView({ incoming, learned, onBuild, feed = ideasFeed() }
           </button>
           {hits.length > 0 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} eager={i < 4} onOpen={() => onBuild(c.examplePrompt)} showCount={feed.countsLive} />)}
+              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
             </div>
           ) : null}
         </section>
       ) : (
         <>
           {hero ? <IdeaHero card={hero} live={HERO_LIVE} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
-          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} showCount={feed.countsLive} />)}
+          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} />)}
         </>
       )}
     </main>
   );
 }
 
-function Section({ section, first, onBuild, showCount }: { section: IdeaSection; first: boolean; onBuild: (q: string) => void; showCount: boolean }) {
+function Section({ section, first, onBuild, onIntent, showCount }: { section: IdeaSection; first: boolean; onBuild: Build; onIntent?: (q: string) => void; showCount: boolean }) {
   const [all, setAll] = useState(false);
   const cards = all ? section.cards : section.cards.slice(0, SECTION_SHOW);
   const more = section.cards.length - SECTION_SHOW;
@@ -114,7 +115,7 @@ function Section({ section, first, onBuild, showCount }: { section: IdeaSection;
       >
         {cards.map((c, i) => (
           <li key={c.slug} className={all ? "" : "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-auto"}>
-            <IdeaCard card={c} eager={first && i < 4} onOpen={() => onBuild(c.examplePrompt)} showCount={showCount} />
+            <IdeaCard card={c} eager={first && i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
           </li>
         ))}
       </ul>

@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteChrome } from "@/components/site/chrome";
+import { morphTo } from "@/lib/ideas/morph";
 import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { IdeasPageView } from "@/components/ideas/IdeasPageView";
 import { IDEAS_CHANGED, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
@@ -48,13 +49,19 @@ function IdeasPage() {
       window.removeEventListener(IDEAS_CHANGED, load);
     };
   }, []);
-  function go(text: string) {
+  const router = useRouter();
+  /** Tap: the card's drawing morphs into the stage (plain navigation under reduced motion or with no card). */
+  function go(text: string, from?: HTMLElement | null) {
     const next = text.trim();
-    if (next) void navigate({ to: "/workspace", search: { q: next, ...currentTestFlags() } });
+    if (next) void morphTo(from, () => navigate({ to: "/workspace", search: { q: next, ...currentTestFlags() } }));
+  }
+  /** Hover, focus or touchstart: fetch the workspace route's code before the tap. */
+  function prefetch(text: string) {
+    void router.preloadRoute({ to: "/workspace", search: { q: text.trim(), ...currentTestFlags() } }).catch(() => {});
   }
   return (
     <SiteChrome active="ideas">
-      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} feed={feed} />
+      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} onIntent={prefetch} feed={feed} />
     </SiteChrome>
   );
 }
