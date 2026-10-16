@@ -381,7 +381,10 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   const skipLlm =
     next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
     // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
-    !!findRecipe(prompt);
+    !!findRecipe(prompt) ||
+    // Cost leak: an engine-owned shape (Big Ben, trebuchet, submarine) is locked, so the hint (Wikidata/Wikipedia)
+    // and interpret (Wikidata/Wikipedia + xAI chat) server calls could never change it. Skip them.
+    engineKeepsPrompt(prompt, next, half);
   if (skipLlm && !learn) {
     revealBench();
     makePlan();
