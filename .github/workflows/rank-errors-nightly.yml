@@ -3,8 +3,11 @@
 name: rank-errors-nightly
 
 on:
+  # F48: 03:17 America/New_York all year. 07:17 UTC is 03:17 EDT and 08:17 UTC is 03:17 EST; the
+  # first step exits unless it is 03 in New York, so exactly one run does the work.
   schedule:
-    - cron: "17 7 * * *" # 03:17 ET (07:17 UTC), off the hour to dodge the cron rush
+    - cron: "17 7 * * *"
+    - cron: "17 8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -15,18 +18,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Only at 03 New York time
+        id: hour
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=America/New_York date +%H)" != "03" ]; then echo "run=no" >> "$GITHUB_OUTPUT"; else echo "run=yes" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
+        if: steps.hour.outputs.run == 'yes'
       - uses: actions/setup-node@v4
+        if: steps.hour.outputs.run == 'yes'
         with:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+        if: steps.hour.outputs.run == 'yes'
       - name: Rank errors (always exits 0)
+        if: steps.hour.outputs.run == 'yes'
         run: npx tsx scripts/rank-errors.ts --dir yard-errors
-      - name: Date
+      - name: Date (New York)
+        if: steps.hour.outputs.run == 'yes'
         id: d
-        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+        run: echo "day=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
+        if: steps.hour.outputs.run == 'yes'
         with:
           name: yard-errors-ranked-${{ steps.d.outputs.day }}
           path: yard-errors/

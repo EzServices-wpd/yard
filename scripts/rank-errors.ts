@@ -20,7 +20,9 @@ const DIR = arg("--dir") ?? "/workspace/yard-errors";
 
 /** Report paths for a run: a dated copy that is never overwritten by a later day, plus the rolling latest. */
 export function reportPaths(dir: string, now = new Date()): { dated: string; latest: string } {
-  return { dated: join(dir, `yard-errors-ranked-${now.toISOString().slice(0, 10)}.md`), latest: join(dir, "yard-errors-ranked-latest.md") };
+  // F48: the date is New York's, so a run after 8 PM ET is not stamped tomorrow.
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  return { dated: join(dir, `yard-errors-ranked-${day}.md`), latest: join(dir, "yard-errors-ranked-latest.md") };
 }
 
 /** Critic's probe rows in the Ideas snapshot are test traffic, not ideas to rank. */
