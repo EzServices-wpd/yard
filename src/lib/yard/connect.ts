@@ -819,7 +819,7 @@ export function finishGraph(
     ...next,
     notes: [
       ...next.notes,
-      `${next.nodes.length} joint${next.nodes.length === 1 ? "" : "s"} · ${next.edges.length} member${next.edges.length === 1 ? "" : "s"} after weld`,
+      `${next.nodes.length} glue joint${next.nodes.length === 1 ? "" : "s"} hold ${next.edges.length} piece${next.edges.length === 1 ? "" : "s"}`,
       `Resolution · ${item.name} tiles the form at ~${d.faceStep.toFixed(1)}" pitch (stock is the mosaic cell).`,
       "Braces stay on the form — nothing through openings or outside the silhouette.",
     ],

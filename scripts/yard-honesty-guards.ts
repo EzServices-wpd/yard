@@ -35,7 +35,7 @@ import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { guardFail, guardStart } from "./guard-known-failures";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac, nestLabelLayout, nestPartDims, partCardDims } from "../src/lib/yard/inchText";
-import { DRAINAGE_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
+import { DRAINAGE_NOTE, OUTDOOR_FIXED_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
 import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
 import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
@@ -3580,7 +3580,8 @@ console.log("SOFT-TRUST OK", {
   if (!/24/.test(monBlob) || !/monitor/i.test(monBlob)) failHonesty("b32 monitor 24 envelope", monBlob.slice(0, 500));
   if (!/4/.test(monBlob) || !/rise/i.test(monBlob)) failHonesty("b32 monitor 4 rise", monBlob.slice(0, 500));
   if (!/envelope|rise/i.test(monBlob)) failHonesty("b32 monitor densify talk", monBlob.slice(0, 400));
-  if (!/not orbit/i.test(monBlob)) failHonesty("b32 monitor stand hush (no orbit)", monBlob.slice(0, 500));
+  // I11: the note never names engine chrome ("orbit-chrome"); the stand simply fits the monitor.
+  if (/orbit/i.test(monBlob) || !/stand fits the monitor/i.test(monBlob)) failHonesty("b32 monitor stand hush (no orbit)", monBlob.slice(0, 500));
 
   const filePrompt = "house: filing shelf 36″ wide × 12″ deep × 48″ tall with four open bays";
   if (!isFilingShelf(filePrompt.toLowerCase())) failHonesty("b32 isFilingShelf");
@@ -3846,7 +3847,7 @@ console.log("SOFT-TRUST OK", {
   if (!/6/.test(lampBlob) || !/lamp/i.test(lampBlob)) failHonesty("b35 lamp 6 envelope", lampBlob.slice(0, 500));
   if (!/60/.test(lampBlob) && Math.abs(lamp.overall.height - 60) > 1.5) failHonesty("b35 lamp 60 densify", lampBlob.slice(0, 400));
   if (!/envelope|lamp-base|lamp base/i.test(lampBlob)) failHonesty("b35 lamp envelope talk", lampBlob.slice(0, 400));
-  if (!/not orbit/i.test(lampBlob)) failHonesty("b35 lamp stand hush (no orbit)", lampBlob.slice(0, 500));
+  if (/orbit/i.test(lampBlob)) failHonesty("b35 lamp stand hush (no orbit)", lampBlob.slice(0, 500));
   if (!/oak|Oak/i.test(lamp.prompt ?? lampPrompt)) failHonesty("b35 Buy Oak prompt");
   // Bare lamp stand (no floor) still Lamp stand — not Lattice.
   const bareLamp = "weekend craft: pine lamp stand that holds a real lamp base 8″ diameter upright, 54″ tall";
@@ -3879,7 +3880,7 @@ console.log("SOFT-TRUST OK", {
   if (!/Monitor stand/i.test(mon.name)) failHonesty("b35 protect monitor", mon.name);
   if (/Lattice|Orbit/i.test(mon.name)) failHonesty("b35 monitor lattice/orbit name", mon.name);
   const monBlob = [mon.name, ...(mon.notes ?? [])].join("\n");
-  if (!/not orbit/i.test(monBlob)) failHonesty("b35 protect monitor hush", monBlob.slice(0, 400));
+  if (/orbit/i.test(monBlob)) failHonesty("b35 protect monitor hush", monBlob.slice(0, 400));
   // Lattice tower still lattice — do not steal real towers into lamp stands.
   const tower = generateFromPrompt("3 foot tower from popsicle sticks");
   if (tower.kind !== "lattice") failHonesty("b35 protect lattice tower kind", tower.kind);
@@ -4548,7 +4549,8 @@ console.log("SOFT-TRUST OK", {
     const p = generateFromPrompt(q);
     const plan = buildPlan(p);
     const wall = p.assumptions?.installMode === "wall";
-    if (!p.notes.includes(OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
+    // I9: a hung build has no feet, so its note names no glides (same predicate as Buy).
+    if (!p.notes.includes(wall ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
     const glue = glueRows(plan.bom);
     if (glue.length !== 1 || glue[0].catalogId !== "outdoor-glue") failOut("exactly one glue — the exterior one", { q, glue: glue.map((b) => b.name) });
     const screws = woodScrewRows(plan.bom);

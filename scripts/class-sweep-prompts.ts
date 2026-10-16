@@ -1,5 +1,71 @@
 /** Spec 006: the 20-prompt sweep per class (also the whole-class test corpus). */
 export const SWEEPS = {
+  d1: {
+    title: "the same prompt gives identical steps on every run",
+    inv: "I25",
+    file: "d1-deterministic-steps.md",
+    prompts: [
+      "3 foot Eiffel Tower from popsicle sticks", "eiffel tower", "big ben", "brooklyn bridge", "trebuchet",
+      "submarine", "water wheel", "model lighthouse", "popsicle stick bridge", "4 foot lattice tower from jumbo craft sticks",
+      "linen closet 31.5 wide 78 tall 16 deep", "bunk bed", "loft bed", "picnic table", "hanging birdhouse",
+      "corner shelf", "wine rack 12 bottles", "toothpick tower", "catapult from popsicle sticks", "ferris wheel",
+    ],
+  },
+  g1: {
+    title: "hung builds never get glides; frames tied to a wall stud buy the tie; plain truss words",
+    inv: "I9",
+    file: "g1-hung-glides-stud-tie.md",
+    prompts: [
+      "hanging birdhouse", "wall mounted birdhouse", "outdoor wall planter box", "outdoor hanging shelf", "hanging planter",
+      "bunk bed", "loft bed", "bunk bed 80 long 42 wide 66 tall", "model lighthouse", "adirondack chair",
+      "outdoor bench", "picnic table", "garden bed", "porch swing", "wall mounted outdoor planter",
+      "birdhouse", "outdoor plant stand", "bookcase 36 wide 72 tall 12 deep", "floating shelf 24 wide", "coat rack",
+    ],
+  },
+  j1: {
+    title: "engine jargon and template leftovers never reach the person",
+    inv: "I11",
+    file: "j1-jargon.md",
+    prompts: [
+      "floating shelf 24 wide", "garage storage shelves", "dog bed frame", "window seat 60 wide", "model lighthouse",
+      "rolling kitchen island", "kitchen island 60x36x36", "bathroom medicine cabinet 16 wide 24 high 4 deep", "30 inch range hood", "wall mounted ironing board cabinet 48 high 16 wide 6 deep",
+      "mudroom bench 48 wide 18 high 16 deep", "bench 31 wide 17.5 tall 14 deep", "popsicle stick bridge", "4 foot lattice tower from jumbo craft sticks", "3 foot Eiffel Tower from popsicle sticks",
+      "linen closet 31.5 wide 78 tall 16 deep", "6 foot ladder from 2x4", "toy airplane", "picnic table", "floating desk",
+    ],
+  },
+  h1: {
+    title: "hardware named in the steps or notes is on Buy",
+    inv: "I9",
+    file: "h1-hardware-on-buy.md",
+    prompts: [
+      "wine rack 12 bottles", "spice rack", "dog bed frame", "floating shelves 36 wide 10 deep", "wine rack 24 wide 36 high 12 deep",
+      "wall shelf for jars 24 wide", "30 inch range hood", "over the toilet cabinet 27 wide 68 high 9 deep", "L-shaped corner desk 60 by 48 30 tall", "catapult from popsicle sticks",
+      "barn birdhouse", "window box", "birdhouse shaped like church", "wall mounted mail organizer", "wall clock frame",
+      "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side", "toy box", "nightstand with drawer", "dresser 36 wide 34 tall 18 deep", "porch swing",
+    ],
+  },
+  c12: {
+    title: "store search terms follow the Buy name",
+    inv: "C12",
+    file: "c12-store-terms.md",
+    prompts: [
+      "linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide 72 tall 12 deep", "pantry cabinet 24 wide 84 tall 16 deep", "wall cabinet 30 wide 30 tall 12 deep", "media console 60 wide 24 tall 18 deep",
+      "dresser 36 wide 34 tall 18 deep", "nightstand", "closet 72 wide 96 tall 24 deep", "cedar raised garden bed 4x8", "adirondack chair",
+      "picnic table", "workbench", "coat bench", "toy box", "shoe rack",
+      "zip tie", "paper clip chain 12 inches long", "3/8 dowel", "birdhouse", "window 36x48",
+    ],
+  },
+  c11: {
+    title: "whole items carry no cutting language; shelf pins in inches",
+    inv: "C11",
+    file: "c11-whole-items-uncut.md",
+    prompts: [
+      "zip tie", "pipe cleaner", "marble", "wine cork", "washer",
+      "paper clip", "paper clip chain 12 inches long", "pony bead bracelet", "washer tower", "craft stick",
+      "3/8 dowel", "cotton swab", "binder clip", "golf tee", "16d nail",
+      "linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide 72 tall 12 deep", "4 foot bookshelf", "pantry cabinet 24 wide 84 tall 16 deep", "bookshelf",
+    ],
+  },
   c10: {
     title: "price consistency",
     inv: "C10",

@@ -85,6 +85,21 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
+  // From the press (yard-build-start) until the build is under way, the old title must not show for
+  // the new build: the solve runs in the same task, so `building` alone paints a beat too late.
+  const [starting, setStarting] = useState(false);
+  useEffect(() => {
+    const on = () => setStarting(true);
+    window.addEventListener("yard-build-start", on);
+    return () => window.removeEventListener("yard-build-start", on);
+  }, []);
+  useEffect(() => {
+    if (!starting) return;
+    if (building || grokBusy) return setStarting(false);
+    const t = window.setTimeout(() => setStarting(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [starting, building, grokBusy]);
+  const titlePending = pending || starting;
   // Chief's item: why this build's price differs from the plain build. Worked out at idle (never
   // before the model) into a line slot the card always keeps, so it never pushes the card (CLS 0).
   const [priceWhy, setPriceWhy] = useState<PriceReason | null>(null);
@@ -389,7 +404,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
       <PromptBar
         onBuilt={() => {
-          setPlanOpen(false);
+          // An open plan stays open across a new submit: it holds the last plan until the new build
+          // (and any house brief) lands, then swaps in place. Closing it here was the 0.33 s close.
           setSide(null);
         }}
         onStock={() => setSide("catalog")}
@@ -596,7 +612,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
                   {/* The title lands with the model: a same-height skeleton holds its place while the lamp is up (CLS 0). */}
                   <p className="min-w-0 truncate font-display text-[15px] text-fg">
-                    {pending ? (
+                    {titlePending ? (
                       <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
                     ) : project.name || headerTitle(project)}
                   </p>

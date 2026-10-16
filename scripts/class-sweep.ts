@@ -6,7 +6,7 @@ import { writeFileSync } from "node:fs";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
 import { headerTitle } from "../src/lib/yard/pdf";
-import { checkBuild } from "../src/lib/yard/invariants";
+import { checkBuild, i25 } from "../src/lib/yard/invariants";
 import { SWEEPS } from "./class-sweep-prompts";
 
 const cls = (process.argv[2] ?? "c3") as keyof typeof SWEEPS;
@@ -18,7 +18,7 @@ let fails = 0;
 sweep.prompts.forEach((q, i) => {
   const p = generateFromPrompt(q);
   const plan = buildPlan(p);
-  const v = checkBuild(p, q, plan).filter((x) => x.id === sweep.inv).map((x) => x.msg);
+  const v = (sweep.inv === "I25" ? i25(q) : checkBuild(p, q, plan)).filter((x) => x.id === sweep.inv).map((x) => x.msg);
   if (v.length) fails++;
   const cell = (t: string) => t.replace(/\|/g, "/").replace(/\n/g, " ").slice(0, 220);
   rows.push(`| ${i + 1} | ${cell(q)} | ${cell(headerTitle(p))} | ${cell(plan.bom.map((b) => `${b.name} ×${b.quantity}`).join("; "))} | ${v.length ? "FAIL: " + cell(v.join("; ")) : "pass"} | ${cell(plan.instructions.slice(0, 3).map((s) => s.title).join(" → "))} |`);

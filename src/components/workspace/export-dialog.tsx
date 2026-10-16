@@ -1,6 +1,7 @@
 "use client";
 
 import { inchFrac } from "@/lib/yard/inchText";
+import { cutListIntro } from "@/lib/yard/wholeItems";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
@@ -245,9 +246,7 @@ export function ExportDialog({
             <section className="mt-8">
               <h2 className="font-display text-xl text-ink">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h2>
               <p className="mt-1 text-xs text-ink-muted">
-                {plan.partsKind === "whole"
-                  ? "Full pieces from the pack. Glue them. Do not cut."
-                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+                {cutListIntro(plan)}
               </p>
               <table className="mt-3 w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-ink-muted">

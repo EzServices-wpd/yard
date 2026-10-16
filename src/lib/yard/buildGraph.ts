@@ -347,7 +347,7 @@ export function buildFormGraph(
       recipe.source ? `Source: ${recipe.source}` : "Proportions from the form query (published measures when they exist).",
       policy.fat || recipe.wholeMembers
         ? `${item.name} ${policy.fat ? "is column stock — " : "follows the real members — "}each long member is one piece${policy.fat ? "" : ", lapped where it runs past one stick"}.`
-        : `${item.name} is thin — long members are laced into a truss.`,
+        : `${item.name} is thin, so each long piece is built from short sticks braced together.`,
       `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
       "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
       ...(kind === "vehicle" || kind === "vessel"

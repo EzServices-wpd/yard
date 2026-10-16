@@ -260,7 +260,7 @@ export function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}". Not a dining table.`,
+      `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}".`,
       `The benches sit outside the top, ${gap}" clear of the table legs so you can sit. 2×2 legs, ¾" top and seats.`,
       "Each end is one frame: a 2×4 top cleat under the top and a 2×4 seat support under both seats, bolted to the legs; the stretcher runs between the top cleats.",
     ],
@@ -1421,8 +1421,8 @@ export function buildOttoman(spec: FittedSpec, prompt: string, affordances: Hous
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Ottoman — solid top over a sit frame at ${H}" tall, square ${W}" × ${D}" plan. Not Storage, not a Yard House wire skeleton. ¾" plywood.`,
-      `Solid top densify — sit-load apron frame. Guidance only — confirm ${H}" seat height.`,
+      `${name}. Ottoman — solid top over a sit frame at ${H}" tall, square ${W}" × ${D}" plan. Not Storage. ¾" plywood.`,
+      `Solid top on an apron frame that carries the sitting load. Guidance only — confirm ${H}" seat height.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -1585,7 +1585,7 @@ export function buildRockingChair(spec: FittedSpec, prompt: string, affordances:
     primaryMaterialId: PLY,
     notes: [
       `${name}. Rocking chair — seat height ${seatH}" held. Curved rocker rails under the legs (Rocker 1 / Rocker 2) — not skis, not a sled, not Yard House wire. ¾" plywood.`,
-      `Rocker densify: two curved rocker rails carry the legs. Sit-test the ${seatH}" seat height before you finish.`,
+      `Two curved rocker rails carry the legs. Sit-test the ${seatH}" seat height before you finish.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: seatH, depth: D, kind: "room" },

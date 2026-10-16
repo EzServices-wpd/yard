@@ -490,7 +490,6 @@ function withGroundWalk(project: YardProject): YardProject {
   return {
     ...project,
     traverse,
-    notes: [...project.notes, "Walk around it on the bench (WASD + mouse look)."],
   };
 }
 

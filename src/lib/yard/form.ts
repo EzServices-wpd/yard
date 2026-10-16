@@ -408,7 +408,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       notes: [
         hit.override === "eiffel"
           ? "Eiffel override — four arches, four piers, one shaft."
-          : `${hit.name} · lattice densified at the named stock's stick length / section.`,
+          : `${hit.name} · lattice sized to the stick you named.`,
       ],
       ops: [],
     };
@@ -430,7 +430,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       notes: [
         named
           ? "Published / historic proportions, scaled to the size you asked for."
-          : "Warren truss · continuous chords, densified at the named stock.",
+          : "Truss bridge · long top and bottom rails, sized to the stick you named.",
       ],
       ops: named ? (/brooklyn/.test(prompt.toLowerCase()) ? suspensionOps(fitSuspensionTo(BROOKLYN)(size, prompt), BROOKLYN) : suspensionOps(fitSuspensionTo(GOLDEN_GATE)(size, prompt), GOLDEN_GATE)) : bridgeOps(size),
     };
@@ -493,11 +493,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
               return climbSteps >= 2
                 ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
                   (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the top tread; not a vehicle incline.` +
+                  ` — ${who} on the top tread.` +
                   hand
                 : `${hit.name} · one weight-bearing climb step` +
                   (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the tread; densify from named stock; not a vehicle incline.` +
+                  ` — ${who} on the tread.` +
                   hand;
             })(),
           ]
@@ -505,7 +505,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             (() => {
               const n = spokenRungCount(prompt);
               return n != null
-                ? `${hit.name} · ${n} rungs at the named stock (cut list OK for lumber) — not a Drying rack.`
+                ? `${hit.name} · ${n} rungs at the named stock (cut list OK for lumber).`
                 : `${hit.name} · side rails + rungs at the named stock (cut list OK for lumber).`;
             })(),
           ]
@@ -522,21 +522,21 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 `${hit.name} · Y-fork and pouch — a handheld slingshot, not a catapult arm or axle.`,
               ]
             : [
-              `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
+              `${hit.name} · base, axle pivot, throwing arm, and payload cup.`,
               "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
             ]
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
               isHoseReelHold(prompt)
-                ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — densify keeps the stand around the upright hose reel (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — the stand fits the upright hose reel.`
                 : isUmbrellaHold(prompt)
-                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — the stand fits the upright umbrellas.`
                 : isMonitorHold(prompt)
-                ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — densify keeps the stand under the monitor at the typed rise (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — the stand fits the monitor at the typed rise.`
                 : isFloorLampHold(prompt)
-                ? `${hit.name} · ${lampEnvelopeTalk(prompt)} — densify keeps the stand around the upright lamp base (Buy named stock), not a Lattice tower / Eiffel and not orbit-chrome.`
+                ? `${hit.name} · ${lampEnvelopeTalk(prompt)} — the stand fits the upright lamp base.`
                 : isHamperHold(prompt)
-                ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
+                ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — the stand fits the basket.`
                 : `${hit.name} · upright pot envelope` +
                   (potDia != null && potH != null
                       ? /figurine/.test(prompt.toLowerCase())
@@ -549,7 +549,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                         : /figurine/.test(prompt.toLowerCase())
                           ? " for a real figurine"
                           : " for a real pot") +
-                  ` — densify keeps the whole stand at the named stock; ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}, not a Tree silhouette.`,
+                  ` — ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}.`,
             ]
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)
@@ -634,8 +634,8 @@ export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: strin
         name: hit.named || typedTitle(),
         kind: "lattice",
         notes: [
-          `${hit.named || typedTitle()} · lattice densified at the named stock.`,
-          "Four chords, Warren faces, hoops at the stock's bay. Not a hollow taper.",
+          `${hit.named || typedTitle()} · lattice sized to the stick you named.`,
+          "Four corner posts, zigzag bracing on each face, and rings spaced to the stick length.",
         ],
         ops: [],
       };

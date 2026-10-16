@@ -15,7 +15,7 @@ import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
-import { CALLOUT_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
+import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -473,6 +473,12 @@ function useAssemble(ready: boolean): number {
  * camera move, a 150 ms fade on the finished frame. Visibility and material only, no new geometry.
  * Returns the set of parts already in wood (others draw as outlines), or null when nothing plays.
  */
+/** Above this many parts the reveal steps by build beat. */
+const BEAT_MODE_PARTS = 120;
+/** Longest the model waits in outline for its build order (inside the lamp fade). */
+const PLAN_WAIT_MS = 350;
+const EMPTY_IDS: Set<string> = new Set();
+
 function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
     if (!ready || !plan?.instructions.length) return null;
@@ -481,7 +487,19 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     // Parts in step order (stable within a step: the model's own order).
     const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
     ids.sort((x, y) => at.get(x)! - at.get(y)!);
-    return { at, n, ids };
+    // Cut pieces each mesh stands for (a 5-layer hub is one mesh, five cut pieces), from the plan's own
+    // cut rows (partIds), so "k of N" counts what the plan counts. A mesh no row names counts once.
+    const weight = new Map<string, number>();
+    for (const row of plan.cutList) {
+      const own = (row.partIds ?? []).filter((id) => at.has(id));
+      if (own.length && row.quantity > own.length) for (const id of own) weight.set(id, Math.max(weight.get(id) ?? 1, row.quantity / own.length));
+    }
+    const cum = [0];
+    for (const id of ids) cum.push(cum[cum.length - 1] + (weight.get(id) ?? 1));
+    // Beat ends: index just past the last part of each beat (for big models that step by beat).
+    const beatEnds: number[] = [];
+    ids.forEach((id, i) => { if (i === ids.length - 1 || at.get(ids[i + 1]) !== at.get(id)) beatEnds.push(i + 1); });
+    return { at, n, ids, cum, beatEnds };
   }, [project, plan, ready]);
   const [wood, setWood] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
@@ -501,17 +519,29 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
       return skip("reduced-motion");
     }
     const total = order.ids.length;
-    const stagger = staggerFor(total);
+    const count = (k: number) => Math.round(order.cum[Math.min(k, total)]);
+    const pieces = count(total);
+    // Big models (hundreds of parts) step by build beat, not by part: a handful of renders keeps the
+    // 2.4 s cap on any device instead of one re-render of every part per frame.
+    const byBeat = total > BEAT_MODE_PARTS;
+    const units = byBeat ? order.beatEnds.length : total;
+    const stagger = staggerFor(units);
     // The outline phase runs while the lamp fades (no wait for the fade to finish).
-    const t0 = Math.max(performance.now() - 16, readyAt.current.t);
-    const end = t0 + WIRE_MS + total * stagger + CALLOUT_MS;
+    let t0 = Math.max(performance.now() - 16, readyAt.current.t);
+    let end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+    // The wood stepping never runs under a lamp that is still up (not yet fading): the bench is
+    // ready when the build settles, but the page's lamp can hold on a beat longer (a first ?q= build
+    // waits for the whole prompt run). A short beat-mode reveal used to finish entirely under it.
+    const lampUp = () => !!document.querySelector(".yard-lamp[data-yard-building]");
     let raf = 0;
     let shownCount = -1;
+    let held = false;
+    let shownU = 0;
     const finish = (skipped: boolean) => {
       cancelAnimationFrame(raf);
       setWood(Infinity);
-      setReveal({ active: false, wood: total, skipped });
-      host?.setAttribute("data-yard-reveal", `done/${total}`);
+      setReveal({ active: false, wood: pieces, skipped });
+      host?.setAttribute("data-yard-reveal", `done/${pieces}`);
       host?.setAttribute("data-yard-reveal-ms", String(Math.round(performance.now() - t0)));
       onRevealSkip(null);
       window.removeEventListener("keydown", onKey);
@@ -520,34 +550,78 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     window.addEventListener("keydown", onKey);
     onRevealSkip(() => finish(true));
     setWood(0);
-    setReveal({ active: true, n: total, wood: 0, t0, end, skipped: false });
-    host?.setAttribute("data-yard-reveal", `wire/${total}`);
+    setReveal({ active: true, n: pieces, wood: 0, t0, end, skipped: false });
+    host?.setAttribute("data-yard-reveal", `wire/${pieces}`);
+    host?.setAttribute("data-yard-reveal-mode", byBeat ? "beat" : "part");
+    // Step clock. The first wood frame of a model can stall (~1 s on a slow phone or a big model), so
+    // the first step is held to one painted frame; then the rest re-spread over what is left of the
+    // 2.4 s cap (never slower than the planned stagger). Part mode catches up freely after that, so
+    // small builds stay inside the cap; beat mode (a handful of beats) still shows each beat a frame.
+    let base = 0;
+    let gap = stagger;
+    let last = 0;
     const tick = () => {
       const now = performance.now();
-      if (now >= end) return finish(false);
-      const k = now < t0 + WIRE_MS ? 0 : Math.min(total, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
+      if (lampUp()) {
+        t0 = now;
+        end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+        held = true;
+        last = 0;
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      if (held) { held = false; setReveal({ t0, end }); }
+      // Last frame's length: a step that would land past the cap shows the finished frame instead.
+      const frame = last ? Math.min(1000, now - last) : 16;
+      last = now;
+      let u: number;
+      if (shownU === 0) {
+        u = now < t0 + WIRE_MS ? 0 : 1;
+      } else {
+        if (!base) {
+          base = now;
+          const left = t0 + CAP_MS - CALLOUT_MS - now;
+          gap = units > 1 ? Math.max(0, Math.min(stagger, left / (units - 1))) : 0;
+          end = Math.max(now, base + (units - 1) * gap) + CALLOUT_MS;
+          setReveal({ end });
+        }
+        const due = gap > 0 ? Math.min(units, 1 + Math.floor((now - base) / gap)) : units;
+        u = byBeat ? Math.min(due, shownU + 1) : due;
+      }
+      // Hard cap: past 2.4 s from the outline the finished frame shows, whatever the device managed.
+      if ((now >= end && shownU >= units) || (base > 0 && now + (base < now ? frame : 0) >= t0 + CAP_MS)) return finish(false);
+      const k = byBeat ? (u ? order.beatEnds[u - 1] : 0) : u;
+      shownU = u;
       if (k !== shownCount) {
         shownCount = k;
         setWood(k);
-        setReveal({ wood: k });
-        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${total}` : `${k}/${total}`);
+        setReveal({ wood: count(k) });
+        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${pieces}` : `${count(k)}/${pieces}`);
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey); onRevealSkip(null); setWood(Infinity); setReveal({ active: false }); };
   }, [order, stepping, project.id]);
-  // The model never waits: with no build order yet, it shows in wood at once (and that build skips
-  // its reveal later, rather than hiding wood that is already on screen).
-  // Only a model that actually painted in wood counts (a frame later, not one transient render where
-  // the plan was a beat behind): the reveal then plays the same at every width and timing.
-  const lateCandidate = ready && !order && played.current !== project.id;
+  // No build order yet when the model is ready (the plan is made just after the model, and under
+  // load that can land a few frames late): hold the model in outline for at most PLAN_WAIT_MS, inside
+  // the lamp's fade, instead of painting wood the reveal must then skip ("skip:late", Brooklyn 2 of 4).
+  // Past that the model shows in wood and that build skips its reveal, as before.
+  const lateCandidate = ready && !order && !stepping && played.current !== project.id;
+  const [waitedFor, setWaitedFor] = useState<string | null>(null);
   useEffect(() => {
     if (!lateCandidate) return;
     const id = project.id;
-    const raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
-    return () => cancelAnimationFrame(raf);
+    const since = readyAt.current?.id === id ? readyAt.current.t : performance.now();
+    let raf = 0;
+    const t = window.setTimeout(() => {
+      setWaitedFor(id);
+      // Only a model that actually painted in wood counts (two frames later).
+      raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
+    }, Math.max(0, since + PLAN_WAIT_MS - performance.now()));
+    return () => { window.clearTimeout(t); cancelAnimationFrame(raf); };
   }, [lateCandidate, project.id]);
+  if (lateCandidate && waitedFor !== project.id) return EMPTY_IDS;
   if (!order || wood === Infinity || stepping) return null;
   return new Set(order.ids.slice(0, wood));
 }

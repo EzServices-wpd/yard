@@ -5,16 +5,20 @@
  * Every offer href goes through outboundHref (outbound.ts) — inert until an affiliate ID is set.
  */
 
-import type { BomLine, ShopOffer } from "./types";
+import type { BomLine, BuildPlan, ShopOffer } from "./types";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import {
   affiliateUrl,
   shopLinks,
+  amazonSearchUrl,
+  homeDepotSearchUrl,
+  lowesSearchUrl,
+  walmartSearchUrl,
   type ShopRetailer,
 } from "./shop";
 import { hardwareCatalogIdFromHay } from "./voiceHonesty";
-import { affiliateDisclosure, outboundHref } from "./outbound";
+import { affiliateDisclosure, outboundHref, storeOf, type Store } from "./outbound";
 
 export type ListingOffer = {
   catalogId: string;
@@ -779,8 +783,8 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "shelf-pins",
     retailer: "amazon",
-    title: "5 mm shelf pins, 50 pack",
-    href: "https://www.amazon.com/s?k=5mm+shelf+pins",
+    title: '3/16" shelf pins, 50 pack',
+    href: "https://www.amazon.com/s?k=3%2F16%22+shelf+pins",
     packQty: 50,
     packPrice: 6.49,
     lengthIn: 0,
@@ -1350,4 +1354,96 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
       offers,
     };
   });
+}
+
+/**
+ * C12 (store terms follow the Buy name): every store search a Buy row links to (Amazon, Home Depot, Lowe's,
+ * Walmart, and the "Also at" stores) searches the row's own Buy name. A catalog href or an earlier searchQuery can
+ * no longer drift from what the row says ('3/16" shelf pins' searching "5mm shelf pins"). Product links (an Amazon
+ * /dp/ ASIN, a store product page) are a fixed item, not a search, and stay as they are. Prices are untouched.
+ */
+
+/**
+ * The search phrase for a Buy row: its display name. A worded aside ("(backer)", "(waterproof, exterior)") is dropped;
+ * a measured one keeps its words ("1×4 Board (8 ft)" → "1x4 Board 8 ft"). "×" is typed as a plain x. Spaces collapsed.
+ */
+export function buyQuery(name: string): string {
+  return name
+    .replace(/\s*\(([^)]*)\)/g, (_m, inner: string) => (/\d/.test(inner) ? ` ${inner}` : ""))
+    // Stores search a plain x ("1x6"), the same size the row says as "1×6".
+    .replace(/×/g, "x")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The raw store URL behind an href (an Impact wrapper carries it URL-encoded in a query param). */
+export function rawStoreHref(href: string): string {
+  if (storeOf(href) !== "other") return href;
+  try {
+    for (const val of new URL(href).searchParams.values()) if (storeOf(val) !== "other") return val;
+  } catch {
+    /* not a URL */
+  }
+  return href;
+}
+
+/** The search term a store href searches, or null when it is a product page (not a search). */
+export function storeSearchTerm(href: string): string | null {
+  const raw = rawStoreHref(href);
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  const store = storeOf(raw);
+  if (store === "amazon") return u.pathname === "/s" || u.pathname === "/s/" ? (u.searchParams.get("k") ?? "") : null;
+  if (store === "homedepot") {
+    const m = u.pathname.match(/^\/s\/(.+)$/);
+    return m ? decodeURIComponent(m[1]).replace(/\+/g, " ") : null;
+  }
+  if (store === "lowes") return u.pathname.startsWith("/search") ? (u.searchParams.get("searchTerm") ?? "") : null;
+  if (store === "walmart") return u.pathname.startsWith("/search") ? (u.searchParams.get("q") ?? "") : null;
+  if (store === "rockler" || store === "woodcraft") return u.searchParams.get("q") ?? u.searchParams.get("query") ?? null;
+  return null;
+}
+
+const SEARCH: Partial<Record<Store, (q: string) => string>> = {
+  amazon: (q) => amazonSearchUrl(q, ""),
+  homedepot: homeDepotSearchUrl,
+  lowes: lowesSearchUrl,
+  walmart: walmartSearchUrl,
+};
+
+/** One offer's href re-pointed at the Buy name when it is a store search; product pages stay. */
+function alignOffer(o: ShopOffer, q: string): ShopOffer {
+  const term = storeSearchTerm(o.href);
+  if (term == null || term === q) return o;
+  const make = SEARCH[storeOf(rawStoreHref(o.href))];
+  return make ? { ...o, href: outboundHref(make(q)) } : o;
+}
+
+export function alignStoreTerms(line: BomLine): BomLine {
+  const q = buyQuery(line.name);
+  if (!q) return line;
+  return { ...line, searchQuery: q, offers: line.offers?.map((o) => alignOffer(o, q)) };
+}
+
+/** Every Buy row's store searches say the row's name (the last pass on a plan). */
+export function storeTermsFromBuy(plan: BuildPlan): BuildPlan {
+  return { ...plan, bom: plan.bom.map(alignStoreTerms) };
+}
+
+/** C12 drift on one plan: rows whose searchQuery or any store search differs from the Buy name. */
+export function storeTermDrift(plan: Pick<BuildPlan, "bom">): string[] {
+  const out: string[] = [];
+  for (const b of plan.bom) {
+    const q = buyQuery(b.name);
+    if (b.searchQuery != null && b.searchQuery !== q) out.push(`"${b.name}" searchQuery "${b.searchQuery}"`);
+    for (const o of b.offers ?? []) {
+      const term = storeSearchTerm(o.href);
+      if (term != null && term !== q) out.push(`"${b.name}" ${o.label} searches "${term}"`);
+    }
+  }
+  return out;
 }

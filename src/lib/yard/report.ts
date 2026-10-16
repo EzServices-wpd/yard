@@ -1,3 +1,6 @@
+import { withSaidHardware } from "./hardwareSaid";
+import { storeTermsFromBuy } from "./listings";
+import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
@@ -837,8 +840,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : `${joinScrews} screws — 4 per shelf (2 through each wall panel) plus ${cornerWallPanelScrews} joining Wall panel A to Wall panel B.`
         : floating
         ? hasBrackets
-          ? `${joinScrews} screws shelf into brackets (no carcase joints).`
-          : `${joinScrews} screws shelf into cleat (no carcase joints).`
+          ? `${joinScrews} screws through the shelf into the brackets.`
+          : `${joinScrews} screws through the shelf into the cleat.`
         : modelScrews.screws >= 4
           ? modelScrews.note
           : `${joinScrews} screws for the few joints in the model.`,
@@ -1022,11 +1025,11 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
-      name: "5 mm shelf pins",
+      name: '3/16" shelf pins',
       quantity: packs,
       unit: packs === 1 ? "pack" : "packs",
       catalogId: "shelf-pins",
-      searchQuery: "5mm shelf pins",
+      searchQuery: '3/16" shelf pins',
       estimatedCost: 6.49 * packs,
       notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
     });
@@ -1550,7 +1553,8 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)));
+  // C12: the last pass: every store search a Buy row links to says that row's Buy name.
+  return storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))));
 }
 
 /**
@@ -1560,7 +1564,7 @@ export function buildPlan(project: YardProject): BuildPlan {
  */
 function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!isUnitItem(project)) return plan;
-  return {
+  const marked: BuildPlan = {
     ...plan,
     cutList: plan.cutList.map((c) => {
       const u = unitSizeById(c.id.split("|")[0]);
@@ -1571,6 +1575,12 @@ function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
       const thk = d.thickness ?? d.diameter ?? c.thicknessIn;
       return { ...c, whole: true, lengthIn: len, widthIn: wid, thicknessIn: thk };
     }),
+  };
+  // C11: a whole piece carries no cut letter in the steps ("One A 8" cable tie" → "One 8" cable tie").
+  const talk = (t: string) => unletterWhole(t, marked.cutList);
+  return {
+    ...marked,
+    instructions: marked.instructions.map((s) => ({ ...s, title: talk(s.title), description: talk(s.description), tips: s.tips ? talk(s.tips) : s.tips })),
   };
 }
 
@@ -1607,7 +1617,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
-  const plan = { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] };
+  const plan = withSaidHardware(project, { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] });
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));
