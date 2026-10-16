@@ -14,15 +14,17 @@ import { unitSizeById } from "./unitSizes";
 import { isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
+import { unownedParts } from "./ownEveryPart";
+import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -195,7 +197,27 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
+    ...i18(project, plan), ...i19(project, plan),
   ];
+}
+
+/** I18 (F12 part ownership): every part is installed by one build step (same-named twins may share a step). */
+function i18(p: YardProject, plan: BuildPlan): Violation[] {
+  const out: Violation[] = [];
+  const loose = unownedParts(p, plan);
+  if (loose.length) out.push(v("I18", `${loose.map((x) => x.name).join(", ")} ${loose.length === 1 ? "has" : "have"} no owning step`));
+  return out;
+}
+
+/** I19 (F12 step order): the back goes on before the fixed shelves it screws into. */
+function i19(p: YardProject, plan: BuildPlan): Violation[] {
+  const backAt = plan.instructions.findIndex((s) => /to the back of the box/.test(s.title));
+  const shelfAt = plan.instructions.findIndex((s) => /\bfixed shel/i.test(s.title));
+  if (backAt < 0 || shelfAt < 0 || backAt < shelfAt) return [];
+  const thin = new Set(p.panels.filter((x) => Math.min(x.size.width, x.size.height, x.size.depth) < 0.5).map((x) => x.id));
+  const shelves = new Set(p.panels.filter((x) => /shelf/i.test(x.name) && !thin.has(x.id)).map((x) => x.id));
+  const fastens = panelJoints(p.panels).some((j) => (thin.has(j.a) && shelves.has(j.b)) || (thin.has(j.b) && shelves.has(j.a)));
+  return fastens ? [v("I19", `the back goes on at step ${backAt + 1}, after the fixed shelves it screws into (step ${shelfAt + 1})`)] : [];
 }
 
 /** Recipes as the prompts that build them (the learned-recipe set). */
