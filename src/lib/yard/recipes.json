@@ -7957,6 +7957,348 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Left front leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft); Left rear leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft); Right front leg: 11.27×18.02 is wider than one 2×4 Stud (8 ft)"
+  },
+  {
+   "key": "plant-stand",
+   "synonyms": [
+    "plant shelf",
+    "window plant stand",
+    "pot stand"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Window Plant Stand",
+   "size": {
+    "width": 24,
+    "height": 36,
+    "depth": 12
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left leg",
+     "box": [
+      0.05,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right leg",
+     "box": [
+      0.89,
+      0,
+      0.05,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back left leg",
+     "box": [
+      0.05,
+      0,
+      0.89,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back right leg",
+     "box": [
+      0.89,
+      0,
+      0.89,
+      0.06,
+      1,
+      0.06
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Lower front rail",
+     "box": [
+      0.11,
+      0.28,
+      0.05,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lower back rail",
+     "box": [
+      0.11,
+      0.28,
+      0.91,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lower side rail L",
+     "box": [
+      0.05,
+      0.28,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Back left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Lower side rail R",
+     "box": [
+      0.91,
+      0.28,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Lower shelf",
+     "box": [
+      0.08,
+      0.32,
+      0.08,
+      0.84,
+      0.03,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Lower front rail",
+      "Lower back rail",
+      "Lower side rail L",
+      "Lower side rail R"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Mid front rail",
+     "box": [
+      0.11,
+      0.58,
+      0.05,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Mid back rail",
+     "box": [
+      0.11,
+      0.58,
+      0.91,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Mid side rail L",
+     "box": [
+      0.05,
+      0.58,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Back left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Mid side rail R",
+     "box": [
+      0.91,
+      0.58,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Mid shelf",
+     "box": [
+      0.08,
+      0.62,
+      0.08,
+      0.84,
+      0.03,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Mid front rail",
+      "Mid back rail",
+      "Mid side rail L",
+      "Mid side rail R"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top front rail",
+     "box": [
+      0.11,
+      0.88,
+      0.05,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Front right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top back rail",
+     "box": [
+      0.11,
+      0.88,
+      0.91,
+      0.78,
+      0.04,
+      0.04
+     ],
+     "kind": "member",
+     "on": [
+      "Back left leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top side rail L",
+     "box": [
+      0.05,
+      0.88,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front left leg",
+      "Back left leg"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Top side rail R",
+     "box": [
+      0.91,
+      0.88,
+      0.11,
+      0.04,
+      0.04,
+      0.78
+     ],
+     "kind": "member",
+     "on": [
+      "Front right leg",
+      "Back right leg"
+     ]
+    },
+    {
+     "role": "deck",
+     "name": "Top shelf",
+     "box": [
+      0.08,
+      0.92,
+      0.08,
+      0.84,
+      0.03,
+      0.84
+     ],
+     "kind": "panel",
+     "on": [
+      "Top front rail",
+      "Top back rail",
+      "Top side rail L",
+      "Top side rail R"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open tiered shelves hold potted plants near a window for light",
+    "Legs reach the floor; shelves spaced for typical pot heights",
+    "Shallow depth suits placement beside or under a window sill"
+   ],
+   "learned": true
   }
  ]
 }
