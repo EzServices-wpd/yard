@@ -2,6 +2,7 @@
 
 import { sheetSizeLabel, type NestSheet } from "@/lib/yard/nesting";
 import { nestLabelLayout } from "@/lib/yard/inchText";
+import { overlaps } from "@/components/workspace/cut-focus";
 
 /** On-plan sheet: same letters as the cut list, laid on the matching 4×8 or 4×10. */
 /**
@@ -12,12 +13,17 @@ export function NestPlate({
   sheet,
   sheetCount,
   active,
+  focus,
   done,
   onPick,
+  backer = false,
 }: {
   sheet: NestSheet;
   sheetCount?: number;
   active?: string | null;
+  /** Part ids in focus (partIds); a piece without partIds falls back to its letter. */
+  focus?: ReadonlySet<string>;
+  backer?: boolean;
   done?: Set<string>;
   onPick?: (letter: string) => void;
 }) {
@@ -26,10 +32,10 @@ export function NestPlate({
   const usedPct = Math.round((sheet.utilization ?? 0) * 100);
   const of = sheetCount && sheetCount > 1 ? ` of ${sheetCount}` : "";
   const size = sheetSizeLabel(sheet).replace("x", "×");
-  const label = `Sheet ${sheet.index}${of} · ${sheet.material || '3/4" plywood'} · ${size} · ${usedPct}% used · 1/8" kerf`;
+  const label = `${backer ? '1/4" backer sheet' : "Sheet"} ${sheet.index}${of} · ${sheet.material || (backer ? '1/4" plywood' : '3/4" plywood')} · ${size} · ${usedPct}% used · 1/8" kerf`;
 
   return (
-    <figure className="overflow-hidden rounded-md border border-border bg-paper" data-yard-nest={sheet.index}>
+    <figure className="overflow-hidden rounded-md border border-border bg-paper" data-yard-nest={backer ? `backer-${sheet.index}` : sheet.index}>
       <svg
         viewBox={`0 0 ${sw} ${sh}`}
         className="h-auto w-full"
@@ -49,6 +55,7 @@ export function NestPlate({
           />
         ))}
         {sheet.parts.map((p) => {
+          const on = overlaps(p, focus ?? new Set(), active ?? null);
           const L = nestLabelLayout(p);
           const cx = p.x + p.width / 2;
           const cy = p.y + p.height / 2;
@@ -57,11 +64,12 @@ export function NestPlate({
             <g
               key={p.id}
               data-yard-sheet-letter={p.label ?? ""}
-              data-active={p.label && p.label === active ? "1" : undefined}
+              data-active={on ? "1" : undefined}
+              data-part-ids={p.partIds?.join(" ") || undefined}
               role={onPick && p.label ? "button" : undefined}
               tabIndex={onPick && p.label ? 0 : undefined}
               aria-label={onPick && p.label ? `${p.label}: ${p.name}${done?.has(p.label) ? ", cut" : ""}. Show its row` : undefined}
-              aria-pressed={onPick && p.label ? p.label === active : undefined}
+              aria-pressed={onPick && p.label ? on : undefined}
               onClick={onPick && p.label ? () => onPick(p.label!) : undefined}
               onKeyDown={onPick && p.label ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(p.label!); } } : undefined}
               className={onPick && p.label ? "yard-sheet-piece cursor-pointer" : undefined}
@@ -85,7 +93,7 @@ export function NestPlate({
                 stroke="#c8641e"
                 strokeWidth={0.8}
                 className="yard-sheet-hl"
-                style={{ opacity: p.label && p.label === active ? 1 : 0 }}
+                style={{ opacity: on ? 1 : 0 }}
               />
               <text
                 x={L.x}

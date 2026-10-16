@@ -1,5 +1,6 @@
 "use client";
 
+import { useCutFocus } from "@/components/workspace/cut-focus";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
@@ -641,6 +642,9 @@ function BenchScene({
     [project.panels],
   );
 
+  // Cut-list focus (partIds): outline the parts the plan points at, once the reveal is done.
+  const cutFocus = useCutFocus();
+  const focusOn = !reveal && cutFocus.size > 0;
   return (
     <group>
       {showHull && <GhostLines strokes={hull} color={HULL} />}
@@ -652,7 +656,7 @@ function BenchScene({
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
-          stepIds={stepIds}
+          stepIds={focusOn ? [...cutFocus] : stepIds}
           placedIds={placedIds}
           lockedIds={lockedIds}
           dragPos={dragPos}
@@ -671,8 +675,8 @@ function BenchScene({
               panel={panel}
               explode={explodeScale}
               selected={panel.id === selectedId}
-              inStep={reveal ? false : stepIds.length ? stepIds.includes(panel.id) : false}
-              hasStep={reveal ? !reveal.has(panel.id) : stepIds.length > 0}
+              inStep={reveal ? false : focusOn ? cutFocus.has(panel.id) : stepIds.length ? stepIds.includes(panel.id) : false}
+              hasStep={reveal ? !reveal.has(panel.id) : focusOn ? false : stepIds.length > 0}
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
               facesOpen={facesOpen}

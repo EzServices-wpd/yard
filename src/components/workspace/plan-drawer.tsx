@@ -2,7 +2,7 @@
 
 import { inchFrac } from "@/lib/yard/inchText";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -12,6 +12,7 @@ import { usd } from "@/lib/utils";
 import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
+import { overlaps, setCutFocus } from "@/components/workspace/cut-focus";
 import { useCutTicks } from "@/components/workspace/cut-ticks";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
@@ -228,10 +229,18 @@ function PlanBody({
     [plan.cutList, plan.partsKind, plan.sheetNest],
   );
   const nestSheets = nest?.sheets ?? [];
+  const backerSheets = plan.partsKind === "whole" ? [] : (plan.sheetNest?.backer?.sheets ?? []);
   const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
   // Every sheet-goods build gets its sheet (it is what the cut list is cut from), not only house builds.
   const houseNest = nestSheets.length > 0;
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  // Linking runs on SWE's partIds (the 3D part ids); a row or piece without them falls back to its letter.
+  const focusIds = useMemo(() => {
+    const row = activeLetter ? plan.cutList.find((c) => c.label === activeLetter) : null;
+    return new Set<string>(row?.partIds ?? []);
+  }, [activeLetter, plan.cutList]);
+  useEffect(() => { setCutFocus(focusIds); }, [focusIds]);
+  useEffect(() => () => setCutFocus(null), []);
   const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
   const cutCount = plan.cutList.filter((c) => c.label && ticks.has(c.label)).length;
   // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
@@ -279,12 +288,15 @@ function PlanBody({
               <p className="mt-1 text-xs text-muted">
                 Letters match the cut list. 1/8" kerf included. Grain runs long.
                 {thinCuts.length
-                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
+                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is cut from its own 1/4" sheet${backerSheets.length ? " (last below)" : ""}, never the 3/4" ply — buy it separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
                   : ""}
               </p>
               <div className="mt-3 space-y-3">
                 {nestSheets.map((sheet) => (
-                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} active={activeLetter} done={ticks} onPick={(l) => pickLetter(l, true)} />
+                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} />
+                ))}
+                {backerSheets.map((sheet) => (
+                  <NestPlate key={`backer-${sheet.index}`} sheet={sheet} sheetCount={backerSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} backer />
                 ))}
               </div>
               {nest && nest.unplaced.length > 0 && (
@@ -327,7 +339,8 @@ function PlanBody({
                       <tr
                         key={c.id}
                         data-yard-cut-row={L}
-                        data-active={L && L === activeLetter ? "1" : undefined}
+                        data-active={overlaps(c, focusIds, activeLetter) ? "1" : undefined}
+                        data-part-ids={c.partIds?.join(" ") || undefined}
                         data-done={done ? "1" : undefined}
                         className="yard-cut-row border-t border-border/70"
                       >
@@ -359,7 +372,7 @@ function PlanBody({
                         <td className="py-1.5">
                           {c.name}
                           {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
-                          {thin ? <span className="mt-0.5 block text-[10px] text-faint" data-yard-backer-note>1/4" backer: not on the sheets above. Buy it as its own 1/4" sheet.</span> : null}
+                          {thin ? <span className="mt-0.5 block text-[10px] text-faint" data-yard-backer-note>1/4" backer: cut from its own 1/4" sheet, not the 3/4" ply.</span> : null}
                         </td>
                         <td className="py-1.5 font-mono text-muted">
                           {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
