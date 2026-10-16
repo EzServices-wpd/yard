@@ -380,28 +380,32 @@
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4304
+  "bytes": 4304,
+  "model": "/ideas/models/bookcase.d63deb29.json"
  },
  "workbench": {
   "v": "4f7d6ac2",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3578
+  "bytes": 3578,
+  "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
   "v": "29576471",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3663
+  "bytes": 3663,
+  "model": "/ideas/models/birdhouse.7725ffcb.json"
  },
  "raisedbed": {
   "v": "3b4e4f38",
   "w": 480,
   "h": 360,
   "parts": 16,
-  "bytes": 5749
+  "bytes": 5749,
+  "model": "/ideas/models/raisedbed.171e1a16.json"
  },
  "recipe-wall-mounted-mail-organizer": {
   "v": "adeaa77f",
