@@ -4,9 +4,9 @@ Invariant: I23. Engine only, no xAI.
 
 | # | Prompt | Header | Buy | I23 | Steps (first 3) |
 |---|---|---|---|---|---|
-| 1 | ship | Sailing ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Sailing ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
-| 2 | pirate ship | Sailing ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Sailing ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
-| 3 | a ship | Sailing ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Sailing ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
+| 1 | ship | Ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
+| 2 | pirate ship | Pirate ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Pirate ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
+| 3 | a ship | Ship · 22 3/16" W × 8" D × 21 3/8" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Ship before you glue → Lay out the footprint on the bench → Glue the cross member across the body — 97 braces |
 | 4 | Eiffel Tower | Eiffel Tower · 10 5/16" W × 10 5/16" D × 25 3/16" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Eiffel Tower before you glue → Tape the four feet on the bench → Glue the four arches |
 | 5 | Big Ben | Big Ben · 5" W × 5" D × 24 1/2" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Big Ben before you cut → Lay out the footprint on the bench → Cut the Standard Popsicle Stick |
 | 6 | Dutch windmill | Dutch Windmill · 17 13/16" W × 8 11/16" D × 26 3/16" H (size assumed) | Standard Popsicle Sticks ×1; Wood glue ×1 | pass | Read this Dutch Windmill before you cut → Lay out the footprint on the bench → Cut the Standard Popsicle Stick |

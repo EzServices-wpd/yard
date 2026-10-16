@@ -29,7 +29,7 @@ test("C1/I22: no named form or purpose falls back to a generic stand-in (whole c
 
 test("C1: a sailing ship is a hull with ribs, masts and yards, sized from its typed length", () => {
   const p = generateFromPrompt("pirate ship 24 inches long");
-  assert.equal(p.name, "Sailing ship");
+  assert.equal(p.name, "Pirate ship"); // Spec 007 C3: typed noun as title (was "Sailing ship").
   assert.equal(p.overall.width, 24);
   assert.ok((p.instances?.length ?? 0) > 100);
   assert.ok(p.overall.height > p.overall.depth * 2, "masts stand well above the beam");

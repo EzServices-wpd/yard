@@ -1,3 +1,4 @@
+import { sentenceCase, typedHeadNoun } from "./headNoun";
 import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
 import { stripTypedSizes } from "./inchText";
@@ -57,7 +58,7 @@ import {
   planeOps,
   wagonOps,
   bikeOps,
-  boatOps, shipOps,
+  boatOps, shipOps, longshipOps,
   ferrisOps,
   treeOps,
   dinoOps,
@@ -163,7 +164,9 @@ const HITS: Hit[] = [
   { re: /\bcar\b|\btruck\b|\bwagon\b|\bcart\b|\bvehicle\b/, kind: "vehicle", name: "Wagon", build: wagonOps },
   { re: /bike|bicycle/, kind: "vehicle", name: "Bicycle", build: bikeOps },
   // C1: a named sailing ship is a hull, masts and yards, not the generic boat.
-  { re: /pirate ship|galleon|tall ship|sailing ship|^\s*(?:a\s+|model\s+)?ships?\s*$|schooner|clipper ship|frigate|man[- ]o[f'] war|viking ship|longship/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
+  // Spec 007 C3: a longship is its own form (long low hull, one mast, upswept stem and stern), never the galleon.
+  { re: /viking\s+(?:long\s*)?ships?|long\s*ships?|drakkar/, kind: "vessel", name: "Longship", build: longshipOps, aspect: { w: 1.6, d: 0.22 }, ownBody: true },
+  { re: /pirate ship|galleon|tall ship|sailing ship|^\s*(?:a\s+|model\s+)?ships?\s*$|schooner|clipper ship|frigate|man[- ]o[f'] war/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
   { re: /boat|ship|canoe|sailboat|yacht/, kind: "vessel", name: "Boat", build: boatOps },
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
   { re: /tree|cactus|plant(?!\s*stand)/, kind: "plant", name: "Tree", build: treeOps },
@@ -229,6 +232,21 @@ export function namedFormReachesHead(prompt: string, head: string | null): boole
   const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
   const at = lower.lastIndexOf(head);
   return !m || at < 0 || m.index + m[0].length > at;
+}
+
+/**
+ * Spec 007 C3 (I24): the title keeps the typed head noun. When the library form's own name lacks it ("Sailing ship"
+ * for "pirate ship" / "galleon"), the title is the typed form words, sentence case. Landmarks keep their proper name.
+ */
+function typedFormName(hit: Hit, prompt: string): string | null {
+  const head = typedHeadNoun(prompt);
+  if (!head || hit.historic || GENERIC_HITS.has(hit.name)) return null;
+  const lower = prompt.toLowerCase();
+  const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
+  if (!m || !m[0].includes(head)) return null;
+  const words = m[0].replace(/^\s*(?:a|an|the|model)\s+/, "").trim();
+  // The form's own name already says what was typed ("Longship" for "longship"): keep it.
+  return words && words !== hit.name.toLowerCase() ? sentenceCase(words) : null;
 }
 
 function matchHit(prompt: string): Hit | null {
@@ -333,7 +351,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
       subject.toLowerCase().includes(hit.name.toLowerCase())
         ? subject.replace(/\b\w/g, (c) => c.toUpperCase())
         : null;
-    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : specific ?? hit.name);
+    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : specific ?? typedFormName(hit, prompt) ?? hit.name);
     return {
       name,
       kind: hit.kind,

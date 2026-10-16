@@ -22,17 +22,14 @@ export function genericFormMark(p: YardProject): string | null {
   return null;
 }
 
-const STOP = /^(?:a|an|the|my|our|for|to|of|with|and|from|inch|inches|wide|tall|high|deep|long|foot|feet)$/;
+import { STOP, typedHeadNoun } from "./headNoun";
+export { typedHeadNoun };
 function titleCarriesTypedWords(prompt: string, p: YardProject): boolean {
   const title = (p.name ?? "").toLowerCase();
   return prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.test(w)).every((w) => title.includes(w.replace(/s$/, "")));
 }
 
 /** A library form owns a prompt only when it names the typed head noun ("wall clock" is a clock, not a Wall). */
-export function typedHeadNoun(prompt: string): string | null {
-  const ws = prompt.toLowerCase().replace(/\d[\d./]*\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?/g, " ").split(/[^a-z]+/).filter((w) => w.length > 1 && !STOP.test(w));
-  return ws.length ? ws[ws.length - 1].replace(/(?:es|s)$/, "") : null;
-}
 export function namedFormOwnsHead(prompt: string): boolean {
   return namedFormReachesHead(prompt, typedHeadNoun(prompt));
 }

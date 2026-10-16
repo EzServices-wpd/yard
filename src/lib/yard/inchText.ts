@@ -12,6 +12,8 @@ function gcd(a: number, b: number): number {
 export function inchFrac(n: number): string {
   if (!Number.isFinite(n)) return "—";
   const neg = n < 0;
+  // A real part thinner than 1/32" (a rubber band, a wire) never reads as 0": say it in thousandths.
+  if (n !== 0 && Math.abs(n) < 1 / 32) return `${neg ? "-" : ""}${String(Math.round(Math.abs(n) * 1000) / 1000).replace(/^0/, "0")}`;
   const sixteenths = Math.round(Math.abs(n) * 16);
   const whole = Math.floor(sixteenths / 16);
   const rem = sixteenths % 16;
