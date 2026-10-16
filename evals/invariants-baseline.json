@@ -9,10 +9,6 @@
    "class": "F21",
    "msg": "Floor is interior plywood on the ground outdoors"
   },
-  "I13|raised garden bed 48 wide 96 long": {
-   "class": "F21",
-   "msg": "Left side is interior plywood on the ground outdoors"
-  },
   "I13|sandbox": {
    "class": "F21",
    "msg": "Left side is interior plywood on the ground outdoors"
@@ -136,10 +132,6 @@
   "I8|bunk bed 82 long 44 wide": {
    "class": "F2",
    "msg": "typed 44 wide, model 82"
-  },
-  "I8|raised garden bed 48 wide 96 long": {
-   "class": "F2",
-   "msg": "typed 48 wide, model 96"
   }
  }
 }

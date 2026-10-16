@@ -38,6 +38,9 @@ export const OUTDOOR_NOTE =
 /** Same package for a build fixed in place (posts in concrete, pier blocks, ground anchors): no feet to lift. */
 export const OUTDOOR_FIXED_NOTE =
   "Outdoor build — exterior package: Titebond III waterproof glue, exterior-coated or stainless screws, and an exterior finish on every face with extra coats soaked into the end grain.";
+/** C13: a bed with no bottom (a raised garden bed on the ground) drains into the soil under it: no holes, liner on the walls only. */
+export const OPEN_BOTTOM_NOTE = "Open to the ground: no bottom to drill; staple landscape fabric up the inside of the walls only so wet soil stays off the boards.";
+const openBottom = (project: YardProject) => (project.notes ?? []).some((n) => /^No bottom\b/.test(n));
 export const DRAINAGE_NOTE =
   'Holds soil or water: drill 1/2" drainage holes about every 6" across the bottom and staple a landscape-fabric liner inside so soil stays in and water runs out.';
 
@@ -95,7 +98,8 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
   );
   notes = notes.filter((n) => n.trim());
   if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(takesGlides(project) ? OUTDOOR_NOTE : OUTDOOR_FIXED_NOTE);
-  if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
+  if (soil && openBottom(project)) { if (!notes.includes(OPEN_BOTTOM_NOTE)) notes.push(OPEN_BOTTOM_NOTE); }
+  else if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
 
@@ -185,10 +189,15 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
         catalogId: "outdoor-liner",
         searchQuery: "landscape fabric 3 ft x 50 ft",
         estimatedCost: 12.98,
-        notes: "Staple it inside the walls and over the bottom so soil stays in and water drains out.",
+        notes: openBottom(project) ? "Staple it up the inside of the walls so wet soil stays off the boards." : "Staple it inside the walls and over the bottom so soil stays in and water drains out.",
       });
     }
-    insertStep({
+    if (openBottom(project)) insertStep({
+      title: "Line the walls",
+      description: "Set the bed on level ground. Staple landscape fabric up the inside of the walls only, not across the ground, so roots go down and water drains; then fill with soil.",
+      tips: "Knock high spots of ground down before you fill so every board bears.",
+    });
+    else insertStep({
       title: "Drill drainage holes and line it",
       description:
         'Drill 1/2" drainage holes about every 6" across the bottom so water runs straight out. Staple landscape fabric inside the walls and over the bottom, folded at the corners, then fill with soil.',
