@@ -500,7 +500,12 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     const mark = (k: number) => {
       if (!host) return;
       host.setAttribute("data-yard-reveal", k < 0 ? `wait/${order.n}` : k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
-      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : [...order.at].filter(([, g]) => g === k).map(([pid]) => names.get(pid) ?? pid).join(", "));
+      const label = (g: number) => {
+        const c = new Map<string, number>();
+        for (const [pid, gg] of order.at) if (gg === g) { const nm = names.get(pid) ?? pid; c.set(nm, (c.get(nm) ?? 0) + 1); }
+        return [...c].map(([nm, x]) => (x > 1 ? `${nm} ×${x}` : nm)).join(", ");
+      };
+      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : label(k));
     };
     // Hold the bench empty while the Building overlay fades (LAMP_FADE_MS), then one beat per `per`
     // ms on a wall-clock schedule: beat k is due at t0 + k·per, so a slow frame never bunches or
@@ -511,6 +516,9 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     const t0 = Math.max(performance.now(), readyAt.current.t + LAMP_FADE_MS);
     let k = -1;
     let timer = 0;
+    // F44: each beat is scheduled from when the previous one actually fired. After a slow frame it
+    // may claw back a little toward the plan (t0 + k·per) but never closer than 0.6·per to the beat
+    // before, so a stall never fires two beats back to back.
     const tick = () => {
       k++;
       mark(k);
@@ -519,7 +527,9 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
         return;
       }
       setShown(k);
-      timer = window.setTimeout(tick, Math.max(0, t0 + (k + 1) * per - performance.now()));
+      const fired = performance.now();
+      const due = Math.max(fired + 0.6 * per, Math.min(t0 + (k + 1) * per, fired + per));
+      timer = window.setTimeout(tick, due - fired);
     };
     timer = window.setTimeout(tick, Math.max(0, t0 - performance.now()));
     return () => { window.clearTimeout(timer); setShown(Infinity); };
