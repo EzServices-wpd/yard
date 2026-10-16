@@ -406,7 +406,10 @@ function CameraRig({
       const prev = (cam.userData.framed as FramedPose | undefined)?.v ?? 0;
       cam.userData.framed = { v: prev + 1, pos: cam.position.clone(), target: tgt.clone() } satisfies FramedPose;
     };
-    // Let the overlay cards lay out first, then fit.
+    // Fit now, so a remounted Canvas (every rebuild) has a framed camera before its first frame and the
+    // reveal glide never starts from the Canvas default; then again once the overlay cards have laid
+    // out. On a loaded device those timers land seconds late (setTimeout queues behind the mount).
+    fit();
     const t1 = window.setTimeout(fit, 60);
     const t2 = window.setTimeout(fit, 450);
     return () => {
@@ -645,7 +648,10 @@ function RevealCamera() {
     const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
     if (!r.active) {
       if (pose.current) {
-        camera.position.copy(pose.current.to);
+        // End on the latest framing (a fit can land after the last glide frame).
+        const latest = camera.userData.framed as FramedPose | undefined;
+        camera.position.copy(latest ? latest.pos : pose.current.to);
+        if (latest) camera.lookAt(latest.target);
         orbit?.update?.();
         pose.current = null;
       }
@@ -656,10 +662,13 @@ function RevealCamera() {
     // the rig's first fit (60 ms): capturing the camera then glided to, and left it at, the Canvas
     // default (48, 32, 48), inside the model — dark shelves, then a broken view (hotfix, Oct 16).
     const framed = camera.userData.framed as FramedPose | undefined;
-    const v = framed?.v ?? 0;
+    // No framed pose yet (the rig couldn't fit, e.g. a zero-size canvas): wait for it, never glide to
+    // or from the Canvas default.
+    if (!framed) return;
+    const v = framed.v;
     if (!pose.current || pose.current.t0 !== r.t0 || pose.current.v !== v) {
-      const to = framed ? framed.pos.clone() : camera.position.clone();
-      const target = framed ? framed.target.clone() : (orbit?.target ?? new THREE.Vector3()).clone();
+      const to = framed.pos.clone();
+      const target = framed.target.clone();
       const rel = to.clone().sub(target).applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.18).multiplyScalar(1.08);
       pose.current = { t0: r.t0, end: r.end, v, from: target.clone().add(rel), to, target };
     }
