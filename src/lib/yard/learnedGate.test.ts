@@ -139,7 +139,8 @@ it("short dowel parts are bought as shared stock, not one dowel each", async () 
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const bom = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "abacus")!, "abacus").project).bom;
-  assert.equal(bom.find((b) => /^1" Hardwood Dowel/.test(b.name))!.quantity, 2);
+  // The beads are 3/4" across; with the curated 3/4" dowel row (unitSizes) they cut from that, not the 1" dowel.
+  assert.equal(bom.find((b) => /^3\/4" Hardwood Dowel/.test(b.name))!.quantity, 2);
   assert.equal(bom.find((b) => /^1\/4" Hardwood Dowel/.test(b.name))!.quantity, 3);
   assert.ok(bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0) < 60);
 });
