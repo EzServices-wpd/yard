@@ -15,6 +15,11 @@ type Phase = "build" | "busy" | "plan";
 export function MorphButton({ pending, built, dirty, onPlan }: { pending: boolean; built: boolean; dirty: boolean; onPlan: () => void }) {
   const [pressed, setPressed] = useState(false);
   useEffect(() => {
+    const on = () => setPressed(true);
+    window.addEventListener("yard-build-start", on);
+    return () => window.removeEventListener("yard-build-start", on);
+  }, []);
+  useEffect(() => {
     if (!pressed) return;
     if (pending) return setPressed(false);
     const t = window.setTimeout(() => setPressed(false), 4000);
@@ -41,7 +46,6 @@ export function MorphButton({ pending, built, dirty, onPlan }: { pending: boolea
       onClick={(e) => {
         if (phase === "busy") return e.preventDefault();
         if (phase === "plan") return onPlan();
-        setPressed(true);
       }}
       className="relative grid h-11 shrink-0 place-items-center overflow-hidden rounded-full bg-accent px-4 text-sm font-medium text-accent-fg active:scale-[0.97] sm:h-10"
     >

@@ -50,6 +50,10 @@ export function PromptBar({
     setValue(prompt);
     setOptionsOpen(false);
     onBuilt();
+    // Doherty: the main button flips to "Building" first, then the solve starts after that frame
+    // is painted, so the press is answered in well under 400 ms even when the solve blocks.
+    window.dispatchEvent(new Event("yard-build-start"));
+    await new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     await runYardPrompt(prompt, { fresh });
   }
 
