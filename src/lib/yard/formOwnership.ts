@@ -5,7 +5,7 @@ import { detectWeekendMech } from "./weekendFamily";
  * prompt go to the learner?". The engine is asked first: a build from the purpose resolver or the form library that
  * is not a generic stand-in is the engine's own, and the learner never pre-empts it.
  */
-import { engineOwnsForm, namedFormOf } from "./form";
+import { engineOwnsForm, isLockedForm } from "./form";
 import { resolvePurpose } from "./purposeForms";
 import { needsRecipeLookup } from "./recipeBuild";
 import { findRecipe } from "./recipes";
@@ -37,7 +37,18 @@ export function namedFormOwnsHead(prompt: string): boolean {
 /** The engine built this prompt from its own form library or purpose table (not a generic stand-in). */
 export function engineBuiltForm(prompt: string, p: YardProject): boolean {
   if (genericFormMark(p) || p.standIn || p.unmatched) return false;
-  return !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || !!detectWeekendMech(prompt);
+  // Hotfix #41: locked landmarks and a dedicated builder's custom build (submarine) are forms too.
+  return isLockedForm(p.kind) || p.kind === "custom" || !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || !!detectWeekendMech(prompt);
+}
+
+/** A purpose ask is consumed whole; a named form whose title carries every typed word read them all. */
+function readAll(prompt: string, p: YardProject): boolean {
+  return !!resolvePurpose(prompt) || titleCarriesTypedWords(prompt, p);
+}
+
+/** Hotfix #41: the live bar keeps the engine build — it owns the shape and read the whole prompt. */
+export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean): boolean {
+  return engineBuiltForm(prompt, p) && (!half || readAll(prompt, p));
 }
 
 /**
@@ -48,13 +59,9 @@ export function engineBuiltForm(prompt: string, p: YardProject): boolean {
 export function routesToLearner(prompt: string, p: YardProject, half: boolean): boolean {
   if (findRecipe(prompt) || p.pocket) return false;
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
-  if (half) {
-    // A purpose ask is consumed whole by the resolver; a named form whose title carries the "ignored" word
-    // ("Dutch Windmill", "Covered Bridge") read it. A real half-read ("lap desk" → Desk) still learns.
-    const readAll = !!resolvePurpose(prompt) || (namedFormOwnsHead(prompt) && !genericFormMark(p) && titleCarriesTypedWords(prompt, p));
-    if (!readAll) return true;
-  }
-  if (engineBuiltForm(prompt, p)) return false;
+  // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
+  if (half && !readAll(prompt, p)) return true;
+  if (engineKeepsPrompt(prompt, p, half)) return false;
   const craftGuess = /popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   return craftGuess || needsRecipeLookup(p, prompt, engineOwnsForm(prompt, p), false);
 }

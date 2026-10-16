@@ -1,4 +1,3 @@
-import { routesToLearner } from "@/lib/yard/formOwnership";
 import { UNIT_ITEM_NOTE } from "@/lib/yard/unitItems";
 import { findRecipe, RECIPES } from "@/lib/yard/recipes";
 import { recipePrompt } from "@/lib/yard/recipeIdeas";
@@ -10,6 +9,7 @@ import { proposeRecipeFn } from "@/lib/ai/recipeBot";
 import { boundPrompt } from "@/lib/yard/promptLimits";
 import { lookupAndBuild, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
+import { engineKeepsPrompt, routesToLearner } from "@/lib/yard/formOwnership";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
@@ -355,8 +355,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   const half = ignoredTypedWords(next, prompt).length > 0;
   // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
   const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
-  // L1: the engine is asked first; the learner runs only when the engine has no form (formOwnership.routesToLearner).
-  const learn0 = !unitItem && routesToLearner(prompt, next, half) && !looksLikePocket(prompt);
+  // L1 + hotfix #41: an engine-owned shape always wins; the learner runs only when the engine has no form.
+  const learn0 = !unitItem && !engineKeepsPrompt(prompt, next, half) && routesToLearner(prompt, next, half) && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;
