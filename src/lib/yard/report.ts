@@ -1,3 +1,4 @@
+import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
 import { isUnitItem } from "./unitItems";
@@ -1547,6 +1548,10 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
+  return withPartIds(project, buildPlanOuter(project));
+}
+
+function buildPlanOuter(project: YardProject): BuildPlan {
   if (!project.displayOnly && FOOD.test(`${project.prompt ?? ""} ${project.name}`)) {
     // Hardwood unless a species was typed: the board is planned under that species' stock.
     const prompt = HARDWOOD.test(project.prompt ?? "") ? project.prompt : `maple ${project.prompt ?? project.name}`;
