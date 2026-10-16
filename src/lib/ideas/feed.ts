@@ -6,6 +6,10 @@
 import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
 import { ideaSearchScore, ideaStem } from "@/lib/yard/ideaLibrary";
 import DRAWINGS from "./drawings.json";
+import TYPES from "./types.json";
+
+/** Build type per card: the engine result key (scripts/gen-idea-types.ts), so log rows fold into it. */
+const typeFor = (slug: string, prompt: string) => (TYPES as Record<string, string>)[slug] ?? buildTypeOf(prompt);
 
 export type DrawingRef = { src: string; w: number; h: number; parts: number; v: string };
 export type IdeaCard = {
@@ -50,13 +54,13 @@ export type RecipeLike = { id: string; label: string; prompt: string; size: stri
 
 function fromIdea(d: Idea): IdeaCard {
   return {
-    slug: d.id, buildType: buildTypeOf(d.prompt), title: d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
+    slug: d.id, buildType: typeFor(d.id, d.prompt), title: d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
     recipeKey: null, dims: null, size: d.size, status: "checked", blurb: d.blurb, stock: d.stock, section: d.section, drawing: drawingFor(d.id),
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
   return {
-    slug: r.id, buildType: buildTypeOf(r.prompt), title: r.label, count, lastSeen: null, examplePrompt: r.prompt,
+    slug: r.id, buildType: typeFor(r.id, r.prompt), title: r.label, count, lastSeen: null, examplePrompt: r.prompt,
     recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, size: r.size, status, blurb: r.blurb, section, drawing: drawingFor(r.id),
   };
 }
