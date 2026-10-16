@@ -11,7 +11,7 @@ import TYPES from "./types.json";
 /** Build type per card: the engine result key (scripts/gen-idea-types.ts), so log rows fold into it. */
 const typeFor = (slug: string, prompt: string) => (TYPES as Record<string, string>)[slug] ?? buildTypeOf(prompt);
 
-export type DrawingRef = { src: string; w: number; h: number; parts: number; v: string };
+export type DrawingRef = { src: string; model?: string; w: number; h: number; parts: number; v: string };
 export type IdeaCard = {
   slug: string;
   buildType: string;
@@ -37,12 +37,12 @@ export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: 
 /** Cards a section shows before "Show all". */
 export const SECTION_SHOW = 8;
 
-type Manifest = Record<string, { v: string; w: number; h: number; parts: number }>;
+type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string }>;
 export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manifest): DrawingRef | null {
   const m = manifest[slug];
   if (!m) return null;
   const base = `/ideas/drawings/${slug}.${m.v}`;
-  return { src: `${base}.svg`, w: m.w, h: m.h, parts: m.parts, v: m.v };
+  return { src: `${base}.svg`, ...(m.model ? { model: m.model } : {}), w: m.w, h: m.h, parts: m.parts, v: m.v };
 }
 
 /** One build type per card: the prompt stem without sizes or filler ("bookshelf 36x12x72" → "bookshelf"). */
@@ -52,9 +52,12 @@ export function buildTypeOf(prompt: string): string {
 
 export type RecipeLike = { id: string; label: string; prompt: string; size: string; blurb: string; box?: { width: number; height: number; depth: number } };
 
+/** Card titles in Yard's voice where the curated label is a brand (the prompt keeps the unit it names). */
+export const TITLE_FIX: Record<string, string> = { window: "Double-hung window" };
+
 function fromIdea(d: Idea): IdeaCard {
   return {
-    slug: d.id, buildType: typeFor(d.id, d.prompt), title: d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
+    slug: d.id, buildType: typeFor(d.id, d.prompt), title: TITLE_FIX[d.id] ?? d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
     recipeKey: null, dims: null, size: d.size, status: "checked", blurb: d.blurb, stock: d.stock, section: d.section, drawing: drawingFor(d.id),
   };
 }
@@ -83,6 +86,15 @@ export function dedupe(sections: IdeaSection[]): IdeaSection[] {
       return { ...s, cards, total: cards.length };
     })
     .filter((s) => s.cards.length > 0);
+}
+
+/** Hero when the feed names none (or counts are not live yet): the house build Yard leads with. */
+export const HERO_FALLBACK = "linen";
+
+/** The hero's card: the feed's pick, else the fallback; always one with a baked live model. */
+export function heroCard(feed: IdeasFeed, pool: IdeaCard[] = feed.sections.flatMap((s) => s.cards)): IdeaCard | null {
+  const pick = (slug?: string) => (slug ? pool.find((c) => c.slug === slug && c.drawing?.model) ?? null : null);
+  return pick(feed.hero?.slug) ?? pick(HERO_FALLBACK) ?? pool.find((c) => c.drawing?.model) ?? null;
 }
 
 export const LEARNED_SECTION = "Learned from visitors";
