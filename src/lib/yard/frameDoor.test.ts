@@ -13,7 +13,7 @@ it("frame-and-panel doors: one panel stock, captured panel, glue-up before hangi
   const glue = steps.findIndex((s) => /^Glue up the \d+ frame-and-panel door/.test(s));
   const hang = steps.findIndex((s) => /^Hang \d+ doors?/.test(s));
   assert.ok(glue >= 0 && glue < hang);
-  assert.match(steps[hang], /Shaker door — 48 × 18 3\/4/);
+  assert.match(steps[hang], /Shaker door — 47 7\/8 × 18 7\/8/);
   assert.ok(!/stile — 48/.test(steps[hang]));
   assert.ok(!plan.instructions.some((s) => /Shaker (?:panel|rail|stile)/i.test(s.title)));
   assert.equal(plan.cutList.find((c) => c.name === "Upright")?.material, '3/4" Plywood 4×10');
