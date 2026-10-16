@@ -163,7 +163,7 @@ const HITS: Hit[] = [
   { re: /\bcar\b|\btruck\b|\bwagon\b|\bcart\b|\bvehicle\b/, kind: "vehicle", name: "Wagon", build: wagonOps },
   { re: /bike|bicycle/, kind: "vehicle", name: "Bicycle", build: bikeOps },
   // C1: a named sailing ship is a hull, masts and yards, not the generic boat.
-  { re: /pirate ship|galleon|tall ship|sailing ship|schooner|clipper ship|frigate|man[- ]o[f'] war|viking ship|longship/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
+  { re: /pirate ship|galleon|tall ship|sailing ship|^\s*(?:a\s+|model\s+)?ships?\s*$|schooner|clipper ship|frigate|man[- ]o[f'] war|viking ship|longship/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
   { re: /boat|ship|canoe|sailboat|yacht/, kind: "vessel", name: "Boat", build: boatOps },
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
   { re: /tree|cactus|plant(?!\s*stand)/, kind: "plant", name: "Tree", build: treeOps },
@@ -214,6 +214,21 @@ function fitArchBridge(s: Size3, prompt: string): Size3 {
 export function namedFormOf(prompt: string): string | null {
   const hit = matchHit(prompt);
   return hit && !/^(?:Frame|Lattice)$/.test(hit.name) ? hit.name : null;
+}
+
+/**
+ * The matched library form reaches the typed head noun (last content word): "Big Ben", "galleon 30 inches long"
+ * yes; "wall clock" no — the Wall hit only read a modifier. Same class as figureWordModifiesHead.
+ */
+export function namedFormReachesHead(prompt: string, head: string | null): boolean {
+  const hit = matchHit(prompt);
+  if (!hit || /^(?:Frame|Lattice)$/.test(hit.name)) return false;
+  const lower = prompt.toLowerCase();
+  // A landmark's proper name is the whole thing ("Eiffel" owns "Eiffel Tower").
+  if (!head || hit.historic || /looks like/.test(lower)) return true;
+  const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
+  const at = lower.lastIndexOf(head);
+  return !m || at < 0 || m.index + m[0].length > at;
 }
 
 function matchHit(prompt: string): Hit | null {

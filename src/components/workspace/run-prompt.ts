@@ -1,3 +1,4 @@
+import { routesToLearner } from "@/lib/yard/formOwnership";
 import { UNIT_ITEM_NOTE } from "@/lib/yard/unitItems";
 import { findRecipe, RECIPES } from "@/lib/yard/recipes";
 import { recipePrompt } from "@/lib/yard/recipeIdeas";
@@ -7,7 +8,7 @@ import { noteBuildingPrompt } from "@/components/workspace/building-prompt";
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
 import { boundPrompt } from "@/lib/yard/promptLimits";
-import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
+import { lookupAndBuild, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
@@ -352,11 +353,10 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   // while it learns, and if it fails, the bench shows the display-only block, never the engine's guess
   // (a stick cloud or thin frame with a price and piece count).
   const half = ignoredTypedWords(next, prompt).length > 0;
-  // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
-  const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
   const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
-  const learn0 = !unitItem && (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // L1: the engine is asked first; the learner runs only when the engine has no form (formOwnership.routesToLearner).
+  const learn0 = !unitItem && routesToLearner(prompt, next, half) && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;

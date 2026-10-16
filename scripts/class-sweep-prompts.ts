@@ -34,4 +34,15 @@ export const SWEEPS = {
       "something to hang my keys", "a place for my dog to sleep", "organize my tools", "plants by the window", "a holder for 6 fishing rods",
     ],
   },
+  l1: {
+    title: "live path: engine forms never reach the learner",
+    inv: "I23",
+    file: "l1-live-path.md",
+    prompts: [
+      "ship", "pirate ship", "a ship", "Eiffel Tower", "Big Ben",
+      "Dutch windmill", "covered bridge", "trebuchet", "catapult", "Leaning Tower of Pisa",
+      "Sydney Opera House", "Golden Gate Bridge 36 inches long", "something to hang my keys", "a place for my dog to sleep", "organize my tools",
+      "plants by the window", "lighthouse", "doll house", "Taj Mahal", "Space Needle",
+    ],
+  },
 } as const;
