@@ -1,6 +1,7 @@
 /**
  * buildFitted — FittedSpec → YardProject (main carcase assembly).
  */
+import { sentenceCase } from "./headNoun";
 import { doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
@@ -2002,7 +2003,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     // A bed sits on the soil it holds: four sides, open below. A box carried on a deck or sill keeps its bottom.
     const onSoil = /\b(?:raised|garden|flower)\s*(?:garden\s*)?bed\b/.test(prompt.toLowerCase());
     if (!onSoil) panels.push(panel("bottom", "Bottom", x0 + P, 0, P, innerW, P, D - P * 2));
-    const name = `Planter box ${W}" × ${H}" × ${D}"`;
+    // Spec 007 C3 (I24): the typed noun is the title ("Raised garden bed", "Garden box"); a bare planter stays "Planter box".
+    const typedStem = (prompt.toLowerCase().match(/\b(?:raised|flower)\s+(?:garden\s+)?bed\b|\bgarden\s+(?:bed|box)\b/) ?? [])[0];
+    const name = `${typedStem ? sentenceCase(typedStem) : "Planter box"} ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
       name,
