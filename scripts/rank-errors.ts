@@ -3,9 +3,12 @@
  * Nightly error ranking (free, no xAI, no store writes). Runs every invariant (I1–I14 per build, I16 overlaps)
  * over the eval set, every built-in idea and learned recipe, the seeded sizes, and the prompts in the live
  * Ideas snapshot (one read-only GET; skipped if offline). Writes a ranked Markdown report and always exits 0.
- *   npm run rank-errors [-- --out /path/report.md] [-- --no-live]
+ *   npm run rank-errors [-- --dir /path/dir] [-- --no-live]
+ * Each run writes a dated copy (yard-errors-ranked-YYYY-MM-DD.md) plus yard-errors-ranked-latest.md; nothing is overwritten
+ * except "latest". Live Ideas rows from Critic's probes ("critic probe") are not user ideas and are left out.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
 import { checkBuild, INVARIANT_CLASS, type InvariantId } from "../src/lib/yard/invariants.ts";
 import { overlaps } from "../src/lib/yard/overlaps.ts";
@@ -13,7 +16,16 @@ import { offline } from "./eval-lib.ts";
 import { EVAL_PROMPTS, corpus, seededSizes } from "./invariants-corpus.ts";
 
 const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
-const OUT = arg("--out") ?? "/workspace/yard-errors-ranked.md";
+const DIR = arg("--dir") ?? "/workspace/yard-errors";
+
+/** Report paths for a run: a dated copy that is never overwritten by a later day, plus the rolling latest. */
+export function reportPaths(dir: string, now = new Date()): { dated: string; latest: string } {
+  return { dated: join(dir, `yard-errors-ranked-${now.toISOString().slice(0, 10)}.md`), latest: join(dir, "yard-errors-ranked-latest.md") };
+}
+
+/** Critic's probe rows in the Ideas snapshot are test traffic, not ideas to rank. */
+export const isProbe = (row: { prompt?: string; source?: string; tags?: unknown }) =>
+  /critic[\s_-]*probe/i.test(`${row.prompt ?? ""} ${row.source ?? ""} ${JSON.stringify(row.tags ?? "")}`);
 const SNAPSHOT = "https://yard.wiki/api/ideas-snapshot";
 
 /** Severity: wrong build / totals / hardware or overlaps matter more than wording. */
@@ -39,9 +51,11 @@ async function liveIdeas(): Promise<{ prompts: string[]; note: string }> {
   if (process.argv.includes("--no-live")) return { prompts: [], note: "skipped (--no-live)" };
   try {
     const r = await fetch(SNAPSHOT, { signal: AbortSignal.timeout(10_000) });
-    const s = (await r.json()) as { live?: boolean; rows?: { prompt: string }[] };
-    const prompts = [...new Set((s.rows ?? []).map((x) => x.prompt).filter((p) => typeof p === "string"))];
-    return { prompts, note: `${prompts.length} prompts (live: ${s.live ? "yes" : "no"})` };
+    const s = (await r.json()) as { live?: boolean; rows?: { prompt: string; source?: string; tags?: unknown }[] };
+    const all = s.rows ?? [];
+    const kept = all.filter((x) => !isProbe(x));
+    const prompts = [...new Set(kept.map((x) => x.prompt).filter((p) => typeof p === "string"))];
+    return { prompts, note: `${prompts.length} prompts (live: ${s.live ? "yes" : "no"}; ${all.length - kept.length} critic probe rows dropped)` };
   } catch (e) {
     return { prompts: [], note: `unavailable (${String(e).slice(0, 60)})` };
   }
@@ -93,8 +107,11 @@ async function main() {
     ...rows.map((r, i) => `| ${i + 1} | ${r.cls.replace(/\|/g, "/")} | ${r.fclass} | ${r.builds.size} | ${r.sev} | ${r.builds.size * r.sev} | ${r.baselined} | ${r.fresh} | ${[...new Set([...r.freshB.map((b) => `NEW: ${b}`), ...[...r.builds].filter((b) => !r.freshB.includes(b))])].slice(0, 3).map((b) => b.replace(/\|/g, "/").slice(0, 50)).join("; ")} |`),
     "",
   ].join("\n");
-  writeFileSync(OUT, md);
-  console.log(`wrote ${OUT}: ${rows.length} classes, ${failing.size} failing builds of ${prompts.length}`);
+  const out = reportPaths(DIR);
+  mkdirSync(DIR, { recursive: true });
+  writeFileSync(out.dated, md);
+  writeFileSync(out.latest, md);
+  console.log(`wrote ${out.dated} and ${out.latest}: ${rows.length} classes, ${failing.size} failing builds of ${prompts.length}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
