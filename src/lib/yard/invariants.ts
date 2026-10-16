@@ -25,15 +25,19 @@ import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
+import { typedAxesTalk } from "./pdf";
+import { cutListIntro } from "./wholeItems";
+import { namedStockDisplayName } from "./weekendStockHonesty";
+import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10" | "C11";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10", C11: "C11",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -275,7 +279,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt),
   ];
 }
 
@@ -327,5 +331,32 @@ function c10(p: YardProject, plan: BuildPlan): Violation[] {
       }
     }
   }
+  return out;
+}
+
+/**
+ * C11 (whole items carry no cutting language): a bought whole item (zip tie, marble, washer) is its known trade
+ * size, used as bought. Its PDF header never says "assumed, measure to lock", its cut list never says "Mark A on the
+ * first cut", its steps never letter it like a cut ("One A 8" cable tie"), and its Material chip names the item, not
+ * the first typed word ("Material: Zip"). Shelf pins and their holes are said in inches ("5 mm shelf pins" never).
+ */
+function c11(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
+  const out: Violation[] = [];
+  const say = [...plan.instructions.map((s) => `${s.title}. ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name}. ${b.notes ?? ""}`)];
+  const metricPin = say.flatMap((t) => t.split(/(?<=\.)\s+/)).find((t) => /\bpins?\b/i.test(t) && /\d\s*mm\b/i.test(t));
+  if (metricPin) out.push(v("C11", `shelf pins said in mm: "${metricPin.slice(0, 80)}"`));
+  if (!isUnitItem(p)) return out;
+  const talk = typedAxesTalk(p).assumedTalk;
+  if (talk) out.push(v("C11", `whole item header says "${talk}"`));
+  if (/first cut/i.test(cutListIntro(plan))) out.push(v("C11", "whole item cut list says \"Mark A on the first cut\""));
+  const steps = plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
+  for (const c of plan.cutList) {
+    if (!c.whole || !c.label) continue;
+    const hit = steps.match(new RegExp(`\\b${c.label} ${c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/^[A-Za-z]/, (ch) => `[${ch.toUpperCase()}${ch.toLowerCase()}]`)}`));
+    if (hit) out.push(v("C11", `whole piece lettered like a cut: "${hit[0]}"`));
+  }
+  const label = namedStockDisplayName(prompt || (p.prompt ?? ""), getCatalogItem(p.primaryMaterialId));
+  const pre = label.match(/^(\S+) · /)?.[1];
+  if (pre && !isNamedLumberSpeciesId(pre) && !/^titebond$/i.test(pre)) out.push(v("C11", `Material chip reads "${pre}"`));
   return out;
 }

@@ -125,6 +125,9 @@ export function namedStockDisplayName(prompt: string, item: CatalogItem | undefi
   }
   // If the spoken alias is already the catalog title (popsicle…), keep catalog name.
   if (item.name.toLowerCase().includes(spoken.toLowerCase().split(/\s+/)[0])) return item.name;
+  // C11: the first word of a multi-word name ("zip tie", "pipe cleaner", "ten foot 2x10") is not a material:
+  // only a one-word name (Titebond) or a wood species prefixes the stock ("Material: Zip" never shows).
+  if (/\s/.test(spoken.trim()) && !isNamedLumberSpeciesId(species)) return item.name;
   return `${species} · ${item.name}`;
 }
 

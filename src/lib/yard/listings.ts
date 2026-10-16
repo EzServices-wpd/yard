@@ -779,7 +779,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "shelf-pins",
     retailer: "amazon",
-    title: "5 mm shelf pins, 50 pack",
+    title: '3/16" shelf pins, 50 pack',
     href: "https://www.amazon.com/s?k=5mm+shelf+pins",
     packQty: 50,
     packPrice: 6.49,
