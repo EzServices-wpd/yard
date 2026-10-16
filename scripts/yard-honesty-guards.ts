@@ -1744,7 +1744,7 @@ if (!laundryFoldPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
 if (laundryFoldPlan.bom.some((b) => /ironing board cover/i.test(b.name))) {
   failHonesty("laundry fold-down sold ironing cover", laundryFoldPlan.bom.map((b) => b.name));
 }
-if (!laundryFoldPlan.instructions.some((s) => /piano-hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
+if (!laundryFoldPlan.instructions.some((s) => /piano[- ]hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
   failHonesty("laundry fold-down steps missing hinge", laundryFoldPlan.instructions.map((s) => s.title));
 }
 if (!inspectHonesty(laundryFold, laundryFoldPlan).ok) {
@@ -3500,7 +3500,7 @@ console.log("SOFT-TRUST OK", {
   if (!chestPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 toy chest Piano hinge BOM", chestPlan.bom.map((b) => b.name));
   }
-  if (!chestPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!chestPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 toy chest piano-hinge step",
       chestPlan.instructions.map((s) => s.title).join(" | "),
@@ -3528,7 +3528,7 @@ console.log("SOFT-TRUST OK", {
   if (!cedarPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 cedar Piano hinge BOM", cedarPlan.bom.map((b) => b.name));
   }
-  if (!cedarPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!cedarPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 cedar piano-hinge step",
       cedarPlan.instructions.map((s) => s.title).join(" | "),
@@ -7872,7 +7872,7 @@ console.log("STRANGER PLAN OK", {
   const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
   // The box stands on its bottom first; the thin back goes on last, along every edge, once the box is square.
   const back = vanPlan.instructions.findIndex((s) => /back of the box/i.test(s.title));
-  if (stand < 0 || lt(sp[stand].fresh) !== "BE") failHonesty("pdf vanity stand step must light only B, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (stand < 0 || lt(sp[stand].fresh) !== "BD") failHonesty("pdf vanity stand step must light only B, D (bottom + uprights; doors re-letter to E once they carry the 1/16\" reveal)", stand >= 0 ? lt(sp[stand].fresh) : "missing");
   if (back <= stand || lt(sp[back].fresh) !== "A") failHonesty("pdf vanity back step lights A after the box stands", back >= 0 ? sp[back] : "missing");
   const seen = new Set<string>();
   for (const st of sp) for (const id of st.fresh) {

@@ -1,7 +1,9 @@
 import { Fragment } from "react";
 import { MakingNow } from "@/components/ideas/MakingNow";
+import { useOffscreen } from "@/hooks/use-offscreen";
+import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/site/chrome";
@@ -144,7 +146,7 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24">
-        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl overflow-x-clip flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
           <svg className="yard-grain" viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden>
             <g fill="none" stroke="currentColor" strokeWidth="1.2">
               {Array.from({ length: 14 }, (_, i) => (
@@ -287,13 +289,13 @@ function LandingPage() {
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
           <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <ShowcaseGrid>
             {PIECES.map((h) => (
               <button
                 key={h.id}
                 type="button"
                 onClick={() => open(h.prompt)}
-                className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
+                className="yard-card group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
@@ -301,7 +303,7 @@ function LandingPage() {
                       role="img"
                       aria-label={`Yard drawing of the ${h.label} ${h.size}`}
                       data-yard-showcase={h.id}
-                      className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                      className="yard-alive h-full w-full"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
@@ -321,7 +323,7 @@ function LandingPage() {
                 </div>
               </button>
             ))}
-          </div>
+          </ShowcaseGrid>
         </section>
 
         <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
@@ -361,6 +363,74 @@ function LandingPage() {
         ) : null}
       </main>
       <SiteFooter active="home" />
+    </div>
+  );
+}
+
+/** Home sample models turn in once when the grid first comes on screen (held paused until then). */
+function ShowcaseGrid({ children }: { children: ReactNode }) {
+  const [ref, off] = useOffscreen<HTMLDivElement>("-10% 0px", true);
+  // Doors and lids: open once after the turn-in (first time on screen), ease open on hover.
+  // Paused with the grid (off screen or hidden tab); reduced motion keeps them shut and still.
+  const anims = useRef<Animation[]>([]);
+  const played = useRef(false);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (off) {
+      anims.current.forEach((a) => a.playState === "running" && a.pause());
+      return;
+    }
+    anims.current.forEach((a) => a.playState === "paused" && a.play());
+    if (played.current) return;
+    played.current = true;
+    const cards = [...root.querySelectorAll<HTMLElement>("[data-yard-showcase]")];
+    cards.forEach((card, i) => {
+      const btn = card.closest("button");
+      const leaves = leavesIn(card);
+      // Doors swing once after the entrance settles, card by card.
+      if (leaves.length) anims.current.push(...swing(leaves, "once", 1250 + i * 260));
+      if (!btn) return;
+      let hovering: Animation[] = [];
+      let raf = 0;
+      btn.addEventListener("pointermove", (ev) => {
+        if (ev.pointerType !== "mouse") return;
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          const r = btn.getBoundingClientRect();
+          const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
+          btn.style.setProperty("--tx", `${(x * 7).toFixed(2)}deg`);
+          btn.style.setProperty("--ty", `${(-y * 5).toFixed(2)}deg`);
+        });
+      });
+      btn.addEventListener("pointerenter", (ev) => {
+        if (ev.pointerType !== "mouse") return;
+        btn.setAttribute("data-hover", "");
+        if (leaves.length) hovering = swing(leaves, "open");
+        anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...hovering];
+      });
+      btn.addEventListener("pointerleave", (ev) => {
+        if (ev.pointerType !== "mouse") return; // F46: touch scrolls fire pointerleave too
+        cancelAnimationFrame(raf);
+        btn.removeAttribute("data-hover");
+        btn.style.removeProperty("--tx");
+        btn.style.removeProperty("--ty");
+        if (!leaves.length) return;
+        // Mid-swing: run the same swing back from where it is; fully open: the closing swing.
+        if (hovering.some((a) => a.playState === "running")) hovering.forEach((a) => a.reverse());
+        else anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")];
+        hovering = [];
+      });
+    });
+  }, [off, ref]);
+  // Set once on first view; the turn-in keyframes only exist after this (nothing runs at load).
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!off && !seen) setSeen(true);
+  }, [off, seen]);
+  return (
+    <div ref={ref} data-offscreen={off || undefined} data-in={seen || undefined} className="yard-alive-grid mt-6 grid gap-4 sm:grid-cols-3">
+      {children}
     </div>
   );
 }

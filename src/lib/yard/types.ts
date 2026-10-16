@@ -175,7 +175,15 @@ export type Panel = {
   /** Hangs on hinges from another part (a lid, a roof, a door): it takes no screws, and a step hangs it. */
   /** Frame member joined with structural screws or bolts (counted on Buy from the notes, not as #8 screws). */
   structural?: boolean;
-  hinged?: { to: string; edge: "top" | "bottom" | "left" | "right" | "back" | "front"; hinges: number; latch?: string };
+  hinged?: {
+    to: string;
+    edge: "top" | "bottom" | "left" | "right" | "back" | "front";
+    hinges: number;
+    latch?: string;
+    /** Chosen by hingedLeaf.hingeSpec (size and weight): Buy, notes and steps all read it. */
+    kind?: "concealed" | "utility" | "butt" | "butt-galv" | "t-hinge" | "piano";
+    stay?: boolean;
+  };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */

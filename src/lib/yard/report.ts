@@ -1,4 +1,5 @@
 import { isNoLidPrompt } from "./cueRules";
+import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
@@ -912,49 +913,6 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       notes: "Strap or bracket from the top back into a wall stud so the unit cannot tip forward.",
     });
   }
-  const doors = project.panels.filter((panel) => panel.type === "door");
-  if (doors.length && !stockJoinsWithoutScrews(project)) {
-    if (crate) {
-      bom.push({
-        name: '3" utility hinges',
-        quantity: 1,
-        unit: "pair",
-        searchQuery: "3 inch utility hinges pair",
-        estimatedCost: 6.98,
-        notes: "Two hinges on the door, screwed into the left upright.",
-      });
-      bom.push({
-        name: "Barrel bolt latch",
-        quantity: 1,
-        unit: "pc",
-        searchQuery: "3 inch barrel bolt latch",
-        estimatedCost: 5.98,
-        notes: "Latch the door into the right upright so it stays shut.",
-      });
-    } else {
-      bom.push({
-        name: "Soft-close concealed cabinet hinges",
-        quantity: doors.length,
-        unit: doors.length === 1 ? "pair" : "pairs",
-        catalogId: "cabinet-hinges",
-        searchQuery: "soft close concealed cabinet hinges",
-        estimatedCost: 8.99 * doors.length,
-        notes: `Two hinges per door (${doors.length * 2} hinges / ${doors.length} pair${doors.length === 1 ? "" : "s"}).`,
-      });
-      // Door pulls densify with hinged doors (bench shows BarPull) — not crate latch path.
-      const pulls = doors.length + project.panels.filter((panel) => /drawer front/i.test(panel.name)).length;
-      bom.push({
-        name: "Cabinet bar pulls",
-        quantity: Math.max(1, pulls),
-        unit: pulls === 1 ? "pull" : "pulls",
-        catalogId: "cabinet-bar-pulls",
-        searchQuery: "cabinet bar pulls door handle",
-        asin: "B09TVX1TWZ",
-        estimatedCost: 2.6 * Math.max(1, pulls),
-        notes: `One bar pull on each door or drawer (${pulls} pull${pulls === 1 ? "" : "s"}).`,
-      });
-    }
-  }
   if (medicine) {
     bom.push({
       name: "Mirror for the door",
@@ -991,26 +949,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     });
   }
   if (foldDown || ironing) {
-    bom.push({
-      name: "Piano hinge",
-      quantity: 1,
-      unit: "pc",
-      catalogId: "piano-hinge",
-      searchQuery: "1-1/2 inch x 48 inch piano hinge continuous",
-      estimatedCost: 14.98,
-      notes: ironing
-        ? "Continuous hinge along the bottom edge of the ironing board so it folds down."
-        : "Continuous hinge along the bottom edge of the fold-down board so it folds down.",
-    });
-    bom.push({
-      name: "Support-leg hinge",
-      quantity: 1,
-      unit: "pc",
-      catalogId: "utility-hinges",
-      searchQuery: "narrow utility hinge 1-1/2 inch",
-      estimatedCost: 3.48,
-      notes: "Short hinge so the support leg kicks out to the floor when the board is down.",
-    });
+    bom.push(...foldDownBuy(ironing));
     if (ironing) {
       bom.push({
         name: "Ironing board cover",
@@ -1022,50 +961,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       });
     }
   }
-  // Hinged-lid chest OPERATE — piano hinge + lid stay (do not double-add if fold-down already added piano hinge).
-  // Lift-off / removable / loose lid ≠ piano / stay (universal lid-attachment class).
-  {
-    const lidPrompt = (project.prompt ?? "").toLowerCase();
-    const hasLiftOffLidPanel = project.panels.some((p) => /^Lift-off lid$/i.test(p.name));
-    const hasLidPanel = project.panels.some((p) => /^Lid$/i.test(p.name));
-    const liftOff = isLiftOffLidPrompt(lidPrompt) || hasLiftOffLidPanel;
-    // "no lid" / "open top" builds no lid, so nothing hinges it.
-    const hingedLid =
-      !liftOff &&
-      !isNoLidPrompt(lidPrompt) &&
-      (hasLidPanel ||
-        isHingedLidChest(lidPrompt) ||
-        isToyChest(lidPrompt) ||
-        /hinged\s*lid/i.test(`${project.name} ${project.prompt ?? ""}`) ||
-        ((/Toy chest|\bChest\b/i.test(project.name) || /Toy chest/i.test(project.name)) && hasLidPanel));
-    // A lid whose hinges the notes already count (T-hinges, strap hinges) takes those, not a piano hinge.
-    if (hingedLid && !(project.notes ?? []).some((n) => /\b(?:T-hinges|strap hinges)\b/i.test(n))) {
-      const alreadyPiano = bom.some((b) => /piano hinge/i.test(b.name));
-      if (!alreadyPiano) {
-        bom.push({
-          name: "Piano hinge",
-          quantity: 1,
-          unit: "pc",
-          catalogId: "piano-hinge",
-          searchQuery: "continuous piano hinge",
-          estimatedCost: 14.98,
-          notes: `Along the back edge of the lid · length ≈ ${project.overall.width}" (chest width). Long continuous hinge — not two butt hinges.`,
-        });
-      }
-      const alreadyStay = bom.some((b) => /lid stay|lid support/i.test(b.name));
-      if (!alreadyStay) {
-        bom.push({
-          name: "Lid stay / lid support",
-          quantity: 1,
-          unit: "pc",
-          catalogId: "lid-stay",
-          searchQuery: "toy chest lid support or lid stay",
-          estimatedCost: 9.98,
-          notes: "Keeps the lid from slamming. Mount per the stay instructions — usually one side of the lid into the main box.",
-        });
-      }
-    }
-  }
+  // Every door and lid: hinges by size and weight, stays, latches, pulls (one shared module).
+  bom.push(...hingedBuy(project, bom, { crate, screwless: stockJoinsWithoutScrews(project) }));
+
 
   const hangingRods = project.panels.filter(
     (panel) => /hanging rod/i.test(panel.name),
@@ -1442,28 +1340,6 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       searchQuery: `1/2 inch galvanized hardware cloth ${roll.replace("×", "x")}`,
       estimatedCost: 24,
       notes: `Cut to ${mesh[1]}" × ${mesh[2]}" for the front; staples hold it.`,
-    });
-  }
-  // Heavy lids (an outdoor roof under roofing) hang on T-hinges with a stay; frame joints take structural screws.
-  const tees = notes.match(/\b(two|three|four) 3–4" galvanized T-hinges\b/);
-  if (tees && !/t-hinge/i.test(have)) {
-    const n = { two: 2, three: 3, four: 4 }[tees[1] as "two" | "three" | "four"];
-    extra.push({ name: '4" galvanized T-hinges', quantity: n, unit: "each", searchQuery: "4 inch galvanized t hinge", estimatedCost: Math.round(6.48 * n * 100) / 100, notes: "Along the roof's back edge; strap on the roof, leaf on the back. Estimate." });
-  }
-  if (/\bfit a lid stay\b/i.test(notes) && !/lid stay/i.test(have)) {
-    extra.push({ name: "Lid stay (soft-close or folding)", quantity: 1, unit: "each", searchQuery: "lid support stay hinge", estimatedCost: 8.98, notes: "Holds the roof open and stops it slamming. Estimate." });
-  }
-  const butts = notes.match(/\b(two|four) 2" (galvanized )?butt hinges\b/);
-  if (butts && !/butt hinge/i.test(have)) {
-    const n = butts[1] === "four" ? 4 : 2;
-    extra.push({
-      name: butts[2] ? '2" galvanized butt hinges' : '2" butt hinges',
-      quantity: n,
-      unit: "each",
-      catalogId: "butt-hinge-2",
-      searchQuery: butts[2] ? "2 inch galvanized butt hinge exterior" : "2 inch butt hinge",
-      estimatedCost: (butts[2] ? 3.98 : 3) * n,
-      notes: n === 4 ? "Two along the roof's back edge and two on the pop door, as the notes say." : "Two along the back edge, as the notes say.",
     });
   }
   const roll = notes.match(/\b(\d+) roll of mineral-surfaced roll roofing\b/);

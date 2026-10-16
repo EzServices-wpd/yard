@@ -17,6 +17,8 @@ export function hardwareCatalogIdFromHay(hay: string): string | null {
   if (/cup\s*pulls?/.test(h)) return "cup-pulls";
   if (/bar\s*pulls?|door\s*pulls?|cabinet\s*pulls?|cabinet\s*bar\s*pulls?/.test(h)) return "cabinet-bar-pulls";
   if (/coat\s*hooks?/.test(h)) return "coat-hooks";
+  // Exterior leaf hardware has no listing yet: it keeps the hinged-leaf module's own price, never a cabinet hinge's.
+  if (/\bt-?hinges?\b|strap\s*hinge|galvanized\s*butt/.test(h)) return null;
   if (/soft-?close|concealed|cup\s*hinge/.test(h)) return "cabinet-hinges";
   if (/utility\s*hinge|butt\s*hinge|support-?leg\s*hinge/.test(h)) return "utility-hinges";
   if (/\bhinge/.test(h)) return "cabinet-hinges";
@@ -591,8 +593,10 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
   if (/hang\s+\d*\s*doors?/i.test(hayTitle) && !/one join:/i.test(d)) {
     const door = entries.find((e) => e.family === "door");
     const dTalk = door ? plateRef(door, "Door") : "door";
-    if (/(?:2|two)\s+(?:concealed\s+)?hinges/i.test(d + hayTitle)) {
-      d = `One join per door: hang each ${dTalk} with 2 concealed hinges. ${d}`;
+    const each = (d + hayTitle).match(/\b(2|3|4|two|three|four)\s+concealed\s+hinges\s+(?:each|per door)/i) ?? (d + hayTitle).match(/(?:^|[^\d])(2|two)\s+(?:concealed\s+)?hinges/i);
+    if (each) {
+      const n = ({ two: 2, three: 3, four: 4 } as Record<string, number>)[each[1].toLowerCase()] ?? Number(each[1]);
+      d = `One join per door: hang each ${dTalk} with ${n} concealed hinges. ${d}`;
     }
   }
 

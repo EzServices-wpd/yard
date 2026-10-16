@@ -12,8 +12,8 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
-/** Google Fonts load after first paint (display=swap), so text paints at once in the fallback face. */
-const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap";
+/** Google Fonts load after first paint with display=optional: text paints in the metric-matched fallback and never swaps late (a late swap was the occasional 0.11 CLS). */
+const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=optional";
 function LateFonts() {
   useEffect(() => {
     if (document.querySelector(`link[rel="stylesheet"][href="${FONTS_CSS}"]`)) return;

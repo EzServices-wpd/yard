@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,9 +10,11 @@ import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/gho
 import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
-import type { DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
+import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
+import { buildOrder } from "@/components/workspace/build-order";
+import { LAMP_FADE_MS } from "@/components/workspace/lava-lamp";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -239,7 +241,10 @@ export function WorkspaceCanvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#1a1612"]} />
-        <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
+        {/* The HDR preset loads async and suspends; its own boundary keeps that from suspending (hiding) the whole workspace (F43). */}
+        <Suspense fallback={null}>
+          <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
+        </Suspense>
         <StudioLights project={project} useShadows={useShadows} />
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
@@ -266,6 +271,8 @@ export function WorkspaceCanvas() {
           detail={detail}
           joinMethod={project.joinMethod}
           useShadows={useShadows}
+          plan={plan}
+          stepping={activeStep != null}
         />
         <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls
@@ -456,9 +463,88 @@ function useAssemble(ready: boolean): number {
   return k;
 }
 
+/**
+ * Build animation: once a fresh build lands, its real parts appear step by step in plan order
+ * (first step that lists a part places it; unlisted parts land with the last step). Visibility only,
+ * no new geometry, so it costs nothing per frame. ~2s total; skipped under reduced motion,
+ * when a step is open, or when the plan has no steps that name parts.
+ */
+function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
+  const order = useMemo(() => {
+    if (!ready || !plan?.instructions.length) return null;
+    const { at, n, stale } = buildOrder(project, plan);
+    return n >= 2 && !stale ? { at, n } : null;
+  }, [project, plan, ready]);
+  const [shown, setShown] = useState<number>(Infinity);
+  const played = useRef<string | null>(null);
+  // Late-start guard: the reveal only plays if the plan lands within 600ms of the model; a model
+  // already on screen is never hidden again to replay (that read as a flicker).
+  const readyAt = useRef<{ id: string; t: number } | null>(null);
+  if (ready && readyAt.current?.id !== project.id) readyAt.current = { id: project.id, t: performance.now() };
+  useEffect(() => {
+    if (!order || stepping || played.current === project.id) return;
+    played.current = project.id;
+    const host0 = document.querySelector("[data-bench-host]");
+    const skip = (why: string) => host0?.setAttribute("data-yard-reveal", `skip:${why}`);
+    // Late start: fine while the Building overlay is still up or fading over the bench (the model
+    // has not been seen yet); otherwise only within 600ms of the model landing.
+    const overlayUp = !!document.querySelector(".yard-lamp");
+    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 600)) return skip("late");
+    if (document.hidden) return skip("hidden");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return skip("reduced-motion");
+    const per = Math.max(220, Math.min(420, 2600 / order.n));
+    // The bench host carries the current beat (data-yard-reveal="k/n" + that beat's part names) so
+    // the order can be checked from outside the WebGL canvas.
+    const host = document.querySelector("[data-bench-host]");
+    const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
+    const mark = (k: number) => {
+      if (!host) return;
+      host.setAttribute("data-yard-reveal", k < 0 ? `wait/${order.n}` : k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
+      const label = (g: number) => {
+        const c = new Map<string, number>();
+        for (const [pid, gg] of order.at) if (gg === g) { const nm = names.get(pid) ?? pid; c.set(nm, (c.get(nm) ?? 0) + 1); }
+        return [...c].map(([nm, x]) => (x > 1 ? `${nm} ×${x}` : nm)).join(", ");
+      };
+      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : label(k));
+    };
+    // Hold the bench empty while the Building overlay fades (LAMP_FADE_MS), then one beat per `per`
+    // ms on a wall-clock schedule: beat k is due at t0 + k·per, so a slow frame never bunches or
+    // stretches the beats that follow (time-based, not frame counts).
+    setShown(-1);
+    mark(-1);
+    // Beat 1 lands as the overlay finishes fading (it began fading when the model became ready).
+    const t0 = Math.max(performance.now(), readyAt.current.t + LAMP_FADE_MS);
+    let k = -1;
+    let timer = 0;
+    // F44: each beat is scheduled from when the previous one actually fired. After a slow frame it
+    // may claw back a little toward the plan (t0 + k·per) but never closer than 0.6·per to the beat
+    // before, so a stall never fires two beats back to back.
+    const tick = () => {
+      k++;
+      mark(k);
+      if (k >= order.n) {
+        setShown(Infinity);
+        return;
+      }
+      setShown(k);
+      const fired = performance.now();
+      const due = Math.max(fired + 0.6 * per, Math.min(t0 + (k + 1) * per, fired + per));
+      timer = window.setTimeout(tick, due - fired);
+    };
+    timer = window.setTimeout(tick, Math.max(0, t0 - performance.now()));
+    return () => { window.clearTimeout(timer); setShown(Infinity); };
+  }, [order, stepping, project.id, project.panels, project.instances]);
+  if (!order || shown === Infinity || stepping) return null;
+  const vis = new Set<string>();
+  for (const [id, i] of order.at) if (i <= shown) vis.add(id);
+  return vis;
+}
+
 function BenchScene({
-  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows,
+  project, explode, facesOpen, selectedId, onSelect, onPlace, showHull, showHistoric, workMode, stepIds, placedIds, lockedIds, dragPos, measureOpen, measure, pending, detail, joinMethod, useShadows, plan, stepping = false,
 }: {
+  plan?: BuildPlan | null;
+  stepping?: boolean;
   project: YardProject;
   explode: boolean;
   facesOpen: boolean;
@@ -481,6 +567,7 @@ function BenchScene({
 }) {
   const assemble = useAssemble(project.panels.length > 0 && !pending);
   const explodeScale = explode ? 1.35 : assemble;
+  const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;
@@ -492,6 +579,7 @@ function BenchScene({
       : detail === "full"
         ? project.instances.filter((i) => !isSkinRole(i.role))
         : project.instances;
+  const shownMembers = useMemo(() => (reveal ? members.filter((i) => reveal.has(i.id)) : members), [members, reveal]);
   const showPinHoles = useMemo(
     () => project.panels.some((p) => p.type === "shelf"),
     [project.panels],
@@ -504,7 +592,7 @@ function BenchScene({
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
         <StickCloud
-          instances={members}
+          instances={shownMembers}
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
@@ -520,7 +608,7 @@ function BenchScene({
       )}
       {!pending &&
         project.panels
-          .filter((panel) => detail !== "frame" || panel.type !== "deck")
+          .filter((panel) => (detail !== "frame" || panel.type !== "deck") && (!reveal || reveal.has(panel.id)))
           .map((panel) => (
             <PanelMesh
               key={panel.id}
@@ -535,7 +623,7 @@ function BenchScene({
               showPinHoles={showPinHoles}
             />
           ))}
-      {!pending && project.panels.length > 0 && (
+      {!pending && !reveal && project.panels.length > 0 && (
         <CarcaseJoins panels={project.panels} explode={explodeScale} />
       )}
       {workMode === "free" && (

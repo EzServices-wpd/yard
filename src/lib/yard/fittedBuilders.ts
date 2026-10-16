@@ -1,6 +1,7 @@
 /**
  * Specialty fitted carcase builders (bench, hung, beds, litter, …).
  */
+import { doorHingeCount, doorLeaves, doorRise } from "./hingedLeaf";
 import { createId } from "@/lib/utils";
 import { typedAxisNumber } from "./typedAxis";
 import { inchFrac } from "./inchText";
@@ -942,18 +943,8 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
     panels.push(panel("deck", "Support leg", x0 + P + (innerW - 1.5) / 2, P, D - P * 3, 1.5, legLen, P));
   }
   const doorN = fold ? 1 : typedDoorCount(prompt) ?? (W > 28 ? 2 : 1);
-  if (fold) {
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT));
-  } else {
-    const leafH = H - 0.16;
-    const bayW = W / doorN;
-    const leafW = bayW - 0.2;
-    for (let i = 0; i < doorN; i++) {
-      const label =
-        doorN === 1 ? "Door" : doorN === 2 ? (i === 0 ? "Left door" : "Right door") : `Door ${i + 1}`;
-      panels.push(panel("door", label, x0 + i * bayW + 0.1, 0.08, face.doorZ, leafW, leafH, face.doorT));
-    }
-  }
+  const rise = doorRise(0, H);
+  for (const leaf of doorLeaves({ x: x0, w: W, count: doorN })) panels.push(panel("door", leaf.name, leaf.x, rise.y, face.doorZ, leaf.w, rise.h, face.doorT));
   const lowerPrompt = prompt.toLowerCase();
   const name = isKitchenUpper(lowerPrompt)
     ? spec.name.match(/upper/i)
@@ -984,7 +975,7 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
       fold
         ? "The board stores upright and hinges down on a piano hinge. A support leg kicks out to the floor. Hang the carcase on studs through the back."
         : doorN > 1
-          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorN} hinge pairs). Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`
+          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorHingeCount({ size: { width: W / doorN, height: H, depth: face.doorT } })} per door). Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`
           : `Hang the carcase on studs through the back. Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`,
     ],
     historic: false,
