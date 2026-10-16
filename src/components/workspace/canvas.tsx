@@ -15,7 +15,7 @@ import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
-import { CALLOUT_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
+import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -475,6 +475,9 @@ function useAssemble(ready: boolean): number {
  */
 /** Above this many parts the reveal steps by build beat. */
 const BEAT_MODE_PARTS = 120;
+/** Longest the model waits in outline for its build order (inside the lamp fade). */
+const PLAN_WAIT_MS = 350;
+const EMPTY_IDS: Set<string> = new Set();
 
 function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
@@ -550,21 +553,43 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     setReveal({ active: true, n: pieces, wood: 0, t0, end, skipped: false });
     host?.setAttribute("data-yard-reveal", `wire/${pieces}`);
     host?.setAttribute("data-yard-reveal-mode", byBeat ? "beat" : "part");
+    // Step clock. The first wood frame of a model can stall (~1 s on a slow phone or a big model), so
+    // the first step is held to one painted frame; then the rest re-spread over what is left of the
+    // 2.4 s cap (never slower than the planned stagger). Part mode catches up freely after that, so
+    // small builds stay inside the cap; beat mode (a handful of beats) still shows each beat a frame.
+    let base = 0;
+    let gap = stagger;
+    let last = 0;
     const tick = () => {
       const now = performance.now();
       if (lampUp()) {
         t0 = now;
         end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
         held = true;
+        last = 0;
         raf = requestAnimationFrame(tick);
         return;
       }
       if (held) { held = false; setReveal({ t0, end }); }
-      const due = now < t0 + WIRE_MS ? 0 : Math.min(units, Math.floor((now - t0 - WIRE_MS) / stagger) + 1);
-      // One step per painted frame at most: the first wood frame of a big model can stall ~1 s, and a
-      // clock-only reveal then jumped from the first beat straight to done (Brooklyn "skipped").
-      const u = Math.min(due, shownU + 1);
-      if (now >= end && shownU >= units) return finish(false);
+      // Last frame's length: a step that would land past the cap shows the finished frame instead.
+      const frame = last ? Math.min(1000, now - last) : 16;
+      last = now;
+      let u: number;
+      if (shownU === 0) {
+        u = now < t0 + WIRE_MS ? 0 : 1;
+      } else {
+        if (!base) {
+          base = now;
+          const left = t0 + CAP_MS - CALLOUT_MS - now;
+          gap = units > 1 ? Math.max(0, Math.min(stagger, left / (units - 1))) : 0;
+          end = Math.max(now, base + (units - 1) * gap) + CALLOUT_MS;
+          setReveal({ end });
+        }
+        const due = gap > 0 ? Math.min(units, 1 + Math.floor((now - base) / gap)) : units;
+        u = byBeat ? Math.min(due, shownU + 1) : due;
+      }
+      // Hard cap: past 2.4 s from the outline the finished frame shows, whatever the device managed.
+      if ((now >= end && shownU >= units) || (base > 0 && now + (base < now ? frame : 0) >= t0 + CAP_MS)) return finish(false);
       const k = byBeat ? (u ? order.beatEnds[u - 1] : 0) : u;
       shownU = u;
       if (k !== shownCount) {
@@ -578,17 +603,25 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey); onRevealSkip(null); setWood(Infinity); setReveal({ active: false }); };
   }, [order, stepping, project.id]);
-  // The model never waits: with no build order yet, it shows in wood at once (and that build skips
-  // its reveal later, rather than hiding wood that is already on screen).
-  // Only a model that actually painted in wood counts (a frame later, not one transient render where
-  // the plan was a beat behind): the reveal then plays the same at every width and timing.
-  const lateCandidate = ready && !order && played.current !== project.id;
+  // No build order yet when the model is ready (the plan is made just after the model, and under
+  // load that can land a few frames late): hold the model in outline for at most PLAN_WAIT_MS, inside
+  // the lamp's fade, instead of painting wood the reveal must then skip ("skip:late", Brooklyn 2 of 4).
+  // Past that the model shows in wood and that build skips its reveal, as before.
+  const lateCandidate = ready && !order && !stepping && played.current !== project.id;
+  const [waitedFor, setWaitedFor] = useState<string | null>(null);
   useEffect(() => {
     if (!lateCandidate) return;
     const id = project.id;
-    const raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
-    return () => cancelAnimationFrame(raf);
+    const since = readyAt.current?.id === id ? readyAt.current.t : performance.now();
+    let raf = 0;
+    const t = window.setTimeout(() => {
+      setWaitedFor(id);
+      // Only a model that actually painted in wood counts (two frames later).
+      raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
+    }, Math.max(0, since + PLAN_WAIT_MS - performance.now()));
+    return () => { window.clearTimeout(t); cancelAnimationFrame(raf); };
   }, [lateCandidate, project.id]);
+  if (lateCandidate && waitedFor !== project.id) return EMPTY_IDS;
   if (!order || wood === Infinity || stepping) return null;
   return new Set(order.ids.slice(0, wood));
 }
