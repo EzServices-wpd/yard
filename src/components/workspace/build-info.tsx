@@ -16,13 +16,13 @@ export function BuildInfoPanel() {
     {link && (
       <p data-yard-permalink="1" className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs text-muted">
         <span className="min-w-0 flex-1">{copied === link ? "Link copied. It rebuilds this exact model, stock and size." : "A link that rebuilds this exact build."}</span>
-        <button type="button" className="shrink-0 rounded-full border border-border px-3 py-1 text-fg hover:bg-elevated" onClick={() => { void navigator.clipboard?.writeText(link); setCopied(link); }}>
+        <button type="button" className="inline-flex h-11 shrink-0 items-center rounded-full border border-border px-4 text-fg hover:bg-elevated" onClick={() => { void navigator.clipboard?.writeText(link); setCopied(link); }}>
           Copy link
         </button>
       </p>
     )}
     <details data-yard-build-info={info.trust} className="border-t border-border/60 px-3 py-2 text-xs">
-      <summary className="cursor-pointer text-muted hover:text-fg">
+      <summary className="flex min-h-11 cursor-pointer items-center text-muted hover:text-fg">
         How this was built · <span className="text-fg">{info.source}</span> · <span className={info.trust === "Trusted" ? "text-fg" : "text-muted"}>{info.trust}</span>
       </summary>
       <ul className="mt-1 space-y-0.5 text-muted">

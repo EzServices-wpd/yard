@@ -7,10 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
+import { DecisionLine } from "@/components/workspace/decision-line";
+import { MorphButton } from "@/components/workspace/morph-button";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
@@ -47,6 +50,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [promptDirty, setPromptDirty] = useState(true);
+  const [trayOpen, setTrayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
@@ -255,36 +260,23 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
-          <span className="hidden truncate font-display text-sm text-muted md:inline">
-            {headerTitle(project)}
+          <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
+            {pieceCount > 0 ? `Workbench · ${headerTitle(project)}` : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link to="/ideas" className="hidden px-2 text-sm text-muted hover:text-fg sm:inline">
             Ideas
           </Link>
-          <button
-            type="button"
-            onClick={() => {
+          <MorphButton
+            pending={pending}
+            built={pieceCount > 0}
+            dirty={promptDirty}
+            onPlan={() => {
               makePlan();
               setPlanOpen(true);
             }}
-            className="inline-flex h-9 items-center rounded-full bg-accent px-3.5 text-sm font-medium text-accent-fg"
-          >
-            Get the plan
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              makePlan();
-              setExportOpen(true);
-            }}
-            className="inline-flex h-9 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
-            aria-label="Save the plan as PDF"
-            title="Save the plan as PDF"
-          >
-            PDF
-          </button>
+          />
           <div className="relative">
             <button
               type="button"
@@ -332,6 +324,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     />
                   </>
                 )}
+                <MoreItem
+                  label="Save the plan as PDF"
+                  disabled={pieceCount === 0}
+                  onClick={() => {
+                    makePlan();
+                    setExportOpen(true);
+                    setMoreOpen(false);
+                  }}
+                />
                 <div className="my-1 border-t border-border/70" />
                 <Link
                   to="/ideas"
@@ -378,6 +379,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         }}
         onStock={() => setSide("catalog")}
         onMeasure={() => setSide("measure")}
+        onDirty={setPromptDirty}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -523,7 +525,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <DockFrame className="yard-glass pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <DockFrame className="yard-glass pointer-events-auto w-[min(35rem,100%)] overflow-y-auto overscroll-contain max-sm:max-h-[40dvh] rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -548,22 +550,50 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
-              {pieceCount > 0 && !pending && workMode !== "walk" && (
-                <BenchTools
-                  side={side}
-                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
-                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  bare
-                />
-              )}
               {showOffer && (
                 <div data-bench-overlay="offer-sheet" className="flex items-center gap-2 border-b border-border/60 px-3 py-2 text-xs text-fg md:hidden">
                   <span className="line-clamp-3 min-w-0 flex-1 leading-snug">{project.supportOffer!.reason}</span>
                   {offerButtons}
                 </div>
               )}
-              {!pending && workMode !== "walk" && !project.displayOnly && <RefineBox />}
-              {!pending && workMode !== "walk" && <BuildInfoPanel />}
+              {/* Item 2: the result card. Row 1 says what it is and what it costs, row 2 is the one
+                  decision (Refine or open the plan), everything else waits behind "More". */}
+              {!pending && workMode !== "walk" && pieceCount > 0 && (
+                <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
+                  <p className="min-w-0 truncate font-display text-[15px] text-fg">{project.name || headerTitle(project)}</p>
+                  <DecisionLine />
+                </div>
+              )}
+              {!pending && workMode !== "walk" && pieceCount > 0 && (
+                project.displayOnly ? null : (
+                  <RefineBox
+                    showChips={trayOpen}
+                    trailing={
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { makePlan(); setPlanOpen(true); }}
+                          data-yard-open-plan="1"
+                          className="inline-flex h-11 shrink-0 items-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated"
+                        >
+                          Open the plan <ChevronRight className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          aria-expanded={trayOpen}
+                          aria-controls="yard-tray"
+                          onClick={() => setTrayOpen((v) => !v)}
+                          data-yard-more="1"
+                          className="inline-flex h-11 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-sm text-muted hover:text-fg"
+                        >
+                          More <ChevronDown className={`size-4 transition-transform ${trayOpen ? "rotate-180" : ""}`} aria-hidden />
+                        </button>
+                      </>
+                    }
+                  />
+                )
+              )}
+              <div id="yard-tray" hidden={!pending && workMode !== "walk" && pieceCount > 0 && !trayOpen} className={trayOpen ? "yard-tray" : ""}>
               {steps.length > 0 && !pending && (
                 <div
                   data-bench-overlay="step-pill"
@@ -571,7 +601,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 >
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex <= 0}
                     onClick={() => {
                       if (stepIndex <= 0) return;
@@ -584,7 +614,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <button
                     type="button"
                     onClick={() => setPlanOpen(true)}
-                    className="min-w-0 flex-1 truncate text-left"
+                    className="min-h-11 min-w-0 flex-1 truncate text-left"
                     aria-label={
                       activeStep
                         ? `Open the plan, step ${activeStep} of ${steps.length}`
@@ -602,7 +632,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex >= steps.length - 1 && stepIndex >= 0}
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
@@ -614,6 +644,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
+              {pieceCount > 0 && !pending && workMode !== "walk" && (
+                <BenchTools
+                  side={side}
+                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
+                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                  bare
+                />
+              )}
+              {!pending && workMode !== "walk" && <BuildInfoPanel />}
               <div
                 data-yard-house={housePath ? "1" : "0"}
                 data-yard-pieces={pieceCount}
@@ -656,7 +695,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 <button
                   type="button"
                   onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
+                  className="min-h-11 shrink-0 font-mono text-[11px] text-faint hover:text-fg"
                   aria-label={project.pocket ?? project.recastFrom?.pocket ? "Measure the hole, the piece, and the shelves" : "Measure this build"}
                   title="Measure"
                 >
@@ -694,6 +733,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     );
                   })()}
                 </button>
+              </div>
               </div>
             </DockFrame>
           </div>
