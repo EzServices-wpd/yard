@@ -14,6 +14,7 @@ import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
 import { DecisionLine } from "@/components/workspace/decision-line";
 import { MorphButton } from "@/components/workspace/morph-button";
+import { RevealStatus } from "@/components/workspace/reveal-status";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
@@ -399,6 +400,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
+          <RevealStatus />
           <LavaLamp key={lampKey} show={pending} prompt={initialPrompt ?? project.prompt} caption={grokBusy ? "Fitting the opening" : "Building"} />
           {showOffer && (
             <div
