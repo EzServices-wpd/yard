@@ -2472,7 +2472,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       title: drawers.length === 1 ? "Fit the drawer front (false front)" : `Fit ${drawers.length} drawer fronts (false fronts)`,
       description: `Each Drawer front is a false front — the show face screwed onto the front of its box, standing proud of the cabinet. With the boxes hung, set each Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
       tips: "A playing card between neighbouring fronts keeps the 1/8\" gaps even while you drive the screws.",
-      partsUsed: names(drawers),
+      // The fronts are their own parts: this step owns them (F12), the boxes are what they screw onto.
+      partsUsed: names([...drawers, ...panels.filter((p) => /drawer front/i.test(p.name))]),
     });
   }
 

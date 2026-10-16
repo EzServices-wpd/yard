@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { usd } from "@/lib/utils";
 import { buyListCart, isLocalStockRow } from "@/lib/yard/amazonCart";
 import { tagNote } from "@/lib/yard/listings";
-import { affiliateConfig, outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET, storeOf, wrapTemplate } from "@/lib/yard/outbound";
+import { affiliateConfig, outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET, storeOf, withSubId, wrapTemplate } from "@/lib/yard/outbound";
 import type { BomLine, BuildPlan } from "@/lib/yard/types";
 
 // ── "Also at" store links: part of the Buy list (they render only on its rows) ──
@@ -66,18 +66,8 @@ export function alsoAtSearchUrl(store: AlsoAtStore, query: string): string {
   }
 }
 
-function storeOfOffer(href: string): string {
-  const s = storeOf(href);
-  if (s !== "other") return s;
-  try {
-    const h = new URL(href).hostname;
-    if (/(^|\.)rockler\.com$/.test(h)) return "rockler";
-    if (/(^|\.)woodcraft\.com$/.test(h)) return "woodcraft";
-  } catch {
-    /* not a URL */
-  }
-  return "other";
-}
+/** Store of an offer link: the outbound module knows every store, Rockler and Woodcraft included. */
+const storeOfOffer = (href: string): string => storeOf(href);
 
 export function alsoAtLinks(line: BomLine, templates: Record<AlsoAtStore, string> = alsoAtTemplates()): AlsoAtLink[] {
   if ((line.offers ?? []).some((o) => o.quote === "owned")) return [];
@@ -87,11 +77,14 @@ export function alsoAtLinks(line: BomLine, templates: Record<AlsoAtStore, string
   return ORDER.filter((s) => templates[s] && !have.has(s) && !(local && SPECIALTY.has(s))).map((s) => ({
     store: s,
     label: LABEL[s],
-    href: wrapTemplate(alsoAtSearchUrl(s, query), templates[s]),
+    href: withSubId(wrapTemplate(alsoAtSearchUrl(s, query), templates[s]), s === "homedepot" || s === "lowes" ? "impact" : s === "rockler" || s === "woodcraft" ? s : "other", ALSO_AT_SUB_ID),
   }));
 }
 
-export const ALSO_AT_REL = "sponsored nofollow noopener";
+export const ALSO_AT_REL = OUTBOUND_REL;
+/** Sub-IDs: which Buy-list surface a paid click came from. */
+export const BUY_SUB_ID = "buy-list";
+export const ALSO_AT_SUB_ID = "also-at";
 export const ALSO_AT_DISCLOSURE = "Yard may earn a commission from qualifying purchases.";
 
 
@@ -205,7 +198,7 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
                   {b.offers.map((o) => (
                     <li key={o.href} className="flex items-baseline justify-between gap-2">
                       <a
-                        href={outboundHref(o.href)}
+                        href={outboundHref(o.href, undefined, BUY_SUB_ID)}
                         target={OUTBOUND_TARGET}
                         rel={OUTBOUND_REL}
                         className={`min-w-0 text-xs underline-offset-2 hover:underline ${o.best ? "text-fg" : "text-muted hover:text-fg"}`}
