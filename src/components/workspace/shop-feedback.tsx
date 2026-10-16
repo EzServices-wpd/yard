@@ -2,9 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
-import { CHIPS, NOTE_CAP, type ChipId } from "@/lib/feedback/shop";
+import { CHIPS, NOTE_CAP, scrubNote, type ChipId } from "@/lib/feedback/shop";
+import { safePrompt } from "@/lib/yard/ideaLog";
 
 const sentKey = (k: string) => `yard.told.v1:${k}`;
+const LOG = "yard.told.log.v1"; // send times, this browser: one per 30 s, 10 a day (the server caps again)
+
+/** A random anonymous id for this browser: no identity, only counted for a day so one client can't fill the shop's day. */
+function clientId(): string {
+  try {
+    let id = localStorage.getItem("yard.anon.v1");
+    if (!id || !/^[0-9a-f]{16,32}$/.test(id)) {
+      const b = crypto.getRandomValues(new Uint8Array(12));
+      id = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem("yard.anon.v1", id);
+    }
+    return id;
+  } catch { return "none"; }
+}
+function localThrottle(now = Date.now()): boolean {
+  try {
+    const log = (JSON.parse(localStorage.getItem(LOG) ?? "[]") as number[]).filter((t) => now - t < 86_400_000);
+    if (log.length >= 10 || (log.length && now - log[log.length - 1] < 30_000)) return false;
+    localStorage.setItem(LOG, JSON.stringify([...log, now]));
+    return true;
+  } catch { return true; }
+}
 const sizeOf = (o?: { width: number; height: number; depth: number }) =>
   o ? `${Math.round(o.width * 10) / 10}x${Math.round(o.depth * 10) / 10}x${Math.round(o.height * 10) / 10}` : "";
 
@@ -21,7 +44,7 @@ export function ShopFeedback() {
   const opener = useRef<HTMLButtonElement>(null);
   const [chips, setChips] = useState<ChipId[]>([]);
   const [note, setNote] = useState("");
-  const [state, setState] = useState<"idle" | "sending" | "thanks" | "busy" | "error">("idle");
+  const [state, setState] = useState<"idle" | "sending" | "thanks" | "busy" | "error" | "pii">("idle");
   const size = sizeOf(project.overall);
   const buildKey = `${project.prompt}|${size}|${project.primaryMaterialId ?? ""}`;
   const [told, setTold] = useState(false);
@@ -36,13 +59,16 @@ export function ShopFeedback() {
   const toggle = (id: ChipId) => setChips((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   const send = async () => {
     if (state === "sending" || (!chips.length && !note.trim())) return;
+    const scrub = scrubNote(note.slice(0, NOTE_CAP));
+    if (!scrub.ok) return setState("pii");
+    if (!localThrottle()) return setState("busy");
     setState("sending");
     try {
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "omit",
-        body: JSON.stringify({ prompt: project.prompt, size, partCount: plan.totals.pieces, chips, note: note.slice(0, NOTE_CAP) }),
+        body: JSON.stringify({ prompt: safePrompt(project.prompt), size, partCount: plan.totals.pieces, chips, note: scrub.note, cid: clientId() }),
       });
       if (res.status === 429) return setState("busy");
       if (!res.ok && res.status !== 204) return setState("error");
@@ -99,12 +125,12 @@ export function ShopFeedback() {
               value={note}
               maxLength={NOTE_CAP}
               rows={2}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => { setNote(e.target.value); if (state === "pii") setState("idle"); }}
               placeholder="The shelf sits a little low…"
               className="mt-1 w-full resize-none rounded-xl border border-border bg-bg px-3 py-2 text-base"
             />
             <p aria-live="polite" className="mt-1 min-h-5 text-xs text-muted">
-              {state === "busy" ? "The shop's swamped right now. Give it a minute and try again." : state === "error" ? "That didn't reach the shop. Try once more?" : note ? `${NOTE_CAP - note.length} left` : ""}
+              {state === "pii" ? "Leave out emails, phone numbers, links and addresses. The shop doesn't need them." : state === "busy" ? "The shop's swamped right now. Give it a minute and try again." : state === "error" ? "That didn't reach the shop. Try once more?" : note ? `${NOTE_CAP - note.length} left` : ""}
             </p>
             <div className="mt-3 flex justify-end gap-2">
               <button type="button" onClick={close} className="inline-flex h-11 items-center rounded-full px-4 text-sm text-muted hover:text-fg">Not now</button>

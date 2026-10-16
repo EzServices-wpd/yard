@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanFeedback } from "../src/lib/feedback/shop";
-import { ShopStore, DAY_CAP, INSTANCE_PER_MIN } from "../src/lib/feedback/store.server";
+import { cleanFeedback, cleanCid, scrubNote } from "../src/lib/feedback/shop";
+import { ShopStore, DAY_CAP, CLIENT_DAY_CAP, INSTANCE_PER_MIN } from "../src/lib/feedback/store.server";
 
 // A tiny in-memory Redis for the commands the store uses.
 function fakeRedis() {
@@ -39,11 +39,11 @@ test("feedback is saved, then rate-limited per instance and per day", async () =
   const f = fakeRedis();
   const s = new ShopStore(f.pipe);
   const rec = cleanFeedback({ chips: ["floating"], prompt: "linen cabinet" }, "")!;
-  assert.equal(await s.addFeedback(rec, new Date("2026-10-16T10:00:00Z")), "saved");
-  for (let i = 1; i < INSTANCE_PER_MIN; i++) await s.addFeedback(rec, new Date("2026-10-16T10:00:01Z"));
-  assert.equal(await s.addFeedback(rec, new Date("2026-10-16T10:00:02Z")), "limited");
+  assert.equal(await s.addFeedback(rec, "none", new Date("2026-10-16T10:00:00Z")), "saved");
+  for (let i = 1; i < INSTANCE_PER_MIN; i++) await s.addFeedback(rec, `c${i}`.padEnd(16, "0"), new Date("2026-10-16T10:00:01Z"));
+  assert.equal(await s.addFeedback(rec, "none", new Date("2026-10-16T10:00:02Z")), "limited");
   f.kv.set("feedback:day:2026-10-16", DAY_CAP);
-  assert.equal(await s.addFeedback(rec, new Date("2026-10-16T10:05:00Z")), "limited");
+  assert.equal(await s.addFeedback(rec, "none", new Date("2026-10-16T10:05:00Z")), "limited");
   assert.ok(f.kv.get("ideas:cmds:2026-10") > 0, "counts against the shared monthly budget");
 });
 
@@ -68,4 +68,29 @@ test("budget exhausted → nothing is written", async () => {
   s.budget.allows(0); s.budget.saw(10_000_000);
   assert.equal(await s.addFeedback(cleanFeedback({ chips: ["other"] }, "")!), "dropped");
   assert.equal(f.calls.length, 0);
+});
+
+test("browser scrub matches the server's: PII notes are refused, clean ones pass", () => {
+  assert.deepEqual(scrubNote(""), { ok: true, note: null });
+  assert.equal(scrubNote("call me 555-123-4567").ok, false);
+  assert.equal(scrubNote("see https://x.co").ok, false);
+  assert.deepEqual(scrubNote("  shelf sits low "), { ok: true, note: "shelf sits low" });
+  const server = cleanFeedback({ chips: ["other"], note: "call me 555-123-4567" }, "")!;
+  assert.equal(server.note, null, "the server scrub still runs");
+});
+
+test("per-client soft cap: 10 a day per anonymous id, others unaffected, id never stored", async () => {
+  const f = fakeRedis();
+  const rec = cleanFeedback({ chips: ["price"] }, "")!;
+  const noisy = "a".repeat(24), quiet = "b".repeat(24);
+  const t = (i: number) => new Date(Date.UTC(2026, 9, 16, 9, i * 2));
+  const s = new ShopStore(f.pipe);
+  for (let i = 0; i < CLIENT_DAY_CAP; i++) assert.equal(await s.addFeedback(rec, noisy, t(i)), "saved");
+  assert.equal(await s.addFeedback(rec, noisy, t(20)), "limited");
+  assert.equal(await s.addFeedback(rec, quiet, t(21)), "saved");
+  assert.equal(await s.addFeedback(rec, noisy, new Date("2026-10-17T09:00:00Z")), "saved", "a new day resets it");
+  assert.ok(f.calls.some((c) => c[0] === "EXPIRE" && String(c[1]).startsWith("feedback:cid:")), "the counter expires");
+  assert.ok(!(f.kv.get("feedback:list") as string[]).some((r) => r.includes(noisy)), "the id is never in a record");
+  assert.equal(cleanCid("x; DROP"), "none");
+  assert.equal(cleanCid(noisy), noisy);
 });

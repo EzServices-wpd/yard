@@ -14,9 +14,11 @@ export const K = {
   review: "ideas:review", // field = query-log key → JSON ReviewMark; no field = not reviewed
   feedback: "feedback:list",
   day: (d: string) => `feedback:day:${d}`,
+  client: (d: string, cid: string) => `feedback:cid:${d}:${cid}`, // a counter only, gone after a day
 };
 export const FEEDBACK_KEEP = 2000;
-export const DAY_CAP = 300; // ≤ 300 × 5 cmds × 31 days ≈ 47K/month, well inside the shared 450K budget
+export const DAY_CAP = 300; // ≤ 300 × 8 cmds × 31 days ≈ 74K/month, well inside the shared 450K budget
+export const CLIENT_DAY_CAP = 10; // per anonymous browser id, so one noisy client can't spend the day's 300
 export const INSTANCE_PER_MIN = 12;
 
 const month = (now: Date) => now.toISOString().slice(0, 7);
@@ -48,12 +50,13 @@ export class ShopStore {
     return true;
   }
 
-  async addFeedback(rec: FeedbackRecord, now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
+  async addFeedback(rec: FeedbackRecord, cid = "none", now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
     if (!this.pipe) return "off";
     if (!this.allowLocal(now.getTime())) return "limited";
-    const gate = await this.run(3, [["INCR", K.day(day(now))], ["EXPIRE", K.day(day(now)), 172_800]], now);
+    const d = day(now);
+    const gate = await this.run(5, [["INCR", K.client(d, cid)], ["EXPIRE", K.client(d, cid), 86_400], ["INCR", K.day(d)], ["EXPIRE", K.day(d), 172_800]], now);
     if (!gate) return "dropped";
-    if (Number(gate[0]) > DAY_CAP) return "limited";
+    if (Number(gate[0]) > CLIENT_DAY_CAP || Number(gate[2]) > DAY_CAP) return "limited";
     const out = await this.run(3, [["LPUSH", K.feedback, JSON.stringify(rec)], ["LTRIM", K.feedback, 0, FEEDBACK_KEEP - 1]], now);
     return out ? "saved" : "dropped";
   }

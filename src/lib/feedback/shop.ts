@@ -17,7 +17,16 @@ export type ChipId = (typeof CHIPS)[number]["id"];
 const CHIP_IDS = new Set<string>(CHIPS.map((c) => c.id));
 export const NOTE_CAP = 140; // the query log's own cap, so the note gets the identical scrub
 
-export type FeedbackIn = { prompt: string; size: string; partCount: number; chips: ChipId[]; note: string };
+export type FeedbackIn = { prompt: string | null; size: string; partCount: number; chips: ChipId[]; note: string | null; cid: string };
+export const CID = /^[0-9a-f]{16,32}$/;
+/** The browser's half of the scrub: the same safePrompt the server runs. "" stays "" (no note). */
+export function scrubNote(note: string): { ok: boolean; note: string | null } {
+  if (!note.trim()) return { ok: true, note: null };
+  const t = safePrompt(note);
+  return t ? { ok: true, note: t } : { ok: false, note: null };
+}
+/** The anonymous client id's shape check (never stored with the feedback; only counted for a day). */
+export const cleanCid = (raw: unknown) => (typeof raw === "string" && CID.test(raw) ? raw : "none");
 export type FeedbackRecord = { prompt: string | null; size: string; partCount: number; chips: ChipId[]; note: string | null; tip: string; at: string };
 
 const SIZE = /^[0-9 x×."'/-]{1,40}$/i;
