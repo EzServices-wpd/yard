@@ -170,7 +170,7 @@ export function BenchTools({
           aria-label="Hide quick tools"
           title="Hide quick tools"
           aria-expanded
-          className="grid min-h-11 w-10 shrink-0 place-items-center rounded-lg text-muted hover:bg-elevated hover:text-fg sm:w-11"
+          className="grid min-h-11 w-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-elevated hover:text-fg sm:w-11"
         >
           <ChevronDown className="size-4" aria-hidden />
         </button>

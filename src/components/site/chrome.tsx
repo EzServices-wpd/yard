@@ -4,7 +4,7 @@ import { Logo } from "@/components/brand/logo";
 
 const NAV = [
   { to: "/ideas" as const, label: "Ideas" },
-  { to: "/workspace" as const, label: "Bench" },
+  { to: "/workspace" as const, label: "Workbench" },
 ];
 
 const FOOT = [

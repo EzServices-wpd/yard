@@ -31,6 +31,8 @@ export interface PlacedPart {
   height: number;
   rotated: boolean;
   material: string;
+  /** The 3D model part ids this sheet piece is cut for (same ids as CutLine.partIds and data-part). */
+  partIds?: string[];
 }
 
 export interface NestSheet {

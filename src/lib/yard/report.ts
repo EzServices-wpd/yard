@@ -1,5 +1,7 @@
+import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
+import { isUnitItem } from "./unitItems";
 import { isNoLidPrompt } from "./cueRules";
 import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
@@ -59,6 +61,8 @@ function partFamily(name: string, type?: string) {
 
 function effortLabel(project: YardProject, pieces: number): string {
   if (project.kind === "opening") return "1/2-day";
+  // C3: a few bought pieces linked, stacked or threaded is a short sit-down job, never a "weekend".
+  if (isUnitItem(project)) return "under an hour";
   // Fitted/house: bands on honest wood piece count (same as Confirm/chip /
   // plan.totals.pieces via closetCuts) — never raw panels.length. Bounding
   // type=drawer envelopes under-count exploded sides/back/bottom kits.
@@ -1156,7 +1160,7 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
     /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
+  if (!isUnitItem(project) && !project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
@@ -1412,7 +1416,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
-    [/\bstretch cord\b/i, /cord/, { name: "1 mm clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
+    [/\bstretch cord\b/i, /cord/, { name: "1/32\" clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
     [/\bbed bolts?\b/i, /bolt/, { name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts', quantity: 8, estimatedCost: 1.5 * 8, unit: "each", searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut", notes: "The bed bolts the notes name." }],
   ];
   for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
@@ -1424,7 +1428,9 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     const item = getCatalogItem(panel.materialId);
     if (!item || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
     // Unit-table discs and beads (washers, pony beads) are one bought piece per drawn part.
-    if (item.formFactor === "custom" && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
+    // C2: in a purchased-item build every unit-table piece (clothespin, straw, nail…) is one bought piece per part,
+    // never a craft-stick area count.
+    if ((item.formFactor === "custom" || (isUnitItem(project) && item.formFactor !== "dowel")) && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
     if (!(item.formFactor === "stick" || item.formFactor === "dowel")) continue;
     const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
     const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
@@ -1442,6 +1448,8 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
       if (i >= 0) bins[i] -= c + 0.125; else bins.push(L - c - 0.125);
     }
     sticksById.set(id, bins.length);
+    // C3/F10: full-length parts are used whole: no cut, no kerf (the step says the same).
+    if (cuts.every((c) => Math.abs(c - L) <= 1 / 64)) { dowelNotes.set(id, `${cuts.length} whole ${inchFrac(L)}" dowel${cuts.length === 1 ? "" : "s"}, used as bought, nothing to cut.`); continue; }
     dowelNotes.set(id, `${cuts.length} part${cuts.length === 1 ? "" : "s"} cut from ${bins.length} × ${inchFrac(L)}" dowel${bins.length === 1 ? "" : "s"}, 1/8" kerf.`);
   }
   for (const [id, n] of sticksById) {
@@ -1542,6 +1550,31 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
+  return withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)));
+}
+
+/**
+ * Spec 008 (I20): a purchased-item build's whole pieces (clip, marble, dowel used as bought) are bought, not cut:
+ * their cut-list rows are marked whole and carry the piece's real size from the unit table (they read as blank
+ * 0" sizes before, because a 1/32" wire rounded to 0). Real cuts (bracelet cord) are untouched.
+ */
+function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!isUnitItem(project)) return plan;
+  return {
+    ...plan,
+    cutList: plan.cutList.map((c) => {
+      const u = unitSizeById(c.id.split("|")[0]);
+      if (!u || /kerf|cut from/i.test(plan.bom.find((b) => b.name === c.material)?.notes ?? "")) return c;
+      const d = u.dims;
+      const len = d.length ?? d.diameter ?? c.lengthIn;
+      const wid = d.width ?? d.diameter ?? c.widthIn;
+      const thk = d.thickness ?? d.diameter ?? c.thicknessIn;
+      return { ...c, whole: true, lengthIn: len, widthIn: wid, thicknessIn: thk };
+    }),
+  };
+}
+
+function buildPlanOuter(project: YardProject): BuildPlan {
   if (!project.displayOnly && FOOD.test(`${project.prompt ?? ""} ${project.name}`)) {
     // Hardwood unless a species was typed: the board is planned under that species' stock.
     const prompt = HARDWOOD.test(project.prompt ?? "") ? project.prompt : `maple ${project.prompt ?? project.name}`;
@@ -1593,7 +1626,9 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
-  return cutStepFromList({ ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } });
+  // C3: whole purchased pieces have no cut list to restate as a cut step.
+  const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
+  return isUnitItem(project) ? fin : cutStepFromList(fin);
 }
 
 /**

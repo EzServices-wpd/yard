@@ -18,15 +18,22 @@ const CANARIES = ["big ben", "eiffel tower", "brooklyn bridge", "trebuchet", "su
 
 const stubs = (calls: string[]) => ({
   lookupRecipe: (async () => (calls.push("lookup"), { ok: false, error: "bad" })) as never,
-  hintSubject: (async () => ({ summary: "", subject: "" })) as never,
-  interpretPrompt: (async () => ({ ok: false })) as never,
-  briefHousePrompt: (async () => ({ ok: false })) as never,
-  proposeRecipeFn: (async () => ({ status: "quiet" })) as never,
+  hintSubject: (async () => (calls.push("hint"), { summary: "", subject: "" })) as never,
+  interpretPrompt: (async () => (calls.push("interp"), { ok: false })) as never,
+  briefHousePrompt: (async () => (calls.push("house"), { ok: false })) as never,
+  proposeRecipeFn: (async () => (calls.push("propose"), { status: "quiet" })) as never,
 });
 
+// Any network call (a server function, Wikipedia, xAI) goes through fetch: record it.
+const realFetch = globalThis.fetch;
 async function live(q: string) {
   const calls: string[] = [];
-  await runYardPrompt(q, { fresh: true, ai: stubs(calls) });
+  globalThis.fetch = (async (u: unknown) => (calls.push(`fetch ${String(u)}`), new Response("{}", { status: 503 }))) as typeof fetch;
+  try {
+    await runYardPrompt(q, { fresh: true, ai: stubs(calls) });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
   return { p: useYard.getState().project, calls };
 }
 const parts = (p: { panels: unknown[]; instances?: unknown[] }) => p.panels.length + (p.instances?.length ?? 0);
@@ -37,6 +44,8 @@ describe("live bar: engine forms before the learner", () => {
       const { p, calls } = await live(q);
       const e = generateFromPrompt(q);
       assert.ok(!calls.includes("lookup"), `${q} went to the learner`);
+      // Cost leak: an engine-owned prompt makes no AI or network call at all (no hint, interpret, house, fetch).
+      assert.deepEqual(calls, [], `${q} made calls: ${calls.join(", ")}`);
       assert.ok(!p.displayOnly, `${q} is display-only`);
       assert.deepEqual([p.name, parts(p)], [e.name, parts(e)], q);
     });
@@ -50,12 +59,18 @@ describe("live bar: engine forms before the learner", () => {
       const owned = engineKeepsPrompt(q, e, ignoredTypedWords(e, q).length > 0);
       const { p, calls } = await live(q);
       assert.equal(calls.includes("lookup"), !owned, `${q}: owned=${owned} lookup=${calls.includes("lookup")}`);
-      if (owned) assert.ok(!p.displayOnly, `${q} is display-only`);
+      if (owned) {
+        assert.ok(!p.displayOnly, `${q} is display-only`);
+        assert.deepEqual(calls, [], `${q} made calls: ${calls.join(", ")}`);
+      }
     });
   }
   it("linen closet: exact header and $183.70 on the live bar", async () => {
     const { p, calls } = await live("linen closet 31.5 wide 78 tall 16 deep");
     assert.ok(!calls.includes("lookup"));
+    // C10: every size is typed, so no house brief (or any network call) holds the lamp or reprices the plan.
+    assert.deepEqual(calls, [], `linen made calls: ${calls.join(", ")}`);
+    assert.equal(useYard.getState().plan?.totals.estCostUsd, 183.7);
     assert.equal(headerTitle(p).split(" · ").slice(0, 2).join(" · "), 'Linen · 31 1/2" W × 16" D × 78" H');
     assert.equal(buildPlan(p).totals.estCostUsd, 183.7);
   });

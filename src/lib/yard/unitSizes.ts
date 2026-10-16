@@ -5,6 +5,7 @@
  * Buy still sells the pack (unitsPerPack) and says how many pieces the build uses.
  */
 import type { CatalogItem, FormFactor } from "./types";
+import { mmToInches } from "./inchText";
 
 export type UnitSize = {
   key: string;
@@ -49,10 +50,21 @@ export const UNIT_SIZES: UnitSize[] = [
     source: "Trade size No. 1 gem clip = 1 3/8\" (Universal/Officemate No. 1 spec); .033\" wire gauge (Business Source Size 1 spec)",
   },
   {
+    // F47: before the standard stick, so "jumbo craft stick" never reads as the 4 1/2" one.
+    key: "jumbo-craft-stick",
+    catalogId: "popsicle-jumbo",
+    name: "Jumbo craft stick",
+    match: /\bjumbo\s+(?:craft|popsicle)\s+sticks?\b|\b(?:large|big)\s+craft\s+sticks?\b|\btongue\s+depressors?\b/,
+    form: "stick",
+    dims: { length: 6, width: 0.75, thickness: 0.08 },
+    pack: { units: 50, costUsd: 0.06 },
+    source: "6\" × 3/4\" × 2 mm jumbo craft stick (CraftySticks size guide: jumbo 6\" × 3/4\")",
+  },
+  {
     key: "craft-stick",
     catalogId: "popsicle-standard",
     name: "Standard craft stick",
-    match: /popsicle|craft sticks?/,
+    match: /popsicle\s+sticks?|popsicles?|craft\s+sticks?/,
     form: "stick",
     dims: { length: 4.5, width: 0.375, thickness: 0.08 },
     pack: { units: 100, costUsd: 0.03 },
@@ -110,14 +122,45 @@ export const UNIT_SIZES: UnitSize[] = [
   },
 ];
 
+
+/**
+ * Spec 007 C2 · size-table fallback for countable bought items: one row per standard piece, same rules as above
+ * (one piece, never the pack; a cited trade size). Builds that name one of these on its own are purchased items (I20).
+ */
+const bought = (key: string, name: string, match: RegExp, dims: CatalogItem["dims"], units: number, costUsd: number, source: string, form: FormFactor = "custom"): UnitSize =>
+  ({ key, catalogId: `piece-${key}`, name, match, form, dims, pack: { units, costUsd }, source });
+
+export const BOUGHT_SIZES: UnitSize[] = [
+  bought("zip-tie", "8\" cable tie", /\b(?:zip|cable)\s*-?\s*ties?\b/, { length: 8, width: 0.19, thickness: 0.05 }, 100, 0.04, "Standard 8\" 50 lb nylon cable tie, 4.8 mm × 1.3 mm strap (UL 62275 standard size)", "stick"),
+  bought("marble", "Glass marble 5/8\"", /\bmarbles?\b/, { length: 0.625, width: 0.625, thickness: 0.625, diameter: 0.625 }, 50, 0.1, "Standard 16 mm (5/8\") toy glass marble (marble maker size chart: 'regular' 5/8\")"),
+  bought("clothespin", "Wooden spring clothespin", /\bcloth(?:es)?\s*-?\s*pins?\b|\bclothes\s*pegs?\b/, { length: 2.875, width: 0.375, thickness: 0.5 }, 50, 0.06, "Standard wooden spring clothespin 2 7/8\" × 3/8\" × 1/2\" (US household clothespin size)", "stick"),
+  bought("nail-16d", "16d common nail", /\b(?:16\s*d|sixteen[\s-]*penny)?\s*(?:common\s+)?nails?\b/, { length: 3.5, diameter: 0.162 }, 50, 0.06, "ASTM F1667 16d common nail: 3 1/2\" long, 0.162\" shank", "stick"),
+  bought("rubber-band", "#33 rubber band", /\brubber\s*-?\s*bands?\b/, { length: 3.5, width: 0.125, thickness: 0.03 }, 160, 0.02, "#33 rubber band: 3 1/2\" × 1/8\" flat (Alliance rubber band size chart)", "stick"),
+  bought("button", "4-hole button 5/8\"", /\bbuttons?\b/, { length: 0.625, width: 0.625, thickness: 0.08, diameter: 0.625 }, 50, 0.05, "Line 24 button = 15 mm (5/8\") across (button 'ligne' size standard)"),
+  bought("binder-clip", "Medium binder clip 1 1/4\"", /\bbinder\s*-?\s*clips?\b/, { length: 1.25, width: 1, thickness: 0.625 }, 24, 0.15, "Medium binder clip: 1 1/4\" wide, 5/8\" capacity (ACCO medium size)"),
+  bought("golf-tee", "Wooden golf tee 2 1/8\"", /\bgolf\s*-?\s*tees?\b/, { length: 2.125, diameter: 0.17 }, 100, 0.03, "Regulation 2 1/8\" wooden golf tee (USGA Rule: tee at most 4\")", "stick"),
+  bought("straw", "Drinking straw 7 3/4\"", /\b(?:drinking\s+)?straws?\b/, { length: 7.75, diameter: 0.24 }, 100, 0.02, "Standard 7 3/4\" × 6 mm drinking straw (foodservice 'jumbo' straw size)", "tube"),
+  bought("pipe-cleaner", "Chenille stem 12\"", /\bpipe\s*-?\s*cleaners?\b|\bchenille\s+stems?\b/, { length: 12, diameter: 0.24 }, 100, 0.03, "Standard 12\" × 6 mm chenille stem (craft supplier size)", "stick"),
+  bought("cork", "#9 wine cork", /\b(?:wine\s+|bottle\s+)?corks?\b(?!\s*board)/, { length: 1.75, diameter: 0.9375 }, 25, 0.2, "#9 straight wine cork: 1 3/4\" × 15/16\" (24 mm) (winemaking cork size chart)"),
+  bought("shoelace", "Flat shoelace 45\"", /\bshoe\s*-?\s*laces?\b/, { length: 45, width: 0.3125, thickness: 0.06 }, 2, 1.5, "45\" flat lace for 5–6 eyelet shoes, 5/16\" wide (shoelace length chart)", "stick"),
+  bought("bottle-cap", "Crown bottle cap", /\bbottle\s*-?\s*caps?\b/, { length: 1.02, width: 1.02, thickness: 0.24, diameter: 1.02 }, 100, 0.03, "Crown cork 26 mm across, 6 mm tall (crown cap standard 26 mm)"),
+  bought("cotton-ball", "Cotton ball", /\bcotton\s*-?\s*balls?\b/, { length: 1, width: 1, thickness: 1, diameter: 1 }, 200, 0.01, "Regular cotton ball about 1\" across (personal-care 'regular' size)"),
+];
+
+// Spec 008: names and cited sources read in inches only (the citation's metric figures are converted).
+for (const u of [...UNIT_SIZES, ...BOUGHT_SIZES]) {
+  u.name = mmToInches(u.name);
+  u.source = mmToInches(u.source);
+}
+
 /** The curated single-item size for this text, most specific row first (a 3/8 dowel before a bare dowel). */
 export function unitSizeFor(text: string): UnitSize | null {
   const t = text.toLowerCase();
-  return UNIT_SIZES.find((u) => u.match.test(t)) ?? null;
+  return UNIT_SIZES.find((u) => u.match.test(t)) ?? BOUGHT_SIZES.find((u) => u.match.test(t)) ?? null;
 }
 
 export function unitSizeById(catalogId: string): UnitSize | null {
-  return UNIT_SIZES.find((u) => u.catalogId === catalogId) ?? null;
+  return UNIT_SIZES.find((u) => u.catalogId === catalogId) ?? BOUGHT_SIZES.find((u) => u.catalogId === catalogId) ?? null;
 }
 
 /** Words that mark a size as the box, bag or pack, not the piece. */
@@ -147,7 +190,7 @@ export function withUnitSize(item: CatalogItem): CatalogItem {
 
 /** Seed rows for curated items the catalog does not carry yet. */
 export function unitSizeRows(have: Set<string>): CatalogItem[] {
-  return UNIT_SIZES.filter((u) => !have.has(u.catalogId)).map((u) => ({
+  return [...UNIT_SIZES, ...BOUGHT_SIZES].filter((u) => !have.has(u.catalogId)).map((u) => ({
     id: u.catalogId,
     name: u.name,
     category: u.key === "paper-clip" || u.key.startsWith("washer") ? "metal" : u.key.endsWith("bead") ? "plastic" : u.form === "dowel" ? "dowel_rod" : u.form === "stick" ? "craft_wood" : "other",

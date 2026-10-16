@@ -7,7 +7,8 @@
  * never a pony, never popsicle sticks).
  */
 import { createId } from "@/lib/utils";
-import { inchFrac } from "./inchText";
+import { inchFrac, mmToInches } from "./inchText";
+import { sentenceCase } from "./headNoun";
 import { unitSizeFor, type UnitSize } from "./unitSizes";
 import type { AssemblyStep, Panel, YardProject } from "./types";
 
@@ -17,6 +18,27 @@ export const UNIT_ITEM_NOTE = "Unit item:";
 const SHAPE_WORD: Record<string, Shape> = { chain: "chain", garland: "chain", tower: "stack", stack: "stack", pile: "stack", bracelet: "ring", necklace: "ring", ring: "ring" };
 const FILLER = /\b(?:a|an|one|single|the|of|standard|regular|plain|wooden|wood|metal|steel|plastic|hardwood|birch|round|long|tall|high|inch|inches|in)\b|["']/g;
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/** Is this a purchased-item build (one curated piece, or real pieces linked, stacked or threaded)? */
+export function isUnitItem(project: { notes?: string[] }): boolean {
+  return (project.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
+}
+
+/** F9: the plural goes on the noun, never on a trailing size ("Pony beads 9 × 6 mm", not "9 × 6 mms"). */
+export function pluralUnit(name: string): string {
+  const m = name.match(/^(.*?[A-Za-z])(\s+[\d"'].*)?$/);
+  return m ? `${m[1]}${/s$/.test(m[1]) ? "" : "s"}${m[2] ?? ""}` : `${name}s`;
+}
+
+/** Clips are drawn as wire: a closed stadium loop the width of the wire (outline, inside open), not a slab. */
+function wireLoop(L: number, W: number, t: number, n = 8): [number, number][] {
+  const arc = (cx: number, r: number, from: number): [number, number][] =>
+    Array.from({ length: n + 1 }, (_, i) => { const a = from + (Math.PI * i) / n; return [r3(cx + r * Math.cos(a)), r3(W / 2 + r * Math.sin(a))] as [number, number]; });
+  const R = W / 2, ri = Math.max(0.01, R - t);
+  const outer = [...arc(L - R, R, -Math.PI / 2), ...arc(R, R, Math.PI / 2)];
+  const inner = [...arc(R, ri, Math.PI / 2), ...arc(L - R, ri, -Math.PI / 2)].reverse();
+  return [...outer, outer[0], ...inner, inner[0]];
+}
 
 export type UnitItemAsk = { unit: UnitSize; shape: Shape; count: number | null; lengthIn: number | null; shapeWord: string };
 
@@ -58,10 +80,40 @@ function piece(u: UnitSize, name: string, x: number, y: number, z: number, extra
     ? { id: createId("wa"), type: "rail", name, position: { x, y, z }, size: { width: wid, height: thk, depth: wid }, materialId: u.catalogId,
         // F13: a washer is a disc with its hole, never a spanning rail.
         polygon: { plane: "xz", pts: circle(wid / 2), holes: [{ x: wid / 2, y: wid / 2, r: 0.094 }] } }
+    : u.key === "paper-clip"
+      ? { id: createId("pc"), type: "rail", name, position: { x, y, z }, size: { width: len, height: thk, depth: wid }, materialId: u.catalogId,
+          polygon: { plane: "xz", pts: wireLoop(len, wid, thk) } }
     : /bead/.test(u.key)
       ? { id: createId("be"), type: "rail", name, position: { x, y, z }, size: { width: len, height: wid, depth: wid }, materialId: u.catalogId }
       : { id: createId("pc"), type: "rail", name, position: { x, y, z }, size: { width: len, height: thk, depth: wid }, materialId: u.catalogId };
   return { ...base, ...extra };
+}
+
+/**
+ * Spec 008: how one piece's size is said. Round pieces (marble, bead, button, bottle cap, cotton ball) are "N\" across";
+ * a washer is a disc; a round piece longer than it is wide (cork) gives both; anything else is "N\" long".
+ */
+export function unitSizeTalk(u: UnitSize): string {
+  const len = u.dims.length ?? 1;
+  const wid = u.dims.width ?? u.dims.diameter ?? 0.1;
+  const thk = u.dims.thickness ?? u.dims.diameter ?? 0.05;
+  if (/washer/.test(u.key)) return `a ${inchFrac(wid)}" disc, ${inchFrac(thk)}" thick`;
+  const round = u.form === "custom" && !!u.dims.diameter;
+  if (!round) return `${inchFrac(len)}" long`;
+  const across = u.dims.diameter!;
+  if (len > across * 1.2) return `${inchFrac(len)}" long, ${inchFrac(across)}" across`;
+  return `${inchFrac(Math.max(across, wid))}" across${thk < across * 0.6 ? `, ${inchFrac(thk)}" thick` : ""}`;
+}
+
+/** The typed item words as the title, when the table's own name does not already say them. */
+function typedUnitTitle(prompt: string, u: UnitSize): string | null {
+  const m = prompt.toLowerCase().match(u.match);
+  if (!m) return null;
+  const typed = m[0].trim().replace(/\s+/g, " ").replace(/(?<!s)s$/, "");
+  // Keep the table name when it already holds every typed word ("3/8 dowel" → 3/8" Hardwood Dowel 36").
+  const name = u.name.toLowerCase();
+  const words = typed.split(" ").filter((w) => /[a-z]/.test(w));
+  return words.length && !words.every((w) => name.includes(w)) ? sentenceCase(typed) : null;
 }
 
 export function buildUnitItem(prompt: string): YardProject | null {
@@ -77,23 +129,43 @@ export function buildUnitItem(prompt: string): YardProject | null {
   let name: string;
   if (shape === "one") {
     panels.push(piece(u, word[0].toUpperCase() + word.slice(1), 0, 0, 0));
-    name = u.name[0].toUpperCase() + u.name.slice(1);
-    notes.push(`One ${u.name} at its real size${/washer/.test(u.key) ? `: a ${inchFrac(wid)}" disc, ${thk}" thick` : `: ${inchFrac(len)}" long`}. Buy sells it by the pack.`);
+    // Spec 008 (I24): the typed noun is the title ("Zip tie", "Pipe cleaner") unless the table name already says it.
+    name = typedUnitTitle(prompt, u) ?? u.name[0].toUpperCase() + u.name.slice(1);
+    notes.push(`One ${u.name} at its real size: ${unitSizeTalk(u)}. Buy sells it by the pack.`);
   } else if (shape === "chain") {
     // Each clip hooks through the last one's end loop: the pitch is the clip less one loop (about its width).
     const pitch = r3(len - wid);
     const n = ask.count ?? Math.max(2, Math.round(((ask.lengthIn ?? 12) - (len - pitch)) / pitch));
     for (let i = 0; i < n; i++) {
       const turned = i % 2 === 1;
-      panels.push(piece(u, `Clip ${i + 1}`, r3(i * pitch), turned ? 0 : r3((wid - thk) / 2), turned ? r3((wid - thk) / 2) : 0, turned ? { size: { width: len, height: wid, depth: thk } } : {}));
+      panels.push(piece(u, `Clip ${i + 1}`, r3(i * pitch), turned ? 0 : r3((wid - thk) / 2), turned ? r3((wid - thk) / 2) : 0, turned ? { size: { width: len, height: wid, depth: thk }, polygon: { plane: "xy", pts: wireLoop(len, wid, thk) } } : {}));
     }
     name = "Paper clip chain";
-    notes.push(`${n} real No. 1 clips linked end to end, each turned 90° to the last: ${inchFrac(r3(len + (n - 1) * pitch))}" long.`);
+    const got = r3(len + (n - 1) * pitch);
+    // I8: a typed length lands within 1/8", or the note says it is the nearest whole clip.
+    const off = ask.lengthIn != null && Math.abs(got - ask.lengthIn) > 0.125 ? ` That is the nearest whole clip to the ${inchFrac(ask.lengthIn)}" you typed (each clip adds ${inchFrac(pitch)}").` : "";
+    notes.push(`${n} real No. 1 clips linked end to end, each turned 90° to the last: ${inchFrac(got)}" long.${off}`);
   } else if (shape === "stack") {
     const n = ask.count ?? Math.max(2, Math.round((ask.lengthIn ?? 2.5) / thk));
     for (let i = 0; i < n; i++) panels.push(piece(u, `Washer ${i + 1}`, 0, r3(i * thk), 0));
     name = "Washer tower";
-    notes.push(`${n} real ${u.name}s (${inchFrac(wid)}" discs, ${thk}" thick) stacked: ${inchFrac(r3(n * thk))}" tall. Washers stack; none spans.`);
+    notes.push(`${n} real ${pluralUnit(u.name)} (${inchFrac(wid)}" discs, ${thk}" thick) stacked: ${inchFrac(r3(n * thk))}" tall. Washers stack; none spans.`);
+  } else if (u.key === "paper-clip") {
+    // F17: a paper clip necklace or bracelet is a closed loop of linked clips (the last hooks the first): no cord.
+    const pitch = r3(len - wid);
+    const around = ask.lengthIn ?? (ask.shapeWord === "necklace" ? 18 : 7);
+    const n = ask.count ?? Math.max(4, Math.round(around / pitch));
+    const R = (n * pitch) / (2 * Math.PI);
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      const turned = i % 2 === 1;
+      panels.push(piece(u, `Clip ${i + 1}`, r3(R + R * Math.cos(a) - len / 2), turned ? 0 : r3((wid - thk) / 2), r3(R + R * Math.sin(a) - wid / 2), {
+        yaw: a + Math.PI / 2,
+        ...(turned ? { size: { width: len, height: wid, depth: thk }, polygon: { plane: "xy" as const, pts: wireLoop(len, wid, thk) } } : {}),
+      }));
+    }
+    name = ask.shapeWord === "necklace" ? "Paper clip necklace" : "Paper clip bracelet";
+    notes.push(`${n} real No. 1 clips linked into a closed loop, each turned 90° to the last, the last hooked through the first: about ${inchFrac(r3(n * pitch))}" around.`);
   } else {
     // Round a wrist (7") or a neck (18"), beads threaded on one cord.
     const around = ask.lengthIn ?? (ask.shapeWord === "necklace" ? 18 : 7);
@@ -104,9 +176,10 @@ export function buildUnitItem(prompt: string): YardProject | null {
       panels.push(piece(u, `Bead ${i + 1}`, r3(R + R * Math.cos(a) - len / 2), 0, r3(R + R * Math.sin(a) - wid / 2), { yaw: a + Math.PI / 2 }));
     }
     name = ask.shapeWord === "necklace" ? `${u.name} necklace` : `${u.name} bracelet`;
-    notes.push(`${n} real ${u.name}s round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1 mm stretch cord.`);
+    notes.push(`${n} real ${pluralUnit(u.name)} round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1/32" stretch cord.`);
   }
   notes.push(`Piece size from the unit table: ${u.name}, ${u.source}.`);
+  for (let i = 0; i < notes.length; i++) notes[i] = mmToInches(notes[i]);
   const maxX = Math.max(...panels.map((p) => p.position.x + p.size.width));
   const maxY = Math.max(...panels.map((p) => p.position.y + p.size.height));
   const maxZ = Math.max(...panels.map((p) => p.position.z + p.size.depth));
@@ -134,20 +207,26 @@ export function unitItemSteps(project: YardProject): AssemblyStep[] | null {
   const n = names.length;
   const said = project.notes[1] ?? "";
   const s = (step: number, title: string, description: string, partsUsed?: string[]): AssemblyStep => ({ step, title, description, ...(partsUsed ? { partsUsed } : {}) });
-  if (shape === "one") return [s(1, `Take one ${project.name.toLowerCase()} from the pack`, `${said} Nothing to cut: it is used whole, as bought.`, names)];
+  if (shape === "one") return [s(1, `Take one ${project.name.toLowerCase()}`, `${said} Nothing to cut: use it whole, as bought.`, names)];
+  if (shape === "ring" && project.panels.every((p) => /^Clip /.test(p.name)))
+    return [
+      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips. Nothing to cut.`),
+      s(2, `Link the ${n} clips`, `Hook each clip through the end loop of the one before and turn it 90° so the loops sit flat to each other.`, names),
+      s(3, "Close the loop", `Hook the last clip through the end loop of the first so the chain is one closed loop. ${said}`),
+    ];
   if (shape === "chain")
     return [
-      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips from one pack of 100. Nothing to cut.`),
+      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips. Nothing to cut.`),
       s(2, `Link the ${n} clips`, `Hook each clip through the end loop of the one before and turn it 90° so the loops sit flat to each other. ${said}`, names),
       s(3, "Check the length", `Hold the chain up by one end and let it hang straight: about ${inchFrac(project.overall.width)}" end to end.`),
     ];
   if (shape === "stack")
     return [
-      s(1, `Count out ${n} washers`, `${n} #8 flat washers from one pack of 100. Nothing to cut.`),
+      s(1, `Count out ${n} washers`, `${n} #8 flat washers. Nothing to cut.`),
       s(2, `Stack the ${n} washers`, `Stack them flat and centered, hole over hole, on a level surface. ${said} A 3/16" rod through the holes keeps a tall stack straight.`, names),
     ];
   return [
-    s(1, "Cut the cord", "Cut 1 mm stretch cord 4\" longer than the bracelet so there is cord to tie."),
+    s(1, "Cut the cord", "Cut 1/32\" stretch cord 4\" longer than the bracelet so there is cord to tie."),
     s(2, `Thread ${n} beads`, `${said} Slide the beads on one at a time.`, names),
     s(3, "Tie it off", "Tie a surgeon's knot, draw it snug and tuck the ends into the bead next to it."),
   ];

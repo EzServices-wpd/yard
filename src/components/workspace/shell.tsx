@@ -7,10 +7,15 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
+import { DecisionLine } from "@/components/workspace/decision-line";
+import { priceReason, type PriceReason } from "@/components/workspace/price-reason";
+import { MorphButton } from "@/components/workspace/morph-button";
+import { RevealStatus } from "@/components/workspace/reveal-status";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
@@ -47,6 +52,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [promptDirty, setPromptDirty] = useState(true);
+  const [trayOpen, setTrayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
@@ -78,6 +85,19 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
+  // Chief's item: why this build's price differs from the plain build. Worked out at idle (never
+  // before the model) into a line slot the card always keeps, so it never pushes the card (CLS 0).
+  const [priceWhy, setPriceWhy] = useState<PriceReason | null>(null);
+  useEffect(() => {
+    setPriceWhy(null);
+    if (!plan) return;
+    const forPlan = plan;
+    const run = () => setPriceWhy(priceReason(useYard.getState().project, forPlan));
+    const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const id = w.requestIdleCallback ? w.requestIdleCallback(run, { timeout: 1500 }) : window.setTimeout(run, 50);
+    return () => { if (w.cancelIdleCallback) w.cancelIdleCallback(id); else window.clearTimeout(id); };
+  }, [plan]);
+
   const orbited = useYard((s) => s.orbited);
   // A fresh lamp (new nearby preview) per build; it stays mounted briefly after to crossfade out.
   const [lampKey, setLampKey] = useState(0);
@@ -255,36 +275,23 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
-          <span className="hidden truncate font-display text-sm text-muted md:inline">
-            {headerTitle(project)}
+          <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
+            {pieceCount > 0 ? `Workbench · ${headerTitle(project)}` : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link to="/ideas" className="hidden px-2 text-sm text-muted hover:text-fg sm:inline">
             Ideas
           </Link>
-          <button
-            type="button"
-            onClick={() => {
+          <MorphButton
+            pending={pending}
+            built={pieceCount > 0}
+            dirty={promptDirty}
+            onPlan={() => {
               makePlan();
               setPlanOpen(true);
             }}
-            className="inline-flex h-9 items-center rounded-full bg-accent px-3.5 text-sm font-medium text-accent-fg"
-          >
-            Get the plan
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              makePlan();
-              setExportOpen(true);
-            }}
-            className="inline-flex h-9 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
-            aria-label="Save the plan as PDF"
-            title="Save the plan as PDF"
-          >
-            PDF
-          </button>
+          />
           <div className="relative">
             <button
               type="button"
@@ -332,6 +339,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     />
                   </>
                 )}
+                <MoreItem
+                  label="Save the plan as PDF"
+                  disabled={pieceCount === 0}
+                  onClick={() => {
+                    makePlan();
+                    setExportOpen(true);
+                    setMoreOpen(false);
+                  }}
+                />
                 <div className="my-1 border-t border-border/70" />
                 <Link
                   to="/ideas"
@@ -378,6 +394,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         }}
         onStock={() => setSide("catalog")}
         onMeasure={() => setSide("measure")}
+        onDirty={setPromptDirty}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -397,6 +414,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
+          <RevealStatus />
           <LavaLamp key={lampKey} show={pending} prompt={initialPrompt ?? project.prompt} caption={grokBusy ? "Fitting the opening" : "Building"} />
           {showOffer && (
             <div
@@ -517,13 +535,31 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
 
           {/* One dock: tools, the step, and the size. The model stays clear above it. */}
-          {pieceCount > 0 && (
+          {/* LCP + CLS 0: the card's text (name, Refine input) paints at first render, even while the build runs;
+              only the tray waits for the build, so the card never grows in place. Motion is gated on the reveal, content never. */}
+          {(pieceCount > 0 || (pending && Boolean(initialPrompt?.trim()))) && (
           <div
             className={`pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 sm:bottom-4 ${
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <DockFrame className="yard-glass pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <div className="relative w-[min(35rem,100%)]">
+            {/* Price reason: rides above the card (out of flow), so it never makes a card taller and never
+                shifts it (CLS 0). Opacity/transform only; present only when there is a reason. */}
+            {workMode !== "walk" && priceWhy && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center">
+                <p
+                  data-yard-price-why={pending ? "0" : "1"}
+                  title={priceWhy.text}
+                  className="yard-price-why yard-glass pointer-events-auto max-w-full truncate rounded-full border border-border/70 bg-surface/90 px-3 py-1 text-[12px] tabular-nums text-muted"
+                  style={{ opacity: pending ? 0 : 1, transform: pending ? "translateY(4px)" : "none" }}
+                  aria-hidden={pending}
+                >
+                  {priceWhy.text}
+                </p>
+              </div>
+            )}
+            <DockFrame className="yard-glass pointer-events-auto w-full overflow-y-auto overscroll-contain max-sm:max-h-[40dvh] rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -548,22 +584,56 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
-              {pieceCount > 0 && !pending && workMode !== "walk" && (
-                <BenchTools
-                  side={side}
-                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
-                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  bare
-                />
-              )}
               {showOffer && (
                 <div data-bench-overlay="offer-sheet" className="flex items-center gap-2 border-b border-border/60 px-3 py-2 text-xs text-fg md:hidden">
                   <span className="line-clamp-3 min-w-0 flex-1 leading-snug">{project.supportOffer!.reason}</span>
                   {offerButtons}
                 </div>
               )}
-              {!pending && workMode !== "walk" && !project.displayOnly && <RefineBox />}
-              {!pending && workMode !== "walk" && <BuildInfoPanel />}
+              {/* Item 2: the result card. Row 1 says what it is and what it costs, row 2 is the one
+                  decision (Refine or open the plan), everything else waits behind "More". */}
+              {workMode !== "walk" && (
+                <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
+                  {/* The title lands with the model: a same-height skeleton holds its place while the lamp is up (CLS 0). */}
+                  <p className="min-w-0 truncate font-display text-[15px] text-fg">
+                    {pending ? (
+                      <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
+                    ) : project.name || headerTitle(project)}
+                  </p>
+                  <DecisionLine />
+                </div>
+              )}
+              {workMode !== "walk" && (
+                project.displayOnly ? null : (
+                  <RefineBox
+                    showChips={trayOpen}
+                    trailing={
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { makePlan(); setPlanOpen(true); }}
+                          disabled={pending}
+                          data-yard-open-plan="1"
+                          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated disabled:opacity-50 sm:flex-none"
+                        >
+                          Open the plan <ChevronRight className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          aria-expanded={trayOpen}
+                          aria-controls="yard-tray"
+                          onClick={() => setTrayOpen((v) => !v)}
+                          data-yard-more="1"
+                          className="inline-flex h-11 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-sm text-muted hover:text-fg"
+                        >
+                          More <ChevronDown className={`size-4 transition-transform ${trayOpen ? "rotate-180" : ""}`} aria-hidden />
+                        </button>
+                      </>
+                    }
+                  />
+                )
+              )}
+              <div id="yard-tray" hidden={pending || (workMode !== "walk" && pieceCount > 0 && !trayOpen)} className={trayOpen ? "yard-tray" : ""}>
               {steps.length > 0 && !pending && (
                 <div
                   data-bench-overlay="step-pill"
@@ -571,7 +641,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 >
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex <= 0}
                     onClick={() => {
                       if (stepIndex <= 0) return;
@@ -584,7 +654,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <button
                     type="button"
                     onClick={() => setPlanOpen(true)}
-                    className="min-w-0 flex-1 truncate text-left"
+                    className="min-h-11 min-w-0 flex-1 truncate text-left"
                     aria-label={
                       activeStep
                         ? `Open the plan, step ${activeStep} of ${steps.length}`
@@ -602,7 +672,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex >= steps.length - 1 && stepIndex >= 0}
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
@@ -614,6 +684,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
+              {pieceCount > 0 && !pending && workMode !== "walk" && (
+                <BenchTools
+                  side={side}
+                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
+                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                  bare
+                />
+              )}
+              {!pending && workMode !== "walk" && <BuildInfoPanel />}
               <div
                 data-yard-house={housePath ? "1" : "0"}
                 data-yard-pieces={pieceCount}
@@ -656,7 +735,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 <button
                   type="button"
                   onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
+                  className="min-h-11 shrink-0 font-mono text-[11px] text-faint hover:text-fg"
                   aria-label={project.pocket ?? project.recastFrom?.pocket ? "Measure the hole, the piece, and the shelves" : "Measure this build"}
                   title="Measure"
                 >
@@ -695,7 +774,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   })()}
                 </button>
               </div>
+              </div>
             </DockFrame>
+            </div>
           </div>
           )}
         </div>

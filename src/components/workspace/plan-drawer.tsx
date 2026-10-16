@@ -2,7 +2,7 @@
 
 import { inchFrac } from "@/lib/yard/inchText";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -12,6 +12,8 @@ import { usd } from "@/lib/utils";
 import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { NestPlate } from "@/components/workspace/nest-plate";
+import { overlaps, setCutFocus } from "@/components/workspace/cut-focus";
+import { useCutTicks } from "@/components/workspace/cut-ticks";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
@@ -227,8 +229,29 @@ function PlanBody({
     [plan.cutList, plan.partsKind, plan.sheetNest],
   );
   const nestSheets = nest?.sheets ?? [];
+  const backerSheets = plan.partsKind === "whole" ? [] : (plan.sheetNest?.backer?.sheets ?? []);
   const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
-  const houseNest = housePath && nestSheets.length > 0;
+  // Every sheet-goods build gets its sheet (it is what the cut list is cut from), not only house builds.
+  const houseNest = nestSheets.length > 0;
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  // Linking runs on SWE's partIds (the 3D part ids); a row or piece without them falls back to its letter.
+  const focusIds = useMemo(() => {
+    const row = activeLetter ? plan.cutList.find((c) => c.label === activeLetter) : null;
+    return new Set<string>(row?.partIds ?? []);
+  }, [activeLetter, plan.cutList]);
+  useEffect(() => { setCutFocus(focusIds); }, [focusIds]);
+  useEffect(() => () => setCutFocus(null), []);
+  const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
+  const cutCount = plan.cutList.filter((c) => c.label && ticks.has(c.label)).length;
+  // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
+  const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
+    setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
+    if (fromSheet) {
+      const row = document.querySelector(`[data-yard-cut-row="${CSS.escape(letter)}"]`);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      row?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    }
+  }, []);
   const nestSizes = [...new Set(nestSheets.map((s) => sheetSizeLabel(s).replace("x", "×")))];
   const nestTitle =
     nestSizes.length === 1 ? `Cut this ${nestSizes[0]} plywood` : nestSizes.length > 1 ? "Cut these sheets" : "Cut this plywood";
@@ -265,12 +288,15 @@ function PlanBody({
               <p className="mt-1 text-xs text-muted">
                 Letters match the cut list. 1/8" kerf included. Grain runs long.
                 {thinCuts.length
-                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
+                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is cut from its own 1/4" sheet${backerSheets.length ? " (last below)" : ""}, never the 3/4" ply — buy it separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
                   : ""}
               </p>
               <div className="mt-3 space-y-3">
                 {nestSheets.map((sheet) => (
-                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} />
+                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} />
+                ))}
+                {backerSheets.map((sheet) => (
+                  <NestPlate key={`backer-${sheet.index}`} sheet={sheet} sheetCount={backerSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} backer />
                 ))}
               </div>
               {nest && nest.unplaced.length > 0 && (
@@ -290,6 +316,11 @@ function PlanBody({
                   ? "Full pieces from the pack. Glue them. Do not cut."
                   : "Same size is the same letter. Mark A on the first cut, then batch."}
               </p>
+              {plan.partsKind !== "whole" && plan.cutList.some((c) => c.label) && (
+                <p className="mt-1 text-xs text-fg" data-yard-cut-progress aria-live="polite">
+                  {cutCount} of {plan.cutList.filter((c) => c.label).length} sizes cut
+                </p>
+              )}
               <table className="mt-3 w-full text-left text-xs">
                 <thead className="text-faint">
                   <tr>
@@ -300,22 +331,58 @@ function PlanBody({
                   </tr>
                 </thead>
                 <tbody>
-                  {plan.cutList.map((c) => (
-                    <tr key={c.id} className="border-t border-border/70">
-                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
-                      <td className="py-1.5 font-mono">{c.quantity}</td>
-                      <td className="py-1.5">
-                        {c.name}
-                        {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
-                      </td>
-                      <td className="py-1.5 font-mono text-muted">
-                        {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
-                        {c.material ? (
-                          <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                  {plan.cutList.map((c) => {
+                    const L = c.label ?? "";
+                    const done = !!L && ticks.has(L);
+                    const thin = (c.thicknessIn ?? 0.75) < 0.5 && plan.partsKind !== "whole";
+                    return (
+                      <tr
+                        key={c.id}
+                        data-yard-cut-row={L}
+                        data-active={overlaps(c, focusIds, activeLetter) ? "1" : undefined}
+                        data-part-ids={c.partIds?.join(" ") || undefined}
+                        data-done={done ? "1" : undefined}
+                        className="yard-cut-row border-t border-border/70"
+                      >
+                        <td className="py-0.5 pr-1">
+                          {L ? (
+                            <span className="flex items-center">
+                              <label className="grid size-11 cursor-pointer place-items-center" title={`Mark ${L} cut`}>
+                                <input
+                                  type="checkbox"
+                                  checked={done}
+                                  onChange={() => toggleTick(L)}
+                                  aria-label={`${L}, ${c.name}: cut`}
+                                  className="size-4 accent-[#c8641e]"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => pickLetter(L, false)}
+                                aria-pressed={L === activeLetter}
+                                aria-label={`Show ${L} on the sheet`}
+                                className="grid size-11 place-items-center font-mono font-semibold text-fg"
+                              >
+                                {L}
+                              </button>
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-1.5 font-mono">{c.quantity}</td>
+                        <td className="py-1.5">
+                          {c.name}
+                          {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
+                          {thin ? <span className="mt-0.5 block text-[10px] text-faint" data-yard-backer-note>1/4" backer: cut from its own 1/4" sheet, not the 3/4" ply.</span> : null}
+                        </td>
+                        <td className="py-1.5 font-mono text-muted">
+                          {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
+                          {c.material ? (
+                            <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </section>
