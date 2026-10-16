@@ -493,7 +493,7 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     const host = document.querySelector("[data-bench-host]");
     const skip = (why: string) => host?.setAttribute("data-yard-reveal", `skip:${why}`);
     const overlayUp = !!document.querySelector(".yard-lamp");
-    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 600)) return skip("late");
+    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 2500)) return skip("late");
     if (document.hidden) return skip("hidden");
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       host?.querySelector("canvas")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
@@ -535,9 +535,22 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey); onRevealSkip(null); setWood(Infinity); setReveal({ active: false }); };
   }, [order, stepping, project.id]);
+  // Outline first: a fresh model waits as outlines (never as wood) while its plan is still being
+  // worked out, so the reveal can always start without hiding wood that was already on screen.
+  const [, bump] = useState(0);
+  const fresh = ready && !stepping && played.current !== project.id && readyAt.current?.id === project.id;
+  const waitLeft = fresh && !order && !reducedMotion() ? 2500 - (performance.now() - readyAt.current!.t) : 0;
+  useEffect(() => {
+    if (waitLeft <= 0) return;
+    const t = window.setTimeout(() => bump((x) => x + 1), waitLeft + 20);
+    return () => window.clearTimeout(t);
+  }, [waitLeft > 0, project.id]);
+  if (waitLeft > 0) return new Set();
   if (!order || wood === Infinity || stepping) return null;
   return new Set(order.ids.slice(0, wood));
 }
+
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * The reveal's camera glide: the view starts a little wide and turned, then eases into the framed

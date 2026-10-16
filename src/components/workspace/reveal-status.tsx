@@ -15,8 +15,13 @@ export function RevealStatus() {
     if (!r.active) return;
     const host = document.querySelector("[data-bench-host]");
     const skip = () => skipReveal();
-    host?.addEventListener("pointerdown", skip);
-    return () => host?.removeEventListener("pointerdown", skip);
+    // Capture phase: the orbit controls own the canvas's pointer events.
+    host?.addEventListener("pointerdown", skip, { capture: true });
+    host?.addEventListener("touchstart", skip, { capture: true, passive: true });
+    return () => {
+      host?.removeEventListener("pointerdown", skip, { capture: true });
+      host?.removeEventListener("touchstart", skip, { capture: true });
+    };
   }, [r.active]);
   if (!r.active || !r.n) return null;
   const k = Math.min(r.wood, r.n);
