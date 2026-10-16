@@ -15,6 +15,7 @@ import { RefineBox } from "@/components/workspace/refine-box";
 import { DecisionLine } from "@/components/workspace/decision-line";
 import { MorphButton } from "@/components/workspace/morph-button";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
+import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
@@ -654,6 +655,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 />
               )}
               {!pending && workMode !== "walk" && <BuildInfoPanel />}
+              {!pending && workMode !== "walk" && <ShopFeedback />}
               <div
                 data-yard-house={housePath ? "1" : "0"}
                 data-yard-pieces={pieceCount}
