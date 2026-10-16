@@ -207,6 +207,20 @@ function fitArchBridge(s: Size3, prompt: string): Size3 {
   return { width: h * ratio, height: h, depth: Math.max(4, Math.min(h * 0.35, 12)) };
 }
 
+/**
+ * The matched library form reaches the typed head noun (last content word): "Big Ben", "galleon 30 inches long"
+ * yes; "wall clock" no — the Wall hit only read a modifier. Landmarks own their proper name ("Eiffel").
+ */
+export function namedFormReachesHead(prompt: string, head: string | null): boolean {
+  const hit = matchHit(prompt);
+  if (!hit || GENERIC_HITS.has(hit.name)) return false;
+  const lower = prompt.toLowerCase();
+  if (!head || hit.historic || /looks like/.test(lower)) return true;
+  const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
+  const at = lower.lastIndexOf(head);
+  return !m || at < 0 || m.index + m[0].length > at;
+}
+
 function matchHit(prompt: string): Hit | null {
   const lower = prompt.toLowerCase();
   const looks = lower.match(/looks like (?:an? |the )?([a-z][a-z\s-]{2,40})/);
