@@ -235,7 +235,8 @@ function i21(p: YardProject, prompt: string): Violation[] {
  * noun in its title ("pirate ship" → "Pirate ship", never "Sailing ship" over a galleon for "longship").
  */
 function i24(p: YardProject, prompt: string): Violation[] {
-  if (!prompt || !p.name || isUnitItem(p) || resolvePurpose(prompt) || genericFormMark(p) || !namedFormOwnsHead(prompt)) return [];
+  // Library-form titles only; fitted builders keep trade titles (Planter box, Coat bench) that other code keys on.
+  if (!prompt || !p.name || p.fitted || isUnitItem(p) || resolvePurpose(prompt) || genericFormMark(p) || !namedFormOwnsHead(prompt)) return [];
   const head = typedHeadNoun(prompt);
   return head && !p.name.toLowerCase().includes(head) ? [v("I24", `title "${p.name}" drops the typed head noun "${head}"`)] : [];
 }

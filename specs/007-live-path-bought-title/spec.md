@@ -20,11 +20,11 @@ their own name ("Sailing ship" for "pirate ship"), and longship/viking ship buil
   sizes under 1/32" print in thousandths, never 0".
   *Invariant I20 (extended):* a prompt naming one size-table item on its own builds as a purchased item.
 - **C3 · Typed noun as title (I24).** A library-form title uses the typed form words when the form's own name differs
-  ("Pirate ship", "Galleon", "Tall ship"); planter-family fitted builds keep "Raised garden bed"/"Garden box". A
+  ("Pirate ship", "Galleon", "Tall ship"). Fitted builds keep their trade titles (Planter box, Coat bench); I24 covers library-form builds. A
   Longship form (long low hull, one mast, upswept stem and stern) answers viking ship / longship / drakkar.
   *Invariant I24:* the title contains the typed head noun (head = last content word before from/with/for…).
 
 ## Gates
 Per-build I23/I24 in invariants.ts; whole-class tests classL1/classC2b/classC3t + livePath.test.ts; sweeps
 evals/sweeps/l1-live-path.md, c2b-bought-items.md, c3t-typed-title.md (20 prompts each). Canaries 6/6, linen $183.70,
-eval 854/874 (20 misses, unchanged), gate 0, no xAI.
+eval 854/874 (20 misses, unchanged). Live bar also skips the hint/interpret server calls for engine-owned prompts (cost leak), gate 0, no xAI.
