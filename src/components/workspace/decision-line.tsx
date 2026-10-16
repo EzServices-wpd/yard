@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { usd } from "@/lib/utils";
 import { refineTick } from "./refine-note";
+
+// Module-level, not a ref: the card remounts while a Refine rebuilds, and the old price must survive that.
+let seen: { price: number; tick: number } | null = null;
 
 /** "1/2-day" → "½ day": the plan's own effort band, read aloud. */
 export function effortWords(e: string): string {
@@ -18,13 +21,12 @@ export function effortWords(e: string): string {
 export function DecisionLine({ className = "" }: { className?: string }) {
   const plan = useYard((s) => s.plan);
   const price = plan?.totals.estCostUsd ?? 0;
-  const seen = useRef<{ price: number; tick: number } | null>(null);
   const [delta, setDelta] = useState<{ d: number; key: number } | null>(null);
   useEffect(() => {
     if (!plan) return;
     const t = refineTick();
-    const was = seen.current;
-    seen.current = { price, tick: t };
+    const was = seen;
+    seen = { price, tick: t };
     if (!was || t === was.tick) return;
     const d = Math.round(price - was.price);
     if (!d) return;
