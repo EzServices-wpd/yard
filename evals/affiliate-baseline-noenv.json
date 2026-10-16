@@ -1,0 +1,6535 @@
+{
+ "40 inch round table with 3 legs": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1×4 Board (8 ft)",
+   "q": 1,
+   "u": "board",
+   "cost": 4,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.amazon.com/s?k=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.homedepot.com/s/1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.lowes.com/search?searchTerm=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.walmart.com/search?q=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 4.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 1,
+     "lt": 4.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "house: bathroom vanity 36\" wide × 21\" deep × 32\" tall with two doors": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 2,
+   "u": "pairs",
+   "cost": 17.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 2,
+     "lt": 17.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "bathroom vanity 36 wide with two doors": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 2,
+   "u": "pairs",
+   "cost": 17.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 2,
+     "lt": 17.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "nightstand 20 wide 16 deep 24 tall with one drawer": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "16\" side-mount drawer slides",
+   "q": 1,
+   "u": "pair",
+   "cost": 12.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "16\" side-mount drawer slides, pair",
+     "h": "https://www.amazon.com/dp/B0CLGQP8TL",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 1,
+     "lt": 12.99,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16\" side-mount drawer slides",
+     "h": "https://www.homedepot.com/s/16%20inch%20side%20mount%20drawer%20slides",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Cup pulls",
+   "q": 1,
+   "u": "pull",
+   "cost": 12.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "3\" cup pulls, pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 1,
+     "lt": 12.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3\" cup pulls",
+     "h": "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "1\" finish nails / brads",
+   "q": 1,
+   "u": "box",
+   "cost": 6,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.amazon.com/s?k=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.homedepot.com/s/1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.lowes.com/search?searchTerm=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.walmart.com/search?q=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Iron-on edge banding",
+   "q": 1,
+   "u": "roll",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+     "h": "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Iron-on birch edge banding roll",
+     "h": "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "cedar chest with a hinged lid": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Piano hinge",
+   "q": 1,
+   "u": "pc",
+   "cost": 14.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Continuous piano hinge 1-1/2\" x 48\"",
+     "h": "https://www.amazon.com/s?k=continuous+piano+hinge+1-1%2F2+x+48",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Continuous piano hinge",
+     "h": "https://www.homedepot.com/s/continuous%20piano%20hinge",
+     "pq": 1,
+     "pp": 16.98,
+     "up": 16.98,
+     "pn": 1,
+     "lt": 16.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Lid stay / lid support",
+   "q": 1,
+   "u": "pc",
+   "cost": 9.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Toy chest lid support / lid stay",
+     "h": "https://www.amazon.com/s?k=toy+chest+lid+support+lid+stay",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Lid support / lid stay",
+     "h": "https://www.homedepot.com/s/lid%20support%20lid%20stay",
+     "pq": 1,
+     "pp": 11.98,
+     "up": 11.98,
+     "pn": 1,
+     "lt": 11.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "house: linen closet 31.5×78×16": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 4,
+   "u": "pairs",
+   "cost": 35.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 4,
+     "lt": 35.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "popsicle stick catapult": [
+  {
+   "name": "Standard Popsicle Sticks",
+   "q": 1,
+   "u": "pack of 100 (25 sticks used)",
+   "cost": 14.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GUSTO 4.5\" popsicle sticks, 1000 count",
+     "h": "https://www.amazon.com/dp/B0931TYTN4",
+     "pq": 1000,
+     "pp": 14.98,
+     "up": 0.01498,
+     "pn": 1,
+     "lt": 14.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "CraftySticks 4.5\" x 3/8\" sticks, 1000 pack",
+     "h": "https://www.amazon.com/dp/B07YM541VG",
+     "pq": 1000,
+     "pp": 28.95,
+     "up": 0.02895,
+     "pn": 1,
+     "lt": 28.95,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Rubber bands",
+   "q": 1,
+   "u": "pack",
+   "cost": 5.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Rubber bands, assorted sizes",
+     "h": "https://www.amazon.com/dp/B074B1KCXD",
+     "pq": 1,
+     "pp": 5.99,
+     "up": 5.99,
+     "pn": 1,
+     "lt": 5.99,
+     "b": true
+    }
+   ]
+  }
+ ],
+ "bookcase 36 wide 12 deep 72 tall with three shelves": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "floating shelf with brackets": [
+  {
+   "name": "3/4\" Plywood Project Panel 2×4",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24,
+   "offers": []
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "coffee table with lower shelf": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1×3 Board (8 ft)",
+   "q": 4,
+   "u": "boards",
+   "cost": 13.12,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1x3x8 pine board (3/4\" × 2-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/1x3x8%20pine",
+     "pq": 1,
+     "pp": 3.28,
+     "up": 3.28,
+     "pn": 4,
+     "lt": 13.12,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 4.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 1,
+     "lt": 4.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "TV console 70x30x18": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 3,
+   "u": "sheets",
+   "cost": 115.28999999999999,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 3,
+     "lt": 115.28999999999999,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 3,
+   "u": "boxes (50 ct each)",
+   "cost": 25.410000000000004,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 3,
+     "lt": 25.410000000000004,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 3,
+     "lt": 27.869999999999997,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "desk 60x30x29 with 24 knee": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 3,
+   "u": "sheets",
+   "cost": 115.28999999999999,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 3,
+     "lt": 115.28999999999999,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 2,
+   "u": "sheets",
+   "cost": 49.96,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 2,
+     "lt": 49.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "22\" side-mount drawer slides",
+   "q": 6,
+   "u": "pairs",
+   "cost": 101.94,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "22\" side-mount drawer slides, pair",
+     "h": "https://www.amazon.com/s?k=22+inch+side+mount+drawer+slides",
+     "pq": 1,
+     "pp": 16.99,
+     "up": 16.99,
+     "pn": 6,
+     "lt": 101.94,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "22\" side-mount drawer slides",
+     "h": "https://www.homedepot.com/s/22%20inch%20side%20mount%20drawer%20slides",
+     "pq": 1,
+     "pp": 19.98,
+     "up": 19.98,
+     "pn": 6,
+     "lt": 119.88,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Cup pulls",
+   "q": 6,
+   "u": "pulls",
+   "cost": 77.88,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "3\" cup pulls, pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 6,
+     "lt": 77.88,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3\" cup pulls",
+     "h": "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 6,
+     "lt": 89.88,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "1\" finish nails / brads",
+   "q": 1,
+   "u": "box",
+   "cost": 6,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.amazon.com/s?k=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.homedepot.com/s/1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.lowes.com/search?searchTerm=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.walmart.com/search?q=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Iron-on edge banding",
+   "q": 1,
+   "u": "roll",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+     "h": "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Iron-on birch edge banding roll",
+     "h": "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "corner shelf unit 24 on each wall 60 tall": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "bookcase 36 wide in the corner": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "prehung door 32 wide": [
+  {
+   "name": "Prehung Interior 32×80 door (slab 32×80)",
+   "q": 1,
+   "u": "door",
+   "cost": 11.48,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x8x8 kiln-dried framing lumber",
+     "h": "https://www.homedepot.com/s/2x8x8%20framing%20lumber",
+     "pq": 1,
+     "pp": 11.48,
+     "up": 11.48,
+     "pn": 1,
+     "lt": 11.48,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2x4 studs (8 ft)",
+   "q": 10,
+   "u": "ea",
+   "cost": 39.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x4x96\" #2 KD-HT stud",
+     "h": "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
+     "pq": 1,
+     "pp": 3.95,
+     "up": 3.95,
+     "pn": 10,
+     "lt": 39.5,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "2x4x8 kiln-dried whitewood stud",
+     "h": "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
+     "pq": 1,
+     "pp": 4.15,
+     "up": 4.15,
+     "pn": 10,
+     "lt": 41.5,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2x6 header stock",
+   "q": 2,
+   "u": "ea",
+   "cost": 17.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x6x8 kiln-dried framing lumber",
+     "h": "https://www.homedepot.com/s/2x6x8%20framing%20lumber",
+     "pq": 1,
+     "pp": 8.75,
+     "up": 8.75,
+     "pn": 2,
+     "lt": 17.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/2\" plywood header spacer",
+   "q": 1,
+   "u": "sheet",
+   "cost": 42,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/2\" x 4x8 plywood",
+     "h": "https://www.homedepot.com/s/1%2F2%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 42,
+     "up": 42,
+     "pn": 1,
+     "lt": 42,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood shims",
+   "q": 1,
+   "u": "bundle",
+   "cost": 3.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Wood shims, bundle",
+     "h": "https://www.homedepot.com/s/wood%20shims",
+     "pq": 1,
+     "pp": 3.98,
+     "up": 3.98,
+     "pn": 1,
+     "lt": 3.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "16d framing nails or structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 9.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16d framing nails",
+     "h": "https://www.homedepot.com/s/16d%20framing%20nails",
+     "pq": 1,
+     "pp": 9.97,
+     "up": 9.97,
+     "pn": 1,
+     "lt": 9.97,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Low-expansion window foam",
+   "q": 1,
+   "u": "can",
+   "cost": 7.48,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Low-expansion window foam",
+     "h": "https://www.homedepot.com/s/low%20expansion%20window%20foam",
+     "pq": 1,
+     "pp": 7.48,
+     "up": 7.48,
+     "pn": 1,
+     "lt": 7.48,
+     "b": true
+    }
+   ]
+  }
+ ],
+ "36 by 80 door": [
+  {
+   "name": "Prehung Interior 36×80 door (slab 36×80)",
+   "q": 1,
+   "u": "door",
+   "cost": 189,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "36x80 prehung interior door",
+     "h": "https://www.homedepot.com/s/36x80%20prehung%20interior%20door",
+     "pq": 1,
+     "pp": 189,
+     "up": 189,
+     "pn": 1,
+     "lt": 189,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2x4 studs (8 ft)",
+   "q": 10,
+   "u": "ea",
+   "cost": 39.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x4x96\" #2 KD-HT stud",
+     "h": "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
+     "pq": 1,
+     "pp": 3.95,
+     "up": 3.95,
+     "pn": 10,
+     "lt": 39.5,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "2x4x8 kiln-dried whitewood stud",
+     "h": "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
+     "pq": 1,
+     "pp": 4.15,
+     "up": 4.15,
+     "pn": 10,
+     "lt": 41.5,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2x8 header stock",
+   "q": 2,
+   "u": "ea",
+   "cost": 22.96,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x8x8 kiln-dried framing lumber",
+     "h": "https://www.homedepot.com/s/2x8x8%20framing%20lumber",
+     "pq": 1,
+     "pp": 11.48,
+     "up": 11.48,
+     "pn": 2,
+     "lt": 22.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/2\" plywood header spacer",
+   "q": 1,
+   "u": "sheet",
+   "cost": 42,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/2\" x 4x8 plywood",
+     "h": "https://www.homedepot.com/s/1%2F2%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 42,
+     "up": 42,
+     "pn": 1,
+     "lt": 42,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood shims",
+   "q": 1,
+   "u": "bundle",
+   "cost": 3.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Wood shims, bundle",
+     "h": "https://www.homedepot.com/s/wood%20shims",
+     "pq": 1,
+     "pp": 3.98,
+     "up": 3.98,
+     "pn": 1,
+     "lt": 3.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "16d framing nails or structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 9.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16d framing nails",
+     "h": "https://www.homedepot.com/s/16d%20framing%20nails",
+     "pq": 1,
+     "pp": 9.97,
+     "up": 9.97,
+     "pn": 1,
+     "lt": 9.97,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Low-expansion window foam",
+   "q": 1,
+   "u": "can",
+   "cost": 7.48,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Low-expansion window foam",
+     "h": "https://www.homedepot.com/s/low%20expansion%20window%20foam",
+     "pq": 1,
+     "pp": 7.48,
+     "up": 7.48,
+     "pn": 1,
+     "lt": 7.48,
+     "b": true
+    }
+   ]
+  }
+ ],
+ "pocket vanity": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 3,
+   "u": "sheets",
+   "cost": 115.28999999999999,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 3,
+     "lt": 115.28999999999999,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "3/4\" Plywood 4×10",
+   "q": 1,
+   "u": "sheet",
+   "cost": 72,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x10 sanded plywood",
+     "h": "https://www.homedepot.com/s/3%2F4%20inch%204x10%20plywood",
+     "pq": 1,
+     "pp": 72,
+     "up": 72,
+     "pn": 1,
+     "lt": 72,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x10 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 34.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x10 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x10%20plywood",
+     "pq": 1,
+     "pp": 34.98,
+     "up": 34.98,
+     "pn": 1,
+     "lt": 34.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "16\" side-mount drawer slides",
+   "q": 6,
+   "u": "pairs",
+   "cost": 77.94,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "16\" side-mount drawer slides, pair",
+     "h": "https://www.amazon.com/dp/B0CLGQP8TL",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 6,
+     "lt": 77.94,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16\" side-mount drawer slides",
+     "h": "https://www.homedepot.com/s/16%20inch%20side%20mount%20drawer%20slides",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 6,
+     "lt": 89.88,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Cup pulls",
+   "q": 6,
+   "u": "pulls",
+   "cost": 77.88,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "3\" cup pulls, pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 6,
+     "lt": 77.88,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3\" cup pulls",
+     "h": "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 6,
+     "lt": 89.88,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "1\" finish nails / brads",
+   "q": 1,
+   "u": "box",
+   "cost": 6,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.amazon.com/s?k=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.homedepot.com/s/1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.lowes.com/search?searchTerm=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.walmart.com/search?q=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Iron-on edge banding",
+   "q": 1,
+   "u": "roll",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+     "h": "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Iron-on birch edge banding roll",
+     "h": "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Vanity mirror 22\" × 16 1/2\"",
+   "q": 1,
+   "u": "pc",
+   "cost": 39.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Vanity wall mirror",
+     "h": "https://www.amazon.com/s?k=vanity+wall+mirror+22x16",
+     "pq": 1,
+     "pp": 39.99,
+     "up": 39.99,
+     "pn": 1,
+     "lt": 39.99,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 3,
+   "u": "pairs",
+   "cost": 26.97,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 3,
+     "lt": 26.97,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 8,
+   "u": "pulls",
+   "cost": 103.84,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 8,
+     "lt": 103.84,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 8,
+     "lt": 119.84,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "nightstand with one drawer": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "16\" side-mount drawer slides",
+   "q": 1,
+   "u": "pair",
+   "cost": 12.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "16\" side-mount drawer slides, pair",
+     "h": "https://www.amazon.com/dp/B0CLGQP8TL",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 1,
+     "lt": 12.99,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16\" side-mount drawer slides",
+     "h": "https://www.homedepot.com/s/16%20inch%20side%20mount%20drawer%20slides",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Cup pulls",
+   "q": 1,
+   "u": "pull",
+   "cost": 12.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "3\" cup pulls, pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 1,
+     "lt": 12.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3\" cup pulls",
+     "h": "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "1\" finish nails / brads",
+   "q": 1,
+   "u": "box",
+   "cost": 6,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.amazon.com/s?k=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.homedepot.com/s/1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.lowes.com/search?searchTerm=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.walmart.com/search?q=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Iron-on edge banding",
+   "q": 1,
+   "u": "roll",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+     "h": "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Iron-on birch edge banding roll",
+     "h": "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "cedar chest with hinged lid": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Piano hinge",
+   "q": 1,
+   "u": "pc",
+   "cost": 14.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Continuous piano hinge 1-1/2\" x 48\"",
+     "h": "https://www.amazon.com/s?k=continuous+piano+hinge+1-1%2F2+x+48",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Continuous piano hinge",
+     "h": "https://www.homedepot.com/s/continuous%20piano%20hinge",
+     "pq": 1,
+     "pp": 16.98,
+     "up": 16.98,
+     "pn": 1,
+     "lt": 16.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Lid stay / lid support",
+   "q": 1,
+   "u": "pc",
+   "cost": 9.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Toy chest lid support / lid stay",
+     "h": "https://www.amazon.com/s?k=toy+chest+lid+support+lid+stay",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Lid support / lid stay",
+     "h": "https://www.homedepot.com/s/lid%20support%20lid%20stay",
+     "pq": 1,
+     "pp": 11.98,
+     "up": 11.98,
+     "pn": 1,
+     "lt": 11.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "linen closet 31.5 wide 78 tall 16 deep": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 4,
+   "u": "pairs",
+   "cost": 35.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 4,
+     "lt": 35.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "40 diameter round dining table 30 tall with three legs": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1×4 Board (8 ft)",
+   "q": 1,
+   "u": "board",
+   "cost": 4,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.amazon.com/s?k=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.homedepot.com/s/1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.lowes.com/search?searchTerm=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.walmart.com/search?q=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 4.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 1,
+     "lt": 4.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "dining table 72 by 36 30 tall": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1×4 Board (8 ft)",
+   "q": 2,
+   "u": "boards",
+   "cost": 8,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.amazon.com/s?k=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.homedepot.com/s/1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.lowes.com/search?searchTerm=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.walmart.com/search?q=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 2,
+   "u": "pcs",
+   "cost": 9,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 2,
+     "lt": 9,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "corner bookshelf, 6 inches along each wall, 60 tall, five shelves": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "L-shaped corner desk 60 by 48 30 tall": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1×4 Board (8 ft)",
+   "q": 2,
+   "u": "boards",
+   "cost": 8,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.amazon.com/s?k=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.homedepot.com/s/1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.lowes.com/search?searchTerm=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.walmart.com/search?q=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 2,
+     "lt": 8,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 4.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 1,
+     "lt": 4.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "workbench 60 by 24 36 tall with lower shelf": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2×4 Stud (8 ft)",
+   "q": 3,
+   "u": "pcs",
+   "cost": 11.850000000000001,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x4x96\" #2 KD-HT stud",
+     "h": "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
+     "pq": 1,
+     "pp": 3.95,
+     "up": 3.95,
+     "pn": 3,
+     "lt": 11.850000000000001,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "2x4x8 kiln-dried whitewood stud",
+     "h": "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
+     "pq": 1,
+     "pp": 4.15,
+     "up": 4.15,
+     "pn": 3,
+     "lt": 12.450000000000001,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "#8 x 2-1/2\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 9.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 2-1/2\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%202-1%2F2%20wood%20screws",
+     "pq": 1,
+     "pp": 9.47,
+     "up": 9.47,
+     "pn": 1,
+     "lt": 9.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 2-1/2\" wood screws, 50 count",
+     "h": "https://www.amazon.com/s?k=%238+2-1%2F2+wood+screws+50",
+     "pq": 1,
+     "pp": 10.49,
+     "up": 10.49,
+     "pn": 1,
+     "lt": 10.49,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "mudroom bench 48 wide with cubbies": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "window seat 60 wide": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "kitchen island 48 by 30": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 3,
+   "u": "sheets",
+   "cost": 115.28999999999999,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 3,
+     "lt": 115.28999999999999,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "wall cabinet 30 wide 30 tall 12 deep with two doors": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 2,
+   "u": "pairs",
+   "cost": 17.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 2,
+     "lt": 17.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "dresser 36 wide with 4 drawers": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 2,
+   "u": "sheets",
+   "cost": 76.86,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 2,
+     "lt": 76.86,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 2,
+   "u": "sheets",
+   "cost": 49.96,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 2,
+     "lt": 49.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "16\" side-mount drawer slides",
+   "q": 4,
+   "u": "pairs",
+   "cost": 51.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "16\" side-mount drawer slides, pair",
+     "h": "https://www.amazon.com/dp/B0CLGQP8TL",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 4,
+     "lt": 51.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16\" side-mount drawer slides",
+     "h": "https://www.homedepot.com/s/16%20inch%20side%20mount%20drawer%20slides",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 4,
+     "lt": 59.92,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Cup pulls",
+   "q": 4,
+   "u": "pulls",
+   "cost": 51.92,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "3\" cup pulls, pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 4,
+     "lt": 51.92,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3\" cup pulls",
+     "h": "https://www.homedepot.com/s/3%20inch%20cup%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 4,
+     "lt": 59.92,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "1\" finish nails / brads",
+   "q": 1,
+   "u": "box",
+   "cost": 6,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.amazon.com/s?k=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.homedepot.com/s/1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.lowes.com/search?searchTerm=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1 inch finish nails brad box",
+     "h": "https://www.walmart.com/search?q=1%20inch%20finish%20nails%20brad%20box",
+     "pq": 1,
+     "pp": 6,
+     "up": 6,
+     "pn": 1,
+     "lt": 6,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Iron-on edge banding",
+   "q": 1,
+   "u": "roll",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Iron-on birch edge banding, 3/4\" × 25 ft roll",
+     "h": "https://www.amazon.com/s?k=iron+on+edge+banding+birch+3%2F4",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Iron-on birch edge banding roll",
+     "h": "https://www.homedepot.com/s/iron%20on%20edge%20banding%20birch",
+     "pq": 1,
+     "pp": 9.98,
+     "up": 9.98,
+     "pn": 1,
+     "lt": 9.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "closet organizer 72 wide 84 tall": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 5,
+   "u": "sheets",
+   "cost": 192.15,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 5,
+     "lt": 192.15,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 2,
+   "u": "sheets",
+   "cost": 49.96,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 2,
+     "lt": 49.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 4,
+   "u": "pairs",
+   "cost": 35.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 4,
+     "lt": 35.96,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 2,
+   "u": "pulls",
+   "cost": 25.96,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 2,
+     "lt": 25.96,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 2,
+     "lt": 29.96,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "5 mm shelf pins",
+   "q": 1,
+   "u": "pack",
+   "cost": 6.49,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "5 mm shelf pins, 50 pack",
+     "h": "https://www.amazon.com/s?k=5mm+shelf+pins",
+     "pq": 50,
+     "pp": 6.49,
+     "up": 0.1298,
+     "pn": 1,
+     "lt": 6.49,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "shoe rack 30 wide 3 shelves": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/4\" plywood 4x8 (backer)",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/4\" x 4x8 sanded plywood",
+     "h": "https://www.homedepot.com/s/1%2F4%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 24.98,
+     "up": 24.98,
+     "pn": 1,
+     "lt": 24.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "spice rack": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 16.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 2,
+     "lt": 16.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 2,
+     "lt": 18.58,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "wine rack": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 3,
+   "u": "boxes (50 ct each)",
+   "cost": 25.410000000000004,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 3,
+     "lt": 25.410000000000004,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 3,
+     "lt": 27.869999999999997,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "medicine cabinet": [
+  {
+   "name": "3/4\" Plywood 4×8",
+   "q": 1,
+   "u": "sheet",
+   "cost": 38.43,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "3/4\" x 4x8 Sande sanded plywood",
+     "h": "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
+     "pq": 1,
+     "pp": 38.43,
+     "up": 38.43,
+     "pn": 1,
+     "lt": 38.43,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 8.47,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 1-1/4\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%201-1%2F4%20wood%20screws",
+     "pq": 1,
+     "pp": 8.47,
+     "up": 8.47,
+     "pn": 1,
+     "lt": 8.47,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 1-1/4\" wood screws, 50 count",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 9.29,
+     "up": 9.29,
+     "pn": 1,
+     "lt": 9.29,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Mirror for the door",
+   "q": 1,
+   "u": "pc",
+   "cost": 39.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Vanity wall mirror",
+     "h": "https://www.amazon.com/s?k=vanity+wall+mirror+22x16",
+     "pq": 1,
+     "pp": 39.99,
+     "up": 39.99,
+     "pn": 1,
+     "lt": 39.99,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Rated wall anchors",
+   "q": 1,
+   "u": "pack",
+   "cost": 8.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "toggle bolt drywall anchors",
+     "h": "https://www.amazon.com/s?k=toggle%20bolt%20drywall%20anchors",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "toggle bolt drywall anchors",
+     "h": "https://www.homedepot.com/s/toggle%20bolt%20drywall%20anchors",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "toggle bolt drywall anchors",
+     "h": "https://www.lowes.com/search?searchTerm=toggle%20bolt%20drywall%20anchors",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "toggle bolt drywall anchors",
+     "h": "https://www.walmart.com/search?q=toggle%20bolt%20drywall%20anchors",
+     "pq": 1,
+     "pp": 8.98,
+     "up": 8.98,
+     "pn": 1,
+     "lt": 8.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Soft-close concealed cabinet hinges",
+   "q": 1,
+   "u": "pair",
+   "cost": 8.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Soft-close concealed cabinet hinges, pair",
+     "h": "https://www.amazon.com/dp/B0D6W2VLFW",
+     "pq": 1,
+     "pp": 8.99,
+     "up": 8.99,
+     "pn": 1,
+     "lt": 8.99,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Cabinet bar pulls",
+   "q": 1,
+   "u": "pull",
+   "cost": 12.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Cabinet bar pulls, 5 pack",
+     "h": "https://www.amazon.com/dp/B09TVX1TWZ",
+     "pq": 1,
+     "pp": 12.98,
+     "up": 12.98,
+     "pn": 1,
+     "lt": 12.98,
+     "b": true
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Cabinet bar pulls",
+     "h": "https://www.homedepot.com/s/cabinet%20bar%20pulls",
+     "pq": 1,
+     "pp": 14.98,
+     "up": 14.98,
+     "pn": 1,
+     "lt": 14.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "GRK RSS #9 x 3-1/8 structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 18.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "GRK structural / RSS screws",
+     "h": "https://www.homedepot.com/s/GRK%20RSS%20structural%20screws",
+     "pq": 1,
+     "pp": 18.97,
+     "up": 18.97,
+     "pn": 1,
+     "lt": 18.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GRK RSS structural screws",
+     "h": "https://www.amazon.com/s?k=GRK+RSS+structural+screws",
+     "pq": 1,
+     "pp": 19.99,
+     "up": 19.99,
+     "pn": 1,
+     "lt": 19.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "outdoor side table": [
+  {
+   "name": "3/4\" Plywood Project Panel 2×4",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24,
+   "offers": []
+  },
+  {
+   "name": "1×4 Board (8 ft)",
+   "q": 1,
+   "u": "board",
+   "cost": 4,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.amazon.com/s?k=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.homedepot.com/s/1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.lowes.com/search?searchTerm=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "1×4 Board (8 ft)",
+     "h": "https://www.walmart.com/search?q=1x4x8%20pine%20board",
+     "pq": 1,
+     "pp": 4,
+     "up": 4,
+     "pn": 1,
+     "lt": 4,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 4.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 1,
+     "lt": 4.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "#8 x 1-1/4\" exterior-coated or stainless wood screws",
+   "q": 1,
+   "u": "box (50 ct)",
+   "cost": 12.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Exterior-coated wood screws",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 1,
+     "lt": 12.99,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Exterior-coated wood screws",
+     "h": "https://www.amazon.com/dp/B09NNZB6M9",
+     "pq": 1,
+     "pp": 12.99,
+     "up": 12.99,
+     "pn": 1,
+     "lt": 12.99,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Titebond III Ultimate wood glue (waterproof, exterior)",
+   "q": 1,
+   "u": "bottle",
+   "cost": 8.97,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond III ultimate wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002D4K1A",
+     "pq": 1,
+     "pp": 8.97,
+     "up": 8.97,
+     "pn": 1,
+     "lt": 8.97,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond III ultimate wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002D4K1A",
+     "pq": 1,
+     "pp": 8.97,
+     "up": 8.97,
+     "pn": 1,
+     "lt": 8.97,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)",
+   "q": 1,
+   "u": "can",
+   "cost": 18.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Spar urethane exterior, 1 quart",
+     "h": "https://www.amazon.com/dp/B000C0140S",
+     "pq": 1,
+     "pp": 18.98,
+     "up": 18.98,
+     "pn": 1,
+     "lt": 18.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Spar urethane exterior, 1 quart",
+     "h": "https://www.amazon.com/dp/B000C0140S",
+     "pq": 1,
+     "pp": 18.98,
+     "up": 18.98,
+     "pn": 1,
+     "lt": 18.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Outdoor furniture glides (nylon, nail-in)",
+   "q": 1,
+   "u": "pack of 8",
+   "cost": 7.99,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "outdoor furniture glides nylon nail in",
+     "h": "https://www.amazon.com/s?k=outdoor%20furniture%20glides%20nylon%20nail%20in",
+     "pq": 1,
+     "pp": 7.99,
+     "up": 7.99,
+     "pn": 1,
+     "lt": 7.99,
+     "b": false
+    },
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "outdoor furniture glides nylon nail in",
+     "h": "https://www.homedepot.com/s/outdoor%20furniture%20glides%20nylon%20nail%20in",
+     "pq": 1,
+     "pp": 7.99,
+     "up": 7.99,
+     "pn": 1,
+     "lt": 7.99,
+     "b": false
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "outdoor furniture glides nylon nail in",
+     "h": "https://www.lowes.com/search?searchTerm=outdoor%20furniture%20glides%20nylon%20nail%20in",
+     "pq": 1,
+     "pp": 7.99,
+     "up": 7.99,
+     "pn": 1,
+     "lt": 7.99,
+     "b": false
+    },
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "outdoor furniture glides nylon nail in",
+     "h": "https://www.walmart.com/search?q=outdoor%20furniture%20glides%20nylon%20nail%20in",
+     "pq": 1,
+     "pp": 7.99,
+     "up": 7.99,
+     "pn": 1,
+     "lt": 7.99,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "step stool": [
+  {
+   "name": "3/4\" Plywood Project Panel 2×4",
+   "q": 1,
+   "u": "sheet",
+   "cost": 24,
+   "offers": []
+  },
+  {
+   "name": "2×2 (8 ft)",
+   "q": 2,
+   "u": "pcs",
+   "cost": 9,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x2x8 lumber (1-1/2\" actual)",
+     "h": "https://www.homedepot.com/s/2x2x8%20lumber",
+     "pq": 1,
+     "pp": 4.5,
+     "up": 4.5,
+     "pn": 2,
+     "lt": 9,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2×4 Stud (8 ft)",
+   "q": 1,
+   "u": "pc",
+   "cost": 3.95,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x4x96\" #2 KD-HT stud",
+     "h": "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
+     "pq": 1,
+     "pp": 3.95,
+     "up": 3.95,
+     "pn": 1,
+     "lt": 3.95,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "2x4x8 kiln-dried whitewood stud",
+     "h": "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
+     "pq": 1,
+     "pp": 4.15,
+     "up": 4.15,
+     "pn": 1,
+     "lt": 4.15,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "#8 x 2-1/2\" wood screws",
+   "q": 2,
+   "u": "boxes (50 ct each)",
+   "cost": 18.94,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "#8 x 2-1/2\" wood screws, 1 lb",
+     "h": "https://www.homedepot.com/s/%238%202-1%2F2%20wood%20screws",
+     "pq": 1,
+     "pp": 9.47,
+     "up": 9.47,
+     "pn": 2,
+     "lt": 18.94,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "#8 x 2-1/2\" wood screws, 50 count",
+     "h": "https://www.amazon.com/s?k=%238+2-1%2F2+wood+screws+50",
+     "pq": 1,
+     "pp": 10.49,
+     "up": 10.49,
+     "pn": 2,
+     "lt": 20.98,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "3 foot Eiffel Tower from popsicle sticks": [
+  {
+   "name": "Standard Popsicle Sticks",
+   "q": 8,
+   "u": "packs of 100 (784 sticks used)",
+   "cost": 14.98,
+   "offers": [
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "GUSTO 4.5\" popsicle sticks, 1000 count",
+     "h": "https://www.amazon.com/dp/B0931TYTN4",
+     "pq": 1000,
+     "pp": 14.98,
+     "up": 0.01498,
+     "pn": 1,
+     "lt": 14.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "CraftySticks 4.5\" x 3/8\" sticks, 1000 pack",
+     "h": "https://www.amazon.com/dp/B07YM541VG",
+     "pq": 1000,
+     "pp": 28.95,
+     "up": 0.02895,
+     "pn": 1,
+     "lt": 28.95,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Wood glue",
+   "q": 1,
+   "u": "bottle",
+   "cost": 4.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.homedepot.com/p/Titebond-8-oz-Original-Wood-Glue-5063/202180088",
+     "pq": 1,
+     "pp": 4.98,
+     "up": 4.98,
+     "pn": 1,
+     "lt": 4.98,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Titebond Original wood glue, 8 oz",
+     "h": "https://www.amazon.com/dp/B0002YWZPW",
+     "pq": 1,
+     "pp": 5.47,
+     "up": 5.47,
+     "pn": 1,
+     "lt": 5.47,
+     "b": false
+    }
+   ]
+  }
+ ],
+ "6 foot garden arch from 3/4 inch PVC pipe": [
+  {
+   "name": "3/4\" Schedule 40 PVC Pipe",
+   "q": 4,
+   "u": "ea",
+   "cost": 23.04,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Charlotte 3/4\" x 10' Sch 40 PVC",
+     "h": "https://www.homedepot.com/p/Charlotte-Pipe-3-4-in-x-10-ft-PVC-Schedule-40-Pressure-Plain-End-Pipe-PVC-04007-0600/100348472",
+     "pq": 1,
+     "pp": 5.76,
+     "up": 5.76,
+     "pn": 4,
+     "lt": 23.04,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "3/4\" x 10' Sch 40 PVC pipe",
+     "h": "https://www.lowes.com/search?searchTerm=3%2F4%20inch%20schedule%2040%20PVC%2010%20ft",
+     "pq": 1,
+     "pp": 6.28,
+     "up": 6.28,
+     "pn": 4,
+     "lt": 25.12,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "PVC solvent cement",
+   "q": 1,
+   "u": "can",
+   "cost": 7.48,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Oatey PVC regular cement, 8 oz",
+     "h": "https://www.homedepot.com/s/PVC%20cement",
+     "pq": 1,
+     "pp": 7.48,
+     "up": 7.48,
+     "pn": 1,
+     "lt": 7.48,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "3/4\" PVC tee",
+   "q": 4,
+   "u": "ea",
+   "cost": 4.72,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Charlotte 3/4\" Sch 40 PVC tee",
+     "h": "https://www.homedepot.com/s/3%2F4%20inch%20PVC%20tee%20schedule%2040",
+     "pq": 1,
+     "pp": 1.18,
+     "up": 1.18,
+     "pn": 4,
+     "lt": 4.72,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "3/4\" PVC 90° elbow",
+   "q": 2,
+   "u": "ea",
+   "cost": 1.76,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Charlotte 3/4\" Sch 40 90 degree elbow",
+     "h": "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2090%20elbow",
+     "pq": 1,
+     "pp": 0.88,
+     "up": 0.88,
+     "pn": 2,
+     "lt": 1.76,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "3/4\" PVC 45° elbow",
+   "q": 2,
+   "u": "ea",
+   "cost": 1.84,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Charlotte 3/4\" Sch 40 45 degree elbow",
+     "h": "https://www.homedepot.com/s/3%2F4%20inch%20PVC%2045%20elbow",
+     "pq": 1,
+     "pp": 0.92,
+     "up": 0.92,
+     "pn": 2,
+     "lt": 1.84,
+     "b": true
+    }
+   ]
+  }
+ ],
+ "4 foot bridge from plastic drinking straws": [
+  {
+   "name": "Plastic Drinking Straw",
+   "q": 3,
+   "u": "packs of 100 (269 straws used)",
+   "cost": 4.48,
+   "offers": [
+    {
+     "r": "walmart",
+     "l": "Walmart",
+     "t": "Great Value plastic straws, 250 count",
+     "h": "https://www.walmart.com/search?q=plastic+drinking+straws+bulk",
+     "pq": 250,
+     "pp": 4.48,
+     "up": 0.017920000000000002,
+     "pn": 1,
+     "lt": 4.48,
+     "b": true
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Plastic drinking straws, 500 count (7.75\")",
+     "h": "https://www.amazon.com/s?k=plastic+drinking+straws+bulk+500",
+     "pq": 500,
+     "pp": 8.99,
+     "up": 0.01798,
+     "pn": 1,
+     "lt": 8.99,
+     "b": false
+    },
+    {
+     "r": "amazon",
+     "l": "Amazon",
+     "t": "Clear plastic straws bulk pack, 1000 count",
+     "h": "https://www.amazon.com/s?k=plastic+straws+1000+count",
+     "pq": 1000,
+     "pp": 12.99,
+     "up": 0.01299,
+     "pn": 1,
+     "lt": 12.99,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "Packing tape",
+   "q": 1,
+   "u": "roll",
+   "cost": 3.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Scotch 1.88\" packing tape",
+     "h": "https://www.homedepot.com/s/packing%20tape",
+     "pq": 1,
+     "pp": 3.97,
+     "up": 3.97,
+     "pn": 1,
+     "lt": 3.97,
+     "b": true
+    }
+   ]
+  }
+ ],
+ "Andersen 100 Series 36 by 48 double hung window, frame the rough opening": [
+  {
+   "name": "Andersen 100 Series 36×48 double hung",
+   "q": 1,
+   "u": "window",
+   "cost": 289,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Andersen replacement / new-construction window",
+     "h": "https://www.homedepot.com/s/Andersen%2036x48%20double%20hung%20window",
+     "pq": 1,
+     "pp": 289,
+     "up": 289,
+     "pn": 1,
+     "lt": 289,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "2x4 studs (8 ft)",
+   "q": 13,
+   "u": "ea",
+   "cost": 51.35,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x4x96\" #2 KD-HT stud",
+     "h": "https://www.homedepot.com/p/2-in-x-4-in-x-96-in-2-Premium-Grade-KD-HT-Stud-058449/312528776",
+     "pq": 1,
+     "pp": 3.95,
+     "up": 3.95,
+     "pn": 13,
+     "lt": 51.35,
+     "b": true
+    },
+    {
+     "r": "lowes",
+     "l": "Lowe's",
+     "t": "2x4x8 kiln-dried whitewood stud",
+     "h": "https://www.lowes.com/search?searchTerm=2x4x8%20stud",
+     "pq": 1,
+     "pp": 4.15,
+     "up": 4.15,
+     "pn": 13,
+     "lt": 53.95,
+     "b": false
+    }
+   ]
+  },
+  {
+   "name": "2x6 header stock",
+   "q": 2,
+   "u": "ea",
+   "cost": 17.5,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "2x6x8 kiln-dried framing lumber",
+     "h": "https://www.homedepot.com/s/2x6x8%20framing%20lumber",
+     "pq": 1,
+     "pp": 8.75,
+     "up": 8.75,
+     "pn": 2,
+     "lt": 17.5,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "1/2\" plywood header spacer",
+   "q": 1,
+   "u": "sheet",
+   "cost": 42,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "1/2\" x 4x8 plywood",
+     "h": "https://www.homedepot.com/s/1%2F2%20inch%204x8%20plywood",
+     "pq": 1,
+     "pp": 42,
+     "up": 42,
+     "pn": 1,
+     "lt": 42,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Wood shims",
+   "q": 1,
+   "u": "bundle",
+   "cost": 3.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Wood shims, bundle",
+     "h": "https://www.homedepot.com/s/wood%20shims",
+     "pq": 1,
+     "pp": 3.98,
+     "up": 3.98,
+     "pn": 1,
+     "lt": 3.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "16d framing nails or structural screws",
+   "q": 1,
+   "u": "box",
+   "cost": 9.97,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "16d framing nails",
+     "h": "https://www.homedepot.com/s/16d%20framing%20nails",
+     "pq": 1,
+     "pp": 9.97,
+     "up": 9.97,
+     "pn": 1,
+     "lt": 9.97,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Window flashing tape / pan",
+   "q": 1,
+   "u": "roll",
+   "cost": 17.98,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Window flashing tape / sill pan",
+     "h": "https://www.homedepot.com/s/window%20flashing%20tape%20pan",
+     "pq": 1,
+     "pp": 17.98,
+     "up": 17.98,
+     "pn": 1,
+     "lt": 17.98,
+     "b": true
+    }
+   ]
+  },
+  {
+   "name": "Low-expansion window foam",
+   "q": 1,
+   "u": "can",
+   "cost": 7.48,
+   "offers": [
+    {
+     "r": "homedepot",
+     "l": "Home Depot",
+     "t": "Low-expansion window foam",
+     "h": "https://www.homedepot.com/s/low%20expansion%20window%20foam",
+     "pq": 1,
+     "pp": 7.48,
+     "up": 7.48,
+     "pn": 1,
+     "lt": 7.48,
+     "b": true
+    }
+   ]
+  }
+ ]
+}
