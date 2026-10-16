@@ -5,6 +5,8 @@ import { curatedFeed } from "../src/lib/ideas/feed";
 import { sizeMatches, sizeNumbers, displaySize } from "../src/lib/ideas/size";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import DRAWINGS from "../src/lib/ideas/drawings.json";
+import fs from "node:fs";
+import { drawnDims } from "../src/lib/ideas/size";
 
 const cards = curatedFeed().sections.flatMap((s) => s.cards);
 
@@ -23,13 +25,21 @@ test("every card has a size and a drawing whose dims it matches", () => {
   }
 });
 
-test("manifest dims are what the engine builds today (drawings not stale)", () => {
-  const m = DRAWINGS as Record<string, { dims: { width: number; height: number; depth: number } }>;
+test("manifest dims are the drawing's own labels (else the engine's box), so the subtitle matches what is drawn", () => {
+  const m = DRAWINGS as Record<string, { v: string; dims: { width: number; height: number; depth: number } }>;
   for (const c of cards) {
-    const o = generateFromPrompt(c.examplePrompt).overall;
+    const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
+    const labels = drawnDims(svg);
+    const want = labels ?? generateFromPrompt(c.examplePrompt).overall;
     const d = m[c.slug].dims;
-    const sorted = (x: number[]) => [...x].sort((a, b) => a - b);
-    // quarterTurn swaps axes, so compare the set of dims
-    sorted([o.width, o.height, o.depth]).forEach((v, i) => assert.ok(Math.abs(v - sorted([d.width, d.height, d.depth])[i]) < 0.02, `${c.slug} stale: ${JSON.stringify(o)} vs ${JSON.stringify(d)}`));
+    const sorted = (x: { width: number; height: number; depth: number }) => [x.width, x.height, x.depth].sort((a, b) => a - b);
+    sorted(want).forEach((v, i) => assert.ok(Math.abs(v - sorted(d)[i]) < 0.02, `${c.slug}: dims ${JSON.stringify(d)} vs drawn ${JSON.stringify(want)}`));
   }
+});
+
+test("window card: framing title, size of the drawn framing, the unit it is for", () => {
+  const w = cards.find((c) => c.slug === "window")!;
+  assert.equal(w.title, "Frame a window opening");
+  assert.equal(w.size, "42 × 96 × 3 1/2");
+  assert.equal(w.stock, "for a 36 × 48 double-hung");
 });
