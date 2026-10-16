@@ -25,7 +25,7 @@ import { fieldInch, inchFrac, parseInch } from "./inchText";
 import { logIdea } from "./ideaLogClient";
 
 /** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
-const LAMP_HOLD_MS = 4000;
+const LAMP_HOLD_MS = 700;
 let lampTimer = 0;
 let lampGen = 0;
 
