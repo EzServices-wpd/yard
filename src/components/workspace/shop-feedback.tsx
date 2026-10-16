@@ -68,6 +68,7 @@ export function ShopFeedback() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "omit",
+        referrerPolicy: "no-referrer", // the page URL carries the prompt (?q=); keep it out of the request
         body: JSON.stringify({ prompt: safePrompt(project.prompt), size, partCount: plan.totals.pieces, chips, note: scrub.note, cid: clientId() }),
       });
       if (res.status === 429) return setState("busy");

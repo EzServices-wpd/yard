@@ -94,3 +94,12 @@ test("per-client soft cap: 10 a day per anonymous id, others unaffected, id neve
   assert.equal(cleanCid("x; DROP"), "none");
   assert.equal(cleanCid(noisy), noisy);
 });
+
+test("the feedback request sends no referrer, cookies or identity (the page URL carries ?q=)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/components/workspace/shop-feedback.tsx", import.meta.url), "utf8");
+  const call = src.slice(src.indexOf('fetch("/api/feedback"'), src.indexOf("});", src.indexOf('fetch("/api/feedback"')));
+  assert.match(call, /referrerPolicy:\s*"no-referrer"/);
+  assert.match(call, /credentials:\s*"omit"/);
+  assert.doesNotMatch(call, /email|name:|location\.href|document\.referrer/);
+});
