@@ -19,8 +19,8 @@ let skipFn: (() => void) | null = null;
 export const onRevealSkip = (f: (() => void) | null) => void (skipFn = f);
 export const skipReveal = () => skipFn?.();
 
-/** Timeline: wire 0–400 ms, then one part every 60–90 ms (compressed past 24 parts), all ≤ 2.4 s. */
-export const WIRE_MS = 400;
+/** Timeline: wire 0–150 ms (it runs under the lamp fade), then one part every 60–90 ms (compressed past 24 parts), all ≤ 2.4 s. */
+export const WIRE_MS = 150;
 export const CALLOUT_MS = 200;
 export const CAP_MS = 2400;
 export function staggerFor(n: number) {
