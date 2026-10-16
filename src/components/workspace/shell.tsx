@@ -13,6 +13,7 @@ import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
 import { DecisionLine } from "@/components/workspace/decision-line";
+import { priceReason, type PriceReason } from "@/components/workspace/price-reason";
 import { MorphButton } from "@/components/workspace/morph-button";
 import { RevealStatus } from "@/components/workspace/reveal-status";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
@@ -84,6 +85,19 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
+  // Chief's item: why this build's price differs from the plain build. Worked out at idle (never
+  // before the model) into a line slot the card always keeps, so it never pushes the card (CLS 0).
+  const [priceWhy, setPriceWhy] = useState<PriceReason | null>(null);
+  useEffect(() => {
+    setPriceWhy(null);
+    if (!plan) return;
+    const forPlan = plan;
+    const run = () => setPriceWhy(priceReason(useYard.getState().project, forPlan));
+    const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const id = w.requestIdleCallback ? w.requestIdleCallback(run, { timeout: 1500 }) : window.setTimeout(run, 50);
+    return () => { if (w.cancelIdleCallback) w.cancelIdleCallback(id); else window.clearTimeout(id); };
+  }, [plan]);
+
   const orbited = useYard((s) => s.orbited);
   // A fresh lamp (new nearby preview) per build; it stays mounted briefly after to crossfade out.
   const [lampKey, setLampKey] = useState(0);
@@ -564,9 +578,19 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   decision (Refine or open the plan), everything else waits behind "More". */}
               {workMode !== "walk" && (
                 <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
-                  <p className="min-w-0 truncate font-display text-[15px] text-fg">{pending && initialPrompt?.trim() && !pieceCount ? initialPrompt.trim() : project.name || headerTitle(project)}</p>
+                  {/* The title lands with the model: a same-height skeleton holds its place while the lamp is up (CLS 0). */}
+                  <p className="min-w-0 truncate font-display text-[15px] text-fg">
+                    {pending ? (
+                      <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
+                    ) : project.name || headerTitle(project)}
+                  </p>
                   <DecisionLine />
                 </div>
+              )}
+              {workMode !== "walk" && (
+                <p data-yard-price-why={priceWhy && !pending ? "1" : "0"} title={priceWhy?.text} className="h-[18px] truncate px-3.5 text-[12px] leading-[18px] tabular-nums text-muted">
+                  {priceWhy && !pending ? priceWhy.text : ""}
+                </p>
               )}
               {workMode !== "walk" && (
                 project.displayOnly ? null : (

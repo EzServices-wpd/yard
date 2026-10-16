@@ -12,6 +12,9 @@ type Phase = "build" | "busy" | "plan";
  * into "Build". All three labels share one grid cell, so the button never changes width (CLS 0);
  * they crossfade (160 ms, opacity/transform only; reduced motion: a plain swap).
  */
+/** Busy look if a press never turns into a build. Not the lamp: the lamp's hold is store.ts LAMP_HOLD_MS. */
+const PRESS_FALLBACK_MS = 4000;
+
 export function MorphButton({ pending, built, dirty, onPlan }: { pending: boolean; built: boolean; dirty: boolean; onPlan: () => void }) {
   const [pressed, setPressed] = useState(false);
   useEffect(() => {
@@ -22,7 +25,7 @@ export function MorphButton({ pending, built, dirty, onPlan }: { pending: boolea
   useEffect(() => {
     if (!pressed) return;
     if (pending) return setPressed(false);
-    const t = window.setTimeout(() => setPressed(false), 4000);
+    const t = window.setTimeout(() => setPressed(false), PRESS_FALLBACK_MS);
     return () => window.clearTimeout(t);
   }, [pressed, pending]);
   const phase: Phase = pending || pressed ? "busy" : built && !dirty ? "plan" : "build";
