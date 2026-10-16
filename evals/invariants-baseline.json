@@ -132,6 +132,14 @@
   "I8|bunk bed 82 long 44 wide": {
    "class": "F2",
    "msg": "typed 44 wide, model 82"
+  },
+  "C15|knife block maple": {
+   "class": "C15",
+   "msg": "step \"Set the Back panel\" uses #8 × 1 1/4\" screws, not on Buy"
+  },
+  "C15|compost tumbler frame": {
+   "class": "C15",
+   "msg": "step \"Fasten the Right top rail\" uses #8 × 2 1/2\" screws, not on Buy"
   }
  }
 }

@@ -12,6 +12,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
+import { CONTACT } from "./materialForUse";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -60,7 +61,12 @@ const STOCK_WORD = /\b\d+\s*x\s*\d+\b|plywood|\bply\b|cardboard|popsicle|craft\s
  * the recipe's own stock builds it and a note says why.
  */
 function stockFor(prompt: string, recipe: Recipe, override?: string) {
-  const typed = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  const said = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  // C15: a size that names a part's own section ("with 4x4 posts" on a bed whose posts are 4x4) is that part's stock,
+  // not the whole build's: the boards stay the recipe's (the raised bed's 2x6 courses, as its note says).
+  // A species with a footprint ("cedar raised garden bed 4x8") is the species alone: the 4x8 is the bed's size, not a 1x4.
+  const speciesOnly = !override && said?.id === "lumber-1x4-8" && !/\b1\s*x\s*4\b/i.test(prompt);
+  const typed = !override && said && (speciesOnly || recipe.parts.some((p) => p.stock === said.id)) ? undefined : said;
   let ok = typed && !isWireStock(typed) ? typed : null;
   const craft = !!ok && CRAFT.has(ok.category);
   const big = Math.max(recipe.size.width, recipe.size.height, recipe.size.depth) > 48;
@@ -1065,7 +1071,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? [CONTACT.test(`${prompt} ${recipe.title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };

@@ -8,6 +8,7 @@
 import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 import { decorateBom } from "./listings";
 import { getCatalogItem } from "./catalog";
+import { contactBuild, materialSwaps } from "./materialForUse";
 
 /** Deck as a place: "for the deck", "on my deck", "deck box", "deck chair". A skateboard deck is a board. */
 const DECK_PLACE =
@@ -264,7 +265,21 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     // Notes that call for pressure-treated lumber get it priced on Buy, not kiln-dried framing stock.
     // A typed species (cedar, redwood…) is what gets bought; PT only replaces plain framing stock.
     const species = /\b(?:cedar|redwood|cypress|teak|oak|ipe|acacia|mahogany|douglas fir|walnut|maple|cherry|pine)\b/i;
-    if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
+    // C16: food, skin or nest contact is untreated cedar, and outdoors no interior sheet is left (materialForUse.ts).
+    const contact = contactBuild(project);
+    {
+      const typed = prompt.match(species)?.[0] ?? null;
+      const swapped = materialSwaps(project, bom, true, typed);
+      bom = swapped.bom;
+      for (const [was, now] of swapped.renamed) {
+        const id = bom.find((b) => b.name === now)?.catalogId;
+        const names = [was, id ? getCatalogItem(id)?.name : undefined].filter((n): n is string => !!n);
+        cutList = cutList.map((c) => (names.includes(c.material) ? { ...c, material: now } : c));
+        const swap = (t: string | undefined) => names.reduce((acc, n) => acc?.split(n).join(now), t);
+        instructions = instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) }));
+      }
+    }
+    if (!contact && (project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
       bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
       // F21/I9: the cut list and the steps name the same PT stock Buy prices, never the kiln-dried catalogue name.
       for (const b of bom) {

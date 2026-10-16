@@ -1,5 +1,7 @@
 import { withSaidHardware } from "./hardwareSaid";
 import { storeTermsFromBuy } from "./listings";
+import { checkedRow, HARDWARE } from "./checkedStock";
+import { buyComplete, stepTextForPlace } from "./buyComplete";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
@@ -1619,10 +1621,14 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
   // C13/C14: casters and screw eyes are bought as the real items (a typed "rolling", a hung feeder or birdhouse).
   const named = (name: string, n: number): BuildPlan["bom"] => {
-    if (name === "Caster") return [{ name: '2" locking swivel casters', quantity: n, unit: "each", searchQuery: '2" locking swivel casters', estimatedCost: Math.round(n * 4.49 * 100) / 100, notes: 'One under each corner, the locking pair at the front. Screw each plate on with four #10 × 3/4" pan-head screws.' }];
+    // C15: each is a checked store listing with its link (checkedStock.ts), and the screws the caster step names are bought too.
+    if (name === "Caster") return [
+      checkedRow(HARDWARE.caster, n, "One under each corner, the locking pair at the front."),
+      checkedRow(HARDWARE.casterScrew, n * 4, `Four through each caster plate (${n * 4} screws).`),
+    ];
     if (name === "Screw eye") return [
-      { name: "Zinc screw eyes, 1 1/4\"", quantity: n, unit: "each", searchQuery: "Zinc screw eyes, 1 1/4\"", estimatedCost: Math.round(n * 0.98 * 100) / 100, notes: "Twisted into pilot holes in the top; the chain hooks through them." },
-      { name: "Galvanized hanging chain, 3 ft", quantity: 1, unit: "each", searchQuery: "Galvanized hanging chain, 3 ft", estimatedCost: 5.98, notes: "From the screw eyes to a branch or hook." },
+      checkedRow(HARDWARE.screwEye, n, "Twisted into pilot holes in the top; the chain hooks through them."),
+      checkedRow(HARDWARE.chain, 3, "3 ft, cut at the store: from the screw eyes to a branch or hook.", "ft"),
     ];
     if (name === "Lid hinge") return [
       { name: '3" stainless butt hinges', quantity: n, unit: "each", searchQuery: '3" stainless butt hinges', estimatedCost: Math.round(n * 5.98 * 100) / 100, notes: "Along the back edge of the lid, into the back boards; stainless so they never rust outdoors." },
@@ -1645,7 +1651,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
   // The header total is the Buy list: the sum of its rows, never a separate estimate.
-  const out = smallestSheetStock({ ...plan, bom: dedupeBuy(bom) });
+  const out = stepTextForPlace(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) })));
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
