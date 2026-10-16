@@ -1,3 +1,4 @@
+import { UNIT_ITEM_NOTE } from "@/lib/yard/unitItems";
 import { findRecipe, RECIPES } from "@/lib/yard/recipes";
 import { recipePrompt } from "@/lib/yard/recipeIdeas";
 "use client";
@@ -353,7 +354,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   const half = ignoredTypedWords(next, prompt).length > 0;
   // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
   const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
-  const learn0 = (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
+  const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
+  const learn0 = !unitItem && (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;

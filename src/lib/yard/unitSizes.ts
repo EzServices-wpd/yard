@@ -91,7 +91,8 @@ export const UNIT_SIZES: UnitSize[] = [
     key: "washer-8",
     catalogId: "washer-no8",
     name: "#8 flat washer",
-    match: /(?:#\s*8|no\.?\s*8)\s+(?:flat\s+)?washers?|\bflat\s+washers?\b/,
+    // F17: a bare "washer(s)" is the hardware washer, never the laundry machine.
+    match: /(?:#\s*8|no\.?\s*8)\s+(?:flat\s+)?washers?|\bflat\s+washers?\b|(?<!(?:dryer|laundry|pressure|dish)\s*(?:and\s+|&\s*)?)\bwashers?\b(?!\s*(?:and|&|\/)?\s*(?:dryer|machine|pedestal|stand|cabinet|box))/,
     form: "custom",
     dims: { length: 0.438, width: 0.438, thickness: 0.049, diameter: 0.438 },
     pack: { units: 100, costUsd: 0.04 },
