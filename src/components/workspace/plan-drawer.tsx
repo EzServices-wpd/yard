@@ -1,6 +1,7 @@
 "use client";
 
 import { inchFrac } from "@/lib/yard/inchText";
+import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
@@ -230,7 +231,7 @@ function PlanBody({
   );
   const nestSheets = nest?.sheets ?? [];
   const backerSheets = plan.partsKind === "whole" ? [] : (plan.sheetNest?.backer?.sheets ?? []);
-  const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
+  const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5 && !c.whole);
   // Every sheet-goods build gets its sheet (it is what the cut list is cut from), not only house builds.
   const houseNest = nestSheets.length > 0;
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
@@ -242,7 +243,7 @@ function PlanBody({
   useEffect(() => { setCutFocus(focusIds); }, [focusIds]);
   useEffect(() => () => setCutFocus(null), []);
   const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
-  const cutCount = plan.cutList.filter((c) => c.label && ticks.has(c.label)).length;
+  const cutCount = cutProgressRows(plan).filter((c) => ticks.has(c.label!)).length;
   // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
   const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
     setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
@@ -312,13 +313,11 @@ function PlanBody({
             <section>
               <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
               <p className="mt-1 text-xs text-muted">
-                {plan.partsKind === "whole"
-                  ? "Full pieces from the pack. Glue them. Do not cut."
-                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+                {cutListIntro(plan)}
               </p>
-              {plan.partsKind !== "whole" && plan.cutList.some((c) => c.label) && (
+              {cutProgressRows(plan).length > 0 && (
                 <p className="mt-1 text-xs text-fg" data-yard-cut-progress aria-live="polite">
-                  {cutCount} of {plan.cutList.filter((c) => c.label).length} sizes cut
+                  {cutCount} of {cutProgressRows(plan).length} sizes cut
                 </p>
               )}
               <table className="mt-3 w-full text-left text-xs">
@@ -334,7 +333,7 @@ function PlanBody({
                   {plan.cutList.map((c) => {
                     const L = c.label ?? "";
                     const done = !!L && ticks.has(L);
-                    const thin = (c.thicknessIn ?? 0.75) < 0.5 && plan.partsKind !== "whole";
+                    const thin = (c.thicknessIn ?? 0.75) < 0.5 && plan.partsKind !== "whole" && !c.whole;
                     return (
                       <tr
                         key={c.id}
@@ -347,15 +346,17 @@ function PlanBody({
                         <td className="py-0.5 pr-1">
                           {L ? (
                             <span className="flex items-center">
-                              <label className="grid size-11 cursor-pointer place-items-center" title={`Mark ${L} cut`}>
-                                <input
-                                  type="checkbox"
-                                  checked={done}
-                                  onChange={() => toggleTick(L)}
-                                  aria-label={`${L}, ${c.name}: cut`}
-                                  className="size-4 accent-[#c8641e]"
-                                />
-                              </label>
+                              {!c.whole && (
+                                <label className="grid size-11 cursor-pointer place-items-center" title={`Mark ${L} cut`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={done}
+                                    onChange={() => toggleTick(L)}
+                                    aria-label={`${L}, ${c.name}: cut`}
+                                    className="size-4 accent-[#c8641e]"
+                                  />
+                                </label>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => pickLetter(L, false)}

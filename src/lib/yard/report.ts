@@ -1,3 +1,4 @@
+import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
@@ -1022,7 +1023,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
-      name: "5 mm shelf pins",
+      name: '3/16" shelf pins',
       quantity: packs,
       unit: packs === 1 ? "pack" : "packs",
       catalogId: "shelf-pins",
@@ -1560,7 +1561,7 @@ export function buildPlan(project: YardProject): BuildPlan {
  */
 function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!isUnitItem(project)) return plan;
-  return {
+  const marked: BuildPlan = {
     ...plan,
     cutList: plan.cutList.map((c) => {
       const u = unitSizeById(c.id.split("|")[0]);
@@ -1571,6 +1572,12 @@ function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
       const thk = d.thickness ?? d.diameter ?? c.thicknessIn;
       return { ...c, whole: true, lengthIn: len, widthIn: wid, thicknessIn: thk };
     }),
+  };
+  // C11: a whole piece carries no cut letter in the steps ("One A 8" cable tie" → "One 8" cable tie").
+  const talk = (t: string) => unletterWhole(t, marked.cutList);
+  return {
+    ...marked,
+    instructions: marked.instructions.map((s) => ({ ...s, title: talk(s.title), description: talk(s.description), tips: s.tips ? talk(s.tips) : s.tips })),
   };
 }
 

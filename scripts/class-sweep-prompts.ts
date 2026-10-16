@@ -1,5 +1,16 @@
 /** Spec 006: the 20-prompt sweep per class (also the whole-class test corpus). */
 export const SWEEPS = {
+  c11: {
+    title: "whole items carry no cutting language; shelf pins in inches",
+    inv: "C11",
+    file: "c11-whole-items-uncut.md",
+    prompts: [
+      "zip tie", "pipe cleaner", "marble", "wine cork", "washer",
+      "paper clip", "paper clip chain 12 inches long", "pony bead bracelet", "washer tower", "craft stick",
+      "3/8 dowel", "cotton swab", "binder clip", "golf tee", "16d nail",
+      "linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide 72 tall 12 deep", "4 foot bookshelf", "pantry cabinet 24 wide 84 tall 16 deep", "bookshelf",
+    ],
+  },
   c10: {
     title: "price consistency",
     inv: "C10",

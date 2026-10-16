@@ -1347,7 +1347,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf — two in each upright) at those marked heights. ${(shelves[0]?.size.depth ?? 0) + (backs[0]?.size.depth ?? 0) >= (uprights[0]?.size.depth ?? D) - 0.01 ? "The shelves run to the front edge; the door closes flat in front of them." : `Stop the shelves ${HINGE_ARM_CLEAR_IN}" short of the door so the concealed hinge arm can close.`} Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Two shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 3/16" pins (four per shelf — two in each upright) at those marked heights. ${(shelves[0]?.size.depth ?? 0) + (backs[0]?.size.depth ?? 0) >= (uprights[0]?.size.depth ?? D) - 0.01 ? "The shelves run to the front edge; the door closes flat in front of them." : `Stop the shelves ${HINGE_ARM_CLEAR_IN}" short of the door so the concealed hinge arm can close.`} Do not glue the shelves; pins let you move them later.`,
         tips: "A medicine bottle is taller than a spice tin — leave the middle gap honest.",
         partsUsed: names(shelves),
       },
@@ -1757,7 +1757,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 4,
           title: "Add the upper shelves and the top",
-          description: `${upper.map(cutLine).join("; ") || "Upper shelves."} ${of("top").map(cutLine).join("; ")}. Pin the upper shelves (four 5 mm pins each). Glue and screw the top into both uprights.`,
+          description: `${upper.map(cutLine).join("; ") || "Upper shelves."} ${of("top").map(cutLine).join("; ")}. Pin the upper shelves (four 3/16" pins each). Glue and screw the top into both uprights.`,
           tips: "Do not glue the upper shelves — pins let you move them later. The tank shelf stays glued.",
           partsUsed: names([...upper, ...of("top")]),
         },
@@ -1802,7 +1802,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 4,
         title: "Set the shelves",
-        description: `${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 5 mm pins (four per shelf) at those marked heights. Do not glue the shelves; pins let you move them later.`,
+        description: `${shelves.map(cutLine).join("; ") || "Shelves."}. ${shelfInstallHeightsClause(shelves, { wallMounted: true })} Rest each shelf on 3/16" pins (four per shelf) at those marked heights. Do not glue the shelves; pins let you move them later.`,
         partsUsed: names(shelves),
       },
       {
@@ -2491,8 +2491,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         : {
             step: n++,
             title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
-            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Drill 5mm pin holes in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 32mm (about 1¼") apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
-            tips: "A pegboard jig or a 32mm shelf-pin jig beats measuring every hole twice.",
+            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
+            tips: "A pegboard jig or a shelf-pin jig beats measuring every hole twice.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
           },
     );
