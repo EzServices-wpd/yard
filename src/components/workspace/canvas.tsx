@@ -402,6 +402,9 @@ function CameraRig({
         return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
       });
       (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept };
+      // The framed pose, for a reveal glide already running on this camera (see RevealCamera).
+      const prev = (cam.userData.framed as FramedPose | undefined)?.v ?? 0;
+      cam.userData.framed = { v: prev + 1, pos: cam.position.clone(), target: tgt.clone() } satisfies FramedPose;
     };
     // Let the overlay cards lay out first, then fit.
     const t1 = window.setTimeout(fit, 60);
@@ -632,9 +635,11 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
  * 3/4 view over the reveal's last 600 ms (cubic-bezier .2,.7,.2,1). Orbits the controls' target,
  * so the CameraRig's framing is the end pose. Idle when no reveal is running.
  */
+/** The pose CameraRig last framed on this camera (kept on the camera, so a remounted Canvas starts empty). */
+type FramedPose = { v: number; pos: THREE.Vector3; target: THREE.Vector3 };
 function RevealCamera() {
   const { camera, controls } = useThree();
-  const pose = useRef<{ t0: number; end: number; from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const pose = useRef<{ t0: number; end: number; v: number; from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   useFrame(() => {
     const r = revealState();
     const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
@@ -646,11 +651,17 @@ function RevealCamera() {
       }
       return;
     }
-    const target = orbit?.target ?? new THREE.Vector3();
-    if (!pose.current || pose.current.t0 !== r.t0) {
-      const to = camera.position.clone();
+    // The glide ends on the rig's framed pose, never on whatever the camera held when the reveal began.
+    // A rebuild (Wider, Taller…) remounts the Canvas and its reveal starts on the first frame, before
+    // the rig's first fit (60 ms): capturing the camera then glided to, and left it at, the Canvas
+    // default (48, 32, 48), inside the model — dark shelves, then a broken view (hotfix, Oct 16).
+    const framed = camera.userData.framed as FramedPose | undefined;
+    const v = framed?.v ?? 0;
+    if (!pose.current || pose.current.t0 !== r.t0 || pose.current.v !== v) {
+      const to = framed ? framed.pos.clone() : camera.position.clone();
+      const target = framed ? framed.target.clone() : (orbit?.target ?? new THREE.Vector3()).clone();
       const rel = to.clone().sub(target).applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.18).multiplyScalar(1.08);
-      pose.current = { t0: r.t0, end: r.end, from: target.clone().add(rel), to, target: target.clone() };
+      pose.current = { t0: r.t0, end: r.end, v, from: target.clone().add(rel), to, target };
     }
     const p = pose.current;
     const u = easeCam(Math.min(1, Math.max(0, (performance.now() - (p.end - 600)) / 600)));
