@@ -26,7 +26,17 @@ export function buildOrder(project: YardProject, plan: Pick<BuildPlan, "instruct
   const at = new Map<string, number>();
   for (const [id, s] of owner) at.set(id, rank.get(s)!);
   const n = order.length;
-  for (const p of project.panels) if (!at.has(p.id)) at.set(p.id, Math.max(0, n - 1));
-  for (const i of project.instances) if (!at.has(i.id)) at.set(i.id, Math.max(0, n - 1));
+  // Parts no step owns (the second side wall, the other roof panel) go in with their twin: the beat
+  // of an owned part with the same name minus its number. Failing that, the last beat that places
+  // something (never a trailing pause beat), so no beat repeats an earlier beat's label.
+  const base = (s: string) => s.replace(/\s*\d+$/, "").replace(/\s+(left|right|front|back|top|bottom)$/i, "").toLowerCase();
+  const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
+  const twinBeat = new Map<string, number>();
+  for (const [id, g] of at) {
+    const b = base(names.get(id) ?? id);
+    if (!twinBeat.has(b)) twinBeat.set(b, g);
+  }
+  const lastPlacing = at.size ? Math.max(...at.values()) : Math.max(0, n - 1);
+  for (const id of names.keys()) if (!at.has(id)) at.set(id, twinBeat.get(base(names.get(id)!)) ?? lastPlacing);
   return { at, n, stale };
 }
