@@ -7,11 +7,13 @@ with sync_playwright() as p:
   b=p.chromium.launch(args=["--use-gl=swiftshader","--enable-unsafe-swiftshader"])
   c=b.new_context(**(p.devices["iPhone 13"] if W<500 and len(sys.argv)>6 else {"viewport":{"width":W,"height":900 if W>500 else 844},"has_touch":W<500})); c.add_init_script(INIT)
   pg=c.new_page(); pg.set_default_timeout(120000)
+  import os
+  if os.environ.get('CPU'): c.new_cdp_session(pg).send('Emulation.setCPUThrottlingRate',{'rate':int(os.environ['CPU'])})
   if K: pg.goto(U+"/?_vercel_share="+K)
   net=[]; pg.on("requestfinished",lambda r: net.append((r.url.split("?")[0][-40:],int(r.timing["responseEnd"]))) if ("_serverFn" in r.url or "/api/" in r.url) else None)
-  if mode=="url": pg.goto(U+"/workspace?q="+q.replace(" ","%20"))
+  if mode=="url": pg.goto(U+"/workspace?offline=1&q="+q.replace(" ","%20"))
   else:
     pg.goto(U+"/workspace"); pg.wait_for_timeout(2500); i=pg.locator('form input').first; i.fill(q); i.press("Enter")
   try: pg.wait_for_function("/^(done|skip)/.test(document.querySelector('[data-bench-host]')?.getAttribute('data-yard-reveal')||'')",timeout=60000)
   except Exception: print("TIMEOUT", pg.url, pg.title())
-  ev=pg.evaluate("window.__ev"); print(W,mode,[(e['s'],e['t']) for e in ev],'..',[(e['s'],e['t']) for e in ev][-2:],'net',net); b.close()
+  ev=pg.evaluate("window.__ev"); ms=pg.evaluate("document.querySelector('[data-bench-host]')?.getAttribute('data-yard-reveal-ms')");print(W,mode,'ms',ms,[(e['s'],e['t']) for e in ev],'..',[(e['s'],e['t']) for e in ev][-2:],'net',net); b.close()
