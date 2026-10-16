@@ -1138,7 +1138,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       });
     steps.push({
       title: "Level it",
-      description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts.${bunk ? " Anchor the frame to a wall stud." : " Add a mattress that fits the sleep deck."}`,
+      description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts.${bunk ? " Tie the frame into a wall stud: screw two 3\" steel corner braces from the wall-side top rail into the stud with #8 × 2 1/2\" screws (corner braces on the Buy list; the stud carries the load, drywall alone is too weak)." : " Add a mattress that fits the sleep deck."}`,
       tips: "Guidance only — person load is heuristic, not stamped engineering.",
       partsUsed: ["*"],
     });

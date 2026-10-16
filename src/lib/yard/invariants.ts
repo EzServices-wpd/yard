@@ -1,7 +1,7 @@
 import { hardwareSaidNotBought } from "./hardwareSaid";
 import { storeTermDrift } from "./listings";
 import { genericFormMark, routesToLearner } from "./formOwnership";
-import { ignoredTypedWords } from "./promptMain";
+import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
 import { typedHeadNoun } from "./headNoun";
@@ -21,7 +21,7 @@ import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
-import { footTalk, isOutdoorPrompt } from "./outdoor";
+import { footTalk, hungBuild, isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
@@ -33,10 +33,10 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10" | "C11" | "C12";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10", C11: "C11", C12: "C12",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
 export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12"];
@@ -149,7 +149,7 @@ export const JARGON: [RegExp, string][] = [
   [/\bdensif/i, "'densify'"],
   [/\bsteal\b|shelving niche|\bnot an? (?:closet|dining table|cubby(?! wall)|Operate|Bridge|floor vanity|freestanding rectangle)\b/i, "negation aimed at another template"],
   [/\bcarcases?\b/i, "'carcase'"],
-  [/\bWarren\b|\bface lace\b/i, "truss jargon"],
+  [/\bWarren\b|\bface lace\b|\blaced into a truss\b/i, "truss jargon"],
 ];
 const SHOE_OK = /\b(?:shoes?|shoelaces?|boots?|coat|entry(?:way)?|mudroom|hall(?:way)?|closet|wardrobe|organizer|cubb(?:y|ies)|rack)\b/i;
 
@@ -162,7 +162,7 @@ function i11(p: YardProject, plan: BuildPlan): Violation[] {
   // A typed-option hint ('Say "with a shoe shelf"') offers words; it is not a leftover part.
   if (/\bshoes?\b/i.test(text.replace(/"with [^"]*"/g, "")) && !SHOE_OK.test(`${p.prompt ?? ""} ${p.name}`)) out.push(v("I11", "template leak: shoe wording"));
   // Feet are the same feet Buy reads (outdoor.ts footTalk): legs, ground-standing sides, or sticks that reach the floor.
-  if (/\bglides?\b/i.test(text) && (p.assumptions?.installMode === "wall" || !(footTalk(p).feet || p.panels.some((q) => q.position.y < 0.5)))) out.push(v("I11", "template leak: glides with no feet"));
+  if (/\bglides?\b/i.test(text) && (hungBuild(p) || !(footTalk(p).feet || p.panels.some((q) => q.position.y < 0.5)))) out.push(v("I11", "template leak: glides with no feet"));
   return out;
 }
 
@@ -384,4 +384,25 @@ function c11(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
   const pre = label.match(/^(\S+) · /)?.[1];
   if (pre && !isNamedLumberSpeciesId(pre) && !/^titebond$/i.test(pre)) out.push(v("C11", `Material chip reads "${pre}"`));
   return out;
+}
+
+/** The parts and steps a person sees, with ids kept (step pictures light parts by id). */
+export function buildFingerprint(p: YardProject, plan: BuildPlan = buildPlan(p)): string {
+  return JSON.stringify({
+    name: p.name,
+    panels: p.panels.map((x) => [x.id, x.name, x.size, x.position]),
+    instances: p.instances.map((x) => [x.id, x.catalogId, x.position]),
+    steps: plan.instructions,
+    bom: plan.bom.map((b) => [b.name, b.quantity, b.estimatedCost]),
+  });
+}
+
+/**
+ * I25 (F12 deterministic steps): the same prompt gives identical parts, part ids and steps on every run. Eiffel's
+ * step parts changed every build because ids came from Math.random (stableId.ts). Builds the prompt `runs` times.
+ */
+export function i25(prompt: string, runs = 3): Violation[] {
+  const prints = Array.from({ length: runs }, () => buildFingerprint(generateFromPrompt(prompt)));
+  const differ = prints.findIndex((x) => x !== prints[0]);
+  return differ > 0 ? [v("I25", `run ${differ + 1} of "${prompt}" differs from run 1 (steps or part ids)`)] : [];
 }

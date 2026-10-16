@@ -1,5 +1,27 @@
 /** Spec 006: the 20-prompt sweep per class (also the whole-class test corpus). */
 export const SWEEPS = {
+  d1: {
+    title: "the same prompt gives identical steps on every run",
+    inv: "I25",
+    file: "d1-deterministic-steps.md",
+    prompts: [
+      "3 foot Eiffel Tower from popsicle sticks", "eiffel tower", "big ben", "brooklyn bridge", "trebuchet",
+      "submarine", "water wheel", "model lighthouse", "popsicle stick bridge", "4 foot lattice tower from jumbo craft sticks",
+      "linen closet 31.5 wide 78 tall 16 deep", "bunk bed", "loft bed", "picnic table", "hanging birdhouse",
+      "corner shelf", "wine rack 12 bottles", "toothpick tower", "catapult from popsicle sticks", "ferris wheel",
+    ],
+  },
+  g1: {
+    title: "hung builds never get glides; frames tied to a wall stud buy the tie; plain truss words",
+    inv: "I9",
+    file: "g1-hung-glides-stud-tie.md",
+    prompts: [
+      "hanging birdhouse", "wall mounted birdhouse", "outdoor wall planter box", "outdoor hanging shelf", "hanging planter",
+      "bunk bed", "loft bed", "bunk bed 80 long 42 wide 66 tall", "model lighthouse", "adirondack chair",
+      "outdoor bench", "picnic table", "garden bed", "porch swing", "wall mounted outdoor planter",
+      "birdhouse", "outdoor plant stand", "bookcase 36 wide 72 tall 12 deep", "floating shelf 24 wide", "coat rack",
+    ],
+  },
   j1: {
     title: "engine jargon and template leftovers never reach the person",
     inv: "I11",
