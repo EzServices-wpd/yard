@@ -575,7 +575,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                           type="button"
                           onClick={() => { makePlan(); setPlanOpen(true); }}
                           data-yard-open-plan="1"
-                          className="inline-flex h-11 shrink-0 items-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated"
+                          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated sm:flex-none"
                         >
                           Open the plan <ChevronRight className="size-4" aria-hidden />
                         </button>

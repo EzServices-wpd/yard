@@ -34,7 +34,7 @@ export function RefineBox({ trailing, showChips = true }: { trailing?: ReactNode
   }
   return (
     <div data-yard-refine="1" className="border-t border-border/60 px-3 py-2">
-      <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); apply(value); }}>
+      <form className="flex flex-wrap items-center gap-2 sm:flex-nowrap" onSubmit={(e) => { e.preventDefault(); apply(value); }}>
         <label htmlFor="yard-refine" className="sr-only">Refine</label>
         <input
           id="yard-refine"
@@ -44,9 +44,9 @@ export function RefineBox({ trailing, showChips = true }: { trailing?: ReactNode
           aria-label="Refine this build"
           autoComplete="off"
           enterKeyHint="done"
-          className="yard-glass h-11 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-4 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
+          className="yard-glass h-11 min-w-0 basis-full rounded-full sm:basis-auto sm:flex-1 border border-border/80 bg-surface px-4 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
         />
-        {trailing}
+        {trailing ? <div className="flex w-full items-center gap-2 sm:w-auto">{trailing}</div> : null}
       </form>
       {showChips && chips.length > 0 && (
         <div data-yard-refine-chips="1" className="yard-tray mt-2 flex flex-wrap gap-1.5">
