@@ -13,6 +13,7 @@ import { IDEAS } from "../src/lib/yard/ideas";
 import { newIdeas, popularIdeas } from "../src/lib/yard/recipeIdeas";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
+import type { YardProject } from "../src/lib/yard/types";
 
 export const DRAW_W = 480, DRAW_H = 360;
 /** Raw bytes per wood drawing; past it coordinates are rounded harder (big models). */
@@ -43,23 +44,75 @@ function tidy(svg: string, digits: number) {
     .replace(/<rect width="100%" height="100%" fill="[^"]+" \/>/, "");
 }
 
+/**
+ * The model turned a quarter (about the vertical), so a part drawn in the zy plane (a wheel disc) is drawn
+ * as an xy plate. The overview renderer extrudes every non-xz polygon along depth (pdfDraw: `thick =
+ * plane === "xz" ? height : depth`), so a 3/4" water-wheel disc came out as a 22" drum. Same parts, same
+ * sizes, only the view turns. Returns null when the model has parts this simple turn can't carry.
+ */
+export function quarterTurn(project: YardProject): YardProject | null {
+  if (project.instances.length || project.panels.some((p) => p.yaw || p.polygon?.plane === "xz")) return null;
+  const xMax = Math.max(...project.panels.map((p) => p.position.x + p.size.width));
+  const panels = project.panels.map((p) => ({
+    ...p,
+    position: { x: p.position.z, y: p.position.y, z: xMax - (p.position.x + p.size.width) },
+    size: { width: p.size.depth, height: p.size.height, depth: p.size.width },
+    polygon: p.polygon ? { ...p.polygon, plane: p.polygon.plane === "zy" ? ("xy" as const) : ("zy" as const) } : undefined,
+  }));
+  return { ...project, panels };
+}
+/** Per-card drawing fixes (Critic, PR 60 regrade): a turned view, or extra margin for a sprawling model. */
+const VIEW: Record<string, { turn?: boolean; zoom?: number }> = {
+  "recipe-water-wheel": { turn: true },
+  catapult: { zoom: 0.8 },
+};
+function zoomed(svg: string, k: number) {
+  const cx = DRAW_W / 2, cy = DRAW_H / 2;
+  return svg.replace(/(<rect x="0" y="0" width="\d+" height="\d+"[^>]*\/>)/, `$1<g transform="translate(${cx * (1 - k)} ${cy * (1 - k)}) scale(${k})">`).replace(/<\/svg>$/, "</g></svg>");
+}
+
 const cards = [
   ...IDEAS.map((d) => ({ slug: d.id, prompt: d.prompt })),
   ...[...popularIdeas(), ...newIdeas()].map((r) => ({ slug: r.id, prompt: r.prompt })),
 ];
 const seen = new Set<string>();
-const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number }> = {};
+/** Hero models: panel boxes only (no engine on /ideas), for builds light enough to turn live on a phone. */
+export const HERO_MAX_PARTS = 150;
+const MODELS = path.join("public", "ideas", "models");
+const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; model?: string }> = {};
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
+fs.rmSync(MODELS, { recursive: true, force: true });
+fs.mkdirSync(MODELS, { recursive: true });
+const r2 = (n: number) => Math.round(n * 100) / 100;
 for (const c of cards) {
   if (seen.has(c.slug)) continue;
   seen.add(c.slug);
-  const project = generateFromPrompt(c.prompt);
+  const view = VIEW[c.slug] ?? {};
+  const built = generateFromPrompt(c.prompt);
+  const project = (view.turn && quarterTurn(built)) || built;
   let svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 1);
   if (svg.length > BUDGET) svg = tidy(planOverviewSvg(project, DRAW_W, DRAW_H).svg, 0);
+  if (view.zoom) svg = zoomed(svg, view.zoom);
   const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
-  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts: project.panels.length + project.instances.length, bytes: svg.length };
+  const parts = built.panels.length + built.instances.length;
+  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length };
+  if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
+    const model = JSON.stringify({
+      overall: built.overall,
+      panels: built.panels.map((p) => ({
+        p: [r2(p.position.x), r2(p.position.y), r2(p.position.z)],
+        s: [r2(p.size.width), r2(p.size.height), r2(p.size.depth)],
+        ...(p.yaw ? { yaw: r2(p.yaw) } : {}),
+        ...(p.polygon ? { poly: { plane: p.polygon.plane, pts: p.polygon.pts.map(([a, b]) => [r2(a), r2(b)]) } } : {}),
+        ...(p.type === "glass_panel" || p.type === "mirror" ? { glass: 1 } : {}),
+      })),
+    });
+    const mv = crypto.createHash("sha1").update(model).digest("hex").slice(0, 8);
+    fs.writeFileSync(path.join(MODELS, `${c.slug}.${mv}.json`), model);
+    manifest[c.slug].model = `/ideas/models/${c.slug}.${mv}.json`;
+  }
 }
 fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 1) + "\n");
 // Recipe cards baked too, so /ideas never builds a recipe in the browser.

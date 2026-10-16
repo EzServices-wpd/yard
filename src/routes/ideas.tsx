@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteChrome } from "@/components/site/chrome";
+import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { IdeasPageView } from "@/components/ideas/IdeasPageView";
 import { IDEAS_CHANGED, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 
@@ -17,8 +18,11 @@ export const Route = createFileRoute("/ideas")({
     ],
     links: [{ rel: "canonical", href: "https://yard.wiki/ideas" }],
   }),
-  validateSearch: (s: Record<string, unknown>): { q?: string } =>
-    typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 80) } : {},
+  // Test flags (offline/local/test=1) survive here so every build link from Ideas can carry them on.
+  validateSearch: (s: Record<string, unknown>): { q?: string } & TestFlags => ({
+    ...(typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 80) } : {}),
+    ...pickTestFlags(s),
+  }),
   component: IdeasPage,
 });
 
@@ -38,7 +42,7 @@ function IdeasPage() {
   }, []);
   function go(text: string) {
     const next = text.trim();
-    if (next) void navigate({ to: "/workspace", search: { q: next } });
+    if (next) void navigate({ to: "/workspace", search: { q: next, ...currentTestFlags() } });
   }
   return (
     <SiteChrome active="ideas">
