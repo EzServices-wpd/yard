@@ -1,8 +1,10 @@
+import { isTestPage } from "./ideaLogGate";
 import { EMPTY_SNAPSHOT, safePrompt, type IdeasSnapshot } from "./ideaLog";
 
 /** Fire-and-forget log of a build (R7): at idle, via sendBeacon; the server decides status. No xAI, no identity. */
 export function logIdea(prompt: string, failed = false): void {
   if (typeof window === "undefined") return;
+  if (isTestPage(window.location.search)) return; // offline=1 / local=1: test traffic, never logged
   const clean = safePrompt(prompt);
   if (!clean) return;
   const send = () => {
