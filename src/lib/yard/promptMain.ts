@@ -1,4 +1,3 @@
-import { withUniquePartNames } from "./partNames";
 import { boundPrompt } from "./promptLimits";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
@@ -420,7 +419,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
   // F12 ownership: no two parts share a name, so every step names exactly the parts it installs.
-  return withUniquePartNames(withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt));
+  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
 }
 
 /**

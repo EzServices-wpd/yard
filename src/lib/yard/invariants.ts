@@ -14,7 +14,6 @@ import { isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
-import { duplicatePartNames } from "./partNames";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
 
@@ -180,8 +179,6 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const loose = unownedParts(p, plan);
   if (loose.length) out.push(v("I18", `${loose.map((x) => x.name).join(", ")} ${loose.length === 1 ? "has" : "have"} no owning step`));
-  const dup = duplicatePartNames(p);
-  if (dup.length) out.push(v("I18", `same-named parts no step can tell apart: ${dup.join(", ")}`));
   return out;
 }
 

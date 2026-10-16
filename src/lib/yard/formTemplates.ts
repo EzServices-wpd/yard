@@ -1616,8 +1616,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
       const wallTop = Math.max(...walls.flatMap((w) => [w.from!.y, w.to!.y]));
       if (!(roofTop > wallTop + 1)) issues.push({ code: "roof", detail: `roof top ${roofTop.toFixed(2)} vs wall top ${wallTop.toFixed(2)}` });
     } else {
-      // Same-named parts carry a side word (partNames): "Left side wall" is a Side wall.
-      const names = project.panels.map((p) => p.name.replace(/^(?:Left|Right) (\w)/, (_m, c: string) => c.toUpperCase()));
+      const names = project.panels.map((p) => p.name);
       const need: [string, number][] = [["Front gable", 1], ["Back gable", 1], ["Side wall", 2], ["Floor", 1], ["Roof panel", 2]];
       for (const [n, c] of need) if (names.filter((x) => x === n).length < c) issues.push({ code: "missing-part", detail: n });
       const front = project.panels.find((p) => p.name === "Front gable");
@@ -1807,8 +1806,6 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
-  const side = name.match(/^(?:Left|Right) (side wall|roof panel)$/);
-  if (side) return side[1][0].toUpperCase() + side[1].slice(1);
   if (/^Side spacer (?:left|right)$/.test(name)) return "Side spacer";
   return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
 }
@@ -1829,9 +1826,9 @@ const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = 
   ],
   "small-house": [
     { match: /^Front gable$/, title: "Drill the entrance hole in the front gable", why: "Drill before assembly with a spade or Forstner bit, from the face side, backed by scrap so it does not tear out." },
-    { match: /^((?:Left |Right )?[Ss]ide wall|Floor)$/, title: "Screw the side walls to the floor", why: "Floor sits between the side walls, flush at the bottom. Predrill near the ends." },
+    { match: /^(Side wall|Floor)$/, title: "Screw the side walls to the floor", why: "Floor sits between the side walls, flush at the bottom. Predrill near the ends." },
     { match: /^(Front gable|Back gable)$/, title: "Screw the front and back gables over the ends", why: "The gables cover the side-wall and floor edges; the peaks line up." },
-    { match: /^(?:Left |Right )?[Rr]oof panel$/, title: "Fit the two roof panels on the gable slopes", why: "They meet at the ridge and overhang the front, back and eaves. Leave one side on screws only so it lifts off for cleaning." },
+    { match: /^Roof panel$/, title: "Fit the two roof panels on the gable slopes", why: "They meet at the ridge and overhang the front, back and eaves. Leave one side on screws only so it lifts off for cleaning." },
     { match: /^Perch$/, title: "Glue the perch below the entrance", why: "Drill a snug hole below the entrance and glue the perch in." },
     { match: /^Back wall$/, title: "Screw the back wall over the back ends", why: "The gable-shaped back covers the side-wall and floor edges; the front stays open for the tubes." },
     { match: /^Tier shelf$/, title: "Screw the tier shelves between the side walls", why: "Even tiers, flush at the front; each tier holds a tight bundle of nesting tubes." },
