@@ -1,3 +1,4 @@
+import { withUniquePartNames } from "./partNames";
 import { boundPrompt } from "./promptLimits";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
@@ -418,7 +419,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
-  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
+  // F12 ownership: no two parts share a name, so every step names exactly the parts it installs.
+  return withUniquePartNames(withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt));
 }
 
 /**

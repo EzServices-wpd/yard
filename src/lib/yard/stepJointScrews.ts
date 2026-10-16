@@ -83,6 +83,7 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     return { ...step, description: step.description.replace(whole, text) };
   });
   // A thin back goes on after every part it fastens to is in place.
+  let backShelves = new Set<string>();
   const backAt = instructions.findIndex((s) => /to the back of the box/.test(s.title));
   if (backAt >= 0) {
     const back = instructions[backAt];
@@ -95,9 +96,25 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     const thinIds = new Set(project.panels.filter(isThin).map((p) => p.id));
     const backTouches = joints.filter((j) => thinIds.has(j.a) !== thinIds.has(j.b)).map((j) => (thinIds.has(j.a) ? j.b : j.a));
     const placed = placementIndex(project, instructions);
+    // Fixed shelves the back screws into go in AFTER the back (F12 step order, I19): the back squares the
+    // box, then each shelf slides in and is screwed through the uprights and through the back into its
+    // back edge. Only the carcase the back fastens to has to stand before it.
+    const fixedShelfStep = (i: number) => /\bfixed shel/i.test(instructions[i]?.title ?? "");
+    const shelfIds = new Set(backTouches.filter((id) => { const at = placed.get(id); return at != null && fixedShelfStep(at) && /shelf/i.test(project.panels.find((p) => p.id === id)?.name ?? ""); }));
     for (const id of backTouches) {
+      if (shelfIds.has(id)) continue;
       const at = placed.get(id);
       if (at != null && at > last && !/hinge/i.test(instructions[at].title)) last = at;
+    }
+    backShelves = shelfIds;
+    if (shelfIds.size) {
+      // `last` counted fixed-shelf steps as joins; the back needs only the carcase it fastens to.
+      last = backAt;
+      for (const id of backTouches) {
+        if (shelfIds.has(id)) continue;
+        const at = placed.get(id);
+        if (at != null && at > last && !/hinge/i.test(instructions[at].title)) last = at;
+      }
     }
     if (last > backAt) {
       const lead = back.description.slice(0, back.description.indexOf("One join:")).trim();
@@ -115,6 +132,10 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
       instructions = rest;
       changed = true;
     }
+  }
+  if (backShelves.size) {
+    instructions = backThenShelves(project, instructions, joints, backShelves);
+    changed = true;
   }
   if (!changed) return plan;
   return { ...plan, instructions: instructions.map((s, i) => ({ ...s, step: i + 1 })) };
@@ -176,4 +197,38 @@ export function stepsStateJointScrews(project: YardProject, plan: BuildPlan): Bu
     instructions[last] = { ...s, description: `${s.description.replace(/\s*$/, "")} That brings the build to ${total} screws from the model's joints, the count on the Buy list.` };
   }
   return { ...plan, instructions };
+}
+
+/**
+ * With the back on before the fixed shelves, the back's step names only the carcase it fastens to and the
+ * shelf step drives the back-into-shelf screws ("through A Back into the back edge of each shelf").
+ */
+function backThenShelves(project: YardProject, instructions: BuildPlan["instructions"], joints: ModelJoint[], shelfIds: Set<string>): BuildPlan["instructions"] {
+  const backAt = instructions.findIndex((s) => /to the back of the box/.test(s.title));
+  const shelfAt = instructions.findIndex((s) => /\bfixed shel/i.test(s.title));
+  if (backAt < 0 || shelfAt < 0) return instructions;
+  const thin = new Set(project.panels.filter(isThin).map((p) => p.id));
+  const toShelves = joints.filter((j) => (thin.has(j.a) && shelfIds.has(j.b)) || (thin.has(j.b) && shelfIds.has(j.a)));
+  const n = toShelves.reduce((t, j) => t + j.screws, 0);
+  const out = instructions.map((s) => ({ ...s }));
+  const back = out[backAt];
+  const letter = back.title.match(/^Attach ([A-Z]{1,2}) /)?.[1] ?? "";
+  const m = back.description.match(/with (\d+) × (#8 × [\d/ ]+" screws)/);
+  if (m) {
+    const total = Number(m[1]);
+    back.description = back.description
+      .replace(/(?:,\s*|\s+and\s+)(?:all \d+ |both )?[A-Z]{1,2} Shel(?:f|ves)\b/, "")
+      .replace(/ and ([^,]+) with /, (all, x: string) => all) // keep the list grammar
+      .replace(`with ${total} × ${m[2]}`, `with ${total - n} × ${m[2]}`);
+    // A list that lost its last item keeps its "and".
+    back.description = back.description.replace(/the back edges of ([^.]*?), ([^,]+?) with/, (_a, head: string, tail: string) => `the back edges of ${head} and ${tail} with`);
+  }
+  const shelf = out[shelfAt];
+  const wordBack = letter ? `${letter} Back` : "the back";
+  shelf.description = shelf.description.replace(
+    /(Square every bay\.)/,
+    `$1 The back is already on and square: slide each shelf in to touch it, then drive ${n} × #8 × 1 1/4" screws through ${wordBack} into the shelf back edges, one about every 8" (these screws are counted in another step's total).`,
+  );
+  shelf.partsUsed = [...new Set([...(shelf.partsUsed ?? [])])];
+  return out;
 }

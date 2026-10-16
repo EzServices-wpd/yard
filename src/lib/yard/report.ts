@@ -1,3 +1,4 @@
+import { ownEveryPart } from "./ownEveryPart";
 import { isNoLidPrompt } from "./cueRules";
 import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
@@ -1549,7 +1550,8 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   if (project.displayOnly) {
     return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
   }
-  const plan0 = shape(project, fallbackStepOne(project, buildPlanInner(project)));
+  // F12: every part is installed by one build step (I18), after every pass that writes steps.
+  const plan0 = ownEveryPart(project, shape(project, fallbackStepOne(project, buildPlanInner(project))));
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
