@@ -201,7 +201,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   ];
 }
 
-/** I18 (F12 part ownership): every part is installed by one build step, and no two parts share a name. */
+/** I18 (F12 part ownership): every part is installed by one build step (same-named twins may share a step). */
 function i18(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const loose = unownedParts(p, plan);

@@ -77,7 +77,7 @@ export function alsoAtLinks(line: BomLine, templates: Record<AlsoAtStore, string
   return ORDER.filter((s) => templates[s] && !have.has(s) && !(local && SPECIALTY.has(s))).map((s) => ({
     store: s,
     label: LABEL[s],
-    href: withSubId(wrapTemplate(alsoAtSearchUrl(s, query), templates[s]), "impact", ALSO_AT_SUB_ID),
+    href: withSubId(wrapTemplate(alsoAtSearchUrl(s, query), templates[s]), s === "homedepot" || s === "lowes" ? "impact" : s === "rockler" || s === "woodcraft" ? s : "other", ALSO_AT_SUB_ID),
   }));
 }
 

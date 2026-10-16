@@ -149,11 +149,15 @@ export function wrapTemplate(href: string, template: string): string {
 export function outboundHref(href: string, cfg: AffiliateConfig = affiliateConfig(), subId?: string): string {
   if (!href) return href;
   const store = storeOf(href);
-  if (store === "amazon") return withSubId(amazonTagged(href, cfg.amazonTag), "amazon", cfg.amazonTag ? subId : undefined);
+  if (store === "amazon") return amazonTagged(href, cfg.amazonTag); // F49: Associates links carry no sub-ID
   if (store === "homedepot") return withSubId(wrapTemplate(href, cfg.homedepotTemplate), "impact", cfg.homedepotTemplate ? subId : undefined);
   if (store === "lowes") return withSubId(wrapTemplate(href, cfg.lowesTemplate), "impact", cfg.lowesTemplate ? subId : undefined);
   return href;
 }
+
+/** F49: the sub-ID parameter per network. Only Impact (Home Depot, Lowe's) takes one; Amazon Associates, Rockler, Woodcraft and unknown stores get none. */
+export type SubIdNetwork = "impact" | "amazon" | "rockler" | "woodcraft" | "other";
+const SUB_ID_PARAM: Record<SubIdNetwork, string> = { impact: "subId1", amazon: "", rockler: "", woodcraft: "", other: "" };
 
 const SUB_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -164,11 +168,13 @@ export function cleanSubId(subId: string | undefined): string {
 }
 
 /**
- * Sub-ID tracking: which surface (and build) a paid click came from. Amazon reads ascsubtag; Impact
- * (Home Depot, Lowe's) reads subId1. Only on a link that is already earning: with no affiliate ID set the
+ * Sub-ID tracking: which surface (and build) a paid click came from. Only Impact (Home Depot, Lowe's)
+ * reads one (subId1); see SUB_ID_PARAM. Only on a link that is already earning: with no affiliate ID set the
  * href stays byte-for-byte unchanged.
  */
-export function withSubId(href: string, network: "amazon" | "impact", subId?: string): string {
+export function withSubId(href: string, network: SubIdNetwork, subId?: string): string {
+  const param = SUB_ID_PARAM[network];
+  if (!param) return href;
   const sub = cleanSubId(subId);
   if (!sub) return href;
   let u: URL;
@@ -177,7 +183,7 @@ export function withSubId(href: string, network: "amazon" | "impact", subId?: st
   } catch {
     return href;
   }
-  u.searchParams.set(network === "amazon" ? "ascsubtag" : "subId1", sub);
+  u.searchParams.set(param, sub);
   return u.toString();
 }
 

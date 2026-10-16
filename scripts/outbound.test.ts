@@ -19,11 +19,12 @@ test("Rockler and Woodcraft are recognised by the outbound module", () => {
 test("sub-IDs ride only on earning links; inert links stay byte-identical", () => {
   const amz = "https://www.amazon.com/dp/B0CD7PP3R1";
   assert.equal(outboundHref(amz, OFF, "buy-list"), amz);
-  assert.match(outboundHref(amz, ON, "buy-list"), /tag=yard-20.*ascsubtag=buy-list|ascsubtag=buy-list.*tag=yard-20/);
+  assert.equal(outboundHref(amz, ON, "buy-list"), "https://www.amazon.com/dp/B0CD7PP3R1?tag=yard-20"); // F49: no Amazon sub-ID
   const hd = "https://www.homedepot.com/s/wood%20glue";
   assert.equal(outboundHref(hd, OFF, "buy-list"), hd);
   assert.match(outboundHref(hd, ON, "buy-list"), /homedepot\.sjv\.io.*subId1=buy-list/);
   assert.equal(outboundHref(amz, ON), outboundHref(amz, ON, ""));
   assert.equal(cleanSubId("buy list/<x>"), "buy-list-x");
-  assert.equal(withSubId("not a url", "amazon", "a"), "not a url");
+  assert.equal(withSubId("not a url", "impact", "a"), "not a url");
+  for (const n of ["amazon", "rockler", "woodcraft", "other"] as const) assert.equal(withSubId("https://x.com/a", n, "buy-list"), "https://x.com/a");
 });

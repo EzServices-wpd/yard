@@ -227,8 +227,15 @@ function backThenShelves(project: YardProject, instructions: BuildPlan["instruct
   const wordBack = letter ? `${letter} Back` : "the back";
   shelf.description = shelf.description.replace(
     /(Square every bay\.)/,
-    `$1 The back is already on and square: slide each shelf in to touch it, then drive ${n} × #8 × 1 1/4" screws through ${wordBack} into the shelf back edges, one about every 8" (these screws are counted in another step's total).`,
+    `$1 The back is already on and square: slide each shelf in to touch it, then drive ${n} × #8 × 1 1/4" screws through ${wordBack} into the shelf back edges, one about every 8".`,
   );
+  // The back goes on after the dividers, so "screw through the back" belongs to the back's own step.
+  let moved = false;
+  for (let i = 0; i < backAt; i++) {
+    const d = out[i].description.replace(/\s*Screw through the [A-Z]{0,2} ?back[^.]*\./i, "");
+    if (d !== out[i].description) { out[i].description = d; moved = true; }
+  }
+  if (moved) back.description = `${back.description.replace(/\s*$/, "")} Screw through ${wordBack} into each divider's back edge too.`;
   shelf.partsUsed = [...new Set([...(shelf.partsUsed ?? [])])];
   return out;
 }
