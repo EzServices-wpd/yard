@@ -18,6 +18,27 @@ const SHAPE_WORD: Record<string, Shape> = { chain: "chain", garland: "chain", to
 const FILLER = /\b(?:a|an|one|single|the|of|standard|regular|plain|wooden|wood|metal|steel|plastic|hardwood|birch|round|long|tall|high|inch|inches|in)\b|["']/g;
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
+/** Is this a purchased-item build (one curated piece, or real pieces linked, stacked or threaded)? */
+export function isUnitItem(project: { notes?: string[] }): boolean {
+  return (project.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
+}
+
+/** F9: the plural goes on the noun, never on a trailing size ("Pony beads 9 × 6 mm", not "9 × 6 mms"). */
+export function pluralUnit(name: string): string {
+  const m = name.match(/^(.*?[A-Za-z])(\s+[\d"'].*)?$/);
+  return m ? `${m[1]}${/s$/.test(m[1]) ? "" : "s"}${m[2] ?? ""}` : `${name}s`;
+}
+
+/** Clips are drawn as wire: a closed stadium loop the width of the wire (outline, inside open), not a slab. */
+function wireLoop(L: number, W: number, t: number, n = 8): [number, number][] {
+  const arc = (cx: number, r: number, from: number): [number, number][] =>
+    Array.from({ length: n + 1 }, (_, i) => { const a = from + (Math.PI * i) / n; return [r3(cx + r * Math.cos(a)), r3(W / 2 + r * Math.sin(a))] as [number, number]; });
+  const R = W / 2, ri = Math.max(0.01, R - t);
+  const outer = [...arc(L - R, R, -Math.PI / 2), ...arc(R, R, Math.PI / 2)];
+  const inner = [...arc(R, ri, Math.PI / 2), ...arc(L - R, ri, -Math.PI / 2)].reverse();
+  return [...outer, outer[0], ...inner, inner[0]];
+}
+
 export type UnitItemAsk = { unit: UnitSize; shape: Shape; count: number | null; lengthIn: number | null; shapeWord: string };
 
 /** The curated item a prompt names on its own (optionally with one shape word, a count and a size), or null. */
@@ -58,6 +79,9 @@ function piece(u: UnitSize, name: string, x: number, y: number, z: number, extra
     ? { id: createId("wa"), type: "rail", name, position: { x, y, z }, size: { width: wid, height: thk, depth: wid }, materialId: u.catalogId,
         // F13: a washer is a disc with its hole, never a spanning rail.
         polygon: { plane: "xz", pts: circle(wid / 2), holes: [{ x: wid / 2, y: wid / 2, r: 0.094 }] } }
+    : u.key === "paper-clip"
+      ? { id: createId("pc"), type: "rail", name, position: { x, y, z }, size: { width: len, height: thk, depth: wid }, materialId: u.catalogId,
+          polygon: { plane: "xz", pts: wireLoop(len, wid, thk) } }
     : /bead/.test(u.key)
       ? { id: createId("be"), type: "rail", name, position: { x, y, z }, size: { width: len, height: wid, depth: wid }, materialId: u.catalogId }
       : { id: createId("pc"), type: "rail", name, position: { x, y, z }, size: { width: len, height: thk, depth: wid }, materialId: u.catalogId };
@@ -85,15 +109,34 @@ export function buildUnitItem(prompt: string): YardProject | null {
     const n = ask.count ?? Math.max(2, Math.round(((ask.lengthIn ?? 12) - (len - pitch)) / pitch));
     for (let i = 0; i < n; i++) {
       const turned = i % 2 === 1;
-      panels.push(piece(u, `Clip ${i + 1}`, r3(i * pitch), turned ? 0 : r3((wid - thk) / 2), turned ? r3((wid - thk) / 2) : 0, turned ? { size: { width: len, height: wid, depth: thk } } : {}));
+      panels.push(piece(u, `Clip ${i + 1}`, r3(i * pitch), turned ? 0 : r3((wid - thk) / 2), turned ? r3((wid - thk) / 2) : 0, turned ? { size: { width: len, height: wid, depth: thk }, polygon: { plane: "xy", pts: wireLoop(len, wid, thk) } } : {}));
     }
     name = "Paper clip chain";
-    notes.push(`${n} real No. 1 clips linked end to end, each turned 90° to the last: ${inchFrac(r3(len + (n - 1) * pitch))}" long.`);
+    const got = r3(len + (n - 1) * pitch);
+    // I8: a typed length lands within 1/8", or the note says it is the nearest whole clip.
+    const off = ask.lengthIn != null && Math.abs(got - ask.lengthIn) > 0.125 ? ` That is the nearest whole clip to the ${inchFrac(ask.lengthIn)}" you typed (each clip adds ${inchFrac(pitch)}").` : "";
+    notes.push(`${n} real No. 1 clips linked end to end, each turned 90° to the last: ${inchFrac(got)}" long.${off}`);
   } else if (shape === "stack") {
     const n = ask.count ?? Math.max(2, Math.round((ask.lengthIn ?? 2.5) / thk));
     for (let i = 0; i < n; i++) panels.push(piece(u, `Washer ${i + 1}`, 0, r3(i * thk), 0));
     name = "Washer tower";
-    notes.push(`${n} real ${u.name}s (${inchFrac(wid)}" discs, ${thk}" thick) stacked: ${inchFrac(r3(n * thk))}" tall. Washers stack; none spans.`);
+    notes.push(`${n} real ${pluralUnit(u.name)} (${inchFrac(wid)}" discs, ${thk}" thick) stacked: ${inchFrac(r3(n * thk))}" tall. Washers stack; none spans.`);
+  } else if (u.key === "paper-clip") {
+    // F17: a paper clip necklace or bracelet is a closed loop of linked clips (the last hooks the first): no cord.
+    const pitch = r3(len - wid);
+    const around = ask.lengthIn ?? (ask.shapeWord === "necklace" ? 18 : 7);
+    const n = ask.count ?? Math.max(4, Math.round(around / pitch));
+    const R = (n * pitch) / (2 * Math.PI);
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      const turned = i % 2 === 1;
+      panels.push(piece(u, `Clip ${i + 1}`, r3(R + R * Math.cos(a) - len / 2), turned ? 0 : r3((wid - thk) / 2), r3(R + R * Math.sin(a) - wid / 2), {
+        yaw: a + Math.PI / 2,
+        ...(turned ? { size: { width: len, height: wid, depth: thk }, polygon: { plane: "xy" as const, pts: wireLoop(len, wid, thk) } } : {}),
+      }));
+    }
+    name = ask.shapeWord === "necklace" ? "Paper clip necklace" : "Paper clip bracelet";
+    notes.push(`${n} real No. 1 clips linked into a closed loop, each turned 90° to the last, the last hooked through the first: about ${inchFrac(r3(n * pitch))}" around.`);
   } else {
     // Round a wrist (7") or a neck (18"), beads threaded on one cord.
     const around = ask.lengthIn ?? (ask.shapeWord === "necklace" ? 18 : 7);
@@ -104,7 +147,7 @@ export function buildUnitItem(prompt: string): YardProject | null {
       panels.push(piece(u, `Bead ${i + 1}`, r3(R + R * Math.cos(a) - len / 2), 0, r3(R + R * Math.sin(a) - wid / 2), { yaw: a + Math.PI / 2 }));
     }
     name = ask.shapeWord === "necklace" ? `${u.name} necklace` : `${u.name} bracelet`;
-    notes.push(`${n} real ${u.name}s round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1 mm stretch cord.`);
+    notes.push(`${n} real ${pluralUnit(u.name)} round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1 mm stretch cord.`);
   }
   notes.push(`Piece size from the unit table: ${u.name}, ${u.source}.`);
   const maxX = Math.max(...panels.map((p) => p.position.x + p.size.width));
@@ -134,16 +177,22 @@ export function unitItemSteps(project: YardProject): AssemblyStep[] | null {
   const n = names.length;
   const said = project.notes[1] ?? "";
   const s = (step: number, title: string, description: string, partsUsed?: string[]): AssemblyStep => ({ step, title, description, ...(partsUsed ? { partsUsed } : {}) });
-  if (shape === "one") return [s(1, `Take one ${project.name.toLowerCase()} from the pack`, `${said} Nothing to cut: it is used whole, as bought.`, names)];
+  if (shape === "one") return [s(1, `Take one ${project.name.toLowerCase()}`, `${said} Nothing to cut: use it whole, as bought.`, names)];
+  if (shape === "ring" && project.panels.every((p) => /^Clip /.test(p.name)))
+    return [
+      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips. Nothing to cut.`),
+      s(2, `Link the ${n} clips`, `Hook each clip through the end loop of the one before and turn it 90° so the loops sit flat to each other.`, names),
+      s(3, "Close the loop", `Hook the last clip through the end loop of the first so the chain is one closed loop. ${said}`),
+    ];
   if (shape === "chain")
     return [
-      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips from one pack of 100. Nothing to cut.`),
+      s(1, `Count out ${n} paper clips`, `${n} No. 1 clips. Nothing to cut.`),
       s(2, `Link the ${n} clips`, `Hook each clip through the end loop of the one before and turn it 90° so the loops sit flat to each other. ${said}`, names),
       s(3, "Check the length", `Hold the chain up by one end and let it hang straight: about ${inchFrac(project.overall.width)}" end to end.`),
     ];
   if (shape === "stack")
     return [
-      s(1, `Count out ${n} washers`, `${n} #8 flat washers from one pack of 100. Nothing to cut.`),
+      s(1, `Count out ${n} washers`, `${n} #8 flat washers. Nothing to cut.`),
       s(2, `Stack the ${n} washers`, `Stack them flat and centered, hole over hole, on a level surface. ${said} A 3/16" rod through the holes keeps a tall stack straight.`, names),
     ];
   return [
