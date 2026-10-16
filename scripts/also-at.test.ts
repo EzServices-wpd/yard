@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { alsoAtLinks, ALSO_AT_REL, type AlsoAtStore } from "../src/components/workspace/also-at";
+import { alsoAtLinks, ALSO_AT_REL, type AlsoAtStore } from "../src/components/workspace/buy-list";
 import type { BomLine } from "../src/lib/yard/types";
 
 const none: Record<AlsoAtStore, string> = { homedepot: "", lowes: "", rockler: "", woodcraft: "", walmart: "" };
@@ -38,4 +38,14 @@ test("also at: owned rows and stores already in the row are skipped", () => {
 test("also at: rel is sponsored + nofollow", () => {
   assert.match(ALSO_AT_REL, /sponsored/);
   assert.match(ALSO_AT_REL, /nofollow/);
+});
+
+test("'Also at' store links live only in the Buy-list component", async () => {
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
+  const hits = walk("src")
+    .filter((f) => /\.(tsx?|jsx?)$/.test(f) && !f.startsWith("src/lib/yard/"))
+    .filter((f) => /alsoAt|data-yard-also-at|homedepot\.com|lowes\.com|menards\.com/.test(readFileSync(f, "utf8")));
+  assert.deepEqual(hits, ["src/components/workspace/buy-list.tsx"]);
 });
