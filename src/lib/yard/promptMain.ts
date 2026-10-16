@@ -1,3 +1,5 @@
+import { resolvePurpose } from "./purposeForms";
+import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { findRecipe } from "./recipes";
@@ -384,7 +386,10 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
-  args[0] = normalizeUserPrompt(boundPrompt(said).prompt);
+  // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
+  // C1: a purpose ("something to hang my keys") resolves to the form built for it before any noun match.
+  const phrased = sizePhrases(boundPrompt(said).prompt).prompt;
+  args[0] = normalizeUserPrompt(resolvePurpose(phrased)?.prompt ?? phrased);
   const prompt = args[0];
   // F47: a unit item is built at its real size; the furniture passes below (lumber members, 1/16" snapping) never touch it.
   // The bench may carry the last build's stock forward; only a different stock (a switch) skips this.
