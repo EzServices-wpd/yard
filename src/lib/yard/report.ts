@@ -1416,7 +1416,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
-    [/\bstretch cord\b/i, /cord/, { name: "1 mm clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
+    [/\bstretch cord\b/i, /cord/, { name: "1/32\" clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
     [/\bbed bolts?\b/i, /bolt/, { name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts', quantity: 8, estimatedCost: 1.5 * 8, unit: "each", searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut", notes: "The bed bolts the notes name." }],
   ];
   for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
@@ -1550,7 +1550,28 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return withPartIds(project, buildPlanOuter(project));
+  return withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)));
+}
+
+/**
+ * Spec 008 (I20): a purchased-item build's whole pieces (clip, marble, dowel used as bought) are bought, not cut:
+ * their cut-list rows are marked whole and carry the piece's real size from the unit table (they read as blank
+ * 0" sizes before, because a 1/32" wire rounded to 0). Real cuts (bracelet cord) are untouched.
+ */
+function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!isUnitItem(project)) return plan;
+  return {
+    ...plan,
+    cutList: plan.cutList.map((c) => {
+      const u = unitSizeById(c.id.split("|")[0]);
+      if (!u || /kerf|cut from/i.test(plan.bom.find((b) => b.name === c.material)?.notes ?? "")) return c;
+      const d = u.dims;
+      const len = d.length ?? d.diameter ?? c.lengthIn;
+      const wid = d.width ?? d.diameter ?? c.widthIn;
+      const thk = d.thickness ?? d.diameter ?? c.thicknessIn;
+      return { ...c, whole: true, lengthIn: len, widthIn: wid, thicknessIn: thk };
+    }),
+  };
 }
 
 function buildPlanOuter(project: YardProject): BuildPlan {

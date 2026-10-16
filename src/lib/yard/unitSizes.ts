@@ -5,6 +5,7 @@
  * Buy still sells the pack (unitsPerPack) and says how many pieces the build uses.
  */
 import type { CatalogItem, FormFactor } from "./types";
+import { mmToInches } from "./inchText";
 
 export type UnitSize = {
   key: string;
@@ -145,6 +146,12 @@ export const BOUGHT_SIZES: UnitSize[] = [
   bought("bottle-cap", "Crown bottle cap", /\bbottle\s*-?\s*caps?\b/, { length: 1.02, width: 1.02, thickness: 0.24, diameter: 1.02 }, 100, 0.03, "Crown cork 26 mm across, 6 mm tall (crown cap standard 26 mm)"),
   bought("cotton-ball", "Cotton ball", /\bcotton\s*-?\s*balls?\b/, { length: 1, width: 1, thickness: 1, diameter: 1 }, 200, 0.01, "Regular cotton ball about 1\" across (personal-care 'regular' size)"),
 ];
+
+// Spec 008: names and cited sources read in inches only (the citation's metric figures are converted).
+for (const u of [...UNIT_SIZES, ...BOUGHT_SIZES]) {
+  u.name = mmToInches(u.name);
+  u.source = mmToInches(u.source);
+}
 
 /** The curated single-item size for this text, most specific row first (a 3/8 dowel before a bare dowel). */
 export function unitSizeFor(text: string): UnitSize | null {
