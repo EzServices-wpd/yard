@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { currentTestFlags } from "@/lib/ideas/testFlags";
 import { useEffect, useState } from "react";
 import { safePrompt, type SnapshotRow } from "@/lib/yard/ideaLog";
 import { loadSnapshot } from "@/lib/yard/ideaLogClient";
@@ -30,7 +31,7 @@ export function MakingNow() {
             <ul className="yard-making-list inline-flex gap-4">
               {[...rows, ...rows].map((r, i) => (
                 <li key={`${r.key}-${i}`} aria-hidden={i >= rows.length || undefined}>
-                  <Link to="/workspace" search={{ q: r.prompt }} tabIndex={i >= rows.length ? -1 : undefined} className="hover:text-ink hover:underline">
+                  <Link to="/workspace" search={{ q: r.prompt, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="hover:text-ink hover:underline">
                     {r.prompt}
                   </Link>
                 </li>
