@@ -295,7 +295,7 @@ function LandingPage() {
                 key={h.id}
                 type="button"
                 onClick={() => open(h.prompt)}
-                className="group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
+                className="yard-card group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
@@ -303,7 +303,7 @@ function LandingPage() {
                       role="img"
                       aria-label={`Yard drawing of the ${h.label} ${h.size}`}
                       data-yard-showcase={h.id}
-                      className="yard-alive h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                      className="yard-alive h-full w-full"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
@@ -386,12 +386,40 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
     played.current = true;
     const cards = [...root.querySelectorAll<HTMLElement>("[data-yard-showcase]")];
     cards.forEach((card, i) => {
-      const leaves = leavesIn(card);
-      if (!leaves.length) return;
-      anims.current.push(...swing(leaves, "once", 1500 + i * 120));
       const btn = card.closest("button");
-      btn?.addEventListener("pointerenter", () => { anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "open")]; });
-      btn?.addEventListener("pointerleave", () => { anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")]; });
+      const leaves = leavesIn(card);
+      // Doors swing once after the entrance settles, card by card.
+      if (leaves.length) anims.current.push(...swing(leaves, "once", 1250 + i * 260));
+      if (!btn) return;
+      let hovering: Animation[] = [];
+      let raf = 0;
+      btn.addEventListener("pointermove", (ev) => {
+        if (ev.pointerType !== "mouse") return;
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          const r = btn.getBoundingClientRect();
+          const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
+          btn.style.setProperty("--tx", `${(x * 7).toFixed(2)}deg`);
+          btn.style.setProperty("--ty", `${(-y * 5).toFixed(2)}deg`);
+        });
+      });
+      btn.addEventListener("pointerenter", (ev) => {
+        if (ev.pointerType !== "mouse") return;
+        btn.setAttribute("data-hover", "");
+        if (leaves.length) hovering = swing(leaves, "open");
+        anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...hovering];
+      });
+      btn.addEventListener("pointerleave", () => {
+        cancelAnimationFrame(raf);
+        btn.removeAttribute("data-hover");
+        btn.style.removeProperty("--tx");
+        btn.style.removeProperty("--ty");
+        if (!leaves.length) return;
+        // Mid-swing: run the same swing back from where it is; fully open: the closing swing.
+        if (hovering.some((a) => a.playState === "running")) hovering.forEach((a) => a.reverse());
+        else anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")];
+        hovering = [];
+      });
     });
   }, [off, ref]);
   // Set once on first view; the turn-in keyframes only exist after this (nothing runs at load).
