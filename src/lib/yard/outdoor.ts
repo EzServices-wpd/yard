@@ -55,9 +55,18 @@ function outdoorWood(project: YardProject, prompt: string | undefined | null): b
   return (isOutdoorPrompt(prompt) || notesOutside) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
 }
 
-function wallHung(project: YardProject): boolean {
-  return project.assumptions?.installMode === "wall";
+/**
+ * Typed words that hang a build instead of standing it (I9 glides class): "hanging birdhouse", "wall mounted
+ * birdhouse", "outdoor wall planter box", "outdoor hanging shelf". Those builds are library forms whose installMode
+ * stays freestanding, so the typed words decide too.
+ */
+const HUNG_WORDS = /\bhanging\b|\bhung\b|\bhangs?\s+(?:on|from)\b|\bwall[- ]?(?:mounted|mount|hung)\b|\bwall\s+(?:planter|shelf|shelves|box|birdhouse|rack)\b|\bon\s+(?:the|a)\s+(?:wall|fence)\b/i;
+
+/** Hung on a wall, fence or chain: no feet, no glides. One answer for the note, Buy and the I11 check. */
+export function hungBuild(project: YardProject): boolean {
+  return project.assumptions?.installMode === "wall" || HUNG_WORDS.test(project.prompt ?? "");
 }
+const wallHung = hungBuild;
 
 /** Ground-contact pressure-treated legs (a coop, a hutch) stand on the ground as they are: no glides. */
 function groundContactLegs(project: YardProject): boolean {

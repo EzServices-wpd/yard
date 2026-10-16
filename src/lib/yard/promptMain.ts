@@ -1,3 +1,4 @@
+import { seedIds } from "../stableId";
 import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -383,7 +384,24 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
 }
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
+let idDepth = 0;
+/**
+ * I25: part ids come from a stream seeded by the outermost call's own input, so the same prompt gives identical
+ * parts and steps on every run (nested calls share the outer stream). A generated project id (proj-…) stays fresh
+ * per call so the workspace still sees each build as new; a form's own fixed id is kept.
+ */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  if (idDepth === 0) seedIds(args);
+  idDepth++;
+  try {
+    const built = generateSeeded(...args);
+    return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+  } finally {
+    idDepth--;
+  }
+}
+
+function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
   // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
