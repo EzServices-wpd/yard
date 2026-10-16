@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
+import { pickTestFlags } from "@/lib/ideas/testFlags";
 
 const NAV = [
   { to: "/ideas" as const, label: "Ideas" },
@@ -34,6 +35,8 @@ export function SiteChrome({
                 <Link
                   key={n.to}
                   to={n.to}
+                  // Test flags ride along from Ideas to the workbench (offline runs stay offline).
+                  search={(prev: Record<string, unknown>) => pickTestFlags(prev) as never}
                   className={`inline-flex min-h-11 items-center px-2.5 text-sm transition-colors duration-150 ${
                     on ? "text-ink" : "text-ink-muted hover:text-ink"
                   }`}

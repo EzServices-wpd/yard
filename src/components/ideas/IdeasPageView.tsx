@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { IdeaCard } from "./IdeaCard";
-import { SECTION_SHOW, curatedFeed, searchCards, searchPool, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import { IdeaHero } from "./IdeaHero";
+import { SECTION_SHOW, curatedFeed, heroCard, searchCards, searchPool, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
 import RECIPE_CARDS from "@/lib/ideas/recipes.json";
 import type { LearnedIdea } from "@/lib/yard/ideaLibrary";
+
+/** Live 3D in the hero (VITE_IDEAS_HERO_3D=0 keeps the drawing only). */
+const HERO_LIVE = (import.meta.env?.VITE_IDEAS_HERO_3D ?? "1") !== "0";
 
 let feedMemo: IdeasFeed | null = null;
 /** Today's lists through the feed adapter; SWE's live feed replaces this call. */
@@ -22,6 +26,7 @@ export function IdeasPageView({ incoming, learned, onBuild, feed = ideasFeed() }
   const q = query.trim();
   const pool = useMemo(() => searchPool(feed), [feed]);
   const hits = useMemo(() => searchCards(pool, q).slice(0, 24), [pool, q]);
+  const hero = useMemo(() => heroCard(feed), [feed]);
   const root = useRef<HTMLElement>(null);
   // Drawings start in pencil only once JS can ink them (no-JS and SSR show wood).
   useEffect(() => root.current?.classList.add("ideas-live"), []);
@@ -77,7 +82,10 @@ export function IdeasPageView({ incoming, learned, onBuild, feed = ideasFeed() }
           ) : null}
         </section>
       ) : (
-        sections.map((s, i) => <Section key={s.id} section={s} first={i === 0} onBuild={onBuild} showCount={feed.countsLive} />)
+        <>
+          {hero ? <IdeaHero card={hero} live={HERO_LIVE} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
+          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} showCount={feed.countsLive} />)}
+        </>
       )}
     </main>
   );
