@@ -65,3 +65,12 @@ export function routesToLearner(prompt: string, p: YardProject, half: boolean): 
   const craftGuess = /popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   return craftGuess || needsRecipeLookup(p, prompt, engineOwnsForm(prompt, p), false);
 }
+
+/**
+ * C10: every size the brief needs was typed (width, height and depth), so the house brief (an xAI server call that
+ * can only re-guess them) has nothing to add. The engine's build and its price are the answer, with no wait.
+ */
+export function typedSizeComplete(parsed: { typedAxes?: { width?: boolean; height?: boolean; depth?: boolean } } | null | undefined): boolean {
+  const t = parsed?.typedAxes;
+  return !!t && !!t.width && !!t.height && !!t.depth;
+}

@@ -5,6 +5,7 @@
 import { inchFrac } from "./inchText";
 import { panelJoints, screwTalk } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
+import { decorateBom, LISTINGS } from "./listings";
 import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 
 export type ShopJoin = NonNullable<YardProject["shopJoin"]>;
@@ -185,12 +186,23 @@ function rewriteStep(text: string, join: ShopJoin, thick: number): string {
   return text;
 }
 
+/** C10: a fastener line with real listings for its own catalog id takes the listing price the base Buy uses. */
+export function listedPrice(line: BomLine): BomLine {
+  if (!line.catalogId || !LISTINGS.some((o) => o.catalogId === line.catalogId)) return line;
+  const priced = decorateBom([line])[0];
+  return priced.catalogId === line.catalogId ? priced : line;
+}
+
 /** Swap the face-screw Buy line and the step verbs for the picked join. Geometry stays. */
 export function applyShopJoin(project: YardProject, plan: BuildPlan): BuildPlan {
   const join = project.shopJoin;
   if (!join) return plan;
-  const lines = fastenerLines(project, join);
-  const bom = [
+  // C10: the default join is already what Buy bought. Picking it again keeps the same lines and the same total.
+  const hasFaceScrews = plan.bom.some((b) => /wood screw/i.test(b.name));
+  const keepBuy = join === "screw" && hasFaceScrews;
+  // C10: a swapped-in fastener line is priced by the same listing pass as every other Buy line (no flat $8 / $5).
+  const lines = keepBuy ? [] : fastenerLines(project, join).map(listedPrice);
+  const bom = keepBuy ? plan.bom : [
     ...plan.bom.filter((b) => {
       if (/structural/i.test(b.name)) return true;
       if (/wood screw|pocket-hole|pocket screw|fluted dowel|#20 biscuit/i.test(b.name)) return false;
@@ -216,6 +228,7 @@ export function applyShopJoin(project: YardProject, plan: BuildPlan): BuildPlan 
     instructions.unshift(jig);
     instructions.forEach((s, i) => { s.step = i + 1; });
   }
+  if (keepBuy) return { ...plan, instructions };
   const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
   return { ...plan, bom, instructions, totals: { ...plan.totals, estCostUsd: Math.round(cost * 100) / 100 } };
 }
