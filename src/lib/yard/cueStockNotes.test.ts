@@ -37,7 +37,7 @@ describe("a storage noun in a named opening builds the fitted unit there", () =>
 
 describe("a typed cue that changes what the thing normally is says so", () => {
   it("dresser no drawers", () => {
-    assert.match(build("dresser no drawers").notes, /A dresser normally has drawers\. You typed "no drawers", so this one is a plain carcase with an open front\./);
+    assert.match(build("dresser no drawers").notes, /A dresser normally has drawers\. You typed "no drawers", so this one is a plain main box with an open front\./);
   });
   it("pantry with no doors", () => {
     assert.match(build("pantry with no doors").notes, /A pantry normally has doors\./);
