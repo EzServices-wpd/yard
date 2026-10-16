@@ -5,6 +5,7 @@ import { SWEEPS } from "../../../scripts/class-sweep-prompts";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
+import { stepStockNameDrift } from "./buyComplete";
 
 const corpus = [...new Set<string>(Object.values(SWEEPS).flatMap((s) => s.prompts))];
 const plan = (q: string) => { const p = generateFromPrompt(q); return { p, plan: buildPlan(p) }; };
@@ -50,4 +51,14 @@ test("C17: the jewelry box hangs its lid once; small builds are checked flat or 
   assert.ok(!j.some((s) => /floor/i.test(s.description)));
   assert.ok(plan("bird feeder").plan.instructions.some((s) => /^Hang it and check/.test(s.title)));
   assert.ok(plan("treasure chest").plan.instructions.some((s) => s.title === "Mount the 1 latch"));
+});
+
+test("C15: step stock text uses the Buy name (water wheel names the Buy's plywood; a drifted name is caught)", () => {
+  const { plan: pl } = plan("water wheel");
+  assert.deepEqual(stepStockNameDrift(pl), []);
+  const ply = pl.bom.find((b) => /plywood/i.test(b.name))!;
+  assert.ok(pl.instructions.some((s) => s.title.includes(ply.name)), ply.name);
+  const drifted = { ...pl, instructions: pl.instructions.map((s) => ({ ...s, title: s.title.split(ply.name).join('23/32" BC exterior plywood 4×8') })) };
+  assert.ok(stepStockNameDrift(drifted).length > 0);
+  for (const q of corpus) assert.deepEqual(stepStockNameDrift(plan(q).plan), [], q);
 });

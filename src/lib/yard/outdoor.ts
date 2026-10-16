@@ -137,7 +137,7 @@ function exteriorTalk(t: string | undefined): string | undefined {
 }
 
 /** Pressure-treated #2 lumber, Home Depot shelf prices checked 2026-10-15 (search links where no single product page fits). */
-const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
+export const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
   "lumber-2x4-8": { name: "2×4 pressure-treated (8 ft)", price: 4.88, query: "2x4x8 pressure treated lumber", title: "2x4x8 #2 Prime ground contact pressure-treated pine" },
   "lumber-2x6-8": { name: "2×6 pressure-treated (8 ft)", price: 5.98, query: "2x6x8 pressure treated lumber", href: "https://www.homedepot.com/p/2-in-x-6-in-x-8-ft-2-Pressure-Treated-Lumber-2310254/329737526", title: "2x6x8 #2 pressure-treated lumber" },
   // 1× trim (rails, stiles, battens) comes treated too, so no indoor board is left in an outdoor build. Estimates.

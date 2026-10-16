@@ -1,6 +1,6 @@
 import { hardwareSaidNotBought } from "./hardwareSaid";
 import { storeTermDrift } from "./listings";
-import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, unlinkedBuy } from "./buyComplete";
+import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, stepStockNameDrift, unlinkedBuy } from "./buyComplete";
 import { contactBuild, interiorSheet } from "./materialForUse";
 import { genericFormMark, routesToLearner } from "./formOwnership";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
@@ -425,6 +425,7 @@ function c15(p: YardProject, plan: BuildPlan): Violation[] {
   return [
     ...(isUnitItem(p) ? [] : cutStockOffBuy(plan)).map((m) => v("C15", `cut list stock "${m}" is not on Buy`)),
     ...stepHardwareOffBuy(plan).map((m) => v("C15", m)),
+    ...stepStockNameDrift(plan).map((m) => v("C15", m)),
     ...unlinkedBuy(plan).map((n) => v("C15", `Buy row "${n}" has no store link`)),
     ...noteStockOffBuy(p.notes ?? [], plan).map((m) => v("C15", m)),
   ];

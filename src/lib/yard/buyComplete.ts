@@ -12,7 +12,9 @@ import { isUnitItem } from "./unitItems";
  */
 import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 import { decorateBom, estimateOffers } from "./listings";
-import { hungBuild } from "./outdoor";
+import { hungBuild, PT_LUMBER } from "./outdoor";
+import { getCatalogItem } from "./catalog";
+import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
 
@@ -201,5 +203,39 @@ function placeTalk(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] 
 
 /** The step pass: one step per hinge, and placement words that fit where the build lives. */
 export function stepTextForPlace(project: YardProject, plan: BuildPlan): BuildPlan {
-  return { ...plan, instructions: placeTalk(project, dropHingeRepeat(plan.instructions)) };
+  return stepStockFromBuy({ ...plan, instructions: placeTalk(project, dropHingeRepeat(plan.instructions)) });
+}
+
+/** Every name one stock goes by (catalog, checked cedar / BC exterior, pressure-treated), longest first. */
+function stockNames(id: string | undefined): string[] {
+  if (!id) return [];
+  const n = [getCatalogItem(id)?.name, CEDAR[id]?.name, EXTERIOR_PLY[id]?.name, PT_LUMBER[id]?.name].filter((x): x is string => !!x);
+  return [...new Set(n)].sort((a, b) => b.length - a.length);
+}
+
+/** Other names a Buy row's stock goes by that are not the Buy name (and not part of another Buy name). */
+function staleNames(plan: Pick<BuildPlan, "bom">): { stale: string; now: string }[] {
+  const buyNames = plan.bom.map((b) => b.name);
+  return plan.bom.flatMap((b) => stockNames(b.catalogId).filter((n) => n !== b.name && !buyNames.some((x) => x.includes(n))).map((stale) => ({ stale, now: b.name })));
+}
+
+/** C15: step and cut-list stock text always uses the Buy name (one true name per stock). */
+export function stepStockFromBuy(plan: BuildPlan): BuildPlan {
+  const pairs = staleNames(plan);
+  if (!pairs.length) return plan;
+  const swap = (t: string | undefined) => pairs.reduce((acc, { stale, now }) => acc?.split(stale).join(now), t);
+  return {
+    ...plan,
+    cutList: plan.cutList.map((c) => { const m = pairs.find((p) => p.stale === c.material); return m ? { ...c, material: m.now } : c; }),
+    instructions: plan.instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) })),
+  };
+}
+
+/** C15: steps that name a stock by another name than its Buy row. */
+export function stepStockNameDrift(plan: Pick<BuildPlan, "bom" | "instructions">): string[] {
+  const out: string[] = [];
+  for (const { stale, now } of staleNames(plan))
+    for (const s of plan.instructions)
+      if ([s.title, s.description, s.tips].some((t) => t?.includes(stale))) out.push(`step "${s.title}" names "${stale}", Buy sells "${now}"`);
+  return out;
 }
