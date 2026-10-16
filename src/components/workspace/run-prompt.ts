@@ -9,6 +9,7 @@ import { proposeRecipeFn } from "@/lib/ai/recipeBot";
 import { boundPrompt } from "@/lib/yard/promptLimits";
 import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
+import { engineKeepsPrompt } from "@/lib/yard/formOwnership";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
@@ -356,7 +357,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
   const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
-  const learn0 = !unitItem && (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // Hotfix: an engine-owned shape (Big Ben, the trebuchet, a submarine) always wins over the craft guess and the
+  // lookup heuristic; the learner runs only when no form exists.
+  const learn0 = !unitItem && !engineKeepsPrompt(prompt, next, half) && (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;
