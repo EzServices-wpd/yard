@@ -34,4 +34,37 @@ export const SWEEPS = {
       "something to hang my keys", "a place for my dog to sleep", "organize my tools", "plants by the window", "a holder for 6 fishing rods",
     ],
   },
+  c2b: {
+    title: "bought-item size table",
+    inv: "I20",
+    file: "c2b-bought-items.md",
+    prompts: [
+      "zip tie", "marbles", "clothespin", "16d nail", "rubber band",
+      "button", "binder clip", "golf tee", "straw", "pipe cleaner",
+      "wine cork", "shoelace", "bottle cap", "cotton ball", "cable tie",
+      "marble", "nail", "cork", "clothes pin", "drinking straw",
+    ],
+  },
+  l1: {
+    title: "live path: engine forms never reach the learner",
+    inv: "I23",
+    file: "l1-live-path.md",
+    prompts: [
+      "ship", "pirate ship", "a ship", "Eiffel Tower", "Big Ben",
+      "Dutch windmill", "covered bridge", "trebuchet", "catapult", "Leaning Tower of Pisa",
+      "Sydney Opera House", "Golden Gate Bridge 36 inches long", "something to hang my keys", "a place for my dog to sleep", "organize my tools",
+      "plants by the window", "lighthouse", "doll house", "Taj Mahal", "Space Needle",
+    ],
+  },
+  c3t: {
+    title: "typed noun as title",
+    inv: "I24",
+    file: "c3t-typed-title.md",
+    prompts: [
+      "pirate ship", "ship", "galleon", "tall ship", "viking ship",
+      "longship", "schooner", "frigate", "clipper ship", "galleon 30 inches long",
+      "Dutch windmill", "covered bridge", "doll house", "lighthouse", "Tower Bridge",
+      "model ship", "viking longship", "sailing ship", "Golden Gate Bridge 36 inches long", "Big Ben",
+    ],
+  },
 } as const;

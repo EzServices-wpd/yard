@@ -1428,7 +1428,9 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     const item = getCatalogItem(panel.materialId);
     if (!item || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
     // Unit-table discs and beads (washers, pony beads) are one bought piece per drawn part.
-    if (item.formFactor === "custom" && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
+    // C2: in a purchased-item build every unit-table piece (clothespin, straw, nail…) is one bought piece per part,
+    // never a craft-stick area count.
+    if ((item.formFactor === "custom" || (isUnitItem(project) && item.formFactor !== "dowel")) && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
     if (!(item.formFactor === "stick" || item.formFactor === "dowel")) continue;
     const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
     const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
