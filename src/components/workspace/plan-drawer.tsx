@@ -3,7 +3,7 @@
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -28,13 +28,23 @@ export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const grokBusy = useYard((s) => s.grokBusy);
   const grokError = useYard((s) => s.grokError);
 
-  if (!open || !plan) return null;
+  // A landing brief (or any rebuild) clears the plan for a beat: keep the drawer open on the last plan,
+  // and make the new one at the next frame, instead of closing under the reader.
+  const lastPlan = useRef(plan);
+  if (plan) lastPlan.current = plan;
+  useEffect(() => {
+    if (!open || plan) return;
+    const id = requestAnimationFrame(() => { if (!useYard.getState().plan) useYard.getState().makePlan(); });
+    return () => cancelAnimationFrame(id);
+  }, [open, plan]);
+  const shown = plan ?? lastPlan.current;
+  if (!open || !shown) return null;
 
   return (
     <PlanBody
       projectName={project.name}
       projectPrompt={project.prompt}
-      plan={plan}
+      plan={shown}
       setPlan={setPlan}
       grokBusy={grokBusy}
       grokError={grokError}
