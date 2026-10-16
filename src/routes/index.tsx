@@ -409,7 +409,8 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
         if (leaves.length) hovering = swing(leaves, "open");
         anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...hovering];
       });
-      btn.addEventListener("pointerleave", () => {
+      btn.addEventListener("pointerleave", (ev) => {
+        if (ev.pointerType !== "mouse") return; // F46: touch scrolls fire pointerleave too
         cancelAnimationFrame(raf);
         btn.removeAttribute("data-hover");
         btn.style.removeProperty("--tx");
