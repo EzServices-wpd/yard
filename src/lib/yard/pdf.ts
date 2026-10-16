@@ -1,3 +1,4 @@
+import { pdfCutListIntro } from "./wholeItems";
 import { isUnitItem } from "./unitItems";
 import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
@@ -474,7 +475,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     } else newPage(craft ? "Parts" : "Cut list");
     sectionTitle(
       craft ? "Stick list" : "Cut list",
-      craft ? "Full pieces from the pack. Glue them as they come." : "Same size is the same letter. Mark each part with its letter in pencil as you cut it.",
+      pdfCutListIntro(plan, craft),
     );
     const cols2 = craft
       ? [

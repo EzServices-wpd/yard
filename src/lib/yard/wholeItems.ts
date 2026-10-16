@@ -16,6 +16,17 @@ export function cutListIntro(plan: Pick<BuildPlan, "cutList" | "partsKind">): st
   return "Same size is the same letter. Mark A on the first cut, then batch.";
 }
 
+/**
+ * The PDF cut-list line (C11). A pack build says "Glue them as they come"; whole bought pieces are never told to be
+ * marked "as you cut it"; only a list with real cuts asks for a pencil letter as each part is cut.
+ */
+export function pdfCutListIntro(plan: Pick<BuildPlan, "cutList" | "partsKind">, craft = plan.partsKind === "whole"): string {
+  if (craft) return "Full pieces from the pack. Glue them as they come.";
+  if (allWhole(plan)) return "Whole pieces, used as bought. Nothing to cut.";
+  if (plan.cutList.some((c) => c.whole)) return "Same size is the same letter. Mark each cut part with its letter in pencil as you cut it; whole pieces are used as bought.";
+  return "Same size is the same letter. Mark each part with its letter in pencil as you cut it.";
+}
+
 /** Rows a person ticks off as cut ("2 of 5 sizes cut"): real cuts only, never a whole bought piece. */
 export function cutProgressRows(plan: Pick<BuildPlan, "cutList" | "partsKind">): CutLine[] {
   if (plan.partsKind === "whole") return [];
