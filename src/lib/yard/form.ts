@@ -57,7 +57,7 @@ import {
   planeOps,
   wagonOps,
   bikeOps,
-  boatOps,
+  boatOps, shipOps,
   ferrisOps,
   treeOps,
   dinoOps,
@@ -82,6 +82,7 @@ type Hit = {
   buildFor?: (prompt: string) => (s: Size3) => FormOp[];
   /** Ops are real members (poles, slats), kept whole on any stock. */
   wholeMembers?: boolean;
+  ownBody?: boolean;
   /** Said when the landmark is built from its nearest family rather than its own spec. */
   note?: string;
   /** Published plan proportions, width and depth as fractions of the height (untyped axes follow them). */
@@ -161,6 +162,8 @@ const HITS: Hit[] = [
   { re: /marble run|marble maze/, kind: "custom", name: "Marble run", build: (s) => guessOps("marble", s) },
   { re: /\bcar\b|\btruck\b|\bwagon\b|\bcart\b|\bvehicle\b/, kind: "vehicle", name: "Wagon", build: wagonOps },
   { re: /bike|bicycle/, kind: "vehicle", name: "Bicycle", build: bikeOps },
+  // C1: a named sailing ship is a hull, masts and yards, not the generic boat.
+  { re: /pirate ship|galleon|tall ship|sailing ship|schooner|clipper ship|frigate|man[- ]o[f'] war|viking ship|longship/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
   { re: /boat|ship|canoe|sailboat|yacht/, kind: "vessel", name: "Boat", build: boatOps },
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
   { re: /tree|cactus|plant(?!\s*stand)/, kind: "plant", name: "Tree", build: treeOps },
@@ -205,6 +208,12 @@ function fitArchBridge(s: Size3, prompt: string): Size3 {
   const ratio = 503 / 134;
   const h = /tall|high|height/.test(lower) && n ? n : (n || 60) / ratio;
   return { width: h * ratio, height: h, depth: Math.max(4, Math.min(h * 0.35, 12)) };
+}
+
+/** C1: the form-library entry a prompt names (catch-all frames excluded), or null. */
+export function namedFormOf(prompt: string): string | null {
+  const hit = matchHit(prompt);
+  return hit && !/^(?:Frame|Lattice)$/.test(hit.name) ? hit.name : null;
 }
 
 function matchHit(prompt: string): Hit | null {
@@ -329,6 +338,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
             : []),
       ],
       ...(hit.wholeMembers ? { wholeMembers: true } : {}),
+      ...(hit.ownBody ? { ownBody: true } : {}),
       ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
       strokes,
     };

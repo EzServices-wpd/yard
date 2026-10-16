@@ -275,7 +275,8 @@ export function buildFormGraph(
 
   // A vehicle or vessel is a body along the typed length, not a standing leg armature.
   const liesAlong = kind === "vehicle" || kind === "vessel";
-  const ops = liesAlong ? bodyAlongLength(recipe) : recipe.ops;
+  // C1 root cause: every vessel was collapsed to the generic spine; a form-library body keeps its own members.
+  const ops = liesAlong && !recipe.ownBody ? bodyAlongLength(recipe) : recipe.ops;
   const snapped = snapStrokes(liesAlong ? [] : (recipe.strokes ?? []), Math.max(policy.thick * 2, 0.35));
   for (const stroke of snapped) {
     apply({ op: "poly", points: stroke.points, role: stroke.role || "leg" });

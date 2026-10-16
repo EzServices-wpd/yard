@@ -49,10 +49,21 @@ export const UNIT_SIZES: UnitSize[] = [
     source: "Trade size No. 1 gem clip = 1 3/8\" (Universal/Officemate No. 1 spec); .033\" wire gauge (Business Source Size 1 spec)",
   },
   {
+    // F47: before the standard stick, so "jumbo craft stick" never reads as the 4 1/2" one.
+    key: "jumbo-craft-stick",
+    catalogId: "popsicle-jumbo",
+    name: "Jumbo craft stick",
+    match: /\bjumbo\s+(?:craft|popsicle)\s+sticks?\b|\b(?:large|big)\s+craft\s+sticks?\b|\btongue\s+depressors?\b/,
+    form: "stick",
+    dims: { length: 6, width: 0.75, thickness: 0.08 },
+    pack: { units: 50, costUsd: 0.06 },
+    source: "6\" × 3/4\" × 2 mm jumbo craft stick (CraftySticks size guide: jumbo 6\" × 3/4\")",
+  },
+  {
     key: "craft-stick",
     catalogId: "popsicle-standard",
     name: "Standard craft stick",
-    match: /popsicle|craft sticks?/,
+    match: /popsicle\s+sticks?|popsicles?|craft\s+sticks?/,
     form: "stick",
     dims: { length: 4.5, width: 0.375, thickness: 0.08 },
     pack: { units: 100, costUsd: 0.03 },
