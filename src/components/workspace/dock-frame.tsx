@@ -65,7 +65,7 @@ export function DockFrame({ className, children }: { className: string; children
           >
             <span className="h-1 w-10 rounded-full bg-border" />
           </div>
-          <button type="button" aria-label="Collapse the panel" onClick={() => setPos((p) => ({ ...p, collapsed: true }))} className="px-2 text-xs text-muted hover:text-fg">▾</button>
+          <button type="button" aria-label="Collapse the panel" onClick={() => setPos((p) => ({ ...p, collapsed: true }))} className="grid size-11 place-items-center text-xs text-muted hover:text-fg">▾</button>
         </div>
         {children}
       </div>
