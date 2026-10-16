@@ -1,3 +1,4 @@
+import { UNIT_SIZES } from "./unitSizes";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
@@ -601,6 +602,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bcloset rods?\b|\bcloset poles?\b/, "closet-rod"],
+    // Curated single-item sizes: every dowel diameter, paper clips, cotton swabs, washers, beads.
+    ...UNIT_SIZES.filter((u) => u.key.startsWith("dowel-") || ["paper-clip", "cotton-swab", "washer-8", "pony-bead"].includes(u.key)).map((u) => [u.match, u.catalogId] as [RegExp, string]),
     [/(?:1\s*\/\s*2|half(?:\s|-)?inch)\s*(?:"|in(?:ch(?:es)?)?\.?)?\s*(?:hardwood\s+)?dowels?/, "dowel-1-2-36"],
     [/(?:1\s*1\s*\/\s*4|1-1\/4|1\s*1\/4)\s*(?:inch|")?\s*dowels?/, "dowel-1-1-4-36"],
     [/thick dowel|1\s*(?:inch|")\s*dowel/, "dowel-1-36"],
@@ -619,7 +622,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
 
 /** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */
 export function spokenWeekendCraftStock(lower: string): boolean {
-  return /popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?|legos?/.test(
+  return /paper\s*-?\s*clips?|paperclips?|cotton\s*swabs?|q-?\s*tips?|pony\s*beads?|popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?|legos?/.test(
     lower,
   );
 }

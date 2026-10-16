@@ -1,3 +1,5 @@
+import { ownEveryPart } from "./ownEveryPart";
+import { unitSizeById } from "./unitSizes";
 import { isNoLidPrompt } from "./cueRules";
 import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
@@ -1410,6 +1412,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
+    [/\bstretch cord\b/i, /cord/, { name: "1 mm clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
     [/\bbed bolts?\b/i, /bolt/, { name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts', quantity: 8, estimatedCost: 1.5 * 8, unit: "each", searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut", notes: "The bed bolts the notes name." }],
   ];
   for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
@@ -1419,7 +1422,10 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const dowelNotes = new Map<string, string>();
   for (const panel of project.panels) {
     const item = getCatalogItem(panel.materialId);
-    if (!item || !(item.formFactor === "stick" || item.formFactor === "dowel") || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
+    if (!item || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
+    // Unit-table discs and beads (washers, pony beads) are one bought piece per drawn part.
+    if (item.formFactor === "custom" && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
+    if (!(item.formFactor === "stick" || item.formFactor === "dowel")) continue;
     const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
     const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
     const along = Math.max(1, Math.ceil(d[0] / Math.max(1, item.dims.length ?? 4.5)));
@@ -1442,7 +1448,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     const item = getCatalogItem(id)!;
     if (have.includes(item.name.toLowerCase())) continue;
     const per = Math.max(1, item.unitsPerPack ?? 1);
-    extra.push({ name: item.name, quantity: Math.ceil(n / per), estimatedCost: Math.round(Math.ceil(n / per) * per * (item.unitCostUsd ?? 0) * 100) / 100, unit: per > 1 ? `pack of ${per}` : "each", searchQuery: item.searchQuery ?? item.name, notes: dowelNotes.get(id) ?? `${n} ${n === 1 ? "piece tiles" : "pieces tile"} the drawn parts.` });
+    extra.push({ name: item.name, quantity: Math.ceil(n / per), estimatedCost: Math.round(Math.ceil(n / per) * per * (item.unitCostUsd ?? 0) * 100) / 100, unit: per > 1 ? `pack of ${per}` : "each", searchQuery: item.searchQuery ?? item.name, notes: dowelNotes.get(id) ?? `${n} ${n === 1 ? "piece" : "pieces"} used${per > 1 ? ` from ${Math.ceil(n / per) === 1 ? "1 pack" : `${Math.ceil(n / per)} packs`} of ${per}` : ""}.` });
   }
   if (/structural screws/i.test(notes) && !/structural|grk/i.test(have)) {
     extra.push({
@@ -1544,12 +1550,27 @@ export function buildPlan(project: YardProject): BuildPlan {
   return buildPlanBody(project);
 }
 
+/**
+ * F4/I3: a Buy line's pack words name the pack the cart actually sells ("1 pack of 1000 (837 sticks used)"),
+ * never the catalog's default pack when the best listing is a different count.
+ */
+export function packWordsFromCart(bom: BuildPlan["bom"]): BuildPlan["bom"] {
+  return bom.map((b) => {
+    const best = (b.offers ?? []).find((o) => o.best);
+    const m = b.unit.match(/^(packs?) of (\d+)(.*)$/);
+    if (!best || !m || !best.packQty || best.packQty <= 1 || !best.packsNeeded || Number(m[2]) === best.packQty) return b;
+    const n = best.packsNeeded;
+    return { ...b, quantity: n, unit: `${n === 1 ? "pack" : "packs"} of ${best.packQty}${m[3]}` };
+  });
+}
+
 function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: BuildPlan) => BuildPlan = (_p, plan) => plan): BuildPlan {
   // A lookup-fallback block is display-only: no cut list, Buy, price or steps, only a plain note.
   if (project.displayOnly) {
     return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
   }
-  const plan0 = shape(project, fallbackStepOne(project, buildPlanInner(project)));
+  // F12: every part is installed by one build step (I18), after every pass that writes steps.
+  const plan0 = ownEveryPart(project, shape(project, fallbackStepOne(project, buildPlanInner(project))));
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
@@ -1572,7 +1593,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
-  return cutStepFromList({ ...out, feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } });
+  return cutStepFromList({ ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } });
 }
 
 /**

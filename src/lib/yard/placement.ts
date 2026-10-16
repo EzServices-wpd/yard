@@ -628,13 +628,16 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     // Concealed doors take the count the hinged-leaf module bought for their height; the others space evenly.
     const k = concealed ? doorHingeCount({ size: { width: c.max.x - c.min.x, height: h, depth: c.max.z - c.min.z } }) : n;
     if (k === 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
-    else if (k > 3) s += `, with ${k - 2} more evenly between at ${Array.from({ length: k - 2 }, (_, i) => f(Math.round((inset + ((h - 2 * inset) * (i + 1)) / (k - 1)) * 8) / 8)).join(" and ")} up from the door's bottom edge`;
+    // I15/F9: the door list and the floor list come from the same hinge centers, each rounded to 1/16".
+    const count = Math.max(2, k);
+    const s16 = (x: number) => Math.round(x * 16) / 16;
+    const centers = Array.from({ length: count }, (_, i) => inset + ((h - 2 * inset) * i) / (count - 1));
+    const join = (xs: string[]) => (xs.length > 2 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs.join(" and "));
+    if (k > 3) s += `, with ${k - 2} more evenly between at ${join(centers.slice(1, -1).map((x) => f(s16(x))))} up from the door's bottom edge`;
     const sides = new Set(same.map(doorHingesLeft));
     s += sides.size === 1 ? `, on the hinge edge (the ${doorHingesLeft(d) ? "left" : "right"} edge)` : `, on each door's hinge edge`;
     // F9: every hinge gets its cabinet-side height, not just the top and bottom ones.
-    const count = Math.max(2, k);
-    const ups = Array.from({ length: count }, (_, i) => Math.round((c.min.y + inset + ((h - 2 * inset) * i) / (count - 1)) * 8) / 8);
-    const list = ups.length > 2 ? `${ups.slice(0, -1).map(f).join(", ")} and ${f(ups[ups.length - 1])}` : `${f(ups[0])} and ${f(ups[1])}`;
+    const list = join(centers.map((x) => f(s16(c.min.y + x))));
     s += ctx.floor ? ` — on the cabinet side that is ${list} up from the floor` : "";
     out.sentences.push(`${s}.`);
   }
