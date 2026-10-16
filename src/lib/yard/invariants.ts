@@ -1,3 +1,4 @@
+import { storeTermDrift } from "./listings";
 import { genericFormMark, routesToLearner } from "./formOwnership";
 import { ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
@@ -26,18 +27,18 @@ import { unownedParts } from "./ownEveryPart";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
 import { typedAxesTalk } from "./pdf";
-import { cutListIntro } from "./wholeItems";
+import { cutListIntro, pdfCutListIntro } from "./wholeItems";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10" | "C11";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "C10" | "C11" | "C12";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10", C11: "C11",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", C10: "C10", C11: "C11", C12: "C12",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -279,7 +280,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan),
   ];
 }
 
@@ -334,6 +335,11 @@ function c10(p: YardProject, plan: BuildPlan): Violation[] {
   return out;
 }
 
+/** C12 (store terms follow the Buy name): every store search on a Buy row searches that row's name. */
+function c12(plan: BuildPlan): Violation[] {
+  return storeTermDrift(plan).map((d) => v("C12", d));
+}
+
 /**
  * C11 (whole items carry no cutting language): a bought whole item (zip tie, marble, washer) is its known trade
  * size, used as bought. Its PDF header never says "assumed, measure to lock", its cut list never says "Mark A on the
@@ -349,6 +355,8 @@ function c11(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
   const talk = typedAxesTalk(p).assumedTalk;
   if (talk) out.push(v("C11", `whole item header says "${talk}"`));
   if (/first cut/i.test(cutListIntro(plan))) out.push(v("C11", "whole item cut list says \"Mark A on the first cut\""));
+  const pdfCraft = plan.partsKind === "whole" || (p.instances.length > 0 && p.panels.length === 0);
+  if (plan.cutList.some((c) => c.whole) && plan.cutList.every((c) => c.whole) && /as you cut it/i.test(pdfCutListIntro(plan, pdfCraft))) out.push(v("C11", "whole item PDF cut list says \"as you cut it\""));
   const steps = plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
   for (const c of plan.cutList) {
     if (!c.whole || !c.label) continue;

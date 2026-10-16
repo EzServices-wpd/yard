@@ -1,5 +1,16 @@
 /** Spec 006: the 20-prompt sweep per class (also the whole-class test corpus). */
 export const SWEEPS = {
+  c12: {
+    title: "store search terms follow the Buy name",
+    inv: "C12",
+    file: "c12-store-terms.md",
+    prompts: [
+      "linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide 72 tall 12 deep", "pantry cabinet 24 wide 84 tall 16 deep", "wall cabinet 30 wide 30 tall 12 deep", "media console 60 wide 24 tall 18 deep",
+      "dresser 36 wide 34 tall 18 deep", "nightstand", "closet 72 wide 96 tall 24 deep", "cedar raised garden bed 4x8", "adirondack chair",
+      "picnic table", "workbench", "coat bench", "toy box", "shoe rack",
+      "zip tie", "paper clip chain 12 inches long", "3/8 dowel", "birdhouse", "window 36x48",
+    ],
+  },
   c11: {
     title: "whole items carry no cutting language; shelf pins in inches",
     inv: "C11",

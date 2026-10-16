@@ -1,3 +1,4 @@
+import { storeTermsFromBuy } from "./listings";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
@@ -1027,7 +1028,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       quantity: packs,
       unit: packs === 1 ? "pack" : "packs",
       catalogId: "shelf-pins",
-      searchQuery: "5mm shelf pins",
+      searchQuery: '3/16" shelf pins',
       estimatedCost: 6.49 * packs,
       notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
     });
@@ -1551,7 +1552,8 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  return withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)));
+  // C12: the last pass: every store search a Buy row links to says that row's Buy name.
+  return storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))));
 }
 
 /**
