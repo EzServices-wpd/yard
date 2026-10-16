@@ -23,4 +23,15 @@ export const SWEEPS = {
       "media console for a 75 inch TV", "half sheet of plywood desk",
     ],
   },
+  c1: {
+    title: "named forms and purposes",
+    inv: "I22",
+    file: "c1-named-forms.md",
+    prompts: [
+      "Tower Bridge", "Leaning Tower of Pisa", "Statue of Liberty", "Sydney Opera House", "lighthouse",
+      "Dutch windmill", "covered bridge", "pirate ship", "galleon 30 inches long", "doll house",
+      "Golden Gate Bridge 36 inches long", "Brooklyn Bridge 36 inches", "Big Ben", "Eiffel Tower", "trebuchet",
+      "something to hang my keys", "a place for my dog to sleep", "organize my tools", "plants by the window", "a holder for 6 fishing rods",
+    ],
+  },
 } as const;
