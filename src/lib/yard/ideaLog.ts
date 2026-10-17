@@ -4,8 +4,12 @@
  */
 export type LogStatus = "Trusted" | "Unverified" | "Failed";
 export const STATUS_RANK: Record<LogStatus, number> = { Failed: 0, Unverified: 1, Trusted: 2 };
-/** How a write came in, from the offline/local/test gate only (ideaLogGate). Rows written before stamps: "unknown". */
-export type LogSource = "live" | "test";
+/**
+ * How a write came in: "test" from the offline/local/test gate (ideaLogGate); "possible-test" when the server's own
+ * burst counter (many builds site-wide, or from one run id, in a short window) says so. Never IP, user agent, cookie or
+ * any browser detail. Rows written before stamps: "unknown".
+ */
+export type LogSource = "live" | "test" | "possible-test";
 export type LogRecord = { key: string; prompt: string; size: string; resultKey: string; status: LogStatus; source?: LogSource };
 export type SnapshotRow = { key: string; prompt: string; size: string; resultKey: string; status: Exclude<LogStatus, "Failed">; count: number; /** Last time it was built (ISO UTC), when it is in the recent log. */ lastSeen?: string | null; /** Request time of the latest write (ISO UTC); null before stamps. */ at?: string | null; source?: LogSource | "unknown" };
 export type IdeasSnapshot = { at: string; live: boolean; rows: SnapshotRow[]; popular: SnapshotRow[]; recent: SnapshotRow[] };
