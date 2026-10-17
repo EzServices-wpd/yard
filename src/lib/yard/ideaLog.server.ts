@@ -5,16 +5,17 @@
  * - Budget guard: a monthly command counter in Redis; logging stops at BUDGET (90% of the 500K free tier).
  * - Never throws: a store error, timeout or quota hit drops the write and is counted in `stats`.
  */
-import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type IdeasSnapshot, type LogRecord, type LogStatus, type SnapshotRow } from "./ideaLog";
+import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type IdeasSnapshot, type LogRecord, type LogSource, type LogStatus, type SnapshotRow } from "./ideaLog";
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 6; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK
-export const READ_CMDS = 5;
+export const WRITE_CMDS = 7; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp
+export const READ_CMDS = 6;
 const COALESCE_MS = 10_000;
 export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
-const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent" };
+// ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
+const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp" };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
@@ -100,6 +101,7 @@ export class IdeaStore {
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
         ["ZREMRANGEBYRANK", K.recent, 0, -201],
+        ["HSET", K.stamp, rec.key, JSON.stringify({ at: now.toISOString(), source: rec.source ?? "unknown" })], // request time + gate source
       ]);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
@@ -179,13 +181,14 @@ export class IdeaStore {
       const recentKeys = allRecent.slice(0, 20);
       const keys = [...new Set([...counts.keys(), ...allRecent])];
       if (!keys.length) return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
-      const body = await this.pipe([["HMGET", K.meta, ...keys], ["ZMSCORE", K.status, ...keys]]);
+      const body = await this.pipe([["HMGET", K.meta, ...keys], ["ZMSCORE", K.status, ...keys], ["HMGET", K.stamp, ...keys]]);
       const metas = (body?.[0] as (string | null)[]) ?? [];
       const ranks = (body?.[1] as (string | null)[]) ?? [];
+      const stamps = (body?.[2] as (string | null)[]) ?? [];
       const byKey = new Map<string, SnapshotRow>();
       keys.forEach((key, i) => {
         const row = toRow(key, metas[i], Number(ranks[i] ?? 0), counts.get(key) ?? 1);
-        if (row) byKey.set(key, { ...row, lastSeen: seen.get(key) ?? null });
+        if (row) byKey.set(key, { ...row, lastSeen: seen.get(key) ?? null, ...toStamp(stamps[i]) });
       });
       const rows = [...byKey.values()];
       return { at: now.toISOString(), live: true, rows, popular: trustedPopular(rows), recent: recentKeys.map((k) => byKey.get(k)).filter((r): r is SnapshotRow => !!r) };
@@ -194,6 +197,15 @@ export class IdeaStore {
       return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
     }
   }
+}
+
+/** The stored write stamp, passed through; a row written before stamps (or unreadable) is "unknown". */
+export function toStamp(raw: string | null | undefined): { at: string | null; source: LogSource | "unknown" } {
+  try {
+    const s = JSON.parse(String(raw)) as { at?: unknown; source?: unknown };
+    const at = typeof s.at === "string" && Number.isFinite(Date.parse(s.at)) ? s.at : null;
+    return { at, source: s.source === "live" || s.source === "test" ? s.source : "unknown" };
+  } catch { return { at: null, source: "unknown" }; }
 }
 
 function toRow(key: string, meta: string | null, rank: number, count: number): SnapshotRow | null {

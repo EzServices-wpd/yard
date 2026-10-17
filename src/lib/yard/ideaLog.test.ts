@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { isOffensive, logKey, safePrompt, searchLog, stripPii, trustedPopular, type SnapshotRow } from "./ideaLog.ts";
-import { BUDGET, Budget, FREE_TIER, IdeaStore, WRITE_CMDS, recordFromPrompt, restPipe, storeEnv, type Pipe } from "./ideaLog.server.ts";
+import { BUDGET, Budget, FREE_TIER, IdeaStore, WRITE_CMDS, recordFromPrompt, restPipe, storeEnv, toStamp, type Pipe } from "./ideaLog.server.ts";
+import { handleIdeasLog } from "./ideaLogHandler.ts";
 
 /** In-memory Redis enough for the pipeline the store sends. Counts every command like Upstash bills them. */
 function fakeRedis() {
@@ -17,6 +18,7 @@ function fakeRedis() {
       const key = String(k);
       switch (c) {
         case "INCRBY": kv.set(key, (kv.get(key) ?? 0) + Number(a[0])); return kv.get(key);
+        case "HSET": hs(key).set(String(a[0]), String(a[1])); return 1;
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
@@ -212,4 +214,59 @@ test("a bare w or k after a 5-digit number is not a unit: the ZIP is never store
   for (const bad of ["planter 10001 w", "planter 10001 W", "bench 90210 k", "shelf 10001 wide"]) assert.equal(safePrompt(bad), null, bad);
   assert.equal(safePrompt("10000 btu cabinet"), "10000 btu cabinet");
   assert.equal(await recordFromPrompt("planter 10001 w"), null);
+});
+
+// ---- Write-time stamp (ideas:stamp): request time + source from the offline/local/test gate only ------------------
+const STAMP_T = new Date("2026-10-17T09:15:00.000Z");
+function stampSetup() {
+  const r = fakeRedis();
+  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+  const rec = (p: string) => ({ key: `k-${p}`, prompt: p, size: "36×12×72", resultKey: "builtin:bookcase", status: "Trusted" as const });
+  const post = (url: string, headers: Record<string, string> = {}, env: Record<string, string> = {}) =>
+    handleIdeasLog(new Request(url, { method: "POST", body: JSON.stringify({ prompt: "bookcase 36 wide" }), headers }),
+      { recordFromPrompt: async (p: string) => rec(p), store: () => store, env, now: () => STAMP_T });
+  return { r, store, post, stamps: () => r.h.get("ideas:stamp") ?? new Map<string, string>() };
+}
+
+test("stamp: a live write HSETs ideas:stamp with {at: request time, source: 'live'}", async () => {
+  const { post, stamps } = stampSetup();
+  assert.equal((await post("https://yard.wiki/api/ideas-log")).status, 204);
+  assert.equal(stamps().size, 1);
+  assert.deepEqual(JSON.parse(stamps().get("k-bookcase 36 wide")!), { at: STAMP_T.toISOString(), source: "live" });
+});
+
+test("stamp: test traffic writes nothing, no stamp either (offline/local/test query, x-yard-test, referer, preview env)", async () => {
+  const { r, post, stamps } = stampSetup();
+  await post("https://yard.wiki/api/ideas-log?offline=1");
+  await post("https://yard.wiki/api/ideas-log?local=1");
+  await post("https://yard.wiki/api/ideas-log?test=1");
+  await post("https://yard.wiki/api/ideas-log", { "x-yard-test": "1" });
+  await post("https://yard.wiki/api/ideas-log", { referer: "https://yard.wiki/ideas?offline=1" });
+  await post("https://yard.wiki/api/ideas-log", {}, { VERCEL_ENV: "preview" });
+  assert.equal(stamps().size, 0, "no stamp");
+  assert.equal(r.h.get("ideas:meta")?.size ?? 0, 0, "no meta");
+  assert.equal(r.z.get("ideas:top")?.size ?? 0, 0, "no count");
+});
+
+test("stamp: toStamp maps missing, broken and wrong-source values to {at: null, source: 'unknown'}", () => {
+  const unknown = { at: null, source: "unknown" };
+  for (const raw of [null, undefined, "", "{not json", "null", "42", JSON.stringify({ at: "yesterday", source: "admin" }), JSON.stringify({ source: "admin" }), JSON.stringify({ at: 5, source: 7 })])
+    assert.deepEqual(toStamp(raw), unknown, String(raw));
+  assert.deepEqual(toStamp(JSON.stringify({ at: "2026-10-17T09:15:00.000Z", source: "live" })), { at: "2026-10-17T09:15:00.000Z", source: "live" });
+  assert.deepEqual(toStamp(JSON.stringify({ at: "2026-10-17T09:15:00.000Z", source: "admin" })), { at: "2026-10-17T09:15:00.000Z", source: "unknown" });
+});
+
+test("stamp: snapshot rows carry at and source (stamped rows pass through, old rows read unknown)", async () => {
+  const { r, store, post } = stampSetup();
+  await post("https://yard.wiki/api/ideas-log");
+  // A row written before stamps existed: meta, status and count, no stamp.
+  r.h.get("ideas:meta")!.set("old", JSON.stringify({ prompt: "plant stand", size: "12×12×30", resultKey: "builtin:plant-stand" }));
+  r.z.get("ideas:status")!.set("old", 2);
+  r.z.get("ideas:top")!.set("old", 3);
+  const snap = await store.snapshot(STAMP_T);
+  const live = snap.rows.find((x) => x.key === "k-bookcase 36 wide")!;
+  const old = snap.rows.find((x) => x.key === "old")!;
+  assert.deepEqual([live.at, live.source], [STAMP_T.toISOString(), "live"]);
+  assert.deepEqual([old.at, old.source], [null, "unknown"]);
+  for (const row of [...snap.rows, ...snap.recent, ...snap.popular]) assert.ok("at" in row && "source" in row, row.key);
 });
