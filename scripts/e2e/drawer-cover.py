@@ -1,10 +1,11 @@
-"""No fixed part is painted over an open drawer, on every home card that has drawers.
+"""Open drawers and fixed parts paint in true 3D order, both ways, on every home card that has drawers.
 
 Usage: python3 scripts/e2e/drawer-cover.py http://127.0.0.1:8097
 For each drawer card, three moments: full open on hover, the middle of the once-play's hold, and reduced motion
 (the instant toggle). Inside every painted face of each open drawer it samples points and asks the browser which
-part is on top there (elementsFromPoint). A fixed part on top is a failure only if the engine's 3D parts say the open
-drawer part is in front of it (drawer-pairs.ts; a desk top overhanging an open drawer may rightly hide it). Any open
+part is on top there (elementsFromPoint). (a) A fixed part on top is a failure only if the engine's 3D parts say the
+open drawer part is in front of it (drawer-pairs.ts). (b) The other way: inside every painted face of every fixed part,
+an open drawer on top is a failure if the fixed part is in front of it in 3D (the desk top, the vanity counter). Any open
 drawer part that overlaps a fixed part in 3D is a failure too (a drawer sliding through solid wood). After shutting, the
 drawing's own paint order must be back. Exits 1 on any failure.
 """
@@ -17,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PAIRS = json.loads(subprocess.run(["npx", "tsx", "scripts/e2e/drawer-pairs.ts"], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 
 CHECK = r"""
-(card, nearer) => {
+(card, [nearer, behind]) => {
   const specs = JSON.parse(card.getAttribute('data-yard-drawers') || '[]');
   const ids = new Set(specs.flatMap(s => s.ids));
   const svg = card.querySelector('svg[data-yard-overview], svg');
@@ -32,8 +33,33 @@ CHECK = r"""
     const q = new DOMPoint(x - dx, y - dy).matrixTransform(m.inverse());
     const pt = svg.createSVGPoint(); pt.x = q.x; pt.y = q.y; return sh.isPointInFill(pt);
   });
+  const pts = (sh, f) => {
+    if (!sh.isPointInFill) return;
+    const r = sh.getBoundingClientRect(), m = sh.getScreenCTM();
+    if (!m || r.width < 2 || r.height < 2) return;
+    const inv = m.inverse();
+    for (let x = r.left + 1; x < r.right - 1; x += 3) for (let y = r.top + 1; y < r.bottom - 1; y += 3) {
+      const p = new DOMPoint(x, y).matrixTransform(inv);
+      const pt = svg.createSVGPoint(); pt.x = p.x; pt.y = p.y;
+      if (sh.isPointInFill(pt)) f(x, y);
+    }
+  };
+  const topPart = (x, y) => document.elementsFromPoint(x, y).find(e => svg.contains(e) && e.closest('g[data-part]'))?.closest('g[data-part]');
+  const moved = (g) => { const t = getComputedStyle(g).transform; if (t === 'none') return false; const m = new DOMMatrix(t); return Math.hypot(m.e, m.f) > 0.5; };
+  // (b) No open drawer paints over a fixed part that is in front of it.
+  const badB = {}; let samplesB = 0;
+  const openIds = new Set([...ids].filter(id => [...card.querySelectorAll(`g[data-part="${CSS.escape(id)}"]`)].some(moved)));
+  for (const g of card.querySelectorAll('g[data-part]')) {
+    const fid = g.getAttribute('data-part');
+    if (ids.has(fid) || g.hasAttribute('data-drawer-copy')) continue;
+    for (const sh of g.querySelectorAll('path, polygon, rect')) pts(sh, (x, y) => {
+      samplesB++;
+      const top = topPart(x, y), pid = top && top.getAttribute('data-part');
+      if (pid && openIds.has(pid) && (behind[pid] || []).includes(fid)) { const n = `${name(top)} over ${name(g)}`; badB[n] = (badB[n] || 0) + 1; }
+    });
+  }
   for (const id of ids) {
-    for (const g of card.querySelectorAll(`g[data-part="${CSS.escape(id)}"]`)) {
+    for (const g of card.querySelectorAll(`g[data-part="${CSS.escape(id)}"]:not([data-drawer-copy])`)) {
       const tm = new DOMMatrix(getComputedStyle(g).transform === 'none' ? undefined : getComputedStyle(g).transform);
       const sc = svg.getScreenCTM(); const k = sc ? Math.hypot(sc.a, sc.b) : 1; // CSS px on the group → screen px
       const dx = tm.e * k, dy = tm.f * k;
@@ -58,7 +84,8 @@ CHECK = r"""
     }
   }
   style.textContent = '';
-  return { samples, bad };
+  for (const [k, v] of Object.entries(badB)) bad[k] = v;
+  return { samples, samplesB, bad };
 }
 """
 
@@ -89,7 +116,8 @@ with sync_playwright() as p:
     pg.goto(BASE + "/?offline=1", wait_until="networkidle")
     cs = cards(pg)
     ids = [c.get_attribute("data-yard-showcase") or str(i) for i, c in enumerate(cs)]
-    NEAR = {k: {pid: v for dr in PAIRS.get(k, {}).get("drawers", []) for pid, v in dr["nearer"].items()} for k in ids}
+    NEAR = {k: [{pid: v for dr in PAIRS.get(k, {}).get("drawers", []) for pid, v in dr["nearer"].items()},
+                {pid: v for dr in PAIRS.get(k, {}).get("drawers", []) for pid, v in dr["behind"].items()}] for k in ids}
     shut_order = {}
     for i, c in enumerate(cs):
         c.scroll_into_view_if_needed(); pg.wait_for_timeout(300)
@@ -103,7 +131,7 @@ with sync_playwright() as p:
         n = c.evaluate("""c => { let n = 0; for (const g of c.querySelectorAll('g[data-part]')) for (const a of g.getAnimations()) {
             const t = a.effect.getTiming(); if (t.duration !== 3000) continue; a.pause(); a.currentTime = t.delay + 1500; n++; } return n; }""")
         pg.wait_for_timeout(400)
-        r = c.evaluate(CHECK, NEAR[ids[i]]) if n else {"samples": 0, "bad": {}, "note": "once-play already done"}
+        r = c.evaluate(CHECK, NEAR[ids[i]]) if n else {"samples": 0, "samplesB": 0, "bad": {"once-play already done": 1}}
         rows.append((i, "once hold", r)); fails += [(i, "once hold", r)] if r["bad"] else []
         c.evaluate("c => { for (const g of c.querySelectorAll('g[data-part]')) for (const a of g.getAnimations()) a.finish(); }")
         pg.wait_for_timeout(300)
@@ -141,6 +169,6 @@ for i, k, r in fails:
     print("FAILING:", ids[i] if isinstance(i, int) else i, k, r["bad"])
 print("3D: no open drawer part overlaps a fixed part" if not any(k == "3D overlap" for _, k, _ in fails) else "3D: OVERLAPS")
 for i, k, r in rows:
-    print(f"card {ids[i]:10s} {k:13s} samples {r['samples']:5d} covered-by {r['bad'] or '-'}")
+    print(f"card {ids[i]:10s} {k:13s} drawer-px {r['samples']:5d} fixed-px {r.get('samplesB', 0):5d} wrong {r['bad'] or '-'}")
 print("FAIL" if fails else "PASS", f"{len(rows)} checks, {len(fails)} failing")
 sys.exit(1 if fails else 0)
