@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { isOffensive, logKey, safePrompt, searchLog, stripPii, trustedPopular, type SnapshotRow } from "./ideaLog.ts";
-import { BUDGET, Budget, FREE_TIER, IdeaStore, WRITE_CMDS, recordFromPrompt, restPipe, storeEnv, toStamp, type Pipe } from "./ideaLog.server.ts";
+import { BUDGET, Budget, FREE_TIER, IdeaStore, WRITE_CMDS, recordFromPrompt, rejectedLine, restPipe, storeEnv, toStamp, type Pipe } from "./ideaLog.server.ts";
 import { handleIdeasLog } from "./ideaLogHandler.ts";
 
 /** In-memory Redis enough for the pipeline the store sends. Counts every command like Upstash bills them. */
@@ -115,6 +115,32 @@ test("no env → no-op store; previews and CI work without it", async () => {
   const s = new IdeaStore(null);
   assert.equal(await s.record({ key: "a", prompt: "a", size: "", resultKey: "x", status: "Trusted" }), "off");
   assert.equal((await s.snapshot()).live, false);
+});
+
+test("a rejected pipeline command logs one warning with only its name and key prefix", async () => {
+  const realFetch = globalThis.fetch, realWarn = console.warn;
+  const warned: unknown[][] = [];
+  const secretUrl = "https://secret-host-zz.upstash.io", token = "tok_SECRET_zz";
+  globalThis.fetch = (async () => new Response(JSON.stringify([{ result: 1 }, { error: "ERR unknown command 'HEXPIRE' secret-value prompt text" }, { result: 3 }]), { status: 200 })) as typeof fetch;
+  console.warn = (...a: unknown[]) => { warned.push(a); };
+  try {
+    const pipe = restPipe({ url: secretUrl, token })!;
+    const out = await pipe([["HINCRBY", "ideas:ptest", "kitchen-island-48", 1], ["HEXPIRE", "ideas:ptest", 7603200, "FIELDS", 1, "kitchen-island-48"], ["HGET", "ideas:meta", "kitchen-island-48"]]);
+    assert.deepEqual(out, [1, null, 3], "the rest of the pipeline still applies");
+    assert.equal(warned.length, 1, "exactly one warning");
+    assert.deepEqual(warned[0], ["[ideas] store rejected HEXPIRE ideas:ptest"]);
+    const line = String(warned[0][0]);
+    for (const leak of ["kitchen", "7603200", "FIELDS", "secret", "SECRET", "tok_", "upstash", "unknown command", "prompt"]) assert.ok(!line.includes(leak), `no ${leak}`);
+    // No warning when nothing is rejected.
+    globalThis.fetch = (async () => new Response(JSON.stringify([{ result: 1 }]), { status: 200 })) as typeof fetch;
+    await pipe([["GET", "ideas:snap"]]);
+    assert.equal(warned.length, 1);
+  } finally { globalThis.fetch = realFetch; console.warn = realWarn; }
+  // Keys keep at most two plain segments; anything else is "?".
+  assert.equal(rejectedLine(["ZREM", "ideas:burst:29512345", "x"]), "[ideas] store rejected ZREM ideas:burst");
+  assert.equal(rejectedLine(["HSET", "User Prompt: 48 wide", "x"]), "[ideas] store rejected HSET ?");
+  assert.equal(rejectedLine(["evil cmd; rm", "ideas:meta"]), "[ideas] store rejected ? ideas:meta");
+  assert.equal(rejectedLine(undefined), "[ideas] store rejected ? ?");
 });
 
 test("server decides status from the engine (no client Trusted), unknown noun is Unverified, no xAI", async () => {

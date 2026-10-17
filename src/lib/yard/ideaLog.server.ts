@@ -89,9 +89,26 @@ export function restPipe(env = storeEnv()): Pipe | null {
     });
     if (!res.ok) throw new Error(`store ${res.status}`);
     const out = (await res.json()) as { result?: unknown; error?: string }[];
-    return out.map((r) => (r.error ? null : r.result));
+    return out.map((r, i) => {
+      if (!r.error) return r.result;
+      warnRejected(cmds[i]);
+      return null;
+    });
   };
 }
+
+/**
+ * A rejected command in a pipeline (e.g. HEXPIRE if the store didn't support it) is otherwise silent: Upstash
+ * pipelines aren't transactions, so the rest still applies and the entry reads as null. Log one line per rejected
+ * command with only its name and key prefix ("HEXPIRE ideas:ptest"); never the error text, values, fields, prompt
+ * text, tokens or the URL. Anything that isn't a plain lowercase key prefix logs as "?".
+ */
+export function rejectedLine(cmd: Cmd | undefined): string {
+  const name = typeof cmd?.[0] === "string" && /^[A-Z]{1,20}$/i.test(cmd[0]) ? cmd[0].toUpperCase() : "?";
+  const prefix = typeof cmd?.[1] === "string" ? (/^[a-z][a-z0-9_-]{0,30}(:[a-z][a-z0-9_-]{0,30})?(?=:|$)/.exec(cmd[1])?.[0] ?? "?") : "?";
+  return `[ideas] store rejected ${name} ${prefix}`;
+}
+const warnRejected = (cmd: Cmd | undefined) => console.warn(rejectedLine(cmd));
 
 const month = (now: Date) => now.toISOString().slice(0, 7);
 
