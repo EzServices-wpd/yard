@@ -411,8 +411,9 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
     const root = ref.current;
     if (!root) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // Reduced motion: doors stay shut; drawers open and shut at once on hover (no slide).
-      if (played.current) return;
+      // Reduced motion: doors stay shut; drawers open and shut at once on hover (no slide). Wired on first view,
+      // like the motion path (the cards are settled by then).
+      if (off || played.current) return;
       played.current = true;
       root.querySelectorAll<HTMLElement>("[data-yard-showcase]").forEach((card) => {
         const drawers = drawersIn(card, cardDrawers(card));
