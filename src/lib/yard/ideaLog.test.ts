@@ -17,6 +17,7 @@ function fakeRedis() {
       const key = String(k);
       switch (c) {
         case "INCRBY": kv.set(key, (kv.get(key) ?? 0) + Number(a[0])); return kv.get(key);
+        case "HSET": hs(key).set(String(a[0]), String(a[1])); return 1;
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
