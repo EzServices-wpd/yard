@@ -79,13 +79,29 @@ export function leavesIn(root: Element): Leaf[] {
 }
 
 // Angle curves sampled into keyframes (matrices only interpolate well between close angles).
-// Open: ease-out swing that overshoots ~6% and settles. Close: ease-in-out with a tiny bump shut.
+// Open: ease-out swing that overshoots ~6% and settles. Close: ease-in-out with a tiny bump shut (clamped at shut: swingAt).
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 export const openCurve = (t: number) => (t < 0.72 ? 1.06 * easeOut(t / 0.72) : 1.06 - 0.06 * easeOut((t - 0.72) / 0.28));
 export const closeCurve = (t: number) => (t < 0.85 ? 1 - (t / 0.85) ** 2 * (3 - 2 * (t / 0.85)) * 1.015 : -0.015 * (1 - (t - 0.85) / 0.15));
 
+/**
+ * How far open (0 shut … 1 open) at time t of a curve, for a door or lid. The close curve bumps 1.5% past shut, which
+ * swings the leaf about 1° into the case. A leaf stops at shut: clamped at 0, the way the drawers stop (slideAt), so
+ * no frame of the close ever passes shut (the open overshoot swings away from the case and stays).
+ */
+export const swingAt = (f: (t: number) => number, t: number) => Math.max(0, f(t));
+
 function frames(l: Leaf, f: (t: number) => number, from = 0, to = 1, n = 20) {
-  return Array.from({ length: n + 1 }, (_, i) => ({ transform: l.at(l.max * (from + (to - from) * f(i / n))), offset: i / n }));
+  return Array.from({ length: n + 1 }, (_, i) => ({ transform: l.at(l.max * (from + (to - from) * swingAt(f, i / n))), offset: i / n }));
+}
+
+/** The keyframes of one leaf's swing: "once" (open 40%, hold, shut 40%), or the hover "open" / "close". */
+export function keyframes(l: Leaf, kind: "once" | "open" | "close") {
+  return kind === "close"
+    ? frames(l, closeCurve)
+    : kind === "open"
+      ? frames(l, openCurve)
+      : [...frames(l, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(l, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
 }
 
 /** One timing for doors, lids and drawers (showcase-drawers). */
@@ -96,12 +112,7 @@ export function swing(leaves: Leaf[], kind: "once" | "open" | "close", delay = 0
   const all: Animation[] = [];
   leaves.forEach((l, j) => {
     const stagger = j * 90;
-    const kf =
-      kind === "close"
-        ? frames(l, closeCurve)
-        : kind === "open"
-          ? frames(l, openCurve)
-          : [...frames(l, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(l, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
+    const kf = keyframes(l, kind);
     for (const g of l.els) {
       g.getAnimations().forEach((a) => a.cancel());
       all.push(g.animate(kf, { duration: kind === "once" ? ONCE_MS : kind === "open" ? OPEN_MS : CLOSE_MS, delay: delay + stagger, easing: "linear", fill: kind === "open" ? "forwards" : "none" }));
