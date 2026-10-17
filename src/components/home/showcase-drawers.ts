@@ -13,13 +13,29 @@ import { CLOSE_MS, ONCE_MS, OPEN_MS, closeCurve, openCurve } from "./showcase-do
 
 const C30 = Math.cos(Math.PI / 6);
 
-type Part = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number };
+type Part = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; strut?: unknown; form?: unknown; outline?: unknown; polygon?: unknown };
+/** The overview's iso projection (pdfDraw): P(v) = ((x − z)·cos30, −y + (x + z)/2), then one scale and offset. */
+const iso = (x: number, y: number, z: number): [number, number] => [(x - z) * C30, -y + (x + z) / 2];
 /**
  * What the loader sends per drawer: its parts, its box (model inches), how far it opens, each part's box
  * ([x0, y0, z0, x1, y1, z1], same order as ids) and `cut`: the case face plane z the open drawer is split at.
  */
-export type DrawerSpec = { ids: string[]; w: number; h: number; d: number; y: number; open: number; boxes: number[][]; cut: number };
+export type DrawerSpec = { ids: string[]; w: number; h: number; d: number; y: number; open: number; boxes: number[][]; cut: number; view?: View };
+/**
+ * Where the drawing puts the model. A shut drawer is mostly hidden, and the overview draws only what shows, so a
+ * part's drawn box says little. The model's extremes always show (nothing can be in front of a silhouette point):
+ * the parts that reach furthest left, right, up and down in P, and how far. [id, P value] each, as [l, r, t, b].
+ */
+type View = [string, number][];
 type B6 = number[];
+/** A part's 8 corners, turned about its centre by its yaw like geometry.panelWorldCorners. */
+function corners(p: Part): [number, number, number][] {
+  const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+  const c = Math.cos(p.yaw ?? 0), sn = Math.sin(p.yaw ?? 0), cx = x + w / 2, cz = z + d / 2;
+  const out: [number, number, number][] = [];
+  for (const px of [x, x + w]) for (const py of [y, y + h]) for (const pz of [z, z + d]) out.push([cx + (px - cx) * c + (pz - cz) * sn, py, cz - (px - cx) * sn + (pz - cz) * c]);
+  return out;
+}
 const box6 = (p: Part): B6 => [p.position.x, p.position.y, p.position.z, p.position.x + p.size.width, p.position.y + p.size.height, p.position.z + p.size.depth];
 
 /**
@@ -77,6 +93,20 @@ export function drawerSpecs(panels: Part[]): DrawerSpec[] {
     const r = (n: number) => Math.round(n * 1000) / 1000;
     out.push({ ids: parts.map((p) => p.id), w: r(x1 - x0), h: r(y1 - y0), d: r(d), y: r(y0), open: r(open), boxes: parts.map((p) => box6(p).map(r)), cut: 0 });
   }
+  // The model's extremes in P, from plain box parts (their drawn outline reaches their corners; doors as hung).
+  const ext: [string, number][] = [["", Infinity], ["", -Infinity], ["", Infinity], ["", -Infinity]];
+  for (const p of panels) {
+    if (p.strut || p.form || p.outline || p.polygon) continue;
+    for (const c of corners(p)) {
+      const [X, Y] = iso(c[0], c[1], c[2]);
+      if (X < ext[0][1]) ext[0] = [p.id, X];
+      if (X > ext[1][1]) ext[1] = [p.id, X];
+      if (Y < ext[2][1]) ext[2] = [p.id, Y];
+      if (Y > ext[3][1]) ext[3] = [p.id, Y];
+    }
+  }
+  const view: View | undefined = ext.every(([id]) => id) ? ext.map(([id, v]) => [id, Math.round(v * 1000) / 1000]) : undefined;
+  for (const s of out) s.view = view;
   // Fixed: everything that never slides (other drawers are split and drawn last in their own order).
   const moving = new Set(out.flatMap((s) => s.ids));
   const fixed = panels.filter((p) => !moving.has(p.id)).map(box6);
@@ -89,7 +119,9 @@ export function drawerSpecs(panels: Part[]): DrawerSpec[] {
 }
 
 /** A drawer as drawn: its parts, the 2D slide, and the three clip outlines (SVG units, the parts' own space). */
-export type Drawer = { els: SVGGElement[]; at: (inches: number) => string; open: number; stack: number; clips?: { inside: string; near: string; front: string } };
+/** Per drawn part (same order as els): its inside, beyond-the-cut (still) and riding clip outlines. */
+type Clips = { inside: string; near: string; front: string };
+export type Drawer = { els: SVGGElement[]; at: (inches: number) => string; open: number; stack: number; clips?: Clips[] };
 
 type Pt = [number, number];
 /** Convex hull (monotone chain) of 2D points, as an SVG points string. */
@@ -111,37 +143,48 @@ export function sweep(proj: (x: number, y: number, z: number) => Pt, x0: number,
   return hull(pts).map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
 }
 
+/** Scale and offset of the drawing, from the drawn boxes of the model's four extreme parts. */
+export function fitView(root: Element, view: View): { k: number; ox: number; oy: number } | null {
+  const bb = (id: string) => {
+    const gs = [...root.querySelectorAll<SVGGElement>(`g[data-part="${CSS.escape(id)}"]`)];
+    if (!gs.length) return null;
+    const bs = gs.map((g) => g.getBBox());
+    return { l: Math.min(...bs.map((b) => b.x)), r: Math.max(...bs.map((b) => b.x + b.width)), t: Math.min(...bs.map((b) => b.y)), b: Math.max(...bs.map((b) => b.y + b.height)) };
+  };
+  const [L, R, T, B] = view.map(([id]) => bb(id));
+  if (!L || !R || !T || !B) return null;
+  const k = (R.r - L.l) / (view[1][1] - view[0][1]);
+  if (!Number.isFinite(k) || k <= 0) return null;
+  return { k, ox: L.l - k * view[0][1], oy: T.t - k * view[2][1] };
+}
+
 /** The drawn drawers of one card. `specs` come from the loader; parts not in the drawing are skipped. */
 export function drawersIn(root: Element, specs: DrawerSpec[]): Drawer[] {
   const out: Drawer[] = [];
   const stackAt = new Map<string, number>();
   for (const s of specs) {
-    const found = s.ids.map((id) => [...root.querySelectorAll<SVGGElement>(`g[data-part="${CSS.escape(id)}"]`)]);
-    const els = found.flat();
+    const found = s.ids.map((id, i) => [...root.querySelectorAll<SVGGElement>(`g[data-part="${CSS.escape(id)}"]`)].map((g) => [g, s.boxes?.[i]] as const));
+    const els = found.flat().map(([g]) => g);
     if (!els.length) continue;
-    // The drawing's projection, read off the widest drawn part: X = ox + k·(x − z)·cos30, Y = oy + k·(−y + (x + z)/2).
-    let best: { k: number; ox: number; oy: number; w: number } | null = null;
-    found.forEach((gs, i) => {
-      const bx = s.boxes?.[i];
-      if (!gs.length || !bx) return;
-      const b = gs[0].getBBox();
-      const k = b.width / ((bx[3] - bx[0] + bx[5] - bx[2]) * C30);
-      if (!Number.isFinite(k) || k <= 0 || (best && b.width <= best.w)) return;
-      best = { k, ox: b.x - k * (bx[0] - bx[5]) * C30, oy: b.y - k * (-bx[4] + (bx[0] + bx[2]) / 2), w: b.width };
-    });
-    if (!best) continue;
-    const { k: scale, ox, oy } = best as { k: number; ox: number; oy: number };
+    // The drawing's projection, read off the model's extremes: X = ox + k·Px, Y = oy + k·Py.
+    const fit = s.view && fitView(root, s.view);
+    if (!fit) continue;
+    const { k: scale, ox, oy } = fit;
     const column = String(Math.round(s.w)) + ":" + String(Math.round(s.d));
     const stack = stackAt.get(column) ?? 0;
     stackAt.set(column, stack + 1);
     const at = (t: number) => `translate(${(-C30 * scale * t).toFixed(2)}px, ${(0.5 * scale * t).toFixed(2)}px)`;
-    const proj = (x: number, y: number, z: number): Pt => [ox + scale * (x - z) * C30, oy + scale * (-y + (x + z) / 2)];
-    const lo = (a: number) => Math.min(...s.boxes.map((b) => b[a])), hi = (a: number) => Math.max(...s.boxes.map((b) => b[a]));
-    // Padded a little past the drawer's x/y span so edge strokes are never shaved; the seam overlaps by a hair.
-    const P = 0.5, far = s.d + s.open + 12;
-    const [x0, y0, z0, x1, y1, z1] = [lo(0) - P, lo(1) - P, lo(2), hi(3) + P, hi(4) + P, hi(5)];
-    const clips = s.cut < z1 + s.open
-      ? { inside: sweep(proj, x0, x1, y0, y1, z0 - far, s.cut + 0.02), near: sweep(proj, x0, x1, y0, y1, s.cut, s.cut + far), front: sweep(proj, x0, x1, y0, y1, z0 - far, z1 + P) }
+    const proj = (x: number, y: number, z: number): Pt => { const [X, Y] = iso(x, y, z); return [ox + scale * X, oy + scale * Y]; };
+    // Clipped part by part: each part is a box, so the sweep of its own x/y span is exactly its part beyond the cut
+    // (a drawer's front and body together are not convex: one outline for both would show the body through the air
+    // beside it). Padded by about half an outline stroke so edges are not shaved; the seam overlaps by a hair.
+    const P = 0.4 / scale, far = s.d + s.open + 12;
+    const z1 = Math.max(...s.boxes.map((b) => b[5]));
+    const clips: Clips[] | undefined = s.cut < z1 + s.open
+      ? found.flat().map(([, b]) => {
+          const [x0, y0, z0, x1, y1, pz1] = b ? [b[0] - P, b[1] - P, b[2], b[3] + P, b[4] + P, b[5]] : [0, 0, 0, 0, 0, 0];
+          return { inside: sweep(proj, x0, x1, y0, y1, z0 - far, s.cut + 0.02), near: sweep(proj, x0, x1, y0, y1, s.cut, s.cut + far), front: sweep(proj, x0, x1, y0, y1, z0 - far, pz1 + P) };
+        })
       : undefined;
     out.push({ els, at, open: s.open, stack, clips });
   }
@@ -177,31 +220,34 @@ function clipDef(svg: Element, points: string): [Element, string] {
 }
 export function split(drawers: Drawer[]) {
   for (const dr of drawers) {
-    if (splits.has(dr) || !dr.clips) continue;
+    if (splits.has(dr) || !dr.clips || dr.clips.length !== dr.els.length) continue;
     const parent = dr.els[0]?.parentNode as Element | null;
     const svg = dr.els[0]?.ownerSVGElement;
     if (!parent || !svg || dr.els.some((g) => g.parentNode !== parent)) continue;
-    const [cIn, uIn] = clipDef(svg, dr.clips.inside), [cNear, uNear] = clipDef(svg, dr.clips.near), [cFront, uFront] = clipDef(svg, dr.clips.front);
-    // Inside: each part stays in its place, wrapped in a still group clipped to the inside of the case.
-    const wraps = dr.els.map((g) => {
-      const w = el("g", { "clip-path": uIn, "data-drawer-inside": "" }) as SVGGElement;
+    const defs: Element[] = [];
+    const clip = (points: string) => { const [c, url] = clipDef(svg, points); defs.push(c); return url; };
+    const cl = dr.clips;
+    // Inside: each part stays in its place, wrapped in a still group clipped to its part inside the case.
+    const wraps = dr.els.map((g, i) => {
+      const w = el("g", { "clip-path": clip(cl[i].inside), "data-drawer-inside": "" }) as SVGGElement;
       parent.insertBefore(w, g);
       w.appendChild(g);
       return w;
     });
-    // Beyond the cut: a still group clipped to [cut, ∞) holding copies clipped to (−∞, front] that slide along.
-    const near = el("g", { "clip-path": uNear, "data-drawer-near": "", "aria-hidden": "true" }) as SVGGElement;
-    const copies = dr.els.map((g) => {
+    // Beyond the cut, part by part: a still group clipped to [cut, ∞) holding a copy clipped to (−∞, its front] that
+    // slides along. All of a drawer's copies, in its own order, in one group painted after everything else.
+    const near = el("g", { "data-drawer-near": "", "aria-hidden": "true" }) as SVGGElement;
+    const copies = dr.els.map((g, i) => {
       const c = g.cloneNode(true) as SVGGElement;
       for (const n of [c, ...c.querySelectorAll("[id]")]) n.removeAttribute("id");
-      c.setAttribute("clip-path", uFront);
+      c.setAttribute("clip-path", clip(cl[i].front));
       c.setAttribute("data-drawer-copy", "");
       c.style.transform = g.style.transform;
-      near.appendChild(c);
+      near.appendChild(el("g", { "clip-path": clip(cl[i].near) })).appendChild(c);
       return c;
     });
     parent.appendChild(near);
-    splits.set(dr, { wraps, near, copies, defs: [cIn, cNear, cFront] });
+    splits.set(dr, { wraps, near, copies, defs });
     // Copies of several drawers: in the drawing's own order (an upper drawer over a lower one).
     const nears = [...splits.entries()].filter(([, s]) => s.near.parentNode === parent);
     nears.sort(([, a], [, b]) => (a.wraps[0].compareDocumentPosition(b.wraps[0]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));

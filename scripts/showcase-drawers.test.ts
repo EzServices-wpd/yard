@@ -151,10 +151,10 @@ function drawing(names: string[]) {
   const svg = new N("svg");
   const g = svg.appendChild(new N("g"));
   const parts = Object.fromEntries(names.map((n) => { const e = g.appendChild(new N(n)); e.ownerSVGElement = svg; return [n, e]; }));
-  const label = (k: N): string => (k.attrs["data-drawer-inside"] !== undefined ? `[${k.kids.map(label).join(" ")}]` : k.attrs["data-drawer-near"] !== undefined ? `near(${k.kids.map((c) => c.name).join(" ")})` : k.name);
+  const label = (k: N): string => (k.attrs["data-drawer-inside"] !== undefined ? `[${k.kids.map(label).join(" ")}]` : k.attrs["data-drawer-near"] !== undefined ? `near(${k.kids.map((c) => c.kids[0].name).join(" ")})` : k.name);
   const order = () => g.kids.map(label).join(" ");
   const clips = { inside: "0,0 1,0 1,1", near: "0,0 2,0 2,2", front: "0,0 3,0 3,3" };
-  const dr = (...ids: string[]) => ({ els: ids.map((i) => parts[i]) as unknown as SVGGElement[], at: () => "translate(1px, 1px)", open: 1, stack: 0, clips }) as Drawer;
+  const dr = (...ids: string[]) => ({ els: ids.map((i) => parts[i]) as unknown as SVGGElement[], at: () => "translate(1px, 1px)", open: 1, stack: 0, clips: ids.map(() => clips) }) as Drawer;
   return { svg, order, dr };
 }
 
@@ -166,9 +166,10 @@ test("split: the inside stays in the drawing's order (each part wrapped in place
   assert.equal(order(), "upright [drawerR] [frontR] divider counter near(drawerR' frontR')", "inside in place, beyond the cut last");
   assert.ok(isSplit(right));
   const defs = svg.kids.find((k) => k.name === "defs")!;
-  assert.equal(defs.kids.length, 3, "three fixed clip outlines");
+  assert.equal(defs.kids.length, 6, "three fixed clip outlines per part (a front and a body are clipped apart: together they are not convex)");
   const near = (svg.kids[1] as N).kids.at(-1)!;
-  assert.ok(near.attrs["clip-path"] && near.kids.every((c) => c.attrs["clip-path"] && c.attrs["clip-path"] !== near.attrs["clip-path"] && !("id" in c.attrs)), "still clip [cut, ∞) on the group, riding clip (−∞, front] on each copy; no duplicate ids");
+  assert.ok(near.kids.every((w) => w.attrs["clip-path"] && w.kids.length === 1 && w.kids[0].attrs["clip-path"] && w.kids[0].attrs["clip-path"] !== w.attrs["clip-path"] && !("id" in w.kids[0].attrs)), "per part: still clip [cut, ∞) on its group, riding clip (−∞, front] on its copy; no duplicate ids");
+  assert.equal(new Set(defs.kids.map((d) => d.attrs.id)).size, 6, "unique clip ids");
   split([right]);
   assert.equal(order(), "upright [drawerR] [frontR] divider counter near(drawerR' frontR')", "splitting twice changes nothing");
   unsplit([right]);

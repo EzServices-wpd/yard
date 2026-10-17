@@ -25,8 +25,14 @@ for (const { id, prompt } of pieces) {
   if (!specs.length) continue;
   const moving = new Set(specs.flatMap((s) => s.ids));
   const fixed = panels.filter((p) => !moving.has(p.id));
+  // Every part's 3D box for the per-pixel ray test; `plain` = drawn as its box (no strut, form, outline or polygon).
+  const boxes = Object.fromEntries(panels.map((p) => [p.id, { b: [...box(p).lo, ...box(p).hi], plain: !(p.strut || p.form || p.outline || p.polygon || p.yaw) }]));
+  const openOf = Object.fromEntries(specs.flatMap((s) => s.ids.map((pid) => [pid, s.open])));
   out[id] = {
     prompt,
+    boxes,
+    openOf,
+    view: specs[0].view,
     drawers: specs.map((s) => {
       // Part by part (a drawer front is wider than its box, so one box for the drawer would be wrong):
       // nearer[part] = fixed parts this open part is strictly in front of, so it must paint over them.
