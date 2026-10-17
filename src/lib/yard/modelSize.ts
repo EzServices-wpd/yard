@@ -2,6 +2,7 @@ import { aabbOfPanels } from "./geometry";
 import { frac } from "./pdfKit";
 import { inchFrac } from "./inchText";
 import type { Panel } from "./types";
+import { isCasterPart } from "./casterParts";
 
 /**
  * Overlay doors and drawer fronts stand proud of the box. The stranger sees one depth:
@@ -63,4 +64,40 @@ export function notesWithFinishedDepth(notes: string[], panels: Panel[] | undefi
     }
     return out;
   });
+}
+
+/**
+ * What the casters step puts under a build (C13): the finished height is the box plus this. The model is the one
+ * source: the casters actually in it, never a second constant.
+ */
+export function casterRise(panels: Pick<Panel, "id" | "name" | "size">[] | undefined): number {
+  const casters = (panels ?? []).filter(isCasterPart);
+  return casters.length ? Math.max(...casters.map((x) => x.size.height)) : 0;
+}
+
+type Box = { width: number; height: number; depth: number };
+const said = (n: number) => [String(n), inchFrac(n)];
+/**
+ * Critic #79: every label that names the overall size names the finished one. When a step after naming changes the
+ * overall size (casters add 3" under the box), the title's W × H × D and the same triple in the notes say the new
+ * size; the header, finished size and step 01 already read the model.
+ */
+export function restateOverall<T extends { name: string; notes?: string[]; fitted?: { name: string } }>(p: T, from: Box, to: Box): T {
+  if (from.width === to.width && from.height === to.height && from.depth === to.depth) return p;
+  const swap = (text: string) => {
+    for (const w of said(from.width)) for (const h of said(from.height)) for (const d of said(from.depth)) {
+      const old = `${w}" × ${h}" × ${d}"`;
+      if (text.includes(old)) {
+        const f = w === String(from.width) && h === String(from.height) ? String : inchFrac;
+        return text.split(old).join(`${f(to.width)}" × ${f(to.height)}" × ${f(to.depth)}"`);
+      }
+    }
+    return text;
+  };
+  return {
+    ...p,
+    name: swap(p.name),
+    ...(p.fitted ? { fitted: { ...p.fitted, name: swap(p.fitted.name) } } : {}),
+    ...(p.notes ? { notes: p.notes.map(swap) } : {}),
+  };
 }

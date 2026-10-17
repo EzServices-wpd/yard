@@ -17,7 +17,11 @@ describe("home 'Made on Yard' cards are live Yard output", () => {
   });
   it("size copy is honest about doors standing proud", () => {
     assert.doesNotMatch(home, /you get a 31 1\/2 × 78 × 16 build/);
-    assert.match(home, /the box is 31 1\/2 × 78 × 16; doors add 3\/4/);
+    // W × H × D (today) or W × D × H in (SWE 2's #68 format): same dimensions, the box matches what was typed, doors add 3/4.
+    const size = String.raw`31 1\/2 [×x] (?:78 [×x] 16|16 [×x] 78 in)`;
+    const m = home.match(new RegExp(String.raw`Type (${size}) and the box is (${size}); doors add 3\/4`));
+    assert.ok(m, "size copy names the typed size, the same box size and the 3/4 door note");
+    assert.equal(m![1], m![2]);
   });
   for (const prompt of [
     "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",

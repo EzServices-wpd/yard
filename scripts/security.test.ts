@@ -28,7 +28,7 @@ test("vercel.json sends nosniff, a strict referrer policy, frame-ancestors 'self
   const h = JSON.parse(fs.readFileSync("vercel.json", "utf8")).headers[0].headers as { key: string; value: string }[];
   const get = (k: string) => h.find((x) => x.key === k)?.value ?? "";
   assert.equal(get("X-Content-Type-Options"), "nosniff");
-  assert.equal(get("Referrer-Policy"), "strict-origin-when-cross-origin");
+  assert.equal(get("Referrer-Policy"), "strict-origin");
   assert.match(get("Content-Security-Policy"), /frame-ancestors 'self'/);
   assert.match(get("Content-Security-Policy-Report-Only"), /default-src 'self'/);
   assert.match(get("Permissions-Policy"), /camera=\(\)/);

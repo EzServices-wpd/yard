@@ -7815,6 +7815,1663 @@
     "Four legs stand on floor with connecting rails under open deck"
    ],
    "learned": true
+  },
+  {
+   "key": "standing-desk-converter",
+   "synonyms": [
+    "standing desk riser",
+    "sit stand converter",
+    "sit-stand converter",
+    "desk converter",
+    "standing desk topper",
+    "desktop standing desk"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Standing desk converter",
+   "size": {
+    "width": 30,
+    "height": 16,
+    "depth": 22
+   },
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "upright",
+    "shelf"
+   ],
+   "sheet": "plywood-3-4-4x8",
+   "parts": [
+    {
+     "role": "base",
+     "name": "Base",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.05,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "upright",
+     "name": "Left tower side",
+     "box": [
+      0,
+      0.05,
+      0,
+      0.05,
+      0.9,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "upright",
+     "name": "Right tower side",
+     "box": [
+      0.95,
+      0.05,
+      0,
+      0.05,
+      0.9,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "back",
+     "name": "Back brace",
+     "box": [
+      0.05,
+      0.05,
+      0,
+      0.9,
+      0.9,
+      0.034
+     ],
+     "kind": "panel",
+     "on": [
+      "Base",
+      "Left tower side",
+      "Right tower side"
+     ]
+    },
+    {
+     "role": "upright",
+     "name": "Left keyboard side",
+     "box": [
+      0,
+      0.05,
+      0.5,
+      0.05,
+      0.42,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "upright",
+     "name": "Right keyboard side",
+     "box": [
+      0.95,
+      0.05,
+      0.5,
+      0.05,
+      0.42,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Base"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Keyboard shelf",
+     "box": [
+      0,
+      0.47,
+      0.5,
+      1,
+      0.05,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Left keyboard side",
+      "Right keyboard side"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Monitor shelf",
+     "box": [
+      0,
+      0.95,
+      0,
+      1,
+      0.05,
+      0.5
+     ],
+     "kind": "panel",
+     "on": [
+      "Left tower side",
+      "Right tower side",
+      "Back brace"
+     ]
+    }
+   ],
+   "notes": [
+    "Sits on the desk you have: a raised monitor shelf at the back and a lower keyboard shelf in front, so you stand to type with your elbows at 90°.",
+    "Typical fixed height: keyboard shelf about 7\" and monitor shelf about 15\" above the desk; type a height to suit you."
+   ]
+  },
+  {
+   "key": "guitar-hanger",
+   "synonyms": [
+    "guitar wall hanger",
+    "guitar wall mount",
+    "guitar hook",
+    "guitar holder",
+    "guitar wall holder",
+    "guitar hanger wall"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Guitar hanger",
+   "size": {
+    "width": 5.5,
+    "height": 10,
+    "depth": 5
+   },
+   "outdoor": false,
+   "wall": true,
+   "defining": [
+    "plate",
+    "arm",
+    "prong"
+   ],
+   "stock": "lumber-1x6-8",
+   "sheet": "lumber-1x6-8",
+   "parts": [
+    {
+     "role": "plate",
+     "name": "Backplate",
+     "box": [
+      0,
+      0,
+      0.85,
+      1,
+      1,
+      0.15
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "arm",
+     "name": "Hanger arm",
+     "box": [
+      0.38,
+      0.55,
+      0.15,
+      0.24,
+      0.18,
+      0.7
+     ],
+     "kind": "member",
+     "on": [
+      "Backplate"
+     ],
+     "stock": "lumber-1x2-8"
+    },
+    {
+     "role": "prong",
+     "name": "Left yoke prong",
+     "box": [
+      0.24,
+      0.55,
+      0,
+      0.14,
+      0.32,
+      0.2
+     ],
+     "kind": "member",
+     "on": [
+      "Hanger arm"
+     ],
+     "shape": "cylinder",
+     "stock": "dowel-1-2-36"
+    },
+    {
+     "role": "prong",
+     "name": "Right yoke prong",
+     "box": [
+      0.62,
+      0.55,
+      0,
+      0.14,
+      0.32,
+      0.2
+     ],
+     "kind": "member",
+     "on": [
+      "Hanger arm"
+     ],
+     "shape": "cylinder",
+     "stock": "dowel-1-2-36"
+    }
+   ],
+   "notes": [
+    "The guitar hangs by its headstock: the neck drops between the two yoke prongs and the headstock rests on them.",
+    "Screw the backplate into a wall stud; a guitar levers on the arm, so drywall alone will not hold it.",
+    "Wrap the prongs in felt or rubber tubing so they never mark the finish."
+   ]
+  },
+  {
+   "key": "outdoor-storage-bench",
+   "synonyms": [
+    "deck storage bench",
+    "patio storage bench",
+    "garden storage bench",
+    "outdoor bench with storage",
+    "porch storage bench",
+    "outdoor storage seat"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Outdoor storage bench",
+   "size": {
+    "width": 48,
+    "height": 20,
+    "depth": 20
+   },
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "board",
+    "lid"
+   ],
+   "stock": "lumber-1x6-8",
+   "sheet": "lumber-1x6-8",
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left post",
+     "box": [
+      0.0155,
+      0,
+      0.889,
+      0.031,
+      0.91,
+      0.075
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Front right post",
+     "box": [
+      0.9535,
+      0,
+      0.889,
+      0.031,
+      0.91,
+      0.075
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back left post",
+     "box": [
+      0.0155,
+      0,
+      0.036,
+      0.031,
+      0.91,
+      0.075
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Back right post",
+     "box": [
+      0.9535,
+      0,
+      0.036,
+      0.031,
+      0.91,
+      0.075
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "board",
+     "name": "Front board 1",
+     "box": [
+      0,
+      0.0,
+      0.964,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Front right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Back board 1",
+     "box": [
+      0,
+      0.0,
+      0,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Left board 1",
+     "box": [
+      0,
+      0.0,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Back left post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Right board 1",
+     "box": [
+      0.9845,
+      0.0,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Front board 2",
+     "box": [
+      0,
+      0.3175,
+      0.964,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Front right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Back board 2",
+     "box": [
+      0,
+      0.3175,
+      0,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Left board 2",
+     "box": [
+      0,
+      0.3175,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Back left post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Right board 2",
+     "box": [
+      0.9845,
+      0.3175,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Front board 3",
+     "box": [
+      0,
+      0.635,
+      0.964,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Front right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Back board 3",
+     "box": [
+      0,
+      0.635,
+      0,
+      1,
+      0.275,
+      0.036
+     ],
+     "kind": "member",
+     "on": [
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Left board 3",
+     "box": [
+      0,
+      0.635,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Back left post"
+     ]
+    },
+    {
+     "role": "board",
+     "name": "Right board 3",
+     "box": [
+      0.9845,
+      0.635,
+      0.036,
+      0.0155,
+      0.275,
+      0.928
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "cleat",
+     "name": "Left floor cleat",
+     "box": [
+      0.0155,
+      0.1,
+      0.11099999999999999,
+      0.031,
+      0.075,
+      0.778
+     ],
+     "kind": "member",
+     "on": [
+      "Front left post",
+      "Back left post"
+     ],
+     "stock": "lumber-2x2-8"
+    },
+    {
+     "role": "cleat",
+     "name": "Right floor cleat",
+     "box": [
+      0.9535,
+      0.1,
+      0.11099999999999999,
+      0.031,
+      0.075,
+      0.778
+     ],
+     "kind": "member",
+     "on": [
+      "Front right post",
+      "Back right post"
+     ],
+     "stock": "lumber-2x2-8"
+    },
+    {
+     "role": "floor",
+     "name": "Floor board 1",
+     "box": [
+      0.0155,
+      0.175,
+      0.125,
+      0.969,
+      0.0375,
+      0.175
+     ],
+     "kind": "member",
+     "on": [
+      "Left floor cleat",
+      "Right floor cleat"
+     ],
+     "stock": "lumber-1x4-8"
+    },
+    {
+     "role": "floor",
+     "name": "Floor board 2",
+     "box": [
+      0.0155,
+      0.175,
+      0.3125,
+      0.969,
+      0.0375,
+      0.175
+     ],
+     "kind": "member",
+     "on": [
+      "Left floor cleat",
+      "Right floor cleat"
+     ],
+     "stock": "lumber-1x4-8"
+    },
+    {
+     "role": "floor",
+     "name": "Floor board 3",
+     "box": [
+      0.0155,
+      0.175,
+      0.5,
+      0.969,
+      0.0375,
+      0.175
+     ],
+     "kind": "member",
+     "on": [
+      "Left floor cleat",
+      "Right floor cleat"
+     ],
+     "stock": "lumber-1x4-8"
+    },
+    {
+     "role": "floor",
+     "name": "Floor board 4",
+     "box": [
+      0.0155,
+      0.175,
+      0.6875,
+      0.969,
+      0.0375,
+      0.175
+     ],
+     "kind": "member",
+     "on": [
+      "Left floor cleat",
+      "Right floor cleat"
+     ],
+     "stock": "lumber-1x4-8"
+    },
+    {
+     "role": "lid",
+     "name": "Seat lid",
+     "box": [
+      0,
+      0.91,
+      0,
+      1,
+      0.0375,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front board 3",
+      "Back board 3",
+      "Left board 3",
+      "Right board 3"
+     ],
+     "stock": "lumber-1x6-8"
+    },
+    {
+     "role": "hinge",
+     "name": "Lid hinge",
+     "box": [
+      0.2,
+      0.9,
+      0,
+      0.12,
+      0.06,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back board 3"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Lid hinge",
+     "box": [
+      0.68,
+      0.9,
+      0,
+      0.12,
+      0.06,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back board 3"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Seat lid",
+     "motion": "hinge"
+    }
+   ],
+   "notes": [
+    "A seat you can sit on outside with a dry box under it: the lid lifts on two hinges and a lid stay holds it open.",
+    "Three courses of 1×6 boards screw to a 2×2 post inside each corner; leave 1/4\" gaps between the floor boards so rain that gets in drains out.",
+    "Use cedar or pressure-treated boards; seal every face and the end grain."
+   ]
+  },
+  {
+   "key": "raised-garden-bed",
+   "synonyms": [
+    "raised planter bed",
+    "raised vegetable bed"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Raised garden bed",
+   "size": {
+    "width": 48,
+    "height": 16.5,
+    "depth": 96
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "post",
+    "course"
+   ],
+   "stock": "lumber-2x6-8",
+   "sheet": "lumber-2x6-8",
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left corner post",
+     "box": [
+      0.03125,
+      0,
+      0.9479166666666666,
+      0.07291666666666667,
+      1,
+      0.036458333333333336
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Front right corner post",
+     "box": [
+      0.8958333333333334,
+      0,
+      0.9479166666666666,
+      0.07291666666666667,
+      1,
+      0.036458333333333336
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Back left corner post",
+     "box": [
+      0.03125,
+      0,
+      0.015625,
+      0.07291666666666667,
+      1,
+      0.036458333333333336
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "post",
+     "name": "Back right corner post",
+     "box": [
+      0.8958333333333334,
+      0,
+      0.015625,
+      0.07291666666666667,
+      1,
+      0.036458333333333336
+     ],
+     "kind": "member",
+     "stock": "lumber-4x4-8"
+    },
+    {
+     "role": "course",
+     "name": "Front lower board",
+     "box": [
+      0,
+      0.0,
+      0.984375,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Front right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Back lower board",
+     "box": [
+      0,
+      0.0,
+      0,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Back left corner post",
+      "Back right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Left lower board",
+     "box": [
+      0,
+      0.0,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Back left corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Right lower board",
+     "box": [
+      0.96875,
+      0.0,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front right corner post",
+      "Back right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Front middle board",
+     "box": [
+      0,
+      0.3333333333333333,
+      0.984375,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Front right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Back middle board",
+     "box": [
+      0,
+      0.3333333333333333,
+      0,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Back left corner post",
+      "Back right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Left middle board",
+     "box": [
+      0,
+      0.3333333333333333,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Back left corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Right middle board",
+     "box": [
+      0.96875,
+      0.3333333333333333,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front right corner post",
+      "Back right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Front upper board",
+     "box": [
+      0,
+      0.6666666666666666,
+      0.984375,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Front right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Back upper board",
+     "box": [
+      0,
+      0.6666666666666666,
+      0,
+      1,
+      0.3333333333333333,
+      0.015625
+     ],
+     "kind": "member",
+     "on": [
+      "Back left corner post",
+      "Back right corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Left upper board",
+     "box": [
+      0,
+      0.6666666666666666,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front left corner post",
+      "Back left corner post"
+     ]
+    },
+    {
+     "role": "course",
+     "name": "Right upper board",
+     "box": [
+      0.96875,
+      0.6666666666666666,
+      0.015625,
+      0.03125,
+      0.3333333333333333,
+      0.96875
+     ],
+     "kind": "member",
+     "on": [
+      "Front right corner post",
+      "Back right corner post"
+     ]
+    }
+   ],
+   "notes": [
+    "No bottom: the bed sits right on the ground so roots go down and water drains.",
+    "Three courses of 2×6 boards on edge, screwed into a 4×4 post inside each corner. The posts are ground-contact pressure-treated and sit right on the soil.",
+    "The boards are ground-contact pressure-treated so they last in wet soil (type cedar to build it in cedar); skip finish inside where soil touches.",
+    "Guidance only — set it level."
+   ]
+  },
+  {
+   "key": "bird-feeder",
+   "synonyms": [
+    "hopper bird feeder",
+    "hopper feeder",
+    "birdfeeder",
+    "hanging bird feeder"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Bird feeder",
+   "size": {
+    "width": 10,
+    "height": 10,
+    "depth": 7
+   },
+   "outdoor": true,
+   "wall": false,
+   "defining": [
+    "tray",
+    "gable",
+    "pane",
+    "roof"
+   ],
+   "stock": "lumber-1x2-8",
+   "sheet": "lumber-1x6-8",
+   "parts": [
+    {
+     "role": "tray",
+     "name": "Seed tray",
+     "box": [
+      0,
+      0,
+      0.107,
+      1,
+      0.075,
+      0.786
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "rim",
+     "name": "Front tray lip",
+     "box": [
+      0,
+      0,
+      0.893,
+      1,
+      0.15,
+      0.107
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rim",
+     "name": "Back tray lip",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.15,
+      0.107
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "gable",
+     "name": "Left gable",
+     "box": [
+      0.1,
+      0.075,
+      0.107,
+      0.075,
+      0.675,
+      0.786
+     ],
+     "kind": "panel",
+     "on": [
+      "Seed tray"
+     ]
+    },
+    {
+     "role": "gable",
+     "name": "Right gable",
+     "box": [
+      0.825,
+      0.075,
+      0.107,
+      0.075,
+      0.675,
+      0.786
+     ],
+     "kind": "panel",
+     "on": [
+      "Seed tray"
+     ]
+    },
+    {
+     "role": "pane",
+     "name": "Front pane",
+     "box": [
+      0.175,
+      0.2,
+      0.68,
+      0.65,
+      0.55,
+      0.02
+     ],
+     "kind": "cover",
+     "on": [
+      "Left gable",
+      "Right gable"
+     ],
+     "stock": "acrylic-sheet"
+    },
+    {
+     "role": "pane",
+     "name": "Back pane",
+     "box": [
+      0.175,
+      0.2,
+      0.3,
+      0.65,
+      0.55,
+      0.02
+     ],
+     "kind": "cover",
+     "on": [
+      "Left gable",
+      "Right gable"
+     ],
+     "stock": "acrylic-sheet"
+    },
+    {
+     "role": "roof",
+     "name": "Front roof",
+     "box": [
+      0,
+      0.75,
+      0.5,
+      1,
+      0.25,
+      0.55
+     ],
+     "kind": "panel",
+     "on": [
+      "Left gable",
+      "Right gable"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Back roof",
+     "box": [
+      0,
+      0.75,
+      -0.05,
+      1,
+      0.25,
+      0.55
+     ],
+     "kind": "panel",
+     "on": [
+      "Left gable",
+      "Right gable"
+     ]
+    },
+    {
+     "role": "hanger",
+     "name": "Screw eye",
+     "box": [
+      0.12,
+      1.0,
+      0.45,
+      0.04,
+      0.06,
+      0.1
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front roof",
+      "Back roof"
+     ]
+    },
+    {
+     "role": "hanger",
+     "name": "Screw eye",
+     "box": [
+      0.84,
+      1.0,
+      0.45,
+      0.04,
+      0.06,
+      0.1
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front roof",
+      "Back roof"
+     ]
+    }
+   ],
+   "notes": [
+    "A hopper feeder: seed sits in the hopper between two clear panes and spills out of a 1/2\" gap at the bottom onto the tray.",
+    "The back roof lifts off to fill it; drill 1/4\" drain holes in the tray.",
+    "Hang it from the two screw eyes on a short chain, 5 ft up and about 10 ft from cover."
+   ]
+  },
+  {
+   "key": "jewelry-box",
+   "synonyms": [
+    "jewellery box",
+    "jewelry chest",
+    "trinket box",
+    "ring box",
+    "jewelry case"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Jewelry box",
+   "size": {
+    "width": 10,
+    "height": 4,
+    "depth": 5.5
+   },
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "wall",
+    "lid",
+    "divider"
+   ],
+   "stock": "lumber-1x2-8",
+   "sheet": "lumber-1x6-8",
+   "parts": [
+    {
+     "role": "bottom",
+     "name": "Bottom",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.0625,
+      1
+     ],
+     "kind": "panel",
+     "stock": "plywood-1-4-4x8"
+    },
+    {
+     "role": "wall",
+     "name": "Front wall",
+     "box": [
+      0,
+      0.0625,
+      0.864,
+      1,
+      0.6,
+      0.136
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Back wall",
+     "box": [
+      0,
+      0.0625,
+      0,
+      1,
+      0.6,
+      0.136
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Left wall",
+     "box": [
+      0,
+      0.0625,
+      0.136,
+      0.075,
+      0.6,
+      0.728
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "wall",
+     "name": "Right wall",
+     "box": [
+      0.925,
+      0.0625,
+      0.136,
+      0.075,
+      0.6,
+      0.728
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "divider",
+     "name": "Ring divider",
+     "box": [
+      0.075,
+      0.0625,
+      0.45,
+      0.85,
+      0.35,
+      0.0625
+     ],
+     "kind": "panel",
+     "on": [
+      "Left wall",
+      "Right wall"
+     ],
+     "stock": "plywood-1-4-4x8"
+    },
+    {
+     "role": "divider",
+     "name": "Tray divider",
+     "box": [
+      0.4875,
+      0.0625,
+      0.136,
+      0.025,
+      0.35,
+      0.3
+     ],
+     "kind": "panel",
+     "on": [
+      "Back wall"
+     ],
+     "stock": "plywood-1-4-4x8"
+    },
+    {
+     "role": "lid",
+     "name": "Lid",
+     "box": [
+      0,
+      0.6625,
+      0,
+      1,
+      0.19,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front wall",
+      "Back wall",
+      "Left wall",
+      "Right wall"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Hinge",
+     "box": [
+      0.2,
+      0.6,
+      0,
+      0.12,
+      0.1,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back wall",
+      "Lid"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Hinge",
+     "box": [
+      0.68,
+      0.6,
+      0,
+      0.12,
+      0.1,
+      0.02
+     ],
+     "kind": "hardware",
+     "on": [
+      "Back wall",
+      "Lid"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Lid",
+     "motion": "hinge"
+    }
+   ],
+   "notes": [
+    "A small hinged box: a ring row along the front and two compartments behind it; line the floor with felt.",
+    "Butt the corners and glue them; the 1/4\" bottom and dividers sit inside the walls."
+   ]
+  },
+  {
+   "key": "utility-cart",
+   "synonyms": [
+    "storage cart",
+    "utility cart",
+    "garage cart",
+    "craft cart",
+    "shop cart",
+    "rolling cart"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Utility cart",
+   "size": {
+    "width": 30,
+    "height": 34,
+    "depth": 18
+   },
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "post",
+    "shelf",
+    "caster"
+   ],
+   "stock": "lumber-2x2-8",
+   "sheet": "plywood-3-4-4x8",
+   "parts": [
+    {
+     "role": "post",
+     "name": "Front left post",
+     "box": [
+      0,
+      0.088,
+      0.917,
+      0.05,
+      0.912,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Caster"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Front right post",
+     "box": [
+      0.95,
+      0.088,
+      0.917,
+      0.05,
+      0.912,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Caster"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Back left post",
+     "box": [
+      0,
+      0.088,
+      0,
+      0.05,
+      0.912,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Caster"
+     ]
+    },
+    {
+     "role": "post",
+     "name": "Back right post",
+     "box": [
+      0.95,
+      0.088,
+      0,
+      0.05,
+      0.912,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Caster"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Bottom shelf",
+     "box": [
+      0,
+      0.14,
+      0,
+      1,
+      0.022,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Middle shelf",
+     "box": [
+      0,
+      0.53,
+      0,
+      1,
+      0.022,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Top shelf",
+     "box": [
+      0,
+      0.978,
+      0,
+      1,
+      0.022,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "caster",
+     "name": "Caster",
+     "box": [
+      0,
+      0,
+      0.861,
+      0.083,
+      0.088,
+      0.139
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "caster",
+     "name": "Caster",
+     "box": [
+      0.917,
+      0,
+      0.861,
+      0.083,
+      0.088,
+      0.139
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "caster",
+     "name": "Caster",
+     "box": [
+      0,
+      0,
+      0,
+      0.083,
+      0.088,
+      0.139
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    },
+    {
+     "role": "caster",
+     "name": "Caster",
+     "box": [
+      0.917,
+      0,
+      0,
+      0.083,
+      0.088,
+      0.139
+     ],
+     "kind": "hardware",
+     "on": [
+      "Front left post",
+      "Front right post",
+      "Back left post",
+      "Back right post"
+     ]
+    }
+   ],
+   "notes": [
+    "Three plywood shelves on four 2×2 corner posts, rolling on four 2\" locking swivel casters (3\" of the height).",
+    "Screw each shelf into the posts from outside; a lip on the shelves keeps things from sliding off."
+   ]
   }
  ]
 }
