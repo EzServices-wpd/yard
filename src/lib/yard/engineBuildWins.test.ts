@@ -50,14 +50,21 @@ const HONEST_LEARNER = ["sandbox with lid", "play kitchen", "step ladder"];
  * A build wins over the learner only when it is the asked-for form, never the fitted storage fallback's bare carcase
  * (uprights or sides, back, top or front, bottom) with a title that only repeats the prompt.
  */
-const NOT_GENERIC = ["cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter"];
+const NOT_GENERIC = [
+  "cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter",
+  // Critic #79 (174aeca): the same box on casters is still the generic box.
+  "rolling under-stairs storage", "rolling thing for hanging coats", "mobile under-stairs storage", "under-stairs storage on casters", "rolling outdoor wall planter box",
+];
 /** The rule is not "never the box": a plain storage ask and the planter stem's own nouns (planter, raised bed) keep it. */
 const BOX_OWNS = ["storage unit", "cedar 2x4 planter 3 feet", "cedar raised garden bed 4x8", "raised garden bed 48 wide 96 long"];
 const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;
-/** The generic fallback body: a storage-program carcase made only of the bare box parts. */
+/** What the casters step adds (C13): casters are hardware under the box, never part of its form. */
+const CASTER_PART = /^caster\b/i;
+/** The generic fallback body: a storage-program carcase made only of the bare box parts (casters or not). */
 function genericBox(p: ReturnType<typeof generateFromPrompt>) {
-  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && p.panels.length > 0 &&
-    p.panels.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
+  const body = p.panels.filter((x) => !CASTER_PART.test(x.name ?? ""));
+  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && body.length > 0 &&
+    body.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
 }
 /** A word that changes the object still learns: the fix is not "never learn". */
 const STILL_LEARN = ["lap desk", "standing desk", "desk organizer", "hanging planter", "chicken tractor", "cold frame", "tabletop loom", "wall clock"];
