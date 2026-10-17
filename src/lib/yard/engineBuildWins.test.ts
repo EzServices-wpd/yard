@@ -58,26 +58,35 @@ const WIDE_ROWS = [
 ];
 /** Critic f06: the engine builds a cardboard Rocket (16 parts); "ship" is the same object, not a half-read. */
 const NIGHTLY_ROWS = ["cardboard rocket ship"];
+/** C14 on release: bird feeder (11 parts) and rolling cart (Utility cart, 11 parts) are real engine forms now, so they must show. */
+const C14_ROWS = ["bird feeder", "rolling cart"];
 /**
- * Honest learner rows: the engine has no complete build, so the learner still runs. Bird feeder, rolling cart and
- * step ladder are simple stand-ins, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
+ * Honest learner rows: the engine has no complete build, so the learner still runs. Step ladder is a simple
+ * stand-in, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
  */
 // e067 "mailbox post": the engine has no mailbox-post builder; the "Mailbox Post" title only echoes the typed words
 // over an anatomy-class popsicle body (56 rings, 20 legs), so it stays an honest learner row.
-const HONEST_LEARNER = ["bird feeder", "sandbox with lid", "play kitchen", "rolling cart", "step ladder", "mailbox post"];
+const HONEST_LEARNER = ["sandbox with lid", "play kitchen", "step ladder", "mailbox post"];
 /**
  * Critic 10-17 (live P1 after #71): these went from the honest grey block to the generic 36" × 30" × 16" fallback box.
  * A build wins over the learner only when it is the asked-for form, never the fitted storage fallback's bare carcase
  * (uprights or sides, back, top or front, bottom) with a title that only repeats the prompt.
  */
-const NOT_GENERIC = ["cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter"];
+const NOT_GENERIC = [
+  "cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter",
+  // Critic #79 (174aeca): the same box on casters is still the generic box.
+  "rolling under-stairs storage", "rolling thing for hanging coats", "mobile under-stairs storage", "under-stairs storage on casters", "rolling outdoor wall planter box",
+];
 /** The rule is not "never the box": a plain storage ask and the planter stem's own nouns (planter, raised bed) keep it. */
 const BOX_OWNS = ["storage unit", "cedar 2x4 planter 3 feet", "cedar raised garden bed 4x8", "raised garden bed 48 wide 96 long"];
 const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;
-/** The generic fallback body: a storage-program carcase made only of the bare box parts. */
+/** What the casters step adds (C13): casters are hardware under the box, never part of its form. */
+const CASTER_PART = /^caster\b/i;
+/** The generic fallback body: a storage-program carcase made only of the bare box parts (casters or not). */
 function genericBox(p: ReturnType<typeof generateFromPrompt>) {
-  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && p.panels.length > 0 &&
-    p.panels.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
+  const body = p.panels.filter((x) => !CASTER_PART.test(x.name ?? ""));
+  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && body.length > 0 &&
+    body.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
 }
 /** A word that changes the object still learns: the fix is not "never learn". */
 const STILL_LEARN = ["lap desk", "standing desk", "desk organizer", "hanging planter", "chicken tractor", "cold frame", "tabletop loom", "wall clock"];
@@ -116,7 +125,7 @@ function assertEngineShown(q: string, engine: ReturnType<typeof generateFromProm
 }
 
 describe("row 51: a complete engine build always shows; the learner never replaces it", () => {
-  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS, ...WIDE_ROWS]) {
+  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS, ...C14_ROWS, ...WIDE_ROWS]) {
     it(q, async () => {
       const { p, ok } = complete(q);
       assert.ok(ok, `${q}: the engine build is complete (${p.name}, ${p.panels.length + p.instances.length} parts)`);
@@ -124,7 +133,7 @@ describe("row 51: a complete engine build always shows; the learner never replac
     });
   }
   it("every corpus prompt with a complete engine build that reads every typed word shows it, never the learner", async () => {
-    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...WIDE_ROWS, ...HONEST_LEARNER])];
+    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...C14_ROWS, ...WIDE_ROWS, ...HONEST_LEARNER])];
     let checked = 0;
     for (const q of all) {
       const { p, ok } = complete(q);

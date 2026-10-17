@@ -55,7 +55,9 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     if (!xs.length || !ys.length) return step;
     if (xs.every(isThin)) {
       // A thin back: every edge it touches, in one step, after those parts stand.
-      const js = joints.filter((j) => xs.some((p) => p.id === j.a || p.id === j.b));
+      // Bought hardware (a caster under the bottom) is not a back edge: it takes its own screws in its own step.
+      const hw0 = new Set(project.panels.filter((p) => p.materialId === "hardware").map((p) => p.id));
+      const js = joints.filter((j) => xs.some((p) => p.id === j.a || p.id === j.b) && !hw0.has(j.a) && !hw0.has(j.b));
       const n = js.reduce((s, j) => s + j.screws, 0);
       const others = [...new Set(js.map((j) => (xs.some((p) => p.id === j.a) ? j.b : j.a)))]
         .map((id) => project.panels.find((p) => p.id === id)!)
