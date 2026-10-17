@@ -87,9 +87,9 @@ function homeShows(): Promise<Record<string, HomeShow>> {
   return showsMemo;
 }
 
-/** 6B: chips are 44px tall on a phone, 36px on a desktop. */
+/** 6B: chips are 44px tall on a phone, 36px on a desktop. 4B (row 57): a fill, not an outline (only sample cards are outlined). */
 const CHIP =
-  "inline-flex min-h-11 items-center rounded-full border border-rule bg-paper px-3.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50 lg:min-h-9";
+  "inline-flex min-h-11 items-center rounded-full border border-transparent bg-[var(--yard-fill)] px-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -238,7 +238,7 @@ function LandingPage() {
                       className={`inline-flex min-h-11 items-center rounded-full border px-3.5 text-sm transition-colors duration-150 lg:min-h-9 ${
                         on
                           ? "border-ink bg-ink text-paper"
-                          : "border-rule bg-paper text-ink hover:border-ink/40"
+                          : "border-transparent bg-[var(--yard-fill)] text-ink hover:bg-rule/60"
                       }`}
                     >
                       {s.label}
