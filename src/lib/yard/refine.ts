@@ -96,12 +96,12 @@ const stem = (name: string) => name.toLowerCase().replace(/\d.*$/, "").trim();
 const types = (p: Pick<YardProject, "panels">) => p.panels.reduce<Record<string, number>>((m, x) => ((m[x.type] = (m[x.type] ?? 0) + 1), m), {});
 
 /** Part types whose count follows from the size (spans, spacing), so a size step may change them (C19). */
-export const DERIVED_TYPES: readonly string[] = ["shelf", "divider", "rail", "deck", "cleat", "bay"];
+export const DERIVED_TYPES: readonly string[] = ["shelf", "divider", "rail", "deck", "bay"];
 
 /** Why a rebuilt project is not the same form with one change, or null when it fits. */
 function formBreak(before: YardProject, after: YardProject, kind: string, noun?: string, want?: number): string | null {
   if (!stem(after.name).endsWith(stem(before.name)) || after.kind !== before.kind) return `it would turn the ${stem(before.name) || "build"} into a ${stem(after.name) || "different build"}`;
-  // C19: a size step re-derives the counts that follow from size (center supports, shelves, rails, slats, deck boards).
+  // C19: a size step re-derives the counts that follow from size (center supports, shelves, rails, slats, deck boards; never cleats, which carry casters and hangers).
   const free = new Set(kind === "count" && noun ? TARGET[noun] ?? [] : kind === "size" ? DERIVED_TYPES : []);
   const a = types(before), b = types(after);
   for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) if (!free.has(t) && (a[t] ?? 0) !== (b[t] ?? 0)) return `it would change the ${t}s (${a[t] ?? 0} → ${b[t] ?? 0})`;
