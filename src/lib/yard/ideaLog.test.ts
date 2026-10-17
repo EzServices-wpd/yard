@@ -22,12 +22,12 @@ function fakeRedis() {
         case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
         case "EXPIRE": return 1;
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
-        case "HEXISTS": return hs(key).has(String(a[0])) ? 1 : 0;
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
         case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const keep = asc.slice(-200); z.set(key, new Map(keep)); return 0; }
         case "ZREVRANGE": { const r = rev(key).slice(Number(a[0]), Number(a[1]) + 1); return a[2] ? r.flatMap(([m, s]) => [m, String(s)]) : r.map(([m]) => m); }
         case "HMGET": return a.map((f) => hs(key).get(String(f)) ?? null);
+        case "HEXISTS": return hs(key).has(String(a[0])) ? 1 : 0;
         case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });
         default: throw new Error(`unknown ${c}`);
       }
