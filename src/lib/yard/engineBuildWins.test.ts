@@ -71,6 +71,8 @@ const HONEST_LEARNER = ["bird feeder", "sandbox with lid", "play kitchen", "roll
  * (uprights or sides, back, top or front, bottom) with a title that only repeats the prompt.
  */
 const NOT_GENERIC = ["cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter"];
+/** The rule is not "never the box": a plain storage ask and the planter stem's own nouns (planter, raised bed) keep it. */
+const BOX_OWNS = ["storage unit", "cedar 2x4 planter 3 feet", "cedar raised garden bed 4x8", "raised garden bed 48 wide 96 long"];
 const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;
 /** The generic fallback body: a storage-program carcase made only of the bare box parts. */
 function genericBox(p: ReturnType<typeof generateFromPrompt>) {
@@ -152,6 +154,12 @@ describe("row 51: a complete engine build always shows; the learner never replac
       const got = await shows(q);
       assert.ok(!genericBox(got.p), `${q}: the bar shows the generic ${got.p.name} (${got.p.panels.map((x) => x.name).join(", ")})`);
       assert.ok(got.calls.includes("lookup"), `${q}: the learner never ran`);
+    });
+  }
+  for (const q of BOX_OWNS) {
+    it(`${q}: the asked-for box still shows, no learner`, async () => {
+      const got = await shows(q);
+      assert.ok(!got.calls.includes("lookup") && !got.p.displayOnly, `${q}: learner over the asked-for ${generateFromPrompt(q).name}`);
     });
   }
 });

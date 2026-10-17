@@ -4,6 +4,7 @@ import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { builderOwnText, READ_MODIFIER } from "./builderName";
+import { FORM_NEUTRAL } from "./genericBox";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
@@ -2295,9 +2296,7 @@ function buildGeneralTubeProject(
   return project;
 }
 
-/** Words that set size, style, room or stock, never which object it is. */
-// "over"/"under" set a bunk's layout (twin over full), never the object.
-const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|mini|tiny|giant|toy|toys|model|miniature|scale|simple|basic|easy|modern|rustic|farmhouse|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
+// FORM_NEUTRAL (words that set size, style, room or stock, never the object) lives in genericBox.ts.
 
 // Row 51: READ_MODIFIER (builderName.ts) lists the words that never say which object it is.
 const FITTED_CARCASE_NOUN = /^(?:cabinet|organizer|organiser|shelves|shelving|unit|system)$/;
