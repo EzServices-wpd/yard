@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { NotFound } from "@/components/site/not-found";
 import { createRootRoute, HeadContent, Outlet, Scripts, retainSearchParams } from "@tanstack/react-router";
-import { pickTestFlags } from "@/lib/ideas/testFlags";
+import { TEST_FLAGS, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
@@ -40,9 +40,10 @@ function VercelAnalytics() {
 }
 
 export const Route = createRootRoute({
-  // ?test=1 rides along on every navigation in the session (links, navigate(), redirects), whatever the target route.
-  validateSearch: (s: Record<string, unknown>): { test?: 1 } => (pickTestFlags(s).test ? { test: 1 } : {}),
-  search: { middlewares: [retainSearchParams(["test"])] },
+  // The test flags (offline=1, local=1, test=1) ride along on every navigation (links, navigate(), redirects),
+  // whatever the target route; test=1 also holds for the tab session (testSession).
+  validateSearch: (s: Record<string, unknown>): TestFlags => pickTestFlags(s),
+  search: { middlewares: [retainSearchParams([...TEST_FLAGS])] },
   // Only the root matched: the 404 page, which gets its own single title and description.
   head: ({ matches }) => (matches.length === 1 ? {
     meta: [

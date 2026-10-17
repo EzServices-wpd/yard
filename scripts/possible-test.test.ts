@@ -209,9 +209,9 @@ test("client: no test flag, no header and no session flag", async () => {
   }
 });
 
-test("router: the root route keeps test=1 on every navigation, and getRouter installs the header", () => {
+test("router: the root route keeps the test flags (offline, local, test) on every navigation, and getRouter installs the header", () => {
   const root = fs.readFileSync("src/routes/__root.tsx", "utf8");
-  assert.match(root, /validateSearch: \(s: Record<string, unknown>\): \{ test\?: 1 \} => \(pickTestFlags\(s\)\.test \? \{ test: 1 \} : \{\}\)/);
-  assert.match(root, /search: \{ middlewares: \[retainSearchParams\(\["test"\]\)\] \}/);
+  assert.match(root, /validateSearch: \(s: Record<string, unknown>\): TestFlags => pickTestFlags\(s\)/);
+  assert.match(root, /search: \{ middlewares: \[retainSearchParams\(\[\.\.\.TEST_FLAGS\]\)\] \}/);
   assert.match(fs.readFileSync("src/router.tsx", "utf8"), /installTestHeader\(\);/);
 });
