@@ -9,7 +9,17 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 10; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
+export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
+/**
+ * The two commands a write only sometimes sends (per instance, deterministic, so tests can pin them):
+ * - ZREMRANGEBYRANK recent: on the instance's 1st write and every TRIM_EVERY-th after, so the recent log holds at
+ *   most 200 + TRIM_EVERY − 1 from one instance (the snapshot still reads only its newest 200);
+ * - EXPIRE burst: on the instance's first write into each minute's bucket (TTL 120 s from then, which still covers
+ *   the next minute's read of it as the previous bucket).
+ * Typical write: WRITE_CMDS − 2 (+ RUN_CMDS).
+ */
+export const TRIM_EVERY = 8;
+export const RECENT_MAX = 200;
 /** One more when the client sent a run id (HINCRBY burst run:<id>). */
 export const RUN_CMDS = 1;
 /**
@@ -103,6 +113,9 @@ export class IdeaStore {
     private wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   ) {}
   get live() { return !!this.pipe; }
+  /** Writes this instance has sent (drives the trim cadence) and the last burst bucket it set a TTL on. */
+  private writes = 0;
+  private ttlBucket = -1;
 
   /** R4/R7: one pipelined write; repeats of a key within 10 s on this instance fold into one increment. Never throws. */
   async record(rec: LogRecord, now = new Date(), opts: { run?: string | null } = {}): Promise<"written" | "coalesced" | "off" | "over-budget" | "dropped"> {
@@ -122,7 +135,9 @@ export class IdeaStore {
     }
     const n = (p?.n ?? 0) + 1;
     const run = runIdOf(opts.run);
-    const cmds = WRITE_CMDS + (run ? RUN_CMDS : 0);
+    const trim = this.writes % TRIM_EVERY === 0; // the 1st, 9th, 17th… write on this instance
+    const ttl = this.ttlBucket !== bucket(now);
+    const cmds = WRITE_CMDS - (trim ? 0 : 1) - (ttl ? 0 : 1) + (run ? RUN_CMDS : 0);
     if (!this.budget.allows(cmds, now)) { stats.overBudget++; return "over-budget"; }
     this.pending.set(rec.key, { rec, n: 0, last: now.getTime() });
     if (this.pending.size > 5000) this.pending.clear();
@@ -131,25 +146,29 @@ export class IdeaStore {
       const source = rec.source ?? "unknown";
       const stamp = (s: string) => JSON.stringify({ at: now.toISOString(), source: s });
       const burst = K.burst(now);
-      const out = await this.pipe([
+      const list: Cmd[] = [
         ["INCRBY", K.budget(month(now)), cmds],
         ["HSETNX", K.meta, rec.key, meta],
         ["ZINCRBY", K.top, n, rec.key],
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
-        ["ZREMRANGEBYRANK", K.recent, 0, -201],
         ["HSET", K.stamp, rec.key, stamp(source)], // request time + gate source
-        ["HINCRBY", burst, "site", 1],
-        ["EXPIRE", burst, BURST_WINDOW_S * 2],
-        ...(run ? [["HINCRBY", burst, `run:${run}`, 1] as Cmd] : []),
-        ["HMGET", K.burst(now, 1), "site", ...(run ? [`run:${run}`] : [])], // the previous minute, for the sliding window
-      ]);
+      ];
+      if (trim) list.push(["ZREMRANGEBYRANK", K.recent, 0, -(RECENT_MAX + 1)]);
+      const at = (c: Cmd) => list.push(c) - 1;
+      const iSite = at(["HINCRBY", burst, "site", 1]);
+      if (ttl) list.push(["EXPIRE", burst, BURST_WINDOW_S * 2]);
+      const iRun = run ? at(["HINCRBY", burst, `run:${run}`, 1]) : -1;
+      const iPrev = at(["HMGET", K.burst(now, 1), "site", ...(run ? [`run:${run}`] : [])]); // the previous minute, for the sliding window
+      const out = await this.pipe(list);
+      this.writes++;
+      if (ttl) this.ttlBucket = bucket(now);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
       // Burst: this write's own count says so (no lag), so its stamp is settled in the same request.
-      const prev = (out?.[run ? 10 : 9] as (string | null)[] | null) ?? [];
-      const site = burstRate(Number(prev[0] ?? 0), Number(out?.[7]), now);
-      const perRun = run ? burstRate(Number(prev[1] ?? 0), Number(out?.[9]), now) : 0;
+      const prev = (out?.[iPrev] as (string | null)[] | null) ?? [];
+      const site = burstRate(Number(prev[0] ?? 0), Number(out?.[iSite]), now);
+      const perRun = run ? burstRate(Number(prev[1] ?? 0), Number(out?.[iRun]), now) : 0;
       if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST)) await this.possibleTest(rec.key, n, Number(out?.[2]), stamp("possible-test"), now);
       return "written";
     } catch {
@@ -244,7 +263,7 @@ export class IdeaStore {
       const head = await this.pipe([
         ["INCRBY", K.budget(month(now)), READ_CMDS],
         ["ZREVRANGE", K.top, 0, 999, "WITHSCORES"],
-        ["ZREVRANGE", K.recent, 0, 199, "WITHSCORES"], // the whole recent log (it holds 200): lastSeen per key
+        ["ZREVRANGE", K.recent, 0, RECENT_MAX - 1, "WITHSCORES"], // the newest 200 of the recent log (it holds up to 200 + TRIM_EVERY − 1 between trims): lastSeen per key
       ]);
       this.budget.saw(Number(head?.[0]));
       const flat = (head?.[1] as string[]) ?? [];

@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, IdeaStore, RUN_BURST, RUN_CMDS, SITE_BURST, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, IdeaStore, RECENT_MAX, RUN_BURST, RUN_CMDS, SITE_BURST, TRIM_EVERY, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { handleIdeasLog } from "../src/lib/yard/ideaLogHandler";
 import type { LogRecord } from "../src/lib/yard/ideaLog";
 
@@ -13,9 +13,9 @@ function fakeRedis() {
   const h = new Map<string, Map<string, string>>(), z = new Map<string, Map<string, number>>(), ttl = new Map<string, number>();
   const hs = (k: string) => (h.get(k) ?? h.set(k, new Map()).get(k)!);
   const zs = (k: string) => (z.get(k) ?? z.set(k, new Map()).get(k)!);
-  const log: { calls: number; cmds: number; perCall: number[]; billed: number } = { calls: 0, cmds: 0, perCall: [], billed: 0 };
+  const log: { calls: number; cmds: number; perCall: number[]; billed: number; names: string[][]; reads: (string | number)[][] } = { calls: 0, cmds: 0, perCall: [], billed: 0, names: [], reads: [] };
   const pipe: Pipe = async (list) => {
-    log.calls++; log.cmds += list.length; log.perCall.push(list.length);
+    log.calls++; log.cmds += list.length; log.perCall.push(list.length); log.names.push(list.map((c) => String(c[0])));
     return list.map(([c, k, ...a]) => {
       const key = String(k);
       switch (c) {
@@ -26,8 +26,8 @@ function fakeRedis() {
         case "EXPIRE": ttl.set(key, Number(a[0])); return 1;
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return String(zs(key).get(String(a[1])));
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
-        case "ZREMRANGEBYRANK": return 0;
-        case "ZREVRANGE": { const r = [...zs(key)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return r.flatMap(([m, s]) => [m, String(s)]); }
+        case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const stop = Number(a[1]) < 0 ? asc.length + Number(a[1]) : Number(a[1]); const gone = stop < 0 ? [] : asc.slice(Number(a[0]), stop + 1); /* like Redis: a stop before the start removes nothing */ for (const [m] of gone) zs(key).delete(m); return gone.length; }
+        case "ZREVRANGE": { log.reads.push([key, ...a.map((x) => (typeof x === "number" ? x : String(x)))]); const r = [...zs(key)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return r.flatMap(([m, s]) => [m, String(s)]); }
         case "HMGET": return a.map((f) => h.get(key)?.get(String(f)) ?? null); // a read never creates the key
         case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });
         default: throw new Error(`unknown ${c}`);
@@ -106,28 +106,65 @@ test("a bad run id is ignored (only 8-32 letters/digits count); it costs no extr
   const bad = ["short", "has space here!!", "x".repeat(40), "../../ideas:meta"];
   for (const [i, run] of bad.entries()) await s.record(rec(i), new Date(T0 + i * 1000), { run });
   for (const k of [...r.h.keys()].filter((k) => k.startsWith("ideas:burst:"))) assert.deepEqual([...r.hs(k).keys()], ["site"]);
-  assert.ok(r.log.perCall.every((n) => n === WRITE_CMDS));
+  assert.ok(r.log.perCall.every((n) => n <= WRITE_CMDS), `no run-id command: ${r.log.perCall}`);
 });
 
-test("Upstash commands per write: 10 without a run id, 11 with one; in a burst +3 for a new row, +2 for a live row, +4 for a possible-test-only row; the budget bills exactly what is sent", async () => {
+test("Upstash commands per write: at most 10 (+1 with a run id); the trim and the TTL are deterministic per instance; in a burst +3 for a new row, +2 for a live row, +4 for a possible-test-only row; the budget bills exactly what is sent", async () => {
   assert.equal(WRITE_CMDS, 10);
   assert.equal(RUN_CMDS, 1);
+  assert.equal(TRIM_EVERY, 8);
   assert.equal(BURST_NEW_CMDS, 3);
   assert.equal(BURST_FIX_CMDS, 2);
   assert.equal(BURST_STAMP_CMDS, 2);
   const r = fakeRedis();
   const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  await s.record(rec(1), new Date(T0));
-  assert.deepEqual(r.log.perCall, [10]);
-  await s.record(rec(2), new Date(T0 + 1), { run: RUN });
-  assert.deepEqual(r.log.perCall, [10, 11]);
-  for (let i = 3; i < SITE_BURST + 3; i++) await s.record(rec(i), new Date(T0 + i));
-  assert.deepEqual(r.log.perCall.slice(-2), [10, 3], "a new row over the line: one 3-command pipeline (count + stamp)");
-  await s.record(rec(1), new Date(T0 + 20_000)); // k1 was written live before the burst
-  assert.deepEqual(r.log.perCall.slice(-2), [10, 2], "a live row: count only, no stamp");
-  await s.record(rec(SITE_BURST + 2), new Date(T0 + 20_001)); // possible-test only so far
-  assert.deepEqual(r.log.perCall.slice(-3), [10, 2, 2], "a possible-test-only row: count, then re-stamp");
+  await s.record(rec(1), new Date(T0), { run: RUN }); // 1st write: trims, sets the bucket TTL
+  assert.deepEqual(r.log.perCall, [11]);
+  await s.record(rec(2), new Date(T0 + 1), { run: RUN }); // same minute: no trim, no TTL
+  assert.deepEqual(r.log.perCall, [11, 9]);
+  assert.ok(!r.log.names[1].includes("ZREMRANGEBYRANK") && !r.log.names[1].includes("EXPIRE"));
+  await s.record(rec(3), new Date(T0 + 60_000), { run: RUN }); // a new minute: TTL again, still no trim
+  assert.deepEqual(r.log.perCall, [11, 9, 10]);
+  for (let i = 4; i <= 8; i++) await s.record(rec(i), new Date(T0 + 60_000 + i), { run: RUN });
+  await s.record(rec(9), new Date(T0 + 60_100), { run: RUN }); // the 9th write: trims
+  assert.ok(r.log.names.at(-1)!.includes("ZREMRANGEBYRANK"));
+  assert.equal(r.log.names.filter((n) => n.includes("ZREMRANGEBYRANK")).length, 2, "writes 1 and 9");
   assert.equal(r.log.billed, r.log.cmds, "INCRBY budget counts every command sent");
+  // Net per write with a run id, one write per minute per instance (the worst case): 11 − 7/8 = 10.125;
+  // with 2+ writes a minute on an instance it is ≤ 9.625. Without a run id, one less.
+  const net = (perMinute: number) => 9 + (1 / TRIM_EVERY) + 1 / perMinute;
+  assert.equal(net(1), 10.125);
+  assert.ok(net(2) <= 9.625 && net(8) <= 10);
+  // In a burst (all one minute): new row +3, live row +2, possible-test-only row +2+2.
+  const b = fakeRedis();
+  const sb = new IdeaStore(b.pipe, undefined, () => {}, async () => {});
+  for (let i = 1; i <= SITE_BURST + 1; i++) await sb.record(rec(i), new Date(T0 + i));
+  assert.equal(b.log.perCall.at(-1), BURST_NEW_CMDS, "a new row over the line: one 3-command pipeline (count + stamp)");
+  await sb.record(rec(1), new Date(T0 + 20_000)); // k1 was written live before the line
+  assert.equal(b.log.perCall.at(-1), BURST_FIX_CMDS, "a live row: count only, no stamp");
+  await sb.record(rec(SITE_BURST + 1), new Date(T0 + 20_001));
+  assert.deepEqual(b.log.perCall.slice(-2), [BURST_FIX_CMDS, BURST_STAMP_CMDS], "a possible-test-only row: count, then re-stamp");
+  assert.equal(b.log.billed, b.log.cmds);
+});
+
+test("recent log: trimmed on every 8th write per instance, it never holds more than 200 + 8; the snapshot reads only its newest 200", async () => {
+  const r = fakeRedis();
+  const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+  let most = 0;
+  for (let i = 0; i < 1000; i++) {
+    await s.record({ ...rec(i), source: undefined }, new Date(T0 + i * 5_000)); // 5 s apart: no burst, no coalescing
+    most = Math.max(most, r.zs("ideas:recent").size);
+  }
+  assert.ok(most < RECENT_MAX + TRIM_EVERY, `recent log peaked at ${most}`);
+  assert.ok(r.zs("ideas:recent").size >= RECENT_MAX, `the newest 200 are always kept: ${r.zs("ideas:recent").size}`);
+  const snap = await s.snapshot(new Date(T0 + 5_000_000));
+  assert.deepEqual(r.log.reads.find((x) => x[0] === "ideas:recent")!.slice(1, 3), [0, RECENT_MAX - 1], "ZREVRANGE recent 0 199");
+  const seen = snap.rows.filter((x) => x.lastSeen);
+  assert.ok(seen.length <= RECENT_MAX, `rows from the recent log: ${seen.length}`);
+  assert.equal(seen.length, RECENT_MAX);
+  assert.ok(snap.recent.length <= 20);
+  // The newest 200 are the ones read: the oldest of them is write 800.
+  assert.equal(Math.min(...seen.map((x) => Date.parse(x.lastSeen!))), T0 + 800 * 5_000);
 });
 
 test("sliding window: burstRate weights the previous minute by the part still inside the last 60 s", () => {
