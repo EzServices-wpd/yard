@@ -1036,6 +1036,8 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
   const own: Size = base;
+  // Flat parts (a base, a bottom board) whose kept thickness moved their top: the parts that sat on them follow.
+  const seats: { top0: number; top: number; x: [number, number]; z: [number, number] }[] = [];
   const count = typedCount(prompt, recipe);
   // A counted unit has its own real size: 3 bays are three bays wide, 3 steps three rises tall.
   const unit = recipe.count?.unit ?? {};
@@ -1084,6 +1086,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
         const t0 = frac[thin] * own[K[thin]];
         if (part.kind !== "hardware" && Math.abs(sz[K[thin]] - t0) > 1e-6 && t0 < Math.min(...(["x", "y", "z"] as const).filter((a) => a !== thin).map((a) => sz[K[a]]))) {
           if (thin !== "y") pos0[thin] += (sz[K[thin]] - t0) / 2;
+          else seats.push({ top0: pos0.y + sz.height, top: pos0.y + t0, x: [pos0.x, pos0.x + sz.width], z: [pos0.z, pos0.z + sz.depth] });
           sz[K[thin]] = t0;
         }
       }
@@ -1095,6 +1098,15 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
         size: sz,
         materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
+    }
+  }
+  // A part standing on a seat whose top moved keeps its own top and meets the seat's new top (a post on a base).
+  for (const st of seats) {
+    for (const p of panels) {
+      if (Math.abs(p.position.y - st.top0) > 0.05 || p.position.x >= st.x[1] - 0.01 || p.position.x + p.size.width <= st.x[0] + 0.01 || p.position.z >= st.z[1] - 0.01 || p.position.z + p.size.depth <= st.z[0] + 0.01) continue;
+      const d = st.top - st.top0;
+      if (p.size.height <= Math.min(p.size.width, p.size.depth) || p.size.height - d < 1) p.position = { ...p.position, y: p.position.y + d };
+      else { p.position = { ...p.position, y: st.top }; p.size = { ...p.size, height: p.size.height - d }; }
     }
   }
   // A pin is round stock: its two short sides are the dowel's diameter, centred where the recipe put it.
