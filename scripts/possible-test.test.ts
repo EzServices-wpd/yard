@@ -80,6 +80,21 @@ test("the counter is short-lived and never stored with a row (no run id in meta,
   assert.doesNotMatch(JSON.stringify(row), new RegExp(RUN));
 });
 
+test("a coalesced write (same key within 10 s) does not touch the burst hash", async () => {
+  const r = fakeRedis();
+  const held: Promise<unknown>[] = [];
+  const s = new IdeaStore(r.pipe, undefined, (p) => held.push(p), async () => {});
+  assert.equal(await s.record(rec(1), new Date(T0), { run: RUN }), "written");
+  const burst = [...r.h.keys()].find((k) => k.startsWith("ideas:burst:"))!;
+  const before = JSON.stringify([...r.hs(burst)]);
+  const calls = r.log.calls;
+  for (let i = 1; i <= 5; i++) assert.equal(await s.record(rec(1), new Date(T0 + i * 1000), { run: RUN }), "coalesced");
+  await Promise.all(held); // the held repeats are flushed as one increment (3 commands, no burst count)
+  assert.equal(JSON.stringify([...r.hs(burst)]), before, "site and run counts unchanged");
+  const after = r.log.perCall.slice(calls);
+  assert.ok(after.length >= 1 && after.every((n) => n === 3), `only flush pipelines (INCRBY + ZINCRBY + ZADD) ran: ${after}`);
+});
+
 test("a bad run id is ignored (only 8-32 letters/digits count); it costs no extra command", async () => {
   const r = fakeRedis();
   const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
