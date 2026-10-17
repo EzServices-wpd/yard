@@ -625,6 +625,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   doc.setLineCap("round");
   const anchors = new Map<string, { x: number; y: number }>();
   const ink = new Map<string, { x: number; y: number }[]>();
+  // Everything painted, in paint order, so a label can tell which of a part's paint is still showing.
+  const painted: Paint[] = [];
   const grouped = doc as unknown as { beginGroup?: (a: Record<string, string>) => void; endGroup?: () => void };
   for (const sol of paintOrder(faceSolids(solids))) {
     const g = opts.partGroup && grouped.beginGroup ? opts.partGroup(sol.id) : null;
@@ -646,6 +648,7 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       doc.setLineWidth(w);
       doc.line(a.x, a.y, b.x, b.y);
       anchors.set(sol.id, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      painted.push(paintOf(sol.id, [], { a, b, r: (w + 0.9) / 2 }));
       return;
     }
     const vis = sol.faces
@@ -658,8 +661,10 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       const pts = f.pts.map(map);
       screenPts.push(...pts);
       doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
-      if (f.holes?.length) polyHoles(doc, [pts, ...f.holes.map((h) => h.map(map))]);
+      const rings = [pts, ...(f.holes ?? []).map((h) => h.map(map))];
+      if (f.holes?.length) polyHoles(doc, rings);
       else poly(doc, pts, "FD");
+      painted.push(paintOf(sol.id, rings));
     }
     ink.set(sol.id, [...(ink.get(sol.id) ?? []), ...screenPts]);
   }
@@ -674,16 +679,83 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
 
   if (opts.letters) {
     const want = opts.bubbleIds ?? new Set([...opts.tones.entries()].filter(([, t]) => t === "hot").map(([id]) => id));
-    const byLetter = new Map<string, { x: number; y: number }>();
-    for (const [id, pt] of anchors) {
-      if (!want.has(id)) continue;
-      const L = opts.letters.get(id);
-      if (!L || byLetter.has(L)) continue;
-      byLetter.set(L, pt);
+    const byLetter = new Map<string, string[]>();
+    for (const id of anchors.keys()) {
+      const L = want.has(id) ? opts.letters.get(id) : undefined;
+      if (L) byLetter.set(L, [...(byLetter.get(L) ?? []), id]);
     }
-    drawBubbles(doc, frame, byLetter);
+    const pins = new Map<string, { x: number; y: number }>();
+    for (const [L, ids] of byLetter) pins.set(L, visiblePin(painted, ids, anchors));
+    drawBubbles(doc, frame, pins);
   }
   return { anchors, scale: s };
+}
+
+type Paint = { id: string; rings: P2[][]; stick?: { a: P2; b: P2; r: number }; box: { x0: number; y0: number; x1: number; y1: number } };
+export function paintOf(id: string, rings: P2[][], stick?: Paint["stick"]): Paint {
+  const pts = stick ? [stick.a, stick.b] : rings[0];
+  const pad = stick ? stick.r : 0;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  return { id, rings, stick, box: { x0: Math.min(...xs) - pad, y0: Math.min(...ys) - pad, x1: Math.max(...xs) + pad, y1: Math.max(...ys) + pad } };
+}
+/** Even-odd over every ring, so a point in a hole is not on the paint. */
+function onPaint(q: Paint, p: P2) {
+  const b = q.box;
+  if (p.x < b.x0 || p.x > b.x1 || p.y < b.y0 || p.y > b.y1) return false;
+  if (q.stick) {
+    const { a, b: e, r } = q.stick;
+    const dx = e.x - a.x;
+    const dy = e.y - a.y;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy) <= r;
+  }
+  let inside = false;
+  for (const ring of q.rings) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const A = ring[i];
+      const B = ring[j];
+      if (A.y > p.y !== B.y > p.y && p.x < ((B.x - A.x) * (p.y - A.y)) / (B.y - A.y) + A.x) inside = !inside;
+    }
+  }
+  return inside;
+}
+/** The part on top at a screen point (the last paint there), or null on bare paper. */
+function topAt(painted: Paint[], p: P2) {
+  for (let i = painted.length - 1; i >= 0; i--) if (onPaint(painted[i], p)) return painted[i].id;
+  return null;
+}
+const PIN_MARGIN = 2.5;
+/** The point and a small ring around it all show this part, so the dot reads as sitting on it. */
+const showsAt = (painted: Paint[], id: string, p: P2) =>
+  [p, { x: p.x + PIN_MARGIN, y: p.y }, { x: p.x - PIN_MARGIN, y: p.y }, { x: p.x, y: p.y + PIN_MARGIN }, { x: p.x, y: p.y - PIN_MARGIN }].every((q) => topAt(painted, q) === id);
+/**
+ * Where a letter's leader lands: the first part's centre when that part shows there (the old pin, unchanged), else
+ * on the part (of those sharing the letter) with the most paint still showing, at its visible sample nearest the
+ * middle of what shows. Only when none of them shows anywhere does the old centre stay.
+ */
+export function visiblePin(painted: Paint[], ids: string[], anchors: Map<string, P2>): P2 {
+  const first = anchors.get(ids[0])!;
+  if (showsAt(painted, ids[0], first)) return first;
+  let best: { n: number; pt: P2 } | null = null;
+  for (const id of ids) {
+    const shown: P2[] = [];
+    for (const q of painted) {
+      if (q.id !== id) continue;
+      const N = 12;
+      for (let i = 0; i <= N; i++) {
+        for (let j = 0; j <= N; j++) {
+          const p = { x: q.box.x0 + ((q.box.x1 - q.box.x0) * i) / N, y: q.box.y0 + ((q.box.y1 - q.box.y0) * j) / N };
+          if (onPaint(q, p) && showsAt(painted, id, p)) shown.push(p);
+        }
+      }
+    }
+    if (!shown.length || (best && shown.length <= best.n)) continue;
+    const m = { x: shown.reduce((a, p) => a + p.x, 0) / shown.length, y: shown.reduce((a, p) => a + p.y, 0) / shown.length };
+    const pt = shown.reduce((a, p) => (Math.hypot(p.x - m.x, p.y - m.y) < Math.hypot(a.x - m.x, a.y - m.y) ? p : a));
+    best = { n: shown.length, pt };
+  }
+  return best?.pt ?? first;
 }
 
 /** Small dimension arrows: reference plane → part face, with a fraction label on a white chip. */

@@ -14,6 +14,7 @@ import fs from "node:fs";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { planOverviewSvg, planStepSvg } from "../src/lib/yard/planStepPicture";
+import { isoSvgString } from "../src/lib/yard/iso";
 import { headerTitle } from "../src/lib/yard/pdf";
 import { headerSize, typedAxesTalk } from "../src/lib/yard/headerSize";
 import { inchFrac } from "../src/lib/yard/inchText";
@@ -34,6 +35,23 @@ const NOTE_KNOWN: Record<string, string> = {
   "nightstand 18 wide": "depth",
 };
 
+/**
+ * Pre-existing (also at release): the 3D view labels project.overall, the header the drawn extent, and these builds'
+ * overall is not their drawn extent (proud fronts outside the box; stick builds' overall is to the stick centres; the jar
+ * shelf's engine layout as in NOTE_KNOWN). Pinned so the list can only shrink; the water wheel is not on it.
+ */
+const ISO_KNOWN = new Set([
+  "wall shelf for jars 24 wide: 3D height 18 vs header 19 1/4",
+  "kitchen base cabinet 24 wide: 3D depth 24 vs header 24 3/4",
+  "nightstand 18 wide: 3D depth 16 vs header 16 3/4",
+  "catapult from popsicle sticks: 3D width 8 9/16 vs header 8 11/16",
+  "catapult from popsicle sticks: 3D height 4 1/2 vs header 4 5/8",
+  "dog from popsicle sticks: 3D width 26 7/8 vs header 27 3/16",
+  "dog from popsicle sticks: 3D depth 5 1/8 vs header 5 1/2",
+  "dog from popsicle sticks: 3D height 21 9/16 vs header 21 11/16",
+  "picture frame from bamboo skewers: 3D height 11 9/16 vs header 11 5/8",
+]);
+
 const DR = JSON.parse(fs.readFileSync("src/lib/ideas/drawings.json", "utf8")) as Record<string, { dims?: { width: number; height: number; depth: number; round?: boolean } }>;
 const CARDS = JSON.parse(fs.readFileSync("src/lib/ideas/recipes.json", "utf8")) as { popular: { id: string; size: string }[]; fresh: { id: string; size: string }[] };
 const corpus = new Map<string, string | null>([["linen closet 31.5 wide 78 tall 16 deep", null], ["water wheel", null], ["floating desk", null]]);
@@ -51,7 +69,7 @@ const headerAxes = (h: string) => {
 };
 const near = (a: { width: number; depth: number; height: number }, b: { width: number; depth: number; height: number }) => AX.every((k) => Math.abs(a[k] - b[k]) <= 1);
 
-type Row = { prompt: string; slug: string | null; header: string; drawn: string | null; round: boolean; steps: string[]; unitText: string | null; notes: Partial<Record<(typeof AX)[number], string>>; assumed: Partial<Record<(typeof AX)[number], boolean>>; size: { width: number; depth: number; height: number } };
+type Row = { prompt: string; slug: string | null; header: string; drawn: string | null; iso: string[]; round: boolean; steps: string[]; unitText: string | null; notes: Partial<Record<(typeof AX)[number], string>>; assumed: Partial<Record<(typeof AX)[number], boolean>>; size: { width: number; depth: number; height: number } };
 const rows: Row[] = [];
 for (const [prompt, slug] of corpus) {
   const p = generateFromPrompt(prompt);
@@ -66,7 +84,9 @@ for (const [prompt, slug] of corpus) {
   const m = plan.instructions.map((s) => s.description).join(" ").match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep × ([\d\s/]+)" high/);
   const notes: Row["notes"] = {};
   for (const n of plan.instructions.map((s) => s.description).join(" ").matchAll(/Assumed ([\d\s/]+)" (wide|tall|deep) \(default size\)/g)) notes[n[2] === "wide" ? "width" : n[2] === "tall" ? "height" : "depth"] = n[1].trim();
-  rows.push({ prompt, slug, notes, header: headerTitle(p), drawn: ov && !ov.round ? f3(ov) : null, round: !!ov?.round, steps, unitText: m ? `${m[1].trim()} × ${m[2].trim()} × ${m[3].trim()}` : null, assumed: typedAxesTalk(p).assumed, size: headerSize(p) });
+  // The 3D view's W, H and D labels and its "W × H × D" caption, as printed.
+  const iso = [...isoSvgString(p).matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((x) => x[1].replace(/&quot;|″/g, '"'));
+  rows.push({ prompt, slug, notes, iso, header: headerTitle(p), drawn: ov && !ov.round ? f3(ov) : null, round: !!ov?.round, steps, unitText: m ? `${m[1].trim()} × ${m[2].trim()} × ${m[3].trim()}` : null, assumed: typedAxesTalk(p).assumed, size: headerSize(p) });
 }
 
 test("canaries: linen says its typed 31 1/2 × 16 × 78; the water wheel says its true 18 × 24 9/16 × 31 1/8", () => {
@@ -91,6 +111,31 @@ test("header = drawings on every assumed axis, for every build and idea (typed a
   assert.deepEqual(bad, []);
   // Typed sizes said back stay few and known (proud doors/fronts, a pocket unit, a rough opening, a typed height).
   assert.ok(said.length <= 12, said.join("\n"));
+});
+
+test("the 3D view's dimension labels are its caption, and the header's on every assumed axis (no 23.5\" beside 23 7/16\")", () => {
+  const bad: string[] = [];
+  let n = 0;
+  for (const r of rows) {
+    // A plain W × H × D caption ("784 sticks · " or "Headboard · " before it, " assumed" after it, are words, not sizes).
+    const cap = r.iso.find((t) => t.includes(" × "));
+    const m = cap?.match(/^(?:[^·]+ · )?([\d /]+)" × ([\d /]+)" × ([\d /]+)"(?: assumed)?$/);
+    if (!cap || !m) continue;
+    const [w, ht, d] = [m[1], m[2], m[3]];
+    const labels = r.iso.filter((t) => t !== cap).map((x) => x.replace(/"$/, ""));
+    if (labels.length !== 3) continue; // a flat panel's 3D view labels two axes
+    if (labels.join(" | ") !== [w, ht, d].join(" | ")) bad.push(`${r.prompt}: labels ${labels.join(", ")} vs caption ${cap}`);
+    const h = headerAxes(r.header).split(" × ");
+    const isoAx = { width: w, depth: d, height: ht };
+    AX.forEach((a, k) => {
+      const msg = `${r.prompt}: 3D ${a} ${isoAx[a]} vs header ${h[k]}`;
+      if (r.assumed[a] && EXCEPTIONS[r.prompt] !== a && isoAx[a] !== h[k] && !ISO_KNOWN.has(msg)) bad.push(msg);
+    });
+    if (r.prompt === "water wheel") assert.equal(`${w} × ${d} × ${ht}`, headerAxes(r.header), "water wheel 3D view vs title");
+    n++;
+  }
+  assert.deepEqual(bad, []);
+  assert.ok(n >= 40, `only ${n} 3D views checked`);
 });
 
 test("full-view step pictures label exactly what the overview labels", () => {
@@ -149,7 +194,10 @@ test("the logged size (made N× card) is the header's, to the same 1/16", async 
 });
 
 test("one formatter: card inch() and the header both round to the nearest 1/16", () => {
-  for (const n of [24.58, 31.14, 31.5, 16.75, 0.75, 3.41, 18]) assert.equal(inch(n), inchFrac(n));
+  for (const n of [24.58, 31.14, 31.5, 16.75, 0.75, 3.41, 18, 23.4579, 30.229]) assert.equal(inch(n), inchFrac(n));
+  // #85's wheel is 23.458 deep: the drawing's 23 7/16 is the truth, so the title says 23 7/16 too (not a 1/4-rounded 23 1/2).
+  assert.equal(inch(23.4579), "23 7/16");
+  assert.equal(inch(30.229), "30 1/4");
   assert.equal(inch(24.58), "24 9/16");
   assert.equal(inch(31.14), "31 1/8");
 });
