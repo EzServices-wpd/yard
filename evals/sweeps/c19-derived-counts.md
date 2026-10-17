@@ -19,19 +19,18 @@ Invariant: C19. Engine only, no xAI.
 | 13 | garden bench | Garden bench · 48" W × 16" D × 18" H (size assumed) | 23/32" BC exterior plywood 4×8 ×1; 1×6 Board (8 ft) ×2; 1×4 Board (8 ft) ×2; 2×6 (8 ft) ×2; #8 x 2-1/2" exterior-coated or stainless wood screws ×2; Titebond III Ultimate wood glue (waterproof, exterior) ×1; Exterior fin | pass | Confirm the footprint before the first cut → Cut the 1×6 Board (8 ft) and 2×6 (8 ft) and 1×4 Board (8 ft) and 23/32" BC exterior plywood 4×8 → Stand the legs |
 | 14 | raised garden bed 4x8 | Raised garden bed · 48" W × 96" D × 16 1/2" H (H assumed) | 2×6 pressure-treated (8 ft) ×9; 4×4 pressure-treated (8 ft), ground contact ×1; #8 x 2-1/2" exterior-coated or stainless wood screws ×2; Titebond III Ultimate wood glue (waterproof, exterior) ×1; Landscape fabric liner,  | pass | Confirm the size before the first cut → Cut the 4×4 pressure-treated (8 ft), ground contact and 2×6 pressure-treated (8 ft) → Set the Right lower board |
 | 15 | deck box | Deck box · 36" W × 16" D × 30" H (size assumed) | 23/32" BC exterior plywood 4×8 ×2; #8 x 1-1/4" exterior-coated or stainless wood screws ×1; Titebond III Ultimate wood glue (waterproof, exterior) ×1; Piano hinge ×1; Lid stay / lid support ×1; Exterior finish — spar ure | pass | Confirm the footprint before the first cut → Cut the 23/32" BC exterior plywood 4×8 → Stand the main box — sides, back, front, bottom only |
-| 16 | pantry cabinet | Pantry cabinet · 36" W × 16 3/4" D × 84" H (size assumed) | 3/4" Plywood 4×8 ×3; 1/4" plywood 4x8 (backer) ×1; #8 x 1-1/4" wood screws ×1; Soft-close concealed cabinet hinges ×5; Cabinet bar pulls ×2; 3/16" shelf pins ×1; Wood glue ×1 | pass | Confirm the footprint before the first cut → Cut the 3/4" Plywood 4×8 and 1/4" plywood (backer) → Stand the main box |
+| 16 | bookshelf 48x12x60 | Bookcase · 48" W × 12" D × 60" H | 2×6 (8 ft) ×17; 1/4" plywood 4x8 (backer) ×1; #8 x 2-1/2" wood screws ×1; 3/16" shelf pins ×1; Wood glue ×1 | pass | Confirm the footprint before the first cut → Glue up and cut the 2×6 (8 ft) and 1/4" plywood (backer) → Stand the main box |
 | 17 | wall shelf | Wall shelf · 36" W × 8" D × 2 1/4" H (size assumed) · 1 shelf | 3/4" Plywood Project Panel 2×4 ×1; #8 x 1-1/4" wood screws ×1; GRK RSS #9 x 3-1/8 structural screws ×1 | pass | Confirm the wall span before the first cut → Cut the shelves and wall cleats → Lag each wall cleat into studs |
-| 18 | storage bench | Bench · 48" W × 16" D × 18" H (size assumed) | 3/4" Plywood 4×8 ×1; 1/4" plywood 4x8 (backer) ×1; #8 x 1-1/4" wood screws ×2; Wood glue ×1 | pass | Confirm the footprint before the first cut → Cut the 3/4" Plywood 4×8 and 1/4" plywood (backer) → Stand the main box |
+| 18 | bookcase 30 wide | Bookcase 30" wide · 30" W × 12" D × 84" H (D, H assumed) | 3/4" Plywood 4×8 ×2; 1/4" plywood 4x8 (backer) ×1; #8 x 1-1/4" wood screws ×1; 3/16" shelf pins ×1; Wood glue ×1 | pass | Confirm the footprint before the first cut → Cut the 3/4" Plywood 4×8 and 1/4" plywood (backer) → Stand the main box |
 | 19 | linen closet 31.5 wide 78 tall 16 deep | Linen · 31 1/2" W × 16" D × 78" H | 3/4" Plywood 4×8 ×2; 1/4" plywood 4x8 (backer) ×1; #8 x 1-1/4" wood screws ×1; Soft-close concealed cabinet hinges ×4; Cabinet bar pulls ×2; 3/16" shelf pins ×1; Wood glue ×1 | pass | Confirm the footprint before the first cut → Cut the 3/4" Plywood 4×8 and 1/4" plywood (backer) → Stand the main box |
 | 20 | nightstand | Nightstand · 20" W × 16 3/4" D × 24" H (size assumed) | 3/4" Plywood 4×8 ×1; 1/4" plywood 4x8 (backer) ×1; #8 x 1-1/4" wood screws ×1; 16" side-mount drawer slides ×1; Cup pulls ×1; 1" finish nails / brads ×1; Iron-on edge banding ×1; Wood glue ×1 | pass | Confirm the footprint before the first cut → Cut the 3/4" Plywood 4×8 and 1/4" plywood (backer) → Stand the main box |
 
 20/20 pass C19.
 
-## Before the fix (release/2026-10-20 @ a18ca6a): 13/20 pass C19.
+## Before the fix (release/2026-10-20 @ a18ca6a): 14/20 pass C19.
 - black bookshelf 36x12x72: Wider ×2 refused: it would change the dividers (0 → 6)
 - bookshelf 36x12x72: Wider ×2 refused: it would change the dividers (0 → 6)
 - bookshelf 38x12x72: Wider ×1 refused: it would change the dividers (0 → 6)
 - bookcase: Wider ×2 refused: it would change the dividers (0 → 6)
 - shoe rack: Wider ×2 refused: it would change the dividers (2 → 3)
 - deck box: Wider ×1 refused: it would change the dividers (0 → 1)
-- pantry cabinet: Wider ×2 refused: it would change the dividers (0 → 5)

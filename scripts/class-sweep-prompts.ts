@@ -229,7 +229,7 @@ export const SWEEPS = {
       "black bookshelf 36x12x72", "bookshelf 36x12x72", "bookshelf 38x12x72", "bookcase", "bookshelf 30x10x60",
       "tv stand", "tv console 60 inch", "shoe rack", "shoe bench", "coffee table",
       "workbench", "picnic table", "garden bench", "raised garden bed 4x8", "deck box",
-      "pantry cabinet", "wall shelf", "storage bench", "linen closet 31.5 wide 78 tall 16 deep", "nightstand",
+      "bookshelf 48x12x60", "wall shelf", "bookcase 30 wide", "linen closet 31.5 wide 78 tall 16 deep", "nightstand",
     ],
   },
 } as const;
