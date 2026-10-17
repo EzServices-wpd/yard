@@ -130,7 +130,7 @@ async function homeChipArt(): Promise<Record<string, string>> {
 
 /** 6B: chips are 44px tall on a phone, 36px on a desktop. 4B (row 57): a fill, not an outline (only sample cards are outlined). */
 const CHIP =
-  "inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] py-1 pl-1 pr-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
+  "inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] pl-1 pr-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
 
 /** The chip's drawing: fixed box (CLS 0), lazy, decorative (the label names it). */
 function ChipArt({ src }: { src?: string }) {
