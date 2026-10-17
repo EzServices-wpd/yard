@@ -55,6 +55,10 @@ function held(call: keyof Ai) {
 
 const bin = RECIPES.recipes.find((r) => r.key === "compost-bin")!;
 const OLD_LEARN = "ukulele wall hanger";
+// A prompt that reaches the hint and interpret calls (not engine-kept, not a house brief, not the learner). Row 51
+// (#71) sends "storage cabinet" to the house brief now that "storage" is a read modifier, so this uses a builder's
+// own words instead.
+const HINT_PATH = "Adirondack chair from cedar";
 const NEWER = "folding table";
 
 /** Old run waits on `call`; the newer build lands; the old reply is released; the bench must not change. */
@@ -109,10 +113,10 @@ describe("stale prompt results never overwrite a newer build", () => {
   });
   it("hint callback from an older prompt", async () => {
     // The hint branch re-reads the bench's form, so the newer build here is one the engine does not lock (plant stand).
-    await lateResultKeepsNewer("storage cabinet", "hintSubject", { summary: "a tall box with legs and a top", subject: "cabinet" }, { newer: "plant stand" });
+    await lateResultKeepsNewer(HINT_PATH, "hintSubject", { summary: "a tall box with legs and a top", subject: "cabinet" }, { newer: "plant stand" });
   });
   it("interpret callback from an older prompt", async () => {
-    await lateResultKeepsNewer("storage cabinet", "interpretPrompt", { ok: true, real: "Queried stale form", notes: "stale interpret note" });
+    await lateResultKeepsNewer(HINT_PATH, "interpretPrompt", { ok: true, real: "Queried stale form", notes: "stale interpret note" });
   });
   it("an older run's finally and 22s timer never clear the newer run's busy state", async () => {
     busyTimers.clear();
@@ -120,7 +124,7 @@ describe("stale prompt results never overwrite a newer build", () => {
     const old = runYardPrompt(OLD_LEARN, { fresh: true, ai: a.ai });
     await a.reached;
     const b = held("hintSubject");
-    const newer = runYardPrompt("storage cabinet", { fresh: true, ai: b.ai });
+    const newer = runYardPrompt(HINT_PATH, { fresh: true, ai: b.ai });
     await b.reached;
     assert.equal(useYard.getState().grokBusy, true);
     // Every busy timer still armed fires (an older run's timer is armed only if the run was never cancelled).
@@ -131,7 +135,7 @@ describe("stale prompt results never overwrite a newer build", () => {
     await old;
     await settle();
     assert.equal(useYard.getState().grokBusy, true, "an older run's finally cleared the newer run's busy state");
-    assert.match(useYard.getState().project.name, /^Storage cabinet/);
+    assert.match(useYard.getState().project.name, /^Adirondack chair/);
     b.gate.resolve({ summary: "", subject: "" });
     const newerLive = await newer;
     assert.equal(useYard.getState().grokBusy, false, "the latest run still clears its own busy state");
