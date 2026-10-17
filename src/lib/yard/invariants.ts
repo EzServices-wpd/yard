@@ -479,14 +479,19 @@ function c19(p: YardProject, plan: BuildPlan): Violation[] {
   if (p.displayOnly || p.standIn || !plan.cutList.length || isUnitItem(p)) return [];
   const out: Violation[] = [];
   const syncBefore = i3(p, plan).length + cutStockOffBuy(plan).length;
+  // Each step twice in a row (a span limit is often crossed on the second tap: 36 → 38 → 40 wide).
   for (const [label, phrase] of SIZE_STEPS) {
-    const r = refineProject(p, phrase);
-    const derived = r.refused.find((t) => DERIVED_TYPES.some((d) => t.includes(`change the ${d}s`)));
-    if (derived) { out.push(v("C19", `${label} refused: ${derived.replace(/^"[^"]*":\s*/, "")}`)); continue; }
-    if (!r.project) continue;
-    const after = buildPlan(r.project);
-    const syncAfter = [...i3(r.project, after).map((x) => x.msg), ...cutStockOffBuy(after).map((m) => `cut list stock "${m}" is not on Buy`)];
-    if (syncAfter.length > syncBefore) out.push(v("C19", `after ${label}: ${syncAfter[0]}`));
+    let cur = p;
+    for (const tap of [1, 2]) {
+      const r = refineProject(cur, phrase);
+      const derived = r.refused.find((t) => DERIVED_TYPES.some((d) => t.includes(`change the ${d}s`)));
+      if (derived) { out.push(v("C19", `${label} ×${tap} refused: ${derived.replace(/^"[^"]*":\s*/, "")}`)); break; }
+      if (!r.project) break;
+      cur = r.project;
+      const after = buildPlan(cur);
+      const syncAfter = [...i3(cur, after).map((x) => x.msg), ...cutStockOffBuy(after).map((m) => `cut list stock "${m}" is not on Buy`)];
+      if (syncAfter.length > syncBefore) { out.push(v("C19", `after ${label} ×${tap}: ${syncAfter[0]}`)); break; }
+    }
   }
   return out;
 }
