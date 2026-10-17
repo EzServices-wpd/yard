@@ -10,6 +10,7 @@ import { resolvePurpose } from "./purposeForms";
 import { needsRecipeLookup } from "./recipeBuild";
 import { findRecipe } from "./recipes";
 import { UNIT_ITEM_NOTE } from "./unitItems";
+import { genericBoxOverAsk } from "./genericBox";
 import type { YardProject } from "./types";
 
 /** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
@@ -48,6 +49,8 @@ function readAll(prompt: string, p: YardProject): boolean {
 
 /** Hotfix #41: the live bar keeps the engine build — it owns the shape and read the whole prompt. */
 export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean): boolean {
+  // Critic 10-17: the generic fallback box never keeps a prompt that asks for another form.
+  if (genericBoxOverAsk(prompt, p)) return false;
   return engineBuiltForm(prompt, p) && (!half || readAll(prompt, p));
 }
 
@@ -59,6 +62,8 @@ export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean)
 export function routesToLearner(prompt: string, p: YardProject, half: boolean): boolean {
   if (findRecipe(prompt) || p.pocket) return false;
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
+  // Critic 10-17: a build wins over the learner only when it is the asked-for form, never the generic fallback box.
+  if (genericBoxOverAsk(prompt, p)) return true;
   // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
   if (half && !readAll(prompt, p)) return true;
   if (engineKeepsPrompt(prompt, p, half)) return false;

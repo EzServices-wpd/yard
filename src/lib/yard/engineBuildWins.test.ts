@@ -45,6 +45,20 @@ const C14_ROWS = ["bird feeder", "rolling cart"];
  * stand-in, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
  */
 const HONEST_LEARNER = ["sandbox with lid", "play kitchen", "step ladder"];
+/**
+ * Critic 10-17 (live P1 after #71): these went from the honest grey block to the generic 36" × 30" × 16" fallback box.
+ * A build wins over the learner only when it is the asked-for form, never the fitted storage fallback's bare carcase
+ * (uprights or sides, back, top or front, bottom) with a title that only repeats the prompt.
+ */
+const NOT_GENERIC = ["cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter"];
+/** The rule is not "never the box": a plain storage ask and the planter stem's own nouns (planter, raised bed) keep it. */
+const BOX_OWNS = ["storage unit", "cedar 2x4 planter 3 feet", "cedar raised garden bed 4x8", "raised garden bed 48 wide 96 long"];
+const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;
+/** The generic fallback body: a storage-program carcase made only of the bare box parts. */
+function genericBox(p: ReturnType<typeof generateFromPrompt>) {
+  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && p.panels.length > 0 &&
+    p.panels.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
+}
 /** A word that changes the object still learns: the fix is not "never learn". */
 const STILL_LEARN = ["lap desk", "standing desk", "desk organizer", "hanging planter", "chicken tractor", "cold frame", "tabletop loom", "wall clock"];
 
@@ -62,7 +76,7 @@ const craftAsked = /popsicle|craft|stick|toy|model|miniature|kids?'? craft/i;
 function complete(q: string) {
   const p = generateFromPrompt(q);
   const parts = p.panels.length + p.instances.length;
-  const ok = !genericFormMark(p) && !p.standIn && !p.unmatched && !p.displayOnly && parts >= 2 &&
+  const ok = !genericFormMark(p) && !genericBox(p) && !p.standIn && !p.unmatched && !p.displayOnly && parts >= 2 &&
     !(/popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !craftAsked.test(q));
   return { p, ok };
 }
@@ -111,6 +125,19 @@ describe("row 51: a complete engine build always shows; the learner never replac
     it(`${q}: a word that changes the object still goes to the learner`, async () => {
       const got = await shows(q);
       assert.ok(got.calls.includes("lookup"), `${q} kept the engine's ${generateFromPrompt(q).name}`);
+    });
+  }
+  for (const q of NOT_GENERIC) {
+    it(`${q}: never the generic fallback box over the learner`, async () => {
+      const got = await shows(q);
+      assert.ok(!genericBox(got.p), `${q}: the bar shows the generic ${got.p.name} (${got.p.panels.map((x) => x.name).join(", ")})`);
+      assert.ok(got.calls.includes("lookup"), `${q}: the learner never ran`);
+    });
+  }
+  for (const q of BOX_OWNS) {
+    it(`${q}: the asked-for box still shows, no learner`, async () => {
+      const got = await shows(q);
+      assert.ok(!got.calls.includes("lookup") && !got.p.displayOnly, `${q}: learner over the asked-for ${generateFromPrompt(q).name}`);
     });
   }
 });
