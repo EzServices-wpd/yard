@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { drawerKey, drawerSpecs } from "../src/components/home/showcase-drawers";
+import { drawerKey, drawerSpecs, isRaised, lower, raise, type Drawer } from "../src/components/home/showcase-drawers";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { showcaseFor } from "../src/lib/yard/homeShowcase";
 
@@ -61,4 +61,58 @@ test("the slide: transform only, door timing and curves, slight stack stagger, r
   assert.match(home, /prefers-reduced-motion: reduce[\s\S]{0,900}setOpen\(drawers, true\)/);
   assert.match(home, /anims\.current\.push\(\.\.\.slide\(drawers, "once"/);
   assert.match(home, /anims\.current\.forEach\(\(a\) => a\.playState === "running" && a\.pause\(\)\)/, "drawer slides are in the grid's paused set");
+});
+
+// ---- paint order: an open drawer is painted last, and put back once shut ----
+class N {
+  parentNode: N | null = null;
+  kids: N[] = [];
+  constructor(readonly name: string) {}
+  get isConnected() { let n: N | null = this; while (n.parentNode) n = n.parentNode; return n.name === "svg"; }
+  insertBefore(n: N, ref: N) { n.remove(); n.parentNode = this; this.kids.splice(this.kids.indexOf(ref), 0, n); return n; }
+  appendChild(n: N) { n.remove(); n.parentNode = this; this.kids.push(n); return n; }
+  remove() { if (this.parentNode) this.parentNode.kids.splice(this.parentNode.kids.indexOf(this), 1); this.parentNode = null; }
+  replaceWith(n: N) { const p = this.parentNode!; p.insertBefore(n, this); this.remove(); }
+  compareDocumentPosition(o: N) { const p = this.parentNode!.kids; return p.indexOf(o) > p.indexOf(this) ? 4 : 2; }
+}
+function drawing(names: string[]) {
+  (globalThis as { document?: unknown }).document = { createComment: (t: string) => new N("#" + t) };
+  (globalThis as { Node?: unknown }).Node = { DOCUMENT_POSITION_FOLLOWING: 4 };
+  const svg = new N("svg");
+  const parts = Object.fromEntries(names.map((n) => [n, svg.appendChild(new N(n))]));
+  const order = () => svg.kids.filter((k) => !k.name.startsWith("#")).map((k) => k.name).join(" ");
+  const dr = (...ids: string[]) => ({ els: ids.map((i) => parts[i]) as unknown as SVGGElement[], at: () => "", open: 1, stack: 0 }) as Drawer;
+  return { svg, order, dr };
+}
+
+test("paint order: an open drawer paints over the fixed parts listed after it (pocket vanity's right knee divider), and goes back once shut", () => {
+  const { order, dr } = drawing(["upright", "drawerR", "frontR", "divider", "counter"]);
+  const shut = order();
+  const right = dr("drawerR", "frontR");
+  raise([right]);
+  assert.equal(order(), "upright divider counter drawerR frontR", "the open drawer paints last");
+  assert.ok(isRaised(right.els[0]));
+  raise([right]);
+  assert.equal(order(), "upright divider counter drawerR frontR", "raising twice changes nothing");
+  lower([right]);
+  assert.equal(order(), shut, "shut: the drawing's own order is back");
+  assert.ok(!isRaised(right.els[0]));
+});
+
+test("paint order: drawers that open at different moments keep the drawing's order between them", () => {
+  const { order, dr } = drawing(["lower", "lowerFront", "upper", "upperFront", "divider"]);
+  const top = dr("upper", "upperFront"), bottom = dr("lower", "lowerFront");
+  raise([top]); // the stagger runs top first
+  raise([bottom]);
+  assert.equal(order(), "divider lower lowerFront upper upperFront", "the upper drawer still paints over the lower one");
+  lower([top]);
+  lower([bottom]);
+  assert.equal(order(), "lower lowerFront upper upperFront divider");
+});
+
+test("paint order is wired: raised from the moment a drawer moves (once, hover, reduced motion), put back when shut", () => {
+  const src = fs.readFileSync("src/components/home/showcase-drawers.ts", "utf8");
+  assert.match(src, /if \(kind !== "close"\) whenAt\(mine\[0\], start, \(\) => raise\(\[dr\]\)\);/);
+  assert.match(src, /if \(kind !== "open"\) mine\[0\]\.finished\.then\(\(\) => lower\(\[dr\]\), \(\) => \{\}\);/);
+  assert.match(src, /if \(open\) raise\(drawers\);\n  else lower\(drawers\);/);
 });

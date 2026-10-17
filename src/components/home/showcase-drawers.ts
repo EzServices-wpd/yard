@@ -78,6 +78,52 @@ export function drawersIn(root: Element, specs: DrawerSpec[]): Drawer[] {
 
 const STACK_MS = 70; // slight stagger down a stack (doors use 90 between leaves)
 
+/**
+ * Paint order. The overview paints each part once, in an order made for the shut model, so a fixed part listed
+ * after a drawer (the pocket vanity's right knee divider) paints over it once it slides out. An open drawer sticks
+ * out past the carcass face, so nothing fixed is in front of it: while a drawer is open its parts are painted last
+ * (moved to the end of their parent, in their own order), and put back where they were once it is shut.
+ */
+const home = new WeakMap<SVGGElement, Comment>();
+const raised = new Set<SVGGElement>();
+export function raise(drawers: Drawer[]) {
+  const fresh = drawers.flatMap((d) => d.els).filter((g) => !home.has(g) && g.parentNode);
+  if (!fresh.length) return;
+  for (const g of fresh) {
+    const mark = document.createComment("drawer");
+    g.parentNode!.insertBefore(mark, g);
+    home.set(g, mark);
+    raised.add(g);
+  }
+  // Every raised part, in the shut drawing's own order (by where each one came from), so drawers that open at
+  // different moments still paint in the order the drawing chose for them (an upper drawer over a lower one).
+  const parents = new Set(fresh.map((g) => g.parentNode!));
+  const order = [...raised].filter((g) => g.isConnected && parents.has(g.parentNode!));
+  order.sort((a, b) => (home.get(a)!.compareDocumentPosition(home.get(b)!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  for (const g of order) g.parentNode!.appendChild(g);
+}
+export function lower(drawers: Drawer[]) {
+  for (const g of drawers.flatMap((d) => d.els)) {
+    const mark = home.get(g);
+    if (!mark) continue;
+    home.delete(g);
+    raised.delete(g);
+    if (mark.parentNode) mark.replaceWith(g);
+  }
+}
+export const isRaised = (g: SVGGElement) => home.has(g);
+
+/** Calls `cb` once `anim` has played to `t` ms (waits while it is paused offscreen); never if it is cancelled. */
+function whenAt(anim: Animation, t: number, cb: () => void) {
+  const tick = () => {
+    if (anim.playState === "idle") return;
+    const now = Number(anim.currentTime ?? 0);
+    if (now >= t || anim.playState === "finished") cb();
+    else setTimeout(tick, Math.max(16, Math.min(250, t - now)));
+  };
+  tick();
+}
+
 function frames(dr: Drawer, f: (t: number) => number, n = 20) {
   return Array.from({ length: n + 1 }, (_, i) => ({ transform: dr.at(dr.open * f(i / n)), offset: i / n }));
 }
@@ -92,10 +138,16 @@ export function slide(drawers: Drawer[], kind: "once" | "open" | "close", delay 
         : kind === "open"
           ? frames(dr, openCurve)
           : [...frames(dr, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(dr, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
+    const start = delay + j * STACK_MS;
+    const mine: Animation[] = [];
     for (const g of dr.els) {
       g.getAnimations().forEach((a) => a.cancel());
-      all.push(g.animate(kf, { duration: kind === "once" ? ONCE_MS : kind === "open" ? OPEN_MS : CLOSE_MS, delay: delay + j * STACK_MS, easing: "linear", fill: kind === "open" ? "forwards" : "none" }));
+      mine.push(g.animate(kf, { duration: kind === "once" ? ONCE_MS : kind === "open" ? OPEN_MS : CLOSE_MS, delay: start, easing: "linear", fill: kind === "open" ? "forwards" : "none" }));
     }
+    // Painted last from the moment it moves; put back once it is shut (not if a hover cancels the close).
+    if (kind !== "close") whenAt(mine[0], start, () => raise([dr]));
+    if (kind !== "open") mine[0].finished.then(() => lower([dr]), () => {});
+    all.push(...mine);
   });
   return all;
 }
@@ -106,4 +158,6 @@ export function setOpen(drawers: Drawer[], open: boolean) {
     g.getAnimations().forEach((a) => a.cancel());
     g.style.transform = open ? dr.at(dr.open) : "";
   }
+  if (open) raise(drawers);
+  else lower(drawers);
 }
