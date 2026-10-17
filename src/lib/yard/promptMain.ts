@@ -419,7 +419,9 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   }
   // C13: a typed mobility word ("rolling", "on casters") is a modifier, not part of the noun: build the noun, then
   // put it on casters. A build that cannot take casters (a toy, a landmark, something hung) is built as typed.
-  const roll = !args[1] && !args[2] && !args[3] && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
+  // The bar always passes build options (scale, cut mode); only an override of the shape skips this.
+  const reshaped = !!(args[3]?.sizeOverride || args[3]?.fittedOverride || args[3]?.pocketOverride);
+  const roll = !args[1] && !args[2] && !reshaped && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
   if (roll) {
     const base = generateSeeded(roll.base);
     if (takesCasters(base)) return withCasters(base, prompt);

@@ -38,11 +38,13 @@ const CORPUS_ROWS = [
 ];
 /** Critic f06: the engine builds a cardboard Rocket (16 parts); "ship" is the same object, not a half-read. */
 const NIGHTLY_ROWS = ["cardboard rocket ship"];
+/** C14 on release: bird feeder (11 parts) and rolling cart (Utility cart, 11 parts) are real engine forms now, so they must show. */
+const C14_ROWS = ["bird feeder", "rolling cart"];
 /**
- * Honest learner rows: the engine has no complete build, so the learner still runs. Bird feeder, rolling cart and
- * step ladder are simple stand-ins, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
+ * Honest learner rows: the engine has no complete build, so the learner still runs. Step ladder is a simple
+ * stand-in, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
  */
-const HONEST_LEARNER = ["bird feeder", "sandbox with lid", "play kitchen", "rolling cart", "step ladder"];
+const HONEST_LEARNER = ["sandbox with lid", "play kitchen", "step ladder"];
 /** A word that changes the object still learns: the fix is not "never learn". */
 const STILL_LEARN = ["lap desk", "standing desk", "desk organizer", "hanging planter", "chicken tractor", "cold frame", "tabletop loom", "wall clock"];
 
@@ -78,7 +80,7 @@ function assertEngineShown(q: string, engine: ReturnType<typeof generateFromProm
 }
 
 describe("row 51: a complete engine build always shows; the learner never replaces it", () => {
-  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS]) {
+  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS, ...C14_ROWS]) {
     it(q, async () => {
       const { p, ok } = complete(q);
       assert.ok(ok, `${q}: the engine build is complete (${p.name}, ${p.panels.length + p.instances.length} parts)`);
@@ -86,7 +88,7 @@ describe("row 51: a complete engine build always shows; the learner never replac
     });
   }
   it("every corpus prompt with a complete engine build that reads every typed word shows it, never the learner", async () => {
-    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...HONEST_LEARNER])];
+    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...C14_ROWS, ...HONEST_LEARNER])];
     let checked = 0;
     for (const q of all) {
       const { p, ok } = complete(q);
