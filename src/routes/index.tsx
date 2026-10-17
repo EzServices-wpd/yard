@@ -57,11 +57,12 @@ const PIECES = [
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
-    id: "linen",
-    label: "Linen closet",
+    // C3: the linen closet already leads the plan strip ($183.70), so this card shows a different idea; one linen price on home.
+    id: "ldesk",
+    label: DREAMS.find((d) => d.id === "ldesk")?.label ?? "L in the corner",
     note: "",
-    prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
-    caption: "Sized to the alcove you typed",
+    prompt: DREAMS.find((d) => d.id === "ldesk")?.prompt ?? "L-shaped corner desk 60 by 48 30 tall",
+    caption: DREAMS.find((d) => d.id === "ldesk")?.blurb ?? "Two walls, one desk, the sizes you typed.",
   },
   {
     id: "desk",

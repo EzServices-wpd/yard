@@ -20,3 +20,17 @@ test("phone targets: the home prompt input keeps 48px in the column layout; Free
   assert.match(home, /max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">\{p\.name\}/);
   for (const label of ["Open the 3D model", "Make it your size"]) assert.match(plan, new RegExp(`max-lg:min-h-11 max-lg:items-center">${label}`));
 });
+
+test("Made on Yard shows a non-chip idea instead of a second linen card: one linen price on home ($183.70 in the strip)", async () => {
+  const { DREAMS } = await import("../src/lib/yard/promptDreams");
+  const { showcaseFor } = await import("../src/lib/yard/homeShowcase");
+  const chips = JSON.parse(home.match(/const CHIP_IDS = (\[[^\]]*\])/)![1]) as string[];
+  const pieces = home.slice(home.indexOf("const PIECES = ["), home.indexOf("] as const;", home.indexOf("const PIECES = [")));
+  assert.doesNotMatch(pieces, /id: "linen"|prompt: "linen/);
+  assert.match(pieces, /id: "ldesk"/);
+  assert.ok(!chips.includes("ldesk"), "not one of the chips");
+  const d = DREAMS.find((x) => x.id === "ldesk")!;
+  const s = showcaseFor(d.prompt);
+  assert.deepEqual([s.overall.width, s.overall.depth, s.overall.height], [60, 48, 30], "the size typed is the size drawn");
+  assert.ok(s.pieces > 0 && s.buyUsd > 0 && (s.svg.match(/<path/g) ?? []).length > 10);
+});
