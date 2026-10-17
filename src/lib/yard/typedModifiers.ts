@@ -7,9 +7,9 @@
 import type { Panel, YardProject } from "./types";
 import { boardFace } from "./fittedParse";
 import { inchFrac } from "./inchText";
+import { casterPartId, CASTER_NAME, isCasterPart, ROLLING } from "./casterParts";
 
 /** Mobility words: "rolling bookshelf", "kitchen island on casters", "cart with wheels". Never a rolling pin. */
-const ROLLING = /\brolling\b(?!\s+(?:pin|ball|marble|hills?|stock|shutter|ladder))|\bon\s+(?:locking\s+)?(?:casters|castors|wheels)\b|\bwith\s+(?:locking\s+)?(?:casters|castors)\b|\bmobile\b(?=\s+[a-z])/i;
 
 export const CASTER_H = 3;
 const heightOf = (t: string) => t.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
@@ -33,7 +33,7 @@ export function takesCasters(p: YardProject): boolean {
   if (p.assumptions?.installMode === "wall" || p.assumptions?.installMode === "alcove") return false;
   if (!["closet", "furniture", "custom"].includes(p.kind)) return false;
   if (p.overall.height < 8 || p.overall.width < 10) return false;
-  return !p.panels.some((x) => /^Caster \d+$/.test(x.name));
+  return !p.panels.some(isCasterPart);
 }
 
 /** Four locking swivel casters under the corners of the footprint; everything else rides 3" higher. */
@@ -47,9 +47,9 @@ export function withCasters(p: YardProject, prompt: string): YardProject {
   const instances = (p.instances ?? []).map((i) => ({ ...i, position: up(i.position)!, ...(i.from ? { from: up(i.from) } : {}), ...(i.to ? { to: up(i.to) } : {}), ...(i.home ? { home: up(i.home) } : {}) }));
   const corners: [number, number, string][] = [[x0, z1 - CASTER_PLATE, "front left"], [x1 - CASTER_PLATE, z1 - CASTER_PLATE, "front right"], [x0, z0, "back left"], [x1 - CASTER_PLATE, z0, "back right"]];
   const casters: Panel[] = corners.map(([x, z], i) => ({
-    id: `${p.id}-caster-${i + 1}`,
+    id: casterPartId(p.id, i + 1),
     type: "cleat",
-    name: `Caster ${i + 1}`,
+    name: CASTER_NAME(i + 1),
     materialId: "hardware",
     position: { x, y: 0, z },
     size: { width: CASTER_PLATE, height: CASTER_H, depth: CASTER_PLATE },

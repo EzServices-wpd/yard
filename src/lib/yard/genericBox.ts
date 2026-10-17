@@ -1,4 +1,5 @@
 import type { YardProject } from "./types";
+import { isCasterPart, withoutMobility } from "./casterParts";
 
 /**
  * Words that never name the object: a size, a place, a style, a stock, a count. "over"/"under" set a bunk's layout
@@ -17,13 +18,16 @@ const GENERIC_BOX_WORD = /^(?:storage|unit|units|box|boxes|carcase|carcass)$/;
  * is the same box the engine builds for a noun it does not know.
  */
 export function genericFallbackBox(p: YardProject): boolean {
-  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && p.panels.length > 0 &&
-    p.panels.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
+  // Casters (and whatever else the casters step adds) are hardware under the box, never its form (Critic #79).
+  const body = p.panels.filter((x) => !isCasterPart(x));
+  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && body.length > 0 &&
+    body.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
 }
 
 /** The typed object words before any "with/for/from …" tail: numbers, stock sizes, places and styles dropped. */
 function objectWords(prompt: string): string[] {
-  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by)\s+/)[0];
+  // A mobility word ("rolling", "on casters") is a modifier, never the object.
+  const phrase = withoutMobility(prompt.toLowerCase()).replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by)\s+/)[0];
   return phrase.split(/[\s-]+/).filter((t) => !/\d/.test(t)).flatMap((t) => t.split(/[^a-z]+/))
     .filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w));
 }
