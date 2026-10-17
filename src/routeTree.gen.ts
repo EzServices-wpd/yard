@@ -25,6 +25,7 @@ import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as GallerySlugRouteImport } from './routes/gallery/$slug'
 import { Route as PlansSlugRouteImport } from './routes/plans/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCronRetentionRouteImport } from './routes/api/cron/retention'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -106,6 +107,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronRetentionRoute = ApiCronRetentionRouteImport.update({
+  id: '/api/cron/retention',
+  path: '/api/cron/retention',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
+    | '/api/cron/retention'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery'
     | '/api/auth/$'
+    | '/api/cron/retention'
   id:
     | '__root__'
     | '/'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
+    | '/api/cron/retention'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -236,6 +248,7 @@ export interface RootRouteChildren {
   PlansSlugRoute: typeof PlansSlugRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCronRetentionRoute: typeof ApiCronRetentionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/retention': {
+      id: '/api/cron/retention'
+      path: '/api/cron/retention'
+      fullPath: '/api/cron/retention'
+      preLoaderRoute: typeof ApiCronRetentionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -372,6 +392,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlansSlugRoute: PlansSlugRoute,
   GalleryIndexRoute: GalleryIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCronRetentionRoute: ApiCronRetentionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

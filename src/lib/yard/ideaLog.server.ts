@@ -9,7 +9,7 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 9; // INCRBY budget + HSETEX FNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSETEX stamp + HINCRBY burst site + EXPIRE burst
+export const WRITE_CMDS = 9; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYSCORE recent (time trim) + HSET stamp + HINCRBY burst site + EXPIRE burst
 /** One more when the client sent a run id (HINCRBY burst run:<id>). */
 export const RUN_CMDS = 1;
 /** A write inside a burst re-stamps its row "possible-test": INCRBY budget + HSET stamp, in a second pipeline. */
@@ -28,44 +28,32 @@ const COALESCE_MS = 10_000;
 export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
 /**
- * Retention (privacy page: "We delete saved prompts and feedback notes after 90 days"). Enforced by Redis itself,
- * not by traffic: Upstash hashes take a TTL per field (HSETEX / HEXPIREAT), so every field that can hold typed text
- * expires on its own.
- * - ideas:meta (the scrubbed prompt, the only typed text on the ideas side): HSETEX FNX EX RETAIN_S, so the TTL is
- *   set by the field's first save and a re-type never extends it. Once it lapses the next write saves it afresh.
- * - ideas:stamp (request time + source, no text): HSETEX EX RETAIN_S on every write (latest wins, so does its TTL).
- * - ideas:top / ideas:status / ideas:recent hold only the 8-hex row key and a number (no text). recent is trimmed to
- *   200 on every write; the daily sweep removes members of all three whose meta is gone.
- * - RETAIN_DAYS is 88, not 90: a prompt can outlive its field in the stored snapshot (EX 1 h), an instance memo
- *   (10 min) and the CDN copy of /api/ideas (s-maxage 1 h + stale-while-revalidate 24 h), about 27 h in all; 88 days
- *   keeps every copy inside 90.
- * - Fields saved with no TTL (before this change, or by an old preview build, which shares the store) are caught by
- *   the daily sweep: HEXPIREAT NX to LEGACY_DEADLINE (nothing was written before LEGACY_SINCE), or deleted at once
- *   when that deadline has passed (so such a field can only be as old as the gap since the last sweep).
- * ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
+ * Retention (privacy page: "We delete saved prompts and feedback notes after 90 days"; SWE's design).
+ * - ideas:recent (row key → last-seen ms) is trimmed by time on every write: ZREMRANGEBYSCORE −inf (now − RETAIN).
+ * - A row's last-seen is max(its recent score, its stamp's `at`); a row with neither (logged before stamps, 15–17 Oct)
+ *   counts as last seen at LEGACY_SINCE. The daily cron sweep (/api/cron/retention → sweep()) drops every row whose
+ *   last-seen is past RETAIN from all of ideas:meta, top, status, stamp, recent (and Critic's ideas:review mark)
+ *   together, in one pipeline, so nothing is left orphaned.
+ * - RETAIN_DAYS is 87, not 90: a row last seen at T goes at the first sweep after T + 87 d (≤ 1 d later), and a prompt
+ *   can still sit in the stored snapshot (1 h) and the CDN copy of /api/ideas (s-maxage 1 h + stale-while-revalidate
+ *   24 h) after that: T + 87 d + about 2 d stays inside 90.
  */
-export const RETAIN_DAYS = 88;
-export const RETAIN_S = RETAIN_DAYS * 86_400;
-/** The ideas log first shipped in c78a268 (15 Oct 2026, 11:32 EDT) and the store was made that day: no field is older. */
+export const RETAIN_DAYS = 87;
+export const RETAIN_MS = RETAIN_DAYS * 86_400_000;
+/** The ideas log first shipped in c78a268 (15 Oct 2026); the store was made that day. No row is older. */
 export const LEGACY_SINCE = Date.parse("2026-10-15T00:00:00Z");
-export const LEGACY_DEADLINE_S = Math.floor(LEGACY_SINCE / 1000) + RETAIN_S;
-/** The sweep runs at most once per SWEEP_MS, from the snapshot rebuild (which already holds the store lock). */
-export const SWEEP_MS = 86_400_000;
-/** Sweep reads: INCRBY + HKEYS meta, stamp, review + ZRANGE top, status, recent (recent WITHSCORES). */
-export const SWEEP_READ_CMDS = 7;
-/** Fields or members per sweep command, so one request stays small. */
-const SWEEP_CHUNK = 1000;
-/** A member written in the last minute is never treated as an orphan (its meta may have been saved after HKEYS). */
-const SWEEP_GRACE_MS = 60_000;
-/** Feedback keys the engine's sweep also ages (feedback:list is the old single list, written by old preview builds). */
-const LEGACY_LISTS = ["feedback:list"];
-const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", review: "ideas:review", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
-/** A hash field write that carries its TTL (the only way the engine writes ideas:meta, ideas:stamp). */
-export const hsetex = (key: string, field: string, value: string, opts: { fnx?: boolean } = {}): Cmd => ["HSETEX", key, ...(opts.fnx ? ["FNX"] : []), "EX", RETAIN_S, "FIELDS", 1, field, value];
+/** Sweep caps: rows read per page (ZSCAN COUNT) and Upstash commands per run (the run stops and resumes next day). */
+export const SWEEP_BATCH = 500;
+export const SWEEP_MAX_CMDS = 200;
+/** Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +7 (INCRBY + 6 deletes) when it drops rows. */
+export const SWEEP_PAGE_CMDS = 5;
+export const SWEEP_DROP_CMDS = 7;
+// ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
+const K = { review: "ideas:review", cursor: "ideas:sweep:cursor", snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
-export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, sweeps: 0, sweptLegacy: 0, sweptOrphans: 0 };
+export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, swept: 0 };
 
 export function storeEnv(env: Record<string, string | undefined> = process.env): { url: string; token: string } | null {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
@@ -147,12 +135,12 @@ export class IdeaStore {
       const burst = K.burst(now);
       const out = await this.pipe([
         ["INCRBY", K.budget(month(now)), cmds],
-        hsetex(K.meta, rec.key, meta, { fnx: true }), // TTL from the first save; a re-type never extends it
+        ["HSETNX", K.meta, rec.key, meta],
         ["ZINCRBY", K.top, n, rec.key],
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
-        ["ZREMRANGEBYRANK", K.recent, 0, -201],
-        hsetex(K.stamp, rec.key, stamp(source)), // request time + gate source
+        ["ZREMRANGEBYSCORE", K.recent, "-inf", now.getTime() - RETAIN_MS], // time trim: last-seen older than RETAIN
+        ["HSET", K.stamp, rec.key, stamp(source)], // request time + gate source
         ["HINCRBY", burst, "site", 1],
         ["EXPIRE", burst, BURST_WINDOW_S * 2],
         ...(run ? [["HINCRBY", burst, `run:${run}`, 1] as Cmd] : []),
@@ -164,7 +152,7 @@ export class IdeaStore {
       if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST) && this.budget.allows(BURST_FIX_CMDS, now)) {
         stats.possibleTest++;
         try {
-          const fix = await this.pipe([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], hsetex(K.stamp, rec.key, stamp("possible-test"))]);
+          const fix = await this.pipe([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ["HSET", K.stamp, rec.key, stamp("possible-test")]]);
           this.budget.saw(Number(fix?.[0]));
         } catch { stats.dropped++; }
       }
@@ -192,6 +180,62 @@ export class IdeaStore {
     } catch { stats.dropped++; }
   }
 
+  /**
+   * The daily retention sweep (cron). Walks ideas:top (every row is in it) with ZSCAN, SWEEP_BATCH at a time, reads
+   * each row's last-seen (recent score, stamp `at`) and drops the stale rows from all six keys in one pipeline.
+   * Stops before `maxCmds` (budgeted like every write) and keeps its cursor in ideas:sweep:cursor (EX 2 d), so a
+   * capped run resumes where it stopped the next day. Never throws.
+   */
+  async sweep(now = new Date(), opts: { batch?: number; maxCmds?: number } = {}): Promise<{ scanned: number; dropped: number; cmds: number; done: boolean }> {
+    const batch = opts.batch ?? SWEEP_BATCH, maxCmds = opts.maxCmds ?? SWEEP_MAX_CMDS;
+    const res = { scanned: 0, dropped: 0, cmds: 0, done: false };
+    if (!this.pipe) return { ...res, done: true };
+    const b = K.budget(month(now));
+    const run = async (cmds: Cmd[]) => {
+      const n = cmds.length + 1;
+      if (res.cmds + n > maxCmds || !this.budget.allows(n, now)) return null;
+      res.cmds += n;
+      const out = await this.pipe!([["INCRBY", b, n], ...cmds]);
+      this.budget.saw(Number(out?.[0]));
+      return out ? out.slice(1) : null;
+    };
+    try {
+      const start = await run([["GET", K.cursor]]);
+      if (!start) return res;
+      let cursor = typeof start[0] === "string" && start[0] ? start[0] : "0";
+      const cutoff = now.getTime() - RETAIN_MS;
+      do {
+        // A page and its drop must both fit; otherwise stop here and resume tomorrow.
+        if (res.cmds + SWEEP_PAGE_CMDS + SWEEP_DROP_CMDS + 2 > maxCmds) break;
+        const page = await run([["ZSCAN", K.top, cursor, "COUNT", batch]]);
+        if (!page) break;
+        const [next, flat] = (page[0] as [string, string[]]) ?? ["0", []];
+        const keys = [...new Set((flat ?? []).filter((_, i) => i % 2 === 0))];
+        res.scanned += keys.length;
+        if (keys.length) {
+          const seen = await run([["ZMSCORE", K.recent, ...keys], ["HMGET", K.stamp, ...keys]]);
+          if (!seen) break;
+          const scores = (seen[0] as (string | null)[]) ?? [], stamps = (seen[1] as (string | null)[]) ?? [];
+          const stale = keys.filter((_, i) => lastSeen(scores[i], stamps[i]) < cutoff);
+          if (stale.length) {
+            const del = await run([["HDEL", K.meta, ...stale], ["ZREM", K.top, ...stale], ["ZREM", K.status, ...stale], ["HDEL", K.stamp, ...stale], ["ZREM", K.recent, ...stale], ["HDEL", K.review, ...stale]]);
+            if (!del) break;
+            res.dropped += stale.length;
+          }
+        }
+        cursor = String(next ?? "0");
+      } while (cursor !== "0");
+      res.done = cursor === "0";
+      // Remember where a capped run stopped (one SET; skipped if even that won't fit: the next run starts over).
+      await run(res.done ? [["DEL", K.cursor]] : [["SET", K.cursor, cursor, "EX", 172_800]]);
+      stats.swept += res.dropped;
+      return res;
+    } catch {
+      stats.dropped++;
+      return res;
+    }
+  }
+
   private memo: { at: number; snap: IdeasSnapshot } | null = null;
   rebuilds = 0;
 
@@ -209,19 +253,12 @@ export class IdeaStore {
       if (!this.budget.allows(3, now)) throw new Error("budget");
       const [got, lock, used] = (await this.pipe([["GET", K.snap], ["SET", K.lock, "1", "NX", "EX", SNAPSHOT_MS / 1000], ["INCRBY", K.budget(month(now)), 3]])) ?? [];
       this.budget.saw(Number(used));
-      const parsed = typeof got === "string" ? (JSON.parse(got) as IdeasSnapshot & { swept?: string }) : null;
-      const swept = parsed?.swept;
-      if (parsed) delete parsed.swept; // bookkeeping only, never served
-      const stored: IdeasSnapshot | null = parsed;
+      const stored = typeof got === "string" ? (JSON.parse(got) as IdeasSnapshot) : null;
       if (lock === "OK" || !stored) {
         if (lock === "OK") {
           this.rebuilds++;
-          // Retention sweep, at most once a day: the time of the last one rides in the stored snapshot (no extra read).
-          let last = Date.parse(String(swept ?? ""));
-          if (!(t - last < SWEEP_MS) && (await this.sweep(now))) last = t;
           snap = await this.snapshot(now);
-          const tag = Number.isFinite(last) ? { swept: new Date(last).toISOString() } : {};
-          await this.pipe([["SET", K.snap, JSON.stringify({ ...snap, ...tag }), "EX", (SNAPSHOT_MS / 1000) * 6]]);
+          await this.pipe([["SET", K.snap, JSON.stringify(snap), "EX", (SNAPSHOT_MS / 1000) * 6]]);
         } else snap = { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
       } else snap = stored;
     } catch {
@@ -231,61 +268,6 @@ export class IdeaStore {
     return snap;
   }
 
-  /**
-   * Daily retention sweep (see RETAIN_DAYS). Budgeted; never throws; true when it ran.
-   * 1. Fields with no TTL in ideas:meta, ideas:stamp, ideas:review: HEXPIREAT LEGACY_DEADLINE_S NX (a past deadline
-   *    deletes them at once). NX leaves every field that already has its own TTL alone.
-   * 2. The old single feedback list: EXPIREAT LEGACY_DEADLINE_S (the same rule, whole key).
-   * 3. Orphans (row key with no meta field any more): ZREM from top, status, recent and HDEL from stamp, so counts
-   *    of deleted prompts don't pile up or crowd the snapshot's top 1,000.
-   * Cost: SWEEP_READ_CMDS + 1 + one command per non-empty chunk, about 10 a day.
-   */
-  async sweep(now = new Date()): Promise<boolean> {
-    if (!this.pipe || !this.budget.allows(SWEEP_READ_CMDS, now)) return false;
-    try {
-      const head = await this.pipe([
-        ["INCRBY", K.budget(month(now)), SWEEP_READ_CMDS],
-        ["HKEYS", K.meta], ["HKEYS", K.stamp], ["HKEYS", K.review],
-        ["ZRANGE", K.top, 0, -1], ["ZRANGE", K.status, 0, -1], ["ZRANGE", K.recent, 0, -1, "WITHSCORES"],
-      ]);
-      if (!head) return false;
-      this.budget.saw(Number(head[0]));
-      const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
-      const [metaF, stampF, reviewF, topM, statusM] = [1, 2, 3, 4, 5].map((i) => list(head[i]));
-      const recentFlat = list(head[6]);
-      const fresh = new Set<string>();
-      const recentM: string[] = [];
-      for (let i = 0; i < recentFlat.length; i += 2) {
-        recentM.push(recentFlat[i]);
-        if (now.getTime() - Number(recentFlat[i + 1]) < SWEEP_GRACE_MS) fresh.add(recentFlat[i]);
-      }
-      const live = new Set(metaF);
-      const orphan = (m: string) => !live.has(m) && !fresh.has(m);
-      const chunks = (xs: string[]) => Array.from({ length: Math.ceil(xs.length / SWEEP_CHUNK) }, (_, i) => xs.slice(i * SWEEP_CHUNK, (i + 1) * SWEEP_CHUNK));
-      const cmds: Cmd[] = [];
-      for (const [key, fields] of [[K.meta, metaF], [K.stamp, stampF], [K.review, reviewF]] as const)
-        for (const c of chunks(fields)) cmds.push(["HEXPIREAT", key, LEGACY_DEADLINE_S, "NX", "FIELDS", c.length, ...c]);
-      for (const key of LEGACY_LISTS) cmds.push(["EXPIREAT", key, LEGACY_DEADLINE_S]);
-      let orphans = 0;
-      for (const [key, members] of [[K.top, topM], [K.status, statusM], [K.recent, recentM]] as const)
-        for (const c of chunks(members.filter(orphan))) { cmds.push(["ZREM", key, ...c]); orphans += c.length; }
-      for (const c of chunks(stampF.filter(orphan))) cmds.push(["HDEL", K.stamp, ...c]);
-      const n = cmds.length + 1;
-      if (!this.budget.allows(n, now)) return false;
-      const out = await this.pipe([["INCRBY", K.budget(month(now)), n], ...cmds]);
-      this.budget.saw(Number(out?.[0]));
-      // HEXPIREAT replies per field: 1 = TTL set, 2 = deleted (deadline passed), -2 none, 0 = had a TTL (NX).
-      const legacy = (out ?? []).slice(1).flatMap((r) => (Array.isArray(r) ? r : [])).filter((r) => Number(r) === 1 || Number(r) === 2).length;
-      stats.sweeps++;
-      stats.sweptLegacy += legacy;
-      stats.sweptOrphans += orphans;
-      return true;
-    } catch {
-      stats.dropped++;
-      return false;
-    }
-  }
-
   /** The snapshot the CDN caches (R8, R12). Failed and unsafe rows never leave the store. Never throws. */
   async snapshot(now = new Date()): Promise<IdeasSnapshot> {
     if (!this.pipe || !this.budget.allows(READ_CMDS + 2, now)) return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: !!this.pipe };
@@ -293,7 +275,7 @@ export class IdeaStore {
       const head = await this.pipe([
         ["INCRBY", K.budget(month(now)), READ_CMDS],
         ["ZREVRANGE", K.top, 0, 999, "WITHSCORES"],
-        ["ZREVRANGE", K.recent, 0, 199, "WITHSCORES"], // the whole recent log (it holds 200): lastSeen per key
+        ["ZREVRANGE", K.recent, 0, 199, "WITHSCORES"], // the newest 200 of the recent log (trimmed by time, not size): lastSeen per key
       ]);
       this.budget.saw(Number(head?.[0]));
       const flat = (head?.[1] as string[]) ?? [];
@@ -322,6 +304,15 @@ export class IdeaStore {
       return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
     }
   }
+}
+
+/** A row's last-seen ms: its recent score or its stamp's time, whichever is later; LEGACY_SINCE when it has neither. */
+export function lastSeen(score: string | null | undefined, stamp: string | null | undefined): number {
+  const r = Number(score ?? NaN);
+  const at = toStamp(stamp).at;
+  const s = at ? Date.parse(at) : NaN;
+  const best = Math.max(Number.isFinite(r) ? r : -Infinity, Number.isFinite(s) ? s : -Infinity);
+  return Number.isFinite(best) ? best : LEGACY_SINCE;
 }
 
 /** The stored write stamp, passed through; a row written before stamps (or unreadable) is "unknown". */

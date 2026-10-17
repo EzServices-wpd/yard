@@ -20,10 +20,10 @@ function fakeRedis() {
       case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
       case "EXPIRE": return 1;
       case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
-      case "HSETEX": { const i = a.indexOf("FIELDS"); const n = Number(a[i + 1]); const kv = a.slice(i + 2, i + 2 + 2 * n).map(String); if (a.slice(0, i).includes("FNX") && kv.some((f, j) => j % 2 === 0 && hs(key).has(f))) return 0; for (let j = 0; j < kv.length; j += 2) hs(key).set(kv[j], kv[j + 1]); return 1; }
       case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
       case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
       case "ZREMRANGEBYRANK": return 0;
+      case "ZREMRANGEBYSCORE": { const hi = Number(a[1]); let n = 0; for (const [m, sc] of zs(key)) if (sc <= hi) { zs(key).delete(m); n++; } return n; }
       case "ZREVRANGE": { const r = [...zs(key)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return r.flatMap(([m, s]) => [m, String(s)]); }
       case "HMGET": return a.map((f) => hs(key).get(String(f)) ?? null);
       case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });

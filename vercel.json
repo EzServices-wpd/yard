@@ -3,6 +3,12 @@
   "framework": null,
   "buildCommand": "npm run typecheck && npm run build",
   "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/retention",
+      "schedule": "17 8 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

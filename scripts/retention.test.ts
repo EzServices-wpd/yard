@@ -1,16 +1,14 @@
-// 90-day retention (privacy page: "We delete saved prompts and feedback notes after 90 days"), enforced by Redis TTLs:
-// - every write to a key that can hold typed text (ideas:meta, the feedback lists) carries its expiry in the same
-//   command or pipeline, and ideas:review / ideas:stamp too; the count keys hold no text and are trimmed/swept;
-// - against a Redis fake with real per-field and per-key expiry on a clock: through 200 days of traffic and then a
-//   long quiet spell, no prompt or note older than RETAIN_DAYS (88) is ever readable;
-// - fields saved with no TTL (old code, old previews sharing the store) are caught by the daily sweep;
-// - /api/critic-review answers 404 to a missing or wrong secret, never 401.
+// 90-day retention, SWE's design: ideas:recent is trimmed by time on every write; a daily cron sweep drops every row
+// whose last-seen (recent score or stamp time; LEGACY_SINCE if neither) is past RETAIN_DAYS from ideas:meta, top,
+// status, stamp, recent and review together (no orphans), capped by a batch size and a max-commands limit; the
+// feedback store keeps its tail trim and the cron runs it too, so a quiet spell keeps nothing. /api/cron/retention and
+// /api/critic-review answer 404 to a missing or wrong secret.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { IdeaStore, LEGACY_DEADLINE_S, LEGACY_SINCE, RETAIN_DAYS, RETAIN_S, SWEEP_MS, WRITE_CMDS, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { Budget, IdeaStore, LEGACY_SINCE, RETAIN_DAYS, RETAIN_MS, SWEEP_BATCH, SWEEP_MAX_CMDS, WRITE_CMDS, lastSeen, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { logKey, type LogRecord } from "../src/lib/yard/ideaLog";
-import { ShopStore, dayExpiry } from "../src/lib/feedback/store.server";
+import { ShopStore, FEEDBACK_DAYS } from "../src/lib/feedback/store.server";
 import { cleanFeedback } from "../src/lib/feedback/shop";
 
 const DAY = 86_400_000;
@@ -69,6 +67,10 @@ function ttlRedis(clock: { now: number }) {
       case "ZREVRANGE": { const r = [...zs(k)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return a.includes("WITHSCORES") ? r.flatMap(([m, s]) => [m, String(s)]) : r.map(([m]) => m); }
       case "ZRANGE": { const r = [...zs(k)].sort((x, y) => x[1] - y[1]); return a.includes("WITHSCORES") ? r.flatMap(([m, s]) => [m, String(s)]) : r.map(([m]) => m); }
       case "ZMSCORE": { const m = zs(k); return a.map((x) => (m.has(String(x)) ? String(m.get(String(x))) : null)); }
+      case "ZREMRANGEBYSCORE": { const m = zs(k); const lo = a[0] === "-inf" ? -Infinity : Number(a[0]); const hi = Number(a[1]); let n = 0; for (const [x, sc] of m) if (sc >= lo && sc <= hi) { m.delete(x); n++; } return n; }
+      case "ZSCAN": { const m = zs(k); const cur = String(a[0]); const count = Number(a[a.indexOf("COUNT") + 1] ?? 10); const all = [...m.keys()].sort().filter((x) => cur === "0" || x > cur); const page = all.slice(0, count); const next = all.length > count ? page[page.length - 1] : "0"; return [next, page.flatMap((x) => [x, String(m.get(x))])]; }
+      case "DEL": { gone(k); const had = h.delete(k) || z.delete(k) || l.delete(k) || str.delete(k); kexp.delete(k); return had ? 1 : 0; }
+      case "LTRIM": { const L = ls(k); const i = (n: number) => (n < 0 ? L.length + n : n); l.set(k, L.slice(Math.max(0, i(Number(a[0]))), Math.max(0, i(Number(a[1])) + 1))); return "OK"; }
       case "ZREM": { const m = zs(k); let n = 0; for (const x of a) if (m.delete(String(x))) n++; return n; }
       case "LPUSH": { const L = ls(k); L.unshift(...a.map(String)); return L.length; }
       case "LRANGE": { const L = ls(k); const i = (n: number) => (n < 0 ? L.length + n : n); return L.slice(Math.max(0, i(Number(a[0]))), i(Number(a[1])) + 1); }
@@ -87,211 +89,178 @@ function ttlRedis(clock: { now: number }) {
   return { pipe, sent, violations, hs, zs, ls, str, kexp, texts, exec };
 }
 
-/** The write rule, checked on every pipeline the stores sent. */
-function checkWrites(sent: Cmd[][]): string[] {
+
+const recOf = (prompt: string): LogRecord => {
+  const size = "36×12×72", resultKey = "builtin:bookcase";
+  return { key: logKey(prompt, resultKey, size), prompt, size, resultKey, status: "Trusted", source: "live" };
+};
+const quiet = () => new IdeaStore(null);
+const mk = (r: ReturnType<typeof ttlRedis>) => new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+/** Every row key in any of the six keys, and in which. */
+function rows(r: ReturnType<typeof ttlRedis>) {
+  const where = new Map<string, Set<string>>();
+  const add = (k: string, name: string) => (where.get(k) ?? where.set(k, new Set()).get(k)!).add(name);
+  for (const n of ["ideas:meta", "ideas:stamp", "ideas:review"]) for (const k of r.hs(n).keys()) add(k, n);
+  for (const n of ["ideas:top", "ideas:status", "ideas:recent"]) for (const k of r.zs(n).keys()) add(k, n);
+  return where;
+}
+/** No orphans: a row is in meta, top, status and stamp together, or in none of the six. */
+function orphans(r: ReturnType<typeof ttlRedis>): string[] {
   const bad: string[] = [];
-  const WRITES = /^(HSET|HSETNX|HSETEX|HINCRBY|HMSET|LPUSH|RPUSH|LSET|SET|ZADD|ZINCRBY|INCR|INCRBY|APPEND)$/;
-  const HEX = /^[0-9a-f]{8}$/;
-  for (const list of sent) {
-    const has = (pred: (c: Cmd) => boolean) => list.some(pred);
-    for (const c of list) {
-      const [op, key] = [String(c[0]), String(c[1])];
-      if (!WRITES.test(op)) continue;
-      const ttlInSamePipe = has((x) => (x[0] === "EXPIRE" || x[0] === "EXPIREAT") && x[1] === key);
-      if (key === "ideas:meta" || key === "ideas:stamp" || key === "ideas:review") {
-        const opts = c.slice(2, c.indexOf("FIELDS")).map(String);
-        if (op !== "HSETEX" || !(opts.includes("EX") || opts.includes("KEEPTTL"))) bad.push(`${op} ${key} without a field TTL`);
-        if (key === "ideas:meta" && !(opts.includes("FNX") && opts.includes("EX"))) bad.push("meta must be HSETEX FNX EX (TTL from first save)");
-        if (opts.includes("EX") && Number(opts[opts.indexOf("EX") + 1]) > RETAIN_S) bad.push(`${key} TTL over ${RETAIN_DAYS} days`);
-      } else if (key.startsWith("feedback:list")) {
-        if (!/^feedback:list:\d{4}-\d{2}-\d{2}$/.test(key) || !ttlInSamePipe) bad.push(`${op} ${key} without its day list's expiry`);
-      } else if (key === "ideas:top" || key === "ideas:status" || key === "ideas:recent") {
-        const member = String(op === "ZINCRBY" ? c[3] : c[c.length - 1]);
-        if (!HEX.test(member)) bad.push(`${key} member ${member} is not a row key`);
-        if (key === "ideas:recent" && !has((x) => x[0] === "ZREMRANGEBYRANK" && x[1] === key)) bad.push("recent written without its trim");
-      } else if (/^ideas:cmds:\d{4}-\d{2}$/.test(key)) {
-        // the monthly command counter: a number
-      } else if (key === "ideas:snap" || key === "ideas:snap:lock") {
-        if (!c.includes("EX")) bad.push(`${key} without EX`);
-      } else if (/^ideas:burst:|^feedback:(day|cid):/.test(key)) {
-        if (!ttlInSamePipe) bad.push(`${op} ${key} without EXPIRE in the same pipeline`);
-      } else bad.push(`write to an unlisted key ${key} (${op}); give it a retention rule here`);
-    }
-  }
+  for (const [k, s] of rows(r)) for (const n of ["ideas:meta", "ideas:top", "ideas:status", "ideas:stamp"]) if (!s.has(n)) bad.push(`${k} in ${[...s]} but not ${n}`);
   return bad;
 }
 
-const recOf = (prompt: string, source: LogRecord["source"] = "live"): LogRecord => {
-  const size = "36×12×72", resultKey = "builtin:bookcase";
-  return { key: logKey(prompt, resultKey, size), prompt, size, resultKey, status: "Trusted", source };
-};
-
-test(`200 days of traffic, then a quiet spell: no prompt or note older than ${RETAIN_DAYS} days is ever readable`, async () => {
+test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − 87 d) in place of the rank trim; 9 commands, unchanged", async () => {
   const clock = { now: Date.UTC(2026, 9, 21, 12) };
   const r = ttlRedis(clock);
-  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+  const s = mk(r);
+  for (let d = 0; d < 120; d++) { clock.now += DAY; await s.record(recOf(`shelf ${d}`), new Date(clock.now)); }
+  for (const list of r.sent) {
+    const t = list.find((c) => c[0] === "ZREMRANGEBYSCORE");
+    assert.ok(t && t[1] === "ideas:recent" && t[2] === "-inf", "each write trims recent by time");
+    assert.equal(list.length, WRITE_CMDS);
+    assert.ok(!list.some((c) => c[0] === "ZREMRANGEBYRANK"));
+  }
+  assert.ok(Math.min(...r.zs("ideas:recent").values()) >= clock.now - RETAIN_MS, "nothing in recent is older than 87 days");
+  assert.equal(r.zs("ideas:recent").size, RETAIN_DAYS, "one a day, the one exactly 87 days old trimmed");
+  assert.equal(WRITE_CMDS, 9);
+  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETNX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE"]);
+});
+
+test("last-seen: the later of the recent score and the stamp; LEGACY_SINCE for a row with neither", () => {
+  const st = (at: string) => JSON.stringify({ at, source: "live" });
+  assert.equal(lastSeen("1000", null), 1000);
+  assert.equal(lastSeen(null, st("2026-11-01T00:00:00.000Z")), Date.parse("2026-11-01T00:00:00.000Z"));
+  assert.equal(lastSeen(String(Date.parse("2026-12-01T00:00:00Z")), st("2026-11-01T00:00:00.000Z")), Date.parse("2026-12-01T00:00:00Z"));
+  assert.equal(lastSeen(null, null), LEGACY_SINCE);
+  assert.equal(lastSeen("x", "{bad"), LEGACY_SINCE);
+});
+
+test("sweep: stale rows go from all six keys together; fresh rows, rows kept alive by their stamp, and young legacy rows stay", async () => {
+  const clock = { now: Date.UTC(2026, 9, 21, 12) };
+  const r = ttlRedis(clock);
+  const s = mk(r);
+  const old = recOf("old bench"), fresh = recOf("fresh bench");
+  await s.record(old, new Date(clock.now));
+  r.exec(["HSET", "ideas:review", old.key, "{}"]);
+  // A legacy row: logged before stamps and rank-trimmed out of recent (no last-seen at all) → LEGACY_SINCE.
+  r.exec(["HSETNX", "ideas:meta", "11111111", JSON.stringify({ prompt: "legacy" })]); r.exec(["ZINCRBY", "ideas:top", 2, "11111111"]); r.exec(["ZADD", "ideas:status", 1, "11111111"]);
+  // A row rank-trimmed out of recent but stamped recently: kept by its stamp.
+  const kept = recOf("kept by stamp");
+  await s.record(kept, new Date(clock.now + 50 * DAY));
+  r.zs("ideas:recent").delete(kept.key);
+  clock.now += 80 * DAY;
+  await s.record(fresh, new Date(clock.now));
+  let res = await s.sweep(new Date(clock.now));
+  assert.equal(res.dropped, 0, "nothing past 87 days yet");
+  clock.now = Date.UTC(2026, 9, 21, 12) + RETAIN_MS + DAY;
+  res = await s.sweep(new Date(clock.now));
+  assert.ok(res.done);
+  assert.ok(!rows(r).has(old.key), "the stale row is gone from every key, review mark included");
+  assert.ok(rows(r).has(fresh.key) && rows(r).has(kept.key));
+  assert.ok(!rows(r).has("11111111"), "legacy row: LEGACY_SINCE + 87 d has passed");
+  assert.ok(LEGACY_SINCE + RETAIN_MS < clock.now);
+  // Before the legacy deadline it stays.
+  const r2 = ttlRedis({ now: LEGACY_SINCE + RETAIN_MS - DAY });
+  r2.exec(["HSETNX", "ideas:meta", "22222222", "{}"]); r2.exec(["ZINCRBY", "ideas:top", 1, "22222222"]);
+  assert.equal((await mk(r2).sweep(new Date(LEGACY_SINCE + RETAIN_MS - DAY))).dropped, 0);
+});
+
+test("200 days of traffic with the daily cron, then a quiet spell: no prompt or note past retention survives, and no orphans ever", async () => {
+  const clock = { now: Date.UTC(2026, 9, 21, 12) };
+  const r = ttlRedis(clock);
+  const s = mk(r);
   const shop = new ShopStore(r.pipe);
-  const firstSaved = new Map<string, number>(); // prompt text → when the stored copy was saved
+  const lastAt = new Map<string, number>(); // row key → last write
   const noteAt = new Map<string, number>();
   const start = clock.now;
   const check = (label: string) => {
-    for (const { where, v } of r.texts()) {
-      for (const [p, t] of firstSaved) if (v.includes(`"${p}"`) || v.includes(`"prompt":"${p}"`)) {
-        // a stored copy can only be as old as its save (or, in the snapshot, its save + the snapshot's hour)
-        assert.ok(clock.now - t <= RETAIN_DAYS * DAY + 3_600_000 || !v.includes(p), `${label}: "${p}" in ${where} is ${((clock.now - t) / DAY).toFixed(2)} days old`);
-      }
-      for (const [n, t] of noteAt) if (v.includes(n)) assert.ok(clock.now - t <= RETAIN_DAYS * DAY, `${label}: note ${n} in ${where} is ${((clock.now - t) / DAY).toFixed(2)} days old`);
-    }
+    for (const k of r.hs("ideas:meta").keys()) assert.ok(clock.now - (lastAt.get(k) ?? LEGACY_SINCE) <= RETAIN_MS + DAY, `${label}: row ${k} last seen ${((clock.now - lastAt.get(k)!) / DAY).toFixed(1)} days ago`);
+    for (const v of r.ls("feedback:list")) { const n = JSON.parse(v).note as string; assert.ok(clock.now - noteAt.get(n)! <= FEEDBACK_DAYS * DAY, `${label}: note ${n}`); }
+    assert.deepEqual(orphans(r), [], label);
   };
   for (let d = 0; d < 200; d++) {
     for (let i = 0; i < 3; i++) {
       clock.now = start + d * DAY + i * 3 * 3_600_000;
-      const p = `shelf day ${d} n ${i}`;
-      const rec = recOf(p);
-      if (!r.hs("ideas:meta").has(rec.key)) firstSaved.set(p, clock.now);
-      assert.equal(await store.record(rec, new Date(clock.now)), "written");
-      // The same prompt typed again every day: its stored copy still goes 88 days after it was first saved.
-      const again = recOf("bookcase every day");
-      if (!r.hs("ideas:meta").has(again.key)) firstSaved.set("bookcase every day", clock.now);
-      await store.record(again, new Date(clock.now + 20_000 + i));
-      const note = `note-${d}-${i}`;
-      const fb = cleanFeedback({ chips: ["other"], note, prompt: p }, "", new Date(clock.now))!;
-      (shop as unknown as { hits: number[] }).hits = [];
-      assert.equal(await shop.addFeedback(fb, `c${i}`.padEnd(16, "0"), new Date(clock.now)), "saved");
-      noteAt.set(note, clock.now);
-      if (i === 0 && d % 3 === 0) await shop.mark(rec.key, "B");
-      if (i === 0) await store.served(new Date(clock.now + 60_000));
+      const rec = recOf(`shelf ${d} ${i}`);
+      await s.record(rec, new Date(clock.now)); lastAt.set(rec.key, clock.now);
+      const every = recOf("bookcase every day");
+      await s.record(every, new Date(clock.now + 20_000 + i)); lastAt.set(every.key, clock.now + 20_000 + i);
+      if (d < 120) {
+        const note = `note-${d}-${i}`;
+        (shop as unknown as { hits: number[] }).hits = [];
+        await shop.addFeedback(cleanFeedback({ chips: ["other"], note }, "", new Date(clock.now))!, `c${i}`.padEnd(16, "0"), new Date(clock.now));
+        noteAt.set(note, clock.now);
+        if (i === 0) await shop.mark(rec.key, "B", new Date(clock.now));
+      }
     }
-    if (d % 4 === 3 || d >= RETAIN_DAYS - 2) check(`day ${d}`);
+    // The cron, once a day at 08:17 UTC.
+    clock.now = start + d * DAY + 20 * 3_600_000;
+    await s.sweep(new Date(clock.now));
+    await shop.sweep(new Date(clock.now));
+    check(`day ${d}`);
   }
-  // Everything inside the window is still there (the TTLs don't over-delete): the last 88 days' prompts.
-  const kept = [...firstSaved].filter(([, t]) => clock.now - t < (RETAIN_DAYS - 1) * DAY).length;
-  assert.ok(r.hs("ideas:meta").size >= kept - 1, `kept ${r.hs("ideas:meta").size} of ${kept}`);
-  // The quiet spell: no traffic at all. Redis alone empties every text-bearing key.
-  clock.now += (RETAIN_DAYS + 2) * DAY;
-  check("after the quiet spell");
-  const left = r.texts().filter(({ where }) => /^ideas:meta|^feedback:list|^ideas:snap$/.test(where));
-  assert.deepEqual(left, [], "no prompt or note survives with no traffic");
-  assert.deepEqual(r.violations, []);
-  assert.deepEqual(checkWrites(r.sent), [], "every write carries its expiry or trim");
+  assert.ok(r.hs("ideas:meta").size >= RETAIN_DAYS * 3 - 3, `everything inside retention is kept (${r.hs("ideas:meta").size})`);
+  // Quiet spell: no writes at all, the cron keeps running.
+  for (let d = 0; d < 95; d++) { clock.now += DAY; await s.sweep(new Date(clock.now)); await shop.sweep(new Date(clock.now)); }
+  assert.equal(r.hs("ideas:meta").size, 0, "no prompt survives the quiet spell");
+  assert.equal(r.ls("feedback:list").length, 0, "no note survives the quiet spell");
+  assert.deepEqual([...rows(r).keys()], [], "and nothing is left in any of the six keys");
 });
 
-test("every write the stores send carries an expiry or trim (record, burst, flush, snapshot, sweep, feedback, marks)", async () => {
-  const clock = { now: Date.UTC(2026, 9, 21, 9, 15) };
+test("cost cap: a run never sends more than maxCmds (budget counter agrees); a capped run resumes from its cursor the next day", async () => {
+  const clock = { now: Date.UTC(2027, 2, 1, 8) };
   const r = ttlRedis(clock);
-  const held: Promise<unknown>[] = [];
-  const store = new IdeaStore(r.pipe, undefined, (p) => held.push(p), async () => {});
-  const shop = new ShopStore(r.pipe);
-  // a burst (possible-test re-stamps), coalesced repeats (flush), a run id, snapshots, feedback, marks and samples
-  for (let i = 0; i < 70; i++) await store.record(recOf(`desk ${i}`), new Date(clock.now + i * 200), { run: "a1b2c3d4e5f60718" });
-  for (let i = 0; i < 5; i++) await store.record(recOf("desk 1"), new Date(clock.now + 15_000 + i));
-  await Promise.all(held);
-  await store.served(new Date(clock.now + 30_000));
-  await shop.addFeedback(cleanFeedback({ chips: ["price"], note: "too dear" }, "", new Date(clock.now))!, "none", new Date(clock.now));
-  await shop.mark(recOf("desk 2").key, "A");
-  await shop.sample(5, new Date(clock.now + 60_000));
-  await shop.unreviewed(20, new Date(clock.now + 60_000));
-  assert.deepEqual(checkWrites(r.sent), []);
-  assert.deepEqual(r.violations, []);
-  // The checker itself catches what the old code did.
-  assert.equal(checkWrites([[["HSETNX", "ideas:meta", "aaaaaaaa", "{}"]]]).length, 2);
-  assert.equal(checkWrites([[["HSET", "ideas:stamp", "aaaaaaaa", "{}"]]]).length, 1);
-  assert.equal(checkWrites([[["LPUSH", "feedback:list", "{}"], ["LTRIM", "feedback:list", 0, 1999]]]).length, 1);
-  assert.equal(checkWrites([[["ZADD", "ideas:recent", 1, "aaaaaaaa"]]]).length, 1);
-  assert.equal(checkWrites([[["HSET", "ideas:new", "x", "y"]]]).length, 1, "a new key needs a rule");
-  // And nothing in the source writes those keys the old way.
-  const code = (f: string) => fs.readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
-  for (const f of ["src/lib/yard/ideaLog.server.ts", "src/lib/feedback/store.server.ts"]) {
-    assert.doesNotMatch(code(f), /"HSETNX"|\["HSET",|"LTRIM"/, f);
+  for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r.exec(["HSETNX", "ideas:meta", k, "{}"]); r.exec(["ZINCRBY", "ideas:top", 1, k]); r.exec(["ZADD", "ideas:status", 1, k]); }
+  assert.equal(SWEEP_BATCH, 500); assert.equal(SWEEP_MAX_CMDS, 200);
+  const runs: { cmds: number; dropped: number; done: boolean }[] = [];
+  const billed = () => Number(r.str.get("ideas:cmds:2027-03") ?? 0);
+  for (let d = 0; d < 10; d++) {
+    const before = billed();
+    const res = await mk(r).sweep(new Date(clock.now + d * DAY), { maxCmds: 40, batch: 500 });
+    assert.ok(res.cmds <= 40, `run ${d}: ${res.cmds}`);
+    assert.equal(billed() - before, res.cmds, "INCRBY bills exactly what the run sent");
+    runs.push(res);
+    if (res.done) break;
   }
+  assert.ok(runs.length > 1, "5,000 stale rows with a 40-command cap take more than one run");
+  assert.ok(runs.at(-1)!.done && r.hs("ideas:meta").size === 0 && r.zs("ideas:top").size === 0, "resumed until done");
+  assert.equal(runs.reduce((n, x) => n + x.dropped, 0), 5000);
+  // Defaults: a 5,000-row store that's all fresh costs GET cursor 2 + 10 pages × 5 + DEL cursor 2 = 54 commands.
+  const r2 = ttlRedis({ now: Date.UTC(2026, 10, 1) });
+  for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r2.exec(["ZINCRBY", "ideas:top", 1, k]); r2.exec(["ZADD", "ideas:recent", Date.UTC(2026, 9, 30), k]); }
+  const fresh = await mk(r2).sweep(new Date(Date.UTC(2026, 10, 1)));
+  assert.ok(fresh.done && fresh.dropped === 0 && fresh.cmds <= 54, `${fresh.cmds}`);
+  // The shared monthly budget stops it too.
+  const b = new Budget(10);
+  const r3 = ttlRedis({ now: Date.UTC(2026, 10, 1) });
+  r3.exec(["ZINCRBY", "ideas:top", 1, "aaaaaaaa"]);
+  const capped = await new IdeaStore(r3.pipe, b).sweep(new Date(Date.UTC(2026, 10, 1)));
+  assert.ok(capped.cmds <= 10);
+  assert.equal((await quiet().sweep()).done, true, "no store: a no-op");
 });
 
-test(`ideas:meta: the TTL is set by the first save (a daily re-type never extends it); the next write saves it afresh`, async () => {
-  const clock = { now: Date.UTC(2026, 10, 1, 12) };
-  const r = ttlRedis(clock);
-  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  const rec = recOf("garden bench");
-  const t0 = clock.now;
-  for (let d = 0; d < RETAIN_DAYS; d++) { clock.now = t0 + d * DAY; await store.record(rec, new Date(clock.now)); }
-  clock.now = t0 + RETAIN_S * 1000 - 1;
-  assert.ok(r.hs("ideas:meta").has(rec.key), "kept for 88 days");
-  clock.now = t0 + RETAIN_S * 1000;
-  assert.ok(!r.hs("ideas:meta").has(rec.key), "gone at 88 days, retyped daily or not");
-  assert.ok(r.hs("ideas:stamp").has(rec.key), "the stamp (no text) follows the latest write");
-  await store.record(rec, new Date(clock.now + 20_000));
-  assert.ok(r.hs("ideas:meta").has(rec.key), "the next write saves it afresh, with a fresh 88 days");
-  assert.equal(r.zs("ideas:top").get(rec.key), RETAIN_DAYS + 1, "its count (no text) carries on");
-});
-
-test("legacy fields with no TTL (old code, old previews on the shared store): the daily sweep sets the deadline, then deletes", async () => {
-  const clock = { now: Date.UTC(2026, 9, 21, 12) };
-  const r = ttlRedis(clock);
-  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  // What the old code left: HSETNX meta, HSET stamp, an HSET review mark, the old single feedback list.
-  const old = recOf("old shelf");
-  r.exec(["HSETNX", "ideas:meta", old.key, JSON.stringify({ prompt: "old shelf", size: old.size, resultKey: old.resultKey })]);
-  r.exec(["HSET", "ideas:stamp", old.key, JSON.stringify({ at: "2026-10-16T00:00:00.000Z", source: "live" })]);
-  r.exec(["ZINCRBY", "ideas:top", 3, old.key]); r.exec(["ZADD", "ideas:status", 2, old.key]); r.exec(["ZADD", "ideas:recent", clock.now - DAY, old.key]);
-  r.exec(["HSET", "ideas:review", old.key, "{}"]);
-  r.exec(["LPUSH", "feedback:list", JSON.stringify({ note: "old note", at: "2026-10-16T00:00:00.000Z" })]);
-  await store.served(new Date(clock.now));
-  assert.equal(r.kexp.get("feedback:list"), LEGACY_DEADLINE_S * 1000, "the old list goes at the deadline");
-  clock.now = LEGACY_DEADLINE_S * 1000 - 1;
-  assert.ok(r.hs("ideas:meta").has(old.key), "kept until the deadline");
-  clock.now = LEGACY_DEADLINE_S * 1000;
-  assert.ok(!r.hs("ideas:meta").has(old.key) && !r.hs("ideas:review").has(old.key) && !r.hs("ideas:stamp").has(old.key));
-  assert.equal(r.ls("feedback:list").length, 0);
-  assert.ok(LEGACY_DEADLINE_S * 1000 - LEGACY_SINCE <= RETAIN_S * 1000, "nothing written since the log shipped outlives 88 days");
-  // The next sweep drops the counts of the deleted row (no meta any more).
-  clock.now += SWEEP_MS + 1;
-  r.exec(["SET", "ideas:snap:lock", "x", "EX", 1]); clock.now += 2000;
-  await store.served(new Date(clock.now));
-  assert.ok(!r.zs("ideas:top").has(old.key) && !r.zs("ideas:status").has(old.key) && !r.zs("ideas:recent").has(old.key), "orphan counts swept");
-  // After the deadline an old preview writes again with no TTL: the next daily sweep deletes it outright.
-  const late = recOf("late shelf");
-  r.exec(["HSETNX", "ideas:meta", late.key, JSON.stringify({ prompt: "late shelf" })]);
-  clock.now += SWEEP_MS + 1;
-  const ran = await store.sweep(new Date(clock.now));
-  assert.ok(ran && !r.hs("ideas:meta").has(late.key), "deleted at once (HEXPIREAT in the past)");
-});
-
-test("the sweep runs at most once a day (its time rides in the stored snapshot), and costs about 10 commands", async () => {
-  const clock = { now: Date.UTC(2026, 9, 21, 12) };
-  const r = ttlRedis(clock);
-  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  for (let i = 0; i < 5; i++) await store.record(recOf(`crate ${i}`), new Date(clock.now + i * 30_000));
-  const sweeps = () => r.sent.filter((l) => l.some((c) => c[0] === "HKEYS")).length;
-  for (let m = 0; m < 48 * 6; m++) { // every 10 min for two days, fresh instance each time
-    clock.now += 600_000;
-    await new IdeaStore(r.pipe, undefined, () => {}, async () => {}).served(new Date(clock.now));
+test("cron: daily in vercel.json; /api/cron/retention is 404 without the right Bearer CRON_SECRET", async () => {
+  const v = JSON.parse(fs.readFileSync("vercel.json", "utf8"));
+  assert.deepEqual(v.crons, [{ path: "/api/cron/retention", schedule: "17 8 * * *" }], "once a day (free plan)");
+  const { Route } = await import("../src/routes/api/cron/retention");
+  const h = (Route as unknown as { options: { server: { handlers: { GET: (a: { request: Request }) => Promise<Response> } } } }).options.server.handlers;
+  const req = (auth?: string, extra: Record<string, string> = {}) => new Request("https://yard.test/api/cron/retention", { headers: { ...(auth ? { authorization: auth } : {}), ...extra } });
+  const prev = process.env.CRON_SECRET;
+  try {
+    const sec = "c".repeat(32);
+    for (const env of [undefined, "short", sec]) {
+      if (env === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = env;
+      for (const auth of [undefined, "", "Bearer ", "Bearer wrong", sec, `Bearer ${sec}x`, `Basic ${sec}`]) assert.equal((await h.GET({ request: req(auth, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }) })).status, 404, `env=${env} auth=${auth}`);
+    }
+    process.env.CRON_SECRET = sec;
+    const ok = await h.GET({ request: req(`Bearer ${sec}`) });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(Object.keys(((await ok.json()) as { ideas: object }).ideas).sort(), ["cmds", "done", "dropped", "scanned"], "counts only");
+  } finally {
+    if (prev === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = prev;
   }
-  assert.ok(sweeps() >= 2 && sweeps() <= 3, `sweeps in two days: ${sweeps()}`);
-  const before = Number(r.str.get(`ideas:cmds:${new Date(clock.now).toISOString().slice(0, 7)}`));
-  clock.now += SWEEP_MS;
-  await new IdeaStore(r.pipe, undefined, () => {}, async () => {}).served(new Date(clock.now));
-  const cost = Number(r.str.get(`ideas:cmds:${new Date(clock.now).toISOString().slice(0, 7)}`)) - before;
-  assert.ok(cost <= 3 + 6 + 7 + 4, `one rebuild with its sweep: ${cost} commands`);
-  const snap = JSON.parse(r.str.get("ideas:snap")!);
-  assert.ok(typeof snap.swept === "string");
-  const served = await new IdeaStore(r.pipe, undefined, () => {}, async () => {}).served(new Date(clock.now + 1000));
-  assert.ok(!("swept" in served), "bookkeeping never served");
-});
-
-test("command cost per write is unchanged: WRITE_CMDS 9, the same commands with the TTL inside them", async () => {
-  const clock = { now: Date.UTC(2026, 9, 21, 12) };
-  const r = ttlRedis(clock);
-  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  await store.record(recOf("plain write"), new Date(clock.now));
-  assert.equal(WRITE_CMDS, 9);
-  assert.equal(r.sent[0].length, 9);
-  assert.equal(Number(r.str.get("ideas:cmds:2026-10")), 9);
-  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETEX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYRANK", "HSETEX", "HINCRBY", "EXPIRE"]);
-  // Feedback: gate 5 + write 3 = 8 per saved note (was 9, and 11 when the tail aged out).
-  const shop = new ShopStore(r.pipe);
-  const n0 = r.sent.flat().length;
-  await shop.addFeedback(cleanFeedback({ chips: ["other"] }, "", new Date(clock.now))!, "none", new Date(clock.now));
-  assert.equal(r.sent.flat().length - n0, 8);
-  assert.equal(dayExpiry(new Date("2026-10-21T23:59:59Z")), Date.UTC(2026, 9, 21) / 1000 + RETAIN_S);
 });
 
 test("/api/critic-review: a missing or wrong secret is 404, never 401", async () => {
@@ -302,10 +271,8 @@ test("/api/critic-review: a missing or wrong secret is 404, never 401", async ()
   try {
     for (const env of [undefined, "short", "s".repeat(24)]) {
       if (env === undefined) delete process.env.CRITIC_REVIEW_SECRET; else process.env.CRITIC_REVIEW_SECRET = env;
-      for (const m of ["GET", "POST"] as const) for (const auth of [undefined, "", "Bearer ", "Bearer wrong", `Bearer ${"s".repeat(23)}`, "s".repeat(24) + "x", `Basic ${"s".repeat(24)}`]) {
-        const res = await h[m]({ request: req(m, auth) });
-        assert.equal(res.status, 404, `${m} env=${env} auth=${auth}`);
-      }
+      for (const m of ["GET", "POST"] as const) for (const auth of [undefined, "", "Bearer ", "Bearer wrong", `Bearer ${"s".repeat(23)}`, "s".repeat(24) + "x", `Basic ${"s".repeat(24)}`])
+        assert.equal((await h[m]({ request: req(m, auth) })).status, 404, `${m} env=${env} auth=${auth}`);
     }
     process.env.CRITIC_REVIEW_SECRET = "s".repeat(24);
     assert.equal((await h.GET({ request: req("GET", `Bearer ${"s".repeat(24)}`) })).status, 200, "the right secret still works");
