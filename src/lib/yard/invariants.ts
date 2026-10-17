@@ -1,4 +1,8 @@
 import { hardwareSaidNotBought } from "./hardwareSaid";
+import { finishFor } from "./typedFinish";
+import { panelRenderLook, WOOD_CATEGORIES } from "./partStock";
+import { refineProject, DERIVED_TYPES } from "./refine";
+const SIZE_STEPS = [["Wider", "2 inches wider"], ["Taller", "2 inches taller"], ["Deeper", "2 inches deeper"]] as const;
 import { storeTermDrift } from "./listings";
 import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, stepStockNameDrift, unlinkedBuy } from "./buyComplete";
 import { contactBuild, interiorSheet } from "./materialForUse";
@@ -35,13 +39,13 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -299,7 +303,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
   ];
 }
 
@@ -448,6 +452,43 @@ function c16(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
 function c17(p: YardProject, plan: BuildPlan): Violation[] {
   if (p.displayOnly) return [];
   return [...duplicateHingeSteps(plan), ...floorTalkOnSmall(p, plan)].map((m) => v("C17", m));
+}
+
+/**
+ * C18 (typed finish or colour): a typed "black", "white", "painted" or "stained" renders as that colour on every wood
+ * part, and Buy carries that paint or stain as a real product with a link.
+ */
+function c18(p: YardProject, plan: BuildPlan): Violation[] {
+  const f = finishFor(p, plan);
+  if (!f) return [];
+  const out: Violation[] = [];
+  const wood = p.panels.filter((x) => WOOD_CATEGORIES.has(getCatalogItem(panelRenderLook("", x).catalogId)?.category ?? ""));
+  const off = wood.filter((x) => panelRenderLook(p.prompt ?? "", x).tone !== f.tone);
+  if (off.length) out.push(v("C18", `typed ${f.word}: ${off.length} wood part${off.length > 1 ? "s" : ""} (${off[0].name}) do not render ${f.key}`));
+  const row = plan.bom.find((b) => b.name === f.product.name);
+  if (!row) out.push(v("C18", `typed ${f.word}: no ${f.kind} on Buy`));
+  else if (!(row.offers ?? []).some((o) => o.href)) out.push(v("C18", `typed ${f.word}: "${row.name}" has no store link`));
+  return out;
+}
+
+/**
+ * C19 (derived counts re-derive on size steps): Wider, Taller and Deeper are never refused for a count that follows from
+ * the size (center supports, shelves, rails), and after the step the cut list, the model and Buy still agree.
+ */
+function c19(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || p.standIn || !plan.cutList.length || isUnitItem(p)) return [];
+  const out: Violation[] = [];
+  const syncBefore = i3(p, plan).length + cutStockOffBuy(plan).length;
+  for (const [label, phrase] of SIZE_STEPS) {
+    const r = refineProject(p, phrase);
+    const derived = r.refused.find((t) => DERIVED_TYPES.some((d) => t.includes(`change the ${d}s`)));
+    if (derived) { out.push(v("C19", `${label} refused: ${derived.replace(/^"[^"]*":\s*/, "")}`)); continue; }
+    if (!r.project) continue;
+    const after = buildPlan(r.project);
+    const syncAfter = [...i3(r.project, after).map((x) => x.msg), ...cutStockOffBuy(after).map((m) => `cut list stock "${m}" is not on Buy`)];
+    if (syncAfter.length > syncBefore) out.push(v("C19", `after ${label}: ${syncAfter[0]}`));
+  }
+  return out;
 }
 
 /** C12 (store terms follow the Buy name): every store search on a Buy row searches that row's name. */
