@@ -46,6 +46,19 @@ export function sizePhrases(prompt: string): { prompt: string; axes: PhraseAxes;
   const tvStand = !!tvM && /\b(?:stand|console|media)\b/.test(lower) && !/\btv\s+(?:stand|console)\b/.test(lower);
   set(/\b(?:that fits |for |to fit |fits )an? (\d{2,3})\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tv|television)\b/i, "width", (m) => Math.round(Number(m[1]) * 0.87 + 4));
   if (tvStand) s = s.replace(/\b(stand|console|media)\b/i, "TV $1");
+  // Fit clause: a measure that names what the build is sized to ("to fit a 22 inch gap", "for a 24 inch nook",
+  // "fits in a 3 foot space") is the build's outer width. The words stay in the prompt so the noun still routes;
+  // only the width is said back. Screens are sized on the diagonal, so a measured screen keeps its TV rule above.
+  const fit = s.match(/\b(?:(?:to|that|which|will|must)\s+fits?|fits?|fitting|fitted\s+(?:to|in(?:to)?)|sized\s+(?:for|to)|for)\s+(?:(?:in|into|inside|within)\s+)?(?:a|an|the|my|our|this|that)\s+(\d+(?:\.\d+)?)\s*-?\s*(inches|inch(?![a-z])|in(?![a-z])\.?|"|feet|foot|ft(?![a-z])\.?|')\s*(?!(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round|x|by|tv|television|monitor|screen)\b)[a-z]+/i);
+  if (fit && axes.width == null && !typedAxis("width")) {
+    const n = Number(fit[1]) * (/^(?:feet|foot|ft|')/i.test(fit[2]) ? 12 : 1);
+    if (n >= 12 && n <= 120) {
+      axes.width = n;
+      phrases.push(fit[0].trim());
+      // The measure moves to the width; the fit words and the noun stay ("for a 24 inch nook" → "for a nook … 24 wide").
+      s = s.replace(fit[0], fit[0].replace(/(\d+(?:\.\d+)?)\s*-?\s*(?:inches|inch|in\.?|"|feet|foot|ft\.?|')\s*(?:-\s*)?/i, ""));
+    }
+  }
   // "6 foot shelf" with no axis word: a storage form stands that tall.
   // Other forms already read a bare length on their own long axis (bench, arch, tower), so only storage forms are set here.
   if (TALL_FORMS.test(lower) && !/\d\s*(?:by|x|×)\s*\d/i.test(prompt)) set(/\b(\d+(?:\.\d+)?)\s*(?:-|\s)?(?:foot|feet|ft|')(?!\s*(?:wide|deep|tall|high|long|by|x|×))(?=\s+[a-z])/i, "height", (m) => Number(m[1]) * 12);
