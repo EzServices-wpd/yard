@@ -268,20 +268,31 @@ export const isSplit = (dr: Drawer) => splits.has(dr);
 /** Everything that moves with a drawer: its parts and, while split, their copies. */
 const movers = (dr: Drawer) => [...dr.els, ...(splits.get(dr)?.copies ?? [])];
 
+/**
+ * How far open (0 shut … 1 open) at time t of a curve. The doors' close curve bumps 1.5% past shut, which on a door
+ * is a slam but on a drawer pushes its front about 3/8 in into the case, past the divider. A drawer stops at shut:
+ * clamped at 0, so no frame ever slides behind shut (the open overshoot is out of the case and stays).
+ */
+export const slideAt = (f: (t: number) => number, t: number) => Math.max(0, f(t));
+
 function frames(dr: Drawer, f: (t: number) => number, n = 20) {
-  return Array.from({ length: n + 1 }, (_, i) => ({ transform: dr.at(dr.open * f(i / n)), offset: i / n }));
+  return Array.from({ length: n + 1 }, (_, i) => ({ transform: dr.at(dr.open * slideAt(f, i / n)), offset: i / n }));
+}
+
+/** The keyframes of one drawer's slide: "once" (open 40%, hold, shut 40%), or the hover "open" / "close". */
+export function keyframes(dr: Drawer, kind: "once" | "open" | "close") {
+  return kind === "close"
+    ? frames(dr, closeCurve)
+    : kind === "open"
+      ? frames(dr, openCurve)
+      : [...frames(dr, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(dr, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
 }
 
 /** Same timing and curves as the doors: "once" slides open, holds, slides shut; "open"/"close" are the hover pair. */
 export function slide(drawers: Drawer[], kind: "once" | "open" | "close", delay = 0): Animation[] {
   const all: Animation[] = [];
   drawers.forEach((dr, j) => {
-    const kf =
-      kind === "close"
-        ? frames(dr, closeCurve)
-        : kind === "open"
-          ? frames(dr, openCurve)
-          : [...frames(dr, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(dr, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
+    const kf = keyframes(dr, kind);
     const start = delay + j * STACK_MS;
     // Split before it moves (shut, the copy shows only what is already beyond the cut); joined again once shut
     // (not if a hover cancels the close).

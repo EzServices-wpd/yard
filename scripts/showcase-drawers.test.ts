@@ -4,7 +4,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { cutPlane, drawerKey, drawerSpecs, hull, isSplit, split, sweep, unsplit, type Drawer } from "../src/components/home/showcase-drawers";
+import { cutPlane, drawerKey, drawerSpecs, hull, isSplit, keyframes, slideAt, split, sweep, unsplit, type Drawer } from "../src/components/home/showcase-drawers";
+import { closeCurve, openCurve } from "../src/components/home/showcase-doors";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { showcaseFor } from "../src/lib/yard/homeShowcase";
 
@@ -195,4 +196,31 @@ test("split is wired: before a drawer moves (once, hover, reduced motion), copie
   assert.match(src, /for \(const g of movers\(dr\)\) \{/);
   assert.match(src, /if \(kind !== "open" && mine\.length\) mine\[0\]\.finished\.then\(\(\) => unsplit\(\[dr\]\), \(\) => \{\}\);/);
   assert.match(src, /if \(open\) split\(drawers\);[\s\S]{0,200}if \(!open\) unsplit\(drawers\);/);
+});
+
+test("a drawer never slides past shut: the close (hover and once) is clamped at 0, no overshoot into the case", () => {
+  // The doors' close curve bumps past shut (a door's slam); unclamped, a 14 in desk drawer went ~3/8 in into the case.
+  const raw = Math.min(...Array.from({ length: 2001 }, (_, i) => closeCurve(i / 2000)));
+  assert.ok(raw < -0.01, `the shared door curve still overshoots (${raw}), so the clamp is what keeps drawers shut`);
+  for (let i = 0; i <= 2000; i++) {
+    assert.ok(slideAt(closeCurve, i / 2000) >= 0, `close at ${i / 2000}`);
+    assert.ok(slideAt(openCurve, i / 2000) >= 0, `open at ${i / 2000}`);
+    assert.equal(slideAt(closeCurve, i / 2000), Math.max(0, closeCurve(i / 2000)));
+  }
+  // Every keyframe of every kind: the slide distance (along the drawer's +z) is never negative; the slide still opens.
+  const dr = { els: [], open: 14.5, stack: 0, at: (t: number) => String(t) } as unknown as Drawer;
+  for (const kind of ["once", "open", "close"] as const) {
+    const kf = keyframes(dr, kind);
+    const d = kf.map((k) => Number(k.transform));
+    assert.ok(Math.min(...d) >= 0, `${kind}: ${Math.min(...d)}`);
+    assert.ok(Math.max(...d) >= 14.5, `${kind} still reaches open`);
+    if (kind !== "open") assert.ok(Math.abs(d[d.length - 1]) < 1e-9, `${kind} ends shut`);
+    assert.ok(kf.every((k, i) => i === 0 || k.offset >= kf[i - 1].offset), `${kind} offsets in order`);
+  }
+  // Real cards: the desk's drawers (where Critic saw it) and every drawer card in the home set end exactly shut.
+  const p = generateFromPrompt("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space");
+  for (const s of drawerSpecs(p.panels)) {
+    const d = keyframes({ ...dr, open: s.open } as Drawer, "close").map((k) => Number(k.transform));
+    assert.ok(Math.min(...d) >= 0 && Math.abs(d[d.length - 1]) < 1e-9, `desk drawer ${s.ids[0]}: ${Math.min(...d)}`);
+  }
 });
