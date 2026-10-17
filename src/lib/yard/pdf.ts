@@ -1,3 +1,4 @@
+import { pdfCutListIntro } from "./wholeItems";
 import { isUnitItem } from "./unitItems";
 import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
@@ -92,6 +93,11 @@ export function typedAxesTalk(project: YardProject, craft = false) {
   // Nothing typed is still stock size when the build's own Assumed notes cover every axis.
   const stock = noDigits && !extra.length && (!Object.keys(assumed).length || axes.every((a) => assumed[a]));
   if (stock) axes.forEach((a) => (assumed[a] = true));
+  // C11: a whole bought item is its known trade size (the unit table), never an assumed size to measure.
+  if (isUnitItem(project)) {
+    axes.forEach((a) => delete assumed[a]);
+    extra.length = 0;
+  }
   const finished = modelFinishedDepth(project.panels, o.depth);
   const shown = { ...o, depth: finished };
   const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
@@ -469,7 +475,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     } else newPage(craft ? "Parts" : "Cut list");
     sectionTitle(
       craft ? "Stick list" : "Cut list",
-      craft ? "Full pieces from the pack. Glue them as they come." : "Same size is the same letter. Mark each part with its letter in pencil as you cut it.",
+      pdfCutListIntro(plan, craft),
     );
     const cols2 = craft
       ? [
@@ -1225,7 +1231,8 @@ export function headerTitle(project: YardProject): string {
   const o = project.pocket?.unit ?? project.overall;
   // A typed depth is the size said back (the linen closet's 16″, doors standing proud are a note); only an
   // assumed depth reads the model's finished depth.
-  const d = assumed.depth ? modelFinishedDepth(project.panels, o.depth) : o.depth;
+  // C11: a whole bought item's depth is its real piece, so it reads the model's finished depth too.
+  const d = assumed.depth || isUnitItem(project) ? modelFinishedDepth(project.panels, o.depth) : o.depth;
   const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
   const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);

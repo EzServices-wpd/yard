@@ -1,7 +1,8 @@
 "use client";
 
+import { useCutFocus } from "@/components/workspace/cut-focus";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
@@ -14,7 +15,7 @@ import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/
 import { WalkRig } from "@/components/workspace/walk-rig";
 import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stick-cloud";
 import { buildOrder } from "@/components/workspace/build-order";
-import { LAMP_FADE_MS } from "@/components/workspace/lava-lamp";
+import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
 
 const HULL = "#8a8478";
@@ -251,6 +252,7 @@ export function WorkspaceCanvas() {
           <planeGeometry args={[6000, 6000]} />
           <meshStandardMaterial color="#231d17" roughness={0.95} metalness={0} />
         </mesh>
+        <RevealCamera />
         <BenchScene
           project={project}
           explode={explode}
@@ -400,8 +402,14 @@ function CameraRig({
         return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
       });
       (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept };
+      // The framed pose, for a reveal glide already running on this camera (see RevealCamera).
+      const prev = (cam.userData.framed as FramedPose | undefined)?.v ?? 0;
+      cam.userData.framed = { v: prev + 1, pos: cam.position.clone(), target: tgt.clone() } satisfies FramedPose;
     };
-    // Let the overlay cards lay out first, then fit.
+    // Fit now, so a remounted Canvas (every rebuild) has a framed camera before its first frame and the
+    // reveal glide never starts from the Canvas default; then again once the overlay cards have laid
+    // out. On a loaded device those timers land seconds late (setTimeout queues behind the mount).
+    fit();
     const t1 = window.setTimeout(fit, 60);
     const t2 = window.setTimeout(fit, 450);
     return () => {
@@ -464,80 +472,223 @@ function useAssemble(ready: boolean): number {
 }
 
 /**
- * Build animation: once a fresh build lands, its real parts appear step by step in plan order
- * (first step that lists a part places it; unlisted parts land with the last step). Visibility only,
- * no new geometry, so it costs nothing per frame. ~2s total; skipped under reduced motion,
- * when a step is open, or when the plan has no steps that name parts.
+ * Build reveal, "blueprint to wood" (UX plan item 1). Once a fresh build lands, every part shows as
+ * a faint outline (0–400 ms), then each part turns to wood in step order (60–90 ms apart, compressed
+ * past 24 parts), and the camera eases into the 3/4 view over the last 600 ms. The whole thing is
+ * capped at 2.4 s. A tap, click or Esc jumps to the finished frame. Reduced motion: no stagger, no
+ * camera move, a 150 ms fade on the finished frame. Visibility and material only, no new geometry.
+ * Returns the set of parts already in wood (others draw as outlines), or null when nothing plays.
  */
+/** Above this many parts the reveal steps by build beat. */
+const BEAT_MODE_PARTS = 120;
+/** Longest the model waits in outline for its build order (inside the lamp fade). */
+const PLAN_WAIT_MS = 350;
+const EMPTY_IDS: Set<string> = new Set();
+
 function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined, ready: boolean, stepping: boolean): Set<string> | null {
   const order = useMemo(() => {
     if (!ready || !plan?.instructions.length) return null;
     const { at, n, stale } = buildOrder(project, plan);
-    return n >= 2 && !stale ? { at, n } : null;
+    if (n < 2 || stale) return null;
+    // Parts in step order (stable within a step: the model's own order).
+    const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
+    ids.sort((x, y) => at.get(x)! - at.get(y)!);
+    // Cut pieces each mesh stands for (a 5-layer hub is one mesh, five cut pieces), from the plan's own
+    // cut rows (partIds), so "k of N" counts what the plan counts. A mesh no row names counts once.
+    const weight = new Map<string, number>();
+    for (const row of plan.cutList) {
+      const own = (row.partIds ?? []).filter((id) => at.has(id));
+      if (own.length && row.quantity > own.length) for (const id of own) weight.set(id, Math.max(weight.get(id) ?? 1, row.quantity / own.length));
+    }
+    const cum = [0];
+    for (const id of ids) cum.push(cum[cum.length - 1] + (weight.get(id) ?? 1));
+    // Beat ends: index just past the last part of each beat (for big models that step by beat).
+    const beatEnds: number[] = [];
+    ids.forEach((id, i) => { if (i === ids.length - 1 || at.get(ids[i + 1]) !== at.get(id)) beatEnds.push(i + 1); });
+    return { at, n, ids, cum, beatEnds };
   }, [project, plan, ready]);
-  const [shown, setShown] = useState<number>(Infinity);
+  const [wood, setWood] = useState<number>(Infinity);
   const played = useRef<string | null>(null);
-  // Late-start guard: the reveal only plays if the plan lands within 600ms of the model; a model
-  // already on screen is never hidden again to replay (that read as a flicker).
   const readyAt = useRef<{ id: string; t: number } | null>(null);
+  const woodShown = useRef<string | null>(null);
   if (ready && readyAt.current?.id !== project.id) readyAt.current = { id: project.id, t: performance.now() };
   useEffect(() => {
     if (!order || stepping || played.current === project.id) return;
     played.current = project.id;
-    const host0 = document.querySelector("[data-bench-host]");
-    const skip = (why: string) => host0?.setAttribute("data-yard-reveal", `skip:${why}`);
-    // Late start: fine while the Building overlay is still up or fading over the bench (the model
-    // has not been seen yet); otherwise only within 600ms of the model landing.
-    const overlayUp = !!document.querySelector(".yard-lamp");
-    if (!readyAt.current || readyAt.current.id !== project.id || (!overlayUp && performance.now() - readyAt.current.t > 600)) return skip("late");
-    if (document.hidden) return skip("hidden");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return skip("reduced-motion");
-    const per = Math.max(220, Math.min(420, 2600 / order.n));
-    // The bench host carries the current beat (data-yard-reveal="k/n" + that beat's part names) so
-    // the order can be checked from outside the WebGL canvas.
     const host = document.querySelector("[data-bench-host]");
-    const names = new Map<string, string>([...project.panels.map((p) => [p.id, p.name] as const), ...project.instances.map((i) => [i.id, i.role ?? i.id] as const)]);
-    const mark = (k: number) => {
-      if (!host) return;
-      host.setAttribute("data-yard-reveal", k < 0 ? `wait/${order.n}` : k >= order.n ? `done/${order.n}` : `${k + 1}/${order.n}`);
-      const label = (g: number) => {
-        const c = new Map<string, number>();
-        for (const [pid, gg] of order.at) if (gg === g) { const nm = names.get(pid) ?? pid; c.set(nm, (c.get(nm) ?? 0) + 1); }
-        return [...c].map(([nm, x]) => (x > 1 ? `${nm} ×${x}` : nm)).join(", ");
-      };
-      host.setAttribute("data-yard-reveal-parts", k < 0 || k >= order.n ? "" : label(k));
+    const skip = (why: string) => host?.setAttribute("data-yard-reveal", `skip:${why}`);
+    // Wood already on screen (the plan came after the model): never hide it again for a reveal.
+    if (!readyAt.current || readyAt.current.id !== project.id || woodShown.current === project.id) return skip("late");
+    if (document.hidden) return skip("hidden");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      host?.querySelector("canvas")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
+      return skip("reduced-motion");
+    }
+    const total = order.ids.length;
+    const count = (k: number) => Math.round(order.cum[Math.min(k, total)]);
+    const pieces = count(total);
+    // Big models (hundreds of parts) step by build beat, not by part: a handful of renders keeps the
+    // 2.4 s cap on any device instead of one re-render of every part per frame.
+    const byBeat = total > BEAT_MODE_PARTS;
+    const units = byBeat ? order.beatEnds.length : total;
+    const stagger = staggerFor(units);
+    // The outline phase runs while the lamp fades (no wait for the fade to finish).
+    let t0 = Math.max(performance.now() - 16, readyAt.current.t);
+    let end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+    // The wood stepping never runs under a lamp that is still up (not yet fading): the bench is
+    // ready when the build settles, but the page's lamp can hold on a beat longer (a first ?q= build
+    // waits for the whole prompt run). A short beat-mode reveal used to finish entirely under it.
+    const lampUp = () => !!document.querySelector(".yard-lamp[data-yard-building]");
+    let raf = 0;
+    let shownCount = -1;
+    let held = false;
+    let shownU = 0;
+    const finish = (skipped: boolean) => {
+      cancelAnimationFrame(raf);
+      setWood(Infinity);
+      setReveal({ active: false, wood: pieces, skipped });
+      host?.setAttribute("data-yard-reveal", `done/${pieces}`);
+      host?.setAttribute("data-yard-reveal-ms", String(Math.round(performance.now() - t0)));
+      onRevealSkip(null);
+      window.removeEventListener("keydown", onKey);
     };
-    // Hold the bench empty while the Building overlay fades (LAMP_FADE_MS), then one beat per `per`
-    // ms on a wall-clock schedule: beat k is due at t0 + k·per, so a slow frame never bunches or
-    // stretches the beats that follow (time-based, not frame counts).
-    setShown(-1);
-    mark(-1);
-    // Beat 1 lands as the overlay finishes fading (it began fading when the model became ready).
-    const t0 = Math.max(performance.now(), readyAt.current.t + LAMP_FADE_MS);
-    let k = -1;
-    let timer = 0;
-    // F44: each beat is scheduled from when the previous one actually fired. After a slow frame it
-    // may claw back a little toward the plan (t0 + k·per) but never closer than 0.6·per to the beat
-    // before, so a stall never fires two beats back to back.
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") finish(true); };
+    window.addEventListener("keydown", onKey);
+    onRevealSkip(() => finish(true));
+    setWood(0);
+    setReveal({ active: true, n: pieces, wood: 0, t0, end, skipped: false });
+    host?.setAttribute("data-yard-reveal", `wire/${pieces}`);
+    host?.setAttribute("data-yard-reveal-mode", byBeat ? "beat" : "part");
+    // Step clock. The first wood frame of a model can stall (~1 s on a slow phone or a big model), so
+    // the first step is held to one painted frame; then the rest re-spread over what is left of the
+    // 2.4 s cap (never slower than the planned stagger). Part mode catches up freely after that, so
+    // small builds stay inside the cap; beat mode (a handful of beats) still shows each beat a frame.
+    let base = 0;
+    let gap = stagger;
+    let last = 0;
     const tick = () => {
-      k++;
-      mark(k);
-      if (k >= order.n) {
-        setShown(Infinity);
+      const now = performance.now();
+      if (lampUp()) {
+        t0 = now;
+        end = t0 + WIRE_MS + units * stagger + CALLOUT_MS;
+        held = true;
+        last = 0;
+        raf = requestAnimationFrame(tick);
         return;
       }
-      setShown(k);
-      const fired = performance.now();
-      const due = Math.max(fired + 0.6 * per, Math.min(t0 + (k + 1) * per, fired + per));
-      timer = window.setTimeout(tick, due - fired);
+      if (held) { held = false; setReveal({ t0, end }); }
+      // Last frame's length: a step that would land past the cap shows the finished frame instead.
+      const frame = last ? Math.min(1000, now - last) : 16;
+      last = now;
+      let u: number;
+      if (shownU === 0) {
+        u = now < t0 + WIRE_MS ? 0 : 1;
+      } else {
+        if (!base) {
+          base = now;
+          const left = t0 + CAP_MS - CALLOUT_MS - now;
+          gap = units > 1 ? Math.max(0, Math.min(stagger, left / (units - 1))) : 0;
+          end = Math.max(now, base + (units - 1) * gap) + CALLOUT_MS;
+          setReveal({ end });
+        }
+        const due = gap > 0 ? Math.min(units, 1 + Math.floor((now - base) / gap)) : units;
+        u = byBeat ? Math.min(due, shownU + 1) : due;
+      }
+      // Hard cap: past 2.4 s from the outline the finished frame shows, whatever the device managed.
+      if ((now >= end && shownU >= units) || (base > 0 && now + (base < now ? frame : 0) >= t0 + CAP_MS)) return finish(false);
+      const k = byBeat ? (u ? order.beatEnds[u - 1] : 0) : u;
+      shownU = u;
+      if (k !== shownCount) {
+        shownCount = k;
+        setWood(k);
+        setReveal({ wood: count(k) });
+        host?.setAttribute("data-yard-reveal", k === 0 ? `wire/${pieces}` : `${count(k)}/${pieces}`);
+      }
+      raf = requestAnimationFrame(tick);
     };
-    timer = window.setTimeout(tick, Math.max(0, t0 - performance.now()));
-    return () => { window.clearTimeout(timer); setShown(Infinity); };
-  }, [order, stepping, project.id, project.panels, project.instances]);
-  if (!order || shown === Infinity || stepping) return null;
-  const vis = new Set<string>();
-  for (const [id, i] of order.at) if (i <= shown) vis.add(id);
-  return vis;
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", onKey); onRevealSkip(null); setWood(Infinity); setReveal({ active: false }); };
+  }, [order, stepping, project.id]);
+  // No build order yet when the model is ready (the plan is made just after the model, and under
+  // load that can land a few frames late): hold the model in outline for at most PLAN_WAIT_MS, inside
+  // the lamp's fade, instead of painting wood the reveal must then skip ("skip:late", Brooklyn 2 of 4).
+  // Past that the model shows in wood and that build skips its reveal, as before.
+  const lateCandidate = ready && !order && !stepping && played.current !== project.id;
+  const [waitedFor, setWaitedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lateCandidate) return;
+    const id = project.id;
+    const since = readyAt.current?.id === id ? readyAt.current.t : performance.now();
+    let raf = 0;
+    const t = window.setTimeout(() => {
+      setWaitedFor(id);
+      // Only a model that actually painted in wood counts (two frames later).
+      raf = requestAnimationFrame(() => requestAnimationFrame(() => { if (played.current !== id) woodShown.current = id; }));
+    }, Math.max(0, since + PLAN_WAIT_MS - performance.now()));
+    return () => { window.clearTimeout(t); cancelAnimationFrame(raf); };
+  }, [lateCandidate, project.id]);
+  if (lateCandidate && waitedFor !== project.id) return EMPTY_IDS;
+  if (!order || wood === Infinity || stepping) return null;
+  return new Set(order.ids.slice(0, wood));
+}
+
+
+/**
+ * The reveal's camera glide: the view starts a little wide and turned, then eases into the framed
+ * 3/4 view over the reveal's last 600 ms (cubic-bezier .2,.7,.2,1). Orbits the controls' target,
+ * so the CameraRig's framing is the end pose. Idle when no reveal is running.
+ */
+/** The pose CameraRig last framed on this camera (kept on the camera, so a remounted Canvas starts empty). */
+type FramedPose = { v: number; pos: THREE.Vector3; target: THREE.Vector3 };
+function RevealCamera() {
+  const { camera, controls } = useThree();
+  const pose = useRef<{ t0: number; end: number; v: number; from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  useFrame(() => {
+    const r = revealState();
+    const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+    if (!r.active) {
+      if (pose.current) {
+        // End on the latest framing (a fit can land after the last glide frame).
+        const latest = camera.userData.framed as FramedPose | undefined;
+        camera.position.copy(latest ? latest.pos : pose.current.to);
+        if (latest) camera.lookAt(latest.target);
+        orbit?.update?.();
+        pose.current = null;
+      }
+      return;
+    }
+    // The glide ends on the rig's framed pose, never on whatever the camera held when the reveal began.
+    // A rebuild (Wider, Taller…) remounts the Canvas and its reveal starts on the first frame, before
+    // the rig's first fit (60 ms): capturing the camera then glided to, and left it at, the Canvas
+    // default (48, 32, 48), inside the model — dark shelves, then a broken view (hotfix, Oct 16).
+    const framed = camera.userData.framed as FramedPose | undefined;
+    // No framed pose yet (the rig couldn't fit, e.g. a zero-size canvas): wait for it, never glide to
+    // or from the Canvas default.
+    if (!framed) return;
+    const v = framed.v;
+    if (!pose.current || pose.current.t0 !== r.t0 || pose.current.v !== v) {
+      const to = framed.pos.clone();
+      const target = framed.target.clone();
+      const rel = to.clone().sub(target).applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.18).multiplyScalar(1.08);
+      pose.current = { t0: r.t0, end: r.end, v, from: target.clone().add(rel), to, target };
+    }
+    const p = pose.current;
+    const u = easeCam(Math.min(1, Math.max(0, (performance.now() - (p.end - 600)) / 600)));
+    const rel0 = p.from.clone().sub(p.target);
+    const rel1 = p.to.clone().sub(p.target);
+    // Slerp-ish: interpolate the angle around Y and the distance separately so the glide arcs.
+    const a0 = Math.atan2(rel0.x, rel0.z), a1 = Math.atan2(rel1.x, rel1.z);
+    let da = a1 - a0;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    const a = a0 + da * u;
+    const flat0 = Math.hypot(rel0.x, rel0.z), flat1 = Math.hypot(rel1.x, rel1.z);
+    const flat = flat0 + (flat1 - flat0) * u;
+    const y = rel0.y + (rel1.y - rel0.y) * u;
+    camera.position.set(p.target.x + Math.sin(a) * flat, p.target.y + y, p.target.z + Math.cos(a) * flat);
+    camera.lookAt(p.target);
+  });
+  return null;
 }
 
 function BenchScene({
@@ -585,6 +736,9 @@ function BenchScene({
     [project.panels],
   );
 
+  // Cut-list focus (partIds): outline the parts the plan points at, once the reveal is done.
+  const cutFocus = useCutFocus();
+  const focusOn = !reveal && cutFocus.size > 0;
   return (
     <group>
       {showHull && <GhostLines strokes={hull} color={HULL} />}
@@ -596,7 +750,7 @@ function BenchScene({
           explode={explodeScale}
           selectedId={selectedId}
           workMode={workMode}
-          stepIds={stepIds}
+          stepIds={focusOn ? [...cutFocus] : stepIds}
           placedIds={placedIds}
           lockedIds={lockedIds}
           dragPos={dragPos}
@@ -608,15 +762,15 @@ function BenchScene({
       )}
       {!pending &&
         project.panels
-          .filter((panel) => (detail !== "frame" || panel.type !== "deck") && (!reveal || reveal.has(panel.id)))
+          .filter((panel) => detail !== "frame" || panel.type !== "deck")
           .map((panel) => (
             <PanelMesh
               key={panel.id}
               panel={panel}
               explode={explodeScale}
               selected={panel.id === selectedId}
-              inStep={stepIds.length ? stepIds.includes(panel.id) : false}
-              hasStep={stepIds.length > 0}
+              inStep={reveal ? false : focusOn ? cutFocus.has(panel.id) : stepIds.length ? stepIds.includes(panel.id) : false}
+              hasStep={reveal ? !reveal.has(panel.id) : focusOn ? false : stepIds.length > 0}
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
               facesOpen={facesOpen}

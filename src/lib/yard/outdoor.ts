@@ -8,6 +8,7 @@
 import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 import { decorateBom } from "./listings";
 import { getCatalogItem } from "./catalog";
+import { contactBuild, materialSwaps } from "./materialForUse";
 
 /** Deck as a place: "for the deck", "on my deck", "deck box", "deck chair". A skateboard deck is a board. */
 const DECK_PLACE =
@@ -38,6 +39,9 @@ export const OUTDOOR_NOTE =
 /** Same package for a build fixed in place (posts in concrete, pier blocks, ground anchors): no feet to lift. */
 export const OUTDOOR_FIXED_NOTE =
   "Outdoor build — exterior package: Titebond III waterproof glue, exterior-coated or stainless screws, and an exterior finish on every face with extra coats soaked into the end grain.";
+/** C13: a bed with no bottom (a raised garden bed on the ground) drains into the soil under it: no holes, liner on the walls only. */
+export const OPEN_BOTTOM_NOTE = "Open to the ground: no bottom to drill; staple landscape fabric up the inside of the walls only so wet soil stays off the boards.";
+const openBottom = (project: YardProject) => (project.notes ?? []).some((n) => /^No bottom\b/.test(n));
 export const DRAINAGE_NOTE =
   'Holds soil or water: drill 1/2" drainage holes about every 6" across the bottom and staple a landscape-fabric liner inside so soil stays in and water runs out.';
 
@@ -55,9 +59,18 @@ function outdoorWood(project: YardProject, prompt: string | undefined | null): b
   return (isOutdoorPrompt(prompt) || notesOutside) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
 }
 
-function wallHung(project: YardProject): boolean {
-  return project.assumptions?.installMode === "wall";
+/**
+ * Typed words that hang a build instead of standing it (I9 glides class): "hanging birdhouse", "wall mounted
+ * birdhouse", "outdoor wall planter box", "outdoor hanging shelf". Those builds are library forms whose installMode
+ * stays freestanding, so the typed words decide too.
+ */
+const HUNG_WORDS = /\bhanging\b|\bhung\b|\bhangs?\s+(?:on|from)\b|\bwall[- ]?(?:mounted|mount|hung)\b|\bwall\s+(?:planter|shelf|shelves|box|birdhouse|rack)\b|\bon\s+(?:the|a)\s+(?:wall|fence)\b/i;
+
+/** Hung on a wall, fence or chain: no feet, no glides. One answer for the note, Buy and the I11 check. */
+export function hungBuild(project: YardProject): boolean {
+  return project.assumptions?.installMode === "wall" || HUNG_WORDS.test(project.prompt ?? "");
 }
+const wallHung = hungBuild;
 
 /** Ground-contact pressure-treated legs (a coop, a hutch) stand on the ground as they are: no glides. */
 function groundContactLegs(project: YardProject): boolean {
@@ -66,6 +79,14 @@ function groundContactLegs(project: YardProject): boolean {
 /** Set in the ground or hung from posts there: concrete, pier blocks, ground anchors. Nothing stands on feet. */
 function fixedInGround(project: YardProject): boolean {
   return (project.notes ?? []).some((n) => /\bin concrete\b|\bpier blocks?\b|\bpavers?\b|\bground anchors?\b|\bin the ground\b/i.test(n));
+}
+
+/**
+ * I9: one answer for "does it stand on glides", read by the note and by Buy. Feet that stand on the ground outdoors
+ * get glides; a hung, fixed-in-ground or ground-contact build gets none, and its note never mentions them.
+ */
+export function takesGlides(project: YardProject): boolean {
+  return !wallHung(project) && !fixedInGround(project) && !groundContactLegs(project) && footTalk(project).feet;
 }
 
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
@@ -77,8 +98,9 @@ export function withOutdoorNotes(project: YardProject, prompt = project.prompt):
     soil ? n.replace(/\s*Drainage holes optional\.?/i, "").replace(/\s*Guidance only — set level outdoors\.?$/i, " Guidance only — set it level.") : n,
   );
   notes = notes.filter((n) => n.trim());
-  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(fixedInGround(project) || groundContactLegs(project) || (!wallHung(project) && !footTalk(project).feet) ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE);
-  if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
+  if (outdoor && !notes.some((n) => n.startsWith("Outdoor build — exterior package"))) notes.push(takesGlides(project) ? OUTDOOR_NOTE : OUTDOOR_FIXED_NOTE);
+  if (soil && openBottom(project)) { if (!notes.includes(OPEN_BOTTOM_NOTE)) notes.push(OPEN_BOTTOM_NOTE); }
+  else if (soil && !notes.some((n) => /drainage holes/i.test(n) && /liner/i.test(n))) notes.push(DRAINAGE_NOTE);
   return { ...project, notes };
 }
 
@@ -88,7 +110,7 @@ const isPlainScrewRow = (b: BomLine) =>
   (b.catalogId === "screws-8" || /\bwood screws?\b|#\s?\d+\s*[x×]\s*[\d-\/]+"?\s*(?:wood\s+)?screws?/i.test(b.name)) &&
   !/structural|grk|lag|tapcon|masonry|exterior|stainless|deck screw/i.test(b.name);
 
-function footTalk(project: YardProject): { where: string; count: number; feet: boolean } {
+export function footTalk(project: YardProject): { where: string; count: number; feet: boolean } {
   if (wallHung(project)) return { where: "the bottom edges and both ends of every board", count: 0, feet: false };
   const legs = project.panels.filter((panel) => /\bleg\b/i.test(panel.name));
   if (legs.length >= 1) {
@@ -115,7 +137,7 @@ function exteriorTalk(t: string | undefined): string | undefined {
 }
 
 /** Pressure-treated #2 lumber, Home Depot shelf prices checked 2026-10-15 (search links where no single product page fits). */
-const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
+export const PT_LUMBER: Record<string, { name: string; price: number; query: string; href?: string; title: string }> = {
   "lumber-2x4-8": { name: "2×4 pressure-treated (8 ft)", price: 4.88, query: "2x4x8 pressure treated lumber", title: "2x4x8 #2 Prime ground contact pressure-treated pine" },
   "lumber-2x6-8": { name: "2×6 pressure-treated (8 ft)", price: 5.98, query: "2x6x8 pressure treated lumber", href: "https://www.homedepot.com/p/2-in-x-6-in-x-8-ft-2-Pressure-Treated-Lumber-2310254/329737526", title: "2x6x8 #2 pressure-treated lumber" },
   // 1× trim (rails, stiles, battens) comes treated too, so no indoor board is left in an outdoor build. Estimates.
@@ -168,10 +190,15 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
         catalogId: "outdoor-liner",
         searchQuery: "landscape fabric 3 ft x 50 ft",
         estimatedCost: 12.98,
-        notes: "Staple it inside the walls and over the bottom so soil stays in and water drains out.",
+        notes: openBottom(project) ? "Staple it up the inside of the walls so wet soil stays off the boards." : "Staple it inside the walls and over the bottom so soil stays in and water drains out.",
       });
     }
-    insertStep({
+    if (openBottom(project)) insertStep({
+      title: "Line the walls",
+      description: "Set the bed on level ground. Staple landscape fabric up the inside of the walls only, not across the ground, so roots go down and water drains; then fill with soil.",
+      tips: "Knock high spots of ground down before you fill so every board bears.",
+    });
+    else insertStep({
       title: "Drill drainage holes and line it",
       description:
         'Drill 1/2" drainage holes about every 6" across the bottom so water runs straight out. Staple landscape fabric inside the walls and over the bottom, folded at the corners, then fill with soil.',
@@ -223,8 +250,7 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
       notes: `Three coats on every face. Flood ${feet.where} and every other cut end until they stop soaking it in.`,
     });
     // Ground-contact pressure-treated legs stand on the ground as they are: no furniture glides under a coop or hutch.
-    const groundContact = groundContactLegs(project);
-    if (!wall && feet.feet && !groundContact) {
+    if (takesGlides(project)) {
       const packs = Math.max(1, Math.ceil(feet.count / 8));
       bom.push({
         name: "Outdoor furniture glides (nylon, nail-in)",
@@ -239,7 +265,21 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     // Notes that call for pressure-treated lumber get it priced on Buy, not kiln-dried framing stock.
     // A typed species (cedar, redwood…) is what gets bought; PT only replaces plain framing stock.
     const species = /\b(?:cedar|redwood|cypress|teak|oak|ipe|acacia|mahogany|douglas fir|walnut|maple|cherry|pine)\b/i;
-    if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
+    // C16: food, skin or nest contact is untreated cedar, and outdoors no interior sheet is left (materialForUse.ts).
+    const contact = contactBuild(project);
+    {
+      const typed = prompt.match(species)?.[0] ?? null;
+      const swapped = materialSwaps(project, bom, true, typed);
+      bom = swapped.bom;
+      for (const [was, now] of swapped.renamed) {
+        const id = bom.find((b) => b.name === now)?.catalogId;
+        const names = [was, id ? getCatalogItem(id)?.name : undefined].filter((n): n is string => !!n);
+        cutList = cutList.map((c) => (names.includes(c.material) ? { ...c, material: now } : c));
+        const swap = (t: string | undefined) => names.reduce((acc, n) => acc?.split(n).join(now), t);
+        instructions = instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) }));
+      }
+    }
+    if (!contact && (project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
       bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
       // F21/I9: the cut list and the steps name the same PT stock Buy prices, never the kiln-dried catalogue name.
       for (const b of bom) {
@@ -253,13 +293,13 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
     }
     instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
     insertStep({
-      title: wall || !feet.feet || groundContact ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
+      title: !takesGlides(project) ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
       description:
         `Sand to 180 grit and wipe off the dust. Seal the end grain first: brush finish onto ${feet.where} and every other cut end, ` +
         "let it soak in, and add coats until the end grain stops drinking — end grain wicks water up into the wood. " +
         "Then brush three coats of exterior finish (spar urethane or exterior oil) on every face, inside and out, with a light sand between coats." +
         // Glides only when the Buy list has them: real feet, never a base or skid.
-        (wall || !feet.feet || groundContact ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
+        (!takesGlides(project) ? "" : ` When the finish is dry, tap a nylon glide into each of the ${feet.count} feet so the sealed end grain sits off wet ground.`),
       tips: bom.some((b) => b.catalogId === "outdoor-screws")
         ? "Titebond III and exterior-coated or stainless screws are on the Buy list for every joint. Refresh the finish each spring."
         : "Titebond III is on the Buy list for every joint. Refresh the finish each spring.",

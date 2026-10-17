@@ -1,3 +1,9 @@
+import { withSaidHardware } from "./hardwareSaid";
+import { storeTermsFromBuy } from "./listings";
+import { checkedRow, HARDWARE } from "./checkedStock";
+import { buyComplete, stepTextForPlace } from "./buyComplete";
+import { unletterWhole } from "./wholeItems";
+import { withPartIds } from "./partIds";
 import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
 import { isUnitItem } from "./unitItems";
@@ -836,8 +842,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : `${joinScrews} screws — 4 per shelf (2 through each wall panel) plus ${cornerWallPanelScrews} joining Wall panel A to Wall panel B.`
         : floating
         ? hasBrackets
-          ? `${joinScrews} screws shelf into brackets (no carcase joints).`
-          : `${joinScrews} screws shelf into cleat (no carcase joints).`
+          ? `${joinScrews} screws through the shelf into the brackets.`
+          : `${joinScrews} screws through the shelf into the cleat.`
         : modelScrews.screws >= 4
           ? modelScrews.note
           : `${joinScrews} screws for the few joints in the model.`,
@@ -1021,11 +1027,11 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     const pins = shelfCount * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
     bom.push({
-      name: "5 mm shelf pins",
+      name: '3/16" shelf pins',
       quantity: packs,
       unit: packs === 1 ? "pack" : "packs",
       catalogId: "shelf-pins",
-      searchQuery: "5mm shelf pins",
+      searchQuery: '3/16" shelf pins',
       estimatedCost: 6.49 * packs,
       notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
     });
@@ -1415,7 +1421,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
-    [/\bstretch cord\b/i, /cord/, { name: "1 mm clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
+    [/\bstretch cord\b/i, /cord/, { name: "1/32\" clear stretch cord", quantity: 1, estimatedCost: 3.98, unit: "spool", searchQuery: "1mm clear stretch bead cord", notes: "The beads thread on it, as the notes say." }],
     [/\bbed bolts?\b/i, /bolt/, { name: '3/8" × 5 1/2" bed-rail bolts with barrel nuts', quantity: 8, estimatedCost: 1.5 * 8, unit: "each", searchQuery: "3/8 x 5-1/2 bed rail bolt barrel nut", notes: "The bed bolts the notes name." }],
   ];
   for (const [re, got, row] of named) if (re.test(said) && !got.test(have) && !extra.some((e) => got.test(e.name.toLowerCase()))) extra.push(row);
@@ -1427,7 +1433,9 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
     const item = getCatalogItem(panel.materialId);
     if (!item || (project.instances ?? []).some((i) => i.catalogId === item.id)) continue;
     // Unit-table discs and beads (washers, pony beads) are one bought piece per drawn part.
-    if (item.formFactor === "custom" && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
+    // C2: in a purchased-item build every unit-table piece (clothespin, straw, nail…) is one bought piece per part,
+    // never a craft-stick area count.
+    if ((item.formFactor === "custom" || (isUnitItem(project) && item.formFactor !== "dowel")) && unitSizeById(item.id)) { sticksById.set(item.id, (sticksById.get(item.id) ?? 0) + 1); continue; }
     if (!(item.formFactor === "stick" || item.formFactor === "dowel")) continue;
     const d = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
     const across = Math.max(1, Math.ceil(d[1] / Math.max(0.1, item.dims.width ?? item.dims.diameter ?? 0.375)));
@@ -1547,6 +1555,38 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
+  // C12: the last pass: every store search a Buy row links to says that row's Buy name.
+  return storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))));
+}
+
+/**
+ * Spec 008 (I20): a purchased-item build's whole pieces (clip, marble, dowel used as bought) are bought, not cut:
+ * their cut-list rows are marked whole and carry the piece's real size from the unit table (they read as blank
+ * 0" sizes before, because a 1/32" wire rounded to 0). Real cuts (bracelet cord) are untouched.
+ */
+function wholeItemsUncut(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!isUnitItem(project)) return plan;
+  const marked: BuildPlan = {
+    ...plan,
+    cutList: plan.cutList.map((c) => {
+      const u = unitSizeById(c.id.split("|")[0]);
+      if (!u || /kerf|cut from/i.test(plan.bom.find((b) => b.name === c.material)?.notes ?? "")) return c;
+      const d = u.dims;
+      const len = d.length ?? d.diameter ?? c.lengthIn;
+      const wid = d.width ?? d.diameter ?? c.widthIn;
+      const thk = d.thickness ?? d.diameter ?? c.thicknessIn;
+      return { ...c, whole: true, lengthIn: len, widthIn: wid, thicknessIn: thk };
+    }),
+  };
+  // C11: a whole piece carries no cut letter in the steps ("One A 8" cable tie" → "One 8" cable tie").
+  const talk = (t: string) => unletterWhole(t, marked.cutList);
+  return {
+    ...marked,
+    instructions: marked.instructions.map((s) => ({ ...s, title: talk(s.title), description: talk(s.description), tips: s.tips ? talk(s.tips) : s.tips })),
+  };
+}
+
+function buildPlanOuter(project: YardProject): BuildPlan {
   if (!project.displayOnly && FOOD.test(`${project.prompt ?? ""} ${project.name}`)) {
     // Hardwood unless a species was typed: the board is planned under that species' stock.
     const prompt = HARDWOOD.test(project.prompt ?? "") ? project.prompt : `maple ${project.prompt ?? project.name}`;
@@ -1579,7 +1619,24 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
   for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
-  const plan = { ...plan0, bom: [...plan0.bom, ...[...hw].map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] };
+  // C13/C14: casters and screw eyes are bought as the real items (a typed "rolling", a hung feeder or birdhouse).
+  const named = (name: string, n: number): BuildPlan["bom"] => {
+    // C15: each is a checked store listing with its link (checkedStock.ts), and the screws the caster step names are bought too.
+    if (name === "Caster") return [
+      checkedRow(HARDWARE.caster, n, "One under each corner, the locking pair at the front."),
+      checkedRow(HARDWARE.casterScrew, n * 4, `Four through each caster plate (${n * 4} screws).`),
+    ];
+    if (name === "Screw eye") return [
+      checkedRow(HARDWARE.screwEye, n, "Twisted into pilot holes in the top; the chain hooks through them."),
+      checkedRow(HARDWARE.chain, 3, "3 ft, cut at the store: from the screw eyes to a branch or hook.", "ft"),
+    ];
+    if (name === "Lid hinge") return [
+      { name: '3" stainless butt hinges', quantity: n, unit: "each", searchQuery: '3" stainless butt hinges', estimatedCost: Math.round(n * 5.98 * 100) / 100, notes: "Along the back edge of the lid, into the back boards; stainless so they never rust outdoors." },
+      { name: "Lid stay / lid support", quantity: 1, unit: "each", searchQuery: "Lid stay / lid support", estimatedCost: 9.98, notes: "Holds the lid open and keeps it from slamming." },
+    ];
+    return [];
+  };
+  const plan = withSaidHardware(project, { ...plan0, bom: [...plan0.bom, ...[...hw].flatMap(([name, n]) => named(name, n)), ...[...hw].filter(([name]) => !named(name, 1).length).map(([name, n]) => ({ name: `${name.replace(/^\w/, (c) => c.toUpperCase())}${n > 1 ? "s" : ""}`, quantity: n, unit: "pcs", searchQuery: `${name} hardware`, estimatedCost: Math.round(n * 3.49 * 100) / 100 }) as BuildPlan["bom"][number])] });
   // Buy lists glue only when a step or the notes glue.
   const glues = [...plan.instructions.map((s) => `${s.title} ${s.description}`), ...(project.notes ?? [])].some((t) => /\bglue/i.test(t));
   const bom0 = glues ? plan.bom : plan.bom.filter((b) => !/\bglue\b/i.test(b.name));
@@ -1594,7 +1651,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
   // The header total is the Buy list: the sum of its rows, never a separate estimate.
-  const out = smallestSheetStock({ ...plan, bom: dedupeBuy(bom) });
+  const out = stepTextForPlace(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) })));
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
@@ -1639,6 +1696,8 @@ function smallestSheetStock(plan: BuildPlan): BuildPlan {
     const item = b.catalogId ? getCatalogItem(b.catalogId) : undefined;
     // Only a full 4×8 (or larger) sheet steps down; cut-to-size goods (glazing, mats) are already small.
     if (!item || item.formFactor !== "sheet" || b.quantity !== 1 || (item.dims.length ?? 0) * (item.dims.width ?? 0) < 96 * 48) return b;
+    // An exterior sheet never steps down to an interior panel: the smaller panels are interior plywood.
+    if (/\bexterior\b|pressure-treated/i.test(b.name)) return b;
     const parts = plan.cutList.filter((c) => c.id.split("|")[0] === item.id);
     if (!parts.length) return b;
     const rects: [number, number][] = parts.flatMap((c) =>

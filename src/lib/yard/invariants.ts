@@ -1,7 +1,15 @@
+import { hardwareSaidNotBought } from "./hardwareSaid";
+import { storeTermDrift } from "./listings";
+import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, stepStockNameDrift, unlinkedBuy } from "./buyComplete";
+import { contactBuild, interiorSheet } from "./materialForUse";
+import { genericFormMark, routesToLearner } from "./formOwnership";
+import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
+import { typedHeadNoun } from "./headNoun";
+import { namedFormOwnsHead } from "./formOwnership";
 import { sizePhrases } from "./sizePhrases";
-import { isUnitItem } from "./unitItems";
+import { isUnitItem, unitItemAsk } from "./unitItems";
 /**
  * Critic's invariants (critic-kb/invariants.md I1–I14) as code: one checker per invariant, run on a
  * generated build and its plan. Pure, local, no network and no xAI. Each violation names its invariant
@@ -15,20 +23,25 @@ import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
-import { isOutdoorPrompt } from "./outdoor";
+import { footTalk, hungBuild, isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
 import { panelJoints } from "./modelJoints";
 import type { BuildPlan, YardProject } from "./types";
+import { typedAxesTalk } from "./pdf";
+import { cutListIntro, pdfCutListIntro } from "./wholeItems";
+import { namedStockDisplayName } from "./weekendStockHonesty";
+import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
+import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -114,13 +127,9 @@ function i8(p: YardProject, prompt: string): Violation[] {
   return out;
 }
 
-const HARDWARE = ["hinge", "pull", "knob", "carriage bolt", "lag screw", "latch", "wall anchor", "caster", "drawer slide", "glide", "coat hook"];
-/** I9: hardware the notes or steps tell you to use is on Buy. */
+/** I9: hardware the notes or steps tell you to use is on Buy (one vocabulary with the Buy pass, hardwareSaid.ts). */
 function i9(p: YardProject, plan: BuildPlan): Violation[] {
-  const said = `${(p.notes ?? []).join(" ")} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
-  const buy = plan.bom.map((b) => `${b.name} ${b.searchQuery ?? ""}`.toLowerCase()).join(" | ");
-  return HARDWARE.filter((h) => new RegExp(`\\b${h}s?\\b`).test(said) && !new RegExp(`\\b${h}`).test(buy) && !new RegExp(`no ${h}s?\\b|without (?:a )?${h}`).test(said))
-    .map((h) => v("I9", `steps or notes use ${h}s; Buy has none`));
+  return hardwareSaidNotBought(p, plan).map((h) => v("I9", `steps or notes use ${h}s; Buy has none`));
 }
 
 const LEAKS: [RegExp, string][] = [
@@ -130,12 +139,32 @@ const LEAKS: [RegExp, string][] = [
   [/screws shelf into cleat/, "'shelf into cleat'"],
   [/\bundefined\b|\bNaN\b/, "undefined/NaN"],
 ];
+/**
+ * I11 (jargon and template leftovers): engine words, controls hints, debug counts and negations aimed at another
+ * template never reach the person ("WASD", "still square, still a cut list", "214 joints · 307 members", "densified",
+ * "not a Bridge / Tool steal", "Not a closet", "carcase", a "Shoe shelf" on a build that holds no shoes).
+ */
+export const JARGON: [RegExp, string][] = [
+  [/\bWASD\b|mouse look/i, "controls hint"],
+  [/still square, still a cut list/i, "'still square, still a cut list'"],
+  [/\b\d+ joints? ·|· \d+ joints?\b|\b\d+ (?:short |long )?members?\b|\b\d+ nodes?\b|\bclusters?\b|\bmembers? after weld\b/i, "engine counts"],
+  [/\bdensif/i, "'densify'"],
+  [/\bsteal\b|shelving niche|\bnot an? (?:closet|dining table|cubby(?! wall)|Operate|Bridge|floor vanity|freestanding rectangle)\b/i, "negation aimed at another template"],
+  [/\bcarcases?\b/i, "'carcase'"],
+  [/\bWarren\b|\bface lace\b|\blaced into a truss\b/i, "truss jargon"],
+];
+const SHOE_OK = /\b(?:shoes?|shoelaces?|boots?|coat|entry(?:way)?|mudroom|hall(?:way)?|closet|wardrobe|organizer|cubb(?:y|ies)|rack)\b/i;
+
 /** I11: no template text from another build. */
 function i11(p: YardProject, plan: BuildPlan): Violation[] {
   const text = [...(p.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`)].join("\n");
   const out = LEAKS.filter(([re]) => re.test(text)).map(([, what]) => v("I11", `template leak: ${what}`));
   if (/\bcloset\b/i.test(text) && !/closet/i.test(`${p.prompt} ${p.name}`)) out.push(v("I11", "template leak: closet wording"));
-  if (/\bglides?\b/i.test(text) && (p.assumptions?.installMode === "wall" || !p.panels.some((q) => q.position.y < 0.5))) out.push(v("I11", "template leak: glides with no feet"));
+  for (const [re, what] of JARGON) if (re.test(text)) out.push(v("I11", `jargon: ${what}`));
+  // A typed-option hint ('Say "with a shoe shelf"') offers words; it is not a leftover part.
+  if (/\bshoes?\b/i.test(text.replace(/"with [^"]*"/g, "")) && !SHOE_OK.test(`${p.prompt ?? ""} ${p.name}`)) out.push(v("I11", "template leak: shoe wording"));
+  // Feet are the same feet Buy reads (outdoor.ts footTalk): legs, ground-standing sides, or sticks that reach the floor.
+  if (/\bglides?\b/i.test(text) && (hungBuild(p) || !(footTalk(p).feet || p.panels.some((q) => q.position.y < 0.5)))) out.push(v("I11", "template leak: glides with no feet"));
   return out;
 }
 
@@ -200,8 +229,9 @@ function i17(p: YardProject): Violation[] {
  * I20 (C3 purchased whole items): a build made of unit-table pieces has no cut step for the pieces, no 0" size,
  * no fit warning or furniture rating, and its Buy notes agree with the steps (no "cut"/"kerf" on whole pieces).
  */
-function i20(p: YardProject, plan: BuildPlan): Violation[] {
-  if (!isUnitItem(p)) return [];
+function i20(p: YardProject, plan: BuildPlan, prompt = ""): Violation[] {
+  // Spec 007 C2: a prompt that names one size-table item on its own is a purchased item, never a stand-in.
+  if (!isUnitItem(p)) return prompt && unitItemAsk(prompt) ? [v("I20", `"${prompt}" names a bought item but built "${p.name}"`)] : [];
   const out: Violation[] = [];
   const steps = plan.instructions.map((s) => `${s.title}\n${s.description}`).join("\n");
   const cut = plan.instructions.find((s) => /^Cut the (?!cord\b)/.test(s.title));
@@ -210,6 +240,13 @@ function i20(p: YardProject, plan: BuildPlan): Violation[] {
   const meta = `${plan.feasibility.summary}\n${plan.feasibility.issues.map((i) => i.message).join("\n")}`;
   if (/Opening is tight|weekend/i.test(meta)) out.push(v("I20", "purchased item carries furniture fit/rating text"));
   if (/\bmms\b|from the pack/i.test(steps)) out.push(v("I20", "purchased item text leak (mms / from the pack)"));
+  // Spec 008: whole bought pieces never sit in the cut list, no cut row has a blank (0) size, and no text says "mm".
+  const whole = plan.cutList.find((c) => !c.whole && !!unitSizeById(c.id.split("|")[0]) && !/kerf|cut from/i.test(plan.bom.find((b) => b.name === c.material)?.notes ?? ""));
+  if (whole) out.push(v("I20", `whole bought piece listed as a cut: "${whole.name}"`));
+  const blank = plan.cutList.find((c) => !(c.lengthIn > 0) || !(c.widthIn > 0) || !(c.thicknessIn > 0));
+  if (blank) out.push(v("I20", `cut-list row with a blank size: "${blank.name}"`));
+  const text = [...(p.notes ?? []), p.name, ...plan.instructions.map((s) => `${s.title} ${s.description}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`), ...plan.cutList.map((c) => `${c.name} ${c.notes ?? ""}`)].join("\n");
+  if (/\d\s*mm\b/.test(text)) out.push(v("I20", "purchased item text uses mm (inches only)"));
   const bad = plan.bom.find((b) => /\bcut from\b|kerf/i.test(b.notes ?? ""));
   if (bad && /Nothing to cut/i.test(steps)) out.push(v("I20", `Buy says "${bad.notes}" but the steps say nothing to cut`));
   return out;
@@ -225,14 +262,29 @@ function i21(p: YardProject, prompt: string): Violation[] {
     .map(([a, want]) => v("I21", `"${phrases.join(", ")}" means ${want}" ${a}, model ${o[a]}`));
 }
 
-/** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
-export function genericFormMark(p: YardProject): string | null {
-  if (p.displayOnly) return "Not learned yet";
-  const notes = (p.notes ?? []).join(" / ");
-  if (/No class matched/.test(notes)) return "unmatched body";
-  if (/Yard built an? .{1,80}? as a simple /.test(notes)) return "simple stand-in";
-  if (p.kind === "vessel" && p.name === "Boat" && (p.instances?.length ?? 0) < 20) return "spine-only boat";
-  return null;
+/**
+ * I24 (Spec 007 C3 typed noun as title): a build from a library form that owns the typed head noun carries that
+ * noun in its title ("pirate ship" → "Pirate ship", never "Sailing ship" over a galleon for "longship").
+ */
+function i24(p: YardProject, prompt: string): Violation[] {
+  // Library-form titles only; fitted builders keep trade titles (Planter box, Coat bench) that other code keys on.
+  // Spec 008: a bought-item build keeps the typed item noun too ("zip tie" → "Zip tie").
+  if (prompt && p.name && isUnitItem(p)) {
+    const ask = unitItemAsk(prompt);
+    const typed = ask ? (prompt.toLowerCase().match(ask.unit.match)?.[0] ?? "").trim().split(/\s+/).pop()?.replace(/(?<!s)s$/, "") : null;
+    return typed && !p.name.toLowerCase().replace(/\s+/g, "").includes(typed) ? [v("I24", `title "${p.name}" drops the typed item noun "${typed}"`)] : [];
+  }
+  if (!prompt || !p.name || p.fitted || resolvePurpose(prompt) || genericFormMark(p) || !namedFormOwnsHead(prompt)) return [];
+  const head = typedHeadNoun(prompt);
+  return head && !p.name.toLowerCase().includes(head) ? [v("I24", `title "${p.name}" drops the typed head noun "${head}"`)] : [];
+}
+
+export { genericFormMark } from "./formOwnership";
+
+/** I23 (L1 live path): a prompt the engine builds from its own library or purpose table never reaches the learner. */
+function i23(p: YardProject, prompt: string): Violation[] {
+  if (genericFormMark(p) || !(resolvePurpose(prompt) || namedFormOf(prompt))) return [];
+  return routesToLearner(prompt, p, ignoredTypedWords(p, prompt).length > 0) ? [v("I23", "the engine builds this form, but the live path sends it to the learner")] : [];
 }
 
 /** I22 (C1 named forms): a request that names a known form or purpose never falls back to a generic stand-in. */
@@ -247,7 +299,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan), ...i21(project, prompt), ...i22(project, prompt),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan),
   ];
 }
 
@@ -272,3 +324,183 @@ function i19(p: YardProject, plan: BuildPlan): Violation[] {
 
 /** Recipes as the prompts that build them (the learned-recipe set). */
 export const recipeKeys = () => RECIPES.recipes.map((r) => r.key);
+
+/**
+ * C10 (price consistency): same inputs, same total on every path. Picking the join the build already uses keeps the
+ * Buy lines and the total; a picked join's fastener lines are priced by the same listing pass as every other Buy line;
+ * the plan total is the Buy line sum.
+ */
+function c10(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || !plan.bom.length) return [];
+  const out: Violation[] = [];
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const sum = r2(plan.bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0));
+  if (Math.abs(sum - plan.totals.estCostUsd) > 0.011) out.push(v("C10", `total $${plan.totals.estCostUsd} is not the Buy line sum $${sum}`));
+  if (p.shopJoin) return out;
+  if (plan.bom.some((b) => /wood screw/i.test(b.name))) {
+    const again = buildPlan({ ...p, shopJoin: "screw", joinMethod: "screw" });
+    if (again.totals.estCostUsd !== plan.totals.estCostUsd) out.push(v("C10", `picking the default screw join reprices $${plan.totals.estCostUsd} → $${again.totals.estCostUsd}`));
+  }
+  if (p.panels.length) {
+    for (const join of ["glue", "dowel", "biscuit", "pocket"] as const) {
+      for (const line of applyShopJoin({ ...p, shopJoin: join }, plan).bom.filter((b) => !plan.bom.some((a) => a.name === b.name))) {
+        const priced = listedPrice({ ...line, offers: undefined });
+        if (priced.estimatedCost != null && line.estimatedCost != null && Math.abs(priced.estimatedCost - line.estimatedCost) > 0.011) {
+          out.push(v("C10", `${join} join line "${line.name}" priced $${line.estimatedCost}, listings say $${priced.estimatedCost}`));
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Typed purposes the engine must build as themselves (class C13): the noun phrase, and the name the build must carry. */
+const TYPED_PURPOSES: { ask: RegExp; name: RegExp; label: string }[] = [
+  { ask: /\b(?:standing|sit[- ]?stand)\s+desk\s+(?:converter|riser|topper)\b|\bdesk\s+converter\b/, name: /converter|riser/i, label: "standing desk converter" },
+  { ask: /\bguitar\s+(?:wall\s+)?(?:hanger|hook|holder|mount)\b/, name: /guitar/i, label: "guitar hanger" },
+  { ask: /\boutdoor\s+storage\s+bench\b/, name: /bench/i, label: "outdoor storage bench" },
+  { ask: /\braised\s+(?:garden|planter|vegetable)\s+bed\b/, name: /raised .*bed/i, label: "raised garden bed" },
+];
+const TYPED_ROLLING = /\brolling\b(?!\s+(?:pin|ball|marble|hills?|stock|shutter|ladder))|\bon\s+(?:locking\s+)?(?:casters|castors|wheels)\b|\bwith\s+(?:locking\s+)?(?:casters|castors)\b|\bmobile\b(?=\s+[a-z])/;
+
+/**
+ * C13 (a typed modifier or purpose survives): the purpose noun is the build's name, not a generic form ("standing
+ * desk converter" is never a Desk, "guitar hanger" never a Shelf); "outdoor" keeps exterior stock; a raised bed has no
+ * bottom and no glides; "rolling" / "on casters" puts casters under it.
+ */
+function c13(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
+  const lower = prompt.toLowerCase(), out: Violation[] = [];
+  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly) return out;
+  for (const t of TYPED_PURPOSES) {
+    if (!t.ask.test(lower)) continue;
+    if (!t.name.test(p.name) || p.standIn) out.push(v("C13", `typed "${t.label}" built as "${p.name}"`));
+    if (!/\b(?:craft|popsicle)\b/.test(lower) && plan.bom.some((b) => /popsicle|craft stick/i.test(b.name))) out.push(v("C13", `typed "${t.label}" built from craft sticks`));
+    if (/\boutdoor\b/.test(lower) && (p.panels.some((x) => /^plywood/.test(x.materialId) && !/exterior|pressure|cdx/i.test(getCatalogItem(x.materialId)?.name ?? "")) || !plan.bom.some((b) => /exterior|pressure-treated|cedar/i.test(b.name))))
+      out.push(v("C13", `typed "outdoor" but the build is indoor stock`));
+    if (/raised/.test(t.label)) {
+      if (p.panels.some((x) => /\bbottom\b/i.test(x.name))) out.push(v("C13", "raised bed has a bottom"));
+      if (plan.bom.some((b) => /glides?/i.test(b.name))) out.push(v("C13", "raised bed sits on furniture glides, not the soil"));
+    }
+  }
+  if (TYPED_ROLLING.test(lower) && p.assumptions?.installMode !== "wall" && !p.panels.some((x) => /^Caster \d+$/.test(x.name)))
+    out.push(v("C13", `typed "${lower.match(TYPED_ROLLING)![0]}" but no casters are drawn`));
+  return out;
+}
+
+/** Named small objects with a real form (class C14): what the prompt names, the parts that make it that object. */
+const SMALL_FORMS: { ask: RegExp; name: RegExp; parts: RegExp[]; label: string }[] = [
+  { ask: /\bbird\s*feeder\b/, name: /feeder/i, parts: [/tray/i, /roof/i], label: "bird feeder" },
+  { ask: /\bjewel(?:le)?ry\s+(?:box|chest|case)\b/, name: /jewel/i, parts: [/\blid\b/i, /divider/i], label: "jewelry box" },
+];
+const MOUNTED_HOUSE = /\b(?:hanging|wall[- ]?mounted|wall[- ]?mount)\s+(?:bird\s*house|birdhouse)\b/;
+
+/**
+ * C14 (a named small object is its real form, engine-owned): a bird feeder has a tray and a roof, a jewelry box a lid
+ * and dividers, never a plain box; a hanging or wall-mounted birdhouse is built by the engine with its mount hardware.
+ */
+function c14(p: YardProject, prompt: string): Violation[] {
+  const lower = prompt.toLowerCase(), out: Violation[] = [];
+  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly) return out;
+  const learner = () => routesToLearner(prompt, p, ignoredTypedWords(p, prompt).length > 0);
+  for (const f of SMALL_FORMS) {
+    if (!f.ask.test(lower)) continue;
+    if (!f.name.test(p.name) || p.standIn) out.push(v("C14", `typed "${f.label}" built as "${p.name}"`));
+    const missing = f.parts.filter((r) => !p.panels.some((x) => r.test(x.name)));
+    if (missing.length) out.push(v("C14", `${f.label} is a plain box: no ${missing.map((r) => r.source.replace(/\\b/g, "")).join(", ")}`));
+    if (learner()) out.push(v("C14", `${f.label} goes to the learner`));
+  }
+  if (MOUNTED_HOUSE.test(lower)) {
+    if (learner()) out.push(v("C14", "mounted birdhouse goes to the learner"));
+    if (!p.panels.some((x) => /^(?:Screw eye \d+|Mounting board)$/.test(x.name))) out.push(v("C14", "mounted birdhouse has no screw eyes or mounting board"));
+  }
+  return out;
+}
+
+/**
+ * C15 (hardware and Buy completeness): every stock the cut list cuts from is on Buy, every fastener size and hardware
+ * item a step fits is on Buy, every Buy row has a store link, and a lumber size the notes name is one Buy sells.
+ */
+function c15(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || !plan.bom.length) return [];
+  return [
+    ...(isUnitItem(p) ? [] : cutStockOffBuy(plan)).map((m) => v("C15", `cut list stock "${m}" is not on Buy`)),
+    ...stepHardwareOffBuy(plan).map((m) => v("C15", m)),
+    ...stepStockNameDrift(plan).map((m) => v("C15", m)),
+    ...unlinkedBuy(plan).map((n) => v("C15", `Buy row "${n}" has no store link`)),
+    ...noteStockOffBuy(p.notes ?? [], plan).map((m) => v("C15", m)),
+  ];
+}
+
+/**
+ * C16 (material for use): a build that touches food, skin or a nest carries no pressure-treated stock, and an outdoor
+ * build carries no interior sheet goods.
+ */
+function c16(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
+  if (p.displayOnly) return [];
+  const out: Violation[] = [];
+  const outdoor = isOutdoorPrompt(prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
+  if (outdoor && contactBuild({ ...p, prompt })) for (const b of plan.bom.filter((x) => /pressure[- ]treated/i.test(x.name))) out.push(v("C16", `"${b.name}" on a build that touches food, skin or a nest`));
+  if (outdoor && !/\bplywood\b/i.test(prompt)) for (const b of plan.bom.filter(interiorSheet)) out.push(v("C16", `interior sheet "${b.name}" on an outdoor build`));
+  return out;
+}
+
+/** C17 (step and placement text): one step hangs each hinge, and a tabletop or small hung build never sits on the floor. */
+function c17(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly) return [];
+  return [...duplicateHingeSteps(plan), ...floorTalkOnSmall(p, plan)].map((m) => v("C17", m));
+}
+
+/** C12 (store terms follow the Buy name): every store search on a Buy row searches that row's name. */
+function c12(plan: BuildPlan): Violation[] {
+  return storeTermDrift(plan).map((d) => v("C12", d));
+}
+
+/**
+ * C11 (whole items carry no cutting language): a bought whole item (zip tie, marble, washer) is its known trade
+ * size, used as bought. Its PDF header never says "assumed, measure to lock", its cut list never says "Mark A on the
+ * first cut", its steps never letter it like a cut ("One A 8" cable tie"), and its Material chip names the item, not
+ * the first typed word ("Material: Zip"). Shelf pins and their holes are said in inches ("5 mm shelf pins" never).
+ */
+function c11(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
+  const out: Violation[] = [];
+  const say = [...plan.instructions.map((s) => `${s.title}. ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name}. ${b.notes ?? ""}`)];
+  const metricPin = say.flatMap((t) => t.split(/(?<=\.)\s+/)).find((t) => /\bpins?\b/i.test(t) && /\d\s*mm\b/i.test(t));
+  if (metricPin) out.push(v("C11", `shelf pins said in mm: "${metricPin.slice(0, 80)}"`));
+  if (!isUnitItem(p)) return out;
+  const talk = typedAxesTalk(p).assumedTalk;
+  if (talk) out.push(v("C11", `whole item header says "${talk}"`));
+  if (/first cut/i.test(cutListIntro(plan))) out.push(v("C11", "whole item cut list says \"Mark A on the first cut\""));
+  const pdfCraft = plan.partsKind === "whole" || (p.instances.length > 0 && p.panels.length === 0);
+  if (plan.cutList.some((c) => c.whole) && plan.cutList.every((c) => c.whole) && /as you cut it/i.test(pdfCutListIntro(plan, pdfCraft))) out.push(v("C11", "whole item PDF cut list says \"as you cut it\""));
+  const steps = plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
+  for (const c of plan.cutList) {
+    if (!c.whole || !c.label) continue;
+    const hit = steps.match(new RegExp(`\\b${c.label} ${c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/^[A-Za-z]/, (ch) => `[${ch.toUpperCase()}${ch.toLowerCase()}]`)}`));
+    if (hit) out.push(v("C11", `whole piece lettered like a cut: "${hit[0]}"`));
+  }
+  const label = namedStockDisplayName(prompt || (p.prompt ?? ""), getCatalogItem(p.primaryMaterialId));
+  const pre = label.match(/^(\S+) · /)?.[1];
+  if (pre && !isNamedLumberSpeciesId(pre) && !/^titebond$/i.test(pre)) out.push(v("C11", `Material chip reads "${pre}"`));
+  return out;
+}
+
+/** The parts and steps a person sees, with ids kept (step pictures light parts by id). */
+export function buildFingerprint(p: YardProject, plan: BuildPlan = buildPlan(p)): string {
+  return JSON.stringify({
+    name: p.name,
+    panels: p.panels.map((x) => [x.id, x.name, x.size, x.position]),
+    instances: p.instances.map((x) => [x.id, x.catalogId, x.position]),
+    steps: plan.instructions,
+    bom: plan.bom.map((b) => [b.name, b.quantity, b.estimatedCost]),
+  });
+}
+
+/**
+ * I25 (F12 deterministic steps): the same prompt gives identical parts, part ids and steps on every run. Eiffel's
+ * step parts changed every build because ids came from Math.random (stableId.ts). Builds the prompt `runs` times.
+ */
+export function i25(prompt: string, runs = 3): Violation[] {
+  const prints = Array.from({ length: runs }, () => buildFingerprint(generateFromPrompt(prompt)));
+  const differ = prints.findIndex((x) => x !== prints[0]);
+  return differ > 0 ? [v("I25", `run ${differ + 1} of "${prompt}" differs from run 1 (steps or part ids)`)] : [];
+}

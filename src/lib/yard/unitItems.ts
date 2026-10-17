@@ -7,7 +7,8 @@
  * never a pony, never popsicle sticks).
  */
 import { createId } from "@/lib/utils";
-import { inchFrac } from "./inchText";
+import { inchFrac, mmToInches } from "./inchText";
+import { sentenceCase } from "./headNoun";
 import { unitSizeFor, type UnitSize } from "./unitSizes";
 import type { AssemblyStep, Panel, YardProject } from "./types";
 
@@ -88,6 +89,33 @@ function piece(u: UnitSize, name: string, x: number, y: number, z: number, extra
   return { ...base, ...extra };
 }
 
+/**
+ * Spec 008: how one piece's size is said. Round pieces (marble, bead, button, bottle cap, cotton ball) are "N\" across";
+ * a washer is a disc; a round piece longer than it is wide (cork) gives both; anything else is "N\" long".
+ */
+export function unitSizeTalk(u: UnitSize): string {
+  const len = u.dims.length ?? 1;
+  const wid = u.dims.width ?? u.dims.diameter ?? 0.1;
+  const thk = u.dims.thickness ?? u.dims.diameter ?? 0.05;
+  if (/washer/.test(u.key)) return `a ${inchFrac(wid)}" disc, ${inchFrac(thk)}" thick`;
+  const round = u.form === "custom" && !!u.dims.diameter;
+  if (!round) return `${inchFrac(len)}" long`;
+  const across = u.dims.diameter!;
+  if (len > across * 1.2) return `${inchFrac(len)}" long, ${inchFrac(across)}" across`;
+  return `${inchFrac(Math.max(across, wid))}" across${thk < across * 0.6 ? `, ${inchFrac(thk)}" thick` : ""}`;
+}
+
+/** The typed item words as the title, when the table's own name does not already say them. */
+function typedUnitTitle(prompt: string, u: UnitSize): string | null {
+  const m = prompt.toLowerCase().match(u.match);
+  if (!m) return null;
+  const typed = m[0].trim().replace(/\s+/g, " ").replace(/(?<!s)s$/, "");
+  // Keep the table name when it already holds every typed word ("3/8 dowel" → 3/8" Hardwood Dowel 36").
+  const name = u.name.toLowerCase();
+  const words = typed.split(" ").filter((w) => /[a-z]/.test(w));
+  return words.length && !words.every((w) => name.includes(w)) ? sentenceCase(typed) : null;
+}
+
 export function buildUnitItem(prompt: string): YardProject | null {
   const ask = unitItemAsk(prompt);
   if (!ask) return null;
@@ -101,8 +129,9 @@ export function buildUnitItem(prompt: string): YardProject | null {
   let name: string;
   if (shape === "one") {
     panels.push(piece(u, word[0].toUpperCase() + word.slice(1), 0, 0, 0));
-    name = u.name[0].toUpperCase() + u.name.slice(1);
-    notes.push(`One ${u.name} at its real size${/washer/.test(u.key) ? `: a ${inchFrac(wid)}" disc, ${thk}" thick` : `: ${inchFrac(len)}" long`}. Buy sells it by the pack.`);
+    // Spec 008 (I24): the typed noun is the title ("Zip tie", "Pipe cleaner") unless the table name already says it.
+    name = typedUnitTitle(prompt, u) ?? u.name[0].toUpperCase() + u.name.slice(1);
+    notes.push(`One ${u.name} at its real size: ${unitSizeTalk(u)}. Buy sells it by the pack.`);
   } else if (shape === "chain") {
     // Each clip hooks through the last one's end loop: the pitch is the clip less one loop (about its width).
     const pitch = r3(len - wid);
@@ -147,9 +176,10 @@ export function buildUnitItem(prompt: string): YardProject | null {
       panels.push(piece(u, `Bead ${i + 1}`, r3(R + R * Math.cos(a) - len / 2), 0, r3(R + R * Math.sin(a) - wid / 2), { yaw: a + Math.PI / 2 }));
     }
     name = ask.shapeWord === "necklace" ? `${u.name} necklace` : `${u.name} bracelet`;
-    notes.push(`${n} real ${pluralUnit(u.name)} round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1 mm stretch cord.`);
+    notes.push(`${n} real ${pluralUnit(u.name)} round a ${inchFrac(around)}" ${ask.shapeWord === "necklace" ? "neck" : "wrist"}, threaded on 1/32" stretch cord.`);
   }
   notes.push(`Piece size from the unit table: ${u.name}, ${u.source}.`);
+  for (let i = 0; i < notes.length; i++) notes[i] = mmToInches(notes[i]);
   const maxX = Math.max(...panels.map((p) => p.position.x + p.size.width));
   const maxY = Math.max(...panels.map((p) => p.position.y + p.size.height));
   const maxZ = Math.max(...panels.map((p) => p.position.z + p.size.depth));
@@ -196,7 +226,7 @@ export function unitItemSteps(project: YardProject): AssemblyStep[] | null {
       s(2, `Stack the ${n} washers`, `Stack them flat and centered, hole over hole, on a level surface. ${said} A 3/16" rod through the holes keeps a tall stack straight.`, names),
     ];
   return [
-    s(1, "Cut the cord", "Cut 1 mm stretch cord 4\" longer than the bracelet so there is cord to tie."),
+    s(1, "Cut the cord", "Cut 1/32\" stretch cord 4\" longer than the bracelet so there is cord to tie."),
     s(2, `Thread ${n} beads`, `${said} Slide the beads on one at a time.`, names),
     s(3, "Tie it off", "Tie a surgeon's knot, draw it snug and tuck the ends into the bead next to it."),
   ];

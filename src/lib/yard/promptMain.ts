@@ -1,3 +1,4 @@
+import { seedIds } from "../stableId";
 import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -11,6 +12,7 @@ import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
+import { bedCourses, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
@@ -29,7 +31,7 @@ import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
-import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
+import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
@@ -95,7 +97,7 @@ export function emptyProject(): YardProject {
 function withWireNote(project: YardProject, item: CatalogItem): YardProject {
   if (!isWireStock(item)) return project;
   const tip =
-    "Wire frame — no stock was named. Open Stock and pick popsicle, PVC, straw, lumber… to densify this form.";
+    "Wire frame — no stock was named. Open Stock and pick popsicle, PVC, straw, lumber… to build this form from it.";
   return {
     ...project,
     notes: [tip, ...project.notes.filter((n) => !n.startsWith("Wire frame"))],
@@ -383,7 +385,24 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
 }
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
+let idDepth = 0;
+/**
+ * I25: part ids come from a stream seeded by the outermost call's own input, so the same prompt gives identical
+ * parts and steps on every run (nested calls share the outer stream). A generated project id (proj-…) stays fresh
+ * per call so the workspace still sees each build as new; a form's own fixed id is kept.
+ */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  if (idDepth === 0) seedIds(args);
+  idDepth++;
+  try {
+    const built = generateSeeded(...args);
+    return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+  } finally {
+    idDepth--;
+  }
+}
+
+function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
   // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
@@ -398,7 +417,14 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const unitItem = buildUnitItem(prompt);
     if (unitItem) return said !== prompt ? { ...unitItem, typedPrompt: said } : unitItem;
   }
-  let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
+  // C13: a typed mobility word ("rolling", "on casters") is a modifier, not part of the noun: build the noun, then
+  // put it on casters. A build that cannot take casters (a toy, a landmark, something hung) is built as typed.
+  const roll = !args[1] && !args[2] && !args[3] && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
+  if (roll) {
+    const base = generateSeeded(roll.base);
+    if (takesCasters(base)) return withCasters(base, prompt);
+  }
+  let typedBuild = withMount(hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt)), prompt);
   // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it
   // as a stick figure keeps the cutout from its typed sheet, and says so.
   if (args[1] && typedBuild.kind === "figure" && !(typedBuild.panels ?? []).length && hasExplicitStock(prompt)) {
@@ -422,8 +448,10 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     ...(landmark ? { name: landmark } : {}),
     notes: tidyNotes(done.notes ?? [])
       .filter((n) => !ENGINE_NOTE.test(n))
-      .map((n) => n.replace(/^(\d+ joints? · )\d+ members? after weld$/, (_m, j: string) => `${j}${pieces} member${pieces === 1 ? "" : "s"}`))
-      .map(positiveSentence),
+      .map((n) => n.replace(/^(\d+ glue joints?) hold \d+ pieces?$/, (_m, j: string) => `${j} hold ${pieces} piece${pieces === 1 ? "" : "s"}`))
+      .map(positiveSentence)
+      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box").
+      .map(strangerPlainShopTalk),
   };
   const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
@@ -554,16 +582,20 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
 
 export const UNVERIFIED = "Unverified: Yard learned this build but it has not passed review yet. Check every part before you cut.";
 
+const CRAFT_STICK_OWNED = new Set(["bird-feeder", "jewelry-box"]);
+
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
-  const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  const found = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  // A craft-stick model ("craft stick bird feeder") is the engine's stick build, never the full-size wood recipe.
+  const recipe = found && /\b(?:craft|popsicle|lolly)\s*sticks?\b/i.test(args[0]) && CRAFT_STICK_OWNED.has(found.key) ? null : found;
   // A learned recipe never replaces a built-in shape: when the engine itself builds the noun (a fitted
   // medicine cabinet, a locked family), the engine's build wins and the recipe is ignored.
   const engine = recipe?.learned ? engineCore(...args) : null;
   if (engine && builtInShape(args[0], engine, recipe!.key.replace(/-/g, " "))) return engine;
   if (recipe) {
-    const p = withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
+    const p = bedCourses(withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]), args[0]);
     // A held recipe never builds silently: it says plainly that review is still pending.
     return recipe.held ? { ...p, notes: [UNVERIFIED, ...p.notes] } : p;
   }
@@ -1745,7 +1777,7 @@ function buildBlocksProject(
     },
     notes: [
       ...built.notes,
-      ...(instances.length ? [connected ? `Connected structure · ${stats.joints} joints · every piece meets another` : `Joined in ${stats.components} clusters — glue each cluster to the next where they touch.`] : []),
+      ...(instances.length ? [connected ? `Every piece touches another: ${stats.joints} glue joints.` : `Built in ${stats.components} groups: glue each group to the next where they touch.`] : []),
     ],
   };
   return enforceWeekendHonesty(withWireNote(project, stockItem));
@@ -1845,8 +1877,8 @@ function finalize(
       : "kid stands";
     notes.unshift(
       n >= 2
-        ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; not a vehicle incline.`
-        : `Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`,
+        ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread.`
+        : `Weight-bearing climb step at ${riseRun} — ${who} on the tread.`,
     );
     if (wantsClimbHandrail(prompt)) {
       notes.unshift(
@@ -1865,7 +1897,7 @@ function finalize(
   const pl = prompt.toLowerCase();
   if (isPorchSwingFrame(pl)) {
     notes.unshift(
-      `Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`,
+      `Porch swing frame for a hanging seat, with clear swing room at the typed frame size.`,
     );
   }
   if (isAdirondackChair(pl)) {
@@ -1890,7 +1922,7 @@ function finalize(
   }
   if (isOttoman(pl)) {
     notes.unshift(
-      `Ottoman — solid top densify; square W=D when typed equal; honor height. Never Storage / Yard House wire.`,
+      `Ottoman — solid top, square when the width and depth typed are equal, at the typed height.`,
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };
@@ -2147,8 +2179,8 @@ function projectFromGraph(
         : "No splices — each member fits in one stock piece",
     `Joins: ${mapped.joinSummary.join(", ") || joinUsed}`,
     stats.components <= 1 && stats.loose === 0
-      ? `Connected structure · ${stats.joints} joints · every piece meets another`
-      : `Mostly connected · ${stats.joints} joints · ${stats.loose} loose · ${stats.components} cluster${stats.components === 1 ? "" : "s"}`,
+      ? `Every piece touches another: ${stats.joints} glue joints.`
+      : `${stats.joints} glue joints; ${stats.loose} piece${stats.loose === 1 ? "" : "s"} still loose in ${stats.components} group${stats.components === 1 ? "" : "s"}: glue each group to the next where they touch.`,
     "Frame first, then support, then brace. The frame will fail without bracing.",
   ];
   if (offer?.needed && !offer.included) notes.push(offer.reason);

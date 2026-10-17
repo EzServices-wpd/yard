@@ -1,0 +1,150 @@
+{
+ "popular": [
+  {
+   "id": "recipe-wall-mounted-mail-organizer",
+   "label": "Wall-Mounted Mail Organizer",
+   "prompt": "wall mounted mail organizer",
+   "size": "12″ W × 3 3/4″ D × 14 1/4″ H",
+   "blurb": "Open-front horizontal slots hold letters and flat mail",
+   "box": {
+    "width": 12,
+    "height": 14.25,
+    "depth": 3.75
+   }
+  },
+  {
+   "id": "recipe-water-wheel",
+   "label": "Water Wheel",
+   "prompt": "water wheel",
+   "size": "18″ W × 24 5/8″ D × 31 1/4″ H",
+   "blurb": "Rim cut from exterior plywood, joined to the hub by crossed spokes",
+   "box": {
+    "width": 18,
+    "height": 31.25,
+    "depth": 24.625
+   }
+  },
+  {
+   "id": "recipe-abacus",
+   "label": "Abacus",
+   "prompt": "abacus",
+   "size": "16″ W × 3 1/2″ D × 10 5/8″ H",
+   "blurb": "Frame cut from 2x4 lumber",
+   "box": {
+    "width": 16,
+    "height": 10.625,
+    "depth": 3.5
+   }
+  },
+  {
+   "id": "recipe-under-stairs-shelf",
+   "label": "Under-stairs shelves",
+   "prompt": "under stairs shelf",
+   "size": "48″ W × 12″ D × 72″ H",
+   "blurb": "Uprights step down with the stair slope; scribe each top to the stringer.",
+   "box": {
+    "width": 48,
+    "height": 72,
+    "depth": 12
+   }
+  }
+ ],
+ "fresh": [
+  {
+   "id": "recipe-laptop-stand",
+   "label": "Laptop Stand",
+   "prompt": "laptop stand",
+   "size": "11 1/2″ W × 8 7/8″ D × 6 3/8″ H",
+   "blurb": "Elevates laptop for ergonomics and underside airflow",
+   "box": {
+    "width": 11.5,
+    "height": 6.375,
+    "depth": 8.875
+   }
+  },
+  {
+   "id": "recipe-utility-cart",
+   "label": "Utility cart",
+   "prompt": "utility cart",
+   "size": "30″ W × 18″ D × 34″ H",
+   "blurb": "Three plywood shelves on four 2×2 corner posts, rolling on four 2\" locking swivel casters (3\" of the height).",
+   "box": {
+    "width": 30,
+    "height": 34,
+    "depth": 18
+   }
+  },
+  {
+   "id": "recipe-jewelry-box",
+   "label": "Jewelry box",
+   "prompt": "jewelry box",
+   "size": "10″ W × 5 1/2″ D × 3 1/2″ H",
+   "blurb": "A small hinged box: a ring row along the front and two compartments behind it; line the floor with felt.",
+   "box": {
+    "width": 10,
+    "height": 3.5,
+    "depth": 5.5
+   }
+  },
+  {
+   "id": "recipe-bird-feeder",
+   "label": "Bird feeder",
+   "prompt": "bird feeder",
+   "size": "10″ W × 7 3/4″ D × 10 5/8″ H",
+   "blurb": "A hopper feeder: seed sits in the hopper between two clear panes and spills out of a 1/2\" gap at the bottom onto the tray.",
+   "box": {
+    "width": 10,
+    "height": 10.625,
+    "depth": 7.75
+   }
+  },
+  {
+   "id": "recipe-raised-garden-bed",
+   "label": "Raised garden bed",
+   "prompt": "raised garden bed",
+   "size": "48″ W × 96″ D × 16 1/2″ H",
+   "blurb": "No bottom: the bed sits right on the ground so roots go down and water drains.",
+   "box": {
+    "width": 48,
+    "height": 16.5,
+    "depth": 96
+   }
+  },
+  {
+   "id": "recipe-outdoor-storage-bench",
+   "label": "Outdoor storage bench",
+   "prompt": "outdoor storage bench",
+   "size": "48″ W × 20 1/8″ D × 19 1/4″ H",
+   "blurb": "A seat you can sit on outside with a dry box under it: the lid lifts on two hinges and a lid stay holds it open.",
+   "box": {
+    "width": 48,
+    "height": 19.25,
+    "depth": 20.125
+   }
+  },
+  {
+   "id": "recipe-guitar-hanger",
+   "label": "Guitar hanger",
+   "prompt": "guitar hanger",
+   "size": "5 1/2″ W × 5″ D × 10″ H",
+   "blurb": "The guitar hangs by its headstock: the neck drops between the two yoke prongs and the headstock rests on them.",
+   "box": {
+    "width": 5.5,
+    "height": 10,
+    "depth": 5
+   }
+  },
+  {
+   "id": "recipe-standing-desk-converter",
+   "label": "Standing desk converter",
+   "prompt": "standing desk converter",
+   "size": "30″ W × 22″ D × 16″ H",
+   "blurb": "Sits on the desk you have: a raised monitor shelf at the back and a lower keyboard shelf in front, so you stand to type with your elbows at 90°.",
+   "box": {
+    "width": 30,
+    "height": 16,
+    "depth": 22
+   }
+  }
+ ]
+}

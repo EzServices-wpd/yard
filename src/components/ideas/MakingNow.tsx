@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
+import { currentTestFlags } from "@/lib/ideas/testFlags";
 import { useEffect, useState } from "react";
 import { safePrompt, type SnapshotRow } from "@/lib/yard/ideaLog";
 import { loadSnapshot } from "@/lib/yard/ideaLogClient";
+import { isChained } from "@/lib/ideas/liveFeed";
 import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
@@ -14,7 +16,7 @@ export function MakingNow() {
   const [ref, off] = useOffscreen<HTMLDivElement>();
   useEffect(() => {
     let live = true;
-    const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt).slice(0, 12)));
+    const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt && !isChained(r.prompt)).slice(0, 12)));
     const id = "requestIdleCallback" in window ? window.requestIdleCallback(go, { timeout: 6000 }) : setTimeout(go, 3000);
     return () => {
       live = false;
@@ -30,7 +32,7 @@ export function MakingNow() {
             <ul className="yard-making-list inline-flex gap-4">
               {[...rows, ...rows].map((r, i) => (
                 <li key={`${r.key}-${i}`} aria-hidden={i >= rows.length || undefined}>
-                  <Link to="/workspace" search={{ q: r.prompt }} tabIndex={i >= rows.length ? -1 : undefined} className="hover:text-ink hover:underline">
+                  <Link to="/workspace" search={{ q: r.prompt, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="hover:text-ink hover:underline">
                     {r.prompt}
                   </Link>
                 </li>

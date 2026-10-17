@@ -7,8 +7,9 @@ import { noteBuildingPrompt } from "@/components/workspace/building-prompt";
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
 import { boundPrompt } from "@/lib/yard/promptLimits";
-import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
+import { lookupAndBuild, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
+import { engineKeepsPrompt, routesToLearner, typedSizeComplete } from "@/lib/yard/formOwnership";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
@@ -352,11 +353,10 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   // while it learns, and if it fails, the bench shows the display-only block, never the engine's guess
   // (a stick cloud or thin frame with a price and piece count).
   const half = ignoredTypedWords(next, prompt).length > 0;
-  // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
-  const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
   const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
-  const learn0 = !unitItem && (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // L1 + hotfix #41: an engine-owned shape always wins; the learner runs only when the engine has no form.
+  const learn0 = !unitItem && !engineKeepsPrompt(prompt, next, half) && routesToLearner(prompt, next, half) && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;
@@ -378,10 +378,22 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     looksLikePocket(prompt) ||
     (parsed?.walls != null &&
       ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
+  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
+  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
+  const weak = half;
+  const houseLike =
+    !weak &&
+    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
   const skipLlm =
+    // C10: a house prompt with every size typed (the linen canary) keeps the engine's build and price: the brief
+    // could only re-guess typed sizes and reprice the plan ($183.70 → ~$202.67) after an ~11s lamp.
+    (houseLike && typedSizeComplete(parsed)) ||
     next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
     // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
-    !!findRecipe(prompt);
+    !!findRecipe(prompt) ||
+    // Cost leak: an engine-owned shape (Big Ben, trebuchet, submarine) is locked, so the hint (Wikidata/Wikipedia)
+    // and interpret (Wikidata/Wikipedia + xAI chat) server calls could never change it. Skip them.
+    engineKeepsPrompt(prompt, next, half);
   if (skipLlm && !learn) {
     revealBench();
     makePlan();
@@ -399,12 +411,6 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     return;
   }
 
-  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
-  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
-  const weak = ignoredTypedWords(next, prompt).length > 0;
-  const houseLike =
-    !weak &&
-    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
   useYard.getState().beginBuild();
   useYard.setState({ grokBusy: true });
   const timeout = window.setTimeout(() => {

@@ -497,3 +497,36 @@
 .yard-shop-sheet[open] { animation: yard-shop-in 160ms cubic-bezier(.2,.7,.2,1); }
 @keyframes yard-shop-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .yard-shop-sheet[open] { animation: none; } }
+
+/* Reveal ruler: 1/16″-style ticks, every fourth one taller (pure background, no layout). */
+.yard-ruler {
+  background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.35) 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.18) 0 1px, transparent 1px 2.5px);
+  background-size: 100% 7px, 100% 3px;
+  background-position: 0 0, 0 4px;
+  background-repeat: no-repeat;
+}
+
+/* Cut sheet ↔ cut list: one accent, 2 px-ish outline, 120 ms fade (opacity only). */
+.yard-sheet-hl { transition: opacity 120ms ease-out; pointer-events: none; }
+.yard-sheet-piece { transition: opacity 120ms ease-out; outline: none; }
+.yard-sheet-piece:focus-visible rect:first-child { stroke: #c8641e; stroke-width: 0.6; }
+.yard-cut-row[data-active] { background-color: rgb(200 100 30 / 0.14); box-shadow: inset 2px 0 0 #c8641e; }
+.yard-cut-row[data-done] td:not(:first-child) { opacity: 0.45; text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* Price reason pill: fades up once the build settles; still under reduced motion. */
+.yard-price-why { transition: opacity 200ms ease-out, transform 200ms cubic-bezier(.2,.7,.2,1); }
+@media (prefers-reduced-motion: reduce) { .yard-price-why { transition: none; } }
+
+/* Ideas drawings: pencil lines ink into wood as a card scrolls in (opacity + transform only). */
+.idea-ink .idea-wood { opacity: 1; transform: none; transition: opacity 700ms ease-out, transform 700ms cubic-bezier(.2,.7,.2,1); }
+.idea-ink .idea-pencil { opacity: 1; filter: grayscale(1) contrast(1.6) brightness(1.18); mix-blend-mode: multiply; transition: opacity 700ms ease-out 250ms; }
+.ideas-live .idea-ink:not(.inked) .idea-wood { opacity: 0; transform: translateY(3px) scale(0.985); }
+.ideas-live .idea-ink.inked .idea-pencil { opacity: 0; }
+.ideas-live .idea-ink.instant .idea-wood, .ideas-live .idea-ink.instant .idea-pencil { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ideas-live .idea-ink:not(.inked) .idea-wood { opacity: 1; transform: none; }
+  .idea-ink .idea-wood, .idea-ink .idea-pencil { transition: none; }
+}
+
+

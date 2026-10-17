@@ -25,7 +25,7 @@ import { fieldInch, inchFrac, parseInch } from "./inchText";
 import { logIdea } from "./ideaLogClient";
 
 /** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
-const LAMP_HOLD_MS = 4000;
+const LAMP_HOLD_MS = 700;
 let lampTimer = 0;
 let lampGen = 0;
 
@@ -42,6 +42,15 @@ function armBuilding() {
 
 function panelCutSig(project: YardProject): string {
   return project.panels.map((panel) => `${panel.name}|${panel.cutNote ?? ""}|${panel.cutouts?.length ?? 0}|${panel.polygon ? 1 : 0}|${panel.size.height.toFixed(2)}`).join(";");
+}
+
+/** C10: the inputs a plan's price is built from are the same objects (a notes-only spread). */
+export function samePricedBuild(a: YardProject, b: YardProject): boolean {
+  return a === b || (
+    a.panels === b.panels && a.instances === b.instances && a.overall === b.overall && a.kind === b.kind &&
+    a.primaryMaterialId === b.primaryMaterialId && a.shopJoin === b.shopJoin && a.joinMethod === b.joinMethod &&
+    a.fitted === b.fitted && a.displayOnly === b.displayOnly && a.prompt === b.prompt
+  );
 }
 
 function sameMeasureBuild(a: YardProject, b: YardProject): boolean {
@@ -276,7 +285,11 @@ export const useYard = create<YardState>((set, get) => ({
     persist(stamped);
   },
   setProject: (next) => {
-    set({ project: next });
+    // C10: every total swaps at once. A shown plan never outlives the build it priced: a new build reprices it in
+    // the same update (a notes-only change keeps the plan).
+    const { project: prev, plan } = get();
+    const repriced = plan && !samePricedBuild(prev, next) ? buildPlan(next) : plan;
+    set({ project: next, plan: repriced });
     persist(next);
   },
   generate: (prompt, materialId, form, opts) => {
