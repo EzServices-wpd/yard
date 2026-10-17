@@ -24,13 +24,13 @@ export const RECENT_MAX = 200;
 export const RUN_CMDS = 1;
 /**
  * A write inside a burst, in a second pipeline:
- * - a row's first write: INCRBY budget + HINCRBY ideas:ptest + HSET stamp "possible-test" (BURST_NEW_CMDS);
- * - a row written before: INCRBY budget + HINCRBY ideas:ptest (BURST_FIX_CMDS). If every earlier write was a
+ * - a row's first write: INCRBY budget + HINCRBY ideas:ptest + HEXPIRE + HSET stamp "possible-test" (BURST_NEW_CMDS);
+ * - a row written before: INCRBY budget + HINCRBY ideas:ptest + HEXPIRE (BURST_FIX_CMDS). If every earlier write was a
  *   possible-test write too, a third pipeline re-stamps it (BURST_STAMP_CMDS). A row that has had a live write stays
  *   live: a later possible-test write only bumps its ideas:ptest count, never its source.
  */
-export const BURST_FIX_CMDS = 2;
-export const BURST_NEW_CMDS = 3;
+export const BURST_FIX_CMDS = 3;
+export const BURST_NEW_CMDS = 4;
 export const BURST_STAMP_CMDS = 2;
 /**
  * Burst rate, counted on the server only: written builds per 60 s bucket, site-wide and per run id, in one
@@ -55,7 +55,15 @@ export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
 // ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
-// ideas:ptest counts a row's possible-test writes (key → count), for the sticky-live rule; same retention as ideas:meta.
+/**
+ * ideas:ptest counts a row's possible-test writes (row key → count, no text), for the sticky-live rule. Every count
+ * write carries its expiry: HEXPIRE on that one field, PTEST_TTL_S (88 days, as #39's retention), refreshed by each
+ * possible-test write (Upstash hashes take a TTL per field). A field only lapses after 88 days with no possible-test
+ * write; the row's ideas:top count then outweighs it, so the row reads as having had live writes and a later burst
+ * only counts, never re-stamps (the safe side: a lapse can't turn a live row into test traffic).
+ */
+export const PTEST_TTL_S = 88 * 86_400;
+const ptestCount = (key: string, n: number): Cmd[] => [["HINCRBY", K.ptest, key, n], ["HEXPIRE", K.ptest, PTEST_TTL_S, "FIELDS", 1, key]];
 const bucket = (now: Date) => Math.floor(now.getTime() / (BURST_WINDOW_S * 1000));
 const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };
 
@@ -189,12 +197,12 @@ export class IdeaStore {
       if (Number.isFinite(total) && total <= n) { // the row's first write: count and stamp in one pipeline
         if (!this.budget.allows(BURST_NEW_CMDS, now)) { stats.overBudget++; return; }
         stats.possibleTest++;
-        const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_NEW_CMDS], ["HINCRBY", K.ptest, key, n], ["HSET", K.stamp, key, stamp]]);
+        const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_NEW_CMDS], ...ptestCount(key, n), ["HSET", K.stamp, key, stamp]]);
         this.budget.saw(Number(fix?.[0]));
         return;
       }
       if (!this.budget.allows(BURST_FIX_CMDS, now)) { stats.overBudget++; return; }
-      const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ["HINCRBY", K.ptest, key, n]]);
+      const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ...ptestCount(key, n)]);
       this.budget.saw(Number(fix?.[0]));
       const ptest = Number(fix?.[1]);
       // An unreadable count keeps the row as it is (never flips on doubt).
@@ -213,12 +221,12 @@ export class IdeaStore {
     p.timer = false;
     const n = p.n;
     if (!n) return;
-    const cmds = p.ptest ? 4 : 3; // held repeats of a possible-test write add to its possible-test count
+    const cmds = p.ptest ? 5 : 3; // held repeats of a possible-test write add to its possible-test count (+ its TTL)
     if (!this.budget.allows(cmds, now)) { stats.overBudget++; return; }
     p.n = 0;
     p.last = now.getTime();
     try {
-      const out = await this.pipe([["INCRBY", K.budget(month(now)), cmds], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key], ...(p.ptest ? [["HINCRBY", K.ptest, key, n] as Cmd] : [])]);
+      const out = await this.pipe([["INCRBY", K.budget(month(now)), cmds], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key], ...(p.ptest ? ptestCount(key, n) : [])]);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
     } catch { stats.dropped++; }

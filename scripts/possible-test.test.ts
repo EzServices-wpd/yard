@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, IdeaStore, RECENT_MAX, RUN_BURST, RUN_CMDS, SITE_BURST, TRIM_EVERY, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, PTEST_TTL_S, IdeaStore, RECENT_MAX, RUN_BURST, RUN_CMDS, SITE_BURST, TRIM_EVERY, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { handleIdeasLog } from "../src/lib/yard/ideaLogHandler";
 import type { LogRecord } from "../src/lib/yard/ideaLog";
 
@@ -13,9 +13,9 @@ function fakeRedis() {
   const h = new Map<string, Map<string, string>>(), z = new Map<string, Map<string, number>>(), ttl = new Map<string, number>();
   const hs = (k: string) => (h.get(k) ?? h.set(k, new Map()).get(k)!);
   const zs = (k: string) => (z.get(k) ?? z.set(k, new Map()).get(k)!);
-  const log: { calls: number; cmds: number; perCall: number[]; billed: number; names: string[][]; reads: (string | number)[][] } = { calls: 0, cmds: 0, perCall: [], billed: 0, names: [], reads: [] };
+  const log: { calls: number; cmds: number; perCall: number[]; billed: number; names: string[][]; reads: (string | number)[][]; sent: (string | number)[][][] } = { calls: 0, cmds: 0, perCall: [], billed: 0, names: [], reads: [], sent: [] };
   const pipe: Pipe = async (list) => {
-    log.calls++; log.cmds += list.length; log.perCall.push(list.length); log.names.push(list.map((c) => String(c[0])));
+    log.calls++; log.sent.push(list); log.cmds += list.length; log.perCall.push(list.length); log.names.push(list.map((c) => String(c[0])));
     return list.map(([c, k, ...a]) => {
       const key = String(k);
       switch (c) {
@@ -24,6 +24,7 @@ function fakeRedis() {
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
         case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
         case "EXPIRE": ttl.set(key, Number(a[0])); return 1;
+        case "HEXPIRE": { const i = a.indexOf("FIELDS"); return a.slice(i + 2).map((f) => (hs(key).has(String(f)) ? (ttl.set(`${key}/${f}`, Number(a[0])), 1) : -2)); }
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return String(zs(key).get(String(a[1])));
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
         case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const stop = Number(a[1]) < 0 ? asc.length + Number(a[1]) : Number(a[1]); const gone = stop < 0 ? [] : asc.slice(Number(a[0]), stop + 1); /* like Redis: a stop before the start removes nothing */ for (const [m] of gone) zs(key).delete(m); return gone.length; }
@@ -109,12 +110,12 @@ test("a bad run id is ignored (only 8-32 letters/digits count); it costs no extr
   assert.ok(r.log.perCall.every((n) => n <= WRITE_CMDS), `no run-id command: ${r.log.perCall}`);
 });
 
-test("Upstash commands per write: at most 10 (+1 with a run id); the trim and the TTL are deterministic per instance; in a burst +3 for a new row, +2 for a live row, +4 for a possible-test-only row; the budget bills exactly what is sent", async () => {
+test("Upstash commands per write: at most 10 (+1 with a run id); the trim and the TTL are deterministic per instance; in a burst +4 for a new row, +3 for a live row, +5 for a possible-test-only row; the budget bills exactly what is sent", async () => {
   assert.equal(WRITE_CMDS, 10);
   assert.equal(RUN_CMDS, 1);
   assert.equal(TRIM_EVERY, 8);
-  assert.equal(BURST_NEW_CMDS, 3);
-  assert.equal(BURST_FIX_CMDS, 2);
+  assert.equal(BURST_NEW_CMDS, 4); // + HEXPIRE on the ideas:ptest field
+  assert.equal(BURST_FIX_CMDS, 3);
   assert.equal(BURST_STAMP_CMDS, 2);
   const r = fakeRedis();
   const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
@@ -135,13 +136,13 @@ test("Upstash commands per write: at most 10 (+1 with a run id); the trim and th
   const net = (perMinute: number) => 9 + (1 / TRIM_EVERY) + 1 / perMinute;
   assert.equal(net(1), 10.125);
   assert.ok(net(2) <= 9.625 && net(8) <= 10);
-  // In a burst (all one minute): new row +3, live row +2, possible-test-only row +2+2.
+  // In a burst (all one minute): new row +4, live row +3, possible-test-only row +3+2.
   const b = fakeRedis();
   const sb = new IdeaStore(b.pipe, undefined, () => {}, async () => {});
   for (let i = 1; i <= SITE_BURST + 1; i++) await sb.record(rec(i), new Date(T0 + i));
-  assert.equal(b.log.perCall.at(-1), BURST_NEW_CMDS, "a new row over the line: one 3-command pipeline (count + stamp)");
+  assert.equal(b.log.perCall.at(-1), BURST_NEW_CMDS, "a new row over the line: one 4-command pipeline (count + its TTL + stamp)");
   await sb.record(rec(1), new Date(T0 + 20_000)); // k1 was written live before the line
-  assert.equal(b.log.perCall.at(-1), BURST_FIX_CMDS, "a live row: count only, no stamp");
+  assert.equal(b.log.perCall.at(-1), BURST_FIX_CMDS, "a live row: count (+ its TTL) only, no stamp");
   await sb.record(rec(SITE_BURST + 1), new Date(T0 + 20_001));
   assert.deepEqual(b.log.perCall.slice(-2), [BURST_FIX_CMDS, BURST_STAMP_CMDS], "a possible-test-only row: count, then re-stamp");
   assert.equal(b.log.billed, b.log.cmds);
@@ -331,4 +332,27 @@ test("router: the root route keeps the test flags (offline, local, test) on ever
   assert.match(root, /validateSearch: \(s: Record<string, unknown>\): TestFlags => pickTestFlags\(s\)/);
   assert.match(root, /search: \{ middlewares: \[retainSearchParams\(\[\.\.\.TEST_FLAGS\]\)\] \}/);
   assert.match(fs.readFileSync("src/router.tsx", "utf8"), /installTestHeader\(\);/);
+});
+
+test("ideas:ptest: every count write carries its own field TTL (88 days) in the same pipeline: new row, live row, test-only row, held repeats", async () => {
+  const r = fakeRedis();
+  const held: Promise<unknown>[] = [];
+  const s = new IdeaStore(r.pipe, undefined, (p) => held.push(p), async () => {});
+  for (let i = 0; i < SITE_BURST + 3; i++) await s.record(rec(i), new Date(T0 + i * 100)); // new rows over the line
+  await s.record(rec(0), new Date(T0 + 20_000)); // a live row in the spike
+  await s.record(rec(SITE_BURST + 1), new Date(T0 + 20_001)); // a possible-test-only row again
+  for (let j = 1; j <= 3; j++) await s.record(rec(SITE_BURST + 2), new Date(T0 + 7_000 + j * 1000)); // held repeats → flush
+  await Promise.all(held);
+  const writes = r.log.sent.flatMap((list) => list.filter((c) => c[1] === "ideas:ptest" && c[0] !== "HEXPIRE").map((c) => ({ c, list })));
+  assert.ok(writes.length >= 4, `ptest writes seen: ${writes.length}`);
+  for (const { c, list } of writes) {
+    assert.equal(c[0], "HINCRBY", `only counts are written: ${c}`);
+    const ex = list.find((x) => x[0] === "HEXPIRE" && x[1] === "ideas:ptest" && x[x.length - 1] === c[2]);
+    assert.ok(ex, `HINCRBY ideas:ptest ${c[2]} without its HEXPIRE`);
+    assert.equal(Number(ex![2]), PTEST_TTL_S);
+  }
+  assert.equal(PTEST_TTL_S, 88 * 86_400, "inside the privacy page's 90 days, as #39's retention");
+  for (const k of r.hs("ideas:ptest").keys()) assert.equal(r.ttl.get(`ideas:ptest/${k}`), PTEST_TTL_S, k);
+  for (const [, v] of r.hs("ideas:ptest")) assert.match(v, /^\d+$/, "counts only, no text");
+  assert.equal(r.log.billed, r.log.cmds, "the budget bills the HEXPIREs too");
 });
