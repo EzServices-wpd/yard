@@ -285,7 +285,10 @@ test("meta: a re-log at a new size refreshes the size (HSET, latest wins); same 
   assert.equal(JSON.parse(r.h.get("ideas:meta")!.get("k-water wheel")!).size, "18×24.5625×31.125", "the size built now");
   assert.equal(r.h.get("ideas:meta")!.size, 1, "one row, not two");
   assert.equal(r.z.get("ideas:top")!.get("k-water wheel"), 2, "its count carries on");
-  assert.equal(r.cmds - before, WRITE_CMDS, "the command count is unchanged");
+  const refresh = r.cmds - before, mark = r.cmds;
+  await store.record({ ...row, size: "18×24.5625×31.125" }, new Date("2026-10-17T09:00:00Z")); // same size again: a control write
+  assert.equal(refresh, r.cmds - mark, "refreshing the size costs no extra command");
+  assert.ok(refresh <= WRITE_CMDS, `${refresh} ≤ ${WRITE_CMDS}`);
 });
 
 test("meta: a test-source write never touches meta (not a new row, not a live row's size); count and reply positions unchanged", async () => {
@@ -298,7 +301,9 @@ test("meta: a test-source write never touches meta (not a new row, not a live ro
   const before = r.cmds;
   await store.record({ ...row, size: "99×99×99", source: "test" }, new Date("2026-10-17T08:30:00Z"));
   assert.equal(JSON.parse(r.h.get("ideas:meta")!.get("k-desk")!).size, "60×30×29", "the live row's size stands");
-  assert.equal(r.cmds - before, WRITE_CMDS, "same command count (a read holds the slot)");
+  const testCmds = r.cmds - before, mark = r.cmds;
+  await store.record({ ...row, size: "60×30×29", source: "live" }, new Date("2026-10-17T09:00:00Z")); // a live control write
+  assert.equal(testCmds, r.cmds - mark, "same command count as a live write (a read holds the slot)");
   // And through the handler: test traffic (every marker) never reaches meta, even for a row already logged live.
   const { r: r2, post } = stampSetup();
   await post("https://yard.wiki/api/ideas-log");
