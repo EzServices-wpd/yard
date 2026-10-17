@@ -14,6 +14,7 @@ export const READ_CMDS = 6;
 const COALESCE_MS = 10_000;
 export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
+// ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
 const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp" };
 
 type Cmd = (string | number)[];
@@ -199,7 +200,7 @@ export class IdeaStore {
 }
 
 /** The stored write stamp, passed through; a row written before stamps (or unreadable) is "unknown". */
-function toStamp(raw: string | null | undefined): { at: string | null; source: LogSource | "unknown" } {
+export function toStamp(raw: string | null | undefined): { at: string | null; source: LogSource | "unknown" } {
   try {
     const s = JSON.parse(String(raw)) as { at?: unknown; source?: unknown };
     const at = typeof s.at === "string" && Number.isFinite(Date.parse(s.at)) ? s.at : null;
