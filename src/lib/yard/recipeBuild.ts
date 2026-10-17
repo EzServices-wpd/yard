@@ -932,6 +932,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         const v: [number, number] = along === "v" ? [cv - sl / 2, sl] : [cv - band / 2, band];
         panels.push({
           id: `${rim.id}-spoke-${k}`, type: "rail", name: `Spoke ${k}`, materialId: sheet, turns: true, ...box([at, t], u, v),
+          // The board with its axle bore modelled, so the axle runs through a real hole.
+          polygon: { plane, pts: [[0, 0], [u[1], 0], [u[1], v[1]], [0, v[1]]], holes: [{ x: cu - u[0], y: cv - v[0], r: bore }] },
           cutNote: `Bore ${fmtIn(bore * 2)} at the centre for the ${axleWord} (running clearance). It lies on the rim's face: glue and screw it to the rim at both ends and to the ${hubName.toLowerCase()} at the centre.`,
         });
       }

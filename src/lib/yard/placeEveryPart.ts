@@ -720,7 +720,7 @@ function rotorInOrder(project: YardProject, steps: AssemblyStep[], supports: Ret
         description: run.length > 1 && run.every((k) => (supports.get(k)?.on ?? []).join() === (supports.get(run[0])?.on ?? []).join())
           ? `Fasten the ${run.length} ${plural(familyWord(first.name), run.length)} to ${supportTalk(project, supports.get(run[0]))} with ${fix} Space them evenly round the wheel, ${Math.round(360 / run.length)}° apart, the first ${Math.round(180 / run.length)}° past a spoke so none lands on a spoke.`
           : run.map((k) => placeSentence(project, parts.get(k) ?? { key: k, name: panel(k).name, kind: panel(k).type }, supports.get(k), fix)).join(" "),
-        tips: INSERTED,
+        tips: "Work along the axle from the glued end, one part at a time, in this order: each part goes on against the one before it.",
         partsUsed: run.map((k) => panel(k).name),
       };
     });

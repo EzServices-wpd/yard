@@ -100,15 +100,22 @@ it("hardware with no real catalogue item blocks the merge (existing gate)", () =
   assert.ok(learnedRecipeFailures(fake).some((x) => /no catalogue item \(brass-rod-made-up\)/.test(x)));
 });
 
-it("a spinning rim gets spokes to the hub and paddles, centred on the axle, and the posts are drilled", async () => {
+it("a spinning wheel is two rims on crossed spokes and hubs, paddles between, centred and collared on the axle, posts drilled", async () => {
   const { buildRecipe } = await import("./recipeBuild.ts");
   const ps = buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project.panels;
-  const axle = ps.find((p) => /^axle/.test(p.name))!, rim = ps.find((p) => p.name === "Wheel" || p.name === "wheel")!;
+  const axle = ps.find((p) => /^axle/.test(p.name))!, rims = ps.filter((p) => /^Rim \d$/.test(p.name));
   const c = (p: typeof axle, a: "y" | "z", k: "height" | "depth") => p.position[a] + p.size[k] / 2;
-  assert.ok(Math.abs(c(rim, "y", "height") - c(axle, "y", "height")) < 0.01 && Math.abs(c(rim, "z", "depth") - c(axle, "z", "depth")) < 0.01);
-  assert.equal(ps.filter((p) => /^Spoke/.test(p.name)).length, 2);
-  assert.equal(ps.filter((p) => /^Paddle/.test(p.name)).length, 4);
-  assert.ok(ps.filter((p) => /post/.test(p.name)).every((p) => /hole for each axle/.test(p.cutNote ?? "")));
+  assert.equal(rims.length, 2);
+  for (const rim of rims) assert.ok(Math.abs(c(rim, "y", "height") - c(axle, "y", "height")) < 0.01 && Math.abs(c(rim, "z", "depth") - c(axle, "z", "depth")) < 0.01, rim.name);
+  for (const hub of ps.filter((p) => /^hub \d$/.test(p.name))) assert.ok(Math.abs(c(hub, "y", "height") - c(axle, "y", "height")) < 0.01 && Math.abs(c(hub, "z", "depth") - c(axle, "z", "depth")) < 0.01, hub.name);
+  assert.equal(ps.filter((p) => /^Spoke/.test(p.name)).length, 4);
+  const paddles = ps.filter((p) => /^Paddle/.test(p.name));
+  assert.ok(paddles.length >= 8, `${paddles.length} paddles`);
+  const lo = Math.min(...rims.map((r) => r.position.x + r.size.width)), hi = Math.max(...rims.map((r) => r.position.x));
+  for (const pd of paddles) assert.ok(pd.position.x >= lo - 0.01 && pd.position.x + pd.size.width <= hi + 0.01, `${pd.name} runs between the rims`);
+  assert.equal(ps.filter((p) => /^Collar/.test(p.name)).length, 2);
+  assert.ok(ps.filter((p) => /post/.test(p.name)).every((p) => /hole for the axle, right through/.test(p.cutNote ?? "")));
+  assert.ok(!ps.some((p) => /each axle/.test(p.cutNote ?? "")), "one axle is the axle");
 });
 
 it("recipe builds: their model-made steps are real steps, and no closet or opening wording", () => {
@@ -162,14 +169,14 @@ it("hardware comes only from parts that exist: dowels are never counted as back 
   assert.ok(!bom.some((b) => /back edge/.test(b.notes ?? "")));
 });
 
-it("a sheet part thicker than its sheet is a glue-up of plies with its own step", async () => {
+it("the water wheel's hubs are one ply each, set in the rims' open centres: no glue-up", async () => {
   const { buildRecipe } = await import("./recipeBuild.ts");
   const { buildPlan } = await import("./report.ts");
   const plan = buildPlan(buildRecipe(RECIPES.recipes.find((r) => r.key === "water-wheel")!, "water wheel").project);
   const hub = plan.cutList.find((c) => c.name.toLowerCase() === "hub")!;
   assert.equal(hub.thicknessIn, 0.75);
-  assert.equal(hub.quantity, 5);
-  assert.ok(plan.instructions.some((s) => s.title === "Glue up the thick parts" && /hub: 5 layers/.test(s.description)));
+  assert.equal(hub.quantity, 2);
+  assert.ok(!plan.instructions.some((s) => s.title === "Glue up the thick parts"));
 });
 
 it("hinged parts touch what they hinge to, and a lid over walls of two heights slopes", async () => {
