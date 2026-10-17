@@ -200,7 +200,8 @@ export type RotorLink = { on: string[]; how: "rests" | "side"; collar?: "fixed" 
  */
 export function rotorChain(panels: Panel[]): Map<string, RotorLink> {
   const out = new Map<string, RotorLink>();
-  const turning = panels.filter((p) => p.turns && !isPin(p) && !notRotor(p, new Set()));
+  // Bored beads on a rod slide on purpose (an abacus): they thread on by their own rule.
+  const turning = panels.filter((p) => p.turns && !isPin(p) && !/^dowel-/.test(p.materialId) && !notRotor(p, new Set()));
   const taken = new Set<Panel>();
   for (const pin of panels.filter(isPin)) {
     const L = longAxis(pin);

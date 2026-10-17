@@ -221,7 +221,7 @@ function rotorSentence(project: YardProject, panel: YardProject["panels"][number
   const fixedTo = others.filter((q) => q.turns);
   const names = (ps: typeof others) => listNames(ps.map((q) => `the ${q.name}`));
   let s = `Slide the ${panel.name} onto the ${pin.name}`;
-  if (collars.length) s += ` up to ${names(collars)}, a card's thickness (1/32") off it so it turns free`;
+  if (collars.length) s += ` up to ${names(collars)}, a card's thickness (1/32") off it so it spins clear`;
   s += fixedTo.length ? ` and fasten it to ${names(fixedTo)} with ${fix}` : `. The next wheel parts fasten to it.`;
   return `${s} Nothing is glued or screwed into the ${pin.name}: the wheel turns on it as one assembly.`;
 }

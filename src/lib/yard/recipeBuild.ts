@@ -844,6 +844,27 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     // The rim's face plane: (u, v) are its outline coordinates, the axle runs along `long`.
     const [ua, va] = plane === "xz" ? (["x", "z"] as const) : plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
     const cu = ua === a ? ca : cb, cv = va === a ? ca : cb;
+    // The wheel turns clear of the fixed parts under it (a cross rail between the posts): its paddles sweep
+    // 1 1/2" past the rim, so a rim too big for the room under the axle is cut smaller.
+    if (a === "y" || b === "y") {
+      const cy = a === "y" ? ca : cb;
+      const span0 = [Math.min(...rims.map((p) => p.position[long])), Math.max(...rims.map((p) => p.position[long] + p.size[SZ[long]]))];
+      const under = panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && !meets3(p, pin) && p.position.y + p.size.height < cy && p.position[long] < span0[1] && p.position[long] + p.size[SZ[long]] > span0[0]);
+      const room = cy - Math.max(0, ...under.map((p) => p.position.y + p.size.height)) - 0.5 - 1.5;
+      const r0 = rims[0].size[SZ[a]] / 2;
+      if (room > 2 && r0 > room) {
+        const k = room / r0;
+        for (const rim of rims) {
+          const pl = rim.polygon!, [pu, pv] = pl.plane === "xz" ? (["x", "z"] as const) : pl.plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
+          const su = rim.size[SZ[pu]], sv = rim.size[SZ[pv]];
+          rim.polygon = { ...pl, pts: pl.pts.map(([u, v]) => [su / 2 + (u - su / 2) * k, sv / 2 + (v - sv / 2) * k] as [number, number]), holes: pl.holes?.map((h) => ({ x: su / 2 + (h.x - su / 2) * k, y: sv / 2 + (h.y - sv / 2) * k, r: h.r * k })).map((h) => ({ ...h, x: h.x - (su - su * k) / 2, y: h.y - (sv - sv * k) / 2 })) };
+          rim.polygon = { ...rim.polygon, pts: rim.polygon.pts.map(([u, v]) => [u - (su - su * k) / 2, v - (sv - sv * k) / 2] as [number, number]) };
+          rim.position = { ...rim.position, [pu]: rim.position[pu] + (su - su * k) / 2, [pv]: rim.position[pv] + (sv - sv * k) / 2 };
+          rim.size = { ...rim.size, [SZ[pu]]: su * k, [SZ[pv]]: sv * k };
+          rim.cutNote = (rim.cutNote ?? "").replace(/^Cut round, [^.]*(?:\.\d+[^.]*)*\./, `Cut round, ${fmtIn(su * k)} diameter, open centre ${fmtIn(2 * (rim.polygon!.holes?.[0]?.r ?? 0))}.`);
+        }
+      }
+    }
     const r = rims[0].size[SZ[a]] / 2, inner = rims[0].polygon?.holes?.[0]?.r ?? r * 0.8;
     const t = rims[0].size[SZ[long]];
     const band = Math.min(Math.max(r - inner, 1.5), 3.5);
