@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { Budget, IdeaStore, LEGACY_SINCE, RETAIN_DAYS, RETAIN_MS, SWEEP_BATCH, SWEEP_MAX_CMDS, WRITE_CMDS, lastSeen, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { Budget, IdeaStore, LEGACY_SINCE, RETAIN_DAYS, RETAIN_MS, SWEEP_BATCH, SWEEP_DROP_CMDS, SWEEP_MAX_CMDS, SWEEP_PAGE_CMDS, WRITE_CMDS, lastSeen, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { logKey, type LogRecord } from "../src/lib/yard/ideaLog";
 import { ShopStore, FEEDBACK_DAYS } from "../src/lib/feedback/store.server";
 import { cleanFeedback } from "../src/lib/feedback/shop";
@@ -100,7 +100,7 @@ const mk = (r: ReturnType<typeof ttlRedis>) => new IdeaStore(r.pipe, undefined, 
 function rows(r: ReturnType<typeof ttlRedis>) {
   const where = new Map<string, Set<string>>();
   const add = (k: string, name: string) => (where.get(k) ?? where.set(k, new Set()).get(k)!).add(name);
-  for (const n of ["ideas:meta", "ideas:stamp", "ideas:review"]) for (const k of r.hs(n).keys()) add(k, n);
+  for (const n of ["ideas:meta", "ideas:stamp", "ideas:review", "ideas:ptest"]) for (const k of r.hs(n).keys()) add(k, n);
   for (const n of ["ideas:top", "ideas:status", "ideas:recent"]) for (const k of r.zs(n).keys()) add(k, n);
   return where;
 }
@@ -165,6 +165,33 @@ test("sweep: stale rows go from all six keys together; fresh rows, rows kept ali
   const r2 = ttlRedis({ now: LEGACY_SINCE + RETAIN_MS - DAY });
   r2.exec(["HSETNX", "ideas:meta", "22222222", "{}"]); r2.exec(["ZINCRBY", "ideas:top", 1, "22222222"]);
   assert.equal((await mk(r2).sweep(new Date(LEGACY_SINCE + RETAIN_MS - DAY))).dropped, 0);
+});
+
+test("sweep: a swept row leaves no ideas:ptest field (#83's counts go with their row); a fresh row keeps its count", async () => {
+  const clock = { now: Date.UTC(2026, 9, 21, 12) };
+  const r = ttlRedis(clock);
+  const s = mk(r);
+  const old = recOf("old test bench"), fresh = recOf("fresh test bench");
+  await s.record(old, new Date(clock.now));
+  r.exec(["HINCRBY", "ideas:ptest", old.key, 3]);
+  clock.now += RETAIN_MS + DAY;
+  await s.record(fresh, new Date(clock.now));
+  r.exec(["HINCRBY", "ideas:ptest", fresh.key, 1]);
+  const before = r.sent.length;
+  const res = await s.sweep(new Date(clock.now));
+  assert.equal(res.dropped, 1);
+  assert.ok(!r.hs("ideas:ptest").has(old.key), "no ptest field left for the swept row");
+  assert.equal(r.hs("ideas:ptest").get(fresh.key)?.v, "1");
+  const drop = r.sent.slice(before).find((l) => l.some((c) => c[0] === "ZREM"))!;
+  assert.deepEqual(drop.map((c) => `${c[0]} ${c[1]}`), ["INCRBY ideas:cmds:2027-01", "HDEL ideas:meta", "ZREM ideas:top", "ZREM ideas:status", "HDEL ideas:stamp", "ZREM ideas:recent", "HDEL ideas:review", "HDEL ideas:ptest"]);
+  assert.equal(drop.length, SWEEP_DROP_CMDS);
+  // Harmless with no ideas:ptest key at all (before #83): the row still goes from everywhere.
+  const r2 = ttlRedis({ now: Date.UTC(2026, 9, 21, 12) });
+  const s2 = mk(r2);
+  await s2.record(old, new Date(Date.UTC(2026, 9, 21, 12)));
+  const res2 = await s2.sweep(new Date(Date.UTC(2026, 9, 21, 12) + RETAIN_MS + DAY));
+  assert.equal(res2.dropped, 1);
+  assert.deepEqual([...rows(r2).keys()], []);
 });
 
 test("200 days of traffic with the daily cron, then a quiet spell: no prompt or note past retention survives, and no orphans ever", async () => {
@@ -232,6 +259,13 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
   for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r2.exec(["ZINCRBY", "ideas:top", 1, k]); r2.exec(["ZADD", "ideas:recent", Date.UTC(2026, 9, 30), k]); }
   const fresh = await mk(r2).sweep(new Date(Date.UTC(2026, 10, 1)));
   assert.ok(fresh.done && fresh.dropped === 0 && fresh.cmds <= 54, `${fresh.cmds}`);
+  // Defaults, every row stale: GET 2 + 15 pages × (5 + 8) + SET cursor 2 = 199 ≤ 200; 7,500 rows a run.
+  const r4 = ttlRedis({ now: Date.UTC(2027, 2, 1, 8) });
+  for (let i = 0; i < 10_000; i++) { const k = i.toString(16).padStart(8, "0"); r4.exec(["HSETNX", "ideas:meta", k, "{}"]); r4.exec(["ZINCRBY", "ideas:top", 1, k]); r4.exec(["HINCRBY", "ideas:ptest", k, 1]); }
+  const worst = await mk(r4).sweep(new Date(Date.UTC(2027, 2, 1, 8)));
+  assert.equal(SWEEP_PAGE_CMDS + SWEEP_DROP_CMDS, 13);
+  assert.ok(worst.cmds <= SWEEP_MAX_CMDS && !worst.done, `${worst.cmds}`);
+  assert.equal(worst.cmds, 199); assert.equal(worst.dropped, 7500);
   // The shared monthly budget stops it too.
   const b = new Budget(10);
   const r3 = ttlRedis({ now: Date.UTC(2026, 10, 1) });

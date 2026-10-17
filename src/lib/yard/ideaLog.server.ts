@@ -32,7 +32,8 @@ const TIMEOUT_MS = 1500;
  * - ideas:recent (row key → last-seen ms) is trimmed by time on every write: ZREMRANGEBYSCORE −inf (now − RETAIN).
  * - A row's last-seen is max(its recent score, its stamp's `at`); a row with neither (logged before stamps, 15–17 Oct)
  *   counts as last seen at LEGACY_SINCE. The daily cron sweep (/api/cron/retention → sweep()) drops every row whose
- *   last-seen is past RETAIN from all of ideas:meta, top, status, stamp, recent (and Critic's ideas:review mark)
+ *   last-seen is past RETAIN from all of ideas:meta, top, status, stamp, recent (and Critic's ideas:review mark and
+ *   #83's ideas:ptest count, a no-op while that key doesn't exist)
  *   together, in one pipeline, so nothing is left orphaned.
  * - RETAIN_DAYS is 87, not 90: a row last seen at T goes at the first sweep after T + 87 d (≤ 1 d later), and a prompt
  *   can still sit in the stored snapshot (1 h) and the CDN copy of /api/ideas (s-maxage 1 h + stale-while-revalidate
@@ -45,11 +46,14 @@ export const LEGACY_SINCE = Date.parse("2026-10-15T00:00:00Z");
 /** Sweep caps: rows read per page (ZSCAN COUNT) and Upstash commands per run (the run stops and resumes next day). */
 export const SWEEP_BATCH = 500;
 export const SWEEP_MAX_CMDS = 200;
-/** Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +7 (INCRBY + 6 deletes) when it drops rows. */
+/**
+ * Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +8 (INCRBY + 7 deletes) when it drops rows.
+ * Worst case at the defaults (every row stale): GET cursor 2 + 15 pages × 13 + SET cursor 2 = 199 ≤ 200, 7,500 rows.
+ */
 export const SWEEP_PAGE_CMDS = 5;
-export const SWEEP_DROP_CMDS = 7;
+export const SWEEP_DROP_CMDS = 8;
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
-const K = { review: "ideas:review", cursor: "ideas:sweep:cursor", snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
+const K = { review: "ideas:review", cursor: "ideas:sweep:cursor", ptest: "ideas:ptest", snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
@@ -182,7 +186,7 @@ export class IdeaStore {
 
   /**
    * The daily retention sweep (cron). Walks ideas:top (every row is in it) with ZSCAN, SWEEP_BATCH at a time, reads
-   * each row's last-seen (recent score, stamp `at`) and drops the stale rows from all six keys in one pipeline.
+   * each row's last-seen (recent score, stamp `at`) and drops the stale rows from all eight keys in one pipeline.
    * Stops before `maxCmds` (budgeted like every write) and keeps its cursor in ideas:sweep:cursor (EX 2 d), so a
    * capped run resumes where it stopped the next day. Never throws.
    */
@@ -218,7 +222,7 @@ export class IdeaStore {
           const scores = (seen[0] as (string | null)[]) ?? [], stamps = (seen[1] as (string | null)[]) ?? [];
           const stale = keys.filter((_, i) => lastSeen(scores[i], stamps[i]) < cutoff);
           if (stale.length) {
-            const del = await run([["HDEL", K.meta, ...stale], ["ZREM", K.top, ...stale], ["ZREM", K.status, ...stale], ["HDEL", K.stamp, ...stale], ["ZREM", K.recent, ...stale], ["HDEL", K.review, ...stale]]);
+            const del = await run([["HDEL", K.meta, ...stale], ["ZREM", K.top, ...stale], ["ZREM", K.status, ...stale], ["HDEL", K.stamp, ...stale], ["ZREM", K.recent, ...stale], ["HDEL", K.review, ...stale], ["HDEL", K.ptest, ...stale]]);
             if (!del) break;
             res.dropped += stale.length;
           }
