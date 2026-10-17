@@ -177,4 +177,37 @@ export const SWEEPS = {
       "wall-mounted birdhouse", "hanging birdhouse for wrens", "cedar hanging birdhouse", "wall mount birdhouse", "jewelry box with dividers",
     ],
   },
+  c15: {
+    title: "every hardware item and cut stock is on Buy with a store link; notes name the stock Buy sells",
+    inv: "C15",
+    file: "c15-buy-complete.md",
+    prompts: [
+      "bird feeder", "hopper bird feeder", "hanging bird feeder", "rolling utility cart", "rolling cart",
+      "rolling bookshelf", "kitchen island on casters", "mobile workbench", "rolling toy chest", "dresser on casters",
+      "hanging birdhouse", "cedar hanging birdhouse", "hanging birdhouse for wrens", "raised garden bed 4x8 open bottom with 4x4 posts", "raised garden bed with 4x4 posts",
+      "cedar raised garden bed 4x8", "outdoor storage bench", "jewelry box", "water wheel", "rolling shoe rack",
+    ],
+  },
+  c16: {
+    title: "material for use: no pressure-treated wood on food, skin or nest contact; no interior sheets outdoors",
+    inv: "C16",
+    file: "c16-material-for-use.md",
+    prompts: [
+      "bird feeder", "wooden bird feeder", "hopper bird feeder", "bird feeder 12 inches wide", "hanging bird feeder",
+      "hanging birdhouse", "wall mounted birdhouse", "barn birdhouse", "birdhouse shaped like church", "beehive box",
+      "sandbox with seat", "picnic table", "adirondack footrest", "porch planter 16x16x30", "outdoor planter box",
+      "patio planter 24 wide", "garden planter box", "outdoor toy box", "outdoor cabinet", "porch swing",
+    ],
+  },
+  c17: {
+    title: "one step per hinge; tabletop and small hung builds never sit on the floor",
+    inv: "C17",
+    file: "c17-step-place-text.md",
+    prompts: [
+      "jewelry box", "jewellery box", "small jewelry box", "walnut jewelry box", "jewelry chest",
+      "jewelry box with dividers", "treasure chest", "bird feeder", "hanging bird feeder", "abacus",
+      "cribbage board", "laptop stand", "napkin holder", "toy airplane", "submarine",
+      "pirate ship", "glider", "hanging birdhouse", "keepsake box", "recipe box",
+    ],
+  },
 } as const;

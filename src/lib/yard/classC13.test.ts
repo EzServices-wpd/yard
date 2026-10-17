@@ -60,7 +60,7 @@ test("C13: rolling puts four casters under the build, lifts it 3\", buys them an
     const casters = p.panels.filter((x) => /^Caster \d+$/.test(x.name));
     assert.equal(casters.length, 4, q);
     assert.ok(casters.every((c) => c.position.y === 0), q);
-    assert.ok(plan.bom.some((b) => /locking swivel casters/.test(b.name) && b.quantity === 4), q);
+    assert.ok(plan.bom.some((b) => /locking swivel (plate )?casters/.test(b.name) && b.quantity === 4), q);
     assert.match(plan.instructions[plan.instructions.length - 1].title + plan.instructions.map((s) => s.title).join(" "), /casters/i, q);
   }
   assert.ok(!generateFromPrompt("rolling pin").panels.some((x) => /^Caster/.test(x.name)));

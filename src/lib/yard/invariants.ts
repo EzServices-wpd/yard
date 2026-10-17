@@ -1,5 +1,7 @@
 import { hardwareSaidNotBought } from "./hardwareSaid";
 import { storeTermDrift } from "./listings";
+import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, stepStockNameDrift, unlinkedBuy } from "./buyComplete";
+import { contactBuild, interiorSheet } from "./materialForUse";
 import { genericFormMark, routesToLearner } from "./formOwnership";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
@@ -33,13 +35,13 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12" | "C13" | "C14";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17",
 };
 /** The invariants checked per build (I2 and I10 are single fixed checks, run by the test directly). */
-export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14"];
+export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17"];
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
@@ -297,7 +299,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
   return [
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
-    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt),
+    ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan),
   ];
 }
 
@@ -412,6 +414,40 @@ function c14(p: YardProject, prompt: string): Violation[] {
     if (!p.panels.some((x) => /^(?:Screw eye \d+|Mounting board)$/.test(x.name))) out.push(v("C14", "mounted birdhouse has no screw eyes or mounting board"));
   }
   return out;
+}
+
+/**
+ * C15 (hardware and Buy completeness): every stock the cut list cuts from is on Buy, every fastener size and hardware
+ * item a step fits is on Buy, every Buy row has a store link, and a lumber size the notes name is one Buy sells.
+ */
+function c15(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || !plan.bom.length) return [];
+  return [
+    ...(isUnitItem(p) ? [] : cutStockOffBuy(plan)).map((m) => v("C15", `cut list stock "${m}" is not on Buy`)),
+    ...stepHardwareOffBuy(plan).map((m) => v("C15", m)),
+    ...stepStockNameDrift(plan).map((m) => v("C15", m)),
+    ...unlinkedBuy(plan).map((n) => v("C15", `Buy row "${n}" has no store link`)),
+    ...noteStockOffBuy(p.notes ?? [], plan).map((m) => v("C15", m)),
+  ];
+}
+
+/**
+ * C16 (material for use): a build that touches food, skin or a nest carries no pressure-treated stock, and an outdoor
+ * build carries no interior sheet goods.
+ */
+function c16(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
+  if (p.displayOnly) return [];
+  const out: Violation[] = [];
+  const outdoor = isOutdoorPrompt(prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
+  if (outdoor && contactBuild({ ...p, prompt })) for (const b of plan.bom.filter((x) => /pressure[- ]treated/i.test(x.name))) out.push(v("C16", `"${b.name}" on a build that touches food, skin or a nest`));
+  if (outdoor && !/\bplywood\b/i.test(prompt)) for (const b of plan.bom.filter(interiorSheet)) out.push(v("C16", `interior sheet "${b.name}" on an outdoor build`));
+  return out;
+}
+
+/** C17 (step and placement text): one step hangs each hinge, and a tabletop or small hung build never sits on the floor. */
+function c17(p: YardProject, plan: BuildPlan): Violation[] {
+  if (p.displayOnly) return [];
+  return [...duplicateHingeSteps(plan), ...floorTalkOnSmall(p, plan)].map((m) => v("C17", m));
 }
 
 /** C12 (store terms follow the Buy name): every store search on a Buy row searches that row's name. */
