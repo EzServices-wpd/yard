@@ -12,7 +12,7 @@ import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
-import { bedCourses, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
+import { bedCourses, CASTER_H, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
@@ -419,11 +419,15 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   }
   // C13: a typed mobility word ("rolling", "on casters") is a modifier, not part of the noun: build the noun, then
   // put it on casters. A build that cannot take casters (a toy, a landmark, something hung) is built as typed.
-  // The bar always passes build options (scale, cut mode); only an override of the shape skips this.
-  const reshaped = !!(args[3]?.sizeOverride || args[3]?.fittedOverride || args[3]?.pocketOverride);
-  const roll = !args[1] && !args[2] && !reshaped && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
+  // The rolling ask rides every rebuild: the bar's build options (scale, cut mode), a stock switch and a size step
+  // (C19 keeps what does not follow from size, so the casters stay). A size override is the overall size on the
+  // casters, so the base is built 3" shorter. Only a given form or a fitted/pocket hole skips this.
+  const reshaped = !!(args[3]?.fittedOverride || args[3]?.pocketOverride);
+  const roll = !args[2] && !reshaped && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
   if (roll) {
-    const base = generateSeeded(roll.base);
+    const size = args[3]?.sizeOverride;
+    const opts = args[3] && size ? { ...args[3], sizeOverride: { ...size, height: Math.max(1, size.height - CASTER_H) } } : args[3];
+    const base = generateSeeded(roll.base, args[1], undefined, opts);
     if (takesCasters(base)) return withCasters(base, prompt);
   }
   let typedBuild = withMount(hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt)), prompt);

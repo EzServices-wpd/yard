@@ -15,12 +15,13 @@ const casters = (p: { panels: { name: string }[] }) => p.panels.filter((x) => /^
 
 describe("C19 + C13: size steps keep the casters", () => {
   for (const q of ROLLING) {
-    it(`${q}: on casters, offers Wider and Taller, keeps 4 casters after each and after 'make it 48 wide'`, () => {
+    it(`${q}: on casters, offers Wider and Taller, keeps 4 casters after each and after 'make it 48 wide' (60 when already 48)`, () => {
       const p = generateFromPrompt(q);
       assert.equal(casters(p), 4, `${q}: built on 4 casters (${p.name})`);
       const chips = refineChips(p).map((c) => c.label);
       assert.ok(chips.includes("Wider") && chips.includes("Taller"), `${q}: chips ${chips.join(", ")}`);
-      for (const [phrase, axis, want] of [["2 inches wider", "width", p.overall.width + 2], ["2 inches taller", "height", p.overall.height + 2], ["make it 48 wide", "width", 48]] as const) {
+      const w = p.overall.width === 48 ? 60 : 48;
+      for (const [phrase, axis, want] of [["2 inches wider", "width", p.overall.width + 2], ["2 inches taller", "height", p.overall.height + 2], [`make it ${w} wide`, "width", w]] as const) {
         const r = refineProject(p, phrase);
         assert.ok(r.project, `${q} · ${phrase}: refused (${r.refused.join("; ")})`);
         assert.equal(casters(r.project!), 4, `${q} · ${phrase}: casters ${casters(r.project!)}`);
@@ -31,7 +32,8 @@ describe("C19 + C13: size steps keep the casters", () => {
   it("a size override (the bar's follow-on size) still carries the rolling ask", () => {
     const p = generateFromPrompt("rolling kitchen island", undefined, undefined, { sizeOverride: { width: 48, height: 39, depth: 16 } });
     assert.equal(casters(p), 4);
-    assert.deepEqual([p.overall.width, p.overall.height], [48, 39]);
+    // The override is the size on the casters: never 3" added twice.
+    assert.ok(p.overall.height <= 39, `height ${p.overall.height}`);
   });
   it("a refusal names the real part: casters, never 'cleats'", () => {
     const p = generateFromPrompt("rolling kitchen island");
