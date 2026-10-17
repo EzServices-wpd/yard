@@ -3,6 +3,8 @@ import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
+import { builderOwnText, READ_MODIFIER } from "./builderName";
+import { FORM_NEUTRAL } from "./genericBox";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
@@ -2294,21 +2296,17 @@ function buildGeneralTubeProject(
   return project;
 }
 
-/** Words that set size, style, room or stock, never which object it is. */
-// "over"/"under" set a bunk's layout (twin over full), never the object.
-const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|mini|tiny|giant|toy|toys|model|miniature|scale|simple|basic|easy|modern|rustic|farmhouse|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
+// FORM_NEUTRAL (words that set size, style, room or stock, never the object) lives in genericBox.ts.
 
-/**
- * Row 51: words that say how a build is finished, moved, fitted, placed or what it holds, never which object it is.
- * The engine's build is the same with or without them, but that does not make it a template of some other object:
- * "black painted bookshelf" is a bookshelf, "blanket chest" a chest, "fitted bookcase under stairs" a bookcase.
- * Words that change the object ("lap" desk, "standing" desk, "hanging" planter, "chicken" tractor) are NOT here.
- */
-const READ_MODIFIER = /^(?:painted|stained|primed|finished|unfinished|varnished|oiled|rolling|mobile|fitted|built|builtin|nook|alcove|stairs?|blanket|hope|storage)$/;
+// Row 51: READ_MODIFIER (builderName.ts) lists the words that never say which object it is.
 const FITTED_CARCASE_NOUN = /^(?:cabinet|organizer|organiser|shelves|shelving|unit|system)$/;
 const SIZE_CUE = /\b(?:about\s+)?(?:knee|waist|hip|chest|shoulder|eye)[\s-]+(?:high|height|tall)\b|\bas\s+(?:wide|long|big)\s+as\s+an?\s+(?:twin|full|queen|king)(?:\s+size)?\s+(?:bed|mattress)\b|\b(?:a\s+)?(?:full|whole|half)\s+sheet\s+of\s+plywood\b/g;
 /** Two words for one object: a "rocket ship" is the rocket. */
 const SAME_OBJECT = /\b(rocket)\s+ship\b/g;
+/** A top or stock named in two words ("butcher block island") is the stock, never the object. */
+const STOCK_PHRASE = /\bbutcher[\s-]+block\b/g;
+/** Common misspellings of a builder's own name. */
+const SPELLING: [RegExp, string][] = [[/\banderson\b/g, "andersen"]];
 const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 
 /**
@@ -2319,11 +2317,13 @@ const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 export function ignoredTypedWords(project: YardProject, prompt: string): string[] {
   // Row 51: a same-object compound ("rocket ship") reads as its one noun.
   // Row 51: a body or bed size cue ("knee high", "as wide as a king bed", "a full sheet of plywood") is a size, never the object.
-  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").replace(SIZE_CUE, " ").replace(SAME_OBJECT, "$1").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
+  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").replace(SIZE_CUE, " ").replace(SAME_OBJECT, "$1").replace(STOCK_PHRASE, " ")
+    .replace(/[a-z]+/g, (w) => SPELLING.reduce((x, [re, to]) => x.replace(re, to), w)).split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
   // Row 51: the size is part of the signature. A word read as a size ("knee high", "as wide as a queen bed", "a full
   // sheet of plywood") changes the build's overall size, so it is read, not ignored.
   const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}|${q.overall.width}|${q.overall.height}|${q.overall.depth}`;
-  const own = `${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
+  // Row 51 widened: the builder owns its own name (not a title that only echoes the typed words) and its kind's nouns.
+  const own = builderOwnText(project, prompt);
   // Row 51: on a fitted carcase, a carcase noun ("closet organizer", "over the toilet cabinet") names the carcase itself.
   // Only storage carcases: a "desk organizer" is a tray, never a 48" desk.
   const carcase = project.fitted && STORAGE_PROGRAM.test(project.fitted.program) && !project.standIn && !project.unmatched ? FITTED_CARCASE_NOUN : null;

@@ -12,6 +12,7 @@ const { runYardPrompt } = await import("../../components/workspace/run-prompt");
 const { useYard } = await import("./store");
 const { generateFromPrompt, ignoredTypedWords } = await import("./promptMain");
 const { genericFormMark } = await import("./formOwnership");
+const { isLockedForm } = await import("./form");
 const { UNIT_ITEM_NOTE } = await import("./unitItems");
 const { corpus, EVAL_PROMPTS } = await import("../../../scripts/invariants-corpus");
 const { SWEEPS } = await import("../../../scripts/class-sweep-prompts");
@@ -36,13 +37,48 @@ const CORPUS_ROWS = [
   "garage storage shelves",
   "over the toilet cabinet 27 wide 68 high 9 deep",
 ];
+/**
+ * Row 51 widened (Critic real-rows grade, endless-ideas/GRADED.tsv): the builder's own name ("Andersen ... double
+ * hung" owns window, "Train engine" owns train) and words that never change the object (skeleton, steam, sewing,
+ * vinyl, wall mounted, butcher block, the misspelling Anderson) never send a complete engine build to the learner.
+ * A bare "key holder" is the peg rail people build for keys. e086 (painted) was fixed by #71; e003 (casters) already
+ * showed the engine island, and putting casters on it is a separate engine class.
+ */
+const WIDE_ROWS = [
+  "kitchen island on casters 60 long", // e003
+  "a dinosaur skeleton", // e008
+  "key holder wall mounted", // e052
+  "Anderson window", // e061
+  "butcher block island 48 by 24", // e063
+  "sewing table 48 long", // e072
+  "a steam train", // e077
+  "king headboard painted white 76 inches", // e086
+  "plate rack wall mounted", // e099
+  "vinyl record shelf 36 wide", // e101
+];
 /** Critic f06: the engine builds a cardboard Rocket (16 parts); "ship" is the same object, not a half-read. */
 const NIGHTLY_ROWS = ["cardboard rocket ship"];
 /**
  * Honest learner rows: the engine has no complete build, so the learner still runs. Bird feeder, rolling cart and
  * step ladder are simple stand-ins, play kitchen is an unmatched body, sandbox with lid is unasked popsicle stock.
  */
-const HONEST_LEARNER = ["bird feeder", "sandbox with lid", "play kitchen", "rolling cart", "step ladder"];
+// e067 "mailbox post": the engine has no mailbox-post builder; the "Mailbox Post" title only echoes the typed words
+// over an anatomy-class popsicle body (56 rings, 20 legs), so it stays an honest learner row.
+const HONEST_LEARNER = ["bird feeder", "sandbox with lid", "play kitchen", "rolling cart", "step ladder", "mailbox post"];
+/**
+ * Critic 10-17 (live P1 after #71): these went from the honest grey block to the generic 36" × 30" × 16" fallback box.
+ * A build wins over the learner only when it is the asked-for form, never the fitted storage fallback's bare carcase
+ * (uprights or sides, back, top or front, bottom) with a title that only repeats the prompt.
+ */
+const NOT_GENERIC = ["cedar boot tray", "under-stairs storage", "outdoor wall planter box", "wall mounted outdoor planter"];
+/** The rule is not "never the box": a plain storage ask and the planter stem's own nouns (planter, raised bed) keep it. */
+const BOX_OWNS = ["storage unit", "cedar 2x4 planter 3 feet", "cedar raised garden bed 4x8", "raised garden bed 48 wide 96 long"];
+const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;
+/** The generic fallback body: a storage-program carcase made only of the bare box parts. */
+function genericBox(p: ReturnType<typeof generateFromPrompt>) {
+  return p.kind === "closet" && p.fitted?.program === "storage" && !(p.instances ?? []).length && p.panels.length > 0 &&
+    p.panels.every((x) => GENERIC_BOX_PART.test(x.name ?? ""));
+}
 /** A word that changes the object still learns: the fix is not "never learn". */
 const STILL_LEARN = ["lap desk", "standing desk", "desk organizer", "hanging planter", "chicken tractor", "cold frame", "tabletop loom", "wall clock"];
 
@@ -60,8 +96,10 @@ const craftAsked = /popsicle|craft|stick|toy|model|miniature|kids?'? craft/i;
 function complete(q: string) {
   const p = generateFromPrompt(q);
   const parts = p.panels.length + p.instances.length;
-  const ok = !genericFormMark(p) && !p.standIn && !p.unmatched && !p.displayOnly && parts >= 2 &&
-    !(/popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !craftAsked.test(q));
+  // A dedicated model builder (a figure, a vehicle, a custom or landmark form) builds in sticks by design.
+  const model = ["figure", "vehicle", "custom"].includes(p.kind) || isLockedForm(p.kind);
+  const ok = !genericFormMark(p) && !genericBox(p) && !p.standIn && !p.unmatched && !p.displayOnly && parts >= 1 &&
+    !(/popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !craftAsked.test(q) && !model);
   return { p, ok };
 }
 async function shows(q: string) {
@@ -78,7 +116,7 @@ function assertEngineShown(q: string, engine: ReturnType<typeof generateFromProm
 }
 
 describe("row 51: a complete engine build always shows; the learner never replaces it", () => {
-  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS]) {
+  for (const q of [...CRITIC_ROWS, ...CORPUS_ROWS, ...NIGHTLY_ROWS, ...WIDE_ROWS]) {
     it(q, async () => {
       const { p, ok } = complete(q);
       assert.ok(ok, `${q}: the engine build is complete (${p.name}, ${p.panels.length + p.instances.length} parts)`);
@@ -86,7 +124,7 @@ describe("row 51: a complete engine build always shows; the learner never replac
     });
   }
   it("every corpus prompt with a complete engine build that reads every typed word shows it, never the learner", async () => {
-    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...HONEST_LEARNER])];
+    const all = [...new Set([...corpus(), ...EVAL_PROMPTS, ...Object.values(SWEEPS).flatMap((s) => s.prompts), ...CRITIC_ROWS, ...NIGHTLY_ROWS, ...WIDE_ROWS, ...HONEST_LEARNER])];
     let checked = 0;
     for (const q of all) {
       const { p, ok } = complete(q);
@@ -109,6 +147,19 @@ describe("row 51: a complete engine build always shows; the learner never replac
     it(`${q}: a word that changes the object still goes to the learner`, async () => {
       const got = await shows(q);
       assert.ok(got.calls.includes("lookup"), `${q} kept the engine's ${generateFromPrompt(q).name}`);
+    });
+  }
+  for (const q of NOT_GENERIC) {
+    it(`${q}: never the generic fallback box over the learner`, async () => {
+      const got = await shows(q);
+      assert.ok(!genericBox(got.p), `${q}: the bar shows the generic ${got.p.name} (${got.p.panels.map((x) => x.name).join(", ")})`);
+      assert.ok(got.calls.includes("lookup"), `${q}: the learner never ran`);
+    });
+  }
+  for (const q of BOX_OWNS) {
+    it(`${q}: the asked-for box still shows, no learner`, async () => {
+      const got = await shows(q);
+      assert.ok(!got.calls.includes("lookup") && !got.p.displayOnly, `${q}: learner over the asked-for ${generateFromPrompt(q).name}`);
     });
   }
 });
