@@ -13,7 +13,7 @@
 import { drawerKey } from "@/components/home/showcase-drawers";
 
 type Part = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; drawerId?: unknown };
-export type DrawerGroup = { by: "drawer-id" | "front"; ids: string[]; depth: number; pull: number };
+export type DrawerGroup = { by: "drawer-id" | "front"; ids: string[]; depth: number; pull: number; /** The group's outer face (max z), where its pull is drawn. */ face: number };
 
 const FIXED = /\b(?:rails?|runners?|slides?|dividers?|webs?|guides?|kickers?|stretchers?|frames?|openings?)\b/i;
 const FRONT = /\bfront\b/i;
@@ -30,7 +30,10 @@ const r3 = (n: number) => Math.round(n * 1000) / 1000;
 function group(by: DrawerGroup["by"], parts: Part[]): DrawerGroup {
   const z0 = Math.min(...parts.map((p) => p.position.z)), z1 = Math.max(...parts.map((p) => p.position.z + p.size.depth));
   const depth = r3(z1 - z0);
-  return { by, ids: parts.map((p) => p.id), depth, pull: r3(groupPull(depth)) };
+  // The face the pull sits on: the front's outer face when the drawer has a front, else the group's.
+  const fronts = parts.filter((p) => FRONT.test(p.name));
+  const face = fronts.length ? Math.max(...fronts.map((p) => p.position.z + p.size.depth)) : z1;
+  return { by, ids: parts.map((p) => p.id), depth, pull: r3(groupPull(depth)), face: r3(face) };
 }
 
 /** True when `p` sits inside the front's face outline and behind (or at) the front. */
@@ -65,19 +68,34 @@ export function drawerGroups(panels: readonly Part[]): DrawerGroup[] {
   return out;
 }
 
-const cache = new WeakMap<readonly Part[], Map<string, number>>();
+const cache = new WeakMap<readonly Part[], Map<string, DrawerGroup>>();
+function groupOf(panels: readonly Part[], id: string): DrawerGroup | undefined {
+  let by = cache.get(panels);
+  if (!by) {
+    by = new Map();
+    for (const g of drawerGroups(panels)) for (const m of g.ids) by.set(m, g);
+    cache.set(panels, by);
+  }
+  return by.get(id);
+}
 /**
  * How far this part slides when its drawer is open on the bench: its group's pull, today's pull for a lone drawer
  * box (3), or null for a part that never slides.
  */
 export function benchDrawerPull(panels: readonly Part[], panel: Part): number | null {
-  let pulls = cache.get(panels);
-  if (!pulls) {
-    pulls = new Map();
-    for (const g of drawerGroups(panels)) for (const id of g.ids) pulls.set(id, g.pull);
-    cache.set(panels, pulls);
-  }
-  const g = pulls.get(panel.id);
-  if (g != null) return g;
+  const g = groupOf(panels, panel.id);
+  if (g) return g.pull;
   return panel.type === "drawer" && !panel.yaw ? legacyPull(panel.size.depth) : null;
+}
+
+/**
+ * Where a drawer box draws its pull, as a depth from the box's centre to the face: the outer face of its group's
+ * front when it has one (so the pull isn't buried in the front), else its own face (today).
+ */
+export function benchPullDepth(panels: readonly Part[], panel: Part): number {
+  const g = groupOf(panels, panel.id);
+  const own = panel.size.depth;
+  if (!g) return own;
+  const toFace = g.face - (panel.position.z + own / 2);
+  return Math.max(own, Math.round(toFace * 2 * 1000) / 1000);
 }

@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { benchDrawerPull, drawerGroups, groupPull, legacyPull } from "../src/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth, drawerGroups, groupPull, legacyPull } from "../src/components/workspace/drawerGroups";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 
 type P = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; drawerId?: string };
@@ -54,6 +54,9 @@ test("path 2: no drawer id yet: a drawer front plus the parts under it (today's 
   assert.equal(benchDrawerPull(panels, panels.find((p) => p.id === "rail")!), null, "a drawer rail never moves");
   assert.equal(benchDrawerPull(panels, panels.find((p) => p.id === "runner")!), null, "nor a runner, though it sits under the front");
   assert.equal(benchDrawerPull(panels, panels.find((p) => p.id === "bottom")!), null, "nor the carcass bottom");
+  // The box's pull is drawn on its front's outer face (z 17.75), not buried inside the front.
+  const box1 = panels.find((p) => p.id === "box1")!;
+  assert.equal(box1.position.z + box1.size.depth / 2 + benchPullDepth(panels, box1) / 2, 17.75);
   // The real recipes: every desk, vanity and dresser drawer is its box + its front, and the front now moves with it.
   for (const q of ["desk with drawers", "bathroom vanity with drawers", "dresser 36 wide 3 drawers", "nightstand with a drawer"]) {
     const ps = generateFromPrompt(q).panels as P[];
@@ -78,6 +81,7 @@ test("path 3: no group found: today's behaviour (a lone box pulls by its own dep
   assert.equal(legacyPull(4), 8);
   assert.equal(legacyPull(40), 16);
   assert.equal(benchDrawerPull(panels, front), null, "a front with nothing under it stays put");
+  assert.equal(benchPullDepth(panels, box), 20, "a lone box keeps its pull on its own face");
   assert.equal(benchDrawerPull(panels, { ...box, yaw: 0.3 }), null, "a turned box never slides");
 });
 
@@ -86,6 +90,7 @@ test("the bench reads the groups: one pull per part from benchDrawerPull, today'
   assert.match(src, /const drawerPull = useYard\(\(s\) => benchDrawerPull\(s\.project\.panels, panel\)\);/);
   assert.match(src, /\(isDoor \|\| !!hostDoor \|\| drawerPull != null \|\| isLid \|\| !!leaf\)/);
   assert.match(src, /groupPos = \[cx \* explode, cy, \(cz \+ drawerPull\) \* explode\];/);
+  assert.match(src, /<CupPull w=\{w\} h=\{h\} d=\{pullDepth\} \/>/);
   assert.doesNotMatch(src, /d \* 0\.75/, "the own-depth rule lives only in drawerGroups.legacyPull");
   assert.doesNotMatch(fs.readFileSync("src/components/workspace/drawerGroups.ts", "utf8"), /\.(position|size)\.\w+\s*=[^=]/, "read-only: no part geometry is written");
 });

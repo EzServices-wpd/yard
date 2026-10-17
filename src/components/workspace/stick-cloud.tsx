@@ -7,7 +7,7 @@ import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
-import { benchDrawerPull } from "@/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
@@ -69,6 +69,7 @@ export function PanelMesh({
   // Operate: a drawer slides as one group (shared drawer id, or its front plus the parts under it); a lone box keeps
   // today's own-depth pull (drawerGroups).
   const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel));
+  const pullDepth = useYard((s) => (isDrawer ? benchPullDepth(s.project.panels, panel) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
@@ -309,7 +310,7 @@ export function PanelMesh({
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
+        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
