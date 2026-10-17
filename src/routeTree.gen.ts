@@ -16,6 +16,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as ApiCriticReviewRouteImport } from './routes/api/critic-review'
+import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiIdeasRouteImport } from './routes/api/ideas'
 import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
 import { Route as ApiIdeasSnapshotRouteImport } from './routes/api/ideas-snapshot'
@@ -57,6 +59,16 @@ const TermsRoute = TermsRouteImport.update({
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCriticReviewRoute = ApiCriticReviewRouteImport.update({
+  id: '/api/critic-review',
+  path: '/api/critic-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
+  id: '/api/feedback',
+  path: '/api/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIdeasRoute = ApiIdeasRouteImport.update({
@@ -103,6 +115,8 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/critic-review': typeof ApiCriticReviewRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -119,6 +133,8 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/critic-review': typeof ApiCriticReviewRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -136,6 +152,8 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/critic-review': typeof ApiCriticReviewRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -154,6 +172,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/critic-review'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -170,6 +190,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/critic-review'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -186,6 +208,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/critic-review'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -203,6 +227,8 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  ApiCriticReviewRoute: typeof ApiCriticReviewRoute
+  ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiIdeasRoute: typeof ApiIdeasRoute
   ApiIdeasLogRoute: typeof ApiIdeasLogRoute
   ApiIdeasSnapshotRoute: typeof ApiIdeasSnapshotRoute
@@ -261,6 +287,20 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/critic-review': {
+      id: '/api/critic-review'
+      path: '/api/critic-review'
+      fullPath: '/api/critic-review'
+      preLoaderRoute: typeof ApiCriticReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/feedback': {
+      id: '/api/feedback'
+      path: '/api/feedback'
+      fullPath: '/api/feedback'
+      preLoaderRoute: typeof ApiFeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ideas': {
@@ -323,6 +363,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
+  ApiCriticReviewRoute: ApiCriticReviewRoute,
+  ApiFeedbackRoute: ApiFeedbackRoute,
   ApiIdeasRoute: ApiIdeasRoute,
   ApiIdeasLogRoute: ApiIdeasLogRoute,
   ApiIdeasSnapshotRoute: ApiIdeasSnapshotRoute,
