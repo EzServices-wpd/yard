@@ -20,7 +20,7 @@ function fakeRedis() {
       case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
       case "EXPIRE": return 1;
       case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
-      case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
+      case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return String(zs(key).get(String(a[1])));
       case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
       case "ZREMRANGEBYRANK": return 0;
       case "ZREVRANGE": { const r = [...zs(key)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return r.flatMap(([m, s]) => [m, String(s)]); }
@@ -89,8 +89,8 @@ test("rows written before stamps, or with an unreadable stamp, show 'unknown' wi
   }
 });
 
-test("write budget counts the stamp command (and, since possible-test, the burst counter's HINCRBY + EXPIRE)", () => {
-  assert.equal(WRITE_CMDS, 9);
+test("write budget counts the stamp command (and, since possible-test, the burst counter's HINCRBY + EXPIRE + the previous bucket's HMGET)", () => {
+  assert.equal(WRITE_CMDS, 10);
 });
 
 test("no visitor identity: the write and serve paths read no IP, user agent or cookie; the serve route adds nothing", () => {

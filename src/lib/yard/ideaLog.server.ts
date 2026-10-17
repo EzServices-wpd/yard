@@ -9,18 +9,34 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 9; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst
+export const WRITE_CMDS = 10; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
 /** One more when the client sent a run id (HINCRBY burst run:<id>). */
 export const RUN_CMDS = 1;
-/** A write inside a burst re-stamps its row "possible-test": INCRBY budget + HSET stamp, in a second pipeline. */
-export const BURST_FIX_CMDS = 2;
 /**
- * Burst rate, counted on the server only: written builds per fixed 60 s bucket, site-wide and per run id, in one
- * short-lived hash (EXPIRE 120 s). The counter is never stored with a row; only the stamp's source changes.
+ * A write inside a burst, in a second pipeline:
+ * - a row's first write: INCRBY budget + HINCRBY ideas:ptest + HSET stamp "possible-test" (BURST_NEW_CMDS);
+ * - a row written before: INCRBY budget + HINCRBY ideas:ptest (BURST_FIX_CMDS). If every earlier write was a
+ *   possible-test write too, a third pipeline re-stamps it (BURST_STAMP_CMDS). A row that has had a live write stays
+ *   live: a later possible-test write only bumps its ideas:ptest count, never its source.
+ */
+export const BURST_FIX_CMDS = 2;
+export const BURST_NEW_CMDS = 3;
+export const BURST_STAMP_CMDS = 2;
+/**
+ * Burst rate, counted on the server only: written builds per 60 s bucket, site-wide and per run id, in one
+ * short-lived hash (EXPIRE 120 s). The window slides: the previous bucket is weighted in by how much of it still
+ * falls inside the last 60 s (burstRate), so a burst spread across a minute boundary is still seen. The counter is
+ * never stored with a row; only the stamp's source changes.
  */
 export const BURST_WINDOW_S = 60;
 export const SITE_BURST = 60; // more than 60 written builds site-wide in one minute
 export const RUN_BURST = 10; // more than 10 written builds from one run id in one minute
+/** Sliding 60 s rate: the previous bucket × the part of it still inside the window + the current bucket. */
+export function burstRate(prev: number, cur: number, now: Date): number {
+  const w = BURST_WINDOW_S * 1000;
+  const elapsed = (now.getTime() % w) / w;
+  return (Number.isFinite(cur) ? cur : 0) + (Number.isFinite(prev) ? prev : 0) * (1 - elapsed);
+}
 const RUN_ID = /^[a-z0-9]{8,32}$/i;
 export const runIdOf = (v: unknown): string | null => (typeof v === "string" && RUN_ID.test(v) ? v : null);
 export const READ_CMDS = 6;
@@ -29,11 +45,13 @@ export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
 // ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
-const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
+// ideas:ptest counts a row's possible-test writes (key → count), for the sticky-live rule; same retention as ideas:meta.
+const bucket = (now: Date) => Math.floor(now.getTime() / (BURST_WINDOW_S * 1000));
+const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
-export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0 };
+export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, stayedLive: 0 };
 
 export function storeEnv(env: Record<string, string | undefined> = process.env): { url: string; token: string } | null {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
@@ -73,7 +91,7 @@ export class Budget {
 }
 
 export class IdeaStore {
-  private pending = new Map<string, { rec: LogRecord; n: number; last: number; timer?: boolean }>();
+  private pending = new Map<string, { rec: LogRecord; n: number; last: number; timer?: boolean; ptest?: boolean }>();
   /**
    * F34: `hold` keeps the function alive until a held burst is written (Vercel waitUntil in prod);
    * `wait` is the timer (injectable for tests).
@@ -124,23 +142,49 @@ export class IdeaStore {
         ["HINCRBY", burst, "site", 1],
         ["EXPIRE", burst, BURST_WINDOW_S * 2],
         ...(run ? [["HINCRBY", burst, `run:${run}`, 1] as Cmd] : []),
+        ["HMGET", K.burst(now, 1), "site", ...(run ? [`run:${run}`] : [])], // the previous minute, for the sliding window
       ]);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
-      // Burst: this write's own count says so (no lag), so its stamp is corrected in the same request. Rare: +2 commands.
-      const site = Number(out?.[7]), perRun = run ? Number(out?.[9]) : 0;
-      if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST) && this.budget.allows(BURST_FIX_CMDS, now)) {
-        stats.possibleTest++;
-        try {
-          const fix = await this.pipe([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ["HSET", K.stamp, rec.key, stamp("possible-test")]]);
-          this.budget.saw(Number(fix?.[0]));
-        } catch { stats.dropped++; }
-      }
+      // Burst: this write's own count says so (no lag), so its stamp is settled in the same request.
+      const prev = (out?.[run ? 10 : 9] as (string | null)[] | null) ?? [];
+      const site = burstRate(Number(prev[0] ?? 0), Number(out?.[7]), now);
+      const perRun = run ? burstRate(Number(prev[1] ?? 0), Number(out?.[9]), now) : 0;
+      if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST)) await this.possibleTest(rec.key, n, Number(out?.[2]), stamp("possible-test"), now);
       return "written";
     } catch {
       stats.dropped++;
       return "dropped";
     }
+  }
+
+  /**
+   * A live-gated write inside a burst. Sticky live: a row that has had a live write keeps its source, and the write
+   * only adds to the row's possible-test count. `total` is the row's count after this write (ZINCRBY's reply);
+   * total − possible-test count > 0 means some earlier write was live. Never throws.
+   */
+  private async possibleTest(key: string, n: number, total: number, stamp: string, now: Date): Promise<void> {
+    const p = this.pending.get(key);
+    if (p) p.ptest = true; // its held repeats count as possible-test too
+    try {
+      if (Number.isFinite(total) && total <= n) { // the row's first write: count and stamp in one pipeline
+        if (!this.budget.allows(BURST_NEW_CMDS, now)) { stats.overBudget++; return; }
+        stats.possibleTest++;
+        const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_NEW_CMDS], ["HINCRBY", K.ptest, key, n], ["HSET", K.stamp, key, stamp]]);
+        this.budget.saw(Number(fix?.[0]));
+        return;
+      }
+      if (!this.budget.allows(BURST_FIX_CMDS, now)) { stats.overBudget++; return; }
+      const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ["HINCRBY", K.ptest, key, n]]);
+      this.budget.saw(Number(fix?.[0]));
+      const ptest = Number(fix?.[1]);
+      // An unreadable count keeps the row as it is (never flips on doubt).
+      if (!Number.isFinite(total) || !Number.isFinite(ptest) || total - ptest > 0) { stats.stayedLive++; return; }
+      if (!this.budget.allows(BURST_STAMP_CMDS, now)) { stats.overBudget++; return; }
+      stats.possibleTest++;
+      const st = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_STAMP_CMDS], ["HSET", K.stamp, key, stamp]]);
+      this.budget.saw(Number(st?.[0]));
+    } catch { stats.dropped++; }
   }
 
   /** F34: write a key's held repeats (if any) as one increment. Never throws. */
@@ -150,11 +194,12 @@ export class IdeaStore {
     p.timer = false;
     const n = p.n;
     if (!n) return;
-    if (!this.budget.allows(3, now)) { stats.overBudget++; return; }
+    const cmds = p.ptest ? 4 : 3; // held repeats of a possible-test write add to its possible-test count
+    if (!this.budget.allows(cmds, now)) { stats.overBudget++; return; }
     p.n = 0;
     p.last = now.getTime();
     try {
-      const out = await this.pipe([["INCRBY", K.budget(month(now)), 3], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key]]);
+      const out = await this.pipe([["INCRBY", K.budget(month(now)), cmds], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key], ...(p.ptest ? [["HINCRBY", K.ptest, key, n] as Cmd] : [])]);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
     } catch { stats.dropped++; }
