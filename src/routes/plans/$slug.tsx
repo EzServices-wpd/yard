@@ -43,8 +43,8 @@ function PlanRoute() {
         <p className="mt-1 text-sm italic text-ink-muted">{TAGLINE}</p>
         <div role="img" aria-label={`Yard model of the ${page.name.toLowerCase()}`} className="mt-6 aspect-[4/3] w-full overflow-hidden rounded-xl border border-rule bg-paper" dangerouslySetInnerHTML={{ __html: data.svg }} />
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link to="/workspace" search={{ q: page.prompt }} className="rounded-full bg-ink px-4 py-2 text-sm text-paper">Open the 3D model</Link>
-          <Link to="/" search={{ q: `${page.name.toLowerCase()} ${o.width} wide ${o.height} tall ${o.depth} deep` }} className="rounded-full border border-rule px-4 py-2 text-sm text-ink">Make it your size</Link>
+          <Link to="/workspace" search={{ q: page.prompt }} className="rounded-full bg-ink px-4 py-2 text-sm text-paper max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">Open the 3D model</Link>
+          <Link to="/" search={{ q: `${page.name.toLowerCase()} ${o.width} wide ${o.height} tall ${o.depth} deep` }} className="rounded-full border border-rule px-4 py-2 text-sm text-ink max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">Make it your size</Link>
         </div>
         <h2 className="mt-10 font-display text-2xl text-ink">Cut list</h2>
         <ul className="mt-3 space-y-1 font-mono text-sm text-ink">
