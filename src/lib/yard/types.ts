@@ -172,6 +172,8 @@ export type Panel = {
   polygon?: { plane: "xz" | "xy" | "zy"; pts: [number, number][]; /** Round through-holes (drilled), same local frame as pts. */ holes?: { x: number; y: number; r: number }[] };
   /** Turns or rides on a pin (wheel, lid, arm): its joints take no screws, it is bored 1/16" over its pin. */
   turns?: boolean;
+  /** Stands proud of the stated size on purpose (a recipe's pegs), like a door with a proud note: partsWithinHeight skips it. */
+  proud?: boolean;
   /** Hangs on hinges from another part (a lid, a roof, a door): it takes no screws, and a step hangs it. */
   /** Frame member joined with structural screws or bolts (counted on Buy from the notes, not as #8 screws). */
   structural?: boolean;

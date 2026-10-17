@@ -10,13 +10,14 @@ export function statedHeight(project: YardProject): number {
 /** A door or drawer front the build says stands proud (the note travels with it, so it may pass the box). */
 function proudPart(project: YardProject, id: string): boolean {
   const p = project.panels.find((q) => q.id === id);
+  if (p?.proud) return true; // tagged proud by its recipe (a cribbage board's pegs)
   if (!p || !(p.type === "door" || /\bfront\b/i.test(p.name))) return false;
   return !!modelProudNote(project.panels, project.overall.depth) || project.notes.some((n) => /\bproud\b/i.test(n));
 }
 
 /**
  * Parts whose true surface rises above the stated height by more than 1/16" (a jar lip sat on the top shelf, standing
- * over the uprights). Doors and fronts with a proud-part note are allowed past it.
+ * over the uprights). Doors and fronts with a proud-part note, and parts tagged proud (pegs), are allowed past it.
  */
 export function partsAboveStatedHeight(project: YardProject): { id: string; name: string; over: number }[] {
   const H = statedHeight(project);

@@ -262,6 +262,13 @@ export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|dru
  * runs along its longest; the two cross sides close to one diameter, centred. A bore cuts a centred hole
  * (a ring's rim is its bore width; a bead takes a 3/8 of its diameter bore unless it names one).
  */
+/** A part the recipe says stands proud of the stated size on purpose (a cribbage board's pegs, set in their holes). */
+function proudParts(recipe: Recipe, panels: Panel[]): void {
+  // "Peg1" in the recipe is "Peg 1" on the build: match on the name without its number.
+  const stem = (s: string) => s.replace(/\s*\d+$/, "").toLowerCase();
+  for (const p of panels) if (recipe.parts.some((q) => q.proud && (q.name === p.name || stem(q.name) === stem(p.name)))) p.proud = true;
+}
+
 /** A part's hole array is drilled in its largest face: an even grid of round holes, rows along the short side. */
 function holeArrays(recipe: Recipe, panels: Panel[]): void {
   for (const p of panels) {
@@ -1134,6 +1141,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   }
   roundParts(recipe, panels);
   holeArrays(recipe, panels);
+  proudParts(recipe, panels);
   panels.splice(0, panels.length, ...curvedParts(recipe, panels, size));
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".

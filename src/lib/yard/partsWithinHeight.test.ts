@@ -15,10 +15,10 @@ const { corpus, EVAL_PROMPTS } = await import("../../../scripts/invariants-corpu
 const { SWEEPS } = await import("../../../scripts/class-sweep-prompts");
 const ROLLING = ["rolling kitchen island", "kitchen island on casters", "mobile workbench", "rolling kitchen cart", "rolling bookshelf", "dresser on casters", "rolling toy chest", "rolling shoe rack", "rolling desk", "rolling tv stand"];
 
-/** Reported to SWE (16:30 EDT), not fixed here: prompt → the parts above its stated height. */
+/** Reported to SWE (16:30 EDT), SWE owns them; not fixed here: prompt → the parts above its stated height. The cribbage
+ * board's pegs are tagged proud by its recipe (18:06), so it left this list. */
 const KNOWN: Record<string, string> = {
   "chicken tractor": "popsicle-standard", // sticks 0.137" over the stated 5.2
-  "cribbage board": "Peg", // pegs stand 3/4" over the 3/4" board (its stated height is the board)
   "catapult from popsicle sticks": "popsicle-standard", // a stick 0.122" over 4 5/8
   catapult: "popsicle-standard",
 };
@@ -65,6 +65,15 @@ describe("no part rises above the stated height (doors and fronts with a proud n
       const m = s1.match(/(\d+(?: \d+\/\d+)?)" (?:high|tall)\b/);
       if (m) assert.equal(m[1], String(H), `${q}: step 01 ${s1}`);
     }
+  });
+
+  it("cribbage board: its pegs are tagged proud, so nothing on it counts as above its height", () => {
+    const p = generateFromPrompt("cribbage board");
+    const pegs = p.panels.filter((x) => /^peg \d/i.test(x.name));
+    assert.equal(pegs.length, 4);
+    assert.ok(pegs.every((x) => x.proud), "pegs tagged proud");
+    assert.ok(p.panels.filter((x) => !/^peg \d/i.test(x.name)).every((x) => !x.proud), "only the pegs");
+    assert.deepEqual(partsAboveStatedHeight(p), []);
   });
 
   it("lippedShelfYs: top shelf drops by the lip, even pitch from the bottom", () => {
