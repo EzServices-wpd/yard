@@ -10,7 +10,6 @@ import { resolvePurpose } from "./purposeForms";
 import { needsRecipeLookup } from "./recipeBuild";
 import { findRecipe } from "./recipes";
 import { UNIT_ITEM_NOTE } from "./unitItems";
-import { genericBoxOverAsk } from "./genericBox";
 import type { YardProject } from "./types";
 
 /** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
@@ -24,6 +23,8 @@ export function genericFormMark(p: YardProject): string | null {
 }
 
 import { STOP, typedHeadNoun } from "./headNoun";
+import { builderNameCarries, withoutReadModifiers } from "./builderName";
+import { genericBoxOverAsk } from "./genericBox";
 export { typedHeadNoun };
 function titleCarriesTypedWords(prompt: string, p: YardProject): boolean {
   const title = (p.name ?? "").toLowerCase();
@@ -39,7 +40,9 @@ export function namedFormOwnsHead(prompt: string): boolean {
 export function engineBuiltForm(prompt: string, p: YardProject): boolean {
   if (genericFormMark(p) || p.standIn || p.unmatched) return false;
   // Hotfix #41: locked landmarks and a dedicated builder's custom build (submarine) are forms too.
-  return isLockedForm(p.kind) || p.kind === "custom" || !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || !!detectWeekendMech(prompt);
+  // Row 51 widened: a dedicated builder whose own name carries the typed head noun ("Train engine" for "a steam train").
+  return isLockedForm(p.kind) || p.kind === "custom" || !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || namedFormOwnsHead(withoutReadModifiers(prompt)) || !!detectWeekendMech(prompt) ||
+    builderNameCarries(p, prompt, typedHeadNoun(prompt));
 }
 
 /** A purpose ask is consumed whole; a named form whose title carries every typed word read them all. */
