@@ -475,8 +475,22 @@ function c18(p: YardProject, plan: BuildPlan): Violation[] {
  * C19 (derived counts re-derive on size steps): Wider, Taller and Deeper are never refused for a count that follows from
  * the size (center supports, shelves, rails), and after the step the cut list, the model and Buy still agree.
  */
+const C19_SEEN = new Map<string, Violation[]>();
+const typeCounts = (q: YardProject) => JSON.stringify(q.panels.reduce<Record<string, number>>((m, x) => ((m[x.type] = (m[x.type] ?? 0) + 1), m), {}));
 function c19(p: YardProject, plan: BuildPlan): Violation[] {
   if (p.displayOnly || p.standIn || !plan.cutList.length || isUnitItem(p)) return [];
+  // Only boxes and frames carry counts that follow from size (stick models and bought items have none).
+  if (!p.panels.some((x) => x.type === "upright" || x.type === "side" || DERIVED_TYPES.includes(x.type))) return [];
+  // Same build, same answer (the refine is deterministic): memoised so a corpus checks each build once.
+  const memo = `${p.prompt}|${p.primaryMaterialId}|${p.overall.width}|${p.overall.height}|${p.overall.depth}|${typeCounts(p)}`;
+  const hit = C19_SEEN.get(memo);
+  if (hit) return hit;
+  const out = c19Run(p, plan);
+  if (C19_SEEN.size > 500) C19_SEEN.clear();
+  C19_SEEN.set(memo, out);
+  return out;
+}
+function c19Run(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const syncBefore = i3(p, plan).length + cutStockOffBuy(plan).length;
   // Each step twice in a row (a span limit is often crossed on the second tap: 36 → 38 → 40 wide).
@@ -487,7 +501,10 @@ function c19(p: YardProject, plan: BuildPlan): Violation[] {
       const derived = r.refused.find((t) => DERIVED_TYPES.some((d) => t.includes(`change the ${d}s`)));
       if (derived) { out.push(v("C19", `${label} ×${tap} refused: ${derived.replace(/^"[^"]*":\s*/, "")}`)); break; }
       if (!r.project) break;
+      const recount = typeCounts(r.project) !== typeCounts(cur);
       cur = r.project;
+      // Only a step that re-derived a count can put the cut list out of step with the model and Buy.
+      if (!recount) continue;
       const after = buildPlan(cur);
       const syncAfter = [...i3(cur, after).map((x) => x.msg), ...cutStockOffBuy(after).map((m) => `cut list stock "${m}" is not on Buy`)];
       if (syncAfter.length > syncBefore) { out.push(v("C19", `after ${label} ×${tap}: ${syncAfter[0]}`)); break; }
