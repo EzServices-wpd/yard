@@ -253,7 +253,8 @@
   "dims": {
    "width": 40,
    "height": 30,
-   "depth": 40
+   "depth": 40,
+   "round": true
   },
   "model": "/ideas/models/round.f87fd212.json"
  },
@@ -266,7 +267,8 @@
   "dims": {
    "width": 48,
    "height": 18,
-   "depth": 48
+   "depth": 48,
+   "round": true
   },
   "model": "/ideas/models/coffee.5d7b6443.json"
  },
@@ -536,8 +538,8 @@
   "parts": 25,
   "bytes": 1931,
   "dims": {
-   "width": 8.69,
-   "height": 4.63,
+   "width": 8.6875,
+   "height": 4.625,
    "depth": 4.5
   }
  },
@@ -609,7 +611,7 @@
   "bytes": 5712,
   "dims": {
    "width": 9.5,
-   "height": 11.63,
+   "height": 11.625,
    "depth": 5.75
   }
  },
@@ -646,8 +648,8 @@
   "parts": 7,
   "bytes": 3663,
   "dims": {
-   "width": 6.88,
-   "height": 11.81,
+   "width": 6.875,
+   "height": 11.8125,
    "depth": 7.5
   },
   "model": "/ideas/models/birdhouse.7725ffcb.json"
@@ -673,7 +675,7 @@
   "bytes": 3637,
   "dims": {
    "width": 12,
-   "height": 14.19,
+   "height": 14.1875,
    "depth": 3.75
   },
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.b3db8562.json"
@@ -685,8 +687,8 @@
   "parts": 13,
   "bytes": 9619,
   "dims": {
-   "width": 24.56,
-   "height": 31.13,
+   "width": 24.5625,
+   "height": 31.125,
    "depth": 18
   },
   "model": "/ideas/models/recipe-water-wheel.d95b8793.json"
@@ -699,7 +701,7 @@
   "bytes": 78611,
   "dims": {
    "width": 16,
-   "height": 10.63,
+   "height": 10.625,
    "depth": 3.5
   },
   "model": "/ideas/models/recipe-abacus.a9ecdeaa.json"
@@ -724,9 +726,9 @@
   "parts": 9,
   "bytes": 4111,
   "dims": {
-   "width": 11.38,
-   "height": 6.31,
-   "depth": 8.88
+   "width": 11.375,
+   "height": 6.3125,
+   "depth": 8.875
   },
   "model": "/ideas/models/recipe-laptop-stand.10283a50.json"
  },
@@ -751,7 +753,7 @@
   "bytes": 4328,
   "dims": {
    "width": 10,
-   "height": 3.44,
+   "height": 3.4375,
    "depth": 5.5
   },
   "model": "/ideas/models/recipe-jewelry-box.c46b31b4.json"
@@ -764,8 +766,8 @@
   "bytes": 4576,
   "dims": {
    "width": 10,
-   "height": 10.63,
-   "depth": 7.69
+   "height": 10.625,
+   "depth": 7.6875
   },
   "model": "/ideas/models/recipe-bird-feeder.505e3e44.json"
  },
@@ -790,7 +792,7 @@
   "bytes": 7835,
   "dims": {
    "width": 48,
-   "height": 19.19,
+   "height": 19.1875,
    "depth": 20
   },
   "model": "/ideas/models/recipe-outdoor-storage-bench.af2e3d41.json"
@@ -804,7 +806,7 @@
   "dims": {
    "width": 5.5,
    "height": 10,
-   "depth": 4.88
+   "depth": 4.875
   },
   "model": "/ideas/models/recipe-guitar-hanger.b5eaf7a0.json"
  },

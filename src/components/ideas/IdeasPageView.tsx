@@ -33,14 +33,15 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
   useEffect(() => root.current?.classList.add("ideas-live"), []);
   const kept: Card[] = learned.map((d) => ({
     slug: `kept-${d.id}`, buildType: `kept-${d.id}`, title: d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
-    recipeKey: null, dims: null, size: d.size, status: "checked", blurb: d.blurb, stock: "From a printed plan", section: "From your plans", drawing: null,
+    // A kept plan's size was typed, not solved, so it prints none (the size rule); search still reads it.
+    recipeKey: null, dims: null, size: "", sizeAria: "", typedSize: d.size, status: "checked", blurb: d.blurb, stock: "From a printed plan", section: "From your plans", drawing: null,
   }));
   const sections: IdeaSection[] = kept.length ? [{ id: "kept", title: "From your plans", order: -1, total: kept.length, cards: kept }, ...feed.sections] : feed.sections;
 
   return (
     <main ref={root} className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:pt-12">
       <h1 className="font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">Ideas</h1>
-      <p className="mt-2 max-w-xl text-base leading-relaxed text-ink-muted">Pick a start, or type your own. Every idea opens as a 3D model with a cut list.</p>
+      <p className="mt-2 max-w-xl text-base leading-relaxed text-ink">Pick a start, or type your own. Every idea opens as a 3D model with a cut list.</p>
       <form
         className="mt-5 max-w-xl"
         role="search"
@@ -59,19 +60,19 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             autoComplete="off"
             enterKeyHint="go"
             data-ideas-search
-            className="h-12 w-full rounded-full border border-rule bg-paper px-5 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow,border-color] duration-150 focus:border-ink/30 focus:ring-2"
+            className="h-12 w-full rounded-full border border-transparent bg-[var(--yard-fill)] px-5 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow] duration-150 focus:ring-2"
           />
         </label>
       </form>
 
       {q ? (
         <section className="mt-4" aria-live="polite" data-ideas-results>
-          <p className="text-sm text-ink-muted">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
+          <p className="text-sm text-ink">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
           <button
             type="button"
             onClick={() => onBuild(q)}
             data-ideas-build-instead
-            className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-ink/25 px-4 text-sm text-ink hover:bg-surface/50"
+            className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] px-4 text-sm text-ink hover:bg-rule/60 lg:min-h-9"
           >
             <span className="truncate">Build “{q}” instead</span>
             <ArrowRight className="size-4 shrink-0" aria-hidden />
@@ -101,7 +102,7 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 id={`ideas-${section.id}`} className="font-display text-xl text-ink">{section.title}</h2>
         {more > 0 ? (
-          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink-muted hover:text-ink">
+          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
             {all ? "Show fewer" : `Show all ${section.cards.length}`}
           </button>
         ) : null}

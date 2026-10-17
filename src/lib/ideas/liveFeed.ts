@@ -4,7 +4,7 @@
  * served by /api/ideas behind the CDN. Pure: no engine, no store. Deletes nothing: test rows are only skipped.
  */
 import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
-import { drawingFor, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { drawingFor, sizeOf, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 
 /** #56 merged (2026-10-16 12:24 ET): from then the log records no offline, x-yard-test or preview traffic. */
 export const TEST_CUTOFF = "2026-10-16T16:24:56Z";
@@ -41,7 +41,7 @@ export function typeKey(resultKey: string): string {
 
 const titleOf = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-function dimsOf(size: string): IdeaCard["dims"] {
+export function dimsOf(size: string): IdeaCard["dims"] {
   const m = /^(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)$/.exec(size.trim());
   return m ? { width: +m[1], depth: +m[2], height: +m[3] } : null; // recordFromPrompt stores W×D×H
 }
@@ -78,9 +78,12 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>): IdeaCard {
   const c = curated.get(g.type);
   if (c) return { ...c, count: g.count, lastSeen: g.lastSeen, status: c.status === "checked" || g.trusted ? "checked" : "new", dims: c.dims ?? dimsOf(size) };
   const recipe = top.resultKey.startsWith("recipe:");
+  const drawing = drawingFor(g.type);
+  const logged = dimsOf(size);
+  // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
     slug: g.type, buildType: g.type, title: titleOf(g.type), count: g.count, lastSeen: g.lastSeen, examplePrompt: top.prompt,
-    recipeKey: recipe ? g.type : null, dims: dimsOf(size), size: size.replace(/×/g, " × "), status, section: "Popular", drawing: drawingFor(g.type),
+    recipeKey: recipe ? g.type : null, dims: logged, ...sizeOf(drawing?.dims ?? logged), status, section: "Popular", drawing,
   };
 }
 

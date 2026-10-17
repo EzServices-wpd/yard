@@ -1,4 +1,5 @@
 import { withSaidHardware } from "./hardwareSaid";
+import { withTypedFinish } from "./typedFinish";
 import { storeTermsFromBuy } from "./listings";
 import { checkedRow, HARDWARE } from "./checkedStock";
 import { buyComplete, stepTextForPlace } from "./buyComplete";
@@ -1651,7 +1652,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
     same.notes = [same.notes, b.notes].filter(Boolean).join(" ");
   }
   // The header total is the Buy list: the sum of its rows, never a separate estimate.
-  const out = stepTextForPlace(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) })));
+  const out = stepTextForPlace(project, withTypedFinish(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) }))));
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);

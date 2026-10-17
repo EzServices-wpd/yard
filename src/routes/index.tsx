@@ -5,9 +5,10 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { SiteFooter } from "@/components/site/chrome";
+import { NAV_LINK, ScrollSentinel, SiteFooter, useScrolled } from "@/components/site/chrome";
+import { drawingSize, formatSize, inch, inchWords } from "@/lib/ideas/size";
 import { DREAMS } from "@/lib/yard/promptDreams";
 import type { promptWithHomeStock as PromptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
@@ -18,7 +19,8 @@ const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
-  loader: async () => ({ shows: await homeShows() }),
+  // C2: the plan strip (one real plan: the linen canary) and the chips' baked drawings come from the server too.
+  loader: async () => ({ shows: await homeShows(), plan: await homePlan(), chipArt: await homeChipArt() }),
   validateSearch: (s: Record<string, unknown>): { q?: string } & TestFlags => ({
     ...(typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
     ...pickTestFlags(s),
@@ -26,8 +28,11 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const HOUSE = DREAMS.filter((d) => d.group === "house");
-const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
+/** C2: at most 6 example chips, each with its small baked Ideas drawing (public/ideas/drawings). */
+const CHIP_IDS = ["corner", "slope", "pocket", "desk", "eiffel", "arch"] as const;
+const CHIPS = DREAMS.filter((d) => (CHIP_IDS as readonly string[]).includes(d.id)).slice(0, 6);
+const HOUSE = CHIPS.filter((d) => d.group === "house");
+const WEEKEND = CHIPS.filter((d) => d.group === "weekend");
 
 /** One class row for every build: sheet, board, round, pipe. A chip names the class, not a brand. */
 const STOCKS = [
@@ -39,45 +44,106 @@ const STOCKS = [
 
 type StockId = (typeof STOCKS)[number]["id"];
 
-const STEPS = [
-  { n: "1", title: "Type what you want", body: "A shelf, a desk, a weekend build. Add the sizes you have." },
-  { n: "2", title: "Choose the material", body: "Sheet, board, round, or pipe." },
-  { n: "3", title: "Get the plan", body: "Step-by-step instructions, a buy list, and a cut list." },
-] as const;
+/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $183.70). */
+const PLAN_PROMPT = "linen closet 31.5 wide 78 tall 16 deep";
 
-/** Finished pieces. Each card opens that plan on the bench. */
+/** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
 const PIECES = [
   {
     id: "pocket",
     label: "Pocket vanity",
-    size: "38 × 102 × 17 · trapezoid fit",
+    note: "trapezoid fit",
     prompt: DREAMS.find((d) => d.id === "pocket")?.prompt ?? "pocket vanity",
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
-    id: "linen",
-    label: "Linen closet",
-    size: "31 1/2 × 78 × 16",
-    prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
-    caption: "Sized to the alcove you typed",
+    // C3: the linen closet already leads the plan strip ($183.70), so this card shows a different idea; one linen price on home.
+    id: "ldesk",
+    label: DREAMS.find((d) => d.id === "ldesk")?.label ?? "L in the corner",
+    note: "",
+    prompt: DREAMS.find((d) => d.id === "ldesk")?.prompt ?? "L-shaped corner desk 60 by 48 30 tall",
+    caption: DREAMS.find((d) => d.id === "ldesk")?.blurb ?? "Two walls, one desk, the sizes you typed.",
   },
   {
     id: "desk",
     label: "60″ desk",
-    size: "60 × 30 × 29 · 24″ knee",
+    note: "24″ knee",
     prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
     caption: "Drawers plus roomy knee space",
   },
 ] as const;
 
-let showsMemo: Promise<Record<string, Showcase>> | undefined;
-function homeShows(): Promise<Record<string, Showcase>> {
-  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => Object.fromEntries(PIECES.map((piece) => [piece.id, showcaseFor(piece.prompt)])));
+/** A sample card's model plus its size, formatted from the engine's solved dims: the drawing's own labels, else the model's box. */
+type HomeShow = Showcase & { size: string; sizeAria: string };
+let showsMemo: Promise<Record<string, HomeShow>> | undefined;
+function homeShows(): Promise<Record<string, HomeShow>> {
+  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) =>
+    Object.fromEntries(
+      PIECES.map((piece) => {
+        const show = showcaseFor(piece.prompt);
+        const f = drawingSize(show.svg, show.overall);
+        return [piece.id, { ...show, size: f.text, sizeAria: f.aria }];
+      }),
+    ),
+  );
   return showsMemo;
 }
 
+/** The plan strip's numbers, straight from the engine's plan (cut list, Buy list, totals). No store links: those live on Buy lists only. */
+type HomePlan = {
+  size: string;
+  sizeAria: string;
+  pieces: number;
+  usd: string;
+  cuts: { label: string; name: string; qty: number; size: string; aria: string }[];
+  buy: { name: string; qty: number; unit: string; usd: string }[];
+};
+let planMemo: Promise<HomePlan> | undefined;
+function homePlan(): Promise<HomePlan> {
+  planMemo ??= Promise.all([import("@/lib/yard/prompt"), import("@/lib/yard/report")]).then(([{ generateFromPrompt }, { buildPlan }]) => {
+    const project = generateFromPrompt(PLAN_PROMPT);
+    const plan = buildPlan(project);
+    const f = formatSize(project.overall);
+    const usd = (n: number) => n.toFixed(2);
+    return {
+      size: f.text,
+      sizeAria: f.aria,
+      pieces: plan.totals.pieces,
+      usd: usd(plan.totals.estCostUsd),
+      cuts: plan.cutList.map((c) => ({
+        label: c.label ?? "",
+        name: c.name,
+        qty: c.quantity,
+        size: `${inch(c.lengthIn)} × ${inch(c.widthIn)} × ${inch(c.thicknessIn)} in`,
+        aria: `${inchWords(c.lengthIn)} by ${inchWords(c.widthIn)} by ${inchWords(c.thicknessIn)} inches`,
+      })),
+      buy: plan.bom.map((b) => ({ name: b.name, qty: b.quantity, unit: b.unit, usd: usd(b.estimatedCost ?? 0) })),
+    };
+  });
+  return planMemo;
+}
+
+/** Each chip's small drawing: the baked Ideas drawing for the same idea (versioned file, cached forever). */
+async function homeChipArt(): Promise<Record<string, string>> {
+  const m = (await import("@/lib/ideas/drawings.json")).default as Record<string, { v: string }>;
+  return Object.fromEntries([...CHIP_IDS, "linen"].filter((id) => m[id]).map((id) => [id, `/ideas/drawings/${id}.${m[id].v}.svg`]));
+}
+
+/** 6B: chips are 44px tall on a phone, 36px on a desktop. 4B (row 57): a fill, not an outline (only sample cards are outlined). */
 const CHIP =
-  "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
+  "inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] pl-1 pr-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
+
+/** The chip's drawing: fixed box (CLS 0), lazy, decorative (the label names it). */
+function ChipArt({ src }: { src?: string }) {
+  return src ? (
+    <span className="size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
+      {/* The model sits small in its 4:3 sheet: zoom in (transform only, no layout). */}
+      <img src={src} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full scale-[1.7] object-cover" />
+    </span>
+  ) : (
+    <span className="size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
+  );
+}
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -89,7 +155,8 @@ function LandingPage() {
   const [prompt, setPrompt] = useState(search.q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
   // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
-  const { shows } = Route.useLoaderData() as { shows: Record<string, Showcase | undefined> };
+  const { shows, plan, chipArt } = Route.useLoaderData() as { shows: Record<string, HomeShow | undefined>; plan?: HomePlan; chipArt?: Record<string, string> };
+  const [sentinel, scrolled] = useScrolled();
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
@@ -133,18 +200,19 @@ function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-rule/80 bg-paper/90 backdrop-blur">
+    <div className="yard-site relative min-h-screen bg-paper text-ink">
+      <ScrollSentinel at={sentinel} />
+      <header className="yard-head sticky top-0 z-40 bg-paper/90 backdrop-blur" data-scrolled={scrolled || undefined}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link to="/" className="flex items-center" aria-label="Yard home">
+          <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-5">
-            <Link to="/ideas" search={pickTestFlags(search)} className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+          <nav className="flex items-center gap-1">
+            <Link to="/ideas" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Ideas
             </Link>
-            <Link to="/workspace" search={pickTestFlags(search)} className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
-              Bench
+            <Link to="/workspace" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
+              Workbench
             </Link>
           </nav>
         </div>
@@ -159,9 +227,7 @@ function LandingPage() {
               ))}
             </g>
           </svg>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-            The plan the lumber aisle should have printed
-          </p>
+          <p className="text-base font-medium text-ink">The plan the lumber aisle should have printed</p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             {/* Words rise in once; the full line stays in the accessible name and the layout never shifts. */}
             {[["Think", "it", "up."], ["Yard", "works", "it", "out."]].map((line, li) => (
@@ -175,10 +241,10 @@ function LandingPage() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink sm:text-lg">
             One model. Every cut, part and step.
           </p>
-          <p className="mt-1 text-sm italic text-ink-muted">{TAGLINE}</p>
+          <p className="mt-1 text-base italic text-ink">{TAGLINE}</p>
 
           <form
             className="mt-9 w-full max-w-2xl"
@@ -191,7 +257,8 @@ function LandingPage() {
             <label htmlFor="dream" className="sr-only">
               What do you want to build?
             </label>
-            <div className="flex flex-col gap-2 rounded-2xl border border-rule bg-paper p-2 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_32px_-18px_rgba(18,16,14,0.25)] transition-[box-shadow,border-color] duration-150 focus-within:border-ink/30 focus-within:ring-2 focus-within:ring-ink/15 sm:flex-row sm:items-center">
+            {/* 4B: no outline and no resting shadow; a lighter fill, and the shadow only while typing. */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-[var(--yard-fill)] p-2 transition-shadow duration-150 focus-within:shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_32px_-18px_rgba(18,16,14,0.3)] focus-within:ring-2 focus-within:ring-ink/20 sm:flex-row sm:items-center">
               <input
                 id="dream"
                 value={prompt}
@@ -199,7 +266,7 @@ function LandingPage() {
                 placeholder="bookshelf 30 wide, 60 tall, five shelves"
                 autoComplete="off"
                 enterKeyHint="go"
-                className="h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-ink-muted"
+                className="h-12 min-h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-ink-muted"
               />
               <button
                 type="submit"
@@ -213,7 +280,7 @@ function LandingPage() {
             <fieldset className="mt-4" data-yard-home-material="1">
               <legend className="sr-only">Material</legend>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="mr-1 text-sm text-ink-muted">Material</span>
+                <span className="mr-1 text-sm text-ink">Material</span>
                 {STOCKS.map((s) => {
                   const on = stockId === s.id;
                   return (
@@ -222,10 +289,10 @@ function LandingPage() {
                       type="button"
                       aria-pressed={on}
                       onClick={() => pickStock(s.id)}
-                      className={`rounded-full border px-3 py-1 text-sm transition-colors duration-150 ${
+                      className={`inline-flex min-h-11 items-center rounded-full border px-3.5 text-sm transition-colors duration-150 lg:min-h-9 ${
                         on
                           ? "border-ink bg-ink text-paper"
-                          : "border-rule bg-paper text-ink hover:border-ink/40"
+                          : "border-transparent bg-[var(--yard-fill)] text-ink hover:bg-rule/60"
                       }`}
                     >
                       {s.label}
@@ -233,7 +300,7 @@ function LandingPage() {
                   );
                 })}
               </div>
-              <p className="mt-2 text-xs text-ink-muted">
+              <p className="mt-2 text-sm text-ink">
                 {stock
                   ? prompt.trim() && promptWithHomeStock(prompt, stock.append) === prompt.trim().replace(/\s+/g, " ").trim()
                     ? "The material in the sentence wins."
@@ -244,46 +311,31 @@ function LandingPage() {
           </form>
         </section>
 
-        <ol className="yard-hero-in yard-hero-in-2 mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-2 sm:mt-12 sm:gap-3">
-          {STEPS.map((s) => (
-            <li
-              key={s.n}
-              className="flex flex-col items-center gap-2 rounded-xl border border-rule bg-white/50 px-2 py-3 text-center sm:flex-row sm:items-start sm:gap-3 sm:p-4 sm:text-left"
-            >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink font-mono text-xs text-paper">
-                {s.n}
-              </span>
-              <div>
-                <p className="text-[13px] font-medium leading-tight text-ink sm:text-sm">{s.title}</p>
-                <p className="mt-1 hidden text-xs leading-snug text-ink-muted sm:block">{s.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
         <section className="yard-hero-in yard-hero-in-2 mx-auto mt-12 grid max-w-3xl gap-8 text-center sm:grid-cols-2 sm:text-left">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+            <p className="text-base font-medium text-ink">For the house</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {HOUSE.map((d) => (
                 <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                  <ChipArt src={chipArt?.[d.id]} />
                   {d.label}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+            <p className="text-base font-medium text-ink">For the weekend</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {WEEKEND.map((d) => (
                 <button key={d.id} type="button" onClick={() => open(d.prompt)} className={CHIP}>
+                  <ChipArt src={chipArt?.[d.id]} />
                   {d.label}
                 </button>
               ))}
             </div>
             <Link
               to="/ideas"
-              className="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
+              className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm text-ink transition-colors duration-150 hover:underline lg:min-h-9"
             >
               More ideas
               <ArrowRight className="size-3.5" />
@@ -291,9 +343,11 @@ function LandingPage() {
           </div>
         </section>
 
-        <section className="yard-hero-in yard-hero-in-3 mt-20">
+        {plan ? <PlanStrip plan={plan} art={chipArt?.linen} onOpen={() => open(PLAN_PROMPT)} /> : null}
+
+        <section className="yard-hero-in yard-hero-in-3 mt-12 sm:mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
-          <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
+          <p className="mt-2 text-center text-base text-ink">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
           <ShowcaseGrid>
             {PIECES.map((h) => (
               <button
@@ -306,60 +360,48 @@ function LandingPage() {
                   {shows[h.id] ? (
                     <div
                       role="img"
-                      aria-label={`Yard drawing of the ${h.label} ${h.size}`}
+                      aria-label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`}
                       data-yard-showcase={h.id}
                       className="yard-alive h-full w-full"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-ink-muted">Drawing the model…</div>
+                    <div className="flex h-full w-full items-center justify-center text-sm text-ink">Drawing the model…</div>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col justify-center p-4">
                   <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
-                  <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
-                  <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
+                  {shows[h.id]?.size ? (
+                    <span className="mt-0.5 text-sm text-ink">
+                      <span className="yard-measure" data-size={h.id} aria-hidden>{shows[h.id]!.size}</span>
+                      <span className="sr-only">{shows[h.id]!.sizeAria}</span>
+                      {h.note ? ` · ${h.note}` : null}
+                    </span>
+                  ) : null}
+                  <span className="mt-1 text-sm leading-snug text-ink">{h.caption}</span>
                   {shows[h.id] ? (
-                    <span className="mt-1 font-mono text-xs tracking-tight text-ink" data-yard-showcase-totals={h.id}>
+                    <span className="yard-num mt-1 text-sm text-ink" data-yard-showcase-totals={h.id}>
                       {shows[h.id]!.pieces} cut pieces · Buy list ~${shows[h.id]!.buyUsd.toLocaleString("en-US")}
                     </span>
                   ) : null}
-                  <span className="mt-1 text-[11px] italic leading-snug text-ink-muted">{SHOWCASE_CAPTION}</span>
+                  <span className="mt-1 text-[13px] italic leading-snug text-ink">{SHOWCASE_CAPTION}</span>
                 </div>
               </button>
             ))}
           </ShowcaseGrid>
         </section>
 
-        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
+        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink">
           Free plans:{" "}
           {PLANS.map((p, i) => (
-            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
+            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">{p.name}</Link></Fragment>
           ))}
         </nav>
 
         <MakingNow />
 
-        <section className="mt-20 grid gap-6 sm:grid-cols-3">
-          <Feature
-            icon={<Hammer className="size-5" />}
-            title="The size you typed"
-            body="Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words."
-          />
-          <Feature
-            icon={<ClipboardList className="size-5" />}
-            title="Cut list + hardware"
-            body="Every part with its size, plus the screws, hinges, and shelf pins it takes. The sheet layout lives inside each plan."
-          />
-          <Feature
-            icon={<ShoppingBag className="size-5" />}
-            title="Shop, then build"
-            body="A buy list with packs, prices, and shop links. Print the plan and head to the store."
-          />
-        </section>
-
         {disclosure ? (
-          <p className="mt-10 text-center text-xs text-ink-muted" data-yard-affiliate-disclosure="1">
+          <p className="mt-10 text-center text-[13px] text-ink-muted" data-yard-affiliate-disclosure="1">
             {disclosure}{" "}
             <Link to="/about" className="underline decoration-rule underline-offset-4 hover:text-ink">
               How shop links work
@@ -440,12 +482,74 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
   );
 }
 
-function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+/**
+ * C2 (5A): one strip showing a real plan, not three icon cards: the step picture, the cut list and the Buy list of
+ * the linen canary, all from the engine's plan. Static (no motion); the whole strip is in the SSR HTML (CLS 0).
+ */
+function PlanStrip({ plan, art, onOpen }: { plan: HomePlan; art?: string; onOpen: () => void }) {
   return (
-    <div className="rounded-xl border border-rule bg-white/50 p-5">
-      <div className="flex size-9 items-center justify-center rounded-md border border-rule bg-paper text-ink">{icon}</div>
-      <h2 className="mt-3 font-display text-lg text-ink">{title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
-    </div>
+    <section className="mx-auto mt-12 max-w-5xl sm:mt-16" aria-labelledby="yard-plan-strip" data-yard-plan-strip>
+      <h2 id="yard-plan-strip" className="text-center font-display text-2xl text-ink sm:text-3xl">Get the plan</h2>
+      <p className="mt-2 text-center text-base text-ink">Step-by-step instructions, a buy list, and a cut list.</p>
+      <div className="mt-6 rounded-2xl bg-[var(--yard-fill)] p-4 sm:p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="font-display text-xl text-ink">
+            Linen closet{" "}
+            <span className="yard-measure text-base" data-size="plan" aria-hidden>{plan.size}</span>
+            <span className="sr-only">{plan.sizeAria}</span>
+          </p>
+          <p className="yard-num text-sm text-ink" data-yard-plan-totals>
+            {plan.pieces} cut pieces · Buy list ${plan.usd}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_1.15fr_1fr]">
+          <div>
+            <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
+              {art ? <img src={art} alt={`Yard drawing of the linen closet, ${plan.sizeAria}`} width={480} height={360} loading="lazy" decoding="async" className="h-full w-full object-contain" /> : null}
+            </div>
+            <h3 className="mt-3 font-display text-lg text-ink">The size you typed</h3>
+            {/* Copy pinned by src/lib/yard/homeShowcase.test.ts (engine-owned), so it keeps its typed W × H × D order; flagged to SWE. */}
+            <p className="mt-1 text-sm leading-relaxed text-ink">Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words.</p>
+          </div>
+          <div>
+            <h3 className="font-display text-lg text-ink">Cut list + hardware</h3>
+            <ul className="mt-2 divide-y divide-rule/70 text-sm text-ink">
+              {plan.cuts.map((c) => (
+                <li key={c.label + c.name} className="flex items-baseline gap-2 py-1.5">
+                  <span className="yard-num w-4 shrink-0 font-medium">{c.label}</span>
+                  <span className="min-w-0 flex-1" data-plan-text>{c.name} <span className="yard-num">×{c.qty}</span></span>
+                  <span className="yard-measure shrink-0" data-size={`cut-${c.label}`} aria-hidden>{c.size}</span>
+                  <span className="sr-only">{c.aria}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-display text-lg text-ink">Shop, then build</h3>
+            <ul className="mt-2 divide-y divide-rule/70 text-sm text-ink">
+              {plan.buy.map((b) => (
+                <li key={b.name} className="flex items-baseline gap-2 py-1.5">
+                  <span className="min-w-0 flex-1" data-plan-text>{b.name}</span>
+                  <span className="yard-num shrink-0 text-ink-muted">{b.qty} {b.unit}</span>
+                  <span className="yard-num w-16 shrink-0 text-right">${b.usd}</span>
+                </li>
+              ))}
+              <li className="flex items-baseline gap-2 py-1.5 font-medium">
+                <span className="flex-1">Buy list</span>
+                <span className="yard-num shrink-0">${plan.usd}</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition-transform duration-150 ease-out active:scale-[0.96] lg:min-h-9"
+            >
+              Build this
+              <ArrowRight className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

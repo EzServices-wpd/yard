@@ -7,12 +7,12 @@ import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas
 import { ideaSearchScore, ideaStem } from "@/lib/yard/ideaLibrary";
 import DRAWINGS from "./drawings.json";
 import TYPES from "./types.json";
-import { displaySize, type Dims } from "./size";
+import { formatSize, type SolvedDims } from "./size";
 
 /** Build type per card: the engine result key (scripts/gen-idea-types.ts), so log rows fold into it. */
 const typeFor = (slug: string, prompt: string) => (TYPES as Record<string, string>)[slug] ?? buildTypeOf(prompt);
 
-export type DrawingRef = { src: string; model?: string; w: number; h: number; parts: number; v: string; dims?: Dims };
+export type DrawingRef = { src: string; model?: string; w: number; h: number; parts: number; v: string; dims?: SolvedDims };
 export type IdeaCard = {
   slug: string;
   buildType: string;
@@ -23,10 +23,15 @@ export type IdeaCard = {
   examplePrompt: string;
   recipeKey: string | null;
   dims: { width: number; height: number; depth: number } | null;
-  /** Display size as today's cards print it (format waits on decisions.md #2). */
+  /** "W × D × H in", formatted from the engine's solved dims (the drawing's labels), never from a typed string. Empty when there are none. */
   size: string;
+  /** The size spelled out for screen readers ("31 and a half inches wide, 16 deep, 78 tall"). */
+  sizeAria: string;
+  /** The typed size, for search only (never printed). */
+  typedSize?: string;
   status: "checked" | "new";
   blurb?: string;
+  /** Feature note printed after the size in the text face ("from 2×4", "for a 36 × 48 double-hung"). */
   stock?: string;
   section: string;
   drawing: DrawingRef | null;
@@ -38,7 +43,7 @@ export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: 
 /** Cards a section shows before "Show all". */
 export const SECTION_SHOW = 8;
 
-type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string; dims?: Dims }>;
+type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string; dims?: SolvedDims }>;
 export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manifest): DrawingRef | null {
   const m = manifest[slug];
   if (!m) return null;
@@ -58,16 +63,24 @@ export const TITLE_FIX: Record<string, string> = { window: "Frame a window openi
 /** What the build is for, after the size (the window card's build is the framing, not the window). */
 export const NOTE_FIX: Record<string, string> = { window: "for a 36 × 48 double-hung" };
 
+/** Size fields from the engine dims the drawing shows (scripts/gen-idea-drawings.ts bakes them). */
+export function sizeOf(dims: SolvedDims | null | undefined): Pick<IdeaCard, "size" | "sizeAria"> {
+  const f = formatSize(dims);
+  return { size: f.text, sizeAria: f.aria };
+}
+
 function fromIdea(d: Idea): IdeaCard {
+  const drawing = drawingFor(d.id);
   return {
     slug: d.id, buildType: typeFor(d.id, d.prompt), title: TITLE_FIX[d.id] ?? d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
-    recipeKey: null, dims: null, size: displaySize(d.size, drawingFor(d.id)?.dims), status: "checked", blurb: d.blurb, stock: NOTE_FIX[d.id] ?? d.stock, section: d.section, drawing: drawingFor(d.id),
+    recipeKey: null, dims: null, ...sizeOf(drawing?.dims), typedSize: d.size, status: "checked", blurb: d.blurb, stock: NOTE_FIX[d.id] ?? d.stock, section: d.section, drawing,
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
+  const drawing = drawingFor(r.id);
   return {
     slug: r.id, buildType: typeFor(r.id, r.prompt), title: r.label, count, lastSeen: null, examplePrompt: r.prompt,
-    recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, size: displaySize(r.size, drawingFor(r.id)?.dims), status, blurb: r.blurb, section, drawing: drawingFor(r.id),
+    recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, ...sizeOf(drawing?.dims), typedSize: r.size, status, blurb: r.blurb, section, drawing,
   };
 }
 
@@ -127,7 +140,7 @@ export function searchCards(pool: IdeaCard[], query: string): IdeaCard[] {
   const q = query.trim();
   if (!q) return [];
   return pool
-    .map((c, index) => ({ c, index, score: ideaSearchScore({ label: c.title, size: c.size, blurb: c.blurb ?? "", section: c.section, stock: c.stock, prompt: c.examplePrompt }, q) }))
+    .map((c, index) => ({ c, index, score: ideaSearchScore({ label: c.title, size: [c.size, c.typedSize].filter(Boolean).join(" "), blurb: c.blurb ?? "", section: c.section, stock: c.stock, prompt: c.examplePrompt }, q) }))
     .filter((h) => h.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((h) => h.c);
