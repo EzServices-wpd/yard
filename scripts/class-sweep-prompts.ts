@@ -210,4 +210,26 @@ export const SWEEPS = {
       "pirate ship", "glider", "hanging birdhouse", "keepsake box", "recipe box",
     ],
   },
+  c18: {
+    title: "a typed finish or colour renders in the model and is on Buy as a real paint or stain sized by area",
+    inv: "C18",
+    file: "c18-typed-finish.md",
+    prompts: [
+      "black bookshelf 36x12x72", "white bookshelf", "black bookcase", "white toy box", "painted toy box",
+      "stained nightstand", "black nightstand", "white nightstand", "gray bookshelf", "red toy box",
+      "navy blue bookcase", "green bench", "black coffee table", "white tv stand", "stained coffee table",
+      "black floating shelf", "white shoe rack", "painted bench", "dark stained bookshelf", "black walnut bookshelf",
+    ],
+  },
+  c19: {
+    title: "derived counts re-derive on size steps: Wider, Taller and Deeper are never refused for a count",
+    inv: "C19",
+    file: "c19-derived-counts.md",
+    prompts: [
+      "black bookshelf 36x12x72", "bookshelf 36x12x72", "bookshelf 38x12x72", "bookcase", "bookshelf 30x10x60",
+      "tv stand", "tv console 60 inch", "shoe rack", "shoe bench", "coffee table",
+      "workbench", "picnic table", "garden bench", "raised garden bed 4x8", "deck box",
+      "bookshelf 48x12x60", "wall shelf", "bookcase 30 wide", "linen closet 31.5 wide 78 tall 16 deep", "nightstand",
+    ],
+  },
 } as const;
