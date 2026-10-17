@@ -219,8 +219,12 @@ it("a rotor between two supports goes on the axle before the axle is glued into 
   const r = RECIPES.recipes.find((x) => x.key === "water-wheel")!;
   const st = buildPlan(buildRecipe(r, "water wheel").project).instructions.map((s) => `${s.title} ${s.description}`);
   const at = (re: RegExp) => st.findIndex((s) => re.test(s));
-  assert.ok(at(/Slide the F hub onto/) > at(/Pass the E axle 1 through the right post and glue it there/));
-  assert.ok(at(/Slide the left post onto the free end/) > at(/Fasten the 4 paddles/));
+  const axle = at(/Pass the \w axle 1 through the right post and glue it there/);
+  assert.ok(axle > 0, "axle glued in the first post");
+  assert.ok(at(/Slide the \w Collar 2 onto/) > axle, "fixed-end collar after the axle");
+  assert.ok(at(/Slide the \w hub 2 onto/) > at(/Slide the \w Collar 2 onto/), "wheel parts after the collar");
+  assert.ok(at(/Slide the \w Collar 1 onto/) > at(/Fasten the 8 paddles/), "free-end collar after the wheel");
+  assert.ok(at(/Slide the left post onto the free end/) > at(/Slide the \w Collar 1 onto/), "free post last");
 });
 
 it("layers that form one modelled thickness get a glue-up step: a 1 1/2in ply top, a 3 5/8in post from 2x4", async () => {
