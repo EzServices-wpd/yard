@@ -211,7 +211,7 @@ function LandingPage() {
               Ideas
             </Link>
             <Link to="/workspace" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
-              Bench
+              Workbench
             </Link>
           </nav>
         </div>
@@ -265,7 +265,7 @@ function LandingPage() {
                 placeholder="bookshelf 30 wide, 60 tall, five shelves"
                 autoComplete="off"
                 enterKeyHint="go"
-                className="h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-ink-muted"
+                className="h-12 min-h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-ink-muted"
               />
               <button
                 type="submit"
@@ -344,7 +344,7 @@ function LandingPage() {
 
         {plan ? <PlanStrip plan={plan} art={chipArt?.linen} onOpen={() => open(PLAN_PROMPT)} /> : null}
 
-        <section className="yard-hero-in yard-hero-in-3 mt-20">
+        <section className="yard-hero-in yard-hero-in-3 mt-12 sm:mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
           <p className="mt-2 text-center text-base text-ink">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
           <ShowcaseGrid>
@@ -393,7 +393,7 @@ function LandingPage() {
         <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink">
           Free plans:{" "}
           {PLANS.map((p, i) => (
-            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
+            <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">{p.name}</Link></Fragment>
           ))}
         </nav>
 
@@ -487,7 +487,7 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
  */
 function PlanStrip({ plan, art, onOpen }: { plan: HomePlan; art?: string; onOpen: () => void }) {
   return (
-    <section className="mx-auto mt-16 max-w-5xl" aria-labelledby="yard-plan-strip" data-yard-plan-strip>
+    <section className="mx-auto mt-12 max-w-5xl sm:mt-16" aria-labelledby="yard-plan-strip" data-yard-plan-strip>
       <h2 id="yard-plan-strip" className="text-center font-display text-2xl text-ink sm:text-3xl">Get the plan</h2>
       <p className="mt-2 text-center text-base text-ink">Step-by-step instructions, a buy list, and a cut list.</p>
       <div className="mt-6 rounded-2xl bg-[var(--yard-fill)] p-4 sm:p-6">
