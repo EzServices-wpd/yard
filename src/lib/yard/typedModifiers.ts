@@ -8,6 +8,7 @@ import type { Panel, YardProject } from "./types";
 import { boardFace } from "./fittedParse";
 import { inchFrac } from "./inchText";
 import { casterPartId, CASTER_NAME, isCasterPart, ROLLING } from "./casterParts";
+import { restateOverall } from "./modelSize";
 
 /** Mobility words: "rolling bookshelf", "kitchen island on casters", "cart with wheels". Never a rolling pin. */
 
@@ -55,14 +56,16 @@ export function withCasters(p: YardProject, prompt: string): YardProject {
     size: { width: CASTER_PLATE, height: CASTER_H, depth: CASTER_PLATE },
   } as Panel));
   const note = `Rolling: four 2" locking swivel casters screw under the corners and add ${CASTER_H}" to the height; lock two of them so it stays put.`;
-  return {
+  const overall = { ...p.overall, height: Math.round((p.overall.height + CASTER_H) * 1000) / 1000 };
+  // The title and notes name the finished size (on its casters), the same one the header and step 01 read.
+  return restateOverall({
     ...p,
     prompt,
     panels: [...panels, ...casters],
     instances,
-    overall: { ...p.overall, height: Math.round((p.overall.height + CASTER_H) * 1000) / 1000 },
+    overall,
     notes: [...(p.notes ?? []).map((n) => n.replace(/^Assumed ([\d ./]+)" tall/, (m, h: string) => (heightOf(h) === p.overall.height ? `Assumed ${fmtIn(p.overall.height + CASTER_H)}" tall on its casters` : m))), note],
-  };
+  }, p.overall, overall);
 }
 
 /** "hanging birdhouse" / "wall mounted bat house": how a small habitat is hung, or null. */
