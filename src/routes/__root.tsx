@@ -44,6 +44,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "strict-origin" },
       { title: "Page not found · Yard" },
       { name: "description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { property: "og:title", content: "Page not found · Yard" },
@@ -55,6 +56,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "strict-origin" },
       { title: APP_NAME },
       {
         name: "description",
