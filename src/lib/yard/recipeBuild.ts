@@ -984,12 +984,36 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
       cutNote: `Cut round, ${fmtIn(cd)} diameter, bored ${fmtIn(d)} snug on the ${axleWord}. Glue it to the ${axleWord} ${end ? "at its end" : "against the carrier"}, a card's thickness (1/32") off the wheel, so the wheel turns but can't slide.`,
     });
     const lowFace = faceLo ?? rLo - gap - ply, highFace = faceHi ?? rHi + gap + ply;
-    if (rLo - gap - lowFace > 0.1) panels.push(collar(lowFace, rLo - gap, 1, faceLo == null));
-    if (highFace - (rHi + gap) > 0.1) panels.push(collar(rHi + gap, highFace, 2, faceHi == null));
+    // A collar is whole plies (I28): the fill to the carrier rounds down to plies; the sliver left is on the carrier side.
+    const plies = (fill: number) => ply * Math.max(1, Math.floor((fill + 1 / 32) / ply));
+    if (rLo - gap - lowFace > 0.1) panels.push(collar(rLo - gap - plies(rLo - gap - lowFace), rLo - gap, 1, faceLo == null));
+    if (highFace - (rHi + gap) > 0.1) panels.push(collar(rHi + gap, rHi + gap + plies(highFace - (rHi + gap)), 2, faceHi == null));
     // A capped end: the axle stops at the cap's outer face.
     if (faceLo == null) { const end = pin.position[long] + pin.size[SZ[long]]; pin.position = { ...pin.position, [long]: lowFace }; pin.size = { ...pin.size, [SZ[long]]: end - lowFace }; }
     if (faceHi == null) pin.size = { ...pin.size, [SZ[long]]: highFace - pin.position[long] };
   }
+}
+
+/**
+ * A member carried by two parts at its ends (a cross rail between two posts) runs face to face between them:
+ * when the carriers' faces moved (stock thickness kept while the width grew or shrank), its ends follow them.
+ */
+function buttBetween(recipe: Recipe, panels: Panel[]): Panel[] {
+  const K = { x: "width", y: "height", z: "depth" } as const;
+  for (const part of recipe.parts.filter((q) => q.kind === "member" && (q.on ?? []).length === 2)) {
+    const ends = part.on!.map((n) => panels.find((p) => p.name === n || p.name.replace(/ \d+$/, "") === n));
+    if (ends.some((e) => !e)) continue;
+    for (const p of panels.filter((q) => q.name === part.name || q.name.replace(/ \d+$/, "") === part.name)) {
+      const L = (["x", "y", "z"] as const).reduce((m, a) => (p.size[K[a]] > p.size[K[m]] ? a : m), "x" as "x" | "y" | "z");
+      const [a, b] = [...ends].sort((u, v) => u!.position[L] - v!.position[L]) as Panel[];
+      const lo = a.position[L] + a.size[K[L]], hi = b.position[L];
+      // Only a member that already spans the gap between them (within a sliver either way).
+      if (hi - lo < 1 || Math.abs(p.position[L] - lo) > 0.75 || Math.abs(p.position[L] + p.size[K[L]] - hi) > 0.75) continue;
+      p.position = { ...p.position, [L]: lo };
+      p.size = { ...p.size, [K[L]]: hi - lo };
+    }
+  }
+  return panels;
 }
 
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
@@ -1011,6 +1035,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
+  const own: Size = base;
   const count = typedCount(prompt, recipe);
   // A counted unit has its own real size: 3 bays are three bays wide, 3 steps three rises tall.
   const unit = recipe.count?.unit ?? {};
@@ -1049,11 +1074,24 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
         if (sz.height <= sz.depth) [sz.width, sz.height] = [sz.height, Math.min(span, size.height * (1 - py))];
         else [sz.width, sz.depth] = [sz.depth, Math.min(span, size.depth * (1 - pz))];
       }
+      // Stock thickness never scales (I28): a resized build stretches its parts' lengths and widths, but each
+      // part keeps the thickness it has at the recipe's own size — the board or sheet it is cut from.
+      const pos0 = { x: px * size.width, y: py * size.height, z: pz * size.depth };
+      {
+        const K = { x: "width", y: "height", z: "depth" } as const;
+        const frac = { x: pw, y: ph, z: pd };
+        const thin = (["x", "y", "z"] as const).reduce((m, a) => (frac[a] * own[K[a]] < frac[m] * own[K[m]] ? a : m), "x" as "x" | "y" | "z");
+        const t0 = frac[thin] * own[K[thin]];
+        if (part.kind !== "hardware" && Math.abs(sz[K[thin]] - t0) > 1e-6 && t0 < Math.min(...(["x", "y", "z"] as const).filter((a) => a !== thin).map((a) => sz[K[a]]))) {
+          if (thin !== "y") pos0[thin] += (sz[K[thin]] - t0) / 2;
+          sz[K[thin]] = t0;
+        }
+      }
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
         name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
-        position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
+        position: pos0,
         size: sz,
         materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
@@ -1071,7 +1109,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     }
   }
   definingShapes(recipe, panels);
-  const fitted = snapMembers(recipe, panels, stock.member);
+  const fitted = buttBetween(recipe, snapMembers(recipe, panels, stock.member));
   // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
