@@ -1,3 +1,4 @@
+import { thicknessFailures } from "./stockThickness";
 import { hardwareSaidNotBought } from "./hardwareSaid";
 import { storeTermDrift } from "./listings";
 import { genericFormMark, routesToLearner } from "./formOwnership";
@@ -34,14 +35,14 @@ import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "C10" | "C11" | "C12";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "C10" | "C11" | "C12";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", C10: "C10", C11: "C11", C12: "C12",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", C10: "C10", C11: "C11", C12: "C12",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
- * I26 and I27 run on every build too (checkBuild) and ratchet in evals/invariants-baseline.json, but stay out of
+ * I26, I27 and I28 run on every build too (checkBuild) and ratchet in evals/invariants-baseline.json, but stay out of
  * the eval score until they join this list (which re-records evals/score.json's max).
  */
 export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12"];
@@ -303,8 +304,13 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan),
-    ...i26(project), ...i27(project, prompt),
+    ...i26(project), ...i27(project, prompt), ...i28(project, plan),
   ];
+}
+
+/** I28 (F32 stock thickness never scales): a part is its stock's thickness, or whole layers of it glued up and said so (stockThickness.ts). */
+function i28(p: YardProject, plan: BuildPlan): Violation[] {
+  return thicknessFailures(p, plan).map((m) => v("I28", m));
 }
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */
