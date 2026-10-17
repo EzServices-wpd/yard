@@ -525,3 +525,22 @@
 }
 
 
+
+/*
+ * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the light site pages (home, Ideas, the shared chrome) only.
+ * The dark workspace never carries .yard-site, so it is unchanged.
+ */
+.yard-site {
+  /* 3A: cooler pale-plywood bone; body ink on it is 15.1:1 (muted side notes 5.0:1). Baked drawings keep rgb(247,244,238). */
+  --color-paper: #eeebe4;
+  /* 4B: a lighter fill instead of an outline for step cards, feature cards and the prompt box. */
+  --yard-fill: #f7f6f2;
+}
+/* 2B: mono is for measurements only. */
+.yard-measure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* 2B: counts and step numbers stay in the text face, with figures that line up. */
+.yard-num { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+/* 4B: the header line only once the page has scrolled (opacity only; a sentinel sets data-scrolled). */
+.yard-head::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1px; background: var(--color-rule); opacity: 0; transition: opacity 150ms ease-out; pointer-events: none; }
+.yard-head[data-scrolled]::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .yard-head::after { transition: none; } }

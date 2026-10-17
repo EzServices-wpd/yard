@@ -7,7 +7,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { SiteFooter } from "@/components/site/chrome";
+import { NAV_LINK, ScrollSentinel, SiteFooter, useScrolled } from "@/components/site/chrome";
+import { drawingSize } from "@/lib/ideas/size";
 import { DREAMS } from "@/lib/yard/promptDreams";
 import type { promptWithHomeStock as PromptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
@@ -45,39 +46,50 @@ const STEPS = [
   { n: "3", title: "Get the plan", body: "Step-by-step instructions, a buy list, and a cut list." },
 ] as const;
 
-/** Finished pieces. Each card opens that plan on the bench. */
+/** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
 const PIECES = [
   {
     id: "pocket",
     label: "Pocket vanity",
-    size: "38 × 102 × 17 · trapezoid fit",
+    note: "trapezoid fit",
     prompt: DREAMS.find((d) => d.id === "pocket")?.prompt ?? "pocket vanity",
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
     id: "linen",
     label: "Linen closet",
-    size: "31 1/2 × 78 × 16",
+    note: "",
     prompt: "linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep",
     caption: "Sized to the alcove you typed",
   },
   {
     id: "desk",
     label: "60″ desk",
-    size: "60 × 30 × 29 · 24″ knee",
+    note: "24″ knee",
     prompt: "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
     caption: "Drawers plus roomy knee space",
   },
 ] as const;
 
-let showsMemo: Promise<Record<string, Showcase>> | undefined;
-function homeShows(): Promise<Record<string, Showcase>> {
-  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) => Object.fromEntries(PIECES.map((piece) => [piece.id, showcaseFor(piece.prompt)])));
+/** A sample card's model plus its size, formatted from the engine's solved dims: the drawing's own labels, else the model's box. */
+type HomeShow = Showcase & { size: string; sizeAria: string };
+let showsMemo: Promise<Record<string, HomeShow>> | undefined;
+function homeShows(): Promise<Record<string, HomeShow>> {
+  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) =>
+    Object.fromEntries(
+      PIECES.map((piece) => {
+        const show = showcaseFor(piece.prompt);
+        const f = drawingSize(show.svg, show.overall);
+        return [piece.id, { ...show, size: f.text, sizeAria: f.aria }];
+      }),
+    ),
+  );
   return showsMemo;
 }
 
+/** 6B: chips are 44px tall on a phone, 36px on a desktop. */
 const CHIP =
-  "rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50";
+  "inline-flex min-h-11 items-center rounded-full border border-rule bg-paper px-3.5 text-sm text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-rule/50 lg:min-h-9";
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -89,7 +101,8 @@ function LandingPage() {
   const [prompt, setPrompt] = useState(search.q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
   // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
-  const { shows } = Route.useLoaderData() as { shows: Record<string, Showcase | undefined> };
+  const { shows } = Route.useLoaderData() as { shows: Record<string, HomeShow | undefined> };
+  const [sentinel, scrolled] = useScrolled();
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
@@ -133,17 +146,18 @@ function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-rule/80 bg-paper/90 backdrop-blur">
+    <div className="yard-site relative min-h-screen bg-paper text-ink">
+      <ScrollSentinel at={sentinel} />
+      <header className="yard-head sticky top-0 z-40 bg-paper/90 backdrop-blur" data-scrolled={scrolled || undefined}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link to="/" className="flex items-center" aria-label="Yard home">
+          <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-5">
-            <Link to="/ideas" search={pickTestFlags(search)} className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+          <nav className="flex items-center gap-1">
+            <Link to="/ideas" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Ideas
             </Link>
-            <Link to="/workspace" search={pickTestFlags(search)} className="text-sm text-ink-muted transition-colors duration-150 hover:text-ink">
+            <Link to="/workspace" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Bench
             </Link>
           </nav>
@@ -159,9 +173,7 @@ function LandingPage() {
               ))}
             </g>
           </svg>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-            The plan the lumber aisle should have printed
-          </p>
+          <p className="text-base font-medium text-ink">The plan the lumber aisle should have printed</p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             {/* Words rise in once; the full line stays in the accessible name and the layout never shifts. */}
             {[["Think", "it", "up."], ["Yard", "works", "it", "out."]].map((line, li) => (
@@ -175,10 +187,10 @@ function LandingPage() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink sm:text-lg">
             One model. Every cut, part and step.
           </p>
-          <p className="mt-1 text-sm italic text-ink-muted">{TAGLINE}</p>
+          <p className="mt-1 text-base italic text-ink">{TAGLINE}</p>
 
           <form
             className="mt-9 w-full max-w-2xl"
@@ -191,7 +203,8 @@ function LandingPage() {
             <label htmlFor="dream" className="sr-only">
               What do you want to build?
             </label>
-            <div className="flex flex-col gap-2 rounded-2xl border border-rule bg-paper p-2 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_32px_-18px_rgba(18,16,14,0.25)] transition-[box-shadow,border-color] duration-150 focus-within:border-ink/30 focus-within:ring-2 focus-within:ring-ink/15 sm:flex-row sm:items-center">
+            {/* 4B: no outline and no resting shadow; a lighter fill, and the shadow only while typing. */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-[var(--yard-fill)] p-2 transition-shadow duration-150 focus-within:shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_32px_-18px_rgba(18,16,14,0.3)] focus-within:ring-2 focus-within:ring-ink/20 sm:flex-row sm:items-center">
               <input
                 id="dream"
                 value={prompt}
@@ -213,7 +226,7 @@ function LandingPage() {
             <fieldset className="mt-4" data-yard-home-material="1">
               <legend className="sr-only">Material</legend>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="mr-1 text-sm text-ink-muted">Material</span>
+                <span className="mr-1 text-sm text-ink">Material</span>
                 {STOCKS.map((s) => {
                   const on = stockId === s.id;
                   return (
@@ -222,7 +235,7 @@ function LandingPage() {
                       type="button"
                       aria-pressed={on}
                       onClick={() => pickStock(s.id)}
-                      className={`rounded-full border px-3 py-1 text-sm transition-colors duration-150 ${
+                      className={`inline-flex min-h-11 items-center rounded-full border px-3.5 text-sm transition-colors duration-150 lg:min-h-9 ${
                         on
                           ? "border-ink bg-ink text-paper"
                           : "border-rule bg-paper text-ink hover:border-ink/40"
@@ -233,7 +246,7 @@ function LandingPage() {
                   );
                 })}
               </div>
-              <p className="mt-2 text-xs text-ink-muted">
+              <p className="mt-2 text-sm text-ink">
                 {stock
                   ? prompt.trim() && promptWithHomeStock(prompt, stock.append) === prompt.trim().replace(/\s+/g, " ").trim()
                     ? "The material in the sentence wins."
@@ -248,14 +261,14 @@ function LandingPage() {
           {STEPS.map((s) => (
             <li
               key={s.n}
-              className="flex flex-col items-center gap-2 rounded-xl border border-rule bg-white/50 px-2 py-3 text-center sm:flex-row sm:items-start sm:gap-3 sm:p-4 sm:text-left"
+              className="flex flex-col items-center gap-2 rounded-xl bg-[var(--yard-fill)] px-2 py-4 text-center sm:flex-row sm:items-start sm:gap-3 sm:p-5 sm:text-left"
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink font-mono text-xs text-paper">
+              <span className="yard-num flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-medium text-paper">
                 {s.n}
               </span>
               <div>
-                <p className="text-[13px] font-medium leading-tight text-ink sm:text-sm">{s.title}</p>
-                <p className="mt-1 hidden text-xs leading-snug text-ink-muted sm:block">{s.body}</p>
+                <p className="text-sm font-medium leading-tight text-ink sm:text-base">{s.title}</p>
+                <p className="mt-1 hidden text-sm leading-snug text-ink sm:block">{s.body}</p>
               </div>
             </li>
           ))}
@@ -263,7 +276,7 @@ function LandingPage() {
 
         <section className="yard-hero-in yard-hero-in-2 mx-auto mt-12 grid max-w-3xl gap-8 text-center sm:grid-cols-2 sm:text-left">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the house</p>
+            <p className="text-base font-medium text-ink">For the house</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {HOUSE.map((d) => (
                 <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
@@ -273,7 +286,7 @@ function LandingPage() {
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">For the weekend</p>
+            <p className="text-base font-medium text-ink">For the weekend</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {WEEKEND.map((d) => (
                 <button key={d.id} type="button" onClick={() => open(d.prompt)} className={CHIP}>
@@ -283,7 +296,7 @@ function LandingPage() {
             </div>
             <Link
               to="/ideas"
-              className="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted transition-colors duration-150 hover:text-ink"
+              className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm text-ink transition-colors duration-150 hover:underline lg:min-h-9"
             >
               More ideas
               <ArrowRight className="size-3.5" />
@@ -293,7 +306,7 @@ function LandingPage() {
 
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
-          <p className="mt-2 text-center text-sm text-ink-muted">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
+          <p className="mt-2 text-center text-base text-ink">Drawn live by the Yard engine. Tap a piece to open its full plan.</p>
           <ShowcaseGrid>
             {PIECES.map((h) => (
               <button
@@ -306,32 +319,38 @@ function LandingPage() {
                   {shows[h.id] ? (
                     <div
                       role="img"
-                      aria-label={`Yard drawing of the ${h.label} ${h.size}`}
+                      aria-label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`}
                       data-yard-showcase={h.id}
                       className="yard-alive h-full w-full"
                       dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-ink-muted">Drawing the model…</div>
+                    <div className="flex h-full w-full items-center justify-center text-sm text-ink">Drawing the model…</div>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col justify-center p-4">
                   <span className="font-display text-base text-ink group-hover:underline">{h.label}</span>
-                  <span className="mt-0.5 font-mono text-xs tracking-tight text-ink">{h.size}</span>
-                  <span className="mt-1 text-xs leading-snug text-ink-muted">{h.caption}</span>
+                  {shows[h.id]?.size ? (
+                    <span className="mt-0.5 text-sm text-ink">
+                      <span className="yard-measure" data-size={h.id} aria-hidden>{shows[h.id]!.size}</span>
+                      <span className="sr-only">{shows[h.id]!.sizeAria}</span>
+                      {h.note ? ` · ${h.note}` : null}
+                    </span>
+                  ) : null}
+                  <span className="mt-1 text-sm leading-snug text-ink">{h.caption}</span>
                   {shows[h.id] ? (
-                    <span className="mt-1 font-mono text-xs tracking-tight text-ink" data-yard-showcase-totals={h.id}>
+                    <span className="yard-num mt-1 text-sm text-ink" data-yard-showcase-totals={h.id}>
                       {shows[h.id]!.pieces} cut pieces · Buy list ~${shows[h.id]!.buyUsd.toLocaleString("en-US")}
                     </span>
                   ) : null}
-                  <span className="mt-1 text-[11px] italic leading-snug text-ink-muted">{SHOWCASE_CAPTION}</span>
+                  <span className="mt-1 text-[13px] italic leading-snug text-ink">{SHOWCASE_CAPTION}</span>
                 </div>
               </button>
             ))}
           </ShowcaseGrid>
         </section>
 
-        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink-muted">
+        <nav aria-label="Free plans" className="mt-12 text-center text-sm text-ink">
           Free plans:{" "}
           {PLANS.map((p, i) => (
             <Fragment key={p.slug}>{i > 0 && " · "}<Link to="/plans/$slug" params={{ slug: p.slug }} className="underline-offset-2 hover:underline">{p.name}</Link></Fragment>
@@ -344,6 +363,7 @@ function LandingPage() {
           <Feature
             icon={<Hammer className="size-5" />}
             title="The size you typed"
+            // Copy pinned by src/lib/yard/homeShowcase.test.ts (engine-owned), so it keeps its typed W × H × D order; flagged to SWE.
             body="Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words."
           />
           <Feature
@@ -359,7 +379,7 @@ function LandingPage() {
         </section>
 
         {disclosure ? (
-          <p className="mt-10 text-center text-xs text-ink-muted" data-yard-affiliate-disclosure="1">
+          <p className="mt-10 text-center text-[13px] text-ink-muted" data-yard-affiliate-disclosure="1">
             {disclosure}{" "}
             <Link to="/about" className="underline decoration-rule underline-offset-4 hover:text-ink">
               How shop links work
@@ -442,10 +462,10 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
 
 function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-rule bg-white/50 p-5">
-      <div className="flex size-9 items-center justify-center rounded-md border border-rule bg-paper text-ink">{icon}</div>
-      <h2 className="mt-3 font-display text-lg text-ink">{title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
+    <div className="rounded-xl bg-[var(--yard-fill)] p-6">
+      <div className="flex size-9 items-center justify-center rounded-md bg-paper text-ink">{icon}</div>
+      <h2 className="mt-4 font-display text-lg text-ink">{title}</h2>
+      <p className="mt-2 text-base leading-relaxed text-ink">{body}</p>
     </div>
   );
 }

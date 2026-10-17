@@ -1,5 +1,5 @@
 /**
- * Card size ↔ drawing size. A card's subtitle size must describe the model its drawing shows (PR 3 #2).
+ * Card size ↔ drawing size. A card's size is formatted from the engine dims its drawing shows (PR 3 #2, Batch C).
  * Pure, no engine import. Feature numbers ("30 low", "24″ knee") are not overall sizes and are skipped.
  */
 export type Dims = { width: number; height: number; depth: number };
@@ -47,15 +47,47 @@ export function inch(n: number): string {
   return `${w ? `${w} ` : ""}${num}/${g}`;
 }
 
-/** The curated size when it matches the drawing; otherwise the model's W × H × D. Size format unchanged (decisions.md #2). */
-export function displaySize(curated: string | undefined | null, d: Dims | null | undefined): string {
-  if (!d) return curated ?? "";
-  if (sizeMatches(curated, d)) return curated!;
-  return `${inch(d.width)} × ${inch(d.height)} × ${inch(d.depth)}`;
+/** Inches spoken: 31.5 → "31 and a half", 17.75 → "17 and three quarters". */
+export function inchWords(n: number): string {
+  const e = Math.round(n * 8) / 8;
+  const w = Math.floor(e);
+  const f = Math.round((e - w) * 8);
+  const FR = ["", "an eighth", "a quarter", "three eighths", "a half", "five eighths", "three quarters", "seven eighths"];
+  if (!f) return String(w);
+  return w ? `${w} and ${FR[f]}` : FR[f];
 }
 
+/** Engine-solved dims in the drawing's own order. `round`: the top is a circle, so width is its diameter. */
+export type SolvedDims = Dims & { round?: boolean };
+
+/**
+ * The one size format (BATCH-C-PLAN.md, size rule): always formatted from the engine's solved dimensions,
+ * never from a typed string. "W × D × H in" ("31 1/2 × 16 × 78 in"); a round top prints "40 dia × 30 in".
+ * `aria` spells it out for screen readers ("31 and a half inches wide, 16 deep, 78 tall").
+ */
+export function formatSize(d: SolvedDims | null | undefined): { text: string; aria: string } {
+  if (!d) return { text: "", aria: "" };
+  if (d.round) return { text: `${inch(d.width)} dia × ${inch(d.height)} in`, aria: `${inchWords(d.width)} inches across, ${inchWords(d.height)} tall` };
+  return {
+    text: `${inch(d.width)} × ${inch(d.depth)} × ${inch(d.height)} in`,
+    aria: `${inchWords(d.width)} inches wide, ${inchWords(d.depth)} deep, ${inchWords(d.height)} tall`,
+  };
+}
+
+/** A drawing's size: its own dimension labels (what the engine drew), else the model's solved box. */
+export function drawingSize(svg: string, overall: Dims): { text: string; aria: string } {
+  return formatSize(drawnDims(svg) ?? overall);
+}
+
+/**
+ * Every size printed on / and /ideas matches this (the size pattern test). One number is a whole, a whole and a
+ * fraction ("3 1/2"), or, under an inch, a bare fraction ("3/4": the headboard is one 60 × 3/4 × 48 in panel).
+ */
+const N = String.raw`(?:\d+(?: \d+\/\d+)?|\d+\/\d+)`;
+export const SIZE_PATTERN = new RegExp(String.raw`^${N} × ${N} × ${N} in$|^${N} dia × ${N} in$`);
+
 /** Sizes the drawing itself prints (its dimension labels), in inches: width, depth, height (a round top: dia, height). */
-export function drawnDims(rawSvg: string): Dims | null {
+export function drawnDims(rawSvg: string): SolvedDims | null {
   const labels = [...rawSvg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1].replace(/&quot;/g, '"'));
   const num = (t: string) => {
     const m = t.match(/(\d+(?:\.\d+)?)?(?:\s*(\d+)\/(\d+))?\s*(["'])/);
@@ -65,7 +97,7 @@ export function drawnDims(rawSvg: string): Dims | null {
   };
   const ns = labels.map(num).filter((n) => Number.isFinite(n));
   if (ns.length === 3) return { width: ns[0], depth: ns[1], height: ns[2] };
-  if (ns.length === 2 && /dia/.test(labels[0])) return { width: ns[0], depth: ns[0], height: ns[1] };
+  if (ns.length === 2 && /dia/.test(labels[0])) return { width: ns[0], depth: ns[0], height: ns[1], round: true };
   return null;
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ArrowRight } from "lucide-react";
 import type { IdeaCard } from "@/lib/ideas/feed";
 import type { HeroModel } from "./HeroStage";
+import { CardSize } from "./IdeaCard";
 
 const EVENTS = ["pointerdown", "scroll", "keydown", "touchstart"] as const;
 type Stage = ComponentType<{ model: HeroModel; active: boolean; onReady: () => void }>;
@@ -80,8 +81,8 @@ export function IdeaHero({ card, onBuild, live = true }: { card: IdeaCard; onBui
     <section className="mt-6 grid items-center gap-4 rounded-2xl border border-rule bg-paper p-3 sm:mt-8 sm:grid-cols-[1fr_1.3fr] sm:gap-8 sm:p-6" data-ideas-hero={card.slug} aria-labelledby="ideas-hero-title">
       <div className="order-2 sm:order-1">
         <h2 id="ideas-hero-title" className="font-display text-2xl leading-tight text-ink sm:text-3xl">{card.title}</h2>
-        <p className="mt-1 font-mono text-xs tracking-tight text-ink">{card.stock ?? card.size}</p>
-        {card.blurb ? <p className="mt-2 max-w-md text-base leading-relaxed text-ink-muted">{card.blurb}</p> : null}
+        <p className="mt-1"><CardSize card={card} /></p>
+        {card.blurb ? <p className="mt-2 max-w-md text-base leading-relaxed text-ink">{card.blurb}</p> : null}
         <button
           type="button"
           onClick={onBuild}
