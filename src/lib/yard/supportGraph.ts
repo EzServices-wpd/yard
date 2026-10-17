@@ -31,7 +31,25 @@ const dist = (A: Box, B: Box) => Math.hypot(...[0, 1, 2].map((k) => Math.max(0, 
 
 export const isDrawerFront = (p: Panel) => /drawer front|false front/i.test(p.name);
 
+const isCaster = (p: Panel) => p.materialId === "hardware" && /^Caster \d+$/.test(p.name);
+
 export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
+  // C13: casters screw under the piece last. The piece is built as it stands on its own bottom; each caster
+  // is then fastened to the part right above it, so it is never "the base the next parts fasten to".
+  const casters = panels.filter(isCaster);
+  if (casters.length && casters.length < panels.length) {
+    const rest = panels.filter((p) => !isCaster(p));
+    const lift = Math.min(...rest.map((p) => boxOf(p).min[1]));
+    const out = panelSupports(rest.map((p) => ({ ...p, position: { ...p.position, y: p.position.y - lift } })));
+    for (const c of casters) {
+      const C = boxOf(c);
+      const host = rest
+        .filter((q) => overlap(C, boxOf(q), 0) > 0 && overlap(C, boxOf(q), 2) > 0 && boxOf(q).min[1] >= C.max[1] - 0.1)
+        .sort((a, b) => boxOf(a).min[1] - boxOf(b).min[1])[0] ?? rest.slice().sort((a, b) => dist(C, boxOf(a)) - dist(C, boxOf(b)))[0];
+      out.set(c.id, { key: c.id, name: c.name, how: "side", on: host ? [host.id] : [] });
+    }
+    return out;
+  }
   const boxes = new Map(panels.map((p) => [p.id, boxOf(p)]));
   const out = new Map<string, SupportInfo>();
   const structural = panels.filter((q) => q.type !== "door" && !isDrawerFront(q));

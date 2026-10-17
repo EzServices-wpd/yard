@@ -9,10 +9,6 @@
    "class": "F21",
    "msg": "Floor is interior plywood on the ground outdoors"
   },
-  "I13|raised garden bed 48 wide 96 long": {
-   "class": "F21",
-   "msg": "Left side is interior plywood on the ground outdoors"
-  },
   "I13|sandbox": {
    "class": "F21",
    "msg": "Left side is interior plywood on the ground outdoors"
@@ -133,9 +129,9 @@
    "class": "F2",
    "msg": "typed 44 wide, model 82"
   },
-  "I8|raised garden bed 48 wide 96 long": {
-   "class": "F2",
-   "msg": "typed 48 wide, model 96"
+  "C15|knife block maple": {
+   "class": "C15",
+   "msg": "step \"Set the Back panel\" uses #8 × 1 1/4\" screws, not on Buy"
   },
   "I26|ferris wheel": {
    "class": "F30",
