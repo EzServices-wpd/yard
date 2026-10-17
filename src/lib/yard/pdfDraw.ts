@@ -245,7 +245,7 @@ function instanceSolid(inst: YardProject["instances"][number]): Solid {
  * loose rod is its surface (ends padded by its radius, exactly for a slanted rod); a round plate is its box (its "cut
  * round" diameter, which the drawn polygon falls just short of). Everything else is its drawn corners.
  */
-function truePts(project: YardProject, s: Solid): V3[] {
+export function truePts(project: YardProject, s: Solid): V3[] {
   const p = project.panels.find((q) => q.id === s.id);
   // A part's rod (a strut) is measured to its part box, the size the cut list and the engine give it.
   if (s.stick && p?.strut) return panelWorldCorners(p).map((c) => ({ x: c.x, y: c.y, z: c.z }));
