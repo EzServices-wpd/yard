@@ -5,10 +5,10 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, ClipboardList, Hammer, ShoppingBag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { NAV_LINK, ScrollSentinel, SiteFooter, useScrolled } from "@/components/site/chrome";
-import { drawingSize } from "@/lib/ideas/size";
+import { drawingSize, formatSize, inch, inchWords } from "@/lib/ideas/size";
 import { DREAMS } from "@/lib/yard/promptDreams";
 import type { promptWithHomeStock as PromptWithHomeStock } from "@/lib/yard/promptHelpers";
 import { affiliateDisclosure } from "@/lib/yard/outbound";
@@ -19,7 +19,8 @@ const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
-  loader: async () => ({ shows: await homeShows() }),
+  // C2: the plan strip (one real plan: the linen canary) and the chips' baked drawings come from the server too.
+  loader: async () => ({ shows: await homeShows(), plan: await homePlan(), chipArt: await homeChipArt() }),
   validateSearch: (s: Record<string, unknown>): { q?: string } & TestFlags => ({
     ...(typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 200) } : {}),
     ...pickTestFlags(s),
@@ -27,8 +28,11 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const HOUSE = DREAMS.filter((d) => d.group === "house");
-const WEEKEND = DREAMS.filter((d) => d.group === "weekend");
+/** C2: at most 6 example chips, each with its small baked Ideas drawing (public/ideas/drawings). */
+const CHIP_IDS = ["corner", "slope", "pocket", "desk", "eiffel", "arch"] as const;
+const CHIPS = DREAMS.filter((d) => (CHIP_IDS as readonly string[]).includes(d.id)).slice(0, 6);
+const HOUSE = CHIPS.filter((d) => d.group === "house");
+const WEEKEND = CHIPS.filter((d) => d.group === "weekend");
 
 /** One class row for every build: sheet, board, round, pipe. A chip names the class, not a brand. */
 const STOCKS = [
@@ -40,11 +44,8 @@ const STOCKS = [
 
 type StockId = (typeof STOCKS)[number]["id"];
 
-const STEPS = [
-  { n: "1", title: "Type what you want", body: "A shelf, a desk, a weekend build. Add the sizes you have." },
-  { n: "2", title: "Choose the material", body: "Sheet, board, round, or pipe." },
-  { n: "3", title: "Get the plan", body: "Step-by-step instructions, a buy list, and a cut list." },
-] as const;
+/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $183.70). */
+const PLAN_PROMPT = "linen closet 31.5 wide 78 tall 16 deep";
 
 /** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
 const PIECES = [
@@ -87,9 +88,61 @@ function homeShows(): Promise<Record<string, HomeShow>> {
   return showsMemo;
 }
 
+/** The plan strip's numbers, straight from the engine's plan (cut list, Buy list, totals). No store links: those live on Buy lists only. */
+type HomePlan = {
+  size: string;
+  sizeAria: string;
+  pieces: number;
+  usd: string;
+  cuts: { label: string; name: string; qty: number; size: string; aria: string }[];
+  buy: { name: string; qty: number; unit: string; usd: string }[];
+};
+let planMemo: Promise<HomePlan> | undefined;
+function homePlan(): Promise<HomePlan> {
+  planMemo ??= Promise.all([import("@/lib/yard/prompt"), import("@/lib/yard/report")]).then(([{ generateFromPrompt }, { buildPlan }]) => {
+    const project = generateFromPrompt(PLAN_PROMPT);
+    const plan = buildPlan(project);
+    const f = formatSize(project.overall);
+    const usd = (n: number) => n.toFixed(2);
+    return {
+      size: f.text,
+      sizeAria: f.aria,
+      pieces: plan.totals.pieces,
+      usd: usd(plan.totals.estCostUsd),
+      cuts: plan.cutList.map((c) => ({
+        label: c.label ?? "",
+        name: c.name,
+        qty: c.quantity,
+        size: `${inch(c.lengthIn)} × ${inch(c.widthIn)} × ${inch(c.thicknessIn)} in`,
+        aria: `${inchWords(c.lengthIn)} by ${inchWords(c.widthIn)} by ${inchWords(c.thicknessIn)} inches`,
+      })),
+      buy: plan.bom.map((b) => ({ name: b.name, qty: b.quantity, unit: b.unit, usd: usd(b.estimatedCost ?? 0) })),
+    };
+  });
+  return planMemo;
+}
+
+/** Each chip's small drawing: the baked Ideas drawing for the same idea (versioned file, cached forever). */
+async function homeChipArt(): Promise<Record<string, string>> {
+  const m = (await import("@/lib/ideas/drawings.json")).default as Record<string, { v: string }>;
+  return Object.fromEntries([...CHIP_IDS, "linen"].filter((id) => m[id]).map((id) => [id, `/ideas/drawings/${id}.${m[id].v}.svg`]));
+}
+
 /** 6B: chips are 44px tall on a phone, 36px on a desktop. 4B (row 57): a fill, not an outline (only sample cards are outlined). */
 const CHIP =
-  "inline-flex min-h-11 items-center rounded-full border border-transparent bg-[var(--yard-fill)] px-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
+  "inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] pl-1 pr-3.5 text-sm text-ink transition-colors duration-150 hover:bg-rule/60 lg:min-h-9";
+
+/** The chip's drawing: fixed box (CLS 0), lazy, decorative (the label names it). */
+function ChipArt({ src }: { src?: string }) {
+  return src ? (
+    <span className="size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
+      {/* The model sits small in its 4:3 sheet: zoom in (transform only, no layout). */}
+      <img src={src} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full scale-[1.7] object-cover" />
+    </span>
+  ) : (
+    <span className="size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
+  );
+}
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -101,7 +154,7 @@ function LandingPage() {
   const [prompt, setPrompt] = useState(search.q ?? "");
   const [stockId, setStockId] = useState<StockId | null>(null);
   // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
-  const { shows } = Route.useLoaderData() as { shows: Record<string, HomeShow | undefined> };
+  const { shows, plan, chipArt } = Route.useLoaderData() as { shows: Record<string, HomeShow | undefined>; plan?: HomePlan; chipArt?: Record<string, string> };
   const [sentinel, scrolled] = useScrolled();
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
@@ -257,29 +310,13 @@ function LandingPage() {
           </form>
         </section>
 
-        <ol className="yard-hero-in yard-hero-in-2 mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-2 sm:mt-12 sm:gap-3">
-          {STEPS.map((s) => (
-            <li
-              key={s.n}
-              className="flex flex-col items-center gap-2 rounded-xl bg-[var(--yard-fill)] px-2 py-4 text-center sm:flex-row sm:items-start sm:gap-3 sm:p-5 sm:text-left"
-            >
-              <span className="yard-num flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-medium text-paper">
-                {s.n}
-              </span>
-              <div>
-                <p className="text-sm font-medium leading-tight text-ink sm:text-base">{s.title}</p>
-                <p className="mt-1 hidden text-sm leading-snug text-ink sm:block">{s.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
         <section className="yard-hero-in yard-hero-in-2 mx-auto mt-12 grid max-w-3xl gap-8 text-center sm:grid-cols-2 sm:text-left">
           <div>
             <p className="text-base font-medium text-ink">For the house</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {HOUSE.map((d) => (
                 <button key={d.id} type="button" onClick={() => go(d.prompt)} className={CHIP}>
+                  <ChipArt src={chipArt?.[d.id]} />
                   {d.label}
                 </button>
               ))}
@@ -290,6 +327,7 @@ function LandingPage() {
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
               {WEEKEND.map((d) => (
                 <button key={d.id} type="button" onClick={() => open(d.prompt)} className={CHIP}>
+                  <ChipArt src={chipArt?.[d.id]} />
                   {d.label}
                 </button>
               ))}
@@ -303,6 +341,8 @@ function LandingPage() {
             </Link>
           </div>
         </section>
+
+        {plan ? <PlanStrip plan={plan} art={chipArt?.linen} onOpen={() => open(PLAN_PROMPT)} /> : null}
 
         <section className="yard-hero-in yard-hero-in-3 mt-20">
           <h2 className="text-center font-display text-2xl text-ink sm:text-3xl">Made on Yard</h2>
@@ -358,25 +398,6 @@ function LandingPage() {
         </nav>
 
         <MakingNow />
-
-        <section className="mt-20 grid gap-6 sm:grid-cols-3">
-          <Feature
-            icon={<Hammer className="size-5" />}
-            title="The size you typed"
-            // Copy pinned by src/lib/yard/homeShowcase.test.ts (engine-owned), so it keeps its typed W × H × D order; flagged to SWE.
-            body="Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words."
-          />
-          <Feature
-            icon={<ClipboardList className="size-5" />}
-            title="Cut list + hardware"
-            body="Every part with its size, plus the screws, hinges, and shelf pins it takes. The sheet layout lives inside each plan."
-          />
-          <Feature
-            icon={<ShoppingBag className="size-5" />}
-            title="Shop, then build"
-            body="A buy list with packs, prices, and shop links. Print the plan and head to the store."
-          />
-        </section>
 
         {disclosure ? (
           <p className="mt-10 text-center text-[13px] text-ink-muted" data-yard-affiliate-disclosure="1">
@@ -460,12 +481,74 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
   );
 }
 
-function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+/**
+ * C2 (5A): one strip showing a real plan, not three icon cards: the step picture, the cut list and the Buy list of
+ * the linen canary, all from the engine's plan. Static (no motion); the whole strip is in the SSR HTML (CLS 0).
+ */
+function PlanStrip({ plan, art, onOpen }: { plan: HomePlan; art?: string; onOpen: () => void }) {
   return (
-    <div className="rounded-xl bg-[var(--yard-fill)] p-6">
-      <div className="flex size-9 items-center justify-center rounded-md bg-paper text-ink">{icon}</div>
-      <h2 className="mt-4 font-display text-lg text-ink">{title}</h2>
-      <p className="mt-2 text-base leading-relaxed text-ink">{body}</p>
-    </div>
+    <section className="mx-auto mt-16 max-w-5xl" aria-labelledby="yard-plan-strip" data-yard-plan-strip>
+      <h2 id="yard-plan-strip" className="text-center font-display text-2xl text-ink sm:text-3xl">Get the plan</h2>
+      <p className="mt-2 text-center text-base text-ink">Step-by-step instructions, a buy list, and a cut list.</p>
+      <div className="mt-6 rounded-2xl bg-[var(--yard-fill)] p-4 sm:p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="font-display text-xl text-ink">
+            Linen closet{" "}
+            <span className="yard-measure text-base" data-size="plan" aria-hidden>{plan.size}</span>
+            <span className="sr-only">{plan.sizeAria}</span>
+          </p>
+          <p className="yard-num text-sm text-ink" data-yard-plan-totals>
+            {plan.pieces} cut pieces · Buy list ${plan.usd}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_1.15fr_1fr]">
+          <div>
+            <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
+              {art ? <img src={art} alt={`Yard drawing of the linen closet, ${plan.sizeAria}`} width={480} height={360} loading="lazy" decoding="async" className="h-full w-full object-contain" /> : null}
+            </div>
+            <h3 className="mt-3 font-display text-lg text-ink">The size you typed</h3>
+            {/* Copy pinned by src/lib/yard/homeShowcase.test.ts (engine-owned), so it keeps its typed W × H × D order; flagged to SWE. */}
+            <p className="mt-1 text-sm leading-relaxed text-ink">Type 31 1/2 × 78 × 16 and the box is 31 1/2 × 78 × 16; doors add 3/4. Steps come in plain words.</p>
+          </div>
+          <div>
+            <h3 className="font-display text-lg text-ink">Cut list + hardware</h3>
+            <ul className="mt-2 divide-y divide-rule/70 text-sm text-ink">
+              {plan.cuts.map((c) => (
+                <li key={c.label + c.name} className="flex items-baseline gap-2 py-1.5">
+                  <span className="yard-num w-4 shrink-0 font-medium">{c.label}</span>
+                  <span className="min-w-0 flex-1" data-plan-text>{c.name} <span className="yard-num">×{c.qty}</span></span>
+                  <span className="yard-measure shrink-0" data-size={`cut-${c.label}`} aria-hidden>{c.size}</span>
+                  <span className="sr-only">{c.aria}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-display text-lg text-ink">Shop, then build</h3>
+            <ul className="mt-2 divide-y divide-rule/70 text-sm text-ink">
+              {plan.buy.map((b) => (
+                <li key={b.name} className="flex items-baseline gap-2 py-1.5">
+                  <span className="min-w-0 flex-1" data-plan-text>{b.name}</span>
+                  <span className="yard-num shrink-0 text-ink-muted">{b.qty} {b.unit}</span>
+                  <span className="yard-num w-16 shrink-0 text-right">${b.usd}</span>
+                </li>
+              ))}
+              <li className="flex items-baseline gap-2 py-1.5 font-medium">
+                <span className="flex-1">Buy list</span>
+                <span className="yard-num shrink-0">${plan.usd}</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition-transform duration-150 ease-out active:scale-[0.96] lg:min-h-9"
+            >
+              Build this
+              <ArrowRight className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

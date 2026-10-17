@@ -40,9 +40,9 @@ def check(page, path, W):
     if not sizes: fails.append(f"{tag}: no sizes found")
     for slug, t in sizes:
         if not SIZE.match(t): fails.append(f"{tag}: {slug} size {t!r} is not in the format")
-    # Any other size-like text (outside the size spans and the drawings).
+    # Any other size-like text (outside the size spans, the drawings and the plan strip's engine part names like "3/4\" Plywood 4×8").
     stray = page.evaluate("""() => { const out = []; const w = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) { const n = w.currentNode; if (n.parentElement.closest('[data-size], svg, input, [data-yard-making-now], .sr-only')) continue; out.push(n.textContent); } return out; }""")
+      while (w.nextNode()) { const n = w.currentNode; if (n.parentElement.closest('[data-size], [data-plan-text], svg, input, [data-yard-making-now], .sr-only')) continue; out.push(n.textContent); } return out; }""")
     for t in stray:
         if LOOSE.search(NOTE_OK.sub("", t)): fails.append(f"{tag}: stray size text {t.strip()!r}")
     # 6B targets: chips, material chips, nav links, Show all.
