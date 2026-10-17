@@ -144,8 +144,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     if (prompt) {
       void (async () => {
         try {
-          await runYardPrompt(prompt, { fresh: true });
-          if (shared) {
+          const live = await runYardPrompt(prompt, { fresh: true });
+          // A newer prompt typed while the link's build was still looking up owns the bench now.
+          if (shared && live) {
             useYard.getState().setMeasure(shared.measure);
             let next = useYard.getState().project;
             if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };
@@ -291,7 +292,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
             <Logo />
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
-            {pieceCount > 0 ? `Workbench · ${headerTitle(project)}` : "Workbench"}
+            {/* With a build, the title is the plan's header itself (same as the PDF); "Workbench" only on an empty bench. */}
+            {pieceCount > 0 ? headerTitle(project) : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">

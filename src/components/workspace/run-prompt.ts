@@ -313,16 +313,63 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   };
 }
 
-function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+function withDeadline<T>(p: Promise<T>, ms: number, signal?: AbortSignal): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("timeout")), ms)));
-  return Promise.race([p, late]).finally(() => clearTimeout(timer));
+  let onAbort: (() => void) | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+    // A newer prompt aborts this run: its pending await gives up at once instead of waiting out the bound.
+    if (signal) {
+      onAbort = () => reject(new Error(STALE));
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+  return Promise.race([p, late]).finally(() => {
+    clearTimeout(timer);
+    if (signal && onAbort) signal.removeEventListener("abort", onAbort);
+  });
+}
+
+/**
+ * Hotfix (Critic B2 race): only the latest prompt's run may write. Every run gets a monotonically increasing id;
+ * a newer prompt aborts the older run's in-flight calls, and every write after an await (house brief, learner
+ * recipe, the grey 'no parts' block, hint, interpret, the 22s busy timer, the finally) first checks that its run
+ * is still the latest. A slow learner lookup (up to 160s) can no longer land over the build showing now.
+ */
+const STALE = "stale prompt run";
+let latestRun = 0;
+let latestAbort: AbortController | null = null;
+type PromptRun = { id: number; live: () => boolean; signal?: AbortSignal };
+function startRun(): PromptRun {
+  const id = ++latestRun;
+  latestAbort?.abort();
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  latestAbort = ctrl;
+  return { id, live: () => id === latestRun, signal: ctrl?.signal };
+}
+/** The id of the newest prompt run (tests and callers that write after runYardPrompt resolves). */
+export function latestPromptRun(): number {
+  return latestRun;
 }
 
 /** Homepage ?q= and the bench prompt bar share this so house prompts never fall through to craft interpret. */
 const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
 
-export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number } = {}) {
+type RunOpts = { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number };
+
+/**
+ * Runs one prompt. Resolves true when this run is still the latest prompt (its build is the one on the bench),
+ * false when a newer prompt superseded it; a caller that writes after it resolves must skip on false.
+ */
+export async function runYardPrompt(raw: string, opts: RunOpts = {}): Promise<boolean> {
+  if (!boundPrompt(raw).prompt) return false;
+  const run = startRun();
+  await runOnce(raw, opts, run);
+  return run.live();
+}
+
+async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   noteBuildingPrompt(raw);
   // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
   const bounded = boundPrompt(raw);
@@ -414,13 +461,17 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   useYard.getState().beginBuild();
   useYard.setState({ grokBusy: true });
   const timeout = window.setTimeout(() => {
+    // A superseded run's timer must not clear the newer run's busy state or reveal over it.
+    if (!run.live()) return;
     useYard.setState({ grokBusy: false });
     revealBench();
   }, 22000);
+  const signal = run.signal;
 
   try {
     if (houseLike && !learn) {
-      const house = await withDeadline(briefHousePrompt({ data: { prompt } }), 30_000);
+      const house = await withDeadline(briefHousePrompt({ data: { prompt }, signal }), 30_000, signal);
+      if (!run.live()) return;
       if (house.ok && house.brief) {
         generate(prompt, undefined, undefined, {
           fresh: true,
@@ -442,16 +493,20 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     if (learn) {
       let lookupId: string | undefined;
       const lookup = timedLookup(async (feedback) => {
-        const r = await lookupRecipe({ data: { prompt, feedback } });
+        // A superseded run never spends a (retry) lookup call.
+        if (!run.live()) throw new Error(STALE);
+        const r = await lookupRecipe({ data: { prompt, feedback }, signal });
         if (r.ok && "lookupId" in r) lookupId = r.lookupId as string;
         return r;
       });
       // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
       const engine = () => roughBlock(prompt, next);
       // Two tries at 75s each, one bound on the whole lookup so the bench never waits on it.
-      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000).catch(
+      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000, signal).catch(
         () => ({ project: block(["the lookup ran out of time"]), recipe: null, rough: true }) as const,
       );
+      // The learner's recipe, rough shape and grey 'no parts' block only land for the latest prompt.
+      if (!run.live()) return;
       if (!out.recipe && !out.rough) {
         useYard.getState().setProject(out.unavailable ? { ...roughBlock(prompt, next), notes: [TRY_SAMPLE] } : block([]));
         makePlan();
@@ -473,7 +528,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
       }
     }
     // Every AI call is bounded: a slow hint or interpret reply never holds the Building overlay over a finished bench.
-    const hint = await withDeadline(hintSubject({ data: { prompt } }), opts.boundMs ?? 20_000);
+    const hint = await withDeadline(hintSubject({ data: { prompt }, signal }), opts.boundMs ?? 20_000, signal);
+    if (!run.live()) return;
     const bound = engineOwnsForm(prompt, useYard.getState().project);
     if (
       !bound &&
@@ -494,7 +550,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     }
     const interp = await withDeadline(interpretPrompt({
       data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
-    }), opts.boundMs ?? 20_000);
+      signal,
+    }), opts.boundMs ?? 20_000, signal);
+    if (!run.live()) return;
     const after = useYard.getState().project;
     const locked =
       // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.
@@ -528,14 +586,16 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     }
   } catch {
     // Deterministic already on the bench, except a half-read compound noun, which shows its labelled block.
-    if (weak) {
+    if (weak && run.live()) {
       const block = roughBlock(prompt, next);
       useYard.getState().setProject({ ...block, notes: [roughNote(block.name, [])] });
       makePlan();
     }
   } finally {
     window.clearTimeout(timeout);
-    useYard.setState({ grokBusy: false });
-    revealBench();
+    if (run.live()) {
+      useYard.setState({ grokBusy: false });
+      revealBench();
+    }
   }
 }

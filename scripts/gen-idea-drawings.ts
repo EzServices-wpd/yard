@@ -163,6 +163,8 @@ fs.mkdirSync(OUT, { recursive: true });
 fs.rmSync(MODELS, { recursive: true, force: true });
 fs.mkdirSync(MODELS, { recursive: true });
 const r2 = (n: number) => Math.round(n * 100) / 100;
+/** Card dims keep the drawing's 1/16″ labels exact (6 5/16 = 6.3125; r2 made it 6.31, which printed as 6 1/4). */
+const r4 = (n: number) => Math.round(n * 10000) / 10000;
 for (const c of cards) {
   if (seen.has(c.slug)) continue;
   seen.add(c.slug);
@@ -181,7 +183,7 @@ for (const c of cards) {
   const parts = built.panels.length + built.instances.length;
   // The size the card claims must be the size the drawing shows: its own labels, else the model's box.
   const o = (!view.custom && drawnDims(raw)) || project.overall;
-  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r2(o.width), height: r2(o.height), depth: r2(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) } };
+  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) } };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
       overall: built.overall,

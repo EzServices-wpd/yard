@@ -98,13 +98,23 @@ const types = (p: Pick<YardProject, "panels">) => p.panels.reduce<Record<string,
 /** Part types whose count follows from the size (spans, spacing), so a size step may change them (C19). */
 export const DERIVED_TYPES: readonly string[] = ["shelf", "divider", "rail", "deck", "bay"];
 
+const plural = (w: string) => (/shelf$/.test(w) ? w.replace(/f$/, "ves") : /(?:s|x|ch|sh)$/.test(w) ? `${w}es` : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`);
+/**
+ * The parts of one type, in the words on the plan: the shared name of those parts ("Caster 1"… → casters), never the
+ * internal type (casters are cleat-type hardware). Mixed names fall back to the type.
+ */
+export function partCountLabel(type: string, before: Pick<YardProject, "panels">, after: Pick<YardProject, "panels">): string {
+  const names = new Set([...before.panels, ...after.panels].filter((x) => x.type === type).map((x) => stem(x.name)).filter(Boolean));
+  return plural(names.size === 1 ? [...names][0]! : type);
+}
+
 /** Why a rebuilt project is not the same form with one change, or null when it fits. */
 function formBreak(before: YardProject, after: YardProject, kind: string, noun?: string, want?: number): string | null {
   if (!stem(after.name).endsWith(stem(before.name)) || after.kind !== before.kind) return `it would turn the ${stem(before.name) || "build"} into a ${stem(after.name) || "different build"}`;
   // C19: a size step re-derives the counts that follow from size (center supports, shelves, rails, slats, deck boards; never cleats, which carry casters and hangers).
   const free = new Set(kind === "count" && noun ? TARGET[noun] ?? [] : kind === "size" ? DERIVED_TYPES : []);
   const a = types(before), b = types(after);
-  for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) if (!free.has(t) && (a[t] ?? 0) !== (b[t] ?? 0)) return `it would change the ${t}s (${a[t] ?? 0} → ${b[t] ?? 0})`;
+  for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) if (!free.has(t) && (a[t] ?? 0) !== (b[t] ?? 0)) return `it would change the ${partCountLabel(t, before, after)} (${a[t] ?? 0} → ${b[t] ?? 0})`;
   if (noun && want != null && n(after, TARGET[noun]![0]) !== want) return `the form can't hold ${want} ${noun}`;
   if (findInterference(after).length > findInterference(before).length) return "the new parts would collide with the build";
   const doors = after.panels.filter((x) => x.type === "door");
