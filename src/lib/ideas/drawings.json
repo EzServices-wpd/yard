@@ -613,6 +613,58 @@
    "depth": 5.75
   }
  },
+ "bookcase": {
+  "v": "7ab723dc",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4304,
+  "dims": {
+   "width": 36,
+   "height": 72,
+   "depth": 12
+  },
+  "model": "/ideas/models/bookcase.d63deb29.json"
+ },
+ "workbench": {
+  "v": "4f7d6ac2",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3578,
+  "dims": {
+   "width": 60,
+   "height": 36,
+   "depth": 24
+  },
+  "model": "/ideas/models/workbench.ae058f79.json"
+ },
+ "birdhouse": {
+  "v": "29576471",
+  "w": 480,
+  "h": 360,
+  "parts": 7,
+  "bytes": 3663,
+  "dims": {
+   "width": 6.88,
+   "height": 11.81,
+   "depth": 7.5
+  },
+  "model": "/ideas/models/birdhouse.7725ffcb.json"
+ },
+ "raisedbed": {
+  "v": "3b4e4f38",
+  "w": 480,
+  "h": 360,
+  "parts": 16,
+  "bytes": 5749,
+  "dims": {
+   "width": 48,
+   "height": 16.5,
+   "depth": 96
+  },
+  "model": "/ideas/models/raisedbed.171e1a16.json"
+ },
  "recipe-wall-mounted-mail-organizer": {
   "v": "adeaa77f",
   "w": 480,

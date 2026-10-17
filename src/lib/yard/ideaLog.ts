@@ -5,7 +5,7 @@
 export type LogStatus = "Trusted" | "Unverified" | "Failed";
 export const STATUS_RANK: Record<LogStatus, number> = { Failed: 0, Unverified: 1, Trusted: 2 };
 export type LogRecord = { key: string; prompt: string; size: string; resultKey: string; status: LogStatus };
-export type SnapshotRow = { key: string; prompt: string; size: string; resultKey: string; status: Exclude<LogStatus, "Failed">; count: number };
+export type SnapshotRow = { key: string; prompt: string; size: string; resultKey: string; status: Exclude<LogStatus, "Failed">; count: number; /** Last time it was built (ISO UTC), when it is in the recent log. */ lastSeen?: string | null };
 export type IdeasSnapshot = { at: string; live: boolean; rows: SnapshotRow[]; popular: SnapshotRow[]; recent: SnapshotRow[] };
 export const EMPTY_SNAPSHOT: IdeasSnapshot = { at: "", live: false, rows: [], popular: [], recent: [] };
 export const PROMPT_CAP = 140;

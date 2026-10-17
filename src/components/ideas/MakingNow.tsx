@@ -3,6 +3,7 @@ import { currentTestFlags } from "@/lib/ideas/testFlags";
 import { useEffect, useState } from "react";
 import { safePrompt, type SnapshotRow } from "@/lib/yard/ideaLog";
 import { loadSnapshot } from "@/lib/yard/ideaLogClient";
+import { isChained } from "@/lib/ideas/liveFeed";
 import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
@@ -15,7 +16,7 @@ export function MakingNow() {
   const [ref, off] = useOffscreen<HTMLDivElement>();
   useEffect(() => {
     let live = true;
-    const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt).slice(0, 12)));
+    const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt && !isChained(r.prompt)).slice(0, 12)));
     const id = "requestIdleCallback" in window ? window.requestIdleCallback(go, { timeout: 6000 }) : setTimeout(go, 3000);
     return () => {
       live = false;

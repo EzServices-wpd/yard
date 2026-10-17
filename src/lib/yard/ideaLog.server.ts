@@ -166,14 +166,18 @@ export class IdeaStore {
       const head = await this.pipe([
         ["INCRBY", K.budget(month(now)), READ_CMDS],
         ["ZREVRANGE", K.top, 0, 999, "WITHSCORES"],
-        ["ZREVRANGE", K.recent, 0, 19],
+        ["ZREVRANGE", K.recent, 0, 199, "WITHSCORES"], // the whole recent log (it holds 200): lastSeen per key
       ]);
       this.budget.saw(Number(head?.[0]));
       const flat = (head?.[1] as string[]) ?? [];
       const counts = new Map<string, number>();
       for (let i = 0; i < flat.length; i += 2) counts.set(flat[i], Number(flat[i + 1]));
-      const recentKeys = ((head?.[2] as string[]) ?? []);
-      const keys = [...new Set([...counts.keys(), ...recentKeys])];
+      const recentFlat = ((head?.[2] as string[]) ?? []);
+      const seen = new Map<string, string>();
+      for (let i = 0; i < recentFlat.length; i += 2) { const t = Number(recentFlat[i + 1]); if (Number.isFinite(t)) seen.set(recentFlat[i], new Date(t).toISOString()); }
+      const allRecent = [...seen.keys()];
+      const recentKeys = allRecent.slice(0, 20);
+      const keys = [...new Set([...counts.keys(), ...allRecent])];
       if (!keys.length) return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
       const body = await this.pipe([["HMGET", K.meta, ...keys], ["ZMSCORE", K.status, ...keys]]);
       const metas = (body?.[0] as (string | null)[]) ?? [];
@@ -181,7 +185,7 @@ export class IdeaStore {
       const byKey = new Map<string, SnapshotRow>();
       keys.forEach((key, i) => {
         const row = toRow(key, metas[i], Number(ranks[i] ?? 0), counts.get(key) ?? 1);
-        if (row) byKey.set(key, row);
+        if (row) byKey.set(key, { ...row, lastSeen: seen.get(key) ?? null });
       });
       const rows = [...byKey.values()];
       return { at: now.toISOString(), live: true, rows, popular: trustedPopular(rows), recent: recentKeys.map((k) => byKey.get(k)).filter((r): r is SnapshotRow => !!r) };

@@ -5,6 +5,7 @@ import { morphTo } from "@/lib/ideas/morph";
 import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { IdeasPageView } from "@/components/ideas/IdeasPageView";
 import { IDEAS_CHANGED, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
+import { loadIdeasFeed } from "@/lib/ideas/feedFn";
 
 export const Route = createFileRoute("/ideas")({
   // Same HTML for every visitor: the CDN serves it for an hour and refreshes in the background.
@@ -24,6 +25,8 @@ export const Route = createFileRoute("/ideas")({
     ...(typeof s.q === "string" && s.q.trim() ? { q: s.q.slice(0, 80) } : {}),
     ...pickTestFlags(s),
   }),
+  // The live feed is in the SSR HTML (CLS 0): nothing swaps in after load.
+  loader: async () => ({ feed: await loadIdeasFeed().catch(() => undefined) }),
   component: IdeasPage,
 });
 
@@ -31,6 +34,9 @@ function IdeasPage() {
   const navigate = useNavigate();
   const incoming = Route.useSearch().q ?? "";
   const [learned, setLearned] = useState<LearnedIdea[]>([]);
+  // Rendered on the server (live feed, or the curated fallback with live=false); same HTML for every visitor.
+  const loaded = Route.useLoaderData().feed;
+  const feed = loaded && loaded.sections?.length ? loaded : undefined;
   useEffect(() => {
     const load = () => setLearned(listLearnedIdeas());
     load();
@@ -53,7 +59,7 @@ function IdeasPage() {
   }
   return (
     <SiteChrome active="ideas">
-      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} onIntent={prefetch} />
+      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} onIntent={prefetch} feed={feed} />
     </SiteChrome>
   );
 }
