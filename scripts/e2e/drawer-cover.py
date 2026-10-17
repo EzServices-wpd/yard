@@ -5,8 +5,8 @@ For each drawer card, three moments: full open on hover, the middle of the once-
 (the instant toggle). Inside every painted face of each open drawer it samples points and asks the browser which
 part is painted on top there (elementsFromPoint, by fill; a lone outline stroke gets no verdict). The truth is per
 pixel, from the engine's 3D parts (drawer-pairs.ts): the view ray through the point is cut by every part's box (open
-drawers moved out by their slide), and the nearest box must be the one painted. Interior samples only: the painted part
-and the truth must hold 1.5 px to either side (corners and grazing rays are antialiasing, counted as edge-only). (a) A fixed part painted where an open
+drawers moved out by their slide), and the nearest box must be the one painted. A sample gets a verdict only where the
+truth holds 1.5 px to either side (corners and grazing rays are antialiasing, counted as edge-only). (a) A fixed part painted where an open
 drawer is nearest fails; (b) the other way, sampled inside every painted face of every fixed part: an open drawer
 painted where a fixed part is nearest fails (the desk top, the vanity counter). Ties (shared faces) and non-box parts
 get no verdict. Any open
@@ -81,13 +81,14 @@ CHECK = r"""
     }
   };
   const bad = {}; let samples = 0, samplesB = 0, judged = 0;
-  // Only interior samples get a verdict: the painted part and the 3D truth must each be the same 1.5 px to either
-  // side (where three faces meet at a corner, or a ray just grazes a box edge, a sample is antialiasing, not order).
+  // Only samples where the 3D truth holds 1.5 px to either side get a verdict (where faces meet at a corner, or a ray
+  // just grazes a box edge, a pixel is antialiasing, not order). What is painted is not smoothed: a wrong strip as thin
+  // as a divider's front edge still fails.
   const N4 = [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]];
   const judge = (x, y, drawerSide) => {
     const top = topPart(x, y); if (!top) return;
     const tid = top.getAttribute('data-part'), want = nearest(x, y);
-    if (N4.some(([a, b]) => { const t = topPart(x + a, y + b); return !t || t.getAttribute('data-part') !== tid || nearest(x + a, y + b) !== want; })) { edges++; return; }
+    if (N4.some(([a, b]) => nearest(x + a, y + b) !== want)) { edges++; return; }
     if (!want || want === tid) { if (want) judged++; return; }
     judged++;
     const wantOpen = openIds.has(want), topOpen = openIds.has(tid);
