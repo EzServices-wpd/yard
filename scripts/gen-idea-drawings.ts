@@ -157,7 +157,7 @@ const seen = new Set<string>();
 /** Hero models: panel boxes only (no engine on /ideas), for builds light enough to turn live on a phone. */
 export const HERO_MAX_PARTS = 150;
 const MODELS = path.join("public", "ideas", "models");
-const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; dims: { width: number; height: number; depth: number }; model?: string }> = {};
+const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; dims: { width: number; height: number; depth: number; round?: true }; model?: string }> = {};
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.rmSync(MODELS, { recursive: true, force: true });
@@ -181,7 +181,7 @@ for (const c of cards) {
   const parts = built.panels.length + built.instances.length;
   // The size the card claims must be the size the drawing shows: its own labels, else the model's box.
   const o = (!view.custom && drawnDims(raw)) || project.overall;
-  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r2(o.width), height: r2(o.height), depth: r2(o.depth) } };
+  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r2(o.width), height: r2(o.height), depth: r2(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) } };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
       overall: built.overall,

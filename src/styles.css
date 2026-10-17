@@ -414,6 +414,19 @@
 /* Faint wood-grain line field drifting behind the hero. */
 .yard-grain { position: absolute; inset: -10% 0 auto 0; height: 120%; z-index: -1; pointer-events: none; opacity: 0.07; color: var(--color-ink, currentColor); animation: yard-grain 60s linear infinite alternate; will-change: transform; }
 @keyframes yard-grain { to { transform: translate3d(-4%, 2%, 0); } }
+/*
+ * The grain shows only in the margins and gaps: a mask keeps it at full (0.07) strength at the column edges and
+ * fades it to ~10% of that under the hero copy, prompt card, chips and labels. Mask only: no layout, CLS 0.
+ */
+.yard-grain {
+  --grain-faint: rgba(0, 0, 0, 0.1);
+  --grain-edge: 28px;
+  -webkit-mask-image: linear-gradient(to right, #000 0, var(--grain-faint) var(--grain-edge), var(--grain-faint) calc(100% - var(--grain-edge)), #000 100%);
+  mask-image: linear-gradient(to right, #000 0, var(--grain-faint) var(--grain-edge), var(--grain-faint) calc(100% - var(--grain-edge)), #000 100%);
+}
+/* An svg ignores right: 0, so pin its width to the hero column; otherwise the right margin sits clipped out of view. */
+.yard-grain { width: 100%; }
+@media (min-width: 640px) { .yard-grain { --grain-edge: 72px; } }
 
 /* Light frosted glass. */
 .yard-glass { background-color: color-mix(in oklab, var(--color-surface, #111) 72%, transparent) !important; backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); }
@@ -525,3 +538,22 @@
 }
 
 
+
+/*
+ * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the light site pages (home, Ideas, the shared chrome) only.
+ * The dark workspace never carries .yard-site, so it is unchanged.
+ */
+.yard-site {
+  /* 3A: cooler pale-plywood bone; body ink on it is 15.1:1 (muted side notes 5.0:1). Baked drawings keep rgb(247,244,238). */
+  --color-paper: #eeebe4;
+  /* 4B: a lighter fill instead of an outline for step cards, feature cards and the prompt box. */
+  --yard-fill: #f7f6f2;
+}
+/* 2B: mono is for measurements only. */
+.yard-measure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* 2B: counts and step numbers stay in the text face, with figures that line up. */
+.yard-num { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+/* 4B: the header line only once the page has scrolled (opacity only; a sentinel sets data-scrolled). */
+.yard-head::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1px; background: var(--color-rule); opacity: 0; transition: opacity 150ms ease-out; pointer-events: none; }
+.yard-head[data-scrolled]::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .yard-head::after { transition: none; } }

@@ -253,7 +253,8 @@
   "dims": {
    "width": 40,
    "height": 30,
-   "depth": 40
+   "depth": 40,
+   "round": true
   },
   "model": "/ideas/models/round.f87fd212.json"
  },
@@ -266,7 +267,8 @@
   "dims": {
    "width": 48,
    "height": 18,
-   "depth": 48
+   "depth": 48,
+   "round": true
   },
   "model": "/ideas/models/coffee.5d7b6443.json"
  },
